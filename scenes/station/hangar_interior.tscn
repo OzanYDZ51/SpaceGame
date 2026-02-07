@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://c11x8illje3wj"]
+
+[ext_resource type="PackedScene" uid="uid://dmd3iltniwm6r" path="res://assets/models/hangar_interior.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://lnsnvsxprhlw" path="res://scripts/station/hangar_scene.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="3_ship_preview"]
+
+[sub_resource type="Environment" id="env_hangar"]
+background_mode = 1
+background_color = Color(0.03, 0.03, 0.06, 1)
+ambient_light_source = 1
+ambient_light_color = Color(0.6, 0.65, 0.8, 1)
+ambient_light_energy = 8.0
+tonemap_mode = 3
+tonemap_white = 8.0
+glow_enabled = true
+glow_intensity = 0.8
+glow_bloom = 0.15
+glow_hdr_threshold = 0.8
+
+[node name="HangarInterior" type="Node3D" unique_id=509712563]
+script = ExtResource("2_script")
+
+[node name="HangarModel" parent="." unique_id=67745176 instance=ExtResource("1_model")]
+transform = Transform3D(0.0024, 0, 0, 0, 0.0024, 0, 0, 0, 0.0024, 0, -8.34769, 0)
+
+[node name="HangarCamera" type="Camera3D" parent="." unique_id=190634649]
+transform = Transform3D(1, 0, 0, 0, 0.9865921, 0.16320543, 0, -0.16320543, 0.9865921, 0, 8.055012, 14.104371)
+environment = SubResource("env_hangar")
+
+[node name="Light_Overhead" type="OmniLight3D" parent="." unique_id=1115360463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 18, 14)
+light_color = Color(0.95, 0.95, 1, 1)
+light_energy = 12.0
+omni_range = 120.0
+
+[node name="Light_Front" type="OmniLight3D" parent="." unique_id=572548998]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+light_color = Color(0.9, 0.92, 1, 1)
+light_energy = 8.0
+omni_range = 100.0
+
+[node name="Light_Back" type="OmniLight3D" parent="." unique_id=218832621]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 28)
+light_color = Color(0.85, 0.9, 1, 1)
+light_energy = 8.0
+omni_range = 100.0
+
+[node name="Light_Left" type="OmniLight3D" parent="." unique_id=223791960]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 8, 14)
+light_color = Color(0.8, 0.85, 0.95, 1)
+light_energy = 6.0
+omni_range = 100.0
+
+[node name="Light_Right" type="OmniLight3D" parent="." unique_id=1336884358]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 8, 14)
+light_color = Color(0.8, 0.85, 0.95, 1)
+light_energy = 6.0
+omni_range = 100.0
+
+[node name="Light_Below" type="OmniLight3D" parent="." unique_id=59845201]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 14)
+light_color = Color(0.7, 0.75, 0.9, 1)
+light_energy = 5.0
+omni_range = 100.0
+
+[node name="ShipSpawnPoint" type="Marker3D" parent="." unique_id=1570237256]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.800923, 8)
+gizmo_extents = 3.0
+
+[node name="ShipPreview" parent="ShipSpawnPoint" unique_id=611153424 instance=ExtResource("3_ship_preview")]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, -1.1458678, -8.755791)

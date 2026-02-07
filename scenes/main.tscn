@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://c2mmccwr18vwx"]
+
+[ext_resource type="Script" uid="uid://bnof7w71n7mod" path="res://scripts/environment/space_environment.gd" id="1_env"]
+[ext_resource type="Script" uid="uid://gdvjc6lecb8j" path="res://scripts/ui/flight_hud.gd" id="3_hud"]
+[ext_resource type="Script" path="res://scripts/ui/chat_panel.gd" id="6_chat"]
+[ext_resource type="Script" path="res://scripts/ui/stellar_map/stellar_map.gd" id="7_map"]
+[ext_resource type="PackedScene" path="res://scenes/ship/player_ship.tscn" id="4_ship"]
+[ext_resource type="Shader" uid="uid://dsmymqysdprha" path="res://shaders/skybox_stars.gdshader" id="5_skyshader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_sky"]
+shader = ExtResource("5_skyshader")
+shader_parameter/star_density = 0.6
+shader_parameter/star_brightness = 2.2
+shader_parameter/twinkle_speed = 0.7
+shader_parameter/nebula_warm = Color(0.12, 0.02, 0.04, 1)
+shader_parameter/nebula_cool = Color(0.02, 0.03, 0.10, 1)
+shader_parameter/nebula_accent = Color(0.06, 0.01, 0.12, 1)
+shader_parameter/nebula_intensity = 0.45
+shader_parameter/milky_way_intensity = 0.7
+shader_parameter/milky_way_width = 0.18
+shader_parameter/milky_way_color = Color(0.12, 0.10, 0.16, 1)
+shader_parameter/dust_intensity = 0.5
+
+[sub_resource type="Sky" id="Sky_space"]
+sky_material = SubResource("ShaderMat_sky")
+process_mode = 0
+radiance_size = 5
+
+[sub_resource type="Environment" id="Env_space"]
+background_mode = 2
+sky = SubResource("Sky_space")
+ambient_light_source = 2
+ambient_light_color = Color(0.04, 0.04, 0.08, 1)
+ambient_light_energy = 0.25
+tonemap_mode = 3
+tonemap_white = 6.0
+glow_enabled = true
+glow_intensity = 0.8
+glow_strength = 1.2
+glow_bloom = 0.05
+glow_blend_mode = 0
+glow_hdr_threshold = 0.8
+glow_hdr_scale = 2.5
+
+[node name="Main" type="Node3D" unique_id=2132800667]
+script = ExtResource("1_env")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2109094019]
+environment = SubResource("Env_space")
+
+[node name="StarLight" type="DirectionalLight3D" parent="." unique_id=2050582671]
+transform = Transform3D(0.866, -0.25, 0.433, 0, 0.866, 0.5, -0.5, -0.433, 0.75, 0, 0, 0)
+light_color = Color(1, 0.95, 0.9, 1)
+light_energy = 1.5
+shadow_enabled = false
+
+[node name="Universe" type="Node3D" parent="." unique_id=1205757707]
+
+[node name="PlayerShip" parent="." unique_id=1300000754 instance=ExtResource("4_ship")]
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=67772134]
+
+[node name="FlightHUD" type="Control" parent="UI" unique_id=896930934]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_hud")
+
+[node name="ChatPanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("6_chat")
+
+[node name="StellarMap" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("7_map")

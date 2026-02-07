@@ -1,0 +1,47 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/missile_projectile.gd" id="1_missile"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_missile"]
+height = 3.0
+radius = 0.4
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_missile"]
+top_radius = 0.15
+bottom_radius = 0.35
+height = 3.0
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="Mat_missile"]
+albedo_color = Color(0.6, 0.6, 0.65, 1.0)
+metallic = 0.7
+roughness = 0.4
+emission_enabled = true
+emission = Color(0.8, 0.3, 0.1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_exhaust"]
+transparency = 1
+albedo_color = Color(1.0, 0.6, 0.2, 0.8)
+emission_enabled = true
+emission = Color(1.0, 0.5, 0.1, 1)
+emission_energy_multiplier = 8.0
+
+[node name="Missile" type="Area3D"]
+script = ExtResource("1_missile")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+rotation = Vector3(1.5708, 0, 0)
+shape = SubResource("CylinderShape3D_missile")
+
+[node name="MissileMesh" type="MeshInstance3D" parent="."]
+rotation = Vector3(1.5708, 0, 0)
+mesh = SubResource("CylinderMesh_missile")
+material_override = SubResource("Mat_missile")
+
+[node name="ExhaustLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.5)
+light_color = Color(1.0, 0.5, 0.15, 1)
+light_energy = 2.0
+omni_range = 12.0
+omni_attenuation = 1.5

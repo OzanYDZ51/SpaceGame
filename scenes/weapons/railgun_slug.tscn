@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/base_projectile.gd" id="1_slug"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_slug"]
+height = 8.0
+radius = 0.15
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_slug"]
+top_radius = 0.06
+bottom_radius = 0.06
+height = 8.0
+radial_segments = 4
+
+[sub_resource type="StandardMaterial3D" id="Mat_slug"]
+transparency = 1
+albedo_color = Color(0.9, 0.95, 1.0, 0.95)
+emission_enabled = true
+emission = Color(0.95, 0.97, 1.0, 1)
+emission_energy_multiplier = 20.0
+
+[node name="RailgunSlug" type="Area3D"]
+script = ExtResource("1_slug")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+rotation = Vector3(1.5708, 0, 0)
+shape = SubResource("CylinderShape3D_slug")
+
+[node name="SlugMesh" type="MeshInstance3D" parent="."]
+rotation = Vector3(1.5708, 0, 0)
+mesh = SubResource("CylinderMesh_slug")
+material_override = SubResource("Mat_slug")
+
+[node name="SlugLight" type="OmniLight3D" parent="."]
+light_color = Color(0.9, 0.95, 1.0, 1)
+light_energy = 4.0
+omni_range = 25.0
+omni_attenuation = 2.0

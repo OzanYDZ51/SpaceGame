@@ -1,0 +1,86 @@
+name: Build and Release SpaceGame
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Skip if commit message starts with "ci:" (avoid infinite loop from version bump)
+    if: "!startsWith(github.event.head_commit.message, 'ci:')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version
+        id: version
+        run: |
+          CURRENT=$(cat VERSION | tr -d '[:space:]')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "$NEW_VERSION" > VERSION
+          # Update constants.gd
+          sed -i "s/const GAME_VERSION: String = \".*\"/const GAME_VERSION: String = \"$NEW_VERSION\"/" scripts/core/constants.gd
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION scripts/core/constants.gd
+          git commit -m "ci: bump version to ${{ steps.version.outputs.version }}"
+          git push
+
+      - name: Download Godot
+        run: |
+          GODOT_VERSION="4.6-stable"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" -O godot.zip
+          unzip -q godot.zip
+          mv Godot_v${GODOT_VERSION}_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+      - name: Download export templates
+        run: |
+          GODOT_VERSION="4.6-stable"
+          wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz" -O templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.6.stable
+          unzip -q templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.6.stable/
+
+      - name: Import project
+        run: |
+          cd ${{ github.workspace }}
+          godot --headless --import 2>&1 || true
+          # Run twice to ensure all imports are processed
+          godot --headless --import 2>&1 || true
+
+      - name: Export game
+        run: |
+          mkdir -p build
+          cd ${{ github.workspace }}
+          godot --headless --export-release "Windows Desktop" build/SpaceGame.exe
+
+      - name: Package release
+        run: |
+          cd build
+          zip -r ../SpaceGame.zip SpaceGame.exe SpaceGame.pck
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: SpaceGame ${{ steps.version.outputs.tag }}
+          body: "Automated build from commit ${{ github.sha }}"
+          files: SpaceGame.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

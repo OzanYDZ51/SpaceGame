@@ -1,0 +1,96 @@
+class_name BaseProjectile
+extends Area3D
+
+# =============================================================================
+# Base Projectile - Common logic for all projectile types
+# Handles movement, lifetime, collision, damage application.
+# Spawns ShieldHitEffect or HullHitEffect based on whether shields absorbed.
+# =============================================================================
+
+var velocity: Vector3 = Vector3.ZERO
+var damage: float = 25.0
+var damage_type: StringName = &"thermal"
+var owner_ship: Node3D = null  # Prevents self-hit
+var max_lifetime: float = 3.0
+var _lifetime: float = 0.0
+var _pool: ProjectilePool = null  # Set by pool on acquire
+
+
+func _ready() -> void:
+	collision_layer = Constants.LAYER_PROJECTILES
+	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
+	monitoring = true
+	monitorable = false
+	body_entered.connect(_on_body_hit)
+	area_entered.connect(_on_area_hit)
+
+
+func _physics_process(delta: float) -> void:
+	global_position += velocity * delta
+	_lifetime += delta
+	if _lifetime >= max_lifetime:
+		_return_to_pool()
+
+
+func _on_body_hit(body: Node3D) -> void:
+	if body == owner_ship:
+		return
+	var hit_info := _apply_damage_to(body)
+	_spawn_hit_effect(body, hit_info)
+	_report_hit_to_owner(body, hit_info)
+	_return_to_pool()
+
+
+func _on_area_hit(_area: Area3D) -> void:
+	_spawn_hit_effect()
+	_return_to_pool()
+
+
+func _apply_damage_to(body: Node3D) -> Dictionary:
+	var health := body.get_node_or_null("HealthSystem") as HealthSystem
+	if health == null:
+		return {"shield_absorbed": false}
+	var hit_dir: Vector3 = (body.global_position - global_position).normalized()
+	return health.apply_damage(damage, damage_type, hit_dir, owner_ship)
+
+
+func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
+	var scene_root := get_tree().current_scene
+	var intensity := clampf(damage / 25.0, 0.5, 3.0)
+
+	if hit_info.get("shield_absorbed", false) and body != null:
+		# Shield absorbed the hit — energy bubble on ship
+		var effect := ShieldHitEffect.new()
+		body.add_child(effect)
+		effect.setup(global_position, body, hit_info.get("shield_ratio", 0.0), intensity)
+	else:
+		# Hull hit or non-ship target — sparks, debris, scorch
+		var effect := HullHitEffect.new()
+		scene_root.add_child(effect)
+		effect.global_position = global_position
+		var hit_normal := Vector3.UP
+		if body:
+			hit_normal = (global_position - body.global_position).normalized()
+		elif velocity.length_squared() > 0.01:
+			hit_normal = velocity.normalized()
+		effect.setup(hit_normal, intensity)
+
+
+func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
+	if owner_ship == null:
+		return
+	var wm := owner_ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm == null:
+		return
+	var killed := false
+	var health := body.get_node_or_null("HealthSystem") as HealthSystem
+	if health and health.is_dead():
+		killed = true
+	wm._on_projectile_hit(hit_info, damage, killed)
+
+
+func _return_to_pool() -> void:
+	if _pool:
+		_pool.release(self)
+	else:
+		queue_free()

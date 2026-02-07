@@ -1,0 +1,19 @@
+# Godot
+.godot/
+*.import
+*.uid
+
+# Build output
+build/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Windows reserved device names
+nul
