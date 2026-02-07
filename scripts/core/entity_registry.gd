@@ -30,6 +30,8 @@ enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, J
 #   "extra": Dictionary,             # type-specific data
 # }
 var _entities: Dictionary = {}  # id -> entity dict
+var _sync_timer: float = 0.0
+const SYNC_INTERVAL: float = 0.1  # 10 Hz position sync
 
 
 func register(id: String, data: Dictionary) -> void:
@@ -92,6 +94,11 @@ func get_position(id: String) -> Array:
 
 
 func _process(delta: float) -> void:
+	_sync_timer -= delta
+	if _sync_timer > 0.0:
+		return
+	_sync_timer = SYNC_INTERVAL
+
 	for ent in _entities.values():
 		# Use untyped var to safely check freed references
 		var node_ref = ent.get("node")

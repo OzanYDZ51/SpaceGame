@@ -53,7 +53,7 @@ func configure_for_system(system_data: StarSystemData) -> void:
 
 	# --- Glow tweaks per star type ---
 	env.glow_intensity = clampf(0.6 + system_data.star_luminosity * 0.1, 0.6, 1.2)
-	env.glow_bloom = clampf(0.1 + system_data.star_luminosity * 0.02, 0.1, 0.25)
+	env.glow_bloom = clampf(0.03 + system_data.star_luminosity * 0.01, 0.03, 0.08)
 
 	# --- Skybox shader parameters ---
 	if env.sky == null or env.sky.sky_material == null:

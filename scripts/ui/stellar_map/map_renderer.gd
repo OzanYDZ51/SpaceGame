@@ -11,6 +11,11 @@ var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
 var _scan_line_y: float = 0.0
 var _pulse_t: float = 0.0
 var _system_name: String = "SYSTÈME INCONNU"
+var _last_zoom: float = -1.0
+var _last_center_x: float = INF
+var _last_center_z: float = INF
+var _redraw_timer: float = 0.0
+const REDRAW_INTERVAL: float = 0.1  # Check for changes at 10 Hz
 
 # Cache for asteroid belt dot positions (universe coords)
 # Key: entity id, Value: Array of [ux, uz] pairs
@@ -24,7 +29,20 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_scan_line_y = fmod(_scan_line_y + delta * 60.0, size.y)
 	_pulse_t += delta
-	queue_redraw()
+
+	# Only redraw when camera changes (zoom/pan) or at slow interval for scanline
+	_redraw_timer -= delta
+	if camera != null:
+		if camera.zoom != _last_zoom or camera.center_x != _last_center_x or camera.center_z != _last_center_z:
+			_last_zoom = camera.zoom
+			_last_center_x = camera.center_x
+			_last_center_z = camera.center_z
+			queue_redraw()
+			_redraw_timer = REDRAW_INTERVAL
+			return
+	if _redraw_timer <= 0.0:
+		_redraw_timer = REDRAW_INTERVAL
+		queue_redraw()
 
 
 func _draw() -> void:

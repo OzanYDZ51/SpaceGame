@@ -3,11 +3,17 @@ extends Node
 
 # =============================================================================
 # Ship LOD Manager - Central orchestrator for LOD, MultiMesh, and spatial grid.
-# Manages all ships (player, NPCs, remote players) across 3 LOD tiers.
+# Manages all ships (player, NPCs, remote players) across 4 LOD tiers.
+#
+# LOD0 (0-1000m):    Full mesh + lights + AI + weapons + collision
+# LOD1 (1000-2000m): Mesh visible, no lights, AI + weapons active (tirs visibles!)
+# LOD2 (2000-4000m): No mesh, Label3D name tag only (faction-colored)
+# LOD3 (>4000m):     Data-only (MultiMesh dot), combat bridge, radar only
 # =============================================================================
 
-const LOD0_DISTANCE: float = 400.0
+const LOD0_DISTANCE: float = 1000.0
 const LOD1_DISTANCE: float = 2000.0
+const LOD2_DISTANCE: float = 4000.0
 const LOD0_MAX: int = 50
 const LOD1_MAX: int = 200
 const LOD_EVAL_INTERVAL: float = 0.2
@@ -20,14 +26,24 @@ var _grid: SpatialGrid = null
 var _ships: Dictionary = {}  # StringName -> ShipLODData
 var _player_id: StringName = &""
 
-# --- MultiMesh ---
+# --- MultiMesh (LOD3 rendering) ---
 var _multimesh: MultiMesh = null
 var _multimesh_instance: MultiMeshInstance3D = null
 var _ship_mesh: Mesh = null
 
+# --- Label3D pool for LOD2 name tags ---
+var _label_pool: Array[Label3D] = []  # Available labels
+var _active_labels: Dictionary = {}  # StringName -> Label3D (id -> label)
+
 # --- Timers ---
 var _lod_eval_timer: float = 0.0
 var _combat_bridge_timer: float = 0.0
+var _ai_tick_timer: float = 0.0
+var _label_tick_timer: float = 0.0
+var _multimesh_tick_timer: float = 0.0
+const AI_TICK_INTERVAL: float = 0.1       # 10 Hz for data-only AI
+const LABEL_TICK_INTERVAL: float = 0.1    # 10 Hz for label positions
+const MULTIMESH_TICK_INTERVAL: float = 0.05  # 20 Hz for MultiMesh updates
 
 # --- References ---
 var _universe_node: Node3D = null
@@ -51,7 +67,6 @@ func _load_ship_mesh() -> void:
 		push_warning("ShipLODManager: Could not load tie.glb for MultiMesh")
 		return
 	var instance := scene.instantiate() as Node3D
-	# Find the first MeshInstance3D and extract the mesh
 	_ship_mesh = _find_first_mesh(instance)
 	instance.queue_free()
 
@@ -76,12 +91,62 @@ func _setup_multimesh() -> void:
 	_multimesh.mesh = _ship_mesh
 
 	_multimesh_instance = MultiMeshInstance3D.new()
-	_multimesh_instance.name = "LOD2_MultiMesh"
+	_multimesh_instance.name = "LOD3_MultiMesh"
 	_multimesh_instance.multimesh = _multimesh
-	# Cast shadows for large groups
 	_multimesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if _universe_node:
 		_universe_node.add_child(_multimesh_instance)
+
+
+# =============================================================================
+# LABEL3D POOL (for LOD2 name tags)
+# =============================================================================
+
+func _acquire_label(id: StringName, data: ShipLODData) -> Label3D:
+	# Safety: release existing label first to prevent orphaned duplicates
+	if _active_labels.has(id):
+		_release_label(id)
+
+	var label: Label3D
+	if _label_pool.size() > 0:
+		label = _label_pool.pop_back()
+		label.visible = true
+	else:
+		label = Label3D.new()
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = true
+		label.fixed_size = true
+		label.pixel_size = 0.002
+		label.font_size = 28
+		label.outline_size = 8
+		if _universe_node:
+			_universe_node.add_child(label)
+
+	label.text = data.display_name if data.display_name != "" else String(id)
+	var col := _get_faction_label_color(data.faction)
+	label.modulate = Color(col.r, col.g, col.b, 0.9)
+	label.outline_modulate = Color(0, 0, 0, 0.6)
+	label.global_position = data.position + Vector3(0, 5, 0)
+	_active_labels[id] = label
+	return label
+
+
+func _release_label(id: StringName) -> void:
+	if not _active_labels.has(id):
+		return
+	var label: Label3D = _active_labels[id]
+	label.visible = false
+	_label_pool.append(label)
+	_active_labels.erase(id)
+
+
+func _get_faction_label_color(faction: StringName) -> Color:
+	match faction:
+		&"hostile": return Color(1.0, 0.35, 0.3)
+		&"friendly": return Color(0.3, 1.0, 0.4)
+		&"neutral": return Color(0.7, 0.6, 1.0)
+	# Free-for-all unique factions
+	return Color(0.9, 0.6, 0.3)
 
 
 # =============================================================================
@@ -89,14 +154,11 @@ func _setup_multimesh() -> void:
 # =============================================================================
 
 func register_ship(id: StringName, data: ShipLODData) -> void:
-	# If ship already exists (e.g. from LOD promotion), update node_ref instead
 	if _ships.has(id):
 		var existing: ShipLODData = _ships[id]
 		if existing._is_promoting:
-			# Factory re-registered during promotion — just update the node ref
 			existing.node_ref = data.node_ref
 			return
-		# Truly duplicate — overwrite
 		_grid.remove(id)
 	_ships[id] = data
 	_grid.insert(id, data.position, data)
@@ -106,8 +168,10 @@ func unregister_ship(id: StringName) -> void:
 	if not _ships.has(id):
 		return
 	var data: ShipLODData = _ships[id]
-	# If the ship has a scene node in LOD0/1, free it
-	if data.node_ref and is_instance_valid(data.node_ref) and data.current_lod != ShipLODData.LODLevel.LOD2:
+	# Free label if LOD2
+	_release_label(id)
+	# Free scene node if LOD0/LOD1
+	if data.node_ref and is_instance_valid(data.node_ref):
 		if id != _player_id:
 			data.node_ref.queue_free()
 	_grid.remove(id)
@@ -128,7 +192,6 @@ func get_ships_in_radius(center: Vector3, radius: float) -> Array[StringName]:
 
 func get_nearest_ships(center: Vector3, radius: float, count: int, exclude_id: StringName = &"") -> Array[Dictionary]:
 	var results := _grid.query_nearest(center, radius, count + 1)
-	# Filter out exclude_id
 	if exclude_id != &"":
 		var filtered: Array[Dictionary] = []
 		for r in results:
@@ -175,18 +238,23 @@ func get_ship_count() -> int:
 
 
 func clear_all() -> void:
-	# Free LOD0/1 nodes that aren't the player
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
 		if id == _player_id:
 			continue
+		_release_label(id)
 		if data.node_ref and is_instance_valid(data.node_ref):
 			data.node_ref.queue_free()
 	_ships.clear()
 	_grid.clear()
-	# Update multimesh to show nothing
+	_active_labels.clear()
 	if _multimesh:
 		_multimesh.instance_count = 0
+	# Free pooled labels
+	for label in _label_pool:
+		if is_instance_valid(label):
+			label.queue_free()
+	_label_pool.clear()
 
 
 # =============================================================================
@@ -198,7 +266,7 @@ func _process(delta: float) -> void:
 	if _camera == null:
 		return
 
-	# Sync LOD0/1 node positions into grid + data
+	# Sync LOD0/1 node positions into grid (only nodes with scene refs)
 	_sync_node_positions()
 
 	# LOD evaluation (every 0.2s)
@@ -207,15 +275,26 @@ func _process(delta: float) -> void:
 		_lod_eval_timer = LOD_EVAL_INTERVAL
 		_evaluate_lod_levels()
 
-	# Tick LOD2 simple AI (every frame, cheap)
-	_tick_lod2_ai(delta)
+	# Tick LOD2+LOD3 simple AI (10 Hz — not every frame)
+	_ai_tick_timer -= delta
+	if _ai_tick_timer <= 0.0:
+		_ai_tick_timer = AI_TICK_INTERVAL
+		_tick_data_only_ai(AI_TICK_INTERVAL)
 
-	# Update MultiMesh (every frame)
-	_update_multimesh()
+	# Update Label3D positions for LOD2 (10 Hz)
+	_label_tick_timer -= delta
+	if _label_tick_timer <= 0.0:
+		_label_tick_timer = LABEL_TICK_INTERVAL
+		_update_label_positions()
+
+	# Update MultiMesh for LOD3 (20 Hz)
+	_multimesh_tick_timer -= delta
+	if _multimesh_tick_timer <= 0.0:
+		_multimesh_tick_timer = MULTIMESH_TICK_INTERVAL
+		_update_multimesh()
 
 
 func _physics_process(delta: float) -> void:
-	# Combat bridge for LOD2 vs LOD2 (every 0.2s)
 	_combat_bridge_timer -= delta
 	if _combat_bridge_timer <= 0.0:
 		_combat_bridge_timer = COMBAT_BRIDGE_INTERVAL
@@ -227,39 +306,43 @@ func _physics_process(delta: float) -> void:
 # =============================================================================
 
 func _sync_node_positions() -> void:
+	# Only sync ships that have scene nodes (LOD0/LOD1)
+	# LOD2/3 positions are updated by _tick_data_only_ai and grid sync happens there
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
 		if data.node_ref and is_instance_valid(data.node_ref):
 			data.position = data.node_ref.global_position
 			_grid.update_position(id, data.position)
-		elif data.current_lod == ShipLODData.LODLevel.LOD2:
-			# LOD2: position updated by tick_simple_ai, just sync grid
-			_grid.update_position(id, data.position)
 
+
+var _sorted_ids: Array[StringName] = []  # Reused across ticks
 
 func _evaluate_lod_levels() -> void:
 	if _camera == null:
 		return
 	var cam_pos := _camera.global_position
 
-	# Calculate distances for all ships
+	# Single pass: compute distances + collect ids
+	_sorted_ids.resize(_ships.size())
+	var idx: int = 0
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
 		data.distance_to_camera = cam_pos.distance_to(data.position)
+		_sorted_ids[idx] = id
+		idx += 1
+	if idx < _sorted_ids.size():
+		_sorted_ids.resize(idx)
 
-	# Sort ships by distance (closest first)
-	var sorted_ids: Array[StringName] = []
-	for id: StringName in _ships:
-		sorted_ids.append(id)
-	sorted_ids.sort_custom(func(a: StringName, b: StringName) -> bool:
-		return _ships[a].distance_to_camera < _ships[b].distance_to_camera)
+	# Sort using pre-computed distances (no dict lookup in comparator)
+	var ships_ref := _ships  # Local ref avoids repeated member access
+	_sorted_ids.sort_custom(func(a: StringName, b: StringName) -> bool:
+		return ships_ref[a].distance_to_camera < ships_ref[b].distance_to_camera)
 
-	# Assign LOD levels based on distance + budget
 	var lod0_count: int = 0
 	var lod1_count: int = 0
 	var promotions_this_tick: int = 0
 
-	for id in sorted_ids:
+	for id in _sorted_ids:
 		var data: ShipLODData = _ships[id]
 
 		# Player is always LOD0
@@ -274,10 +357,12 @@ func _evaluate_lod_levels() -> void:
 			target_lod = ShipLODData.LODLevel.LOD0
 		elif data.distance_to_camera < LOD1_DISTANCE and lod1_count < LOD1_MAX:
 			target_lod = ShipLODData.LODLevel.LOD1
-		else:
+		elif data.distance_to_camera < LOD2_DISTANCE:
 			target_lod = ShipLODData.LODLevel.LOD2
+		else:
+			target_lod = ShipLODData.LODLevel.LOD3
 
-		# Apply transition (throttle promotions to avoid frame spike)
+		# Apply transition (throttle promotions)
 		if target_lod != data.current_lod:
 			var is_promotion := target_lod < data.current_lod
 			if is_promotion and promotions_this_tick >= MAX_PROMOTIONS_PER_TICK:
@@ -287,7 +372,6 @@ func _evaluate_lod_levels() -> void:
 				if is_promotion:
 					promotions_this_tick += 1
 
-		# Count after potential transition
 		match data.current_lod:
 			ShipLODData.LODLevel.LOD0: lod0_count += 1
 			ShipLODData.LODLevel.LOD1: lod1_count += 1
@@ -295,20 +379,36 @@ func _evaluate_lod_levels() -> void:
 
 func _transition_lod(id: StringName, data: ShipLODData, target: ShipLODData.LODLevel) -> void:
 	var current := data.current_lod
-	if current == ShipLODData.LODLevel.LOD0 and target == ShipLODData.LODLevel.LOD1:
-		_demote_lod0_to_lod1(id, data)
-	elif current == ShipLODData.LODLevel.LOD0 and target == ShipLODData.LODLevel.LOD2:
-		_demote_lod0_to_lod1(id, data)
-		_demote_lod1_to_lod2(id, data)
-	elif current == ShipLODData.LODLevel.LOD1 and target == ShipLODData.LODLevel.LOD0:
-		_promote_to_lod0(id, data)
-	elif current == ShipLODData.LODLevel.LOD1 and target == ShipLODData.LODLevel.LOD2:
-		_demote_lod1_to_lod2(id, data)
-	elif current == ShipLODData.LODLevel.LOD2 and target == ShipLODData.LODLevel.LOD1:
-		_promote_lod2_to_lod1(id, data)
-	elif current == ShipLODData.LODLevel.LOD2 and target == ShipLODData.LODLevel.LOD0:
-		_promote_lod2_to_lod1(id, data)
-		_promote_to_lod0(id, data)
+	var cur := current
+	var tgt := target
+
+	# Step through adjacent tiers (never skip more than one step)
+	if cur < tgt:
+		# Demoting
+		while cur < tgt:
+			match cur:
+				ShipLODData.LODLevel.LOD0:
+					_demote_lod0_to_lod1(id, data)
+					cur = ShipLODData.LODLevel.LOD1
+				ShipLODData.LODLevel.LOD1:
+					_demote_lod1_to_lod2(id, data)
+					cur = ShipLODData.LODLevel.LOD2
+				ShipLODData.LODLevel.LOD2:
+					_demote_lod2_to_lod3(id, data)
+					cur = ShipLODData.LODLevel.LOD3
+	else:
+		# Promoting
+		while cur > tgt:
+			match cur:
+				ShipLODData.LODLevel.LOD3:
+					_promote_lod3_to_lod2(id, data)
+					cur = ShipLODData.LODLevel.LOD2
+				ShipLODData.LODLevel.LOD2:
+					_promote_lod2_to_lod1(id, data)
+					cur = ShipLODData.LODLevel.LOD1
+				ShipLODData.LODLevel.LOD1:
+					_promote_to_lod0(id, data)
+					cur = ShipLODData.LODLevel.LOD0
 
 
 # =============================================================================
@@ -327,16 +427,16 @@ func _demote_lod0_to_lod1(id: StringName, data: ShipLODData) -> void:
 		for light: OmniLight3D in model._engine_lights:
 			light.visible = false
 
-	# Keep physics active but reduce collision (can be hit, doesn't push)
+	# Keep physics active but reduce collision
 	if node is RigidBody3D:
 		var rb := node as RigidBody3D
-		rb.collision_layer = Constants.LAYER_SHIPS  # Projectiles can hit me
-		rb.collision_mask = 0  # I don't collide with anything
+		rb.collision_layer = Constants.LAYER_SHIPS
+		rb.collision_mask = 0
 
-	# Keep AI active for movement, disable weapons
+	# AI active WITH weapons (tirs visibles up to 2000m!)
 	var brain := node.get_node_or_null("AIBrain") as AIBrain
 	if brain:
-		brain.weapons_enabled = false
+		brain.weapons_enabled = true
 
 	data.current_lod = ShipLODData.LODLevel.LOD1
 
@@ -344,32 +444,45 @@ func _demote_lod0_to_lod1(id: StringName, data: ShipLODData) -> void:
 func _demote_lod1_to_lod2(id: StringName, data: ShipLODData) -> void:
 	var node := data.node_ref
 	if node and is_instance_valid(node):
-		# Capture latest state before removing
 		data.capture_from_node(node)
-		# Unregister from EntityRegistry BEFORE freeing (prevents freed ref access)
 		EntityRegistry.unregister(String(node.name))
 		node.queue_free()
 	data.node_ref = null
 	data.current_lod = ShipLODData.LODLevel.LOD2
+
+	# Create a name tag label
+	_acquire_label(id, data)
+
+
+func _demote_lod2_to_lod3(id: StringName, data: ShipLODData) -> void:
+	# Remove the name tag label
+	_release_label(id)
+	data.current_lod = ShipLODData.LODLevel.LOD3
+
+
+func _promote_lod3_to_lod2(id: StringName, data: ShipLODData) -> void:
+	# Create a name tag label
+	data.current_lod = ShipLODData.LODLevel.LOD2
+	_acquire_label(id, data)
 
 
 func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	if data.is_dead:
 		return
 
-	# Mark as promoting to prevent duplicate registration
+	# Remove name tag
+	_release_label(id)
+
 	data._is_promoting = true
 
 	var node: Node3D = null
 	if data.is_remote_player:
-		# Recreate RemotePlayerShip
 		var remote := RemotePlayerShip.new()
 		remote.peer_id = data.peer_id
 		remote.set_player_name(data.display_name)
 		remote.name = String(id)
 		node = remote
 	else:
-		# Recreate NPC ship via factory (skip LOD/EntityRegistry — we manage it)
 		var parent := _universe_node if _universe_node else get_tree().current_scene
 		node = ShipFactory.spawn_npc_ship(
 			data.ship_class, data.behavior_name, data.position, parent, data.faction, true
@@ -377,22 +490,20 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 		if node == null:
 			data._is_promoting = false
 			return
-		# Override factory name to match our LOD tracking id
 		node.name = String(id)
 
 	if data.is_remote_player and _universe_node:
 		_universe_node.add_child(node)
 
-	# Restore state
 	node.global_position = data.position
 	if node is RigidBody3D:
 		(node as RigidBody3D).linear_velocity = data.velocity
 
-	# Apply LOD1 restrictions (move + evade, no weapons or lights)
+	# LOD1 restrictions: no lights, reduced collision, weapons ENABLED
 	if node is RigidBody3D:
 		var rb := node as RigidBody3D
-		rb.collision_layer = Constants.LAYER_SHIPS  # Projectiles can hit me
-		rb.collision_mask = 0  # I don't collide with anything
+		rb.collision_layer = Constants.LAYER_SHIPS
+		rb.collision_mask = 0
 
 	var model := node.get_node_or_null("ShipModel") as ShipModel
 	if model:
@@ -401,7 +512,7 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 
 	var brain := node.get_node_or_null("AIBrain") as AIBrain
 	if brain:
-		brain.weapons_enabled = false  # Move but don't fire
+		brain.weapons_enabled = true  # Tirs visibles up to 2000m!
 		brain.set_patrol_area(data.ai_patrol_center, data.ai_patrol_radius)
 
 	data.node_ref = node
@@ -436,28 +547,39 @@ func _promote_to_lod0(id: StringName, data: ShipLODData) -> void:
 
 
 # =============================================================================
-# MULTIMESH (LOD2 rendering)
+# LABEL3D UPDATE (LOD2 name tags)
+# =============================================================================
+
+func _update_label_positions() -> void:
+	for id: StringName in _active_labels:
+		var label: Label3D = _active_labels[id]
+		var data: ShipLODData = _ships.get(id)
+		if data == null:
+			continue
+		label.global_position = data.position + Vector3(0, 5, 0)
+
+
+# =============================================================================
+# MULTIMESH (LOD3 rendering — distant dots)
 # =============================================================================
 
 func _update_multimesh() -> void:
 	if _multimesh == null:
 		return
 
-	# Gather LOD2 ships
-	var lod2_ships: Array[ShipLODData] = []
+	var lod3_ships: Array[ShipLODData] = []
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
-		if data.current_lod == ShipLODData.LODLevel.LOD2 and not data.is_dead:
-			lod2_ships.append(data)
+		if data.current_lod == ShipLODData.LODLevel.LOD3 and not data.is_dead:
+			lod3_ships.append(data)
 
-	var count := lod2_ships.size()
-	# Grow buffer with headroom to avoid constant reallocation as ships die
+	var count := lod3_ships.size()
 	if _multimesh.instance_count < count:
 		_multimesh.instance_count = count + 128
 	_multimesh.visible_instance_count = count
 
 	for i in count:
-		var data: ShipLODData = lod2_ships[i]
+		var data: ShipLODData = lod3_ships[i]
 		var xform := Transform3D(data.rotation_basis, data.position)
 		xform = xform.scaled_local(Vector3.ONE * data.model_scale)
 		_multimesh.set_instance_transform(i, xform)
@@ -465,22 +587,23 @@ func _update_multimesh() -> void:
 
 
 # =============================================================================
-# LOD2 SIMPLE AI
+# LOD2+LOD3 SIMPLE AI (data-only ships)
 # =============================================================================
 
-func _tick_lod2_ai(delta: float) -> void:
+func _tick_data_only_ai(delta: float) -> void:
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
-		if data.current_lod == ShipLODData.LODLevel.LOD2 and not data.is_remote_player:
-			data.tick_simple_ai(delta)
+		if data.current_lod == ShipLODData.LODLevel.LOD2 or data.current_lod == ShipLODData.LODLevel.LOD3:
+			if not data.is_remote_player:
+				data.tick_simple_ai(delta)
+			_grid.update_position(id, data.position)
 
 
 # =============================================================================
-# COMBAT BRIDGE (LOD2 statistical combat)
+# COMBAT BRIDGE (LOD1+LOD2+LOD3 statistical combat)
 # =============================================================================
 
 func _tick_combat_bridge() -> void:
-	# DPS lookup by ship class
 	var class_dps := {
 		&"Scout": 8.0,
 		&"Interceptor": 12.0,
@@ -498,11 +621,10 @@ func _tick_combat_bridge() -> void:
 		if data == null:
 			continue
 		if data.current_lod == ShipLODData.LODLevel.LOD0:
-			continue  # LOD0 ships fight with real AI + projectiles
+			continue  # LOD0 fight with real projectiles
 		if data.is_dead or data.is_remote_player:
 			continue
 
-		# Find NEAREST enemy only (not all — prevents N² damage explosion)
 		var nearby := _grid.query_radius(data.position, COMBAT_BRIDGE_RANGE)
 		var best_id: StringName = &""
 		var best_dist_sq: float = INF
@@ -522,25 +644,29 @@ func _tick_combat_bridge() -> void:
 		if best_id == &"":
 			continue
 
-		var target: ShipLODData = _ships.get(best_id)
-		if target == null:
+		var target_data: ShipLODData = _ships.get(best_id)
+		if target_data == null:
 			continue
 
-		# Steer toward target (LOD2 ships converge visually on radar)
-		var to_target := target.position - data.position
+		# Steer toward target (LOD2/3 ships converge)
+		var to_target := target_data.position - data.position
 		if to_target.length_squared() > 100.0:
 			data.velocity = data.velocity.lerp(to_target.normalized() * 60.0, COMBAT_BRIDGE_INTERVAL * 0.5)
 
-		# Apply statistical damage (single target, ~13s to kill with 2 attackers)
+		# Statistical damage (LOD1 ships with nodes also get bridge damage for targets out of weapon range)
+		# Only apply bridge damage to LOD2+LOD3 targets, LOD0/LOD1 take real projectile damage
+		if target_data.current_lod == ShipLODData.LODLevel.LOD0 or target_data.current_lod == ShipLODData.LODLevel.LOD1:
+			continue  # LOD0/LOD1 targets take projectile damage from real weapons
+
 		var dps: float = class_dps.get(data.ship_class, 15.0)
 		var damage_this_tick := dps * COMBAT_BRIDGE_INTERVAL
-		if target.shield_ratio > 0.0:
-			target.shield_ratio = maxf(target.shield_ratio - damage_this_tick * 0.008, 0.0)
+		if target_data.shield_ratio > 0.0:
+			target_data.shield_ratio = maxf(target_data.shield_ratio - damage_this_tick * 0.008, 0.0)
 		else:
-			target.hull_ratio = maxf(target.hull_ratio - damage_this_tick * 0.012, 0.0)
+			target_data.hull_ratio = maxf(target_data.hull_ratio - damage_this_tick * 0.012, 0.0)
 
-		if target.hull_ratio <= 0.0:
-			target.is_dead = true
+		if target_data.hull_ratio <= 0.0:
+			target_data.is_dead = true
 			if not dead_ids.has(best_id):
 				dead_ids.append(best_id)
 
@@ -554,10 +680,10 @@ func _tick_combat_bridge() -> void:
 
 func _on_origin_shifted(shift: Vector3) -> void:
 	# LOD0/LOD1 nodes are shifted automatically (children of Universe)
-	# LOD2 data-only ships need manual position shift
+	# LOD2/LOD3 data-only ships need manual position shift
 	for id: StringName in _ships:
 		var data: ShipLODData = _ships[id]
-		if data.current_lod == ShipLODData.LODLevel.LOD2:
+		if data.current_lod == ShipLODData.LODLevel.LOD2 or data.current_lod == ShipLODData.LODLevel.LOD3:
 			data.position -= shift
 			data.ai_patrol_center -= shift
 

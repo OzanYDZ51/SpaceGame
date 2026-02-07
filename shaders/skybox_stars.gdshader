@@ -152,9 +152,9 @@ float milky_way_band(vec3 dir) {
 // ─── Nebula system (domain-warped for organic shapes) ───────────────────────
 
 vec3 nebula_field(vec3 dir) {
-	// Cheap hash-based domain warp (no noise3d calls)
-	vec3 warp = _hash33(floor(dir * 3.5 + 0.5)) * 0.35;
-	vec3 warped = dir + warp;
+	// Single smooth noise warp (1 noise3d call instead of 3)
+	float warp = noise3d(dir * 3.5 + vec3(0.0, 4.7, 1.3)) - 0.5;
+	vec3 warped = dir + vec3(warp * 0.35, warp * 0.25, warp * 0.30);
 
 	// Sample nebula layers on warped coordinates (reduced octaves)
 	float n1 = fbm(warped * 4.5 + vec3(0.0, 0.5, 1.0), 3);
@@ -183,8 +183,8 @@ float dust_field(vec3 dir) {
 	float dw = noise3d(dir * 3.0 + vec3(5.5, 2.2, 7.7)) * 0.15;
 	vec3 warped = dir + vec3(dw, dw * 0.5, -dw * 0.8);
 
-	float d1 = fbm(warped * 5.0 + vec3(2.0, 1.0, 3.0), 5);
-	float d2 = fbm(warped * 9.0 + vec3(5.0, 3.0, 1.0), 4);
+	float d1 = fbm(warped * 5.0 + vec3(2.0, 1.0, 3.0), 3);
+	float d2 = fbm(warped * 9.0 + vec3(5.0, 3.0, 1.0), 2);
 
 	// Filamentary dust structures
 	float dust = smoothstep(0.52, 0.72, d1) * smoothstep(0.38, 0.62, d2);
@@ -208,9 +208,6 @@ void sky() {
 	// === MILKY WAY ===
 	float mw = milky_way_band(dir) * milky_way_intensity;
 	vec3 mw_col = milky_way_color * mw;
-
-	// Extra star density boost in Milky Way region
-	float mw_star_boost = mw * 0.5;
 
 	// === DARK DUST ===
 	float dust = dust_field(dir);
@@ -248,12 +245,6 @@ void sky() {
 	vec3 rare_col = star_color_temp(temp4) * stars_rare * twinkle;
 
 	vec3 total_stars = (dim_col + med_col + bright_col + rare_col) * star_brightness;
-
-	// Boost star count in Milky Way
-	float mw_dim_thresh = dim_thresh - mw_star_boost * 0.3;
-	float temp_mw;
-	float mw_stars = star_point(dir, 180.0, max(mw_dim_thresh, 0.1), temp_mw) * 0.25;
-	total_stars += star_color_temp(temp_mw) * mw_stars * star_brightness;
 
 	// === COMPOSE ===
 	vec3 sky_color = vec3(0.0);

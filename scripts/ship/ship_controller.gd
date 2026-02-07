@@ -34,6 +34,12 @@ var _current_roll_rate: float = 0.0
 # --- Mouse ---
 var _mouse_delta: Vector2 = Vector2.ZERO
 
+# --- Cached refs ---
+var _cached_energy_sys: EnergySystem = null
+var _cached_weapon_mgr: WeaponManager = null
+var _cached_model: ShipModel = null
+var _refs_cached: bool = false
+
 
 func _ready() -> void:
 	can_sleep = false
@@ -44,6 +50,14 @@ func _ready() -> void:
 	angular_damp = 0.0
 	collision_layer = Constants.LAYER_SHIPS
 	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
+	_cache_refs.call_deferred()
+
+
+func _cache_refs() -> void:
+	_cached_energy_sys = get_node_or_null("EnergySystem") as EnergySystem
+	_cached_weapon_mgr = get_node_or_null("WeaponManager") as WeaponManager
+	_cached_model = get_node_or_null("ShipModel") as ShipModel
+	_refs_cached = true
 
 
 func _input(event: InputEvent) -> void:
@@ -116,8 +130,7 @@ func _read_input() -> void:
 		flight_assist = not flight_assist
 
 	# === ENERGY PIPS ===
-	var energy_sys := get_node_or_null("EnergySystem") as EnergySystem
-	if energy_sys:
+	if _cached_energy_sys:
 		if Input.is_action_just_pressed("pip_weapons"):
 			energy_sys.increase_pip(&"weapons")
 		if Input.is_action_just_pressed("pip_shields"):

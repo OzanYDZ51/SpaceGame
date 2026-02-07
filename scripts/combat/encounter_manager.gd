@@ -39,7 +39,7 @@ func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> 
 
 	match danger_level:
 		0:
-			spawn_free_for_all(500, &"Scout", base_pos, 800.0)
+			spawn_free_for_all(300, &"Scout", base_pos, 800.0)
 		1:
 			spawn_patrol(3, &"Scout", base_pos, 300.0, &"neutral")
 		2:

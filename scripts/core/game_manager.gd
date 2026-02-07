@@ -22,15 +22,12 @@ var _encounter_manager: EncounterManager = null
 var _clan_manager: ClanManager = null
 var _docking_system: DockingSystem = null
 var _station_screen: StationScreen = null
-var _hangar_scene: HangarScene = null
+var _dock_instance: DockInstance = null
 var _system_transition: SystemTransition = null
 var _galaxy: GalaxyData = null
 var _death_screen: Control = null
 var _death_fade: float = 0.0
 var _space_dust: SpaceDust = null
-var _docked_station_name: String = ""
-var _saved_collision_layer: int = 0
-var _saved_collision_mask: int = 0
 var _ship_net_sync: ShipNetworkSync = null
 var _chat_relay: NetworkChatRelay = null
 var _server_authority: ServerAuthority = null
@@ -225,6 +222,11 @@ func _initialize_game() -> void:
 	_docking_system.name = "DockingSystem"
 	player_ship.add_child(_docking_system)
 	_docking_system.docked.connect(_on_docked)
+
+	# Dock instance (isolated solo context manager)
+	_dock_instance = DockInstance.new()
+	_dock_instance.name = "DockInstance"
+	add_child(_dock_instance)
 
 	# Wire docking system to HUD for dock prompt display
 	if hud:
@@ -480,8 +482,8 @@ func _process(delta: float) -> void:
 		_death_screen.modulate.a = _death_fade
 
 	# Sync hangar prompt visibility with screen state
-	if current_state == GameState.DOCKED and _hangar_scene and _screen_manager:
-		_hangar_scene.terminal_open = _screen_manager.is_any_screen_open()
+	if current_state == GameState.DOCKED and _dock_instance and _dock_instance.hangar_scene and _screen_manager:
+		_dock_instance.hangar_scene.terminal_open = _screen_manager.is_any_screen_open()
 
 
 func _input(event: InputEvent) -> void:
@@ -686,7 +688,7 @@ func _on_docked(station_name: String) -> void:
 		return
 	current_state = GameState.DOCKED
 
-	# Stop and disable ship
+	# Stop ship controls
 	var ship := player_ship as ShipController
 	if ship:
 		ship.is_player_controlled = false
@@ -695,53 +697,17 @@ func _on_docked(station_name: String) -> void:
 		ship.linear_velocity = Vector3.ZERO
 		ship.angular_velocity = Vector3.ZERO
 
-	# === REMOVE FROM COMBAT ===
-	# Remove from "ships" group so NPCs stop targeting player
-	if player_ship.is_in_group("ships"):
-		player_ship.remove_from_group("ships")
-	# Disable collision so projectiles pass through
-	_saved_collision_layer = player_ship.collision_layer
-	_saved_collision_mask = player_ship.collision_mask
-	player_ship.collision_layer = 0
-	player_ship.collision_mask = 0
-	# Force NPCs to drop player as target
+	# Force NPCs to drop player as target before freezing world
 	_clear_npc_targets_on_player()
+
+	# Enter isolated solo instance (freezes world, loads hangar, repairs ship)
+	_dock_instance.enter(_build_dock_context(station_name))
 
 	# Hide flight HUD
 	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = false
 
-	# Hide 3D space world (ship, universe, lights, star impostor)
-	if universe_node:
-		universe_node.visible = false
-	player_ship.visible = false
-	var star_light := main_scene.get_node_or_null("StarLight") as Node3D
-	if star_light:
-		star_light.visible = false
-	var system_star := main_scene.get_node_or_null("SystemStar") as Node3D
-	if system_star:
-		system_star.visible = false
-
-	# Load and show 3D hangar interior (immersive first, no menu)
-	var hangar_packed: PackedScene = load("res://scenes/station/hangar_interior.tscn")
-	_hangar_scene = hangar_packed.instantiate() as HangarScene
-	main_scene.add_child(_hangar_scene)
-	_hangar_scene.activate()
-	_docked_station_name = station_name
-
-	# Display the player's ship in the hangar
-	var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
-	if ship_model:
-		_hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale)
-
-	# Repair ship while docked (station services)
-	_repair_player_ship()
-
-	# === ISOLATE INTO SOLO INSTANCE ===
-	_enter_dock_isolation()
-
-	# Release mouse (no ship to pilot in hangar)
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 
@@ -769,7 +735,7 @@ func _on_equipment_requested() -> void:
 
 func _open_station_terminal() -> void:
 	if _station_screen:
-		_station_screen.set_station_name(_docked_station_name)
+		_station_screen.set_station_name(_dock_instance.station_name if _dock_instance else "")
 	if _screen_manager:
 		_screen_manager.open_screen("station")
 
@@ -806,38 +772,8 @@ func _on_undock_requested() -> void:
 	if _screen_manager:
 		_screen_manager.close_screen("station")
 
-	# Remove 3D hangar
-	if _hangar_scene:
-		_hangar_scene.deactivate()
-		_hangar_scene.queue_free()
-		_hangar_scene = null
-
-	# Show 3D space world again
-	if universe_node:
-		universe_node.visible = true
-	player_ship.visible = true
-	var star_light := main_scene.get_node_or_null("StarLight") as Node3D
-	if star_light:
-		star_light.visible = true
-	var system_star := main_scene.get_node_or_null("SystemStar") as Node3D
-	if system_star:
-		system_star.visible = true
-
-	# === LEAVE SOLO INSTANCE — restore world systems ===
-	_leave_dock_isolation()
-
-	# Re-activate ship camera
-	var ship_cam := player_ship.get_node_or_null("ShipCamera") as Camera3D
-	if ship_cam:
-		ship_cam.current = true
-
-	# === RESTORE COMBAT ===
-	# Re-add to "ships" group so NPCs can target us again
-	if not player_ship.is_in_group("ships"):
-		player_ship.add_to_group("ships")
-	# Restore collision layers
-	player_ship.collision_layer = _saved_collision_layer
-	player_ship.collision_mask = _saved_collision_mask
+	# Leave isolated solo instance (restores world, removes hangar, restores combat)
+	_dock_instance.leave(_build_dock_context(""))
 
 	# Re-enable ship controls
 	var ship := player_ship as ShipController
@@ -853,9 +789,7 @@ func _on_undock_requested() -> void:
 	if _docking_system:
 		_docking_system.request_undock()
 
-	# Re-capture mouse
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-
 	current_state = GameState.PLAYING
 
 
@@ -875,93 +809,13 @@ func _clear_npc_targets_on_player() -> void:
 			brain.target = null
 
 
-func _repair_player_ship() -> void:
-	# Full repair when docking at a station
-	var health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
-	if health:
-		health.hull_current = health.hull_max
-		for i in health.shield_current.size():
-			health.shield_current[i] = health.shield_max_per_facing
-		health.hull_changed.emit(health.hull_current, health.hull_max)
-		for i in 4:
-			health.shield_changed.emit(i, health.shield_current[i], health.shield_max_per_facing)
-
-
-func _enter_dock_isolation() -> void:
-	# Stop network sync (don't broadcast position while docked)
-	if _ship_net_sync:
-		_ship_net_sync.set_physics_process(false)
-
-	# Pause LOD manager (stop AI ticks, LOD evaluation, MultiMesh updates)
-	if _lod_manager:
-		_lod_manager.set_process(false)
-
-	# Freeze all NPC ships (stop their _process and _physics_process)
-	for npc in get_tree().get_nodes_in_group("ships"):
-		if npc == player_ship:
-			continue
-		npc.set_process(false)
-		npc.set_physics_process(false)
-		# Also freeze child systems (AI, health regen, weapons)
-		for child in npc.get_children():
-			if child is Node:
-				child.set_process(false)
-				child.set_physics_process(false)
-
-	# Hide remote players
-	for peer_id in _remote_players:
-		var remote: Node3D = _remote_players[peer_id]
-		if remote and is_instance_valid(remote):
-			remote.visible = false
-			remote.set_process(false)
-			remote.set_physics_process(false)
-
-	# Pause space dust
-	if _space_dust:
-		_space_dust.set_process(false)
-		_space_dust.visible = false
-
-	# Stop player's targeting system from scanning
-	var targeting := player_ship.get_node_or_null("TargetingSystem") as TargetingSystem
-	if targeting:
-		targeting.clear_target()
-		targeting.set_process(false)
-
-
-func _leave_dock_isolation() -> void:
-	# Resume network sync
-	if _ship_net_sync:
-		_ship_net_sync.set_physics_process(true)
-
-	# Resume LOD manager
-	if _lod_manager:
-		_lod_manager.set_process(true)
-
-	# Unfreeze all NPC ships
-	for npc in get_tree().get_nodes_in_group("ships"):
-		if npc == player_ship:
-			continue
-		npc.set_process(true)
-		npc.set_physics_process(true)
-		for child in npc.get_children():
-			if child is Node:
-				child.set_process(true)
-				child.set_physics_process(true)
-
-	# Show remote players again
-	for peer_id in _remote_players:
-		var remote: Node3D = _remote_players[peer_id]
-		if remote and is_instance_valid(remote):
-			remote.visible = true
-			remote.set_process(true)
-			remote.set_physics_process(true)
-
-	# Resume space dust
-	if _space_dust:
-		_space_dust.set_process(true)
-		_space_dust.visible = true
-
-	# Resume player's targeting system
-	var targeting := player_ship.get_node_or_null("TargetingSystem") as TargetingSystem
-	if targeting:
-		targeting.set_process(true)
+func _build_dock_context(station_name: String) -> Dictionary:
+	return {
+		"station_name": station_name,
+		"player_ship": player_ship,
+		"universe_node": universe_node,
+		"main_scene": main_scene,
+		"lod_manager": _lod_manager,
+		"encounter_manager": _encounter_manager,
+		"net_sync": _ship_net_sync,
+	}

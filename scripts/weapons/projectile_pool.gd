@@ -100,7 +100,7 @@ func _activate(bolt: BaseProjectile) -> void:
 	bolt.visible = true
 	bolt.set_process(true)
 	bolt.set_physics_process(true)
-	bolt.monitoring = true
+	bolt.set_deferred("monitoring", true)
 	bolt._lifetime = 0.0
 
 
@@ -108,5 +108,5 @@ func _deactivate(bolt: BaseProjectile) -> void:
 	bolt.visible = false
 	bolt.set_process(false)
 	bolt.set_physics_process(false)
-	bolt.monitoring = false
+	bolt.set_deferred("monitoring", false)
 	bolt.global_position = Vector3(0, -99999, 0)

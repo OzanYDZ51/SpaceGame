@@ -34,6 +34,8 @@ const SUBSYSTEM_DAMAGE_CHANCE: float = 0.1
 const SUBSYSTEM_DAMAGE_AMOUNT: float = 0.15
 
 var _is_dead: bool = false
+var _cached_energy_sys: EnergySystem = null
+var _energy_sys_checked: bool = false
 
 
 func setup(ship_data: ShipData) -> void:
@@ -168,7 +170,9 @@ func is_dead() -> bool:
 
 
 func _get_energy_system() -> EnergySystem:
-	var parent := get_parent()
-	if parent:
-		return parent.get_node_or_null("EnergySystem") as EnergySystem
-	return null
+	if not _energy_sys_checked:
+		_energy_sys_checked = true
+		var parent := get_parent()
+		if parent:
+			_cached_energy_sys = parent.get_node_or_null("EnergySystem") as EnergySystem
+	return _cached_energy_sys

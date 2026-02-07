@@ -31,6 +31,11 @@ static func setup_player_ship(ship_class: StringName, controller: ShipController
 	controller.mass = data.mass
 	controller.add_to_group("ships")
 
+	# Apply model scale to player ship
+	var player_model := controller.get_node_or_null("ShipModel") as ShipModel
+	if player_model:
+		player_model.model_scale = _get_model_scale(ship_class)
+
 	# Health System
 	var health := HealthSystem.new()
 	health.name = "HealthSystem"
@@ -231,7 +236,10 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 			lod_data.id = StringName(ship.name)
 			lod_data.ship_class = ship_class
 			lod_data.faction = faction_name
-			lod_data.display_name = data.ship_name
+			# Extract unique number from node name (NPC_Scout_1234 → 234)
+			var name_parts := ship.name.split("_")
+			var name_suffix := name_parts[-1].right(3) if name_parts.size() > 0 else str(randi() % 1000)
+			lod_data.display_name = "%s #%s" % [data.ship_name, name_suffix]
 			lod_data.position = pos
 			lod_data.node_ref = ship
 			lod_data.current_lod = ShipLODData.LODLevel.LOD0
@@ -255,15 +263,16 @@ static func create_npc_data_only(ship_class: StringName, behavior_name: StringNa
 		return null
 
 	var lod_data := ShipLODData.new()
-	lod_data.id = StringName("NPC_%s_%d" % [ship_class, randi() % 100000])
+	var uid := randi() % 100000
+	lod_data.id = StringName("NPC_%s_%d" % [ship_class, uid])
 	lod_data.ship_class = ship_class
 	lod_data.faction = faction_name
-	lod_data.display_name = data.ship_name
+	lod_data.display_name = "%s #%d" % [data.ship_name, uid % 1000]
 	lod_data.behavior_name = behavior_name
 	lod_data.position = pos
 	lod_data.velocity = Vector3.ZERO
 	lod_data.model_scale = _get_model_scale(ship_class)
-	lod_data.current_lod = ShipLODData.LODLevel.LOD2
+	lod_data.current_lod = ShipLODData.LODLevel.LOD3
 	lod_data.node_ref = null
 
 	# Faction color
@@ -281,14 +290,14 @@ static func _get_model_scale(ship_class: StringName) -> float:
 	# Scale the ship model proportionally based on class size
 	# Base: Fighter = 10.0 scale (matches player ship)
 	match ship_class:
-		&"Scout": return 1.0
-		&"Interceptor": return 1.0
-		&"Fighter": return 1.0
-		&"Bomber": return 1.0
-		&"Corvette": return 1.0
-		&"Frigate": return 1.0
-		&"Cruiser": return 1.0
-	return 1.0
+		&"Scout": return 2.0
+		&"Interceptor": return 2.0
+		&"Fighter": return 2.0
+		&"Bomber": return 2.0
+		&"Corvette": return 2.0
+		&"Frigate": return 2.0
+		&"Cruiser": return 2.0
+	return 2.0
 
 
 static func _get_faction_map_color(faction: StringName) -> Color:

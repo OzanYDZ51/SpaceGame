@@ -40,12 +40,22 @@ var _loot_pickup: LootPickupSystem = null
 
 var _sil_verts: PackedVector3Array = PackedVector3Array()
 var _silhouette_ship: Node3D = null
+# Cached weapon panel geometry (recomputed only on ship change)
+var _cached_hull: PackedVector2Array = PackedVector2Array()
+var _cached_hp_screen: Array[Vector2] = []
+var _cached_hp_label_dirs: Array[Vector2] = []
+var _cached_wp_size: Vector2 = Vector2.ZERO
 
 var _scan_line_y: float = 0.0
 var _pulse_t: float = 0.0
 var _warning_flash: float = 0.0
 var _boot_alpha: float = 0.0
 var _boot_done: bool = false
+
+# --- HUD redraw throttle ---
+const HUD_SLOW_INTERVAL: float = 0.1  # 10 Hz for radar/nav/weapon panel
+var _slow_timer: float = 0.0
+var _slow_dirty: bool = true  # Force first draw
 
 # --- Hit Markers ---
 # Each entry: {"type": int, "t": float (1→0), "intensity": float, "shield_ratio": float}
@@ -196,6 +206,12 @@ func _process(delta: float) -> void:
 	_scan_line_y = fmod(_scan_line_y + delta * 80.0, get_viewport_rect().size.y)
 	_warning_flash += delta * 3.0
 
+	# Throttle: expensive panels redraw at 10 Hz, cheap ones at full rate
+	_slow_timer += delta
+	if _slow_timer >= HUD_SLOW_INTERVAL:
+		_slow_timer -= HUD_SLOW_INTERVAL
+		_slow_dirty = true
+
 	if not _boot_done:
 		_boot_alpha = min(_boot_alpha + delta * 0.8, 1.0)
 		if _boot_alpha >= 1.0:
@@ -229,13 +245,33 @@ func _process(delta: float) -> void:
 	# Hit marker decay
 	_update_hit_markers(delta)
 
+	# Fast controls: redraw every frame (cheap: crosshair, warnings, target box)
+	# Slow controls: redraw at 10 Hz (expensive: radar, nav, weapon panel, panels)
 	if is_cockpit:
 		_cockpit_overlay.queue_redraw()
-		for c in [_warnings, _target_overlay, _nav_markers, _radar]:
-			c.queue_redraw()
+		_warnings.queue_redraw()
+		_target_overlay.queue_redraw()
+		if _slow_dirty:
+			_nav_markers.queue_redraw()
+			_radar.queue_redraw()
 	else:
-		for c in [_crosshair, _speed_arc, _left_panel, _right_panel, _top_bar, _compass, _warnings, _target_overlay, _weapon_panel, _nav_markers, _radar]:
-			c.queue_redraw()
+		# Fast: crosshair, warnings, target_overlay (small, cheap draws)
+		_crosshair.queue_redraw()
+		_warnings.queue_redraw()
+		_target_overlay.queue_redraw()
+		# Slow: everything else (entity queries, complex geometry)
+		if _slow_dirty:
+			_speed_arc.queue_redraw()
+			_left_panel.queue_redraw()
+			_right_panel.queue_redraw()
+			_top_bar.queue_redraw()
+			_compass.queue_redraw()
+			_weapon_panel.queue_redraw()
+			_nav_markers.queue_redraw()
+			_radar.queue_redraw()
+
+	if _slow_dirty:
+		_slow_dirty = false
 
 	if _target_panel:
 		_target_panel.visible = current_target != null and not is_cockpit
@@ -740,11 +776,114 @@ func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 func _rebuild_silhouette() -> void:
 	_silhouette_ship = _ship
 	_sil_verts = PackedVector3Array()
+	_cached_hull = PackedVector2Array()
+	_cached_hp_screen = []
+	_cached_hp_label_dirs = []
+	_cached_wp_size = Vector2.ZERO
 	if _ship == null:
 		return
 	var model := _ship.get_node_or_null("ShipModel") as ShipModel
 	if model:
 		_sil_verts = model.get_silhouette_points()
+
+
+func _rebuild_weapon_panel_cache(s: Vector2) -> void:
+	_cached_wp_size = s
+	_cached_hull = PackedVector2Array()
+	_cached_hp_screen = []
+	_cached_hp_label_dirs = []
+
+	if _weapon_manager == null or _ship == null or _ship.ship_data == null:
+		return
+	var hp_count := _weapon_manager.get_hardpoint_count()
+	var hp_defs: Array = _ship.ship_data.hardpoints
+	if hp_count == 0 or hp_defs.is_empty():
+		return
+
+	var sil_area_w := 140.0
+	var header_h := 20.0
+	var footer_h := 22.0
+	var a_l := 10.0
+	var a_t := header_h + 2.0
+	var a_r := sil_area_w - 6.0
+	var a_b := s.y - footer_h - 2.0
+	var a_w := a_r - a_l
+	var a_h := a_b - a_t
+	var a_cx := (a_l + a_r) * 0.5
+	var a_cy := (a_t + a_b) * 0.5
+	const Y_FOLD := 0.3
+
+	var sil_2d := PackedVector2Array()
+	for v in _sil_verts:
+		sil_2d.append(Vector2(v.x, -v.z + v.y * Y_FOLD))
+
+	var hp_2d: Array[Vector2] = []
+	for i in mini(hp_count, hp_defs.size()):
+		var p: Vector3 = hp_defs[i]["position"]
+		hp_2d.append(Vector2(p.x, -p.z + p.y * Y_FOLD))
+
+	if sil_2d.size() >= 3:
+		_cached_hull = Geometry2D.convex_hull(sil_2d)
+
+	var sil_min := Vector2(INF, INF)
+	var sil_max := Vector2(-INF, -INF)
+	if _cached_hull.size() >= 3:
+		for pt in _cached_hull:
+			sil_min = Vector2(minf(sil_min.x, pt.x), minf(sil_min.y, pt.y))
+			sil_max = Vector2(maxf(sil_max.x, pt.x), maxf(sil_max.y, pt.y))
+	for pt in hp_2d:
+		sil_min = Vector2(minf(sil_min.x, pt.x - 5.0), minf(sil_min.y, pt.y - 5.0))
+		sil_max = Vector2(maxf(sil_max.x, pt.x + 5.0), maxf(sil_max.y, pt.y + 5.0))
+
+	var sil_w := maxf(sil_max.x - sil_min.x, 1.0)
+	var sil_h := maxf(sil_max.y - sil_min.y, 1.0)
+	var sil_cx := (sil_min.x + sil_max.x) * 0.5
+	var sil_cy := (sil_min.y + sil_max.y) * 0.5
+	var sc := minf(a_w / sil_w, a_h / sil_h) * 0.82
+
+	var hp_count_actual := mini(hp_count, hp_2d.size())
+	for i in hp_count_actual:
+		_cached_hp_screen.append(Vector2(
+			a_cx + (hp_2d[i].x - sil_cx) * sc,
+			a_cy + (hp_2d[i].y - sil_cy) * sc
+		))
+
+	# Separate overlapping hardpoints
+	var min_dist := 16.0
+	for _iter in 6:
+		var moved := false
+		for i in _cached_hp_screen.size():
+			for j in range(i + 1, _cached_hp_screen.size()):
+				var diff := _cached_hp_screen[i] - _cached_hp_screen[j]
+				var dist := diff.length()
+				if dist < min_dist:
+					moved = true
+					if dist < 0.1:
+						diff = Vector2(1.0, 0.0) if (i % 2 == 0) else Vector2(-1.0, 0.0)
+						dist = 0.1
+					var push := diff.normalized() * (min_dist - dist) * 0.55
+					_cached_hp_screen[i] += push
+					_cached_hp_screen[j] -= push
+		if not moved:
+			break
+
+	for i in _cached_hp_screen.size():
+		_cached_hp_screen[i].x = clampf(_cached_hp_screen[i].x, a_l + 8.0, a_r - 8.0)
+		_cached_hp_screen[i].y = clampf(_cached_hp_screen[i].y, a_t + 8.0, a_b - 8.0)
+
+	# Label directions
+	for i in _cached_hp_screen.size():
+		var away := Vector2.ZERO
+		for j in _cached_hp_screen.size():
+			if i == j:
+				continue
+			var diff := _cached_hp_screen[i] - _cached_hp_screen[j]
+			var d := diff.length()
+			if d < 30.0 and d > 0.01:
+				away += diff.normalized() / d
+		if away.length() < 0.01:
+			away = Vector2(-1, -1)
+		_cached_hp_label_dirs.append(away.normalized())
 
 
 func _get_weapon_type_color(wtype: int) -> Color:
@@ -792,6 +931,10 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 	if _ship != _silhouette_ship:
 		_rebuild_silhouette()
 
+	# Rebuild cached geometry if ship changed or panel resized
+	if _cached_wp_size != s or _cached_hp_screen.is_empty():
+		_rebuild_weapon_panel_cache(s)
+
 	# --- Header: ARMEMENT ─── [Ship Class] ---
 	ctrl.draw_string(font, Vector2(8, 13), "ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, COL_HEADER)
 	var hdr_w := font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
@@ -808,12 +951,11 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 	var list_w := s.x - list_x - 6.0
 	var header_h := 20.0
 	var footer_h := 22.0
-	var body_h := s.y - header_h - footer_h
 
 	# Vertical separator between silhouette and list
 	ctrl.draw_line(Vector2(sil_area_w, header_h), Vector2(sil_area_w, s.y - footer_h), Color(COL_PRIMARY.r, COL_PRIMARY.g, COL_PRIMARY.b, 0.15), 1.0)
 
-	# === TOP-DOWN SILHOUETTE (left zone) ===
+	# === TOP-DOWN SILHOUETTE (from cache) ===
 	var a_l := 10.0
 	var a_t := header_h + 2.0
 	var a_r := sil_area_w - 6.0
@@ -823,44 +965,20 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 	var a_cx := (a_l + a_r) * 0.5
 	var a_cy := (a_t + a_b) * 0.5
 
-	# Top-down XZ projection with slight Y offset (nose = up)
-	# Y axis (ship vertical) is folded in at 30% so upper/lower mounts separate
-	const Y_FOLD := 0.3
-	var sil_2d := PackedVector2Array()
-	for v in _sil_verts:
-		sil_2d.append(Vector2(v.x, -v.z + v.y * Y_FOLD))
-
-	var hp_2d: Array[Vector2] = []
-	for i in mini(hp_count, hp_defs.size()):
-		var p: Vector3 = hp_defs[i]["position"]
-		hp_2d.append(Vector2(p.x, -p.z + p.y * Y_FOLD))
-
-	# Convex hull
-	var hull := PackedVector2Array()
-	if sil_2d.size() >= 3:
-		hull = Geometry2D.convex_hull(sil_2d)
-
-	# Compute bounds
-	var sil_min := Vector2(INF, INF)
-	var sil_max := Vector2(-INF, -INF)
-	if hull.size() >= 3:
-		for pt in hull:
+	# Draw convex hull (from cache — no per-frame recompute)
+	if _cached_hull.size() >= 3:
+		var sil_min := Vector2(INF, INF)
+		var sil_max := Vector2(-INF, -INF)
+		for pt in _cached_hull:
 			sil_min = Vector2(minf(sil_min.x, pt.x), minf(sil_min.y, pt.y))
 			sil_max = Vector2(maxf(sil_max.x, pt.x), maxf(sil_max.y, pt.y))
-	for pt in hp_2d:
-		sil_min = Vector2(minf(sil_min.x, pt.x - 5.0), minf(sil_min.y, pt.y - 5.0))
-		sil_max = Vector2(maxf(sil_max.x, pt.x + 5.0), maxf(sil_max.y, pt.y + 5.0))
-
-	var sil_w := maxf(sil_max.x - sil_min.x, 1.0)
-	var sil_h := maxf(sil_max.y - sil_min.y, 1.0)
-	var sil_cx := (sil_min.x + sil_max.x) * 0.5
-	var sil_cy := (sil_min.y + sil_max.y) * 0.5
-	var sc := minf(a_w / sil_w, a_h / sil_h) * 0.82
-
-	# Draw convex hull (silhouette)
-	if hull.size() >= 3:
+		var sil_w := maxf(sil_max.x - sil_min.x, 1.0)
+		var sil_h := maxf(sil_max.y - sil_min.y, 1.0)
+		var sil_cx := (sil_min.x + sil_max.x) * 0.5
+		var sil_cy := (sil_min.y + sil_max.y) * 0.5
+		var sc := minf(a_w / sil_w, a_h / sil_h) * 0.82
 		var screen_poly := PackedVector2Array()
-		for pt in hull:
+		for pt in _cached_hull:
 			screen_poly.append(Vector2(
 				a_cx + (pt.x - sil_cx) * sc,
 				a_cy + (pt.y - sil_cy) * sc
@@ -869,8 +987,12 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		var closed := PackedVector2Array(screen_poly)
 		closed.append(screen_poly[0])
 		ctrl.draw_polyline(closed, COL_PRIMARY_DIM, 1.0)
+		# Centerline
+		var top_y := a_cy + (sil_min.y - sil_cy) * sc
+		var bot_y := a_cy + (sil_max.y - sil_cy) * sc
+		ctrl.draw_line(Vector2(a_cx, top_y), Vector2(a_cx, bot_y), Color(COL_PRIMARY.r, COL_PRIMARY.g, COL_PRIMARY.b, 0.1), 1.0)
+		_draw_diamond(ctrl, Vector2(a_cx, top_y), 2.5, COL_PRIMARY_DIM)
 	else:
-		# Fallback triangle
 		var tri := PackedVector2Array([
 			Vector2(a_cx, a_cy - a_h * 0.4),
 			Vector2(a_cx + a_w * 0.3, a_cy + a_h * 0.3),
@@ -880,65 +1002,11 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		tri.append(tri[0])
 		ctrl.draw_polyline(tri, COL_PRIMARY_DIM, 1.0)
 
-	# Centerline (vertical axis) + nose diamond
-	var top_y := a_cy + (sil_min.y - sil_cy) * sc
-	var bot_y := a_cy + (sil_max.y - sil_cy) * sc
-	ctrl.draw_line(Vector2(a_cx, top_y), Vector2(a_cx, bot_y), Color(COL_PRIMARY.r, COL_PRIMARY.g, COL_PRIMARY.b, 0.1), 1.0)
-	_draw_diamond(ctrl, Vector2(a_cx, top_y), 2.5, COL_PRIMARY_DIM)
-
-	# Hardpoint screen positions (before separation)
-	var hp_screen: Array[Vector2] = []
-	var hp_count_actual := mini(hp_count, hp_2d.size())
-	for i in hp_count_actual:
-		hp_screen.append(Vector2(
-			a_cx + (hp_2d[i].x - sil_cx) * sc,
-			a_cy + (hp_2d[i].y - sil_cy) * sc
-		))
-
-	# Separate overlapping hardpoints — iterative repulsion
-	var min_dist := 16.0  # Minimum pixel distance between markers
-	for _iter in 6:
-		var moved := false
-		for i in hp_screen.size():
-			for j in range(i + 1, hp_screen.size()):
-				var diff := hp_screen[i] - hp_screen[j]
-				var dist := diff.length()
-				if dist < min_dist:
-					moved = true
-					if dist < 0.1:
-						# Nearly identical — push apart along X (left/right)
-						diff = Vector2(1.0, 0.0) if (i % 2 == 0) else Vector2(-1.0, 0.0)
-						dist = 0.1
-					var push := diff.normalized() * (min_dist - dist) * 0.55
-					hp_screen[i] += push
-					hp_screen[j] -= push
-		if not moved:
-			break
-
-	# Clamp to silhouette drawing area
-	for i in hp_screen.size():
-		hp_screen[i].x = clampf(hp_screen[i].x, a_l + 8.0, a_r - 8.0)
-		hp_screen[i].y = clampf(hp_screen[i].y, a_t + 8.0, a_b - 8.0)
-
-	# Compute label direction per marker (away from neighbors)
-	var hp_label_dirs: Array[Vector2] = []
-	for i in hp_screen.size():
-		var away := Vector2.ZERO
-		for j in hp_screen.size():
-			if i == j:
-				continue
-			var diff := hp_screen[i] - hp_screen[j]
-			var d := diff.length()
-			if d < 30.0 and d > 0.01:
-				away += diff.normalized() / d
-		if away.length() < 0.01:
-			away = Vector2(-1, -1)  # Default: top-left
-		hp_label_dirs.append(away.normalized())
-
-	# Draw hardpoint markers at separated positions
-	for i in hp_screen.size():
+	# Draw hardpoint markers from cached positions
+	for i in _cached_hp_screen.size():
 		var status := _weapon_manager.get_hardpoint_status(i)
-		_draw_hardpoint_marker(ctrl, font, hp_screen[i], i, status, hp_label_dirs[i])
+		var label_dir := _cached_hp_label_dirs[i] if i < _cached_hp_label_dirs.size() else Vector2(-1, -1)
+		_draw_hardpoint_marker(ctrl, font, _cached_hp_screen[i], i, status, label_dir)
 
 	# === WEAPON LIST (right zone) ===
 	_draw_weapon_list(ctrl, font, list_x, header_h + 4.0, list_w, hp_count)
@@ -1530,22 +1598,43 @@ func _draw_nav_markers(ctrl: Control) -> void:
 		var marker_col: Color = NAV_COL_STATION if etype == EntityRegistrySystem.EntityType.STATION else NAV_COL_STAR
 		_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, ent["name"], dist, marker_col)
 
-	# NPC ships — use LOD manager if available (shows all LOD levels)
+	# NPC ships — use LOD manager if available (LOD0/LOD1 only, LOD2+ have Label3D tags)
 	if _ship:
 		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 		if lod_mgr:
 			var nearby := lod_mgr.get_ships_in_radius(cam_pos, NAV_NPC_RANGE)
+			var npc_marker_count: int = 0
+			var _used_screen_spots: Array[Vector2] = []
 			for npc_id in nearby:
 				if npc_id == &"player_ship":
 					continue
+				if npc_marker_count >= 30:
+					break  # Cap NPC markers to avoid clutter
 				var data := lod_mgr.get_ship_data(npc_id)
 				if data == null or data.is_dead:
 					continue
+				# Skip LOD2+ ships — they have their own Label3D name tags
+				if data.current_lod >= ShipLODData.LODLevel.LOD2:
+					continue
 				var world_pos: Vector3 = data.position
 				var dist: float = cam_pos.distance_to(world_pos)
+				# Dedup: skip if another marker is too close on screen
+				var to_ent := world_pos - cam_pos
+				var dot_fwd: float = cam_fwd.dot(to_ent.normalized())
+				if dot_fwd > 0.1:
+					var sp := cam.unproject_position(world_pos)
+					var too_close := false
+					for used_sp in _used_screen_spots:
+						if sp.distance_to(used_sp) < 40.0:
+							too_close = true
+							break
+					if too_close:
+						continue
+					_used_screen_spots.append(sp)
 				var nav_name := data.display_name if not data.display_name.is_empty() else String(data.ship_class)
 				var nav_col := _get_faction_nav_color(data.faction)
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, nav_name, dist, nav_col)
+				npc_marker_count += 1
 		else:
 			for ship_node in get_tree().get_nodes_in_group("ships"):
 				if ship_node == _ship or not is_instance_valid(ship_node) or not ship_node is Node3D:
@@ -1697,14 +1786,14 @@ func _draw_radar(ctrl: Control) -> void:
 
 	# --- Range rings (3 rings at 1/3, 2/3, full) ---
 	for ring_t in [0.333, 0.666]:
-		ctrl.draw_arc(center, radar_r * ring_t, 0, TAU, 32, RADAR_COL_RING, 1.0, true)
+		ctrl.draw_arc(center, radar_r * ring_t, 0, TAU, 16, RADAR_COL_RING, 1.0, true)
 
 	# --- Cross lines ---
 	ctrl.draw_line(center + Vector2(0, -radar_r), center + Vector2(0, radar_r), RADAR_COL_RING, 1.0)
 	ctrl.draw_line(center + Vector2(-radar_r, 0), center + Vector2(radar_r, 0), RADAR_COL_RING, 1.0)
 
 	# --- Edge circle + tick marks ---
-	ctrl.draw_arc(center, radar_r, 0, TAU, 64, RADAR_COL_EDGE, 1.5, true)
+	ctrl.draw_arc(center, radar_r, 0, TAU, 32, RADAR_COL_EDGE, 1.5, true)
 	for i in 12:
 		var angle := float(i) * TAU / 12.0 - PI * 0.5
 		var inner := center + Vector2(cos(angle), sin(angle)) * (radar_r - 4)
@@ -1715,13 +1804,13 @@ func _draw_radar(ctrl: Control) -> void:
 	var ping_t := fmod(_pulse_t * 0.3, 1.0)
 	var ping_r := ping_t * radar_r
 	var ping_alpha := (1.0 - ping_t) * 0.12
-	ctrl.draw_arc(center, ping_r, 0, TAU, 32, Color(RADAR_COL_SWEEP.r, RADAR_COL_SWEEP.g, RADAR_COL_SWEEP.b, ping_alpha), 1.0, true)
+	ctrl.draw_arc(center, ping_r, 0, TAU, 16, Color(RADAR_COL_SWEEP.r, RADAR_COL_SWEEP.g, RADAR_COL_SWEEP.b, ping_alpha), 1.0, true)
 
 	# --- Sweep line with fading trail ---
 	var sweep_angle := fmod(_pulse_t * RADAR_SWEEP_SPEED, TAU) - PI * 0.5
-	for i in 18:
-		var ta := sweep_angle - float(i) * 0.045
-		var alpha := (1.0 - float(i) / 18.0) * 0.2
+	for i in 10:
+		var ta := sweep_angle - float(i) * 0.08
+		var alpha := (1.0 - float(i) / 10.0) * 0.2
 		ctrl.draw_line(center, center + Vector2(cos(ta), sin(ta)) * radar_r,
 			Color(RADAR_COL_SWEEP.r, RADAR_COL_SWEEP.g, RADAR_COL_SWEEP.b, alpha), 1.0)
 	ctrl.draw_line(center, center + Vector2(cos(sweep_angle), sin(sweep_angle)) * radar_r, RADAR_COL_SWEEP, 2.0)
