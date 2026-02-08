@@ -65,6 +65,11 @@ func main() {
 	// API v1
 	v1 := app.Group("/api/v1")
 
+	// Updates (public — launcher calls this)
+	updatesH := handler.NewUpdatesHandler(cfg.GithubOwner, cfg.GithubRepo, cfg.GithubToken)
+	v1.Get("/updates", updatesH.GetUpdates)
+	v1.Post("/updates/refresh", updatesH.RefreshCache)
+
 	// Auth (public)
 	authH := handler.NewAuthHandler(authSvc)
 	auth := v1.Group("/auth")

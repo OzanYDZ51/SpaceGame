@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("launcher", {
+  // Auth
+  login: (username, password) => ipcRenderer.invoke("login", username, password),
+  register: (username, email, password) => ipcRenderer.invoke("register", username, email, password),
+  getSavedAuth: () => ipcRenderer.invoke("get-saved-auth"),
+  logout: () => ipcRenderer.invoke("logout"),
+  refreshToken: () => ipcRenderer.invoke("refresh-token"),
+
+  // Updates
+  checkUpdates: () => ipcRenderer.invoke("check-updates"),
+  updateLauncher: (downloadUrl) => ipcRenderer.invoke("update-launcher", downloadUrl),
+  updateGame: (downloadUrl, version) => ipcRenderer.invoke("update-game", downloadUrl, version),
+
+  // Launch
+  launchGame: () => ipcRenderer.invoke("launch-game"),
+  uninstall: () => ipcRenderer.invoke("uninstall"),
+
+  // Events from main process
+  onProgress: (cb) => ipcRenderer.on("progress", (_, data) => cb(data)),
+  onStatus: (cb) => ipcRenderer.on("status", (_, msg) => cb(msg)),
+
+  // Window controls
+  windowMinimize: () => ipcRenderer.send("window-minimize"),
+  windowClose: () => ipcRenderer.send("window-close"),
+});

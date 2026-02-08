@@ -1,0 +1,83 @@
+name: Build and Release Launcher
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'launcher/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    # Skip CI commits to avoid infinite loop
+    if: "!startsWith(github.event.head_commit.message, 'ci:')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Bump launcher version
+        id: version
+        shell: bash
+        working-directory: launcher
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=launcher-v$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version bump
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add launcher/package.json
+          git commit -m "ci: bump launcher version to ${{ steps.version.outputs.version }}"
+          git push
+
+      - name: Install dependencies
+        working-directory: launcher
+        run: npm ci
+
+      - name: Build Electron app
+        working-directory: launcher
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find installer
+        id: find
+        shell: bash
+        run: |
+          EXE=$(ls build/launcher/*.exe | head -1)
+          echo "exe=$EXE" >> "$GITHUB_OUTPUT"
+          echo "Found: $EXE"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: SpaceGame Launcher ${{ steps.version.outputs.tag }}
+          body: "Automated launcher build from commit ${{ github.sha }}"
+          files: ${{ steps.find.outputs.exe }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

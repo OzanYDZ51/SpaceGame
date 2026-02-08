@@ -12,6 +12,9 @@ type Config struct {
 	JWTSecret   string
 	ServerKey   string
 	AdminKey    string
+	GithubToken string
+	GithubOwner string
+	GithubRepo  string
 }
 
 func Load() *Config {
@@ -22,6 +25,9 @@ func Load() *Config {
 		JWTSecret:   getEnv("JWT_SECRET", "dev-jwt-secret-not-for-production-use-64-chars-minimum-padding"),
 		ServerKey:   getEnv("SERVER_KEY", "dev-server-key"),
 		AdminKey:    getEnv("ADMIN_KEY", "dev-admin-key"),
+		GithubToken: getEnv("GITHUB_TOKEN", ""),
+		GithubOwner: getEnv("GITHUB_OWNER", "OzanYDZ51"),
+		GithubRepo:  getEnv("GITHUB_REPO", "SpaceGame"),
 	}
 }
 

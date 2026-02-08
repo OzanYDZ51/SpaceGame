@@ -1,0 +1,372 @@
+/* SpaceGame Launcher - Holographic Cyan Theme */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  background: #0a0e14;
+  color: #b0d4e8;
+  overflow: hidden;
+  height: 100vh;
+  user-select: none;
+}
+
+/* Titlebar */
+.titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  background: rgba(0, 20, 30, 0.95);
+  border-bottom: 1px solid rgba(0, 200, 255, 0.15);
+  padding: 0 12px;
+  -webkit-app-region: drag;
+}
+
+.titlebar-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(0, 200, 255, 0.5);
+  letter-spacing: 3px;
+}
+
+.titlebar-controls {
+  display: flex;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: rgba(0, 200, 255, 0.5);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.titlebar-btn:hover {
+  background: rgba(0, 200, 255, 0.1);
+  color: #00c8ff;
+}
+
+.titlebar-close:hover {
+  background: rgba(255, 60, 60, 0.3);
+  color: #ff4444;
+}
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 32px);
+  padding: 30px 40px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Logo */
+.logo-area {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.game-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 52px;
+  letter-spacing: 12px;
+  color: rgba(0, 200, 255, 0.15);
+  text-shadow: 0 0 20px rgba(0, 200, 255, 0.3), 0 0 60px rgba(0, 200, 255, 0.1);
+}
+
+.game-title .accent {
+  color: #00c8ff;
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.5), 0 0 40px rgba(0, 200, 255, 0.2);
+}
+
+.subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: rgba(0, 200, 255, 0.35);
+  margin-top: 4px;
+}
+
+/* =========================================================================
+   AUTH FORMS
+   ========================================================================= */
+
+.auth-form {
+  width: 360px;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-label {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(0, 200, 255, 0.45);
+  margin-bottom: 5px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 20, 35, 0.7);
+  border: 1px solid rgba(0, 200, 255, 0.15);
+  border-radius: 2px;
+  color: #e0f0ff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: rgba(0, 200, 255, 0.5);
+  box-shadow: 0 0 8px rgba(0, 200, 255, 0.1);
+}
+
+.form-input::placeholder {
+  color: rgba(0, 200, 255, 0.2);
+}
+
+.auth-error {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #ff5555;
+  min-height: 18px;
+  margin-bottom: 8px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: rgba(0, 200, 255, 0.35);
+}
+
+.auth-switch a {
+  color: #00c8ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================================================
+   USER BAR
+   ========================================================================= */
+
+.user-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 400px;
+  margin-bottom: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 200, 255, 0.08);
+}
+
+.user-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: #00ff88;
+  letter-spacing: 2px;
+}
+
+.logout-link {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 100, 100, 0.5);
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.logout-link:hover {
+  color: #ff5555;
+}
+
+/* =========================================================================
+   STATUS / PROGRESS / BUTTONS
+   ========================================================================= */
+
+.status-panel {
+  width: 400px;
+  background: rgba(0, 20, 30, 0.6);
+  border: 1px solid rgba(0, 200, 255, 0.12);
+  border-radius: 2px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.status-row + .status-row {
+  border-top: 1px solid rgba(0, 200, 255, 0.06);
+}
+
+.label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(0, 200, 255, 0.4);
+}
+
+.value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: #00c8ff;
+}
+
+.value.warning { color: #ffaa00; }
+.value.ok { color: #00ff88; }
+
+.progress-container {
+  width: 400px;
+  margin-bottom: 24px;
+}
+
+.progress-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: rgba(0, 200, 255, 0.6);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: rgba(0, 200, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #005577, #00c8ff);
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+  transition: width 0.2s ease-out;
+}
+
+.progress-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(0, 200, 255, 0.5);
+  text-align: right;
+  margin-top: 6px;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 4px;
+  padding: 12px 48px;
+  border: 1px solid;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: rgba(0, 200, 255, 0.1);
+  border-color: rgba(0, 200, 255, 0.4);
+  color: #00c8ff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: rgba(0, 200, 255, 0.2);
+  border-color: #00c8ff;
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.2), inset 0 0 20px rgba(0, 200, 255, 0.05);
+}
+
+.btn-full {
+  width: 100%;
+  text-align: center;
+}
+
+.btn-danger {
+  background: rgba(255, 60, 60, 0.05);
+  border-color: rgba(255, 60, 60, 0.2);
+  color: rgba(255, 60, 60, 0.5);
+  padding: 12px 24px;
+  font-size: 12px;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(255, 60, 60, 0.12);
+  border-color: rgba(255, 60, 60, 0.5);
+  color: #ff4444;
+}
+
+/* Scanline overlay */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* Corner accents */
+.container::before,
+.container::after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-color: rgba(0, 200, 255, 0.12);
+  border-style: solid;
+  pointer-events: none;
+}
+
+.container::before {
+  top: 20px;
+  left: 20px;
+  border-width: 1px 0 0 1px;
+}
+
+.container::after {
+  bottom: 20px;
+  right: 20px;
+  border-width: 0 1px 1px 0;
+}

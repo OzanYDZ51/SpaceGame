@@ -6,6 +6,10 @@
 # Build output
 build/
 
+# Launcher
+launcher/node_modules/
+launcher/dist/
+
 # OS
 Thumbs.db
 .DS_Store
