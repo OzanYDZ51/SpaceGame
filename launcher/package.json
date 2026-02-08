@@ -1,6 +1,6 @@
 {
   "name": "spacegame-launcher",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "SpaceGame Launcher - Login, auto-update, and game launch",
   "main": "main.js",
   "scripts": {
@@ -49,7 +49,10 @@
       "shortcutName": "SpaceGame Launcher",
       "license": "assets/license.html",
       "displayLanguageSelector": false,
-      "installerLanguages": ["fr", "en_US"]
+      "installerLanguages": [
+        "fr",
+        "en_US"
+      ]
     },
     "files": [
       "main.js",
