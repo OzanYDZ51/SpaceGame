@@ -1,0 +1,130 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_flwkq"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_rgloe"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_xg1f1"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_duqsd"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_y43cj"]
+
+[sub_resource type="Resource" id="Resource_gs5ph"]
+script = ExtResource("1_flwkq")
+belt_name = "Upsilon Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 39937341.40827121
+width = 4833205.454238667
+dominant_resource = &"uranium"
+secondary_resource = &"platinum"
+asteroid_count = 398
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ncv8o"]
+script = ExtResource("1_flwkq")
+belt_name = "Upsilon Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 21384471.46347045
+width = 2587942.523681637
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 452
+
+[sub_resource type="Resource" id="Resource_0tqsw"]
+script = ExtResource("1_flwkq")
+belt_name = "Upsilon Draconis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 74586423.21300401
+width = 9026427.26765445
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 264
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_c2aqy"]
+script = ExtResource("2_rgloe")
+gate_name = "Gate → Altair Eridani"
+target_system_id = 59
+target_system_name = "Altair Eridani"
+pos_x = -53833164.19983027
+pos_y = 709288.6899121103
+pos_z = -8145344.892487042
+
+[sub_resource type="Resource" id="Resource_g02p3"]
+script = ExtResource("2_rgloe")
+gate_name = "Gate → Fomalhaut Eridani"
+target_system_id = 23
+target_system_name = "Fomalhaut Eridani"
+pos_x = -16531626.062970666
+pos_y = -197235.01704715443
+pos_z = -51875442.65736498
+
+[sub_resource type="Resource" id="Resource_c86ux"]
+script = ExtResource("3_xg1f1")
+planet_name = "Upsilon Draconis I"
+type = 2
+orbital_radius = 14914615.15426636
+orbital_period = 97.74944974370459
+orbital_angle = 3.5349965575157634
+radius = 6418156.743049622
+color = Color(0.24906145, 0.3615033, 0.7770064, 0.9)
+
+[sub_resource type="Resource" id="Resource_4go0x"]
+script = ExtResource("3_xg1f1")
+planet_name = "Upsilon Draconis II"
+type = 3
+orbital_radius = 27854327.772674542
+orbital_period = 249.4797306984075
+orbital_angle = 3.567506014613713
+radius = 44244151.11541748
+color = Color(0.8499477, 0.69804025, 0.35229707, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_jaxwa"]
+script = ExtResource("3_xg1f1")
+planet_name = "Upsilon Draconis III"
+type = 4
+orbital_radius = 52020355.04386788
+orbital_period = 636.7313186165369
+orbital_angle = 1.3544906171824318
+radius = 5251751.899719238
+color = Color(0.5486011, 0.76675767, 0.90196097, 0.9)
+
+[sub_resource type="Resource" id="Resource_8v4vp"]
+script = ExtResource("3_xg1f1")
+planet_name = "Upsilon Draconis IV"
+type = 4
+orbital_radius = 97152491.38214013
+orbital_period = 1625.089024155106
+orbital_angle = 4.752090095946938
+radius = 5626476.526260376
+color = Color(0.5955044, 0.7910139, 0.95319927, 0.9)
+
+[sub_resource type="Resource" id="Resource_g86ii"]
+script = ExtResource("5_y43cj")
+station_name = "Gamma Terminal"
+orbital_radius = 27779796.19936573
+orbital_period = 224.53175762856677
+orbital_angle = 4.428094703095481
+
+[sub_resource type="Resource" id="Resource_24ksr"]
+script = ExtResource("5_y43cj")
+station_name = "Gateway Hub"
+station_type = 2
+orbital_radius = 51445901.69318029
+orbital_period = 573.0581867548832
+orbital_angle = 4.244932303726351
+
+[resource]
+script = ExtResource("4_duqsd")
+system_name = "Upsilon Draconis"
+seed_value = 3681002869
+star_name = "Upsilon Draconis"
+star_spectral_class = "M"
+star_temperature = 3692.616432905197
+star_radius = 18999062.944257256
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.044886753201484685
+planets = Array[ExtResource("3_xg1f1")]([SubResource("Resource_c86ux"), SubResource("Resource_4go0x"), SubResource("Resource_jaxwa"), SubResource("Resource_8v4vp")])
+stations = Array[ExtResource("5_y43cj")]([SubResource("Resource_g86ii"), SubResource("Resource_24ksr")])
+asteroid_belts = Array[ExtResource("1_flwkq")]([SubResource("Resource_gs5ph"), SubResource("Resource_ncv8o"), SubResource("Resource_0tqsw")])
+jump_gates = Array[ExtResource("2_rgloe")]([SubResource("Resource_c2aqy"), SubResource("Resource_g02p3")])

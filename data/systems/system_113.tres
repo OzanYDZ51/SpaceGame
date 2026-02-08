@@ -1,0 +1,76 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_hhsql"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_wprco"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_pq37p"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_4r5nq"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_3wmgd"]
+
+[sub_resource type="Resource" id="Resource_78skg"]
+script = ExtResource("1_hhsql")
+belt_name = "Antares Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 24070432.77517528
+width = 3072444.912972333
+dominant_resource = &"titanium"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 399
+
+[sub_resource type="Resource" id="Resource_64j2f"]
+script = ExtResource("2_wprco")
+gate_name = "Gate → Eta Pegasi"
+target_system_id = 14
+target_system_name = "Eta Pegasi"
+pos_x = -1207400.133398654
+pos_y = 803182.6602263068
+pos_z = 33698514.502013646
+
+[sub_resource type="Resource" id="Resource_ivm2h"]
+script = ExtResource("2_wprco")
+gate_name = "Gate → Kappa Tauri"
+target_system_id = 17
+target_system_name = "Kappa Tauri"
+pos_x = -14663334.673026394
+pos_y = 204534.61381233358
+pos_z = 30365017.882283174
+
+[sub_resource type="Resource" id="Resource_b5m21"]
+script = ExtResource("3_pq37p")
+planet_name = "Antares Scorpii I"
+orbital_radius = 16389320.492744448
+orbital_period = 112.59981209771738
+orbital_angle = 2.4751366116034097
+radius = 2122911.0080748796
+color = Color(0.7071582, 0.41561478, 0.29061043, 0.9)
+
+[sub_resource type="Resource" id="Resource_gju6a"]
+script = ExtResource("3_pq37p")
+planet_name = "Antares Scorpii II"
+orbital_radius = 31751545.057606112
+orbital_period = 303.62920245144045
+orbital_angle = 5.393241259792147
+radius = 2241667.293012142
+color = Color(0.5686763, 0.55359215, 0.4052147, 0.9)
+
+[sub_resource type="Resource" id="Resource_8m7yo"]
+script = ExtResource("5_3wmgd")
+station_name = "Omega Terminal"
+orbital_radius = 30720137.821849942
+orbital_period = 273.2662822062964
+orbital_angle = 1.884719165866915
+
+[resource]
+script = ExtResource("4_4r5nq")
+system_name = "Antares Scorpii"
+seed_value = 3947664971
+star_name = "Antares Scorpii"
+star_spectral_class = "K"
+star_temperature = 4143.432092666626
+star_radius = 56120319.75120306
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.2680481696128845
+planets = Array[ExtResource("3_pq37p")]([SubResource("Resource_b5m21"), SubResource("Resource_gju6a")])
+stations = Array[ExtResource("5_3wmgd")]([SubResource("Resource_8m7yo")])
+asteroid_belts = Array[ExtResource("1_hhsql")]([SubResource("Resource_78skg")])
+jump_gates = Array[ExtResource("2_wprco")]([SubResource("Resource_64j2f"), SubResource("Resource_ivm2h")])

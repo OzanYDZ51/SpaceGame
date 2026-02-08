@@ -1,0 +1,124 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1w00j"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ismjm"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_kige1"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_3lok0"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0wsv7"]
+
+[sub_resource type="Resource" id="Resource_yfd2u"]
+script = ExtResource("1_1w00j")
+belt_name = "Aldebaran Aquilae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27627972.71065847
+width = 2381747.8611188564
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 197
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_kutej"]
+script = ExtResource("1_1w00j")
+belt_name = "Aldebaran Aquilae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 42808389.35273434
+width = 3690418.7957114936
+secondary_resource = &"platinum"
+asteroid_count = 429
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_7uhpm"]
+script = ExtResource("2_ismjm")
+gate_name = "Gate → Zeta Virginis"
+target_system_id = 77
+target_system_name = "Zeta Virginis"
+pos_x = 56555207.56355185
+pos_y = -1404378.1734557902
+pos_z = -3629508.4249360096
+
+[sub_resource type="Resource" id="Resource_che7n"]
+script = ExtResource("2_ismjm")
+gate_name = "Gate → Tau Orionis"
+target_system_id = 58
+target_system_name = "Tau Orionis"
+pos_x = 47599745.81078431
+pos_y = -1152608.5338832897
+pos_z = 30755959.30404115
+
+[sub_resource type="Resource" id="Resource_y5aws"]
+script = ExtResource("2_ismjm")
+gate_name = "Gate → Polaris Scorpii"
+target_system_id = 73
+target_system_name = "Polaris Scorpii"
+pos_x = 55558176.30749543
+pos_y = -444396.17784658517
+pos_z = 11178277.118964596
+
+[sub_resource type="Resource" id="Resource_c4a5h"]
+script = ExtResource("2_ismjm")
+gate_name = "Gate → Zeta Lyrae"
+target_system_id = 82
+target_system_name = "Zeta Lyrae"
+pos_x = -17512472.741599936
+pos_y = 420886.839197526
+pos_z = -53897849.05205247
+
+[sub_resource type="Resource" id="Resource_0jkex"]
+script = ExtResource("3_kige1")
+planet_name = "Aldebaran Aquilae I"
+type = 4
+orbital_radius = 21673603.057861328
+orbital_period = 171.23514926507207
+orbital_angle = 1.4053280737379827
+radius = 9932987.689971924
+color = Color(0.5109837, 0.7329078, 0.93938595, 0.9)
+
+[sub_resource type="Resource" id="Resource_578pd"]
+script = ExtResource("3_kige1")
+planet_name = "Aldebaran Aquilae II"
+type = 4
+orbital_radius = 33582342.36345561
+orbital_period = 330.2651289585306
+orbital_angle = 5.0519305344875916
+radius = 4691975.355148315
+color = Color(0.51352924, 0.7818152, 0.9113345, 0.9)
+
+[sub_resource type="Resource" id="Resource_456l6"]
+script = ExtResource("3_kige1")
+planet_name = "Aldebaran Aquilae III"
+type = 4
+orbital_radius = 52034436.342013076
+orbital_period = 636.9898696274482
+orbital_angle = 5.528027088288636
+radius = 4648231.744766235
+color = Color(0.6098941, 0.7968998, 0.9303694, 0.9)
+
+[sub_resource type="Resource" id="Resource_20aab"]
+script = ExtResource("5_0wsv7")
+station_name = "Alpha Outpost"
+orbital_radius = 53671552.24592947
+orbital_period = 573.2908826647034
+orbital_angle = 4.383141126461433
+
+[sub_resource type="Resource" id="Resource_rg0ru"]
+script = ExtResource("5_0wsv7")
+station_name = "Beta Hub"
+station_type = 3
+orbital_radius = 33576930.165365085
+orbital_period = 297.2386160626776
+orbital_angle = 0.6837132322233397
+
+[resource]
+script = ExtResource("4_3lok0")
+system_name = "Aldebaran Aquilae"
+seed_value = 2331465382
+star_name = "Aldebaran Aquilae"
+star_spectral_class = "M"
+star_temperature = 2717.5778836011887
+star_radius = 29412808.332765102
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.012102599084377288
+planets = Array[ExtResource("3_kige1")]([SubResource("Resource_0jkex"), SubResource("Resource_578pd"), SubResource("Resource_456l6")])
+stations = Array[ExtResource("5_0wsv7")]([SubResource("Resource_20aab"), SubResource("Resource_rg0ru")])
+asteroid_belts = Array[ExtResource("1_1w00j")]([SubResource("Resource_yfd2u"), SubResource("Resource_kutej")])
+jump_gates = Array[ExtResource("2_ismjm")]([SubResource("Resource_7uhpm"), SubResource("Resource_che7n"), SubResource("Resource_y5aws"), SubResource("Resource_c4a5h")])

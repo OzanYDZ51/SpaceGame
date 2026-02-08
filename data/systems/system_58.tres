@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_tvp3m"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_c7vct"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_3fbo0"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_5ywv6"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_44rbg"]
+
+[sub_resource type="Resource" id="Resource_lrhqa"]
+script = ExtResource("1_tvp3m")
+belt_name = "Tau Orionis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 32673027.597360115
+width = 3567415.2702062535
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 282
+
+[sub_resource type="Resource" id="Resource_u0vvr"]
+script = ExtResource("2_c7vct")
+gate_name = "Gate → Fomalhaut Tauri"
+target_system_id = 25
+target_system_name = "Fomalhaut Tauri"
+pos_x = -40616061.55727381
+pos_y = -247514.29800240556
+pos_z = 17940921.27817394
+
+[sub_resource type="Resource" id="Resource_w4srd"]
+script = ExtResource("2_c7vct")
+gate_name = "Gate → Aldebaran Aquilae"
+target_system_id = 65
+target_system_name = "Aldebaran Aquilae"
+pos_x = 14461751.842886971
+pos_y = -172740.8181650188
+pos_z = 41980934.31986293
+
+[sub_resource type="Resource" id="Resource_4jda5"]
+script = ExtResource("2_c7vct")
+gate_name = "Gate → Kappa Aquilae"
+target_system_id = 115
+target_system_name = "Kappa Aquilae"
+pos_x = -43889736.99954148
+pos_y = 392981.30876848573
+pos_z = -6725481.309539841
+
+[sub_resource type="Resource" id="Resource_sqrld"]
+script = ExtResource("2_c7vct")
+gate_name = "Gate → Zeta Virginis"
+target_system_id = 77
+target_system_name = "Zeta Virginis"
+pos_x = -39473464.5485596
+pos_y = 280696.96498294413
+pos_z = -20331913.566300116
+
+[sub_resource type="Resource" id="Resource_3y77s"]
+script = ExtResource("3_3fbo0")
+planet_name = "Tau Orionis I"
+type = 3
+orbital_radius = 23754489.421844482
+orbital_period = 196.47839151776182
+orbital_angle = 1.831748891785239
+radius = 42166028.02276611
+color = Color(0.89297724, 0.60150164, 0.27776223, 0.9)
+
+[sub_resource type="Resource" id="Resource_8ik4h"]
+script = ExtResource("3_3fbo0")
+planet_name = "Tau Orionis II"
+type = 4
+orbital_radius = 41591565.77287575
+orbital_period = 455.20198720841375
+orbital_angle = 6.129785730362909
+radius = 2662068.9034461975
+color = Color(0.6090348, 0.7769742, 0.9853022, 0.9)
+
+[sub_resource type="Resource" id="Resource_vhvxb"]
+script = ExtResource("5_44rbg")
+station_name = "Port Platform"
+orbital_radius = 41402039.51097168
+orbital_period = 409.68178848757236
+orbital_angle = 1.5453534428137963
+
+[resource]
+script = ExtResource("4_5ywv6")
+system_name = "Tau Orionis"
+seed_value = 207721646
+star_name = "Tau Orionis"
+star_spectral_class = "K"
+star_temperature = 4645.5826580524445
+star_radius = 43653224.90259111
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.0812556407880038
+planets = Array[ExtResource("3_3fbo0")]([SubResource("Resource_3y77s"), SubResource("Resource_8ik4h")])
+stations = Array[ExtResource("5_44rbg")]([SubResource("Resource_vhvxb")])
+asteroid_belts = Array[ExtResource("1_tvp3m")]([SubResource("Resource_lrhqa")])
+jump_gates = Array[ExtResource("2_c7vct")]([SubResource("Resource_u0vvr"), SubResource("Resource_w4srd"), SubResource("Resource_4jda5"), SubResource("Resource_sqrld")])

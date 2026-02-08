@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_wjghi"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_mmvfv"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_f8c6p"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ogbpx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_c0ddo"]
+
+[sub_resource type="Resource" id="Resource_oxwg8"]
+script = ExtResource("1_wjghi")
+belt_name = "Pi Eridani Belt 1"
+field_id = &"belt_0"
+orbital_radius = 34407102.227454744
+width = 4605578.088857874
+secondary_resource = &"uranium"
+asteroid_count = 450
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_hvk04"]
+script = ExtResource("2_mmvfv")
+gate_name = "Gate → Mira Pegasi"
+target_system_id = 29
+target_system_name = "Mira Pegasi"
+pos_x = -7467602.246726411
+pos_y = 366834.81451779703
+pos_z = -23638166.241591215
+
+[sub_resource type="Resource" id="Resource_jyst5"]
+script = ExtResource("2_mmvfv")
+gate_name = "Gate → Pi Persei"
+target_system_id = 35
+target_system_name = "Pi Persei"
+pos_x = 22612579.883147582
+pos_y = 120328.85125949043
+pos_z = 10158701.571002329
+
+[sub_resource type="Resource" id="Resource_hxo8f"]
+script = ExtResource("2_mmvfv")
+gate_name = "Gate → Mu Aquilae"
+target_system_id = 87
+target_system_name = "Mu Aquilae"
+pos_x = -24769634.801920373
+pos_y = -209032.02834356242
+pos_z = -996583.3431836228
+
+[sub_resource type="Resource" id="Resource_t5ldr"]
+script = ExtResource("2_mmvfv")
+gate_name = "Gate → Chi Leonis"
+target_system_id = 31
+target_system_name = "Chi Leonis"
+pos_x = 18113487.749485534
+pos_y = 586861.7355850668
+pos_z = -16924229.61702108
+
+[sub_resource type="Resource" id="Resource_e6qp3"]
+script = ExtResource("3_f8c6p")
+planet_name = "Pi Eridani I"
+type = 3
+orbital_radius = 22893157.00531006
+orbital_period = 185.88946350703256
+orbital_angle = 6.174891356850445
+radius = 33680551.052093506
+color = Color(0.86881036, 0.6610198, 0.28666678, 0.9)
+
+[sub_resource type="Resource" id="Resource_8n8ef"]
+script = ExtResource("3_f8c6p")
+planet_name = "Pi Eridani II"
+type = 4
+orbital_radius = 45921047.44959943
+orbital_period = 528.0972699720023
+orbital_angle = 6.085096181183806
+radius = 8672500.133514404
+color = Color(0.6373451, 0.71955466, 0.9455382, 0.9)
+
+[sub_resource type="Resource" id="Resource_vft3w"]
+script = ExtResource("5_c0ddo")
+station_name = "Alpha Outpost"
+orbital_radius = 21789674.999491543
+orbital_period = 167.3005171563293
+orbital_angle = 5.866696790029673
+
+[resource]
+script = ExtResource("4_ogbpx")
+system_name = "Pi Eridani"
+seed_value = 1559504168
+star_name = "Pi Eridani"
+star_spectral_class = "M"
+star_temperature = 3333.3063900470734
+star_radius = 22857590.637469288
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.062042990148067474
+planets = Array[ExtResource("3_f8c6p")]([SubResource("Resource_e6qp3"), SubResource("Resource_8n8ef")])
+stations = Array[ExtResource("5_c0ddo")]([SubResource("Resource_vft3w")])
+asteroid_belts = Array[ExtResource("1_wjghi")]([SubResource("Resource_oxwg8")])
+jump_gates = Array[ExtResource("2_mmvfv")]([SubResource("Resource_hvk04"), SubResource("Resource_jyst5"), SubResource("Resource_hxo8f"), SubResource("Resource_t5ldr")])

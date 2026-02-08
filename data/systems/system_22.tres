@@ -1,0 +1,149 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qt5j0"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_1rh6p"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_wxl5e"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_s1khr"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_if635"]
+
+[sub_resource type="Resource" id="Resource_5rk0b"]
+script = ExtResource("1_qt5j0")
+belt_name = "Regulus Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 116197628.90913363
+width = 10217521.117575759
+dominant_resource = &"uranium"
+secondary_resource = &"iron"
+asteroid_count = 380
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_0dnvg"]
+script = ExtResource("1_qt5j0")
+belt_name = "Regulus Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 47530886.32778267
+width = 4179498.6640475094
+dominant_resource = &"copper"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 229
+
+[sub_resource type="Resource" id="Resource_jwudk"]
+script = ExtResource("1_qt5j0")
+belt_name = "Regulus Tauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 30399415.700035255
+width = 2673089.587051456
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 460
+
+[sub_resource type="Resource" id="Resource_l0awe"]
+script = ExtResource("2_1rh6p")
+gate_name = "Gate → Vega Carinae"
+target_system_id = 68
+target_system_name = "Vega Carinae"
+pos_x = -26402540.71300165
+pos_y = 1397496.6937717397
+pos_z = 54499712.49432231
+
+[sub_resource type="Resource" id="Resource_et76i"]
+script = ExtResource("2_1rh6p")
+gate_name = "Gate → Fomalhaut Pavonis"
+target_system_id = 111
+target_system_name = "Fomalhaut Pavonis"
+pos_x = 60237118.9224423
+pos_y = -1238449.5306630693
+pos_z = -6229150.984608073
+
+[sub_resource type="Resource" id="Resource_1r11j"]
+script = ExtResource("2_1rh6p")
+gate_name = "Gate → Rho Scorpii"
+target_system_id = 20
+target_system_name = "Rho Scorpii"
+pos_x = -55363990.95926353
+pos_y = 282693.942390585
+pos_z = -24538568.074117254
+
+[sub_resource type="Resource" id="Resource_qvy6v"]
+script = ExtResource("2_1rh6p")
+gate_name = "Gate → Omega Leonis"
+target_system_id = 116
+target_system_name = "Omega Leonis"
+pos_x = 60485630.282225
+pos_y = -153913.378322978
+pos_z = -2966706.4950019224
+
+[sub_resource type="Resource" id="Resource_yjhe4"]
+script = ExtResource("3_wxl5e")
+planet_name = "Regulus Tauri I"
+type = 1
+orbital_radius = 23716691.732406616
+orbital_period = 196.00962912236488
+orbital_angle = 6.057754921076292
+radius = 2080624.9976158142
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_2242g"]
+script = ExtResource("3_wxl5e")
+planet_name = "Regulus Tauri II"
+type = 2
+orbital_radius = 37082139.667663895
+orbital_period = 383.2158133278536
+orbital_angle = 2.786031561351684
+radius = 6881177.90222168
+color = Color(0.20788245, 0.44965193, 0.8084756, 0.9)
+
+[sub_resource type="Resource" id="Resource_ryqsm"]
+script = ExtResource("3_wxl5e")
+planet_name = "Regulus Tauri III"
+type = 3
+orbital_radius = 57979632.98790144
+orbital_period = 749.2201288379058
+orbital_angle = 1.4789804984571062
+radius = 53072011.47079468
+color = Color(0.81278706, 0.65006423, 0.27731436, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_qmvr8"]
+script = ExtResource("3_wxl5e")
+planet_name = "Regulus Tauri IV"
+type = 3
+orbital_radius = 90653826.11519423
+orbital_period = 1464.7902877005006
+orbital_angle = 1.3141318672785023
+radius = 27548499.10736084
+color = Color(0.7577637, 0.6220258, 0.3994443, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_pcqb1"]
+script = ExtResource("3_wxl5e")
+planet_name = "Regulus Tauri V"
+type = 4
+orbital_radius = 141741431.70307302
+orbital_period = 2863.791967615328
+orbital_angle = 2.1920753987048545
+radius = 9446443.0809021
+color = Color(0.55087686, 0.7703657, 0.97566843, 0.9)
+
+[sub_resource type="Resource" id="Resource_eup3x"]
+script = ExtResource("5_if635")
+station_name = "Nexus Depot"
+orbital_radius = 57558342.26649125
+orbital_period = 674.2981159541152
+orbital_angle = 1.0461421279730316
+
+[resource]
+script = ExtResource("4_s1khr")
+system_name = "Regulus Tauri"
+seed_value = 2347095384
+star_name = "Regulus Tauri"
+star_spectral_class = "K"
+star_temperature = 5114.355635643005
+star_radius = 62035948.031544685
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.5861066603660583
+planets = Array[ExtResource("3_wxl5e")]([SubResource("Resource_yjhe4"), SubResource("Resource_2242g"), SubResource("Resource_ryqsm"), SubResource("Resource_qmvr8"), SubResource("Resource_pcqb1")])
+stations = Array[ExtResource("5_if635")]([SubResource("Resource_eup3x")])
+asteroid_belts = Array[ExtResource("1_qt5j0")]([SubResource("Resource_5rk0b"), SubResource("Resource_0dnvg"), SubResource("Resource_jwudk")])
+jump_gates = Array[ExtResource("2_1rh6p")]([SubResource("Resource_l0awe"), SubResource("Resource_et76i"), SubResource("Resource_1r11j"), SubResource("Resource_qvy6v")])

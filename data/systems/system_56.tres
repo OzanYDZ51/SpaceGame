@@ -1,0 +1,93 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_a62n7"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_e5c11"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_ynjay"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_mwodn"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_7py7x"]
+
+[sub_resource type="Resource" id="Resource_yribj"]
+script = ExtResource("1_a62n7")
+belt_name = "Sigma Cygni Belt 1"
+field_id = &"belt_0"
+orbital_radius = 17981102.938158035
+width = 2119774.6494224537
+dominant_resource = &"ice"
+asteroid_count = 478
+
+[sub_resource type="Resource" id="Resource_7kuaa"]
+script = ExtResource("2_e5c11")
+gate_name = "Gate → Spica Centauri"
+target_system_id = 63
+target_system_name = "Spica Centauri"
+pos_x = -12395698.889528345
+pos_y = -284595.4905567538
+pos_z = -23375872.950876065
+
+[sub_resource type="Resource" id="Resource_bdxv3"]
+script = ExtResource("2_e5c11")
+gate_name = "Gate → Alpha Leonis"
+target_system_id = 108
+target_system_name = "Alpha Leonis"
+pos_x = -3585423.5998761225
+pos_y = -21279.466035008838
+pos_z = 26215062.936884303
+
+[sub_resource type="Resource" id="Resource_cfcyj"]
+script = ExtResource("2_e5c11")
+gate_name = "Gate → Aldebaran Lyrae"
+target_system_id = 7
+target_system_name = "Aldebaran Lyrae"
+pos_x = 22819478.99000946
+pos_y = -135519.05434524533
+pos_z = 13392392.086549373
+
+[sub_resource type="Resource" id="Resource_qggfm"]
+script = ExtResource("3_ynjay")
+planet_name = "Sigma Cygni I"
+type = 3
+orbital_radius = 12681666.3146019
+orbital_period = 76.64092299712016
+orbital_angle = 2.1261372570080117
+radius = 45912120.34225464
+color = Color(0.8163333, 0.72175694, 0.2578634, 0.9)
+
+[sub_resource type="Resource" id="Resource_ecus7"]
+script = ExtResource("3_ynjay")
+planet_name = "Sigma Cygni II"
+type = 4
+orbital_radius = 23280539.56171417
+orbital_period = 190.62761142380737
+orbital_angle = 5.131615518418449
+radius = 4276666.879653931
+color = Color(0.6400156, 0.72006345, 0.92474854, 0.9)
+
+[sub_resource type="Resource" id="Resource_dowx0"]
+script = ExtResource("5_7py7x")
+station_name = "Nexus Depot"
+orbital_radius = 12961583.603627954
+orbital_period = 68.97683069740815
+orbital_angle = 0.2492447262718655
+
+[sub_resource type="Resource" id="Resource_2qdj2"]
+script = ExtResource("5_7py7x")
+station_name = "Orbital Outpost"
+station_type = 1
+orbital_radius = 23459115.389131088
+orbital_period = 171.56485028142663
+orbital_angle = 3.4660674154374638
+
+[resource]
+script = ExtResource("4_mwodn")
+system_name = "Sigma Cygni"
+seed_value = 2687342153
+star_name = "Sigma Cygni"
+star_spectral_class = "M"
+star_temperature = 2813.2870495319366
+star_radius = 13087109.421560168
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.019023338720202447
+planets = Array[ExtResource("3_ynjay")]([SubResource("Resource_qggfm"), SubResource("Resource_ecus7")])
+stations = Array[ExtResource("5_7py7x")]([SubResource("Resource_dowx0"), SubResource("Resource_2qdj2")])
+asteroid_belts = Array[ExtResource("1_a62n7")]([SubResource("Resource_yribj")])
+jump_gates = Array[ExtResource("2_e5c11")]([SubResource("Resource_7kuaa"), SubResource("Resource_bdxv3"), SubResource("Resource_cfcyj")])

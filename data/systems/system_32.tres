@@ -1,0 +1,102 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_xcy37"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_uej6l"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_dqfjp"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_y858t"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_g24jq"]
+
+[sub_resource type="Resource" id="Resource_akc3j"]
+script = ExtResource("1_xcy37")
+belt_name = "Mira Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25860689.575831443
+width = 3231051.204745112
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+asteroid_count = 218
+
+[sub_resource type="Resource" id="Resource_y7wfy"]
+script = ExtResource("2_uej6l")
+gate_name = "Gate → Nu Centauri"
+target_system_id = 71
+target_system_name = "Nu Centauri"
+pos_x = 15521237.87834961
+pos_y = -487401.3024233495
+pos_z = -31987458.088228013
+
+[sub_resource type="Resource" id="Resource_exv36"]
+script = ExtResource("2_uej6l")
+gate_name = "Gate → Regulus Lyrae"
+target_system_id = 109
+target_system_name = "Regulus Lyrae"
+pos_x = -26933861.825814713
+pos_y = -480702.9357313518
+pos_z = 23209338.365631606
+
+[sub_resource type="Resource" id="Resource_c5lbl"]
+script = ExtResource("2_uej6l")
+gate_name = "Gate → Vega Ursae"
+target_system_id = 43
+target_system_name = "Vega Ursae"
+pos_x = -11326250.180093577
+pos_y = 359827.0910358331
+pos_z = 33701963.697689615
+
+[sub_resource type="Resource" id="Resource_fh8ie"]
+script = ExtResource("2_uej6l")
+gate_name = "Gate → Delta Tauri"
+target_system_id = 36
+target_system_name = "Delta Tauri"
+pos_x = 12274496.779550154
+pos_y = -369014.03403965477
+pos_z = -33368293.76865517
+
+[sub_resource type="Resource" id="Resource_iqaxa"]
+script = ExtResource("3_dqfjp")
+planet_name = "Mira Tauri I"
+orbital_radius = 17783061.563968662
+orbital_period = 127.26413847811772
+orbital_angle = 6.230504527030781
+radius = 6413938.820362091
+color = Color(0.64166, 0.6093799, 0.35895002, 0.9)
+
+[sub_resource type="Resource" id="Resource_im4ov"]
+script = ExtResource("3_dqfjp")
+planet_name = "Mira Tauri II"
+type = 3
+orbital_radius = 33938317.58769422
+orbital_period = 335.5302712628604
+orbital_angle = 6.202137117665744
+radius = 21735665.202140808
+color = Color(0.80446213, 0.722905, 0.2970138, 0.9)
+
+[sub_resource type="Resource" id="Resource_v8ayr"]
+script = ExtResource("5_g24jq")
+station_name = "Dock Depot"
+orbital_radius = 32554272.60150963
+orbital_period = 301.97724413657437
+orbital_angle = 2.534376507845729
+
+[sub_resource type="Resource" id="Resource_mojvo"]
+script = ExtResource("5_g24jq")
+station_name = "Nexus Terminal"
+station_type = 2
+orbital_radius = 17594116.76804117
+orbital_period = 114.53772463030595
+orbital_angle = 4.730463813091165
+
+[resource]
+script = ExtResource("4_y858t")
+system_name = "Mira Tauri"
+seed_value = 163770310
+star_name = "Mira Tauri"
+star_spectral_class = "M"
+star_temperature = 3634.2467427253723
+star_radius = 19576400.93746185
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06684746277332305
+planets = Array[ExtResource("3_dqfjp")]([SubResource("Resource_iqaxa"), SubResource("Resource_im4ov")])
+stations = Array[ExtResource("5_g24jq")]([SubResource("Resource_v8ayr"), SubResource("Resource_mojvo")])
+asteroid_belts = Array[ExtResource("1_xcy37")]([SubResource("Resource_akc3j")])
+jump_gates = Array[ExtResource("2_uej6l")]([SubResource("Resource_y7wfy"), SubResource("Resource_exv36"), SubResource("Resource_c5lbl"), SubResource("Resource_fh8ie")])

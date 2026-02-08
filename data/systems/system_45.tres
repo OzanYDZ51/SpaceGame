@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_5eit1"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_12lro"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_05x1w"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_iomo4"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_swvxh"]
+
+[sub_resource type="Resource" id="Resource_idg5u"]
+script = ExtResource("1_5eit1")
+belt_name = "Canopus Hydrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21173743.959648512
+width = 1999912.820809325
+dominant_resource = &"crystal"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 261
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_2kbep"]
+script = ExtResource("1_5eit1")
+belt_name = "Canopus Hydrae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 34264427.07467157
+width = 3236360.4251998984
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 190
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_xgl6b"]
+script = ExtResource("2_12lro")
+gate_name = "Gate → Zeta Virginis"
+target_system_id = 77
+target_system_name = "Zeta Virginis"
+pos_x = -47282251.55483239
+pos_y = 917070.0984624161
+pos_z = -3930513.993672698
+
+[sub_resource type="Resource" id="Resource_6mxn6"]
+script = ExtResource("2_12lro")
+gate_name = "Gate → Arcturus Scorpii"
+target_system_id = 70
+target_system_name = "Arcturus Scorpii"
+pos_x = 45086208.78977474
+pos_y = 903661.3137246624
+pos_z = 14774776.794041459
+
+[sub_resource type="Resource" id="Resource_tv1ix"]
+script = ExtResource("2_12lro")
+gate_name = "Gate → Fomalhaut Scorpii"
+target_system_id = 0
+target_system_name = "Fomalhaut Scorpii"
+pos_x = -42178961.87650192
+pos_y = -417315.65594578383
+pos_z = 21725455.745956276
+
+[sub_resource type="Resource" id="Resource_5nsig"]
+script = ExtResource("2_12lro")
+gate_name = "Gate → Kappa Aquilae"
+target_system_id = 115
+target_system_name = "Kappa Aquilae"
+pos_x = -2145644.5577962156
+pos_y = 436751.5360061859
+pos_z = 47396798.0118964
+
+[sub_resource type="Resource" id="Resource_g2nll"]
+script = ExtResource("3_05x1w")
+planet_name = "Canopus Hydrae I"
+type = 3
+orbital_radius = 16173961.907625198
+orbital_period = 110.38774655558264
+orbital_angle = 3.0465094386836657
+radius = 27287951.707839966
+color = Color(0.81410563, 0.64848936, 0.36081332, 0.9)
+
+[sub_resource type="Resource" id="Resource_chas0"]
+script = ExtResource("3_05x1w")
+planet_name = "Canopus Hydrae II"
+type = 4
+orbital_radius = 26173526.011671823
+orbital_period = 227.24251849130982
+orbital_angle = 5.759728594580686
+radius = 3611358.880996704
+color = Color(0.60492367, 0.7507163, 0.94063824, 0.9)
+
+[sub_resource type="Resource" id="Resource_v3gvu"]
+script = ExtResource("3_05x1w")
+planet_name = "Canopus Hydrae III"
+type = 4
+orbital_radius = 42355328.137671314
+orbital_period = 467.7979560373748
+orbital_angle = 2.084415488774612
+radius = 2137099.2213487625
+color = Color(0.52821386, 0.7705696, 0.99582225, 0.9)
+
+[sub_resource type="Resource" id="Resource_2jqku"]
+script = ExtResource("5_swvxh")
+station_name = "Omega Terminal"
+orbital_radius = 44445339.62729013
+orbital_period = 421.0181604336373
+orbital_angle = 3.6683072028278088
+
+[resource]
+script = ExtResource("4_iomo4")
+system_name = "Canopus Hydrae"
+seed_value = 3002737201
+star_name = "Canopus Hydrae"
+star_spectral_class = "M"
+star_temperature = 3108.1412613391876
+star_radius = 36206277.744078636
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.015631041780114173
+planets = Array[ExtResource("3_05x1w")]([SubResource("Resource_g2nll"), SubResource("Resource_chas0"), SubResource("Resource_v3gvu")])
+stations = Array[ExtResource("5_swvxh")]([SubResource("Resource_2jqku")])
+asteroid_belts = Array[ExtResource("1_5eit1")]([SubResource("Resource_idg5u"), SubResource("Resource_2kbep")])
+jump_gates = Array[ExtResource("2_12lro")]([SubResource("Resource_xgl6b"), SubResource("Resource_6mxn6"), SubResource("Resource_tv1ix"), SubResource("Resource_5nsig")])

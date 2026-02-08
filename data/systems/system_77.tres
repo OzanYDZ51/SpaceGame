@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_hum18"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ogld0"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4rxd0"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_gpxy8"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_hdkrs"]
+
+[sub_resource type="Resource" id="Resource_rklic"]
+script = ExtResource("1_hum18")
+belt_name = "Zeta Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 23933229.35454019
+width = 1874820.1956429817
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 390
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_18nho"]
+script = ExtResource("2_ogld0")
+gate_name = "Gate → Canopus Hydrae"
+target_system_id = 45
+target_system_name = "Canopus Hydrae"
+pos_x = 21834611.46006163
+pos_y = -90648.04289851838
+pos_z = -3711866.1798051386
+
+[sub_resource type="Resource" id="Resource_ftudh"]
+script = ExtResource("2_ogld0")
+gate_name = "Gate → Aldebaran Aquilae"
+target_system_id = 65
+target_system_name = "Aldebaran Aquilae"
+pos_x = 16202145.168847002
+pos_y = 329065.84539354156
+pos_z = 15100288.079246815
+
+[sub_resource type="Resource" id="Resource_sity4"]
+script = ExtResource("2_ogld0")
+gate_name = "Gate → Tau Orionis"
+target_system_id = 58
+target_system_name = "Tau Orionis"
+pos_x = -19091878.610853672
+pos_y = -534886.3677675248
+pos_z = 11226236.201731363
+
+[sub_resource type="Resource" id="Resource_w3rix"]
+script = ExtResource("2_ogld0")
+gate_name = "Gate → Polaris Scorpii"
+target_system_id = 73
+target_system_name = "Polaris Scorpii"
+pos_x = -1307335.9187751603
+pos_y = -274314.4629939571
+pos_z = -22109253.287800476
+
+[sub_resource type="Resource" id="Resource_npaa2"]
+script = ExtResource("3_4rxd0")
+planet_name = "Zeta Virginis I"
+type = 4
+orbital_radius = 19246178.86543274
+orbital_period = 143.28905559947893
+orbital_angle = 0.16046281448030572
+radius = 3493978.977203369
+color = Color(0.52334356, 0.76489496, 0.9946376, 0.9)
+
+[sub_resource type="Resource" id="Resource_itykh"]
+script = ExtResource("3_4rxd0")
+planet_name = "Zeta Virginis II"
+type = 4
+orbital_radius = 28620279.843647648
+orbital_period = 259.84062831446147
+orbital_angle = 1.86335878300123
+radius = 5342091.5603637695
+color = Color(0.50419647, 0.7342625, 0.9601523, 0.9)
+
+[sub_resource type="Resource" id="Resource_wth35"]
+script = ExtResource("5_hdkrs")
+station_name = "Gamma Hub"
+orbital_radius = 19147871.413493346
+orbital_period = 128.96015003953104
+orbital_angle = 4.840776730809831
+
+[resource]
+script = ExtResource("4_gpxy8")
+system_name = "Zeta Virginis"
+seed_value = 4158247183
+star_name = "Zeta Virginis"
+star_spectral_class = "M"
+star_temperature = 3608.974438905716
+star_radius = 22281465.630763765
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.009104298800230025
+planets = Array[ExtResource("3_4rxd0")]([SubResource("Resource_npaa2"), SubResource("Resource_itykh")])
+stations = Array[ExtResource("5_hdkrs")]([SubResource("Resource_wth35")])
+asteroid_belts = Array[ExtResource("1_hum18")]([SubResource("Resource_rklic")])
+jump_gates = Array[ExtResource("2_ogld0")]([SubResource("Resource_18nho"), SubResource("Resource_ftudh"), SubResource("Resource_sity4"), SubResource("Resource_w3rix")])

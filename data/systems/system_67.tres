@@ -1,0 +1,116 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_fblfq"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_yuvyw"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_68je6"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_m1ff5"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_krxpr"]
+
+[sub_resource type="Resource" id="Resource_xif6p"]
+script = ExtResource("1_fblfq")
+belt_name = "Regulus Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 30195892.33739931
+width = 2828435.7636437723
+dominant_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 221
+
+[sub_resource type="Resource" id="Resource_blmni"]
+script = ExtResource("1_fblfq")
+belt_name = "Regulus Pavonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 18737070.37226414
+width = 1755093.0224102952
+dominant_resource = &"titanium"
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 204
+
+[sub_resource type="Resource" id="Resource_3m5n5"]
+script = ExtResource("2_yuvyw")
+gate_name = "Gate → Kappa Aquilae"
+target_system_id = 115
+target_system_name = "Kappa Aquilae"
+pos_x = -10590444.400424838
+pos_y = 280090.1192995068
+pos_z = -14518865.599014265
+
+[sub_resource type="Resource" id="Resource_brcnk"]
+script = ExtResource("2_yuvyw")
+gate_name = "Gate → Rho Serpentis"
+target_system_id = 92
+target_system_name = "Rho Serpentis"
+pos_x = -9979428.996641165
+pos_y = 102692.78541233357
+pos_z = 14945433.007501896
+
+[sub_resource type="Resource" id="Resource_75iel"]
+script = ExtResource("2_yuvyw")
+gate_name = "Gate → Deneb Crucis"
+target_system_id = 52
+target_system_name = "Deneb Crucis"
+pos_x = -11455113.353544436
+pos_y = 404932.0244732542
+pos_z = 13846853.39483948
+
+[sub_resource type="Resource" id="Resource_fgh03"]
+script = ExtResource("2_yuvyw")
+gate_name = "Gate → Fomalhaut Tauri"
+target_system_id = 25
+target_system_name = "Fomalhaut Tauri"
+pos_x = -8389177.667364573
+pos_y = 382135.8753644043
+pos_z = -15892660.851667386
+
+[sub_resource type="Resource" id="Resource_l8oqf"]
+script = ExtResource("3_68je6")
+planet_name = "Regulus Pavonis I"
+type = 2
+orbital_radius = 14349337.816238403
+orbital_period = 92.245254602156
+orbital_angle = 2.0128250997532664
+radius = 6545561.31362915
+color = Color(0.17967865, 0.41120765, 0.80788976, 0.9)
+
+[sub_resource type="Resource" id="Resource_gjqr2"]
+script = ExtResource("3_68je6")
+planet_name = "Regulus Pavonis II"
+type = 3
+orbital_radius = 23124802.92828988
+orbital_period = 188.71799089529594
+orbital_angle = 2.526031742241318
+radius = 30734483.003616333
+color = Color(0.88142025, 0.7395167, 0.29497206, 0.9)
+
+[sub_resource type="Resource" id="Resource_ngvs7"]
+script = ExtResource("3_68je6")
+planet_name = "Regulus Pavonis III"
+type = 4
+orbital_radius = 37266981.74650874
+orbital_period = 386.08468523566313
+orbital_angle = 6.229608331712076
+radius = 7952916.622161865
+color = Color(0.5184068, 0.78553027, 0.9480334, 0.9)
+
+[sub_resource type="Resource" id="Resource_icdid"]
+script = ExtResource("5_krxpr")
+station_name = "Dock Depot"
+orbital_radius = 14970947.9683385
+orbital_period = 83.0207291419404
+orbital_angle = 4.1960280524508455
+
+[resource]
+script = ExtResource("4_m1ff5")
+system_name = "Regulus Pavonis"
+seed_value = 1727368262
+star_name = "Regulus Pavonis"
+star_spectral_class = "M"
+star_temperature = 2979.1612178087234
+star_radius = 27736570.97955942
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05114181798696518
+planets = Array[ExtResource("3_68je6")]([SubResource("Resource_l8oqf"), SubResource("Resource_gjqr2"), SubResource("Resource_ngvs7")])
+stations = Array[ExtResource("5_krxpr")]([SubResource("Resource_icdid")])
+asteroid_belts = Array[ExtResource("1_fblfq")]([SubResource("Resource_xif6p"), SubResource("Resource_blmni")])
+jump_gates = Array[ExtResource("2_yuvyw")]([SubResource("Resource_3m5n5"), SubResource("Resource_brcnk"), SubResource("Resource_75iel"), SubResource("Resource_fgh03")])

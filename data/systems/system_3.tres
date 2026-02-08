@@ -1,0 +1,141 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_837uh"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_7rjb5"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_hyq56"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_3ove5"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_imdcc"]
+
+[sub_resource type="Resource" id="Resource_w7wr0"]
+script = ExtResource("1_837uh")
+belt_name = "Capella Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 67356607.87597793
+width = 9121756.969133934
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 303
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_p2nbu"]
+script = ExtResource("1_837uh")
+belt_name = "Capella Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 136310598.27361792
+width = 18459839.18992206
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 170
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ajn3d"]
+script = ExtResource("1_837uh")
+belt_name = "Capella Tauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 33283638.11778783
+width = 4507430.93414211
+dominant_resource = &"crystal"
+secondary_resource = &"uranium"
+asteroid_count = 221
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_n56e1"]
+script = ExtResource("2_7rjb5")
+gate_name = "Gate → Phi Scorpii"
+target_system_id = 12
+target_system_name = "Phi Scorpii"
+pos_x = 44396088.24735898
+pos_y = 917628.4867936397
+pos_z = 78636255.4949049
+
+[sub_resource type="Resource" id="Resource_74k6n"]
+script = ExtResource("2_7rjb5")
+gate_name = "Gate → Psi Draconis"
+target_system_id = 98
+target_system_name = "Psi Draconis"
+pos_x = -78719800.40062983
+pos_y = -2132711.24042133
+pos_z = 44247783.61468793
+
+[sub_resource type="Resource" id="Resource_jtemk"]
+script = ExtResource("2_7rjb5")
+gate_name = "Gate → Xi Pegasi"
+target_system_id = 39
+target_system_name = "Xi Pegasi"
+pos_x = -77843069.93589492
+pos_y = -658554.8861123563
+pos_z = -45772587.78879145
+
+[sub_resource type="Resource" id="Resource_t6idy"]
+script = ExtResource("2_7rjb5")
+gate_name = "Gate → Eta Pegasi"
+target_system_id = 14
+target_system_name = "Eta Pegasi"
+pos_x = -78719800.40062985
+pos_y = -95165.68699636316
+pos_z = -44247783.614687905
+
+[sub_resource type="Resource" id="Resource_agpdu"]
+script = ExtResource("3_hyq56")
+planet_name = "Capella Tauri I"
+type = 3
+orbital_radius = 22015060.782432556
+orbital_period = 175.29764317494917
+orbital_angle = 3.912510502738316
+radius = 23018293.976783752
+color = Color(0.81891364, 0.68705165, 0.26318866, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_u710v"]
+script = ExtResource("3_hyq56")
+planet_name = "Capella Tauri II"
+type = 4
+orbital_radius = 44552215.453143105
+orbital_period = 504.6615317836834
+orbital_angle = 5.64409954959541
+radius = 7785147.666931152
+color = Color(0.55347663, 0.70203954, 0.964639, 0.9)
+
+[sub_resource type="Resource" id="Resource_drvof"]
+script = ExtResource("3_hyq56")
+planet_name = "Capella Tauri III"
+type = 4
+orbital_radius = 90161000.29881278
+orbital_period = 1452.86186995724
+orbital_angle = 0.2828739593844092
+radius = 8782669.54421997
+color = Color(0.62512726, 0.7073045, 0.9016486, 0.9)
+
+[sub_resource type="Resource" id="Resource_y3i6g"]
+script = ExtResource("3_hyq56")
+planet_name = "Capella Tauri IV"
+type = 4
+orbital_radius = 182460196.24842307
+orbital_period = 4182.620390571831
+orbital_angle = 4.44158294822646
+radius = 8024115.085601807
+color = Color(0.5307801, 0.72797114, 0.96719646, 0.9)
+
+[sub_resource type="Resource" id="Resource_1lb01"]
+script = ExtResource("5_imdcc")
+station_name = "Nexus Outpost"
+orbital_radius = 87303229.89753604
+orbital_period = 1307.5756829615161
+orbital_angle = 3.6628686117629465
+
+[resource]
+script = ExtResource("4_3ove5")
+system_name = "Capella Tauri"
+seed_value = 1232559977
+star_name = "Capella Tauri"
+star_spectral_class = "M"
+star_temperature = 3189.0373051166534
+star_radius = 10464915.882864594
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03528740677237511
+planets = Array[ExtResource("3_hyq56")]([SubResource("Resource_agpdu"), SubResource("Resource_u710v"), SubResource("Resource_drvof"), SubResource("Resource_y3i6g")])
+stations = Array[ExtResource("5_imdcc")]([SubResource("Resource_1lb01")])
+asteroid_belts = Array[ExtResource("1_837uh")]([SubResource("Resource_w7wr0"), SubResource("Resource_p2nbu"), SubResource("Resource_ajn3d")])
+jump_gates = Array[ExtResource("2_7rjb5")]([SubResource("Resource_n56e1"), SubResource("Resource_74k6n"), SubResource("Resource_jtemk"), SubResource("Resource_t6idy")])

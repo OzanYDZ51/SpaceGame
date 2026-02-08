@@ -1,0 +1,128 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_52fau"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_3dxpb"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_ldkkl"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_7ivtj"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_lt6va"]
+
+[sub_resource type="Resource" id="Resource_0xmmc"]
+script = ExtResource("1_52fau")
+belt_name = "Deneb Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 28573056.729129393
+width = 4164936.7696012813
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 385
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ugifr"]
+script = ExtResource("1_52fau")
+belt_name = "Deneb Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 61337453.909537464
+width = 8940822.102561947
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 244
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ggsus"]
+script = ExtResource("2_3dxpb")
+gate_name = "Gate → Theta Leonis"
+target_system_id = 34
+target_system_name = "Theta Leonis"
+pos_x = 325318.5503818024
+pos_y = 608996.2798771787
+pos_z = -43145895.19283666
+
+[sub_resource type="Resource" id="Resource_m8axn"]
+script = ExtResource("2_3dxpb")
+gate_name = "Gate → Chi Tauri"
+target_system_id = 74
+target_system_name = "Chi Tauri"
+pos_x = -42590160.424277656
+pos_y = -464672.91931936546
+pos_z = 6910306.735938789
+
+[sub_resource type="Resource" id="Resource_mtw0s"]
+script = ExtResource("2_3dxpb")
+gate_name = "Gate → Kappa Tauri"
+target_system_id = 17
+target_system_name = "Kappa Tauri"
+pos_x = -16336203.960624719
+pos_y = -347172.8507661147
+pos_z = 39934978.95714153
+
+[sub_resource type="Resource" id="Resource_cesg1"]
+script = ExtResource("2_3dxpb")
+gate_name = "Gate → Vega Carinae"
+target_system_id = 68
+target_system_name = "Vega Carinae"
+pos_x = -14027390.195073014
+pos_y = -487223.4102502187
+pos_z = -40803264.924092
+
+[sub_resource type="Resource" id="Resource_i6s41"]
+script = ExtResource("3_ldkkl")
+planet_name = "Deneb Leonis I"
+type = 3
+orbital_radius = 18160714.80512619
+orbital_period = 131.33958853639334
+orbital_angle = 3.718216630967251
+radius = 19546747.80368805
+color = Color(0.75029284, 0.60607636, 0.27155277, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_dmybg"]
+script = ExtResource("3_ldkkl")
+planet_name = "Deneb Leonis II"
+type = 4
+orbital_radius = 38985398.653132595
+orbital_period = 413.094310184616
+orbital_angle = 5.203400651094507
+radius = 9068527.698516846
+color = Color(0.5484255, 0.7157203, 0.91252875, 0.9)
+
+[sub_resource type="Resource" id="Resource_oo63l"]
+script = ExtResource("3_ldkkl")
+planet_name = "Deneb Leonis III"
+type = 4
+orbital_radius = 83689509.16594233
+orbital_period = 1299.2800648192879
+orbital_angle = 6.221136233718046
+radius = 8390720.36743164
+color = Color(0.57981086, 0.7951673, 0.9385974, 0.9)
+
+[sub_resource type="Resource" id="Resource_1w5dy"]
+script = ExtResource("5_lt6va")
+station_name = "Nexus Platform"
+orbital_radius = 18574720.189853244
+orbital_period = 118.20562968275401
+orbital_angle = 5.5848023537777625
+
+[sub_resource type="Resource" id="Resource_cm25b"]
+script = ExtResource("5_lt6va")
+station_name = "Orbital Platform"
+station_type = 3
+orbital_radius = 40147121.6206883
+orbital_period = 371.78487916615444
+orbital_angle = 0.34673662994383386
+
+[resource]
+script = ExtResource("4_7ivtj")
+system_name = "Deneb Leonis"
+seed_value = 975276466
+star_name = "Deneb Leonis"
+star_spectral_class = "M"
+star_temperature = 2574.754513800144
+star_radius = 32337772.22522497
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03595482268929481
+planets = Array[ExtResource("3_ldkkl")]([SubResource("Resource_i6s41"), SubResource("Resource_dmybg"), SubResource("Resource_oo63l")])
+stations = Array[ExtResource("5_lt6va")]([SubResource("Resource_1w5dy"), SubResource("Resource_cm25b")])
+asteroid_belts = Array[ExtResource("1_52fau")]([SubResource("Resource_0xmmc"), SubResource("Resource_ugifr")])
+jump_gates = Array[ExtResource("2_3dxpb")]([SubResource("Resource_ggsus"), SubResource("Resource_m8axn"), SubResource("Resource_mtw0s"), SubResource("Resource_cesg1")])

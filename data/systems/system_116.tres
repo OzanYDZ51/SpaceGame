@@ -1,0 +1,125 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_kifr6"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_6k506"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_spdf4"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ukrse"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_bugmt"]
+
+[sub_resource type="Resource" id="Resource_d5jhm"]
+script = ExtResource("1_kifr6")
+belt_name = "Omega Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 23586092.921164908
+width = 2427197.349892964
+dominant_resource = &"gold"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 323
+
+[sub_resource type="Resource" id="Resource_8mnes"]
+script = ExtResource("1_kifr6")
+belt_name = "Omega Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 39925794.06307304
+width = 4108683.106870288
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 298
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_tpoon"]
+script = ExtResource("2_6k506")
+gate_name = "Gate → Vega Carinae"
+target_system_id = 68
+target_system_name = "Vega Carinae"
+pos_x = -31948109.69741583
+pos_y = -497572.44201426936
+pos_z = -39929148.29647136
+
+[sub_resource type="Resource" id="Resource_4m3fj"]
+script = ExtResource("2_6k506")
+gate_name = "Gate → Arcturus Pavonis"
+target_system_id = 41
+target_system_name = "Arcturus Pavonis"
+pos_x = 46270369.48326274
+pos_y = 319071.8344240927
+pos_z = 21773183.157316826
+
+[sub_resource type="Resource" id="Resource_7l4vs"]
+script = ExtResource("2_6k506")
+gate_name = "Gate → Antares Virginis"
+target_system_id = 27
+target_system_name = "Antares Virginis"
+pos_x = 50381298.60799462
+pos_y = -390815.3909419342
+pos_z = -8760328.047042273
+
+[sub_resource type="Resource" id="Resource_8jadg"]
+script = ExtResource("2_6k506")
+gate_name = "Gate → Regulus Tauri"
+target_system_id = 22
+target_system_name = "Regulus Tauri"
+pos_x = -37692688.31821751
+pos_y = 1210436.285336174
+pos_z = -34558354.189188845
+
+[sub_resource type="Resource" id="Resource_k1nbn"]
+script = ExtResource("3_spdf4")
+planet_name = "Omega Leonis I"
+type = 3
+orbital_radius = 17518099.5464325
+orbital_period = 124.43046632190294
+orbital_angle = 0.7619025755233328
+radius = 49220683.57467651
+color = Color(0.8410703, 0.66717684, 0.32127592, 0.9)
+
+[sub_resource type="Resource" id="Resource_a7sfh"]
+script = ExtResource("3_spdf4")
+planet_name = "Omega Leonis II"
+type = 4
+orbital_radius = 29654086.29589732
+orbital_period = 274.0457457106044
+orbital_angle = 0.8150229801099755
+radius = 7695914.745330811
+color = Color(0.6181551, 0.7977195, 0.99293315, 0.9)
+
+[sub_resource type="Resource" id="Resource_tf4ts"]
+script = ExtResource("3_spdf4")
+planet_name = "Omega Leonis III"
+type = 4
+orbital_radius = 50197501.83024876
+orbital_period = 603.5585412642755
+orbital_angle = 6.081965302427282
+radius = 2684453.308582306
+color = Color(0.62433904, 0.73301154, 0.9397944, 0.9)
+
+[sub_resource type="Resource" id="Resource_jvtmi"]
+script = ExtResource("5_bugmt")
+station_name = "Haven Outpost"
+orbital_radius = 48137252.53589321
+orbital_period = 543.202687137848
+orbital_angle = 3.4808634391112396
+
+[sub_resource type="Resource" id="Resource_10mye"]
+script = ExtResource("5_bugmt")
+station_name = "Gamma Depot"
+station_type = 1
+orbital_radius = 17808572.356499612
+orbital_period = 111.98741968971265
+orbital_angle = 6.059559295938604
+
+[resource]
+script = ExtResource("4_ukrse")
+system_name = "Omega Leonis"
+seed_value = 2208648079
+star_name = "Omega Leonis"
+star_spectral_class = "M"
+star_temperature = 3342.9859459400177
+star_radius = 40816329.95196581
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.043181623935699465
+planets = Array[ExtResource("3_spdf4")]([SubResource("Resource_k1nbn"), SubResource("Resource_a7sfh"), SubResource("Resource_tf4ts")])
+stations = Array[ExtResource("5_bugmt")]([SubResource("Resource_jvtmi"), SubResource("Resource_10mye")])
+asteroid_belts = Array[ExtResource("1_kifr6")]([SubResource("Resource_d5jhm"), SubResource("Resource_8mnes")])
+jump_gates = Array[ExtResource("2_6k506")]([SubResource("Resource_tpoon"), SubResource("Resource_4m3fj"), SubResource("Resource_7l4vs"), SubResource("Resource_8jadg")])

@@ -1,0 +1,151 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_5tbg8"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_0kwht"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_hww3f"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_w8lgp"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_tvutw"]
+
+[sub_resource type="Resource" id="Resource_kaeiy"]
+script = ExtResource("1_5tbg8")
+belt_name = "Vega Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 82729388.1324205
+width = 9838539.632154787
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 385
+
+[sub_resource type="Resource" id="Resource_1po3d"]
+script = ExtResource("1_5tbg8")
+belt_name = "Vega Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 44810414.313920334
+width = 5329049.895245278
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 207
+
+[sub_resource type="Resource" id="Resource_yjasv"]
+script = ExtResource("1_5tbg8")
+belt_name = "Vega Tauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 152735737.11722064
+width = 18163999.961765274
+dominant_resource = &"crystal"
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 479
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ec07t"]
+script = ExtResource("1_5tbg8")
+belt_name = "Vega Tauri Belt 4"
+field_id = &"belt_3"
+orbital_radius = 24271583.246465467
+width = 2886482.531736669
+dominant_resource = &"gold"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 220
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_y3k47"]
+script = ExtResource("2_0kwht")
+gate_name = "Gate → Kappa Orionis"
+target_system_id = 21
+target_system_name = "Kappa Orionis"
+pos_x = 13024497.833146313
+pos_y = -175435.2077822386
+pos_z = 14331816.065802554
+
+[sub_resource type="Resource" id="Resource_8iqdq"]
+script = ExtResource("2_0kwht")
+gate_name = "Gate → Delta Carinae"
+target_system_id = 105
+target_system_name = "Delta Carinae"
+pos_x = -3109590.079862565
+pos_y = 60835.72966834324
+pos_z = -19114626.46992741
+
+[sub_resource type="Resource" id="Resource_bvys7"]
+script = ExtResource("2_0kwht")
+gate_name = "Gate → Chi Carinae"
+target_system_id = 6
+target_system_name = "Chi Carinae"
+pos_x = -5686604.800688136
+pos_y = 419449.6394482518
+pos_z = -18512185.75399512
+
+[sub_resource type="Resource" id="Resource_mxtqi"]
+script = ExtResource("3_hww3f")
+planet_name = "Vega Tauri I"
+orbital_radius = 17055376.917123795
+orbital_period = 119.53311197614458
+orbital_angle = 1.6702122135113386
+radius = 5003059.3276023865
+color = Color(0.6936536, 0.4184358, 0.27969393, 0.9)
+
+[sub_resource type="Resource" id="Resource_1302e"]
+script = ExtResource("3_hww3f")
+planet_name = "Vega Tauri II"
+type = 2
+orbital_radius = 31487789.57580714
+orbital_period = 299.8537645541282
+orbital_angle = 3.0007145320105577
+radius = 8671535.968780518
+color = Color(0.22681887, 0.35562643, 0.76935095, 0.9)
+
+[sub_resource type="Resource" id="Resource_lbvgp"]
+script = ExtResource("3_hww3f")
+planet_name = "Vega Tauri III"
+type = 3
+orbital_radius = 58133039.05203353
+orbital_period = 752.1955935960781
+orbital_angle = 0.4627224396869372
+radius = 26057153.940200806
+color = Color(0.86352426, 0.6826815, 0.26255527, 0.9)
+
+[sub_resource type="Resource" id="Resource_b5yx5"]
+script = ExtResource("3_hww3f")
+planet_name = "Vega Tauri IV"
+type = 4
+orbital_radius = 107325737.21280746
+orbital_period = 1886.913815695054
+orbital_angle = 4.903739975927433
+radius = 6770730.018615723
+color = Color(0.611728, 0.79061484, 0.9402763, 0.9)
+
+[sub_resource type="Resource" id="Resource_i2h2e"]
+script = ExtResource("3_hww3f")
+planet_name = "Vega Tauri V"
+type = 4
+orbital_radius = 198145737.02163383
+orbital_period = 4733.4014957987
+orbital_angle = 3.7218040337912637
+radius = 7903639.316558838
+color = Color(0.60554963, 0.7087626, 0.94204736, 0.9)
+
+[sub_resource type="Resource" id="Resource_kw73e"]
+script = ExtResource("5_tvutw")
+station_name = "Beta Depot"
+orbital_radius = 16365910.656347387
+orbital_period = 107.57980077853013
+orbital_angle = 1.226218870309304
+
+[resource]
+script = ExtResource("4_w8lgp")
+system_name = "Vega Tauri"
+seed_value = 3486908671
+star_name = "Vega Tauri"
+star_spectral_class = "K"
+star_temperature = 5016.789209842682
+star_radius = 48178558.667707436
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.4322949528694153
+planets = Array[ExtResource("3_hww3f")]([SubResource("Resource_mxtqi"), SubResource("Resource_1302e"), SubResource("Resource_lbvgp"), SubResource("Resource_b5yx5"), SubResource("Resource_i2h2e")])
+stations = Array[ExtResource("5_tvutw")]([SubResource("Resource_kw73e")])
+asteroid_belts = Array[ExtResource("1_5tbg8")]([SubResource("Resource_kaeiy"), SubResource("Resource_1po3d"), SubResource("Resource_yjasv"), SubResource("Resource_ec07t")])
+jump_gates = Array[ExtResource("2_0kwht")]([SubResource("Resource_y3k47"), SubResource("Resource_8iqdq"), SubResource("Resource_bvys7")])

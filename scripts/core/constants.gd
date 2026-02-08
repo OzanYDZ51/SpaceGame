@@ -108,9 +108,8 @@ const NET_MAX_PLAYERS: int = 128          # Per system server instance
 const NET_TICK_RATE: float = 20.0         # Position updates per second
 const NET_INTERPOLATION_DELAY: float = 0.1  # 100ms buffer for smooth interpolation
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
-const NET_PUBLIC_IP: String = "92.184.140.5"  # Host's public IPv4 (dev)
-const NET_PRODUCTION_IP: String = ""      # Railway server IP (set when deployed)
-const NET_IS_PRODUCTION: bool = false     # false=dev (connect to NET_PUBLIC_IP), true=prod (connect to NET_PRODUCTION_IP)
+const NET_PUBLIC_IP: String = "92.184.140.5"  # Host's public IPv4 (dev, friend's machine)
+const NET_GAME_SERVER_URL: String = ""    # Railway game server URL (wss://xxx.up.railway.app) — empty = dev mode
 
 # --- Mining ---
 const MINING_RANGE: float = 300.0

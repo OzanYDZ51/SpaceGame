@@ -293,8 +293,7 @@ func _populate_system() -> void:
 			wormhole.setup({
 				"target_seed": wh_data.get("seed", 0),
 				"target_name": wh_data.get("name", "Unknown Galaxy"),
-				"target_ip": wh_data.get("ip", ""),
-				"target_port": wh_data.get("port", Constants.NET_DEFAULT_PORT),
+				"target_url": wh_data.get("url", ""),
 				"pos_x": wormhole.global_position.x,
 				"pos_y": 0.0,
 				"pos_z": wormhole.global_position.z,

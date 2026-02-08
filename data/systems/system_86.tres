@@ -1,0 +1,107 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_api36"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_qd3ik"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_8si66"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_kyc56"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_7ucj6"]
+
+[sub_resource type="Resource" id="Resource_moauq"]
+script = ExtResource("1_api36")
+belt_name = "Iota Hydrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 40818228.289175555
+width = 3447979.8842708813
+dominant_resource = &"titanium"
+secondary_resource = &"gold"
+rare_resource = &"crystal"
+asteroid_count = 214
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_b1v1e"]
+script = ExtResource("1_api36")
+belt_name = "Iota Hydrae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 26584245.99586844
+width = 2245613.033051966
+dominant_resource = &"gold"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 406
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_bfird"]
+script = ExtResource("2_qd3ik")
+gate_name = "Gate → Chi Cygni"
+target_system_id = 119
+target_system_name = "Chi Cygni"
+pos_x = -20906723.50168122
+pos_y = 424323.3169526977
+pos_z = -10160779.53256433
+
+[sub_resource type="Resource" id="Resource_jks3c"]
+script = ExtResource("2_qd3ik")
+gate_name = "Gate → Capella Serpentis"
+target_system_id = 16
+target_system_name = "Capella Serpentis"
+pos_x = 7800647.287619992
+pos_y = 535857.751202428
+pos_z = 21897087.253314648
+
+[sub_resource type="Resource" id="Resource_qlefm"]
+script = ExtResource("2_qd3ik")
+gate_name = "Gate → Theta Leonis"
+target_system_id = 34
+target_system_name = "Theta Leonis"
+pos_x = 18638287.809724003
+pos_y = -333713.80328939506
+pos_z = -13890527.556828845
+
+[sub_resource type="Resource" id="Resource_fqx2b"]
+script = ExtResource("3_8si66")
+planet_name = "Iota Hydrae I"
+orbital_radius = 20970213.413238525
+orbital_period = 162.96731838165442
+orbital_angle = 4.449677543135972
+radius = 5524007.201194763
+color = Color(0.6203214, 0.41502318, 0.3002209, 0.9)
+
+[sub_resource type="Resource" id="Resource_tp026"]
+script = ExtResource("3_8si66")
+planet_name = "Iota Hydrae II"
+orbital_radius = 32198278.578498356
+orbital_period = 310.05962984285793
+orbital_angle = 3.2055326130371817
+radius = 3607267.4095630646
+color = Color(0.74424684, 0.4987354, 0.25916448, 0.9)
+
+[sub_resource type="Resource" id="Resource_mjfln"]
+script = ExtResource("3_8si66")
+planet_name = "Iota Hydrae III"
+type = 2
+orbital_radius = 49438177.99985276
+orbital_period = 589.9156653798901
+orbital_angle = 0.6546893588510861
+radius = 3629516.512155533
+color = Color(0.15147991, 0.4338672, 0.83302784, 0.9)
+
+[sub_resource type="Resource" id="Resource_d6wa8"]
+script = ExtResource("5_7ucj6")
+station_name = "Dock Hub"
+orbital_radius = 20245053.845606122
+orbital_period = 146.67058654348898
+orbital_angle = 4.7504535002333
+
+[resource]
+script = ExtResource("4_kyc56")
+system_name = "Iota Hydrae"
+seed_value = 338411119
+star_name = "Iota Hydrae"
+star_temperature = 5512.242317199707
+star_radius = 68087927.92709768
+star_color = Color(1, 0.95, 0.7, 1)
+star_luminosity = 1.4467558979988098
+planets = Array[ExtResource("3_8si66")]([SubResource("Resource_fqx2b"), SubResource("Resource_tp026"), SubResource("Resource_mjfln")])
+stations = Array[ExtResource("5_7ucj6")]([SubResource("Resource_d6wa8")])
+asteroid_belts = Array[ExtResource("1_api36")]([SubResource("Resource_moauq"), SubResource("Resource_b1v1e")])
+jump_gates = Array[ExtResource("2_qd3ik")]([SubResource("Resource_bfird"), SubResource("Resource_jks3c"), SubResource("Resource_qlefm")])

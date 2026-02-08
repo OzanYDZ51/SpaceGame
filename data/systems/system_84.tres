@@ -1,0 +1,129 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1335j"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_o3ye2"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_nks4j"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_vv8xn"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_bx6qc"]
+
+[sub_resource type="Resource" id="Resource_b6w1b"]
+script = ExtResource("1_1335j")
+belt_name = "Rigel Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 31379943.91721211
+width = 3181876.4726389335
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 336
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_rihnj"]
+script = ExtResource("1_1335j")
+belt_name = "Rigel Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 52691796.213922456
+width = 5342864.446045204
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 475
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_pvv6u"]
+script = ExtResource("2_o3ye2")
+gate_name = "Gate → Theta Pavonis"
+target_system_id = 96
+target_system_name = "Theta Pavonis"
+pos_x = -34845462.34341396
+pos_y = -270250.9268381978
+pos_z = 59345180.78242587
+
+[sub_resource type="Resource" id="Resource_bs87n"]
+script = ExtResource("2_o3ye2")
+gate_name = "Gate → Pi Carinae"
+target_system_id = 10
+target_system_name = "Pi Carinae"
+pos_x = 44364692.92285077
+pos_y = 192350.70892913826
+pos_z = -52610177.24629184
+
+[sub_resource type="Resource" id="Resource_3xywh"]
+script = ExtResource("2_o3ye2")
+gate_name = "Gate → Regulus Ursae"
+target_system_id = 90
+target_system_name = "Regulus Ursae"
+pos_x = 4321181.6608454455
+pos_y = 1219508.343095425
+pos_z = -68683215.68679689
+
+[sub_resource type="Resource" id="Resource_tlhix"]
+script = ExtResource("2_o3ye2")
+gate_name = "Gate → Rho Scorpii"
+target_system_id = 20
+target_system_name = "Rho Scorpii"
+pos_x = 9182706.55243613
+pos_y = -678127.2401017804
+pos_z = 68203626.21149212
+
+[sub_resource type="Resource" id="Resource_dfxb0"]
+script = ExtResource("3_nks4j")
+planet_name = "Rigel Scorpii I"
+type = 3
+orbital_radius = 23425252.735614777
+orbital_period = 192.40779902518693
+orbital_angle = 1.5749630919916777
+radius = 16330882.31086731
+color = Color(0.77345663, 0.6274131, 0.34860942, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_ewl15"]
+script = ExtResource("3_nks4j")
+planet_name = "Rigel Scorpii II"
+type = 4
+orbital_radius = 39334635.09880944
+orbital_period = 418.65755456429235
+orbital_angle = 0.3958506519685617
+radius = 8707752.704620361
+color = Color(0.56792927, 0.7375735, 0.9628535, 0.9)
+
+[sub_resource type="Resource" id="Resource_omb50"]
+script = ExtResource("3_nks4j")
+planet_name = "Rigel Scorpii III"
+type = 4
+orbital_radius = 66048957.32903546
+orbital_period = 910.9513693403317
+orbital_angle = 1.4676848983500224
+radius = 2317221.015691757
+color = Color(0.5635998, 0.74084085, 0.9646835, 0.9)
+
+[sub_resource type="Resource" id="Resource_4iqfd"]
+script = ExtResource("3_nks4j")
+planet_name = "Rigel Scorpii IV"
+type = 4
+orbital_radius = 110906450.5948547
+orbital_period = 1982.1268916708148
+orbital_angle = 1.722082747704434
+radius = 7280991.077423096
+color = Color(0.5042014, 0.70504403, 0.94237906, 0.9)
+
+[sub_resource type="Resource" id="Resource_141fs"]
+script = ExtResource("5_bx6qc")
+station_name = "Omega Station"
+orbital_radius = 65819014.291292265
+orbital_period = 819.8562324062985
+orbital_angle = 3.395565718347364
+
+[resource]
+script = ExtResource("4_vv8xn")
+system_name = "Rigel Scorpii"
+seed_value = 1893015677
+star_name = "Rigel Scorpii"
+star_spectral_class = "M"
+star_temperature = 3009.669679403305
+star_radius = 18455519.439750906
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03023909065127373
+planets = Array[ExtResource("3_nks4j")]([SubResource("Resource_dfxb0"), SubResource("Resource_ewl15"), SubResource("Resource_omb50"), SubResource("Resource_4iqfd")])
+stations = Array[ExtResource("5_bx6qc")]([SubResource("Resource_141fs")])
+asteroid_belts = Array[ExtResource("1_1335j")]([SubResource("Resource_b6w1b"), SubResource("Resource_rihnj")])
+jump_gates = Array[ExtResource("2_o3ye2")]([SubResource("Resource_pvv6u"), SubResource("Resource_bs87n"), SubResource("Resource_3xywh"), SubResource("Resource_tlhix")])

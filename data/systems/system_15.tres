@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1fmfb"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_c2qbc"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_5oedj"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_r5wr7"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_nyv5y"]
+
+[sub_resource type="Resource" id="Resource_pyfsf"]
+script = ExtResource("1_1fmfb")
+belt_name = "Nu Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25643667.588092722
+width = 2754675.8689315477
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 323
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_jr1fh"]
+script = ExtResource("2_c2qbc")
+gate_name = "Gate → Betelgeuse Persei"
+target_system_id = 101
+target_system_name = "Betelgeuse Persei"
+pos_x = 5656582.7257695375
+pos_y = -369171.8184978411
+pos_z = -20676983.996574197
+
+[sub_resource type="Resource" id="Resource_uwqsk"]
+script = ExtResource("2_c2qbc")
+gate_name = "Gate → Deneb Virginis"
+target_system_id = 85
+target_system_name = "Deneb Virginis"
+pos_x = 5370233.310629406
+pos_y = -485875.87531112565
+pos_z = 20753197.09147162
+
+[sub_resource type="Resource" id="Resource_c3hsa"]
+script = ExtResource("2_c2qbc")
+gate_name = "Gate → Rigel Tauri"
+target_system_id = 75
+target_system_name = "Rigel Tauri"
+pos_x = 7388026.954793288
+pos_y = 278485.3542401691
+pos_z = -20123410.57185157
+
+[sub_resource type="Resource" id="Resource_u6vgv"]
+script = ExtResource("2_c2qbc")
+gate_name = "Gate → Tau Lyrae"
+target_system_id = 50
+target_system_name = "Tau Lyrae"
+pos_x = -8698602.48321222
+pos_y = 21781.980337856367
+pos_z = 19592572.831741977
+
+[sub_resource type="Resource" id="Resource_gyqhd"]
+script = ExtResource("3_5oedj")
+planet_name = "Nu Persei I"
+type = 4
+orbital_radius = 18756977.915763855
+orbital_period = 137.86072068614467
+orbital_angle = 1.417897184994775
+radius = 6921490.669250488
+color = Color(0.5343256, 0.7408622, 0.9306573, 0.9)
+
+[sub_resource type="Resource" id="Resource_052n1"]
+script = ExtResource("3_5oedj")
+planet_name = "Nu Persei II"
+type = 4
+orbital_radius = 32530357.260421593
+orbital_period = 314.8687015473946
+orbital_angle = 4.607981663995167
+radius = 8534335.613250732
+color = Color(0.5732106, 0.7450605, 0.9878315, 0.9)
+
+[sub_resource type="Resource" id="Resource_4saqd"]
+script = ExtResource("5_nyv5y")
+station_name = "Omega Depot"
+orbital_radius = 18436758.04145906
+orbital_period = 124.07464861753022
+orbital_angle = 5.628748506505705
+
+[resource]
+script = ExtResource("4_r5wr7")
+system_name = "Nu Persei"
+seed_value = 4284694201
+star_name = "Nu Persei"
+star_spectral_class = "M"
+star_temperature = 3539.2190277576447
+star_radius = 7859029.827011377
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.01733002492785454
+planets = Array[ExtResource("3_5oedj")]([SubResource("Resource_gyqhd"), SubResource("Resource_052n1")])
+stations = Array[ExtResource("5_nyv5y")]([SubResource("Resource_4saqd")])
+asteroid_belts = Array[ExtResource("1_1fmfb")]([SubResource("Resource_pyfsf")])
+jump_gates = Array[ExtResource("2_c2qbc")]([SubResource("Resource_jr1fh"), SubResource("Resource_uwqsk"), SubResource("Resource_c3hsa"), SubResource("Resource_u6vgv")])

@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ebm4u"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_acmma"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_cp8we"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_6adm8"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_eq8cg"]
+
+[sub_resource type="Resource" id="Resource_y3exj"]
+script = ExtResource("1_ebm4u")
+belt_name = "Tau Hydrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 46455281.56806199
+width = 6057313.920663487
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 228
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_xsqce"]
+script = ExtResource("1_ebm4u")
+belt_name = "Tau Hydrae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 23614309.74725632
+width = 3079074.8076587846
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+asteroid_count = 302
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_l2n82"]
+script = ExtResource("2_acmma")
+gate_name = "Gate → Omega Aquilae"
+target_system_id = 42
+target_system_name = "Omega Aquilae"
+pos_x = -2678276.0597699247
+pos_y = 114462.46130175026
+pos_z = -18242991.460252035
+
+[sub_resource type="Resource" id="Resource_vnthr"]
+script = ExtResource("2_acmma")
+gate_name = "Gate → Spica Virginis"
+target_system_id = 24
+target_system_name = "Spica Virginis"
+pos_x = -3894005.1289581596
+pos_y = -355342.25918769586
+pos_z = -18022669.72806229
+
+[sub_resource type="Resource" id="Resource_n5uie"]
+script = ExtResource("2_acmma")
+gate_name = "Gate → Deneb Centauri"
+target_system_id = 8
+target_system_name = "Deneb Centauri"
+pos_x = 11803679.722664611
+pos_y = -311614.42702560686
+pos_z = -14165205.437123798
+
+[sub_resource type="Resource" id="Resource_1v6kw"]
+script = ExtResource("3_cp8we")
+planet_name = "Tau Hydrae I"
+type = 3
+orbital_radius = 15916622.728109358
+orbital_period = 107.76373303782809
+orbital_angle = 3.7888194449549895
+radius = 50834851.26495361
+color = Color(0.79693764, 0.6283331, 0.38426057, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_3ugcw"]
+script = ExtResource("3_cp8we")
+planet_name = "Tau Hydrae II"
+type = 4
+orbital_radius = 31311996.76640328
+orbital_period = 297.3461975114983
+orbital_angle = 1.1761077701351261
+radius = 5226622.104644775
+color = Color(0.57003397, 0.73048013, 0.91220033, 0.9)
+
+[sub_resource type="Resource" id="Resource_d5rno"]
+script = ExtResource("3_cp8we")
+planet_name = "Tau Hydrae III"
+type = 4
+orbital_radius = 61598566.36972071
+orbital_period = 820.4500594231537
+orbital_angle = 4.425930426978979
+radius = 4220076.322555542
+color = Color(0.57954115, 0.7299429, 0.91303736, 0.9)
+
+[sub_resource type="Resource" id="Resource_a4fcj"]
+script = ExtResource("5_eq8cg")
+station_name = "Alpha Station"
+orbital_radius = 15438543.870684726
+orbital_period = 96.98735973404528
+orbital_angle = 0.1558133916474681
+
+[resource]
+script = ExtResource("4_6adm8")
+system_name = "Tau Hydrae"
+seed_value = 2130374303
+star_name = "Tau Hydrae"
+star_spectral_class = "M"
+star_temperature = 3133.918696641922
+star_radius = 11697612.115511298
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.01594791589677334
+planets = Array[ExtResource("3_cp8we")]([SubResource("Resource_1v6kw"), SubResource("Resource_3ugcw"), SubResource("Resource_d5rno")])
+stations = Array[ExtResource("5_eq8cg")]([SubResource("Resource_a4fcj")])
+asteroid_belts = Array[ExtResource("1_ebm4u")]([SubResource("Resource_y3exj"), SubResource("Resource_xsqce")])
+jump_gates = Array[ExtResource("2_acmma")]([SubResource("Resource_l2n82"), SubResource("Resource_vnthr"), SubResource("Resource_n5uie")])

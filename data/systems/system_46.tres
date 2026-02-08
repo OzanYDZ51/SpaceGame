@@ -1,0 +1,127 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_5lhur"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_dtaa0"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_h2s5a"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_4rnvs"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_gfbqb"]
+
+[sub_resource type="Resource" id="Resource_jy8xq"]
+script = ExtResource("1_5lhur")
+belt_name = "Procyon Lyrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25110449.83258523
+width = 2222431.629800836
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 353
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_xcs5r"]
+script = ExtResource("1_5lhur")
+belt_name = "Procyon Lyrae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 16011562.554611105
+width = 1417123.2813888148
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 360
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_vpp7g"]
+script = ExtResource("2_dtaa0")
+gate_name = "Gate → Aldebaran Lyrae"
+target_system_id = 7
+target_system_name = "Aldebaran Lyrae"
+pos_x = -21151337.156595107
+pos_y = -316503.63570204284
+pos_z = -10132207.212987257
+
+[sub_resource type="Resource" id="Resource_kxcpj"]
+script = ExtResource("2_dtaa0")
+gate_name = "Gate → Upsilon Ursae"
+target_system_id = 103
+target_system_name = "Upsilon Ursae"
+pos_x = -23323954.576634843
+pos_y = -167329.76617479668
+pos_z = 2456385.4392066346
+
+[sub_resource type="Resource" id="Resource_eurb2"]
+script = ExtResource("2_dtaa0")
+gate_name = "Gate → Vega Aquilae"
+target_system_id = 107
+target_system_name = "Vega Aquilae"
+pos_x = -16321205.394079499
+pos_y = 371524.86089038017
+pos_z = -16842177.442455057
+
+[sub_resource type="Resource" id="Resource_mo2s6"]
+script = ExtResource("2_dtaa0")
+gate_name = "Gate → Polaris Virginis"
+target_system_id = 62
+target_system_name = "Polaris Virginis"
+pos_x = 22941463.831330754
+pos_y = -529473.5125652277
+pos_z = -4871336.961719503
+
+[sub_resource type="Resource" id="Resource_pl7jl"]
+script = ExtResource("3_h2s5a")
+planet_name = "Procyon Lyrae I"
+type = 4
+orbital_radius = 12468754.351139069
+orbital_period = 74.71896496583503
+orbital_angle = 0.7810293984722819
+radius = 6182135.105133057
+color = Color(0.6339227, 0.749035, 0.9268959, 0.9)
+
+[sub_resource type="Resource" id="Resource_kbasj"]
+script = ExtResource("3_h2s5a")
+planet_name = "Procyon Lyrae II"
+type = 4
+orbital_radius = 19554370.758083142
+orbital_period = 146.74456049125598
+orbital_angle = 0.8806093660804946
+radius = 8752126.216888428
+color = Color(0.5317451, 0.74765885, 0.9668967, 0.9)
+
+[sub_resource type="Resource" id="Resource_qokjm"]
+script = ExtResource("3_h2s5a")
+planet_name = "Procyon Lyrae III"
+type = 4
+orbital_radius = 30666528.907087322
+orbital_period = 288.1994690855021
+orbital_angle = 2.8142012310057813
+radius = 5779792.547225952
+color = Color(0.5420964, 0.7110112, 0.9686802, 0.9)
+
+[sub_resource type="Resource" id="Resource_ifiuo"]
+script = ExtResource("5_gfbqb")
+station_name = "Nexus Station"
+orbital_radius = 20452946.22257237
+orbital_period = 132.0701044421304
+orbital_angle = 3.1292573283454126
+
+[sub_resource type="Resource" id="Resource_htqfp"]
+script = ExtResource("5_gfbqb")
+station_name = "Alpha Depot"
+station_type = 3
+orbital_radius = 12771072.156240657
+orbital_period = 67.24706846925153
+orbital_angle = 4.912990299526255
+
+[resource]
+script = ExtResource("4_4rnvs")
+system_name = "Procyon Lyrae"
+seed_value = 48656843
+star_name = "Procyon Lyrae"
+star_spectral_class = "M"
+star_temperature = 3448.9085853099823
+star_radius = 38442960.51546335
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.003938772935420274
+planets = Array[ExtResource("3_h2s5a")]([SubResource("Resource_pl7jl"), SubResource("Resource_kbasj"), SubResource("Resource_qokjm")])
+stations = Array[ExtResource("5_gfbqb")]([SubResource("Resource_ifiuo"), SubResource("Resource_htqfp")])
+asteroid_belts = Array[ExtResource("1_5lhur")]([SubResource("Resource_jy8xq"), SubResource("Resource_xcs5r")])
+jump_gates = Array[ExtResource("2_dtaa0")]([SubResource("Resource_vpp7g"), SubResource("Resource_kxcpj"), SubResource("Resource_eurb2"), SubResource("Resource_mo2s6")])

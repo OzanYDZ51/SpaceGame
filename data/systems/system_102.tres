@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_60jfv"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_kghpk"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_qwvr8"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_4tr8y"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_h7ttj"]
+
+[sub_resource type="Resource" id="Resource_72pmh"]
+script = ExtResource("1_60jfv")
+belt_name = "Nova Cygni Belt 1"
+field_id = &"belt_0"
+orbital_radius = 32133455.856810488
+width = 4316775.554088942
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 374
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_w7t0c"]
+script = ExtResource("1_60jfv")
+belt_name = "Nova Cygni Belt 2"
+field_id = &"belt_1"
+orbital_radius = 64631829.07361215
+width = 8682573.732631726
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 379
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_3x7o2"]
+script = ExtResource("2_kghpk")
+gate_name = "Gate → Sol Cygni"
+target_system_id = 1
+target_system_name = "Sol Cygni"
+pos_x = -85891559.62981297
+pos_y = 571057.4203235442
+pos_z = 9974454.117092617
+
+[sub_resource type="Resource" id="Resource_81xe3"]
+script = ExtResource("2_kghpk")
+gate_name = "Gate → Tau Draconis"
+target_system_id = 93
+target_system_name = "Tau Draconis"
+pos_x = 52552610.28772759
+pos_y = -553850.6022185445
+pos_z = 68666388.44822064
+
+[sub_resource type="Resource" id="Resource_vkpy5"]
+script = ExtResource("2_kghpk")
+gate_name = "Gate → Aldebaran Eridani"
+target_system_id = 112
+target_system_name = "Aldebaran Eridani"
+pos_x = 21644208.81889744
+pos_y = -24078.953998533238
+pos_z = -83716055.65947111
+
+[sub_resource type="Resource" id="Resource_kst4r"]
+script = ExtResource("3_qwvr8")
+planet_name = "Nova Cygni I"
+type = 3
+orbital_radius = 21341516.971588135
+orbital_period = 167.31472854328217
+orbital_angle = 2.0963339876965033
+radius = 34650684.59510803
+color = Color(0.8870669, 0.72562915, 0.27354163, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_wji2s"]
+script = ExtResource("3_qwvr8")
+planet_name = "Nova Cygni II"
+type = 4
+orbital_radius = 42925394.74203284
+orbital_period = 477.27390543572795
+orbital_angle = 3.8472324296788387
+radius = 4903825.521469116
+color = Color(0.52790684, 0.75412345, 0.9524531, 0.9)
+
+[sub_resource type="Resource" id="Resource_ahije"]
+script = ExtResource("3_qwvr8")
+planet_name = "Nova Cygni III"
+type = 4
+orbital_radius = 86338263.40519147
+orbital_period = 1361.4484677656199
+orbital_angle = 3.021611649682245
+radius = 3805375.099182129
+color = Color(0.6310921, 0.76073956, 0.94452894, 0.9)
+
+[sub_resource type="Resource" id="Resource_p237b"]
+script = ExtResource("5_h7ttj")
+station_name = "Gamma Outpost"
+orbital_radius = 83468779.05102918
+orbital_period = 1225.303620989058
+orbital_angle = 0.6275304368529715
+
+[sub_resource type="Resource" id="Resource_cjiv6"]
+script = ExtResource("5_h7ttj")
+station_name = "Omega Platform"
+station_type = 1
+orbital_radius = 20609579.496478386
+orbital_period = 150.58325568895395
+orbital_angle = 2.8384529953833977
+
+[resource]
+script = ExtResource("4_4tr8y")
+system_name = "Nova Cygni"
+seed_value = 2620884751
+star_name = "Nova Cygni"
+star_spectral_class = "M"
+star_temperature = 3518.6047196388245
+star_radius = 30081775.05632639
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05495631945133209
+planets = Array[ExtResource("3_qwvr8")]([SubResource("Resource_kst4r"), SubResource("Resource_wji2s"), SubResource("Resource_ahije")])
+stations = Array[ExtResource("5_h7ttj")]([SubResource("Resource_p237b"), SubResource("Resource_cjiv6")])
+asteroid_belts = Array[ExtResource("1_60jfv")]([SubResource("Resource_72pmh"), SubResource("Resource_w7t0c")])
+jump_gates = Array[ExtResource("2_kghpk")]([SubResource("Resource_3x7o2"), SubResource("Resource_81xe3"), SubResource("Resource_vkpy5")])

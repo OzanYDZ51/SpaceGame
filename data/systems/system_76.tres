@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_e7rov"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_2cxin"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_bsu1e"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_8163n"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0tmg5"]
+
+[sub_resource type="Resource" id="Resource_c8d3l"]
+script = ExtResource("1_e7rov")
+belt_name = "Pi Cygni Belt 1"
+field_id = &"belt_0"
+orbital_radius = 36356935.576306894
+width = 4686568.886322624
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 256
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_nlkf0"]
+script = ExtResource("2_2cxin")
+gate_name = "Gate → Aldebaran Scorpii"
+target_system_id = 94
+target_system_name = "Aldebaran Scorpii"
+pos_x = 2061489.9646673899
+pos_y = 1179128.9441486748
+pos_z = -52891989.299122326
+
+[sub_resource type="Resource" id="Resource_q4bi7"]
+script = ExtResource("2_2cxin")
+gate_name = "Gate → Deneb Eridani"
+target_system_id = 95
+target_system_name = "Deneb Eridani"
+pos_x = 52586432.428442694
+pos_y = 1056218.4321247756
+pos_z = 6039817.657986496
+
+[sub_resource type="Resource" id="Resource_8h6g2"]
+script = ExtResource("2_2cxin")
+gate_name = "Gate → Pi Persei"
+target_system_id = 35
+target_system_name = "Pi Persei"
+pos_x = -52930099.949832805
+pos_y = 309401.0949428268
+pos_z = 465609.4861627169
+
+[sub_resource type="Resource" id="Resource_07e2f"]
+script = ExtResource("2_2cxin")
+gate_name = "Gate → Mu Aquilae"
+target_system_id = 87
+target_system_name = "Mu Aquilae"
+pos_x = -37546081.43846674
+pos_y = 173778.7648924063
+pos_z = -37310910.488876015
+
+[sub_resource type="Resource" id="Resource_y3toh"]
+script = ExtResource("3_bsu1e")
+planet_name = "Pi Cygni I"
+type = 3
+orbital_radius = 24640513.360500336
+orbital_period = 207.5730044358713
+orbital_angle = 5.297438991391698
+radius = 36953146.45767212
+color = Color(0.8315448, 0.66567475, 0.257287, 0.9)
+
+[sub_resource type="Resource" id="Resource_4khag"]
+script = ExtResource("3_bsu1e")
+planet_name = "Pi Cygni II"
+type = 4
+orbital_radius = 48073357.79211345
+orbital_period = 565.6566928686211
+orbital_angle = 3.880987871659917
+radius = 8367243.766784668
+color = Color(0.54370844, 0.73939514, 0.96583945, 0.9)
+
+[sub_resource type="Resource" id="Resource_mvvoi"]
+script = ExtResource("5_0tmg5")
+station_name = "Dock Platform"
+orbital_radius = 49932147.82051542
+orbital_period = 509.09102358175903
+orbital_angle = 6.137906166257373
+
+[resource]
+script = ExtResource("4_8163n")
+system_name = "Pi Cygni"
+seed_value = 1115902939
+star_name = "Pi Cygni"
+star_spectral_class = "M"
+star_temperature = 3364.871722459793
+star_radius = 12188586.300083995
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05730358797311783
+planets = Array[ExtResource("3_bsu1e")]([SubResource("Resource_y3toh"), SubResource("Resource_4khag")])
+stations = Array[ExtResource("5_0tmg5")]([SubResource("Resource_mvvoi")])
+asteroid_belts = Array[ExtResource("1_e7rov")]([SubResource("Resource_c8d3l")])
+jump_gates = Array[ExtResource("2_2cxin")]([SubResource("Resource_nlkf0"), SubResource("Resource_q4bi7"), SubResource("Resource_8h6g2"), SubResource("Resource_07e2f")])

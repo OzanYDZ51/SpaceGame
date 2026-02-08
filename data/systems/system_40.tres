@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ints0"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_hhifo"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4fuqi"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_vf0oo"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_575cu"]
+
+[sub_resource type="Resource" id="Resource_1sqtu"]
+script = ExtResource("1_ints0")
+belt_name = "Mu Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 33361186.032303847
+width = 4528513.76724588
+dominant_resource = &"ice"
+asteroid_count = 205
+
+[sub_resource type="Resource" id="Resource_s0kln"]
+script = ExtResource("2_hhifo")
+gate_name = "Gate → Spica Pavonis"
+target_system_id = 81
+target_system_name = "Spica Pavonis"
+pos_x = -47476755.71279534
+pos_y = 283119.87865975965
+pos_z = 387805.45474645554
+
+[sub_resource type="Resource" id="Resource_6hkyn"]
+script = ExtResource("2_hhifo")
+gate_name = "Gate → Sigma Lyrae"
+target_system_id = 100
+target_system_name = "Sigma Lyrae"
+pos_x = 45055240.72975145
+pos_y = 1140339.2195113602
+pos_z = -14973910.940943992
+
+[sub_resource type="Resource" id="Resource_pcdwb"]
+script = ExtResource("2_hhifo")
+gate_name = "Gate → Pi Ursae"
+target_system_id = 44
+target_system_name = "Pi Ursae"
+pos_x = -43202075.53968996
+pos_y = -649941.3268664562
+pos_z = -19691962.704263348
+
+[sub_resource type="Resource" id="Resource_yjpy5"]
+script = ExtResource("3_4fuqi")
+planet_name = "Mu Pavonis I"
+type = 3
+orbital_radius = 22039901.614189148
+orbital_period = 175.59442414513282
+orbital_angle = 1.5041156312877073
+radius = 28001823.42529297
+color = Color(0.8387314, 0.7248966, 0.39593574, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_0notw"]
+script = ExtResource("3_4fuqi")
+planet_name = "Mu Pavonis II"
+type = 4
+orbital_radius = 44682470.45041855
+orbital_period = 506.87632768094966
+orbital_angle = 6.224957328927713
+radius = 9299693.584442139
+color = Color(0.596308, 0.7460036, 0.9476171, 0.9)
+
+[sub_resource type="Resource" id="Resource_dihry"]
+script = ExtResource("5_575cu")
+station_name = "Orbital Outpost"
+orbital_radius = 21359908.59585353
+orbital_period = 158.03498173061953
+orbital_angle = 6.073002974733217
+
+[sub_resource type="Resource" id="Resource_a4p8m"]
+script = ExtResource("5_575cu")
+station_name = "Dock Platform"
+station_type = 2
+orbital_radius = 44478339.54639922
+orbital_period = 456.1886949128547
+orbital_angle = 6.102163215477147
+
+[resource]
+script = ExtResource("4_vf0oo")
+system_name = "Mu Pavonis"
+seed_value = 3395674433
+star_name = "Mu Pavonis"
+star_spectral_class = "M"
+star_temperature = 2449.2306914180517
+star_radius = 8388097.909656912
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.07329309606552124
+planets = Array[ExtResource("3_4fuqi")]([SubResource("Resource_yjpy5"), SubResource("Resource_0notw")])
+stations = Array[ExtResource("5_575cu")]([SubResource("Resource_dihry"), SubResource("Resource_a4p8m")])
+asteroid_belts = Array[ExtResource("1_ints0")]([SubResource("Resource_1sqtu")])
+jump_gates = Array[ExtResource("2_hhifo")]([SubResource("Resource_s0kln"), SubResource("Resource_6hkyn"), SubResource("Resource_pcdwb")])

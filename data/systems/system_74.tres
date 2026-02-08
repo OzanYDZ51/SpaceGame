@@ -1,0 +1,87 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_tbtib"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_e5ubp"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_desad"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_qaveh"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_5t4fb"]
+
+[sub_resource type="Resource" id="Resource_2r3q1"]
+script = ExtResource("1_tbtib")
+belt_name = "Chi Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 19782755.84354244
+width = 2937314.876612991
+dominant_resource = &"gold"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 427
+
+[sub_resource type="Resource" id="Resource_4qmgg"]
+script = ExtResource("2_e5ubp")
+gate_name = "Gate → Deneb Leonis"
+target_system_id = 30
+target_system_name = "Deneb Leonis"
+pos_x = -26318971.73656238
+pos_y = -376108.2379009037
+pos_z = 12183376.501028433
+
+[sub_resource type="Resource" id="Resource_v16jj"]
+script = ExtResource("2_e5ubp")
+gate_name = "Gate → Kappa Tauri"
+target_system_id = 17
+target_system_name = "Kappa Tauri"
+pos_x = 27680435.879903562
+pos_y = -369383.8761387437
+pos_z = 8655426.375074107
+
+[sub_resource type="Resource" id="Resource_37f3v"]
+script = ExtResource("2_e5ubp")
+gate_name = "Gate → Chi Cygni"
+target_system_id = 119
+target_system_name = "Chi Cygni"
+pos_x = -20563355.60372878
+pos_y = 39658.07704945297
+pos_z = -20451683.12267666
+
+[sub_resource type="Resource" id="Resource_ykcgv"]
+script = ExtResource("3_desad")
+planet_name = "Chi Tauri I"
+orbital_radius = 12439468.652009964
+orbital_period = 74.45587792928961
+orbital_angle = 2.6200843138055845
+radius = 5175554.573535919
+color = Color(0.5909852, 0.6518465, 0.42510843, 0.9)
+
+[sub_resource type="Resource" id="Resource_7q7ew"]
+script = ExtResource("3_desad")
+planet_name = "Chi Tauri II"
+type = 3
+orbital_radius = 27126043.03507492
+orbital_period = 239.75954927715702
+orbital_angle = 1.8390720022164684
+radius = 40815486.907958984
+color = Color(0.7508, 0.613629, 0.37502342, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_xhylx"]
+script = ExtResource("5_5t4fb")
+station_name = "Beta Outpost"
+orbital_radius = 26002119.512818042
+orbital_period = 215.78359434944133
+orbital_angle = 2.0901377689134057
+
+[resource]
+script = ExtResource("4_qaveh")
+system_name = "Chi Tauri"
+seed_value = 1818707289
+star_name = "Chi Tauri"
+star_spectral_class = "M"
+star_temperature = 2916.764461994171
+star_radius = 20596820.382261273
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05906151193380356
+planets = Array[ExtResource("3_desad")]([SubResource("Resource_ykcgv"), SubResource("Resource_7q7ew")])
+stations = Array[ExtResource("5_5t4fb")]([SubResource("Resource_xhylx")])
+asteroid_belts = Array[ExtResource("1_tbtib")]([SubResource("Resource_2r3q1")])
+jump_gates = Array[ExtResource("2_e5ubp")]([SubResource("Resource_4qmgg"), SubResource("Resource_v16jj"), SubResource("Resource_37f3v")])

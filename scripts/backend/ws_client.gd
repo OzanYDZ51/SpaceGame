@@ -41,7 +41,7 @@ func connect_to_backend() -> void:
 		return
 
 	var ws_url: String
-	if Constants.NET_IS_PRODUCTION:
+	if Constants.BACKEND_WS_PROD != "":
 		ws_url = Constants.BACKEND_WS_PROD
 	else:
 		ws_url = Constants.BACKEND_WS_DEV

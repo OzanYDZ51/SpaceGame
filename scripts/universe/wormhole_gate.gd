@@ -7,7 +7,7 @@ extends StaticBody3D
 # different destination: a different galaxy seed + server IP.
 # =============================================================================
 
-signal player_entered_wormhole(target_galaxy_seed: int, target_server_ip: String, target_server_port: int)
+signal player_entered_wormhole(target_galaxy_seed: int, target_server_url: String)
 signal player_nearby_wormhole(target_name: String)
 signal player_left_wormhole()
 
@@ -19,8 +19,7 @@ signal player_left_wormhole()
 
 @export var target_galaxy_seed: int = 0
 @export var target_galaxy_name: String = ""
-@export var target_server_ip: String = ""
-@export var target_server_port: int = Constants.NET_DEFAULT_PORT
+@export var target_server_url: String = ""
 
 var gate_name: String = ""
 var _ring_mesh: MeshInstance3D = null
@@ -129,8 +128,7 @@ func _build_label() -> void:
 func setup(data: Dictionary) -> void:
 	target_galaxy_seed = data.get("target_seed", 0)
 	target_galaxy_name = data.get("target_name", "Unknown Galaxy")
-	target_server_ip = data.get("target_ip", "")
-	target_server_port = data.get("target_port", Constants.NET_DEFAULT_PORT)
+	target_server_url = data.get("target_url", "")
 	gate_name = "Wormhole → " + target_galaxy_name
 	global_position = Vector3(data.get("pos_x", 0.0), data.get("pos_y", 0.0), data.get("pos_z", 0.0))
 

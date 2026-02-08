@@ -1,0 +1,116 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ug7dk"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_wb60c"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_u8jq3"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_g7uyx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_qyflj"]
+
+[sub_resource type="Resource" id="Resource_iaueu"]
+script = ExtResource("1_ug7dk")
+belt_name = "Psi Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 48250666.38344602
+width = 7076658.52510551
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+asteroid_count = 380
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_yurni"]
+script = ExtResource("1_ug7dk")
+belt_name = "Psi Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 22360348.34307943
+width = 3279468.6910411282
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 298
+
+[sub_resource type="Resource" id="Resource_7nfp2"]
+script = ExtResource("2_wb60c")
+gate_name = "Gate → Capella Tauri"
+target_system_id = 3
+target_system_name = "Capella Tauri"
+pos_x = -8893219.838478325
+pos_y = 752293.0183466536
+pos_z = -32588572.109202255
+
+[sub_resource type="Resource" id="Resource_f8aya"]
+script = ExtResource("2_wb60c")
+gate_name = "Gate → Phi Scorpii"
+target_system_id = 12
+target_system_name = "Phi Scorpii"
+pos_x = 33508522.64675217
+pos_y = -82385.15528607255
+pos_z = -4275897.712092317
+
+[sub_resource type="Resource" id="Resource_xog8d"]
+script = ExtResource("2_wb60c")
+gate_name = "Gate → Alpha Leonis"
+target_system_id = 108
+target_system_name = "Alpha Leonis"
+pos_x = -29363586.95693984
+pos_y = -353258.4635557828
+pos_z = 16699824.91628017
+
+[sub_resource type="Resource" id="Resource_o23o8"]
+script = ExtResource("2_wb60c")
+gate_name = "Gate → Eta Pegasi"
+target_system_id = 14
+target_system_name = "Eta Pegasi"
+pos_x = 23584193.106296904
+pos_y = 735384.996321338
+pos_z = -24184503.85550791
+
+[sub_resource type="Resource" id="Resource_qffh8"]
+script = ExtResource("3_u8jq3")
+planet_name = "Psi Draconis I"
+type = 2
+orbital_radius = 14161676.61547661
+orbital_period = 90.44160343584522
+orbital_angle = 5.982895085697954
+radius = 3774753.0341148376
+color = Color(0.22218858, 0.39042613, 0.8278667, 0.9)
+
+[sub_resource type="Resource" id="Resource_xsqxn"]
+script = ExtResource("3_u8jq3")
+planet_name = "Psi Draconis II"
+type = 4
+orbital_radius = 30559020.07068225
+orbital_period = 286.6852700867718
+orbital_angle = 0.9908485059145867
+radius = 5591257.333755493
+color = Color(0.56020224, 0.7192342, 0.9461527, 0.9)
+
+[sub_resource type="Resource" id="Resource_q3p0x"]
+script = ExtResource("3_u8jq3")
+planet_name = "Psi Draconis III"
+type = 4
+orbital_radius = 65942312.696209796
+orbital_period = 908.7459859446842
+orbital_angle = 5.9085340936813004
+radius = 9140764.713287354
+color = Color(0.50662863, 0.75521904, 0.93803805, 0.9)
+
+[sub_resource type="Resource" id="Resource_cc5pn"]
+script = ExtResource("5_qyflj")
+station_name = "Beta Station"
+orbital_radius = 30780236.695621
+orbital_period = 258.01674307809463
+orbital_angle = 0.11538884554000527
+
+[resource]
+script = ExtResource("4_g7uyx")
+system_name = "Psi Draconis"
+seed_value = 1431086630
+star_name = "Psi Draconis"
+star_spectral_class = "M"
+star_temperature = 3613.5215520858765
+star_radius = 18203182.96861052
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04255412894487381
+planets = Array[ExtResource("3_u8jq3")]([SubResource("Resource_qffh8"), SubResource("Resource_xsqxn"), SubResource("Resource_q3p0x")])
+stations = Array[ExtResource("5_qyflj")]([SubResource("Resource_cc5pn")])
+asteroid_belts = Array[ExtResource("1_ug7dk")]([SubResource("Resource_iaueu"), SubResource("Resource_yurni")])
+jump_gates = Array[ExtResource("2_wb60c")]([SubResource("Resource_7nfp2"), SubResource("Resource_f8aya"), SubResource("Resource_xog8d"), SubResource("Resource_o23o8")])

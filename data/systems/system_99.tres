@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_mo03y"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_urm7b"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_g5puo"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_qpyyk"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_bvxy0"]
+
+[sub_resource type="Resource" id="Resource_jlwwn"]
+script = ExtResource("1_mo03y")
+belt_name = "Mira Phoenicis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25130610.484523658
+width = 2042605.645912123
+rare_resource = &"crystal"
+asteroid_count = 407
+
+[sub_resource type="Resource" id="Resource_3fy3d"]
+script = ExtResource("1_mo03y")
+belt_name = "Mira Phoenicis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 37948149.39191464
+width = 3084409.9170442726
+dominant_resource = &"titanium"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 287
+
+[sub_resource type="Resource" id="Resource_gf481"]
+script = ExtResource("1_mo03y")
+belt_name = "Mira Phoenicis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 57303106.2320557
+width = 4657572.81901215
+dominant_resource = &"titanium"
+rare_resource = &"uranium"
+asteroid_count = 416
+
+[sub_resource type="Resource" id="Resource_ivd8v"]
+script = ExtResource("2_urm7b")
+gate_name = "Gate → Xi Draconis"
+target_system_id = 88
+target_system_name = "Xi Draconis"
+pos_x = 39586947.27033259
+pos_y = 817253.0016882005
+pos_z = 24533470.27940742
+
+[sub_resource type="Resource" id="Resource_4m1ln"]
+script = ExtResource("2_urm7b")
+gate_name = "Gate → Aldebaran Orionis"
+target_system_id = 47
+target_system_name = "Aldebaran Orionis"
+pos_x = -45740454.763726436
+pos_y = 1032497.6655768382
+pos_z = -8765178.614389723
+
+[sub_resource type="Resource" id="Resource_8l7jd"]
+script = ExtResource("2_urm7b")
+gate_name = "Gate → Deneb Ursae"
+target_system_id = 118
+target_system_name = "Deneb Ursae"
+pos_x = 3109264.6291487934
+pos_y = 109064.9931542493
+pos_z = 46468807.08174661
+
+[sub_resource type="Resource" id="Resource_5ggwh"]
+script = ExtResource("3_g5puo")
+planet_name = "Mira Phoenicis I"
+type = 2
+orbital_radius = 20024096.36974335
+orbital_period = 152.06372817954218
+orbital_angle = 1.8004002192214816
+radius = 6738470.077514648
+color = Color(0.24846786, 0.3808424, 0.78952336, 0.9)
+
+[sub_resource type="Resource" id="Resource_6pe0l"]
+script = ExtResource("3_g5puo")
+planet_name = "Mira Phoenicis II"
+type = 2
+orbital_radius = 30237124.599303965
+orbital_period = 282.1674921045909
+orbital_angle = 2.2020889676273363
+radius = 5583078.324794769
+color = Color(0.17858426, 0.44965333, 0.7072526, 0.9)
+
+[sub_resource type="Resource" id="Resource_6hj8l"]
+script = ExtResource("3_g5puo")
+planet_name = "Mira Phoenicis III"
+type = 3
+orbital_radius = 45659174.184525326
+orbital_period = 523.586357862991
+orbital_angle = 4.626479689643613
+radius = 17511341.869831085
+color = Color(0.79547757, 0.6909097, 0.35117975, 0.9)
+
+[sub_resource type="Resource" id="Resource_jnfwn"]
+script = ExtResource("3_g5puo")
+planet_name = "Mira Phoenicis IV"
+type = 4
+orbital_radius = 68947038.27958608
+orbital_period = 971.5600904111801
+orbital_angle = 3.4623822662790666
+radius = 3102381.706237793
+color = Color(0.54385674, 0.73401386, 0.9997684, 0.9)
+
+[sub_resource type="Resource" id="Resource_u18xr"]
+script = ExtResource("5_bvxy0")
+station_name = "Omega Platform"
+orbital_radius = 43572712.59154506
+orbital_period = 471.2277220766919
+orbital_angle = 5.837728671391256
+
+[resource]
+script = ExtResource("4_qpyyk")
+system_name = "Mira Phoenicis"
+seed_value = 2319571259
+star_name = "Mira Phoenicis"
+star_spectral_class = "K"
+star_temperature = 4349.907782673836
+star_radius = 46047503.05119753
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.25480210185050967
+planets = Array[ExtResource("3_g5puo")]([SubResource("Resource_5ggwh"), SubResource("Resource_6pe0l"), SubResource("Resource_6hj8l"), SubResource("Resource_jnfwn")])
+stations = Array[ExtResource("5_bvxy0")]([SubResource("Resource_u18xr")])
+asteroid_belts = Array[ExtResource("1_mo03y")]([SubResource("Resource_jlwwn"), SubResource("Resource_3fy3d"), SubResource("Resource_gf481")])
+jump_gates = Array[ExtResource("2_urm7b")]([SubResource("Resource_ivd8v"), SubResource("Resource_4m1ln"), SubResource("Resource_8l7jd")])

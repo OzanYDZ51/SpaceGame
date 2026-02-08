@@ -1,0 +1,140 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qa7r0"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_2iktn"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_fbcii"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_6ldn2"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_lmjhl"]
+
+[sub_resource type="Resource" id="Resource_8acu4"]
+script = ExtResource("1_qa7r0")
+belt_name = "Chi Carinae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 168309578.25373176
+width = 23969138.44699981
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 162
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_tbsl2"]
+script = ExtResource("1_qa7r0")
+belt_name = "Chi Carinae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 79929594.68579748
+width = 11382854.980173904
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_oxt1w"]
+script = ExtResource("1_qa7r0")
+belt_name = "Chi Carinae Belt 3"
+field_id = &"belt_2"
+orbital_radius = 37958268.16822419
+width = 5405675.6268554125
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 151
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_qtkf1"]
+script = ExtResource("2_2iktn")
+gate_name = "Gate → Gamma Aquilae"
+target_system_id = 89
+target_system_name = "Gamma Aquilae"
+pos_x = 35610700.57853973
+pos_y = 75805.55075769393
+pos_z = 40239252.25320809
+
+[sub_resource type="Resource" id="Resource_kdcb3"]
+script = ExtResource("2_2iktn")
+gate_name = "Gate → Procyon Centauri"
+target_system_id = 55
+target_system_name = "Procyon Centauri"
+pos_x = -52945218.118021816
+pos_y = -370573.6076111939
+pos_z = -9171875.273182524
+
+[sub_resource type="Resource" id="Resource_n4ops"]
+script = ExtResource("2_2iktn")
+gate_name = "Gate → Vega Tauri"
+target_system_id = 38
+target_system_name = "Vega Tauri"
+pos_x = -28277059.65430365
+pos_y = 358386.4576637145
+pos_z = -45691654.76209715
+
+[sub_resource type="Resource" id="Resource_cgq5e"]
+script = ExtResource("2_2iktn")
+gate_name = "Gate → Kappa Orionis"
+target_system_id = 21
+target_system_name = "Kappa Orionis"
+pos_x = 39879227.10645132
+pos_y = -168004.54649654464
+pos_z = 36013423.3721789
+
+[sub_resource type="Resource" id="Resource_huyrj"]
+script = ExtResource("3_fbcii")
+planet_name = "Chi Carinae I"
+type = 3
+orbital_radius = 24444079.101085663
+orbital_period = 205.0957988885093
+orbital_angle = 2.9259286617703073
+radius = 48719031.8107605
+color = Color(0.7583907, 0.6530897, 0.25842175, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_sw2ix"]
+script = ExtResource("3_fbcii")
+planet_name = "Chi Carinae II"
+type = 4
+orbital_radius = 51472457.23536272
+orbital_period = 626.6984146443405
+orbital_angle = 3.916002031763086
+radius = 9189123.630523682
+color = Color(0.50593454, 0.7425482, 0.9593123, 0.9)
+
+[sub_resource type="Resource" id="Resource_j5071"]
+script = ExtResource("3_fbcii")
+planet_name = "Chi Carinae III"
+type = 4
+orbital_radius = 108386732.13623224
+orbital_period = 1914.9631784083022
+orbital_angle = 2.810673374799267
+radius = 6938393.115997314
+color = Color(0.63248813, 0.7320302, 0.9193139, 0.9)
+
+[sub_resource type="Resource" id="Resource_gtyvl"]
+script = ExtResource("3_fbcii")
+planet_name = "Chi Carinae IV"
+type = 4
+orbital_radius = 228232424.3712313
+orbital_period = 5851.433303434707
+orbital_angle = 1.5745955133434086
+radius = 6497160.911560059
+color = Color(0.550297, 0.75380766, 0.966281, 0.9)
+
+[sub_resource type="Resource" id="Resource_vmkeq"]
+script = ExtResource("5_lmjhl")
+station_name = "Dock Hub"
+orbital_radius = 50733782.833444014
+orbital_period = 564.0285731799064
+orbital_angle = 5.0823008074399345
+
+[resource]
+script = ExtResource("4_6ldn2")
+system_name = "Chi Carinae"
+seed_value = 3773888607
+star_name = "Chi Carinae"
+star_spectral_class = "M"
+star_temperature = 2850.8429437875748
+star_radius = 25299667.613768574
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.07078806501626969
+planets = Array[ExtResource("3_fbcii")]([SubResource("Resource_huyrj"), SubResource("Resource_sw2ix"), SubResource("Resource_j5071"), SubResource("Resource_gtyvl")])
+stations = Array[ExtResource("5_lmjhl")]([SubResource("Resource_vmkeq")])
+asteroid_belts = Array[ExtResource("1_qa7r0")]([SubResource("Resource_8acu4"), SubResource("Resource_tbsl2"), SubResource("Resource_oxt1w")])
+jump_gates = Array[ExtResource("2_2iktn")]([SubResource("Resource_qtkf1"), SubResource("Resource_kdcb3"), SubResource("Resource_n4ops"), SubResource("Resource_cgq5e")])

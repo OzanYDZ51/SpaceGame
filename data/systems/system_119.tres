@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1qu21"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ueg0h"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_kyom2"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_mpww1"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_8jyqx"]
+
+[sub_resource type="Resource" id="Resource_rxixe"]
+script = ExtResource("1_1qu21")
+belt_name = "Chi Cygni Belt 1"
+field_id = &"belt_0"
+orbital_radius = 24584049.511235654
+width = 2641236.3959478135
+dominant_resource = &"titanium"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 420
+
+[sub_resource type="Resource" id="Resource_10lfq"]
+script = ExtResource("1_1qu21")
+belt_name = "Chi Cygni Belt 2"
+field_id = &"belt_1"
+orbital_radius = 42639896.270378664
+width = 4581102.307709391
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 180
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_vx15j"]
+script = ExtResource("2_ueg0h")
+gate_name = "Gate → Theta Leonis"
+target_system_id = 34
+target_system_name = "Theta Leonis"
+pos_x = 54402622.87369206
+pos_y = 261971.2018139679
+pos_z = -13749816.236011911
+
+[sub_resource type="Resource" id="Resource_ucc2w"]
+script = ExtResource("2_ueg0h")
+gate_name = "Gate → Iota Hydrae"
+target_system_id = 86
+target_system_name = "Iota Hydrae"
+pos_x = 40678874.81278611
+pos_y = 1086388.1653085626
+pos_z = 38651416.09342321
+
+[sub_resource type="Resource" id="Resource_i7uc8"]
+script = ExtResource("2_ueg0h")
+gate_name = "Gate → Chi Tauri"
+target_system_id = 74
+target_system_name = "Chi Tauri"
+pos_x = 29128498.9997304
+pos_y = 683029.2800845228
+pos_z = -47960748.201878205
+
+[sub_resource type="Resource" id="Resource_oapjn"]
+script = ExtResource("3_kyom2")
+planet_name = "Chi Cygni I"
+orbital_radius = 17980958.52136612
+orbital_period = 129.3944064270331
+orbital_angle = 3.478692796375257
+radius = 4143096.774816513
+color = Color(0.5185374, 0.64083153, 0.3570274, 0.9)
+
+[sub_resource type="Resource" id="Resource_64woi"]
+script = ExtResource("3_kyom2")
+planet_name = "Chi Cygni II"
+type = 3
+orbital_radius = 31187140.501105186
+orbital_period = 295.5694742665916
+orbital_angle = 3.488489151221329
+radius = 38386991.024017334
+color = Color(0.8871408, 0.7078758, 0.28674564, 0.9)
+
+[sub_resource type="Resource" id="Resource_1isgx"]
+script = ExtResource("3_kyom2")
+planet_name = "Chi Cygni III"
+type = 4
+orbital_radius = 54092652.03965214
+orbital_period = 675.1552600343149
+orbital_angle = 0.1282737481450604
+radius = 8314476.013183594
+color = Color(0.6144243, 0.79990923, 0.98073757, 0.9)
+
+[sub_resource type="Resource" id="Resource_ubbvh"]
+script = ExtResource("5_8jyqx")
+station_name = "Haven Outpost"
+orbital_radius = 53032097.46860099
+orbital_period = 607.6397340308835
+orbital_angle = 3.2032398810099756
+
+[sub_resource type="Resource" id="Resource_0lcll"]
+script = ExtResource("5_8jyqx")
+station_name = "Gateway Hub"
+station_type = 1
+orbital_radius = 53113303.43208515
+orbital_period = 607.6397340308835
+orbital_angle = 2.0081064984502963
+
+[resource]
+script = ExtResource("4_mpww1")
+system_name = "Chi Cygni"
+seed_value = 2196879063
+star_name = "Chi Cygni"
+star_spectral_class = "M"
+star_temperature = 3370.5378115177155
+star_radius = 30968720.330619812
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06277627229690552
+planets = Array[ExtResource("3_kyom2")]([SubResource("Resource_oapjn"), SubResource("Resource_64woi"), SubResource("Resource_1isgx")])
+stations = Array[ExtResource("5_8jyqx")]([SubResource("Resource_ubbvh"), SubResource("Resource_0lcll")])
+asteroid_belts = Array[ExtResource("1_1qu21")]([SubResource("Resource_rxixe"), SubResource("Resource_10lfq")])
+jump_gates = Array[ExtResource("2_ueg0h")]([SubResource("Resource_vx15j"), SubResource("Resource_ucc2w"), SubResource("Resource_i7uc8")])

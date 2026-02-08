@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_5m1ks"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_b5s5l"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_jnwue"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_j78c6"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ox4xw"]
+
+[sub_resource type="Resource" id="Resource_ac7ll"]
+script = ExtResource("1_5m1ks")
+belt_name = "Mira Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 13191804.854112893
+width = 1079940.269107831
+dominant_resource = &"ice"
+secondary_resource = &"titanium"
+asteroid_count = 267
+
+[sub_resource type="Resource" id="Resource_aj37l"]
+script = ExtResource("1_5m1ks")
+belt_name = "Mira Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 19980988.755383354
+width = 1635733.2914003534
+dominant_resource = &"uranium"
+secondary_resource = &"ice"
+asteroid_count = 321
+
+[sub_resource type="Resource" id="Resource_gnhtt"]
+script = ExtResource("2_b5s5l")
+gate_name = "Gate → Antares Virginis"
+target_system_id = 27
+target_system_name = "Antares Virginis"
+pos_x = -14751886.123130068
+pos_y = 154657.7601921075
+pos_z = -11940727.057623189
+
+[sub_resource type="Resource" id="Resource_ou3pp"]
+script = ExtResource("2_b5s5l")
+gate_name = "Gate → Iota Pavonis"
+target_system_id = 72
+target_system_name = "Iota Pavonis"
+pos_x = -17705489.040405214
+pos_y = 294615.5087808555
+pos_z = -6834820.019177007
+
+[sub_resource type="Resource" id="Resource_d02st"]
+script = ExtResource("2_b5s5l")
+gate_name = "Gate → Mu Aquilae"
+target_system_id = 87
+target_system_name = "Mu Aquilae"
+pos_x = -13136124.500442432
+pos_y = 460457.9226951849
+pos_z = 13698223.971133193
+
+[sub_resource type="Resource" id="Resource_wekwa"]
+script = ExtResource("3_jnwue")
+planet_name = "Mira Draconis I"
+type = 2
+orbital_radius = 10491954.181343317
+orbital_period = 57.674099440368366
+orbital_angle = 4.182276903386006
+radius = 4610736.608505249
+color = Color(0.24322058, 0.3925427, 0.7710461, 0.9)
+
+[sub_resource type="Resource" id="Resource_kj287"]
+script = ExtResource("3_jnwue")
+planet_name = "Mira Draconis II"
+type = 2
+orbital_radius = 15891655.526882472
+orbital_period = 107.51027128353525
+orbital_angle = 4.746818909523722
+radius = 7452874.302864075
+color = Color(0.2312284, 0.4162478, 0.75718933, 0.9)
+
+[sub_resource type="Resource" id="Resource_kokj8"]
+script = ExtResource("3_jnwue")
+planet_name = "Mira Draconis III"
+type = 3
+orbital_radius = 24070321.983884238
+orbital_period = 200.40986410910685
+orbital_angle = 5.872029395605528
+radius = 35593681.33544922
+color = Color(0.86618197, 0.7438106, 0.28549805, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_a4h22"]
+script = ExtResource("5_ox4xw")
+station_name = "Beta Station"
+orbital_radius = 15978912.162040586
+orbital_period = 96.75924415518172
+orbital_angle = 5.4724056789536775
+
+[sub_resource type="Resource" id="Resource_13a0c"]
+script = ExtResource("5_ox4xw")
+station_name = "Haven Depot"
+station_type = 3
+orbital_radius = 15954301.299225437
+orbital_period = 96.75924415518172
+orbital_angle = 5.91637252578346
+
+[resource]
+script = ExtResource("4_j78c6")
+system_name = "Mira Draconis"
+seed_value = 1633442459
+star_name = "Mira Draconis"
+star_spectral_class = "M"
+star_temperature = 3495.218425989151
+star_radius = 19693505.49718141
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05091688960790634
+planets = Array[ExtResource("3_jnwue")]([SubResource("Resource_wekwa"), SubResource("Resource_kj287"), SubResource("Resource_kokj8")])
+stations = Array[ExtResource("5_ox4xw")]([SubResource("Resource_a4h22"), SubResource("Resource_13a0c")])
+asteroid_belts = Array[ExtResource("1_5m1ks")]([SubResource("Resource_ac7ll"), SubResource("Resource_aj37l")])
+jump_gates = Array[ExtResource("2_b5s5l")]([SubResource("Resource_gnhtt"), SubResource("Resource_ou3pp"), SubResource("Resource_d02st")])

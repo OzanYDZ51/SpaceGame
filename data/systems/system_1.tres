@@ -1,0 +1,103 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_nxj7b"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ktls1"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_m1ck2"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_gdvpv"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_dqgxf"]
+
+[sub_resource type="Resource" id="Resource_rbfyi"]
+script = ExtResource("1_nxj7b")
+belt_name = "Sol Cygni Belt 1"
+field_id = &"belt_0"
+orbital_radius = 16803846.580236584
+width = 1993828.7724850299
+dominant_resource = &"copper"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 444
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_mqxxc"]
+script = ExtResource("2_ktls1")
+gate_name = "Gate → Tau Lyrae"
+target_system_id = 50
+target_system_name = "Tau Lyrae"
+pos_x = 13932409.436461864
+pos_y = 206691.18450604938
+pos_z = 6524045.43982889
+
+[sub_resource type="Resource" id="Resource_vigr8"]
+script = ExtResource("2_ktls1")
+gate_name = "Gate → Aldebaran Eridani"
+target_system_id = 112
+target_system_name = "Aldebaran Eridani"
+pos_x = 12783476.761868717
+pos_y = 372933.641633839
+pos_z = -8559084.266726566
+
+[sub_resource type="Resource" id="Resource_60n53"]
+script = ExtResource("2_ktls1")
+gate_name = "Gate → Nova Cygni"
+target_system_id = 102
+target_system_name = "Nova Cygni"
+pos_x = 15376660.54065812
+pos_y = -313460.4095539038
+pos_z = 483231.0250090152
+
+[sub_resource type="Resource" id="Resource_g5jp8"]
+script = ExtResource("2_ktls1")
+gate_name = "Gate → Sigma Serpentis"
+target_system_id = 64
+target_system_name = "Sigma Serpentis"
+pos_x = 10573448.254326515
+pos_y = -382887.63169052644
+pos_z = 11174855.418270221
+
+[sub_resource type="Resource" id="Resource_ljmv6"]
+script = ExtResource("3_m1ck2")
+planet_name = "Sol Cygni I"
+orbital_radius = 11819274.64902401
+orbital_period = 68.957654451324
+orbital_angle = 2.583109983916333
+radius = 5485776.782035828
+color = Color(0.6882053, 0.49498582, 0.30074438, 0.9)
+
+[sub_resource type="Resource" id="Resource_8nwkj"]
+script = ExtResource("3_m1ck2")
+planet_name = "Sol Cygni II"
+type = 1
+orbital_radius = 21788418.51144916
+orbital_period = 172.5976215796665
+orbital_angle = 3.4079798773212007
+radius = 2255599.021911621
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_ynxw5"]
+script = ExtResource("5_dqgxf")
+station_name = "Dock Station"
+orbital_radius = 11377054.893530624
+orbital_period = 62.061889006191606
+orbital_angle = 3.2143612417221465
+
+[sub_resource type="Resource" id="Resource_3pmsh"]
+script = ExtResource("5_dqgxf")
+station_name = "Beta Hub"
+orbital_radius = 12384251.740210302
+orbital_period = 62.061889006191606
+orbital_angle = 2.7600785987980494
+
+[resource]
+script = ExtResource("4_gdvpv")
+system_name = "Sol Cygni"
+seed_value = 2211796614
+star_name = "Sol Cygni"
+star_spectral_class = "K"
+star_temperature = 4211.85604929924
+star_radius = 54501412.97528744
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.5876526927947998
+planets = Array[ExtResource("3_m1ck2")]([SubResource("Resource_ljmv6"), SubResource("Resource_8nwkj")])
+stations = Array[ExtResource("5_dqgxf")]([SubResource("Resource_ynxw5"), SubResource("Resource_3pmsh")])
+asteroid_belts = Array[ExtResource("1_nxj7b")]([SubResource("Resource_rbfyi")])
+jump_gates = Array[ExtResource("2_ktls1")]([SubResource("Resource_mqxxc"), SubResource("Resource_vigr8"), SubResource("Resource_60n53"), SubResource("Resource_g5jp8")])

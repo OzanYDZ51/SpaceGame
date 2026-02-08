@@ -1,0 +1,114 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_v4ero"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_uo0sc"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_f6otw"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_imrcn"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_xfhbt"]
+
+[sub_resource type="Resource" id="Resource_1flkk"]
+script = ExtResource("1_v4ero")
+belt_name = "Fomalhaut Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27225420.46426204
+width = 2802438.1204533586
+dominant_resource = &"gold"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 383
+
+[sub_resource type="Resource" id="Resource_vl3er"]
+script = ExtResource("1_v4ero")
+belt_name = "Fomalhaut Pavonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 16081076.655866042
+width = 1655299.40290504
+dominant_resource = &"crystal"
+asteroid_count = 499
+
+[sub_resource type="Resource" id="Resource_rgg2i"]
+script = ExtResource("2_uo0sc")
+gate_name = "Gate → Regulus Tauri"
+target_system_id = 22
+target_system_name = "Regulus Tauri"
+pos_x = -12171075.060658544
+pos_y = -222023.29570872977
+pos_z = -8071753.737882647
+
+[sub_resource type="Resource" id="Resource_1chd2"]
+script = ExtResource("2_uo0sc")
+gate_name = "Gate → Vega Carinae"
+target_system_id = 68
+target_system_name = "Vega Carinae"
+pos_x = 13866742.319024544
+pos_y = -183349.86840609182
+pos_z = -4582764.885413681
+
+[sub_resource type="Resource" id="Resource_k34bf"]
+script = ExtResource("2_uo0sc")
+gate_name = "Gate → Xi Pegasi"
+target_system_id = 39
+target_system_name = "Xi Pegasi"
+pos_x = 14360954.032340623
+pos_y = -144872.38831679345
+pos_z = 2655423.849069388
+
+[sub_resource type="Resource" id="Resource_rc2oy"]
+script = ExtResource("2_uo0sc")
+gate_name = "Gate → Kappa Tauri"
+target_system_id = 17
+target_system_name = "Kappa Tauri"
+pos_x = -5588859.000286028
+pos_y = 62921.644687655025
+pos_z = 13492699.196681468
+
+[sub_resource type="Resource" id="Resource_q0umm"]
+script = ExtResource("3_f6otw")
+planet_name = "Fomalhaut Pavonis I"
+orbital_radius = 11942828.148603441
+orbital_period = 70.04175484491338
+orbital_angle = 0.7287678789416492
+radius = 5793465.197086334
+color = Color(0.45043385, 0.6685091, 0.3822822, 0.9)
+
+[sub_resource type="Resource" id="Resource_a2rh7"]
+script = ExtResource("3_f6otw")
+planet_name = "Fomalhaut Pavonis II"
+type = 3
+orbital_radius = 20219325.16312864
+orbital_period = 154.293001909269
+orbital_angle = 2.949209891184104
+radius = 41396467.68569946
+color = Color(0.7664463, 0.74161696, 0.29117292, 0.9)
+
+[sub_resource type="Resource" id="Resource_hirer"]
+script = ExtResource("3_f6otw")
+planet_name = "Fomalhaut Pavonis III"
+type = 4
+orbital_radius = 34231515.76539543
+orbital_period = 339.88769257546056
+orbital_angle = 5.488021498512386
+radius = 4715196.60949707
+color = Color(0.5829402, 0.76388943, 0.9810606, 0.9)
+
+[sub_resource type="Resource" id="Resource_yv31a"]
+script = ExtResource("5_xfhbt")
+station_name = "Haven Terminal"
+orbital_radius = 11604392.37137947
+orbital_period = 63.03757936042205
+orbital_angle = 2.0630837556965913
+
+[resource]
+script = ExtResource("4_imrcn")
+system_name = "Fomalhaut Pavonis"
+seed_value = 427297414
+star_name = "Fomalhaut Pavonis"
+star_spectral_class = "M"
+star_temperature = 3302.067583799362
+star_radius = 23531137.448632713
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0426727192401886
+planets = Array[ExtResource("3_f6otw")]([SubResource("Resource_q0umm"), SubResource("Resource_a2rh7"), SubResource("Resource_hirer")])
+stations = Array[ExtResource("5_xfhbt")]([SubResource("Resource_yv31a")])
+asteroid_belts = Array[ExtResource("1_v4ero")]([SubResource("Resource_1flkk"), SubResource("Resource_vl3er")])
+jump_gates = Array[ExtResource("2_uo0sc")]([SubResource("Resource_rgg2i"), SubResource("Resource_1chd2"), SubResource("Resource_k34bf"), SubResource("Resource_rc2oy")])

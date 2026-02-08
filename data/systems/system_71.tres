@@ -1,0 +1,98 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1dnou"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_r2kfq"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_r8p4i"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_1iqyt"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_7x364"]
+
+[sub_resource type="Resource" id="Resource_2qk22"]
+script = ExtResource("1_1dnou")
+belt_name = "Nu Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27795878.573553976
+width = 2186496.466118978
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 400
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_rsgmq"]
+script = ExtResource("2_r2kfq")
+gate_name = "Gate → Mira Tauri"
+target_system_id = 32
+target_system_name = "Mira Tauri"
+pos_x = 19721884.621046275
+pos_y = 152276.2263918554
+pos_z = -28747083.49399509
+
+[sub_resource type="Resource" id="Resource_fcsu3"]
+script = ExtResource("2_r2kfq")
+gate_name = "Gate → Omicron Serpentis"
+target_system_id = 53
+target_system_name = "Omicron Serpentis"
+pos_x = -21625729.108014204
+pos_y = 800617.3862922759
+pos_z = 27343653.431159735
+
+[sub_resource type="Resource" id="Resource_aikdt"]
+script = ExtResource("2_r2kfq")
+gate_name = "Gate → Vega Ursae"
+target_system_id = 43
+target_system_name = "Vega Ursae"
+pos_x = 6596993.888337114
+pos_y = 298849.7891185262
+pos_z = 34231961.878540196
+
+[sub_resource type="Resource" id="Resource_w5s2u"]
+script = ExtResource("2_r2kfq")
+gate_name = "Gate → Regulus Lyrae"
+target_system_id = 109
+target_system_name = "Regulus Lyrae"
+pos_x = -31431118.93205001
+pos_y = -633907.2795133865
+pos_z = 15080858.89781858
+
+[sub_resource type="Resource" id="Resource_1dmmm"]
+script = ExtResource("3_r8p4i")
+planet_name = "Nu Centauri I"
+type = 3
+orbital_radius = 22329637.40825653
+orbital_period = 179.06831639060354
+orbital_angle = 6.081548850611821
+radius = 20896035.43281555
+color = Color(0.75338376, 0.69107807, 0.27785212, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_u2g5g"]
+script = ExtResource("3_r8p4i")
+planet_name = "Nu Centauri II"
+type = 4
+orbital_radius = 33262119.73885142
+orbital_period = 325.55256975767355
+orbital_angle = 2.129458947095451
+radius = 5857207.775115967
+color = Color(0.59501576, 0.7625824, 0.9317287, 0.9)
+
+[sub_resource type="Resource" id="Resource_ojtvs"]
+script = ExtResource("5_7x364")
+station_name = "Alpha Hub"
+orbital_radius = 31861835.040866487
+orbital_period = 292.9973127819062
+orbital_angle = 5.125427538789974
+
+[resource]
+script = ExtResource("4_1iqyt")
+system_name = "Nu Centauri"
+seed_value = 2633094996
+star_name = "Nu Centauri"
+star_spectral_class = "M"
+star_temperature = 3464.416253566742
+star_radius = 19439191.30810499
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04031001302599907
+planets = Array[ExtResource("3_r8p4i")]([SubResource("Resource_1dmmm"), SubResource("Resource_u2g5g")])
+stations = Array[ExtResource("5_7x364")]([SubResource("Resource_ojtvs")])
+asteroid_belts = Array[ExtResource("1_1dnou")]([SubResource("Resource_2qk22")])
+jump_gates = Array[ExtResource("2_r2kfq")]([SubResource("Resource_rsgmq"), SubResource("Resource_fcsu3"), SubResource("Resource_aikdt"), SubResource("Resource_w5s2u")])

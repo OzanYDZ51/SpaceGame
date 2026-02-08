@@ -1,0 +1,131 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_cmgcw"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ls73t"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_nrmmp"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ghxit"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_os5g1"]
+
+[sub_resource type="Resource" id="Resource_vqw4r"]
+script = ExtResource("1_cmgcw")
+belt_name = "Procyon Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27196026.160222188
+width = 2926377.8980183187
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 275
+
+[sub_resource type="Resource" id="Resource_67img"]
+script = ExtResource("1_cmgcw")
+belt_name = "Procyon Persei Belt 2"
+field_id = &"belt_1"
+orbital_radius = 47212506.024446145
+width = 5080214.047671263
+dominant_resource = &"ice"
+asteroid_count = 173
+
+[sub_resource type="Resource" id="Resource_6mv2n"]
+script = ExtResource("1_cmgcw")
+belt_name = "Procyon Persei Belt 3"
+field_id = &"belt_2"
+orbital_radius = 81961265.66345944
+width = 8819289.807934053
+rare_resource = &"uranium"
+asteroid_count = 437
+
+[sub_resource type="Resource" id="Resource_25ry7"]
+script = ExtResource("2_ls73t")
+gate_name = "Gate → Delta Tauri"
+target_system_id = 36
+target_system_name = "Delta Tauri"
+pos_x = -19040136.847336493
+pos_y = -630634.1293508755
+pos_z = 31335232.65919834
+
+[sub_resource type="Resource" id="Resource_rxywo"]
+script = ExtResource("2_ls73t")
+gate_name = "Gate → Betelgeuse Carinae"
+target_system_id = 57
+target_system_name = "Betelgeuse Carinae"
+pos_x = 31996899.350163363
+pos_y = -461307.1263688611
+pos_z = -17905922.17527224
+
+[sub_resource type="Resource" id="Resource_3u7i7"]
+script = ExtResource("2_ls73t")
+gate_name = "Gate → Nova Virginis"
+target_system_id = 97
+target_system_name = "Nova Virginis"
+pos_x = 24728009.71767475
+pos_y = 74320.53536798879
+pos_z = -27073033.675116166
+
+[sub_resource type="Resource" id="Resource_apdc5"]
+script = ExtResource("2_ls73t")
+gate_name = "Gate → Regulus Lyrae"
+target_system_id = 109
+target_system_name = "Regulus Lyrae"
+pos_x = -18684533.570501365
+pos_y = -203260.2083036982
+pos_z = 31548562.918526076
+
+[sub_resource type="Resource" id="Resource_5fvdm"]
+script = ExtResource("3_nrmmp")
+planet_name = "Procyon Persei I"
+orbital_radius = 19880081.41517639
+orbital_period = 150.42619901143314
+orbital_angle = 5.160461173258613
+radius = 5842805.922031403
+color = Color(0.6871498, 0.4912612, 0.25068682, 0.9)
+
+[sub_resource type="Resource" id="Resource_8pdd7"]
+script = ExtResource("3_nrmmp")
+planet_name = "Procyon Persei II"
+orbital_radius = 34511970.90526798
+orbital_period = 344.07323150360037
+orbital_angle = 1.2396911052648232
+radius = 3069341.6744470596
+color = Color(0.6138972, 0.6223811, 0.37136108, 0.9)
+
+[sub_resource type="Resource" id="Resource_ndjin"]
+script = ExtResource("3_nrmmp")
+planet_name = "Procyon Persei III"
+type = 3
+orbital_radius = 59913041.1436243
+orbital_period = 787.0064484467377
+orbital_angle = 1.3800826485875497
+radius = 53967797.75619507
+color = Color(0.89077574, 0.60089594, 0.25260073, 0.9)
+
+[sub_resource type="Resource" id="Resource_y7fvl"]
+script = ExtResource("3_nrmmp")
+planet_name = "Procyon Persei IV"
+type = 4
+orbital_radius = 104009490.18329456
+orbital_period = 1800.1375671977164
+orbital_angle = 0.8457474430843264
+radius = 2978535.5925559998
+color = Color(0.5147819, 0.7861693, 0.9463392, 0.9)
+
+[sub_resource type="Resource" id="Resource_f53tr"]
+script = ExtResource("5_os5g1")
+station_name = "Beta Platform"
+orbital_radius = 33666382.654570535
+orbital_period = 309.66590835324035
+orbital_angle = 5.309616461923653
+
+[resource]
+script = ExtResource("4_ghxit")
+system_name = "Procyon Persei"
+seed_value = 1487423259
+star_name = "Procyon Persei"
+star_spectral_class = "K"
+star_temperature = 4019.413833320141
+star_radius = 47861762.49606013
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.4711931920051575
+planets = Array[ExtResource("3_nrmmp")]([SubResource("Resource_5fvdm"), SubResource("Resource_8pdd7"), SubResource("Resource_ndjin"), SubResource("Resource_y7fvl")])
+stations = Array[ExtResource("5_os5g1")]([SubResource("Resource_f53tr")])
+asteroid_belts = Array[ExtResource("1_cmgcw")]([SubResource("Resource_vqw4r"), SubResource("Resource_67img"), SubResource("Resource_6mv2n")])
+jump_gates = Array[ExtResource("2_ls73t")]([SubResource("Resource_25ry7"), SubResource("Resource_rxywo"), SubResource("Resource_3u7i7"), SubResource("Resource_apdc5")])

@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_akpq4"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_mq60m"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_2ya1k"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_jf5kx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_nrpou"]
+
+[sub_resource type="Resource" id="Resource_6b571"]
+script = ExtResource("1_akpq4")
+belt_name = "Rho Crucis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 26972609.60926428
+width = 3584898.4121871577
+dominant_resource = &"titanium"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 480
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_7gkh0"]
+script = ExtResource("2_mq60m")
+gate_name = "Gate → Alpha Eridani"
+target_system_id = 60
+target_system_name = "Alpha Eridani"
+pos_x = -4632781.618191818
+pos_y = 244095.03050165297
+pos_z = 21355273.41784003
+
+[sub_resource type="Resource" id="Resource_i6ko4"]
+script = ExtResource("2_mq60m")
+gate_name = "Gate → Phi Centauri"
+target_system_id = 28
+target_system_name = "Phi Centauri"
+pos_x = -21414540.809776194
+pos_y = -10701.414548238514
+pos_z = 4350610.322585886
+
+[sub_resource type="Resource" id="Resource_gvv7p"]
+script = ExtResource("2_mq60m")
+gate_name = "Gate → Pi Carinae"
+target_system_id = 10
+target_system_name = "Pi Carinae"
+pos_x = 16526902.463624367
+pos_y = 530648.2171771977
+pos_z = -14295868.746963501
+
+[sub_resource type="Resource" id="Resource_mckvw"]
+script = ExtResource("2_mq60m")
+gate_name = "Gate → Chi Centauri"
+target_system_id = 54
+target_system_name = "Chi Centauri"
+pos_x = 12054571.425167836
+pos_y = -116417.73507056272
+pos_z = -18226290.791822895
+
+[sub_resource type="Resource" id="Resource_pyoxj"]
+script = ExtResource("3_2ya1k")
+planet_name = "Rho Crucis I"
+type = 1
+orbital_radius = 18010363.578796387
+orbital_period = 129.71194276002018
+orbital_angle = 4.704395127865789
+radius = 2776129.6033859253
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_dhna1"]
+script = ExtResource("3_2ya1k")
+planet_name = "Rho Crucis II"
+orbital_radius = 35934855.639732175
+orbital_period = 365.56962281633787
+orbital_angle = 4.753349188576057
+radius = 3015565.0228261948
+color = Color(0.48716328, 0.5771127, 0.36904535, 0.9)
+
+[sub_resource type="Resource" id="Resource_3i3e8"]
+script = ExtResource("5_nrpou")
+station_name = "Port Hub"
+orbital_radius = 18852010.623111114
+orbital_period = 116.74074848401817
+orbital_angle = 0.44432412653477393
+
+[resource]
+script = ExtResource("4_jf5kx")
+system_name = "Rho Crucis"
+seed_value = 837913075
+star_name = "Rho Crucis"
+star_spectral_class = "K"
+star_temperature = 4548.301887512207
+star_radius = 45595156.72778786
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.5368472051620483
+planets = Array[ExtResource("3_2ya1k")]([SubResource("Resource_pyoxj"), SubResource("Resource_dhna1")])
+stations = Array[ExtResource("5_nrpou")]([SubResource("Resource_3i3e8")])
+asteroid_belts = Array[ExtResource("1_akpq4")]([SubResource("Resource_6b571")])
+jump_gates = Array[ExtResource("2_mq60m")]([SubResource("Resource_7gkh0"), SubResource("Resource_i6ko4"), SubResource("Resource_gvv7p"), SubResource("Resource_mckvw")])

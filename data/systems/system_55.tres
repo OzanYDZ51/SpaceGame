@@ -1,0 +1,144 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_6a8oj"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_vt3nv"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_slb16"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_keacx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_7cdv6"]
+
+[sub_resource type="Resource" id="Resource_sbfsp"]
+script = ExtResource("1_6a8oj")
+belt_name = "Procyon Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 24673554.794295244
+width = 2182640.868943378
+secondary_resource = &"titanium"
+rare_resource = &"platinum"
+asteroid_count = 423
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_852ia"]
+script = ExtResource("1_6a8oj")
+belt_name = "Procyon Centauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 38685534.25212744
+width = 3422150.914189501
+dominant_resource = &"copper"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 419
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_ugahb"]
+script = ExtResource("1_6a8oj")
+belt_name = "Procyon Centauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 60654841.70600933
+width = 5365572.067363252
+dominant_resource = &"platinum"
+secondary_resource = &"iron"
+asteroid_count = 431
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_lhksd"]
+script = ExtResource("2_vt3nv")
+gate_name = "Gate → Betelgeuse Carinae"
+target_system_id = 57
+target_system_name = "Betelgeuse Carinae"
+pos_x = 20856082.422616
+pos_y = 1188194.5378993016
+pos_z = -44321431.216341645
+
+[sub_resource type="Resource" id="Resource_bxo4u"]
+script = ExtResource("2_vt3nv")
+gate_name = "Gate → Chi Carinae"
+target_system_id = 6
+target_system_name = "Chi Carinae"
+pos_x = -43027782.193459496
+pos_y = -647901.8765988554
+pos_z = 23408874.355595693
+
+[sub_resource type="Resource" id="Resource_8emv6"]
+script = ExtResource("2_vt3nv")
+gate_name = "Gate → Spica Virginis"
+target_system_id = 24
+target_system_name = "Spica Virginis"
+pos_x = -41684533.2901518
+pos_y = 285050.3650671942
+pos_z = 25724795.88774385
+
+[sub_resource type="Resource" id="Resource_o5usv"]
+script = ExtResource("2_vt3nv")
+gate_name = "Gate → Aldebaran Leonis"
+target_system_id = 106
+target_system_name = "Aldebaran Leonis"
+pos_x = 48978203.19792852
+pos_y = -876867.2544533737
+pos_z = -707849.2680509309
+
+[sub_resource type="Resource" id="Resource_3j8qb"]
+script = ExtResource("3_slb16")
+planet_name = "Procyon Centauri I"
+type = 1
+orbital_radius = 19216952.6219368
+orbital_period = 142.96279260889256
+orbital_angle = 2.7195734166460577
+radius = 3414675.712585449
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_g8kmg"]
+script = ExtResource("3_slb16")
+planet_name = "Procyon Centauri II"
+orbital_radius = 30130156.96665369
+orbital_period = 280.6715126044847
+orbital_angle = 0.44037279650601796
+radius = 3989598.274230957
+color = Color(0.59932345, 0.49586102, 0.34530628, 0.9)
+
+[sub_resource type="Resource" id="Resource_wl11g"]
+script = ExtResource("3_slb16")
+planet_name = "Procyon Centauri III"
+orbital_radius = 47240911.537601195
+orbital_period = 551.0279741331059
+orbital_angle = 3.8163715525194326
+radius = 3786436.140537262
+color = Color(0.7399221, 0.5405655, 0.34921804, 0.9)
+
+[sub_resource type="Resource" id="Resource_3erys"]
+script = ExtResource("3_slb16")
+planet_name = "Procyon Centauri IV"
+type = 2
+orbital_radius = 74068771.87441745
+orbital_period = 1081.8049379493148
+orbital_angle = 2.418571257303641
+radius = 3203887.8053426743
+color = Color(0.24558935, 0.4268306, 0.72202545, 0.9)
+
+[sub_resource type="Resource" id="Resource_h8rwp"]
+script = ExtResource("5_7cdv6")
+station_name = "Beta Terminal"
+orbital_radius = 45336737.82096062
+orbital_period = 495.92517671979533
+orbital_angle = 3.291945615731312
+
+[sub_resource type="Resource" id="Resource_8yr8s"]
+script = ExtResource("5_7cdv6")
+station_name = "Haven Hub"
+orbital_radius = 45983317.96728204
+orbital_period = 495.92517671979533
+orbital_angle = 0.8629560410343619
+
+[resource]
+script = ExtResource("4_keacx")
+system_name = "Procyon Centauri"
+seed_value = 2035940756
+star_name = "Procyon Centauri"
+star_spectral_class = "F"
+star_temperature = 7313.332915306091
+star_radius = 87119080.69378285
+star_color = Color(0.95, 0.95, 0.9, 1)
+star_luminosity = 3.5111287236213684
+planets = Array[ExtResource("3_slb16")]([SubResource("Resource_3j8qb"), SubResource("Resource_g8kmg"), SubResource("Resource_wl11g"), SubResource("Resource_3erys")])
+stations = Array[ExtResource("5_7cdv6")]([SubResource("Resource_h8rwp"), SubResource("Resource_8yr8s")])
+asteroid_belts = Array[ExtResource("1_6a8oj")]([SubResource("Resource_sbfsp"), SubResource("Resource_852ia"), SubResource("Resource_ugahb")])
+jump_gates = Array[ExtResource("2_vt3nv")]([SubResource("Resource_lhksd"), SubResource("Resource_bxo4u"), SubResource("Resource_8emv6"), SubResource("Resource_o5usv")])

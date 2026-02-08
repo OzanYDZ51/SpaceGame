@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_43huv"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_1s7nw"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_qh8gb"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_rqsuf"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_47tr7"]
+
+[sub_resource type="Resource" id="Resource_kvit2"]
+script = ExtResource("1_43huv")
+belt_name = "Omega Aquilae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 43599666.315740764
+width = 6317410.039879992
+dominant_resource = &"platinum"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 480
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_8w0hs"]
+script = ExtResource("1_43huv")
+belt_name = "Omega Aquilae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 20412078.382313818
+width = 2957625.133490789
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 156
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_wth6t"]
+script = ExtResource("2_1s7nw")
+gate_name = "Gate → Tau Hydrae"
+target_system_id = 26
+target_system_name = "Tau Hydrae"
+pos_x = -30088395.81159719
+pos_y = 505168.4754110712
+pos_z = -756363.1260632834
+
+[sub_resource type="Resource" id="Resource_62scm"]
+script = ExtResource("2_1s7nw")
+gate_name = "Gate → Aldebaran Leonis"
+target_system_id = 106
+target_system_name = "Aldebaran Leonis"
+pos_x = -27003737.954085484
+pos_y = -736435.545246128
+pos_z = -13292170.033553246
+
+[sub_resource type="Resource" id="Resource_lpiaj"]
+script = ExtResource("3_qh8gb")
+planet_name = "Omega Aquilae I"
+type = 4
+orbital_radius = 13018015.548586845
+orbital_period = 79.71011262595523
+orbital_angle = 4.971997626904004
+radius = 4149120.092391968
+color = Color(0.6072066, 0.7355581, 0.95359683, 0.9)
+
+[sub_resource type="Resource" id="Resource_gelu1"]
+script = ExtResource("3_qh8gb")
+planet_name = "Omega Aquilae II"
+type = 4
+orbital_radius = 27806141.21604079
+orbital_period = 248.8326300792872
+orbital_angle = 2.3625863888977254
+radius = 9063115.59677124
+color = Color(0.5854622, 0.70488, 0.96708524, 0.9)
+
+[sub_resource type="Resource" id="Resource_atncv"]
+script = ExtResource("3_qh8gb")
+planet_name = "Omega Aquilae III"
+type = 4
+orbital_radius = 59393191.415440746
+orbital_period = 776.7857270849439
+orbital_angle = 1.3925012080189683
+radius = 5365306.377410889
+color = Color(0.59549356, 0.70721185, 0.98284495, 0.9)
+
+[sub_resource type="Resource" id="Resource_u77c2"]
+script = ExtResource("5_47tr7")
+station_name = "Haven Terminal"
+orbital_radius = 27097901.05129937
+orbital_period = 223.9493670713585
+orbital_angle = 5.96645160560672
+
+[resource]
+script = ExtResource("4_rqsuf")
+system_name = "Omega Aquilae"
+seed_value = 1503580492
+star_name = "Omega Aquilae"
+star_spectral_class = "M"
+star_temperature = 2474.5619524270296
+star_radius = 38666560.93176603
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0039910049326717855
+planets = Array[ExtResource("3_qh8gb")]([SubResource("Resource_lpiaj"), SubResource("Resource_gelu1"), SubResource("Resource_atncv")])
+stations = Array[ExtResource("5_47tr7")]([SubResource("Resource_u77c2")])
+asteroid_belts = Array[ExtResource("1_43huv")]([SubResource("Resource_kvit2"), SubResource("Resource_8w0hs")])
+jump_gates = Array[ExtResource("2_1s7nw")]([SubResource("Resource_wth6t"), SubResource("Resource_62scm")])

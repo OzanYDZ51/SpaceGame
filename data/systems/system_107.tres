@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_grybm"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_v07su"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_8qqhq"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_y2emg"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_5qiyh"]
+
+[sub_resource type="Resource" id="Resource_ppabs"]
+script = ExtResource("1_grybm")
+belt_name = "Vega Aquilae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25304204.64307782
+width = 2236450.600746142
+dominant_resource = &"uranium"
+secondary_resource = &"ice"
+asteroid_count = 250
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_x5f4s"]
+script = ExtResource("2_v07su")
+gate_name = "Gate → Polaris Virginis"
+target_system_id = 62
+target_system_name = "Polaris Virginis"
+pos_x = 14418614.050358273
+pos_y = 355883.7948140795
+pos_z = -30294541.5395442
+
+[sub_resource type="Resource" id="Resource_2d651"]
+script = ExtResource("2_v07su")
+gate_name = "Gate → Procyon Lyrae"
+target_system_id = 46
+target_system_name = "Procyon Lyrae"
+pos_x = -33294101.64740517
+pos_y = 774491.9854774816
+pos_z = 4142278.807203857
+
+[sub_resource type="Resource" id="Resource_ilbg6"]
+script = ExtResource("2_v07su")
+gate_name = "Gate → Altair Ursae"
+target_system_id = 91
+target_system_name = "Altair Ursae"
+pos_x = 4998500.88847344
+pos_y = 389451.4534971011
+pos_z = -33176357.04974686
+
+[sub_resource type="Resource" id="Resource_dbcp5"]
+script = ExtResource("2_v07su")
+gate_name = "Gate → Capella Persei"
+target_system_id = 13
+target_system_name = "Capella Persei"
+pos_x = 7750259.809924557
+pos_y = -715030.4731805277
+pos_z = -32643363.048298594
+
+[sub_resource type="Resource" id="Resource_nxmgv"]
+script = ExtResource("3_8qqhq")
+planet_name = "Vega Aquilae I"
+type = 3
+orbital_radius = 19713078.141212463
+orbital_period = 148.53469507947347
+orbital_angle = 6.162126659298127
+radius = 48358139.991760254
+color = Color(0.8996361, 0.68263555, 0.3173147, 0.9)
+
+[sub_resource type="Resource" id="Resource_4os6y"]
+script = ExtResource("3_8qqhq")
+planet_name = "Vega Aquilae II"
+type = 4
+orbital_radius = 30895331.144943174
+orbital_period = 291.43085174163133
+orbital_angle = 0.9376636393056992
+radius = 9417853.355407715
+color = Color(0.5794275, 0.7322818, 0.9658606, 0.9)
+
+[sub_resource type="Resource" id="Resource_s40xc"]
+script = ExtResource("5_5qiyh")
+station_name = "Gamma Station"
+orbital_radius = 30550792.512612246
+orbital_period = 262.2877665674682
+orbital_angle = 1.6425528096832898
+
+[resource]
+script = ExtResource("4_y2emg")
+system_name = "Vega Aquilae"
+seed_value = 3284163827
+star_name = "Vega Aquilae"
+star_spectral_class = "M"
+star_temperature = 3373.365354537964
+star_radius = 18694823.31001162
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.021838666915893555
+planets = Array[ExtResource("3_8qqhq")]([SubResource("Resource_nxmgv"), SubResource("Resource_4os6y")])
+stations = Array[ExtResource("5_5qiyh")]([SubResource("Resource_s40xc")])
+asteroid_belts = Array[ExtResource("1_grybm")]([SubResource("Resource_ppabs")])
+jump_gates = Array[ExtResource("2_v07su")]([SubResource("Resource_x5f4s"), SubResource("Resource_2d651"), SubResource("Resource_ilbg6"), SubResource("Resource_dbcp5")])

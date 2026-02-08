@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_bcfm8"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_b87gu"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_lsisv"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_plpd1"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_pc4h8"]
+
+[sub_resource type="Resource" id="Resource_7y3vw"]
+script = ExtResource("1_bcfm8")
+belt_name = "Spica Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 42686540.20807938
+width = 4181133.7870792747
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 225
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_0uj41"]
+script = ExtResource("1_bcfm8")
+belt_name = "Spica Virginis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 25893142.035210587
+width = 2536225.482068244
+dominant_resource = &"copper"
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 174
+
+[sub_resource type="Resource" id="Resource_1bpaj"]
+script = ExtResource("2_b87gu")
+gate_name = "Gate → Delta Carinae"
+target_system_id = 105
+target_system_name = "Delta Carinae"
+pos_x = -651001.7248909553
+pos_y = -523405.01143616997
+pos_z = -23018340.23243221
+
+[sub_resource type="Resource" id="Resource_4ktc1"]
+script = ExtResource("2_b87gu")
+gate_name = "Gate → Procyon Centauri"
+target_system_id = 55
+target_system_name = "Procyon Centauri"
+pos_x = 2176686.097841408
+pos_y = -468002.9883340443
+pos_z = 22924437.352600005
+
+[sub_resource type="Resource" id="Resource_alpew"]
+script = ExtResource("2_b87gu")
+gate_name = "Gate → Tau Hydrae"
+target_system_id = 26
+target_system_name = "Tau Hydrae"
+pos_x = 2847833.7561285803
+pos_y = 235703.72034996637
+pos_z = 22850768.766045332
+
+[sub_resource type="Resource" id="Resource_nfvoo"]
+script = ExtResource("3_lsisv")
+planet_name = "Spica Virginis I"
+type = 3
+orbital_radius = 19552578.330039978
+orbital_period = 146.72438420629592
+orbital_angle = 4.895200092161282
+radius = 53264176.84555054
+color = Color(0.8894452, 0.71164834, 0.255897, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_04nn4"]
+script = ExtResource("3_lsisv")
+planet_name = "Spica Virginis II"
+type = 4
+orbital_radius = 32233705.740381196
+orbital_period = 310.571499769597
+orbital_angle = 2.4254809119756358
+radius = 8012624.263763428
+color = Color(0.62961024, 0.7979364, 0.995879, 0.9)
+
+[sub_resource type="Resource" id="Resource_qrc5q"]
+script = ExtResource("3_lsisv")
+planet_name = "Spica Virginis III"
+type = 4
+orbital_radius = 53139374.67577757
+orbital_period = 657.3866845031062
+orbital_angle = 1.4936387035444705
+radius = 8469099.521636963
+color = Color(0.5524175, 0.7645893, 0.9935407, 0.9)
+
+[sub_resource type="Resource" id="Resource_5vsle"]
+script = ExtResource("5_pc4h8")
+station_name = "Beta Outpost"
+orbital_radius = 20027544.165668607
+orbital_period = 132.05194578566633
+orbital_angle = 1.7514551466798922
+
+[resource]
+script = ExtResource("4_plpd1")
+system_name = "Spica Virginis"
+seed_value = 2376973672
+star_name = "Spica Virginis"
+star_spectral_class = "M"
+star_temperature = 3460.5146765708923
+star_radius = 15895454.882764816
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05043293195962906
+planets = Array[ExtResource("3_lsisv")]([SubResource("Resource_nfvoo"), SubResource("Resource_04nn4"), SubResource("Resource_qrc5q")])
+stations = Array[ExtResource("5_pc4h8")]([SubResource("Resource_5vsle")])
+asteroid_belts = Array[ExtResource("1_bcfm8")]([SubResource("Resource_7y3vw"), SubResource("Resource_0uj41")])
+jump_gates = Array[ExtResource("2_b87gu")]([SubResource("Resource_1bpaj"), SubResource("Resource_4ktc1"), SubResource("Resource_alpew")])

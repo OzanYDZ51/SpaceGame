@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_v548x"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_uu4k4"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_blpe1"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_iiewj"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_vjkwe"]
+
+[sub_resource type="Resource" id="Resource_udrlu"]
+script = ExtResource("1_v548x")
+belt_name = "Spica Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25424193.566142913
+width = 1958891.799092053
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+asteroid_count = 443
+
+[sub_resource type="Resource" id="Resource_55tvr"]
+script = ExtResource("2_uu4k4")
+gate_name = "Gate → Sigma Cygni"
+target_system_id = 56
+target_system_name = "Sigma Cygni"
+pos_x = 20423320.991929673
+pos_y = -521342.20398472575
+pos_z = 9657548.647246376
+
+[sub_resource type="Resource" id="Resource_3pfvd"]
+script = ExtResource("2_uu4k4")
+gate_name = "Gate → Aldebaran Lyrae"
+target_system_id = 7
+target_system_name = "Aldebaran Lyrae"
+pos_x = 75705.02880603992
+pos_y = 123896.08868915337
+pos_z = -22591470.845474824
+
+[sub_resource type="Resource" id="Resource_5booh"]
+script = ExtResource("2_uu4k4")
+gate_name = "Gate → Regulus Scorpii"
+target_system_id = 49
+target_system_name = "Regulus Scorpii"
+pos_x = -1116196.6385435318
+pos_y = -9652.979803367873
+pos_z = 22564006.5431082
+
+[sub_resource type="Resource" id="Resource_fshkb"]
+script = ExtResource("3_blpe1")
+planet_name = "Spica Centauri I"
+type = 3
+orbital_radius = 20526964.06841278
+orbital_period = 157.82773611550925
+orbital_angle = 1.3714723575000791
+radius = 19262059.032917023
+color = Color(0.7510757, 0.62169546, 0.39580566, 0.9)
+
+[sub_resource type="Resource" id="Resource_5xsq1"]
+script = ExtResource("3_blpe1")
+planet_name = "Spica Centauri II"
+type = 4
+orbital_radius = 30321423.063873045
+orbital_period = 283.3483016629682
+orbital_angle = 3.49433370790486
+radius = 8210887.432098389
+color = Color(0.6212874, 0.78347474, 0.96402407, 0.9)
+
+[sub_resource type="Resource" id="Resource_gh771"]
+script = ExtResource("5_vjkwe")
+station_name = "Alpha Terminal"
+orbital_radius = 19591597.69058677
+orbital_period = 142.04496250395835
+orbital_angle = 0.4091045493265866
+
+[resource]
+script = ExtResource("4_iiewj")
+system_name = "Spica Centauri"
+seed_value = 3893744904
+star_name = "Spica Centauri"
+star_spectral_class = "M"
+star_temperature = 2668.1390404701233
+star_radius = 20341174.9171555
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.049969674050807954
+planets = Array[ExtResource("3_blpe1")]([SubResource("Resource_fshkb"), SubResource("Resource_5xsq1")])
+stations = Array[ExtResource("5_vjkwe")]([SubResource("Resource_gh771")])
+asteroid_belts = Array[ExtResource("1_v548x")]([SubResource("Resource_udrlu")])
+jump_gates = Array[ExtResource("2_uu4k4")]([SubResource("Resource_55tvr"), SubResource("Resource_3pfvd"), SubResource("Resource_5booh")])

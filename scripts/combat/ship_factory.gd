@@ -309,6 +309,31 @@ static func create_npc_data_only(ship_id: StringName, behavior_name: StringName,
 	return lod_data
 
 
+## Returns hardpoint configs for a ship_id (lightweight, no collision generation).
+## Used by display systems (hangar, equipment screen) to show weapon visuals.
+static var _config_cache: Dictionary = {}
+
+static func get_hardpoint_configs(ship_id: StringName) -> Array[Dictionary]:
+	if _config_cache.has(ship_id):
+		return _config_cache[ship_id]
+	var data := ShipRegistry.get_ship_data(ship_id)
+	if data == null or data.ship_scene_path == "":
+		return []
+	if not _scene_cache.has(data.ship_scene_path):
+		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
+		if packed == null:
+			return []
+		_scene_cache[data.ship_scene_path] = packed
+	var instance: Node3D = _scene_cache[data.ship_scene_path].instantiate() as Node3D
+	var configs: Array[Dictionary] = []
+	for child in instance.get_children():
+		if child is HardpointSlot:
+			configs.append(child.get_slot_config())
+	instance.queue_free()
+	_config_cache[ship_id] = configs
+	return configs
+
+
 ## Loads a ship scene and extracts HardpointSlot configs and model node.
 ## Generates a ConvexPolygonShape3D collision from the mesh (cached per ship type).
 static func _load_ship_scene(data: ShipData) -> Dictionary:

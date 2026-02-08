@@ -24,5 +24,16 @@ services:
     depends_on:
       - db
 
+  # Godot headless game server (WebSocket multiplayer)
+  # Uncomment to test the full stack locally:
+  # gameserver:
+  #   build:
+  #     context: ..
+  #     dockerfile: gameserver/Dockerfile
+  #   ports:
+  #     - "7777:7777"
+  #   environment:
+  #     PORT: "7777"
+
 volumes:
   pgdata:

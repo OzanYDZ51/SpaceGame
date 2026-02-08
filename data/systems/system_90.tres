@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_y4l0s"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_kk8fs"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_lbsfs"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_wy5dp"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_d3fnt"]
+
+[sub_resource type="Resource" id="Resource_33jbg"]
+script = ExtResource("1_y4l0s")
+belt_name = "Regulus Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 22035879.097140074
+width = 2996538.1231928826
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+asteroid_count = 212
+
+[sub_resource type="Resource" id="Resource_ijicn"]
+script = ExtResource("2_kk8fs")
+gate_name = "Gate → Altair Ursae"
+target_system_id = 91
+target_system_name = "Altair Ursae"
+pos_x = 14072418.269252451
+pos_y = -368587.5839236153
+pos_z = 10607408.730870632
+
+[sub_resource type="Resource" id="Resource_c5jy6"]
+script = ExtResource("2_kk8fs")
+gate_name = "Gate → Theta Pavonis"
+target_system_id = 96
+target_system_name = "Theta Pavonis"
+pos_x = -33217.48027461855
+pos_y = 428968.48120397044
+pos_z = 17622399.738047734
+
+[sub_resource type="Resource" id="Resource_nhx3u"]
+script = ExtResource("2_kk8fs")
+gate_name = "Gate → Rho Scorpii"
+target_system_id = 20
+target_system_name = "Rho Scorpii"
+pos_x = -17015256.17152638
+pos_y = -336795.8493026585
+pos_z = 4585971.363394457
+
+[sub_resource type="Resource" id="Resource_qu1lw"]
+script = ExtResource("2_kk8fs")
+gate_name = "Gate → Rigel Scorpii"
+target_system_id = 84
+target_system_name = "Rigel Scorpii"
+pos_x = 17101347.911461197
+pos_y = 131995.05689268294
+pos_z = -4253701.392869786
+
+[sub_resource type="Resource" id="Resource_eq27f"]
+script = ExtResource("3_lbsfs")
+planet_name = "Regulus Ursae I"
+orbital_radius = 14544533.789157867
+orbital_period = 94.13387815770392
+orbital_angle = 2.747282255401841
+radius = 2465671.308338642
+color = Color(0.65516007, 0.43717793, 0.3191574, 0.9)
+
+[sub_resource type="Resource" id="Resource_orhqp"]
+script = ExtResource("3_lbsfs")
+planet_name = "Regulus Ursae II"
+type = 2
+orbital_radius = 29527224.40512228
+orbital_period = 272.2890526264507
+orbital_angle = 4.143100472170395
+radius = 6914242.386817932
+color = Color(0.23615992, 0.42450213, 0.81101876, 0.9)
+
+[sub_resource type="Resource" id="Resource_40ak1"]
+script = ExtResource("5_d3fnt")
+station_name = "Beta Platform"
+orbital_radius = 14622431.044794606
+orbital_period = 84.72049034193353
+orbital_angle = 4.253200669896991
+
+[resource]
+script = ExtResource("4_wy5dp")
+system_name = "Regulus Ursae"
+seed_value = 567152261
+star_name = "Regulus Ursae"
+star_spectral_class = "K"
+star_temperature = 4538.196218013763
+star_radius = 60744556.32644892
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.27573610186576847
+planets = Array[ExtResource("3_lbsfs")]([SubResource("Resource_eq27f"), SubResource("Resource_orhqp")])
+stations = Array[ExtResource("5_d3fnt")]([SubResource("Resource_40ak1")])
+asteroid_belts = Array[ExtResource("1_y4l0s")]([SubResource("Resource_33jbg")])
+jump_gates = Array[ExtResource("2_kk8fs")]([SubResource("Resource_ijicn"), SubResource("Resource_c5jy6"), SubResource("Resource_nhx3u"), SubResource("Resource_qu1lw")])

@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_kgcfg"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_j2gcg"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_esc3h"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_1dey1"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_i42cw"]
+
+[sub_resource type="Resource" id="Resource_khn6u"]
+script = ExtResource("1_kgcfg")
+belt_name = "Rigel Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 17823276.155898746
+width = 1718980.911854814
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+asteroid_count = 424
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_lypim"]
+script = ExtResource("2_j2gcg")
+gate_name = "Gate → Delta Leonis"
+target_system_id = 110
+target_system_name = "Delta Leonis"
+pos_x = 5187179.240758235
+pos_y = -311769.0301068413
+pos_z = -16383803.741992524
+
+[sub_resource type="Resource" id="Resource_gq0oo"]
+script = ExtResource("2_j2gcg")
+gate_name = "Gate → Betelgeuse Persei"
+target_system_id = 101
+target_system_name = "Betelgeuse Persei"
+pos_x = -5454125.624441745
+pos_y = 409157.33543928014
+pos_z = 16296882.131398305
+
+[sub_resource type="Resource" id="Resource_hox7s"]
+script = ExtResource("2_j2gcg")
+gate_name = "Gate → Nu Persei"
+target_system_id = 15
+target_system_name = "Nu Persei"
+pos_x = -16983772.607663512
+pos_y = 98542.97680075596
+pos_z = 2624370.6946732886
+
+[sub_resource type="Resource" id="Resource_25sb7"]
+script = ExtResource("2_j2gcg")
+gate_name = "Gate → Aldebaran Orionis"
+target_system_id = 47
+target_system_name = "Aldebaran Orionis"
+pos_x = -4116752.88463884
+pos_y = 106878.48073245223
+pos_z = -16684969.260346249
+
+[sub_resource type="Resource" id="Resource_dcvij"]
+script = ExtResource("3_esc3h")
+planet_name = "Rigel Tauri I"
+type = 3
+orbital_radius = 13525823.876261711
+orbital_period = 84.41931735173078
+orbital_angle = 0.4880885965406161
+radius = 18696686.029434204
+color = Color(0.85561806, 0.7315756, 0.2835565, 0.9)
+
+[sub_resource type="Resource" id="Resource_apy0f"]
+script = ExtResource("3_esc3h")
+planet_name = "Rigel Tauri II"
+type = 4
+orbital_radius = 22120728.43553578
+orbital_period = 176.5612440313919
+orbital_angle = 1.9659443099516247
+radius = 7720488.07144165
+color = Color(0.58467597, 0.7741041, 0.97676665, 0.9)
+
+[sub_resource type="Resource" id="Resource_gsorc"]
+script = ExtResource("5_i42cw")
+station_name = "Port Platform"
+orbital_radius = 14185338.330445562
+orbital_period = 75.97738561655771
+orbital_angle = 6.094887667438511
+
+[resource]
+script = ExtResource("4_1dey1")
+system_name = "Rigel Tauri"
+seed_value = 599613843
+star_name = "Rigel Tauri"
+star_spectral_class = "M"
+star_temperature = 2512.506201863289
+star_radius = 7961246.313400194
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.015781145498156547
+planets = Array[ExtResource("3_esc3h")]([SubResource("Resource_dcvij"), SubResource("Resource_apy0f")])
+stations = Array[ExtResource("5_i42cw")]([SubResource("Resource_gsorc")])
+asteroid_belts = Array[ExtResource("1_kgcfg")]([SubResource("Resource_khn6u")])
+jump_gates = Array[ExtResource("2_j2gcg")]([SubResource("Resource_lypim"), SubResource("Resource_gq0oo"), SubResource("Resource_hox7s"), SubResource("Resource_25sb7")])

@@ -1,0 +1,117 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_hwjf5"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_27lah"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_xws54"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_nryt1"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_2o1jr"]
+
+[sub_resource type="Resource" id="Resource_5saf5"]
+script = ExtResource("1_hwjf5")
+belt_name = "Fomalhaut Phoenicis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 51541911.967547596
+width = 6461746.863907995
+dominant_resource = &"uranium"
+secondary_resource = &"crystal"
+asteroid_count = 385
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_j1gnj"]
+script = ExtResource("1_hwjf5")
+belt_name = "Fomalhaut Phoenicis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 26943012.86190043
+width = 3377812.7783508706
+dominant_resource = &"gold"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 306
+
+[sub_resource type="Resource" id="Resource_kp52q"]
+script = ExtResource("2_27lah")
+gate_name = "Gate → Altair Eridani"
+target_system_id = 59
+target_system_name = "Altair Eridani"
+pos_x = -41434426.27192082
+pos_y = -563209.0095632768
+pos_z = 57713104.54188547
+
+[sub_resource type="Resource" id="Resource_g5ns5"]
+script = ExtResource("2_27lah")
+gate_name = "Gate → Epsilon Virginis"
+target_system_id = 11
+target_system_name = "Epsilon Virginis"
+pos_x = -60600465.476621225
+pos_y = 1591845.3576639283
+pos_z = -37083658.13080855
+
+[sub_resource type="Resource" id="Resource_cf30r"]
+script = ExtResource("2_27lah")
+gate_name = "Gate → Deneb Eridani"
+target_system_id = 95
+target_system_name = "Deneb Eridani"
+pos_x = 18833373.88715744
+pos_y = -796836.9516740789
+pos_z = 68504876.79262243
+
+[sub_resource type="Resource" id="Resource_n8y2s"]
+script = ExtResource("2_27lah")
+gate_name = "Gate → Spica Pavonis"
+target_system_id = 81
+target_system_name = "Spica Pavonis"
+pos_x = 52277019.72716726
+pos_y = 827965.5281661493
+pos_z = 48111613.20088124
+
+[sub_resource type="Resource" id="Resource_ht6ws"]
+script = ExtResource("3_xws54")
+planet_name = "Fomalhaut Phoenicis I"
+type = 3
+orbital_radius = 18498480.916023254
+orbital_period = 135.0206961052885
+orbital_angle = 2.469540727586665
+radius = 22234766.483306885
+color = Color(0.88360196, 0.6946852, 0.36831176, 0.9)
+
+[sub_resource type="Resource" id="Resource_ru1wd"]
+script = ExtResource("3_xws54")
+planet_name = "Fomalhaut Phoenicis II"
+type = 4
+orbital_radius = 35387544.807777606
+orbital_period = 357.24971606677195
+orbital_angle = 5.976054714826193
+radius = 7983819.961547852
+color = Color(0.5477595, 0.7322611, 0.94418377, 0.9)
+
+[sub_resource type="Resource" id="Resource_ukmlo"]
+script = ExtResource("3_xws54")
+planet_name = "Fomalhaut Phoenicis III"
+type = 4
+orbital_radius = 67696279.12731758
+orbital_period = 945.2429391288721
+orbital_angle = 5.4808508124416715
+radius = 7460700.035095215
+color = Color(0.57603323, 0.75698817, 0.9575579, 0.9)
+
+[sub_resource type="Resource" id="Resource_nicar"]
+script = ExtResource("5_2o1jr")
+station_name = "Alpha Terminal"
+orbital_radius = 68046563.01571417
+orbital_period = 850.7186452159849
+orbital_angle = 1.556081383892746
+
+[resource]
+script = ExtResource("4_nryt1")
+system_name = "Fomalhaut Phoenicis"
+seed_value = 1356156161
+star_name = "Fomalhaut Phoenicis"
+star_spectral_class = "M"
+star_temperature = 2580.256274342537
+star_radius = 40282011.99319363
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.058913020968437195
+planets = Array[ExtResource("3_xws54")]([SubResource("Resource_ht6ws"), SubResource("Resource_ru1wd"), SubResource("Resource_ukmlo")])
+stations = Array[ExtResource("5_2o1jr")]([SubResource("Resource_nicar")])
+asteroid_belts = Array[ExtResource("1_hwjf5")]([SubResource("Resource_5saf5"), SubResource("Resource_j1gnj")])
+jump_gates = Array[ExtResource("2_27lah")]([SubResource("Resource_kp52q"), SubResource("Resource_g5ns5"), SubResource("Resource_cf30r"), SubResource("Resource_n8y2s")])

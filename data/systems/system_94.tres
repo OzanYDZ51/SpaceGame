@@ -1,0 +1,127 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_yllwp"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_3fvnk"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4i4ae"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ijqju"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_41ikx"]
+
+[sub_resource type="Resource" id="Resource_1rril"]
+script = ExtResource("1_yllwp")
+belt_name = "Aldebaran Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21481568.18019928
+width = 2819005.116890199
+secondary_resource = &"crystal"
+asteroid_count = 485
+
+[sub_resource type="Resource" id="Resource_gfltd"]
+script = ExtResource("1_yllwp")
+belt_name = "Aldebaran Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 42458573.25296014
+width = 5571796.912214145
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 247
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_myusi"]
+script = ExtResource("2_3fvnk")
+gate_name = "Gate → Pi Cygni"
+target_system_id = 76
+target_system_name = "Pi Cygni"
+pos_x = 4549197.506278131
+pos_y = 309352.4552816965
+pos_z = 16670210.977008166
+
+[sub_resource type="Resource" id="Resource_1edeq"]
+script = ExtResource("2_3fvnk")
+gate_name = "Gate → Sigma Serpentis"
+target_system_id = 64
+target_system_name = "Sigma Serpentis"
+pos_x = -7867424.230191562
+pos_y = -205414.52462185544
+pos_z = 15384887.648315324
+
+[sub_resource type="Resource" id="Resource_gj8gu"]
+script = ExtResource("2_3fvnk")
+gate_name = "Gate → Betelgeuse Persei"
+target_system_id = 101
+target_system_name = "Betelgeuse Persei"
+pos_x = 13530810.817585303
+pos_y = 195002.9596698075
+pos_z = -10747478.336233448
+
+[sub_resource type="Resource" id="Resource_tml3i"]
+script = ExtResource("3_4i4ae")
+planet_name = "Aldebaran Scorpii I"
+type = 2
+orbital_radius = 14434055.387973785
+orbital_period = 93.06337428756618
+orbital_angle = 6.1698033043640645
+radius = 3153365.917503834
+color = Color(0.19974779, 0.42609787, 0.70802635, 0.9)
+
+[sub_resource type="Resource" id="Resource_q06xg"]
+script = ExtResource("3_4i4ae")
+planet_name = "Aldebaran Scorpii II"
+type = 3
+orbital_radius = 28529080.97242478
+orbital_period = 258.59964023224785
+orbital_angle = 6.259710083125134
+radius = 50328485.96572876
+color = Color(0.8659151, 0.6925552, 0.362296, 0.9)
+
+[sub_resource type="Resource" id="Resource_2fmoq"]
+script = ExtResource("3_4i4ae")
+planet_name = "Aldebaran Scorpii III"
+type = 4
+orbital_radius = 56388065.5334955
+orbital_period = 718.583163786946
+orbital_angle = 4.478757639375848
+radius = 8427215.576171875
+color = Color(0.6091801, 0.78504634, 0.97751844, 0.9)
+
+[sub_resource type="Resource" id="Resource_lo7fm"]
+script = ExtResource("3_4i4ae")
+planet_name = "Aldebaran Scorpii IV"
+type = 4
+orbital_radius = 111451677.59463012
+orbital_period = 1996.7613366140547
+orbital_angle = 3.7665546276159785
+radius = 3083342.9098129272
+color = Color(0.5668986, 0.79978526, 0.98931247, 0.9)
+
+[sub_resource type="Resource" id="Resource_xvmc6"]
+script = ExtResource("3_4i4ae")
+planet_name = "Aldebaran Scorpii V"
+type = 4
+orbital_radius = 220285557.2564163
+orbital_period = 5548.496035427394
+orbital_angle = 4.135004753739798
+radius = 4819356.918334961
+color = Color(0.5882458, 0.70330226, 0.92174995, 0.9)
+
+[sub_resource type="Resource" id="Resource_fpmor"]
+script = ExtResource("5_41ikx")
+station_name = "Port Hub"
+orbital_radius = 14279789.69689998
+orbital_period = 83.75703685880956
+orbital_angle = 4.204852187051471
+
+[resource]
+script = ExtResource("4_ijqju")
+system_name = "Aldebaran Scorpii"
+seed_value = 2860847852
+star_name = "Aldebaran Scorpii"
+star_spectral_class = "M"
+star_temperature = 3617.9165601730347
+star_radius = 19312464.828962084
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06446393203735351
+planets = Array[ExtResource("3_4i4ae")]([SubResource("Resource_tml3i"), SubResource("Resource_q06xg"), SubResource("Resource_2fmoq"), SubResource("Resource_lo7fm"), SubResource("Resource_xvmc6")])
+stations = Array[ExtResource("5_41ikx")]([SubResource("Resource_fpmor")])
+asteroid_belts = Array[ExtResource("1_yllwp")]([SubResource("Resource_1rril"), SubResource("Resource_gfltd")])
+jump_gates = Array[ExtResource("2_3fvnk")]([SubResource("Resource_myusi"), SubResource("Resource_1edeq"), SubResource("Resource_gj8gu")])

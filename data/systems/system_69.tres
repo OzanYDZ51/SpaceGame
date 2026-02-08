@@ -1,0 +1,132 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_bp8sg"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ge41p"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_7k4sr"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_26fyr"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_x4vaq"]
+
+[sub_resource type="Resource" id="Resource_ont0y"]
+script = ExtResource("1_bp8sg")
+belt_name = "Betelgeuse Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 30557037.346264374
+width = 3262638.709028821
+dominant_resource = &"crystal"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 418
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_u0f0m"]
+script = ExtResource("1_bp8sg")
+belt_name = "Betelgeuse Centauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 52810298.962075576
+width = 5638665.93729566
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 188
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_rh0aw"]
+script = ExtResource("1_bp8sg")
+belt_name = "Betelgeuse Centauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 91269570.56930618
+width = 9745042.705596583
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 398
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_20fod"]
+script = ExtResource("2_ge41p")
+gate_name = "Gate → Altair Ursae"
+target_system_id = 91
+target_system_name = "Altair Ursae"
+pos_x = -32316225.140560143
+pos_y = 402905.9921772692
+pos_z = -29331353.567408685
+
+[sub_resource type="Resource" id="Resource_yl6ic"]
+script = ExtResource("2_ge41p")
+gate_name = "Gate → Upsilon Ursae"
+target_system_id = 103
+target_system_name = "Upsilon Ursae"
+pos_x = -41715871.387184374
+pos_y = 167913.97990235154
+pos_z = 12823914.528707743
+
+[sub_resource type="Resource" id="Resource_b7x7i"]
+script = ExtResource("2_ge41p")
+gate_name = "Gate → Xi Pegasi"
+target_system_id = 39
+target_system_name = "Xi Pegasi"
+pos_x = 42862592.947105356
+pos_y = -855156.0622692191
+pos_z = -8213698.027226466
+
+[sub_resource type="Resource" id="Resource_b2pk5"]
+script = ExtResource("3_7k4sr")
+planet_name = "Betelgeuse Centauri I"
+type = 4
+orbital_radius = 22400440.57369232
+orbital_period = 179.92068012170589
+orbital_angle = 5.557871178866228
+radius = 9924085.61706543
+color = Color(0.5731752, 0.75960654, 0.9051128, 0.9)
+
+[sub_resource type="Resource" id="Resource_s7do0"]
+script = ExtResource("3_7k4sr")
+planet_name = "Betelgeuse Centauri II"
+type = 4
+orbital_radius = 38713634.118836425
+orbital_period = 408.78236858702786
+orbital_angle = 3.4224111311494196
+radius = 8595591.068267822
+color = Color(0.6367803, 0.7102793, 0.9162083, 0.9)
+
+[sub_resource type="Resource" id="Resource_5g2tk"]
+script = ExtResource("3_7k4sr")
+planet_name = "Betelgeuse Centauri III"
+type = 4
+orbital_radius = 66906963.80531473
+orbital_period = 928.7594108391831
+orbital_angle = 2.4109693263898477
+radius = 7775356.769561768
+color = Color(0.5261363, 0.7591985, 0.9385267, 0.9)
+
+[sub_resource type="Resource" id="Resource_i7k80"]
+script = ExtResource("3_7k4sr")
+planet_name = "Betelgeuse Centauri IV"
+type = 4
+orbital_radius = 115632177.33329764
+orbital_period = 2110.1547168091824
+orbital_angle = 4.059275313041765
+radius = 9733625.411987305
+color = Color(0.6389378, 0.7999332, 0.94622433, 0.9)
+
+[sub_resource type="Resource" id="Resource_wbuch"]
+script = ExtResource("5_x4vaq")
+station_name = "Beta Terminal"
+orbital_radius = 40642487.4340557
+orbital_period = 367.90413172832507
+orbital_angle = 2.9162223758645394
+
+[resource]
+script = ExtResource("4_26fyr")
+system_name = "Betelgeuse Centauri"
+seed_value = 2554066941
+star_name = "Betelgeuse Centauri"
+star_spectral_class = "M"
+star_temperature = 2546.5259045362473
+star_radius = 22557042.881721254
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.002952766114845872
+planets = Array[ExtResource("3_7k4sr")]([SubResource("Resource_b2pk5"), SubResource("Resource_s7do0"), SubResource("Resource_5g2tk"), SubResource("Resource_i7k80")])
+stations = Array[ExtResource("5_x4vaq")]([SubResource("Resource_wbuch")])
+asteroid_belts = Array[ExtResource("1_bp8sg")]([SubResource("Resource_ont0y"), SubResource("Resource_u0f0m"), SubResource("Resource_rh0aw")])
+jump_gates = Array[ExtResource("2_ge41p")]([SubResource("Resource_20fod"), SubResource("Resource_yl6ic"), SubResource("Resource_b7x7i")])

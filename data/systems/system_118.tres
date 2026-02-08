@@ -1,0 +1,117 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_n31lo"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_kodvh"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_gn2ph"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_rmm3q"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_1hy2s"]
+
+[sub_resource type="Resource" id="Resource_o64sx"]
+script = ExtResource("1_n31lo")
+belt_name = "Deneb Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 37548935.84773433
+width = 2528256.21574948
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 454
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_of5ge"]
+script = ExtResource("1_n31lo")
+belt_name = "Deneb Ursae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 26728985.1814554
+width = 1799724.0507620918
+dominant_resource = &"gold"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 419
+
+[sub_resource type="Resource" id="Resource_m7ma0"]
+script = ExtResource("2_kodvh")
+gate_name = "Gate → Mira Phoenicis"
+target_system_id = 99
+target_system_name = "Mira Phoenicis"
+pos_x = 30171829.903843515
+pos_y = -351690.48980071873
+pos_z = -16834833.368865084
+
+[sub_resource type="Resource" id="Resource_t5flf"]
+script = ExtResource("2_kodvh")
+gate_name = "Gate → Fomalhaut Tauri"
+target_system_id = 25
+target_system_name = "Fomalhaut Tauri"
+pos_x = 24158343.677378263
+pos_y = -535827.4769600881
+pos_z = -24700715.881722875
+
+[sub_resource type="Resource" id="Resource_4boav"]
+script = ExtResource("2_kodvh")
+gate_name = "Gate → Mu Leonis"
+target_system_id = 48
+target_system_name = "Mu Leonis"
+pos_x = -8711507.19285141
+pos_y = 174762.16428774863
+pos_z = 33434422.03377856
+
+[sub_resource type="Resource" id="Resource_5db3r"]
+script = ExtResource("3_gn2ph")
+planet_name = "Deneb Ursae I"
+type = 3
+orbital_radius = 22229675.05455017
+orbital_period = 177.8672192638299
+orbital_angle = 4.964197020011702
+radius = 32725785.970687866
+color = Color(0.8624585, 0.6140854, 0.29547727, 0.9)
+
+[sub_resource type="Resource" id="Resource_lcx1y"]
+script = ExtResource("3_gn2ph")
+planet_name = "Deneb Ursae II"
+type = 3
+orbital_radius = 31228295.30836063
+orbital_period = 296.1547211005212
+orbital_angle = 1.6732575174118982
+radius = 42976493.83544922
+color = Color(0.8983834, 0.6736061, 0.30643296, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_ojjkx"]
+script = ExtResource("3_gn2ph")
+planet_name = "Deneb Ursae III"
+type = 4
+orbital_radius = 43869576.38710803
+orbital_period = 493.1072695302619
+orbital_angle = 3.2227760401408485
+radius = 9707623.00491333
+color = Color(0.5133965, 0.72511667, 0.9408813, 0.9)
+
+[sub_resource type="Resource" id="Resource_5666l"]
+script = ExtResource("5_1hy2s")
+station_name = "Nexus Platform"
+orbital_radius = 31550700.923482276
+orbital_period = 266.5392489904691
+orbital_angle = 0.17417857263097217
+
+[sub_resource type="Resource" id="Resource_3acjg"]
+script = ExtResource("5_1hy2s")
+station_name = "Gamma Depot"
+orbital_radius = 23068311.973325722
+orbital_period = 160.0804973374469
+orbital_angle = 6.143129415780967
+
+[resource]
+script = ExtResource("4_rmm3q")
+system_name = "Deneb Ursae"
+seed_value = 1423938959
+star_name = "Deneb Ursae"
+star_spectral_class = "M"
+star_temperature = 3283.6929321289063
+star_radius = 16772462.798887491
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05979392766952515
+planets = Array[ExtResource("3_gn2ph")]([SubResource("Resource_5db3r"), SubResource("Resource_lcx1y"), SubResource("Resource_ojjkx")])
+stations = Array[ExtResource("5_1hy2s")]([SubResource("Resource_5666l"), SubResource("Resource_3acjg")])
+asteroid_belts = Array[ExtResource("1_n31lo")]([SubResource("Resource_o64sx"), SubResource("Resource_of5ge")])
+jump_gates = Array[ExtResource("2_kodvh")]([SubResource("Resource_m7ma0"), SubResource("Resource_t5flf"), SubResource("Resource_4boav")])

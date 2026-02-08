@@ -1,0 +1,105 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_xmvm5"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_c4ab6"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_46nrj"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_lgwbx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_03t52"]
+
+[sub_resource type="Resource" id="Resource_uwj4t"]
+script = ExtResource("1_xmvm5")
+belt_name = "Omicron Serpentis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 30562459.912639268
+width = 3516894.6134016546
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 223
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_lqvip"]
+script = ExtResource("2_c4ab6")
+gate_name = "Gate → Vega Ursae"
+target_system_id = 43
+target_system_name = "Vega Ursae"
+pos_x = -13668587.537790485
+pos_y = -209232.88885776472
+pos_z = -19710532.070447866
+
+[sub_resource type="Resource" id="Resource_gp7j3"]
+script = ExtResource("2_c4ab6")
+gate_name = "Gate → Nu Centauri"
+target_system_id = 71
+target_system_name = "Nu Centauri"
+pos_x = -14098704.836651597
+pos_y = -290950.7331595357
+pos_z = 19405202.43922675
+
+[sub_resource type="Resource" id="Resource_lxr84"]
+script = ExtResource("2_c4ab6")
+gate_name = "Gate → Rho Ursae"
+target_system_id = 117
+target_system_name = "Rho Ursae"
+pos_x = 12903280.144578837
+pos_y = 375240.6538985288
+pos_z = -20219810.120001443
+
+[sub_resource type="Resource" id="Resource_j8qm6"]
+script = ExtResource("2_c4ab6")
+gate_name = "Gate → Regulus Orionis"
+target_system_id = 18
+target_system_name = "Regulus Orionis"
+pos_x = 17811730.60075889
+pos_y = -402394.5532984745
+pos_z = 16064794.202988857
+
+[sub_resource type="Resource" id="Resource_0cjtl"]
+script = ExtResource("3_46nrj")
+planet_name = "Omicron Serpentis I"
+type = 3
+orbital_radius = 21770223.37913513
+orbital_period = 172.38146677905277
+orbital_angle = 5.9680106783655
+radius = 17270794.957876205
+color = Color(0.86823136, 0.71164083, 0.31213936, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_4im2u"]
+script = ExtResource("3_46nrj")
+planet_name = "Omicron Serpentis II"
+type = 4
+orbital_radius = 39354696.4461434
+orbital_period = 418.9778793388283
+orbital_angle = 2.6304340027859587
+radius = 2822500.52690506
+color = Color(0.5726916, 0.721144, 0.99711806, 0.9)
+
+[sub_resource type="Resource" id="Resource_2im44"]
+script = ExtResource("5_03t52")
+station_name = "Gateway Outpost"
+orbital_radius = 20862536.942821532
+orbital_period = 155.1433201011475
+orbital_angle = 6.021641208338056
+
+[sub_resource type="Resource" id="Resource_1quqb"]
+script = ExtResource("5_03t52")
+station_name = "Haven Station"
+orbital_radius = 20986149.332028996
+orbital_period = 155.1433201011475
+orbital_angle = 3.8378899773510566
+
+[resource]
+script = ExtResource("4_lgwbx")
+system_name = "Omicron Serpentis"
+seed_value = 1900007637
+star_name = "Omicron Serpentis"
+star_spectral_class = "M"
+star_temperature = 3693.7317
+star_radius = 10435376.704373956
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04074924916028977
+planets = Array[ExtResource("3_46nrj")]([SubResource("Resource_0cjtl"), SubResource("Resource_4im2u")])
+stations = Array[ExtResource("5_03t52")]([SubResource("Resource_2im44"), SubResource("Resource_1quqb")])
+asteroid_belts = Array[ExtResource("1_xmvm5")]([SubResource("Resource_uwj4t")])
+jump_gates = Array[ExtResource("2_c4ab6")]([SubResource("Resource_lqvip"), SubResource("Resource_gp7j3"), SubResource("Resource_lxr84"), SubResource("Resource_j8qm6")])

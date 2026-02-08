@@ -1,0 +1,125 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ukel7"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_kpctj"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_oqbgs"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_gibn7"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_58xc7"]
+
+[sub_resource type="Resource" id="Resource_1yisl"]
+script = ExtResource("1_ukel7")
+belt_name = "Phi Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 30320602.997476414
+width = 3087669.151756984
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+asteroid_count = 163
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_7ltkg"]
+script = ExtResource("1_ukel7")
+belt_name = "Phi Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 51031679.69679347
+width = 5196761.527969839
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 290
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_qpclw"]
+script = ExtResource("2_kpctj")
+gate_name = "Gate → Upsilon Ursae"
+target_system_id = 103
+target_system_name = "Upsilon Ursae"
+pos_x = -40706230.845099755
+pos_y = -779661.6219998252
+pos_z = -6002262.075139502
+
+[sub_resource type="Resource" id="Resource_cdle3"]
+script = ExtResource("2_kpctj")
+gate_name = "Gate → Capella Tauri"
+target_system_id = 3
+target_system_name = "Capella Tauri"
+pos_x = -13254627.203408165
+pos_y = 586485.413831412
+pos_z = -38953038.87159358
+
+[sub_resource type="Resource" id="Resource_d2gjc"]
+script = ExtResource("2_kpctj")
+gate_name = "Gate → Psi Draconis"
+target_system_id = 98
+target_system_name = "Psi Draconis"
+pos_x = 35069538.960104346
+pos_y = -999955.3943485294
+pos_z = 21520962.263777416
+
+[sub_resource type="Resource" id="Resource_ne8jo"]
+script = ExtResource("2_kpctj")
+gate_name = "Gate → Alpha Leonis"
+target_system_id = 108
+target_system_name = "Alpha Leonis"
+pos_x = -40538117.07902951
+pos_y = 595914.4764466943
+pos_z = 7048790.202588247
+
+[sub_resource type="Resource" id="Resource_aptay"]
+script = ExtResource("3_oqbgs")
+planet_name = "Phi Scorpii I"
+type = 4
+orbital_radius = 22601430.118083954
+orbital_period = 182.34763048206094
+orbital_angle = 5.213191013828126
+radius = 8711348.533630371
+color = Color(0.5350362, 0.72881943, 0.98231554, 0.9)
+
+[sub_resource type="Resource" id="Resource_x1xwb"]
+script = ExtResource("3_oqbgs")
+planet_name = "Phi Scorpii II"
+type = 4
+orbital_radius = 38039775.876868874
+orbital_period = 398.1559114554986
+orbital_angle = 5.308728505759572
+radius = 8611532.211303711
+color = Color(0.64157254, 0.73072255, 0.9855643, 0.9)
+
+[sub_resource type="Resource" id="Resource_c7ew8"]
+script = ExtResource("3_oqbgs")
+planet_name = "Phi Scorpii III"
+type = 4
+orbital_radius = 64023583.51671807
+orbital_period = 869.3731276236931
+orbital_angle = 0.45751754100772957
+radius = 6298911.571502686
+color = Color(0.629917, 0.72221553, 0.92943645, 0.9)
+
+[sub_resource type="Resource" id="Resource_ofwse"]
+script = ExtResource("5_58xc7")
+station_name = "Omega Terminal"
+orbital_radius = 36345304.54514661
+orbital_period = 358.34032030994877
+orbital_angle = 4.745948929697
+
+[sub_resource type="Resource" id="Resource_4gbla"]
+script = ExtResource("5_58xc7")
+station_name = "Gateway Terminal"
+station_type = 3
+orbital_radius = 38146377.478864506
+orbital_period = 358.34032030994877
+orbital_angle = 1.0852204383472297
+
+[resource]
+script = ExtResource("4_gibn7")
+system_name = "Phi Scorpii"
+seed_value = 866521076
+star_name = "Phi Scorpii"
+star_spectral_class = "M"
+star_temperature = 2445.4308051615953
+star_radius = 23132631.435030695
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.027781425088644028
+planets = Array[ExtResource("3_oqbgs")]([SubResource("Resource_aptay"), SubResource("Resource_x1xwb"), SubResource("Resource_c7ew8")])
+stations = Array[ExtResource("5_58xc7")]([SubResource("Resource_ofwse"), SubResource("Resource_4gbla")])
+asteroid_belts = Array[ExtResource("1_ukel7")]([SubResource("Resource_1yisl"), SubResource("Resource_7ltkg")])
+jump_gates = Array[ExtResource("2_kpctj")]([SubResource("Resource_qpclw"), SubResource("Resource_cdle3"), SubResource("Resource_d2gjc"), SubResource("Resource_ne8jo")])

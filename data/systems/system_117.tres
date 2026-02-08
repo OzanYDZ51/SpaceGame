@@ -1,0 +1,152 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_t7alm"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_58hae"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_detko"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ikrhs"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_2qae4"]
+
+[sub_resource type="Resource" id="Resource_1auj2"]
+script = ExtResource("1_t7alm")
+belt_name = "Rho Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 28509796.249893073
+width = 2422539.5870315093
+asteroid_count = 445
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_o3iwd"]
+script = ExtResource("1_t7alm")
+belt_name = "Rho Ursae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 246509536.67294875
+width = 20946453.1397082
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+asteroid_count = 171
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_gm88d"]
+script = ExtResource("2_58hae")
+gate_name = "Gate → Vega Ursae"
+target_system_id = 43
+target_system_name = "Vega Ursae"
+pos_x = -14852321.364872191
+pos_y = -338193.27644659136
+pos_z = 21076366.878539994
+
+[sub_resource type="Resource" id="Resource_clyrx"]
+script = ExtResource("2_58hae")
+gate_name = "Gate → Regulus Orionis"
+target_system_id = 18
+target_system_name = "Regulus Orionis"
+pos_x = 6850518.3873389475
+pos_y = 404651.0971541519
+pos_z = -24857093.324622404
+
+[sub_resource type="Resource" id="Resource_1rvou"]
+script = ExtResource("2_58hae")
+gate_name = "Gate → Fomalhaut Scorpii"
+target_system_id = 0
+target_system_name = "Fomalhaut Scorpii"
+pos_x = -25025302.891930997
+pos_y = -96283.8814010771
+pos_z = -6207971.157420667
+
+[sub_resource type="Resource" id="Resource_jxvqu"]
+script = ExtResource("2_58hae")
+gate_name = "Gate → Omicron Serpentis"
+target_system_id = 53
+target_system_name = "Omicron Serpentis"
+pos_x = -25491205.533262905
+pos_y = 529616.5777008898
+pos_z = 3873387.55938562
+
+[sub_resource type="Resource" id="Resource_i107h"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae I"
+orbital_radius = 22453447.2823143
+orbital_period = 180.55968380932137
+orbital_angle = 5.530311955668247
+radius = 2054953.7502229214
+color = Color(0.6687695, 0.4752339, 0.2929798, 0.9)
+
+[sub_resource type="Resource" id="Resource_7b671"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae II"
+orbital_radius = 34566145.217471845
+orbital_period = 344.8837000086667
+orbital_angle = 2.130483036564317
+radius = 2178719.7962403297
+color = Color(0.56124943, 0.54011613, 0.33644283, 0.9)
+
+[sub_resource type="Resource" id="Resource_gr66n"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae III"
+orbital_radius = 53213138.284403354
+orbital_period = 658.7559527257409
+orbital_angle = 4.422222807398885
+radius = 4134351.283311844
+color = Color(0.5655378, 0.5050996, 0.29213285, 0.9)
+
+[sub_resource type="Resource" id="Resource_i1rri"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae IV"
+orbital_radius = 81919406.06219958
+orbital_period = 1258.2775156978817
+orbital_angle = 0.19635557977519327
+radius = 3609696.000814438
+color = Color(0.507866, 0.6656143, 0.38020125, 0.9)
+
+[sub_resource type="Resource" id="Resource_ev344"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae V"
+type = 3
+orbital_radius = 126111507.5325384
+orbital_period = 2403.41252319581
+orbital_angle = 3.0614884090407624
+radius = 15102133.257314563
+color = Color(0.804573, 0.7137559, 0.27554938, 0.9)
+
+[sub_resource type="Resource" id="Resource_tx7un"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae VI"
+type = 3
+orbital_radius = 194143403.82367826
+orbital_period = 4590.713641935084
+orbital_angle = 4.687123238227971
+radius = 22564103.00731659
+color = Color(0.7514458, 0.63902986, 0.2961525, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_5sfrq"]
+script = ExtResource("3_detko")
+planet_name = "Rho Ursae VII"
+type = 4
+orbital_radius = 298875669.52221924
+orbital_period = 8768.636902260114
+orbital_angle = 0.44741432446535007
+radius = 9479797.36328125
+color = Color(0.5072976, 0.7222896, 0.9555718, 0.9)
+
+[sub_resource type="Resource" id="Resource_hfqod"]
+script = ExtResource("5_2qae4")
+station_name = "Haven Depot"
+orbital_radius = 22783806.753934857
+orbital_period = 162.50371542838923
+orbital_angle = 4.590445746902404
+
+[resource]
+script = ExtResource("4_ikrhs")
+system_name = "Rho Ursae"
+seed_value = 2661083298
+star_name = "Rho Ursae"
+star_spectral_class = "F"
+star_temperature = 7061.369150876999
+star_radius = 94250289.69748616
+star_color = Color(0.95, 0.95, 0.9, 1)
+star_luminosity = 2.4962035417556763
+planets = Array[ExtResource("3_detko")]([SubResource("Resource_i107h"), SubResource("Resource_7b671"), SubResource("Resource_gr66n"), SubResource("Resource_i1rri"), SubResource("Resource_ev344"), SubResource("Resource_tx7un"), SubResource("Resource_5sfrq")])
+stations = Array[ExtResource("5_2qae4")]([SubResource("Resource_hfqod")])
+asteroid_belts = Array[ExtResource("1_t7alm")]([SubResource("Resource_1auj2"), SubResource("Resource_o3iwd")])
+jump_gates = Array[ExtResource("2_58hae")]([SubResource("Resource_gm88d"), SubResource("Resource_clyrx"), SubResource("Resource_1rvou"), SubResource("Resource_jxvqu")])

@@ -1,0 +1,111 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qatwj"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_b262p"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_ejj3w"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ag4ca"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ls65c"]
+
+[sub_resource type="Resource" id="Resource_ff742"]
+script = ExtResource("1_qatwj")
+belt_name = "Arcturus Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 50981615.1892182
+width = 5389879.306149278
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 250
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_2csnr"]
+script = ExtResource("1_qatwj")
+belt_name = "Arcturus Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 29666034.296121128
+width = 3136353.051089553
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 293
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ytmyj"]
+script = ExtResource("2_b262p")
+gate_name = "Gate → Canopus Hydrae"
+target_system_id = 45
+target_system_name = "Canopus Hydrae"
+pos_x = -30969038.21276817
+pos_y = 703016.7408732045
+pos_z = -28108598.869773462
+
+[sub_resource type="Resource" id="Resource_f1flp"]
+script = ExtResource("2_b262p")
+gate_name = "Gate → Regulus Orionis"
+target_system_id = 18
+target_system_name = "Regulus Orionis"
+pos_x = -41496632.8751153
+pos_y = 36390.2960848809
+pos_z = -5215756.730679196
+
+[sub_resource type="Resource" id="Resource_v151t"]
+script = ExtResource("3_ejj3w")
+planet_name = "Arcturus Scorpii I"
+orbital_radius = 12699984.014034271
+orbital_period = 76.80703589421896
+orbital_angle = 2.7181787524726966
+radius = 2490721.8366861343
+color = Color(0.6424508, 0.67782086, 0.3974732, 0.9)
+
+[sub_resource type="Resource" id="Resource_jwgoh"]
+script = ExtResource("3_ejj3w")
+planet_name = "Arcturus Scorpii II"
+type = 3
+orbital_radius = 21825151.668397244
+orbital_period = 173.0342797254662
+orbital_angle = 3.3171491897213334
+radius = 43722181.32019043
+color = Color(0.86154455, 0.7075848, 0.27404204, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_cx1wm"]
+script = ExtResource("3_ejj3w")
+planet_name = "Arcturus Scorpii III"
+type = 4
+orbital_radius = 37506916.92384501
+orbital_period = 389.8192608467065
+orbital_angle = 0.033451017506291224
+radius = 4133144.8554992676
+color = Color(0.57719857, 0.70874184, 0.9437567, 0.9)
+
+[sub_resource type="Resource" id="Resource_pxsm3"]
+script = ExtResource("3_ejj3w")
+planet_name = "Arcturus Scorpii IV"
+type = 4
+orbital_radius = 64456313.45459139
+orbital_period = 878.2020323843851
+orbital_angle = 3.780239863443839
+radius = 6859843.2540893555
+color = Color(0.5677479, 0.7877158, 0.987705, 0.9)
+
+[sub_resource type="Resource" id="Resource_u71fd"]
+script = ExtResource("5_ls65c")
+station_name = "Dock Station"
+orbital_radius = 38823135.442548126
+orbital_period = 350.8373347620359
+orbital_angle = 1.56402523972337
+
+[resource]
+script = ExtResource("4_ag4ca")
+system_name = "Arcturus Scorpii"
+seed_value = 1588598944
+star_name = "Arcturus Scorpii"
+star_spectral_class = "M"
+star_temperature = 2868.508753180504
+star_radius = 31014739.108407497
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04571768575906754
+planets = Array[ExtResource("3_ejj3w")]([SubResource("Resource_v151t"), SubResource("Resource_jwgoh"), SubResource("Resource_cx1wm"), SubResource("Resource_pxsm3")])
+stations = Array[ExtResource("5_ls65c")]([SubResource("Resource_u71fd")])
+asteroid_belts = Array[ExtResource("1_qatwj")]([SubResource("Resource_ff742"), SubResource("Resource_2csnr")])
+jump_gates = Array[ExtResource("2_b262p")]([SubResource("Resource_ytmyj"), SubResource("Resource_f1flp")])

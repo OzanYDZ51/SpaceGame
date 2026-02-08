@@ -251,6 +251,9 @@ func _setup_3d_viewer() -> void:
 	_ship_model.position = -_ship_center_offset
 	_viewport.add_child(_ship_model)
 
+	# Show equipped weapon meshes on the 3D model
+	_refresh_viewer_weapons()
+
 	_create_hardpoint_markers()
 	_auto_fit_camera()
 	_update_orbit_camera()
@@ -282,6 +285,17 @@ func _auto_fit_camera() -> void:
 	orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
 	_orbit_max_dist = ideal * 3.0
+
+
+func _refresh_viewer_weapons() -> void:
+	if _ship_model == null or weapon_manager == null:
+		return
+	var hp_configs: Array[Dictionary] = []
+	var weapon_names: Array[StringName] = []
+	for hp in weapon_manager.hardpoints:
+		hp_configs.append({"position": hp.position, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
+		weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+	_ship_model.apply_equipment(hp_configs, weapon_names)
 
 
 func _cleanup_3d_viewer() -> void:
@@ -1685,6 +1699,7 @@ func _equip_weapon() -> void:
 	_refresh_arsenal()
 	_update_button_states()
 	_update_marker_visuals()
+	_refresh_viewer_weapons()
 	queue_redraw()
 
 
@@ -1700,6 +1715,7 @@ func _remove_weapon() -> void:
 	_refresh_arsenal()
 	_update_button_states()
 	_update_marker_visuals()
+	_refresh_viewer_weapons()
 	queue_redraw()
 
 

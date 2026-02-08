@@ -1,0 +1,145 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ugaq3"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_dneuv"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_yfd4s"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_bm84x"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0nkmi"]
+
+[sub_resource type="Resource" id="Resource_cubct"]
+script = ExtResource("1_ugaq3")
+belt_name = "Delta Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 151834922.04687786
+width = 21484792.92453774
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+asteroid_count = 293
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_pkgdv"]
+script = ExtResource("1_ugaq3")
+belt_name = "Delta Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 72482185.76812278
+width = 10256301.5869643
+dominant_resource = &"uranium"
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 441
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_uxl6w"]
+script = ExtResource("2_dneuv")
+gate_name = "Gate → Procyon Persei"
+target_system_id = 61
+target_system_name = "Procyon Persei"
+pos_x = 83190881.88372251
+pos_y = 1608723.8856457435
+pos_z = 51991508.3499434
+
+[sub_resource type="Resource" id="Resource_dgncj"]
+script = ExtResource("2_dneuv")
+gate_name = "Gate → Upsilon Virginis"
+target_system_id = 114
+target_system_name = "Upsilon Virginis"
+pos_x = 93261589.50083211
+pos_y = -767991.9734759778
+pos_z = 30432149.001869485
+
+[sub_resource type="Resource" id="Resource_47trp"]
+script = ExtResource("2_dneuv")
+gate_name = "Gate → Mira Tauri"
+target_system_id = 32
+target_system_name = "Mira Tauri"
+pos_x = 9477567.244088473
+pos_y = -1134508.158166372
+pos_z = -97642283.30097307
+
+[sub_resource type="Resource" id="Resource_8r2xq"]
+script = ExtResource("2_dneuv")
+gate_name = "Gate → Gamma Aquilae"
+target_system_id = 89
+target_system_name = "Gamma Aquilae"
+pos_x = -35367219.506391086
+pos_y = 1015387.551244888
+pos_z = -91504095.8289871
+
+[sub_resource type="Resource" id="Resource_r7q7k"]
+script = ExtResource("3_yfd4s")
+planet_name = "Delta Tauri I"
+orbital_radius = 22360925.376415253
+orbital_period = 179.44481013886582
+orbital_angle = 0.23518711342443588
+radius = 5545886.278152466
+color = Color(0.552451, 0.691156, 0.4338426, 0.9)
+
+[sub_resource type="Resource" id="Resource_2hlb3"]
+script = ExtResource("3_yfd4s")
+planet_name = "Delta Tauri II"
+type = 3
+orbital_radius = 46841431.80071203
+orbital_period = 544.0533469673966
+orbital_angle = 5.73485720832476
+radius = 29324356.31752014
+color = Color(0.81545824, 0.7231933, 0.3925662, 0.9)
+
+[sub_resource type="Resource" id="Resource_jkv21"]
+script = ExtResource("3_yfd4s")
+planet_name = "Delta Tauri III"
+type = 4
+orbital_radius = 98122939.73553352
+orbital_period = 1649.499052758157
+orbital_angle = 0.4677033363498475
+radius = 6850651.264190674
+color = Color(0.6277824, 0.7549008, 0.9802518, 0.9)
+
+[sub_resource type="Resource" id="Resource_uveal"]
+script = ExtResource("3_yfd4s")
+planet_name = "Delta Tauri IV"
+type = 4
+orbital_radius = 205546904.35822222
+orbital_period = 5001.066789160124
+orbital_angle = 2.6817530753798935
+radius = 6034505.844116211
+color = Color(0.5206708, 0.7693792, 0.9418462, 0.9)
+
+[sub_resource type="Resource" id="Resource_6oxem"]
+script = ExtResource("3_yfd4s")
+planet_name = "Delta Tauri V"
+type = 4
+orbital_radius = 430577498.0358463
+orbital_period = 15162.584657335552
+orbital_angle = 2.139140515537352
+radius = 8235716.819763184
+color = Color(0.5005171, 0.7236316, 0.9891379, 0.9)
+
+[sub_resource type="Resource" id="Resource_gqusq"]
+script = ExtResource("5_0nkmi")
+station_name = "Nexus Depot"
+orbital_radius = 95101171.08930813
+orbital_period = 1484.5491474823414
+orbital_angle = 1.9366387604807167
+
+[sub_resource type="Resource" id="Resource_fbmu0"]
+script = ExtResource("5_0nkmi")
+station_name = "Gateway Terminal"
+station_type = 1
+orbital_radius = 22162347.401551746
+orbital_period = 161.50032912497923
+orbital_angle = 0.7762755466952739
+
+[resource]
+script = ExtResource("4_bm84x")
+system_name = "Delta Tauri"
+seed_value = 2659747343
+star_name = "Delta Tauri"
+star_spectral_class = "K"
+star_temperature = 5144.856554269791
+star_radius = 49730521.04040384
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.22719317555427554
+planets = Array[ExtResource("3_yfd4s")]([SubResource("Resource_r7q7k"), SubResource("Resource_2hlb3"), SubResource("Resource_jkv21"), SubResource("Resource_uveal"), SubResource("Resource_6oxem")])
+stations = Array[ExtResource("5_0nkmi")]([SubResource("Resource_gqusq"), SubResource("Resource_fbmu0")])
+asteroid_belts = Array[ExtResource("1_ugaq3")]([SubResource("Resource_cubct"), SubResource("Resource_pkgdv")])
+jump_gates = Array[ExtResource("2_dneuv")]([SubResource("Resource_uxl6w"), SubResource("Resource_dgncj"), SubResource("Resource_47trp"), SubResource("Resource_8r2xq")])

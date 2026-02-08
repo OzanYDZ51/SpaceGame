@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_f1qhl"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_jf785"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_tsvc2"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_a8cis"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0f25d"]
+
+[sub_resource type="Resource" id="Resource_w0ar5"]
+script = ExtResource("1_f1qhl")
+belt_name = "Mu Aquilae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 45202517.54618969
+width = 4041390.335875261
+dominant_resource = &"crystal"
+secondary_resource = &"uranium"
+asteroid_count = 388
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_r7h6n"]
+script = ExtResource("1_f1qhl")
+belt_name = "Mu Aquilae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 28687036.45774677
+width = 2564802.0995019064
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 460
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ntp07"]
+script = ExtResource("2_jf785")
+gate_name = "Gate → Pi Eridani"
+target_system_id = 19
+target_system_name = "Pi Eridani"
+pos_x = -57250216.68746265
+pos_y = 751484.023149091
+pos_z = -15044947.40428955
+
+[sub_resource type="Resource" id="Resource_nx2h4"]
+script = ExtResource("2_jf785")
+gate_name = "Gate → Epsilon Virginis"
+target_system_id = 11
+target_system_name = "Epsilon Virginis"
+pos_x = 49041731.17168409
+pos_y = 1297755.9985026938
+pos_z = 33148851.51620694
+
+[sub_resource type="Resource" id="Resource_rwnt3"]
+script = ExtResource("2_jf785")
+gate_name = "Gate → Mira Draconis"
+target_system_id = 9
+target_system_name = "Mira Draconis"
+pos_x = -4570153.289673017
+pos_y = 1195822.1045972821
+pos_z = 59017382.626376756
+
+[sub_resource type="Resource" id="Resource_hei1v"]
+script = ExtResource("2_jf785")
+gate_name = "Gate → Pi Cygni"
+target_system_id = 76
+target_system_name = "Pi Cygni"
+pos_x = 58363048.21377297
+pos_y = 928264.7958568409
+pos_z = -9883944.372368686
+
+[sub_resource type="Resource" id="Resource_g1ek2"]
+script = ExtResource("3_tsvc2")
+planet_name = "Mu Aquilae I"
+type = 3
+orbital_radius = 22275031.208992004
+orbital_period = 178.41186195656013
+orbital_angle = 2.7087033501498707
+radius = 15185762.1781528
+color = Color(0.8358019, 0.6366054, 0.3328185, 0.9)
+
+[sub_resource type="Resource" id="Resource_k4l2n"]
+script = ExtResource("3_tsvc2")
+planet_name = "Mu Aquilae II"
+type = 4
+orbital_radius = 35099041.706501536
+orbital_period = 352.88982209709275
+orbital_angle = 5.50932720335194
+radius = 7840617.1798706055
+color = Color(0.5908677, 0.7075624, 0.9185267, 0.9)
+
+[sub_resource type="Resource" id="Resource_26mh6"]
+script = ExtResource("3_tsvc2")
+planet_name = "Mu Aquilae III"
+type = 4
+orbital_radius = 55305993.38587784
+orbital_period = 697.9985813389396
+orbital_angle = 3.679245055096116
+radius = 3570276.8564224243
+color = Color(0.5904745, 0.7336513, 0.9701166, 0.9)
+
+[sub_resource type="Resource" id="Resource_kl1mm"]
+script = ExtResource("5_0f25d")
+station_name = "Haven Hub"
+orbital_radius = 35315689.14862111
+orbital_period = 317.6008398873835
+orbital_angle = 0.20636004349554993
+
+[sub_resource type="Resource" id="Resource_1cycc"]
+script = ExtResource("5_0f25d")
+station_name = "Gateway Hub"
+station_type = 2
+orbital_radius = 56194068.563997746
+orbital_period = 628.1987232050457
+orbital_angle = 4.436316255887585
+
+[resource]
+script = ExtResource("4_a8cis")
+system_name = "Mu Aquilae"
+seed_value = 3290573455
+star_name = "Mu Aquilae"
+star_spectral_class = "M"
+star_temperature = 2851.2235939502716
+star_radius = 21358033.224517103
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.02782181689143181
+planets = Array[ExtResource("3_tsvc2")]([SubResource("Resource_g1ek2"), SubResource("Resource_k4l2n"), SubResource("Resource_26mh6")])
+stations = Array[ExtResource("5_0f25d")]([SubResource("Resource_kl1mm"), SubResource("Resource_1cycc")])
+asteroid_belts = Array[ExtResource("1_f1qhl")]([SubResource("Resource_w0ar5"), SubResource("Resource_r7h6n")])
+jump_gates = Array[ExtResource("2_jf785")]([SubResource("Resource_ntp07"), SubResource("Resource_nx2h4"), SubResource("Resource_rwnt3"), SubResource("Resource_hei1v")])

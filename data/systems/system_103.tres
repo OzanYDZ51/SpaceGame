@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_j5dkf"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_xl12u"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_qjjox"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_3dkki"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_qs5ev"]
+
+[sub_resource type="Resource" id="Resource_3mjs5"]
+script = ExtResource("1_j5dkf")
+belt_name = "Upsilon Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25312367.704019703
+width = 2144548.545879427
+rare_resource = &"platinum"
+asteroid_count = 462
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_2cf6k"]
+script = ExtResource("2_xl12u")
+gate_name = "Gate → Phi Scorpii"
+target_system_id = 12
+target_system_name = "Phi Scorpii"
+pos_x = 9638131.29476028
+pos_y = -444137.49868838396
+pos_z = -33019731.140885398
+
+[sub_resource type="Resource" id="Resource_iopul"]
+script = ExtResource("2_xl12u")
+gate_name = "Gate → Betelgeuse Centauri"
+target_system_id = 69
+target_system_name = "Betelgeuse Centauri"
+pos_x = 33273535.403458286
+pos_y = -504687.3291163233
+pos_z = -8721700.592556601
+
+[sub_resource type="Resource" id="Resource_sygc6"]
+script = ExtResource("2_xl12u")
+gate_name = "Gate → Procyon Lyrae"
+target_system_id = 46
+target_system_name = "Procyon Lyrae"
+pos_x = -19796490.292827286
+pos_y = 608893.582592842
+pos_z = -28129969.633069094
+
+[sub_resource type="Resource" id="Resource_1l7rx"]
+script = ExtResource("2_xl12u")
+gate_name = "Gate → Altair Ursae"
+target_system_id = 91
+target_system_name = "Altair Ursae"
+pos_x = 17509812.871041622
+pos_y = -490281.2433461889
+pos_z = -29607476.63500724
+
+[sub_resource type="Resource" id="Resource_510tw"]
+script = ExtResource("3_qjjox")
+planet_name = "Upsilon Ursae I"
+type = 1
+orbital_radius = 19950996.339321136
+orbital_period = 151.23180209394616
+orbital_angle = 4.011955601002965
+radius = 2164616.5251731873
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_mf5vw"]
+script = ExtResource("3_qjjox")
+planet_name = "Upsilon Ursae II"
+orbital_radius = 30673739.06871827
+orbital_period = 288.3011150964879
+orbital_angle = 0.22268993092376507
+radius = 6709289.968013763
+color = Color(0.5925599, 0.5694902, 0.44837448, 0.9)
+
+[sub_resource type="Resource" id="Resource_3bqvj"]
+script = ExtResource("5_qs5ev")
+station_name = "Port Outpost"
+orbital_radius = 20402819.524516672
+orbital_period = 136.10862188455155
+orbital_angle = 4.025723977391106
+
+[sub_resource type="Resource" id="Resource_vamf2"]
+script = ExtResource("5_qs5ev")
+station_name = "Beta Depot"
+orbital_radius = 31397619.38668713
+orbital_period = 259.4710035868391
+orbital_angle = 1.9172370493730009
+
+[resource]
+script = ExtResource("4_3dkki")
+system_name = "Upsilon Ursae"
+seed_value = 3044909259
+star_name = "Upsilon Ursae"
+star_spectral_class = "K"
+star_temperature = 4633.329164981842
+star_radius = 53275993.20895672
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.5495978116989135
+planets = Array[ExtResource("3_qjjox")]([SubResource("Resource_510tw"), SubResource("Resource_mf5vw")])
+stations = Array[ExtResource("5_qs5ev")]([SubResource("Resource_3bqvj"), SubResource("Resource_vamf2")])
+asteroid_belts = Array[ExtResource("1_j5dkf")]([SubResource("Resource_3mjs5")])
+jump_gates = Array[ExtResource("2_xl12u")]([SubResource("Resource_2cf6k"), SubResource("Resource_iopul"), SubResource("Resource_sygc6"), SubResource("Resource_1l7rx")])

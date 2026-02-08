@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_85q4t"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_vw8j0"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_wre1b"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ef684"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_cmvqf"]
+
+[sub_resource type="Resource" id="Resource_gc4t2"]
+script = ExtResource("1_85q4t")
+belt_name = "Theta Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 32734420.06378133
+width = 3899181.7485044748
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 196
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_hwt55"]
+script = ExtResource("1_85q4t")
+belt_name = "Theta Pavonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 60498029.9566472
+width = 7206262.208641876
+secondary_resource = &"ice"
+asteroid_count = 229
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_cftt7"]
+script = ExtResource("2_vw8j0")
+gate_name = "Gate → Upsilon Pegasi"
+target_system_id = 104
+target_system_name = "Upsilon Pegasi"
+pos_x = 11967696.600907633
+pos_y = -1728824.5941697294
+pos_z = -79095358.72503713
+
+[sub_resource type="Resource" id="Resource_xqkgq"]
+script = ExtResource("2_vw8j0")
+gate_name = "Gate → Regulus Ursae"
+target_system_id = 90
+target_system_name = "Regulus Ursae"
+pos_x = -29635196.40543171
+pos_y = -44994.04459392278
+pos_z = -74303813.27889687
+
+[sub_resource type="Resource" id="Resource_heobr"]
+script = ExtResource("2_vw8j0")
+gate_name = "Gate → Rigel Scorpii"
+target_system_id = 84
+target_system_name = "Rigel Scorpii"
+pos_x = -66527898.13454131
+pos_y = -1525479.8125382427
+pos_z = 44422295.118259914
+
+[sub_resource type="Resource" id="Resource_628pt"]
+script = ExtResource("2_vw8j0")
+gate_name = "Gate → Capella Persei"
+target_system_id = 13
+target_system_name = "Capella Persei"
+pos_x = 23185430.523874186
+pos_y = -126814.12058913556
+pos_z = -76561983.68117356
+
+[sub_resource type="Resource" id="Resource_3vqah"]
+script = ExtResource("3_wre1b")
+planet_name = "Theta Pavonis I"
+type = 3
+orbital_radius = 22986465.69252014
+orbital_period = 187.02710239292443
+orbital_angle = 0.6136374900645443
+radius = 52283809.185028076
+color = Color(0.87956065, 0.70528114, 0.2987455, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_xddcj"]
+script = ExtResource("3_wre1b")
+planet_name = "Theta Pavonis II"
+type = 4
+orbital_radius = 42482374.435042515
+orbital_period = 469.90429822683484
+orbital_angle = 0.6342836880272755
+radius = 5852050.304412842
+color = Color(0.5784249, 0.7328727, 0.9993444, 0.9)
+
+[sub_resource type="Resource" id="Resource_hr4kv"]
+script = ExtResource("3_wre1b")
+planet_name = "Theta Pavonis III"
+type = 4
+orbital_radius = 78513685.47825189
+orbital_period = 1180.631291758749
+orbital_angle = 3.5707919392799505
+radius = 9643270.015716553
+color = Color(0.52058744, 0.79943424, 0.9783088, 0.9)
+
+[sub_resource type="Resource" id="Resource_n2pxk"]
+script = ExtResource("5_cmvqf")
+station_name = "Gateway Platform"
+orbital_radius = 76995634.46697378
+orbital_period = 1062.5681625828743
+orbital_angle = 6.090119443954292
+
+[sub_resource type="Resource" id="Resource_wwb1y"]
+script = ExtResource("5_cmvqf")
+station_name = "Beta Hub"
+station_type = 1
+orbital_radius = 23955565.7330461
+orbital_period = 168.324392153632
+orbital_angle = 5.714623342600179
+
+[resource]
+script = ExtResource("4_ef684")
+system_name = "Theta Pavonis"
+seed_value = 3274374869
+star_name = "Theta Pavonis"
+star_spectral_class = "M"
+star_temperature = 2863.361743092537
+star_radius = 41571780.84894419
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0402719544172287
+planets = Array[ExtResource("3_wre1b")]([SubResource("Resource_3vqah"), SubResource("Resource_xddcj"), SubResource("Resource_hr4kv")])
+stations = Array[ExtResource("5_cmvqf")]([SubResource("Resource_n2pxk"), SubResource("Resource_wwb1y")])
+asteroid_belts = Array[ExtResource("1_85q4t")]([SubResource("Resource_gc4t2"), SubResource("Resource_hwt55")])
+jump_gates = Array[ExtResource("2_vw8j0")]([SubResource("Resource_cftt7"), SubResource("Resource_xqkgq"), SubResource("Resource_heobr"), SubResource("Resource_628pt")])

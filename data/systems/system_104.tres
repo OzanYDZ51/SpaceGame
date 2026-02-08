@@ -1,0 +1,150 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_2w84p"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ghf7e"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_6ktu2"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_mlqr0"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_hf4qj"]
+
+[sub_resource type="Resource" id="Resource_3l7t7"]
+script = ExtResource("1_2w84p")
+belt_name = "Upsilon Pegasi Belt 1"
+field_id = &"belt_0"
+orbital_radius = 149923543.683331
+width = 16822530.602146644
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 493
+
+[sub_resource type="Resource" id="Resource_crk6w"]
+script = ExtResource("1_2w84p")
+belt_name = "Upsilon Pegasi Belt 2"
+field_id = &"belt_1"
+orbital_radius = 84237141.27259569
+width = 9452030.362147493
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 165
+
+[sub_resource type="Resource" id="Resource_5rhey"]
+script = ExtResource("2_ghf7e")
+gate_name = "Gate → Theta Pavonis"
+target_system_id = 96
+target_system_name = "Theta Pavonis"
+pos_x = 14307546.694141883
+pos_y = -396324.8780779962
+pos_z = 17294852.997007005
+
+[sub_resource type="Resource" id="Resource_y6312"]
+script = ExtResource("2_ghf7e")
+gate_name = "Gate → Alpha Eridani"
+target_system_id = 60
+target_system_name = "Alpha Eridani"
+pos_x = 3511310.2881782637
+pos_y = -438828.3357130722
+pos_z = 22169540.65047957
+
+[sub_resource type="Resource" id="Resource_x84yd"]
+script = ExtResource("2_ghf7e")
+gate_name = "Gate → Kappa Orionis"
+target_system_id = 21
+target_system_name = "Kappa Orionis"
+pos_x = -20474629.35656672
+pos_y = -544100.6252933263
+pos_z = 9198227.291405054
+
+[sub_resource type="Resource" id="Resource_uw7on"]
+script = ExtResource("2_ghf7e")
+gate_name = "Gate → Capella Persei"
+target_system_id = 13
+target_system_name = "Capella Persei"
+pos_x = 648655.3439410027
+pos_y = -107502.16508998082
+pos_z = 22436512.180771533
+
+[sub_resource type="Resource" id="Resource_26vwf"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi I"
+orbital_radius = 10750399.380922318
+orbital_period = 59.81817266258404
+orbital_angle = 2.5329850269821086
+radius = 4624275.982379913
+color = Color(0.6893955, 0.49422762, 0.3357702, 0.9)
+
+[sub_resource type="Resource" id="Resource_0p8ms"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi II"
+orbital_radius = 19133341.26550301
+orbital_period = 142.03077946659528
+orbital_angle = 1.9175143718274514
+radius = 3433585.8821868896
+color = Color(0.71257913, 0.41206634, 0.32437798, 0.9)
+
+[sub_resource type="Resource" id="Resource_ke6mc"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi III"
+orbital_radius = 34053130.02899736
+orbital_period = 337.23434565072523
+orbital_angle = 5.141832070150265
+radius = 2227585.583925247
+color = Color(0.74382424, 0.49811205, 0.3277175, 0.9)
+
+[sub_resource type="Resource" id="Resource_wksub"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi IV"
+orbital_radius = 60607065.36722695
+orbital_period = 800.7208318758869
+orbital_angle = 3.5574621106219393
+radius = 6708244.502544403
+color = Color(0.56323564, 0.47768486, 0.32029933, 0.9)
+
+[sub_resource type="Resource" id="Resource_54puv"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi V"
+orbital_radius = 107867217.17796442
+orbital_period = 1901.2116021659826
+orbital_angle = 4.3797791768684515
+radius = 4575083.076953888
+color = Color(0.5191382, 0.6994327, 0.39552507, 0.9)
+
+[sub_resource type="Resource" id="Resource_eeu4g"]
+script = ExtResource("3_6ktu2")
+planet_name = "Upsilon Pegasi VI"
+type = 3
+orbital_radius = 191979870.18869764
+orbital_period = 4514.189480673851
+orbital_angle = 0.917587628293543
+radius = 30107915.40145874
+color = Color(0.75578916, 0.63997704, 0.3120225, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_x02fy"]
+script = ExtResource("5_hf4qj")
+station_name = "Dock Depot"
+orbital_radius = 19445886.76335004
+orbital_period = 127.82770151993576
+orbital_angle = 3.703995475581904
+
+[sub_resource type="Resource" id="Resource_b2j7x"]
+script = ExtResource("5_hf4qj")
+station_name = "Omega Depot"
+station_type = 2
+orbital_radius = 18615576.674151786
+orbital_period = 127.82770151993576
+orbital_angle = 4.65473287436502
+
+[resource]
+script = ExtResource("4_mlqr0")
+system_name = "Upsilon Pegasi"
+seed_value = 93051499
+star_name = "Upsilon Pegasi"
+star_spectral_class = "F"
+star_temperature = 6418.322637677193
+star_radius = 99833765.95742105
+star_color = Color(0.95, 0.95, 0.9, 1)
+star_luminosity = 3.29245862364769
+planets = Array[ExtResource("3_6ktu2")]([SubResource("Resource_26vwf"), SubResource("Resource_0p8ms"), SubResource("Resource_ke6mc"), SubResource("Resource_wksub"), SubResource("Resource_54puv"), SubResource("Resource_eeu4g")])
+stations = Array[ExtResource("5_hf4qj")]([SubResource("Resource_x02fy"), SubResource("Resource_b2j7x")])
+asteroid_belts = Array[ExtResource("1_2w84p")]([SubResource("Resource_3l7t7"), SubResource("Resource_crk6w")])
+jump_gates = Array[ExtResource("2_ghf7e")]([SubResource("Resource_5rhey"), SubResource("Resource_y6312"), SubResource("Resource_x84yd"), SubResource("Resource_uw7on")])

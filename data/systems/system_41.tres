@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_u7jul"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_gxy6p"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_uytyt"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_otk5y"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_jmcqn"]
+
+[sub_resource type="Resource" id="Resource_w7n8d"]
+script = ExtResource("1_u7jul")
+belt_name = "Arcturus Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 14647212.98792156
+width = 1446569.3645802834
+dominant_resource = &"copper"
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 357
+
+[sub_resource type="Resource" id="Resource_cmnua"]
+script = ExtResource("2_gxy6p")
+gate_name = "Gate → Omega Leonis"
+target_system_id = 116
+target_system_name = "Omega Leonis"
+pos_x = 12227493.96755959
+pos_y = 101093.03905854278
+pos_z = -17031408.44774456
+
+[sub_resource type="Resource" id="Resource_4i2y6"]
+script = ExtResource("2_gxy6p")
+gate_name = "Gate → Rho Scorpii"
+target_system_id = 20
+target_system_name = "Rho Scorpii"
+pos_x = 16373616.66032616
+pos_y = 4025.848619008154
+pos_z = -13095234.243849952
+
+[sub_resource type="Resource" id="Resource_fj48f"]
+script = ExtResource("2_gxy6p")
+gate_name = "Gate → Mira Pegasi"
+target_system_id = 29
+target_system_name = "Mira Pegasi"
+pos_x = -17506788.4722255
+pos_y = -406141.2286506633
+pos_z = 11536587.00956931
+
+[sub_resource type="Resource" id="Resource_xq7cl"]
+script = ExtResource("3_uytyt")
+planet_name = "Arcturus Pavonis I"
+orbital_radius = 11030789.576470852
+orbital_period = 62.17361849386117
+orbital_angle = 3.037084220302631
+radius = 5156675.398349762
+color = Color(0.54085326, 0.6777353, 0.421018, 0.9)
+
+[sub_resource type="Resource" id="Resource_6au0t"]
+script = ExtResource("3_uytyt")
+planet_name = "Arcturus Pavonis II"
+type = 3
+orbital_radius = 18263636.39937227
+orbital_period = 132.45767342489177
+orbital_angle = 5.913959202493144
+radius = 53591058.25424194
+color = Color(0.7699744, 0.74907285, 0.2677717, 0.9)
+
+[sub_resource type="Resource" id="Resource_oot25"]
+script = ExtResource("5_jmcqn")
+station_name = "Gamma Depot"
+orbital_radius = 17966174.72121729
+orbital_period = 119.21190608240259
+orbital_angle = 4.881007773817113
+
+[resource]
+script = ExtResource("4_otk5y")
+system_name = "Arcturus Pavonis"
+seed_value = 3861472047
+star_name = "Arcturus Pavonis"
+star_spectral_class = "M"
+star_temperature = 2642.4384132027626
+star_radius = 28762963.008010387
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.056287968158721925
+planets = Array[ExtResource("3_uytyt")]([SubResource("Resource_xq7cl"), SubResource("Resource_6au0t")])
+stations = Array[ExtResource("5_jmcqn")]([SubResource("Resource_oot25")])
+asteroid_belts = Array[ExtResource("1_u7jul")]([SubResource("Resource_w7n8d")])
+jump_gates = Array[ExtResource("2_gxy6p")]([SubResource("Resource_cmnua"), SubResource("Resource_4i2y6"), SubResource("Resource_fj48f")])

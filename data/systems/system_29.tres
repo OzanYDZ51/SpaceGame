@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_35rgd"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_t2k6j"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_lmlbd"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_brkqo"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0urfy"]
+
+[sub_resource type="Resource" id="Resource_omcpj"]
+script = ExtResource("1_35rgd")
+belt_name = "Mira Pegasi Belt 1"
+field_id = &"belt_0"
+orbital_radius = 52924390.835933454
+width = 5268986.342160929
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 201
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_rhngw"]
+script = ExtResource("1_35rgd")
+belt_name = "Mira Pegasi Belt 2"
+field_id = &"belt_1"
+orbital_radius = 87999156.72693038
+width = 8760920.014237842
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+asteroid_count = 404
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_jbow5"]
+script = ExtResource("2_t2k6j")
+gate_name = "Gate → Pi Eridani"
+target_system_id = 19
+target_system_name = "Pi Eridani"
+pos_x = 13993969.438412147
+pos_y = -519006.9682283002
+pos_z = 23696478.549878273
+
+[sub_resource type="Resource" id="Resource_42o28"]
+script = ExtResource("2_t2k6j")
+gate_name = "Gate → Chi Leonis"
+target_system_id = 31
+target_system_name = "Chi Leonis"
+pos_x = 7217318.694643604
+pos_y = -230238.6272701187
+pos_z = -26556818.091932666
+
+[sub_resource type="Resource" id="Resource_1qfpj"]
+script = ExtResource("2_t2k6j")
+gate_name = "Gate → Arcturus Pavonis"
+target_system_id = 41
+target_system_name = "Arcturus Pavonis"
+pos_x = 17802630.683518145
+pos_y = -559946.6262583865
+pos_z = -20986200.634090785
+
+[sub_resource type="Resource" id="Resource_uc68e"]
+script = ExtResource("3_lmlbd")
+planet_name = "Mira Pegasi I"
+type = 3
+orbital_radius = 23907574.713230133
+orbital_period = 198.38074933325018
+orbital_angle = 3.484560197987514
+radius = 35898351.66931152
+color = Color(0.76520544, 0.6349381, 0.38875464, 0.9)
+
+[sub_resource type="Resource" id="Resource_00qar"]
+script = ExtResource("3_lmlbd")
+planet_name = "Mira Pegasi II"
+type = 4
+orbital_radius = 39751924.98053113
+orbital_period = 425.3373197902704
+orbital_angle = 5.927762408034917
+radius = 6679549.217224121
+color = Color(0.62630844, 0.7539476, 0.95861554, 0.9)
+
+[sub_resource type="Resource" id="Resource_2vj0l"]
+script = ExtResource("3_lmlbd")
+planet_name = "Mira Pegasi III"
+type = 4
+orbital_radius = 66096856.691335775
+orbital_period = 911.942495501243
+orbital_angle = 4.174856795634448
+radius = 6909205.913543701
+color = Color(0.5330901, 0.71769434, 0.90474576, 0.9)
+
+[sub_resource type="Resource" id="Resource_cjeej"]
+script = ExtResource("3_lmlbd")
+planet_name = "Mira Pegasi IV"
+type = 4
+orbital_radius = 109901456.76252498
+orbital_period = 1955.2460515599892
+orbital_angle = 4.181174729201741
+radius = 3300663.709640503
+color = Color(0.5895856, 0.7356662, 0.9044275, 0.9)
+
+[sub_resource type="Resource" id="Resource_fmxv5"]
+script = ExtResource("5_0urfy")
+station_name = "Omega Hub"
+orbital_radius = 24520070.427018426
+orbital_period = 178.54267439992518
+orbital_angle = 0.43850751743822913
+
+[resource]
+script = ExtResource("4_brkqo")
+system_name = "Mira Pegasi"
+seed_value = 2774859929
+star_name = "Mira Pegasi"
+star_spectral_class = "M"
+star_temperature = 3099.6036171913147
+star_radius = 28081233.46670866
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.062257455646991734
+planets = Array[ExtResource("3_lmlbd")]([SubResource("Resource_uc68e"), SubResource("Resource_00qar"), SubResource("Resource_2vj0l"), SubResource("Resource_cjeej")])
+stations = Array[ExtResource("5_0urfy")]([SubResource("Resource_fmxv5")])
+asteroid_belts = Array[ExtResource("1_35rgd")]([SubResource("Resource_omcpj"), SubResource("Resource_rhngw")])
+jump_gates = Array[ExtResource("2_t2k6j")]([SubResource("Resource_jbow5"), SubResource("Resource_42o28"), SubResource("Resource_1qfpj")])

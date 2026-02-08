@@ -1,0 +1,118 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_oum0x"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_eji2i"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_sobtc"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_htwdr"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_t87kc"]
+
+[sub_resource type="Resource" id="Resource_fxyeb"]
+script = ExtResource("1_oum0x")
+belt_name = "Capella Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 29091270.313450307
+width = 2415797.8478227495
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 185
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_o4xhf"]
+script = ExtResource("1_oum0x")
+belt_name = "Capella Persei Belt 2"
+field_id = &"belt_1"
+orbital_radius = 44334917.73282902
+width = 3681661.119928736
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 162
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_pylxp"]
+script = ExtResource("2_eji2i")
+gate_name = "Gate → Theta Pavonis"
+target_system_id = 96
+target_system_name = "Theta Pavonis"
+pos_x = 9375226.470581232
+pos_y = -663039.1910016721
+pos_z = 55784871.80648619
+
+[sub_resource type="Resource" id="Resource_rwq1e"]
+script = ExtResource("2_eji2i")
+gate_name = "Gate → Upsilon Pegasi"
+target_system_id = 104
+target_system_name = "Upsilon Pegasi"
+pos_x = 50985086.226080984
+pos_y = 1265834.781758028
+pos_z = -24502403.481288776
+
+[sub_resource type="Resource" id="Resource_x4s0q"]
+script = ExtResource("2_eji2i")
+gate_name = "Gate → Polaris Virginis"
+target_system_id = 62
+target_system_name = "Polaris Virginis"
+pos_x = -31883608.56673407
+pos_y = 1370654.856430984
+pos_z = -46725606.455176875
+
+[sub_resource type="Resource" id="Resource_g3055"]
+script = ExtResource("2_eji2i")
+gate_name = "Gate → Vega Aquilae"
+target_system_id = 107
+target_system_name = "Vega Aquilae"
+pos_x = -40597643.22186114
+pos_y = -1210900.8829648555
+pos_z = 39391346.24091004
+
+[sub_resource type="Resource" id="Resource_82tsr"]
+script = ExtResource("3_sobtc")
+planet_name = "Capella Persei I"
+type = 3
+orbital_radius = 23051775.693893433
+orbital_period = 187.82475084073897
+orbital_angle = 5.608313155999902
+radius = 39664061.069488525
+color = Color(0.8137908, 0.6679676, 0.37226257, 0.9)
+
+[sub_resource type="Resource" id="Resource_e3676"]
+script = ExtResource("3_sobtc")
+planet_name = "Capella Persei II"
+type = 4
+orbital_radius = 35130764.93300718
+orbital_period = 353.36835366185915
+orbital_angle = 3.117318231536965
+radius = 7012602.32925415
+color = Color(0.53531194, 0.741219, 0.9605981, 0.9)
+
+[sub_resource type="Resource" id="Resource_x46ld"]
+script = ExtResource("3_sobtc")
+planet_name = "Capella Persei III"
+type = 4
+orbital_radius = 53539070.53265086
+orbital_period = 664.8175643026531
+orbital_angle = 4.72774751361496
+radius = 6993223.190307617
+color = Color(0.59567326, 0.74635005, 0.92478853, 0.9)
+
+[sub_resource type="Resource" id="Resource_tcvpc"]
+script = ExtResource("5_t87kc")
+station_name = "Beta Hub"
+orbital_radius = 53567188.314788856
+orbital_period = 598.3358078723878
+orbital_angle = 1.0904434069905524
+
+[resource]
+script = ExtResource("4_htwdr")
+system_name = "Capella Persei"
+seed_value = 4059120021
+star_name = "Capella Persei"
+star_spectral_class = "M"
+star_temperature = 2972.109407186508
+star_radius = 15464222.617933154
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.038003910899162295
+planets = Array[ExtResource("3_sobtc")]([SubResource("Resource_82tsr"), SubResource("Resource_e3676"), SubResource("Resource_x46ld")])
+stations = Array[ExtResource("5_t87kc")]([SubResource("Resource_tcvpc")])
+asteroid_belts = Array[ExtResource("1_oum0x")]([SubResource("Resource_fxyeb"), SubResource("Resource_o4xhf")])
+jump_gates = Array[ExtResource("2_eji2i")]([SubResource("Resource_pylxp"), SubResource("Resource_rwq1e"), SubResource("Resource_x4s0q"), SubResource("Resource_g3055")])

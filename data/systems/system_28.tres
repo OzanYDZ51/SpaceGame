@@ -1,0 +1,164 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_nro2m"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_s0w2k"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_s3eci"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_qpc8u"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_lxyw1"]
+
+[sub_resource type="Resource" id="Resource_tmht5"]
+script = ExtResource("1_nro2m")
+belt_name = "Phi Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 62335021.43422569
+width = 4718528.090134746
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 237
+
+[sub_resource type="Resource" id="Resource_d76lp"]
+script = ExtResource("1_nro2m")
+belt_name = "Phi Centauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 42496614.15250586
+width = 3216834.8225531895
+dominant_resource = &"gold"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 356
+
+[sub_resource type="Resource" id="Resource_7nv6h"]
+script = ExtResource("1_nro2m")
+belt_name = "Phi Centauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 28971871.2350579
+width = 2193062.3444259926
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 363
+
+[sub_resource type="Resource" id="Resource_7n840"]
+script = ExtResource("1_nro2m")
+belt_name = "Phi Centauri Belt 4"
+field_id = &"belt_3"
+orbital_radius = 91434458.36087285
+width = 6921246.680524117
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 215
+
+[sub_resource type="Resource" id="Resource_kvx4k"]
+script = ExtResource("2_s0w2k")
+gate_name = "Gate → Polaris Persei"
+target_system_id = 78
+target_system_name = "Polaris Persei"
+pos_x = 37082747.7694573
+pos_y = -1034626.7454263365
+pos_z = 36253301.230288684
+
+[sub_resource type="Resource" id="Resource_tv0tx"]
+script = ExtResource("2_s0w2k")
+gate_name = "Gate → Pi Carinae"
+target_system_id = 10
+target_system_name = "Pi Carinae"
+pos_x = -45523295.47064982
+pos_y = -1239504.8570522352
+pos_z = 24840724.661715373
+
+[sub_resource type="Resource" id="Resource_2yhte"]
+script = ExtResource("2_s0w2k")
+gate_name = "Gate → Rho Crucis"
+target_system_id = 37
+target_system_name = "Rho Crucis"
+pos_x = 12865428.17299437
+pos_y = -22996.94741217492
+pos_z = -50238558.798524104
+
+[sub_resource type="Resource" id="Resource_pbql2"]
+script = ExtResource("2_s0w2k")
+gate_name = "Gate → Epsilon Tauri"
+target_system_id = 5
+target_system_name = "Epsilon Tauri"
+pos_x = 26874032.94941555
+pos_y = -384076.94197277585
+pos_z = 44353335.672314085
+
+[sub_resource type="Resource" id="Resource_mq2fj"]
+script = ExtResource("3_s3eci")
+planet_name = "Phi Centauri I"
+type = 1
+orbital_radius = 23489215.37399292
+orbital_period = 193.19639079361886
+orbital_angle = 4.826773164007922
+radius = 2325179.4576644897
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_0im7q"]
+script = ExtResource("3_s3eci")
+planet_name = "Phi Centauri II"
+orbital_radius = 34454527.09612288
+orbital_period = 343.21454465767096
+orbital_angle = 5.719186336232894
+radius = 4145872.116088867
+color = Color(0.45619038, 0.5818917, 0.36475265, 0.9)
+
+[sub_resource type="Resource" id="Resource_wekvg"]
+script = ExtResource("3_s3eci")
+planet_name = "Phi Centauri III"
+orbital_radius = 50538701.20888883
+orbital_period = 609.7226929586261
+orbital_angle = 3.1400779599138646
+radius = 3467095.0174331665
+color = Color(0.5239894, 0.5893054, 0.40153778, 0.9)
+
+[sub_resource type="Resource" id="Resource_bvqro"]
+script = ExtResource("3_s3eci")
+planet_name = "Phi Centauri IV"
+type = 3
+orbital_radius = 74131341.65956256
+orbital_period = 1083.1760136491932
+orbital_angle = 6.119946307208583
+radius = 28693313.598632813
+color = Color(0.83383894, 0.73516095, 0.31249535, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_0jcv5"]
+script = ExtResource("3_s3eci")
+planet_name = "Phi Centauri V"
+type = 4
+orbital_radius = 108737575.06218314
+orbital_period = 1924.2686717985941
+orbital_angle = 0.24722809955126804
+radius = 9042119.026184082
+color = Color(0.60698086, 0.7594075, 0.951384, 0.9)
+
+[sub_resource type="Resource" id="Resource_upiis"]
+script = ExtResource("5_lxyw1")
+station_name = "Dock Depot"
+orbital_radius = 48859734.20899148
+orbital_period = 548.7504236627635
+orbital_angle = 5.3552992037417875
+
+[sub_resource type="Resource" id="Resource_hute7"]
+script = ExtResource("5_lxyw1")
+station_name = "Gateway Depot"
+station_type = 2
+orbital_radius = 23625659.679043394
+orbital_period = 173.87675171425698
+orbital_angle = 2.3819579521896634
+
+[resource]
+script = ExtResource("4_qpc8u")
+system_name = "Phi Centauri"
+seed_value = 320561534
+star_name = "Phi Centauri"
+star_spectral_class = "K"
+star_temperature = 4669.43786740303
+star_radius = 54809879.6962738
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.46835720300674444
+planets = Array[ExtResource("3_s3eci")]([SubResource("Resource_mq2fj"), SubResource("Resource_0im7q"), SubResource("Resource_wekvg"), SubResource("Resource_bvqro"), SubResource("Resource_0jcv5")])
+stations = Array[ExtResource("5_lxyw1")]([SubResource("Resource_upiis"), SubResource("Resource_hute7")])
+asteroid_belts = Array[ExtResource("1_nro2m")]([SubResource("Resource_tmht5"), SubResource("Resource_d76lp"), SubResource("Resource_7nv6h"), SubResource("Resource_7n840")])
+jump_gates = Array[ExtResource("2_s0w2k")]([SubResource("Resource_kvx4k"), SubResource("Resource_tv0tx"), SubResource("Resource_2yhte"), SubResource("Resource_pbql2")])

@@ -1,0 +1,157 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_d5pds"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_4rlw5"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4okik"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_coamr"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_v2tqy"]
+
+[sub_resource type="Resource" id="Resource_fjhqx"]
+script = ExtResource("1_d5pds")
+belt_name = "Theta Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21376316.441480502
+width = 1824419.992520088
+dominant_resource = &"gold"
+secondary_resource = &"titanium"
+rare_resource = &"platinum"
+asteroid_count = 388
+
+[sub_resource type="Resource" id="Resource_wbrqg"]
+script = ExtResource("1_d5pds")
+belt_name = "Theta Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 78451136.80849008
+width = 6695626.106638277
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+asteroid_count = 396
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_2lshe"]
+script = ExtResource("1_d5pds")
+belt_name = "Theta Leonis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 50860089.187011234
+width = 4340792.941953263
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 214
+
+[sub_resource type="Resource" id="Resource_sdrpl"]
+script = ExtResource("1_d5pds")
+belt_name = "Theta Leonis Belt 4"
+field_id = &"belt_3"
+orbital_radius = 32972736.6274544
+width = 2814148.0818694714
+dominant_resource = &"copper"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 461
+
+[sub_resource type="Resource" id="Resource_a3uyw"]
+script = ExtResource("2_4rlw5")
+gate_name = "Gate → Chi Cygni"
+target_system_id = 119
+target_system_name = "Chi Cygni"
+pos_x = -6298603.189987989
+pos_y = 358627.4892442506
+pos_z = -18859538.724893637
+
+[sub_resource type="Resource" id="Resource_ci7dm"]
+script = ExtResource("2_4rlw5")
+gate_name = "Gate → Deneb Leonis"
+target_system_id = 30
+target_system_name = "Deneb Leonis"
+pos_x = 3159816.368613362
+pos_y = 448712.49717322784
+pos_z = -19630847.245529998
+
+[sub_resource type="Resource" id="Resource_fg52t"]
+script = ExtResource("2_4rlw5")
+gate_name = "Gate → Iota Hydrae"
+target_system_id = 86
+target_system_name = "Iota Hydrae"
+pos_x = -9764525.37498439
+pos_y = 420968.7758146299
+pos_z = 17320757.698841453
+
+[sub_resource type="Resource" id="Resource_75mgo"]
+script = ExtResource("2_4rlw5")
+gate_name = "Gate → Phi Crucis"
+target_system_id = 79
+target_system_name = "Phi Crucis"
+pos_x = 11340957.840467324
+pos_y = -433075.39926818974
+pos_z = -16332093.507001247
+
+[sub_resource type="Resource" id="Resource_ve3y5"]
+script = ExtResource("3_4okik")
+planet_name = "Theta Leonis I"
+orbital_radius = 16815266.460180283
+orbital_period = 117.0177853213003
+orbital_angle = 4.592715634000884
+radius = 6861614.70413208
+color = Color(0.59870344, 0.5744634, 0.43255278, 0.9)
+
+[sub_resource type="Resource" id="Resource_prq5p"]
+script = ExtResource("3_4okik")
+planet_name = "Theta Leonis II"
+orbital_radius = 25937366.422780722
+orbital_period = 224.1739065341095
+orbital_angle = 0.6751516270495473
+radius = 6849430.620670319
+color = Color(0.4892063, 0.68547964, 0.39309955, 0.9)
+
+[sub_resource type="Resource" id="Resource_f0loq"]
+script = ExtResource("3_4okik")
+planet_name = "Theta Leonis III"
+type = 3
+orbital_radius = 40008106.83212808
+orbital_period = 429.4555757723449
+orbital_angle = 2.2834744007201553
+radius = 52626094.818115234
+color = Color(0.7844266, 0.68945414, 0.39743426, 0.9)
+
+[sub_resource type="Resource" id="Resource_h37pn"]
+script = ExtResource("3_4okik")
+planet_name = "Theta Leonis IV"
+type = 4
+orbital_radius = 61712071.54189439
+orbital_period = 822.7188186770244
+orbital_angle = 1.473933641743838
+radius = 4870060.443878174
+color = Color(0.5667686, 0.78794575, 0.9922326, 0.9)
+
+[sub_resource type="Resource" id="Resource_ryokm"]
+script = ExtResource("3_4okik")
+planet_name = "Theta Leonis V"
+type = 4
+orbital_radius = 95190202.07508577
+orbital_period = 1576.103077455738
+orbital_angle = 1.1031802037692626
+radius = 7004336.833953857
+color = Color(0.63096344, 0.7612537, 0.97767955, 0.9)
+
+[sub_resource type="Resource" id="Resource_qu4ln"]
+script = ExtResource("5_v2tqy")
+station_name = "Dock Hub"
+orbital_radius = 16883525.921241675
+orbital_period = 105.31600678917027
+orbital_angle = 4.272633090581026
+
+[resource]
+script = ExtResource("4_coamr")
+system_name = "Theta Leonis"
+seed_value = 766429049
+star_name = "Theta Leonis"
+star_spectral_class = "K"
+star_temperature = 4163.254913687706
+star_radius = 59125877.4135232
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.1847216057777405
+planets = Array[ExtResource("3_4okik")]([SubResource("Resource_ve3y5"), SubResource("Resource_prq5p"), SubResource("Resource_f0loq"), SubResource("Resource_h37pn"), SubResource("Resource_ryokm")])
+stations = Array[ExtResource("5_v2tqy")]([SubResource("Resource_qu4ln")])
+asteroid_belts = Array[ExtResource("1_d5pds")]([SubResource("Resource_fjhqx"), SubResource("Resource_wbrqg"), SubResource("Resource_2lshe"), SubResource("Resource_sdrpl")])
+jump_gates = Array[ExtResource("2_4rlw5")]([SubResource("Resource_a3uyw"), SubResource("Resource_ci7dm"), SubResource("Resource_fg52t"), SubResource("Resource_75mgo")])

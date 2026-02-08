@@ -1,0 +1,125 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_dv0rx"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_hc26d"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_2uy8j"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_g7k02"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ggd3c"]
+
+[sub_resource type="Resource" id="Resource_n1yxh"]
+script = ExtResource("1_dv0rx")
+belt_name = "Sol Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 19716843.541817073
+width = 2732943.008882287
+asteroid_count = 326
+
+[sub_resource type="Resource" id="Resource_ej1uo"]
+script = ExtResource("1_dv0rx")
+belt_name = "Sol Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 40627654.276842505
+width = 5631381.285127886
+dominant_resource = &"crystal"
+secondary_resource = &"platinum"
+asteroid_count = 273
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_yyuwx"]
+script = ExtResource("2_hc26d")
+gate_name = "Gate → Sirius Draconis"
+target_system_id = 83
+target_system_name = "Sirius Draconis"
+pos_x = -5171213.898862965
+pos_y = -561297.2105413576
+pos_z = -28984146.12211927
+
+[sub_resource type="Resource" id="Resource_63two"]
+script = ExtResource("2_hc26d")
+gate_name = "Gate → Mu Leonis"
+target_system_id = 48
+target_system_name = "Mu Leonis"
+pos_x = 27927563.075847406
+pos_y = 531700.2749959541
+pos_z = -9320590.124059722
+
+[sub_resource type="Resource" id="Resource_8x1a6"]
+script = ExtResource("2_hc26d")
+gate_name = "Gate → Zeta Lyrae"
+target_system_id = 82
+target_system_name = "Zeta Lyrae"
+pos_x = -12624927.689434264
+pos_y = -601298.8400059289
+pos_z = -26597619.82683246
+
+[sub_resource type="Resource" id="Resource_ldofn"]
+script = ExtResource("3_2uy8j")
+planet_name = "Sol Scorpii I"
+orbital_radius = 12884486.019611357
+orbital_period = 78.48684862395348
+orbital_angle = 0.9626523398882378
+radius = 3260328.2928466797
+color = Color(0.57699305, 0.6939127, 0.3560755, 0.9)
+
+[sub_resource type="Resource" id="Resource_tncmy"]
+script = ExtResource("3_2uy8j")
+planet_name = "Sol Scorpii II"
+type = 3
+orbital_radius = 26549201.06402279
+orbital_period = 232.15253412491202
+orbital_angle = 4.971778165785425
+radius = 32387522.45903015
+color = Color(0.7967409, 0.6669879, 0.26167223, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_t3d8a"]
+script = ExtResource("3_2uy8j")
+planet_name = "Sol Scorpii III"
+type = 4
+orbital_radius = 54706107.489662215
+orbital_period = 686.6729910234953
+orbital_angle = 4.2836949046756985
+radius = 6535140.9912109375
+color = Color(0.5877345, 0.7631439, 0.98267865, 0.9)
+
+[sub_resource type="Resource" id="Resource_6tw08"]
+script = ExtResource("3_2uy8j")
+planet_name = "Sol Scorpii IV"
+type = 4
+orbital_radius = 112724981.42047696
+orbital_period = 2031.0775343397606
+orbital_angle = 5.408876179209297
+radius = 7392948.150634766
+color = Color(0.5535067, 0.75527614, 0.9889545, 0.9)
+
+[sub_resource type="Resource" id="Resource_h4urf"]
+script = ExtResource("3_2uy8j")
+planet_name = "Sol Scorpii V"
+type = 4
+orbital_radius = 232276102.60240313
+orbital_period = 6007.628091430975
+orbital_angle = 4.426173107533313
+radius = 4141872.1675872803
+color = Color(0.6349725, 0.78198045, 0.911776, 0.9)
+
+[sub_resource type="Resource" id="Resource_e6f52"]
+script = ExtResource("5_ggd3c")
+station_name = "Nexus Depot"
+orbital_radius = 26441844.025402945
+orbital_period = 208.93728071242083
+orbital_angle = 4.835593179031236
+
+[resource]
+script = ExtResource("4_g7k02")
+system_name = "Sol Scorpii"
+seed_value = 4025493672
+star_name = "Sol Scorpii"
+star_spectral_class = "M"
+star_temperature = 2681.685207784176
+star_radius = 39949713.87484074
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06657508885860443
+planets = Array[ExtResource("3_2uy8j")]([SubResource("Resource_ldofn"), SubResource("Resource_tncmy"), SubResource("Resource_t3d8a"), SubResource("Resource_6tw08"), SubResource("Resource_h4urf")])
+stations = Array[ExtResource("5_ggd3c")]([SubResource("Resource_e6f52")])
+asteroid_belts = Array[ExtResource("1_dv0rx")]([SubResource("Resource_n1yxh"), SubResource("Resource_ej1uo")])
+jump_gates = Array[ExtResource("2_hc26d")]([SubResource("Resource_yyuwx"), SubResource("Resource_63two"), SubResource("Resource_8x1a6")])

@@ -1,0 +1,139 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_wvwcn"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_gl7ee"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_0580k"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_sektg"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_tl0oq"]
+
+[sub_resource type="Resource" id="Resource_6vtia"]
+script = ExtResource("1_wvwcn")
+belt_name = "Capella Serpentis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 47486632.91730605
+width = 5007290.1149136415
+dominant_resource = &"uranium"
+secondary_resource = &"iron"
+asteroid_count = 200
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_70ftv"]
+script = ExtResource("1_wvwcn")
+belt_name = "Capella Serpentis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 16126876.541450243
+width = 1700519.588976948
+dominant_resource = &"copper"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 417
+
+[sub_resource type="Resource" id="Resource_wv0e1"]
+script = ExtResource("1_wvwcn")
+belt_name = "Capella Serpentis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 81485800.12462479
+width = 8592376.768013854
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 224
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_xogii"]
+script = ExtResource("2_gl7ee")
+gate_name = "Gate → Fomalhaut Eridani"
+target_system_id = 23
+target_system_name = "Fomalhaut Eridani"
+pos_x = -4911180.650126835
+pos_y = -195389.4437495484
+pos_z = 14492797.884501232
+
+[sub_resource type="Resource" id="Resource_yywl0"]
+script = ExtResource("2_gl7ee")
+gate_name = "Gate → Iota Hydrae"
+target_system_id = 86
+target_system_name = "Iota Hydrae"
+pos_x = 14640842.899325538
+pos_y = 381959.3504407052
+pos_z = -4450461.222890569
+
+[sub_resource type="Resource" id="Resource_y2dbh"]
+script = ExtResource("2_gl7ee")
+gate_name = "Gate → Epsilon Centauri"
+target_system_id = 66
+target_system_name = "Epsilon Centauri"
+pos_x = 12550834.660352452
+pos_y = -288139.998372882
+pos_z = -8754280.965772074
+
+[sub_resource type="Resource" id="Resource_c1aa7"]
+script = ExtResource("3_0580k")
+planet_name = "Capella Serpentis I"
+orbital_radius = 11875577.569007874
+orbital_period = 69.45097627007443
+orbital_angle = 0.5772005309475139
+radius = 2387277.640402317
+color = Color(0.49630436, 0.60658526, 0.42181486, 0.9)
+
+[sub_resource type="Resource" id="Resource_prwyo"]
+script = ExtResource("3_0580k")
+planet_name = "Capella Serpentis II"
+type = 3
+orbital_radius = 20378175.513892613
+orbital_period = 156.11484116227604
+orbital_angle = 0.6557626491807935
+radius = 16927889.88351822
+color = Color(0.7548055, 0.7292242, 0.28156254, 0.9)
+
+[sub_resource type="Resource" id="Resource_r1yeg"]
+script = ExtResource("3_0580k")
+planet_name = "Capella Serpentis III"
+type = 4
+orbital_radius = 34968407.63002195
+orbital_period = 350.9215412084021
+orbital_angle = 5.382468565123316
+radius = 9973331.451416016
+color = Color(0.5264634, 0.7226137, 0.9563186, 0.9)
+
+[sub_resource type="Resource" id="Resource_w35mq"]
+script = ExtResource("3_0580k")
+planet_name = "Capella Serpentis IV"
+type = 4
+orbital_radius = 60004858.20459016
+orbital_period = 788.816278883276
+orbital_angle = 0.2544664777673463
+radius = 8223971.366882324
+color = Color(0.51982206, 0.7547983, 0.9043245, 0.9)
+
+[sub_resource type="Resource" id="Resource_mwiv0"]
+script = ExtResource("3_0580k")
+planet_name = "Capella Serpentis V"
+type = 4
+orbital_radius = 102966742.04465942
+orbital_period = 1773.1345864052646
+orbital_angle = 0.04570249121220448
+radius = 8170138.835906982
+color = Color(0.5386257, 0.7037044, 0.92740536, 0.9)
+
+[sub_resource type="Resource" id="Resource_2qnmd"]
+script = ExtResource("5_tl0oq")
+station_name = "Haven Platform"
+orbital_radius = 12302316.357309557
+orbital_period = 62.50587864306699
+orbital_angle = 5.754980594475995
+
+[resource]
+script = ExtResource("4_sektg")
+system_name = "Capella Serpentis"
+seed_value = 4020403052
+star_name = "Capella Serpentis"
+star_spectral_class = "M"
+star_temperature = 3188.2081270217896
+star_radius = 9720667.471335828
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.035407633364200594
+planets = Array[ExtResource("3_0580k")]([SubResource("Resource_c1aa7"), SubResource("Resource_prwyo"), SubResource("Resource_r1yeg"), SubResource("Resource_w35mq"), SubResource("Resource_mwiv0")])
+stations = Array[ExtResource("5_tl0oq")]([SubResource("Resource_2qnmd")])
+asteroid_belts = Array[ExtResource("1_wvwcn")]([SubResource("Resource_6vtia"), SubResource("Resource_70ftv"), SubResource("Resource_wv0e1")])
+jump_gates = Array[ExtResource("2_gl7ee")]([SubResource("Resource_xogii"), SubResource("Resource_yywl0"), SubResource("Resource_y2dbh")])

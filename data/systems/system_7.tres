@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_wto2g"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_60u46"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_mydjl"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_h8jdl"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_g1d1r"]
+
+[sub_resource type="Resource" id="Resource_310ys"]
+script = ExtResource("1_wto2g")
+belt_name = "Aldebaran Lyrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21936679.824989855
+width = 2209647.196452545
+dominant_resource = &"titanium"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 383
+
+[sub_resource type="Resource" id="Resource_jjbtx"]
+script = ExtResource("2_60u46")
+gate_name = "Gate → Procyon Lyrae"
+target_system_id = 46
+target_system_name = "Procyon Lyrae"
+pos_x = -20052280.826680794
+pos_y = 434122.5295851458
+pos_z = 2443639.309803545
+
+[sub_resource type="Resource" id="Resource_tm742"]
+script = ExtResource("2_60u46")
+gate_name = "Gate → Sigma Cygni"
+target_system_id = 56
+target_system_name = "Sigma Cygni"
+pos_x = 12350997.966109011
+pos_y = -499404.5432507768
+pos_z = 15984936.304835826
+
+[sub_resource type="Resource" id="Resource_hjbog"]
+script = ExtResource("2_60u46")
+gate_name = "Gate → Spica Centauri"
+target_system_id = 63
+target_system_name = "Spica Centauri"
+pos_x = 18288867.882531647
+pos_y = 267316.22505385586
+pos_z = 8578033.049819155
+
+[sub_resource type="Resource" id="Resource_5bnpa"]
+script = ExtResource("2_60u46")
+gate_name = "Gate → Alpha Leonis"
+target_system_id = 108
+target_system_name = "Alpha Leonis"
+pos_x = 4912968.915444226
+pos_y = -452770.3103068734
+pos_z = -19594082.674735405
+
+[sub_resource type="Resource" id="Resource_acvkr"]
+script = ExtResource("3_mydjl")
+planet_name = "Aldebaran Lyrae I"
+orbital_radius = 16412561.833858492
+orbital_period = 112.83941002903941
+orbital_angle = 5.541644538344375
+radius = 6525945.18661499
+color = Color(0.64198166, 0.65037686, 0.36969537, 0.9)
+
+[sub_resource type="Resource" id="Resource_38y02"]
+script = ExtResource("3_mydjl")
+planet_name = "Aldebaran Lyrae II"
+type = 3
+orbital_radius = 27460797.816121217
+orbital_period = 244.2114205015249
+orbital_angle = 4.068816628601571
+radius = 50141496.658325195
+color = Color(0.8309329, 0.6946083, 0.3266985, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_bif5c"]
+script = ExtResource("5_g1d1r")
+station_name = "Port Outpost"
+orbital_radius = 17200627.203839175
+orbital_period = 101.55546902613547
+orbital_angle = 1.923561911320317
+
+[resource]
+script = ExtResource("4_h8jdl")
+system_name = "Aldebaran Lyrae"
+seed_value = 669960655
+star_name = "Aldebaran Lyrae"
+star_spectral_class = "M"
+star_temperature = 2454.7906197607517
+star_radius = 25661484.15806293
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06110997623205185
+planets = Array[ExtResource("3_mydjl")]([SubResource("Resource_acvkr"), SubResource("Resource_38y02")])
+stations = Array[ExtResource("5_g1d1r")]([SubResource("Resource_bif5c")])
+asteroid_belts = Array[ExtResource("1_wto2g")]([SubResource("Resource_310ys")])
+jump_gates = Array[ExtResource("2_60u46")]([SubResource("Resource_jjbtx"), SubResource("Resource_tm742"), SubResource("Resource_hjbog"), SubResource("Resource_5bnpa")])

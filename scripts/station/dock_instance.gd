@@ -76,10 +76,17 @@ func enter(ctx: Dictionary) -> void:
 	main_scene.add_child(hangar_scene)
 	hangar_scene.activate()
 
-	# Display player ship model in hangar
+	# Display player ship model in hangar (with equipped weapons)
 	var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
+	var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
 	if ship_model:
-		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale)
+		var hp_configs: Array[Dictionary] = []
+		var weapon_names: Array[StringName] = []
+		if wm:
+			for hp in wm.hardpoints:
+				hp_configs.append({"position": hp.position, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
+				weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names)
 
 	# Setup ship selection cycling (A/D keys)
 	var ship_ctrl := player_ship as ShipController

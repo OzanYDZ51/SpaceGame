@@ -1,0 +1,141 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_g40or"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_k4xec"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_bvt6g"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_rx7kw"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_2barp"]
+
+[sub_resource type="Resource" id="Resource_ursq1"]
+script = ExtResource("1_g40or")
+belt_name = "Delta Carinae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 80864715.80633113
+width = 8758792.596297085
+dominant_resource = &"crystal"
+secondary_resource = &"platinum"
+asteroid_count = 362
+
+[sub_resource type="Resource" id="Resource_bacnl"]
+script = ExtResource("1_g40or")
+belt_name = "Delta Carinae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 46402591.65229921
+width = 5026057.0653156815
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 493
+
+[sub_resource type="Resource" id="Resource_2q0w0"]
+script = ExtResource("1_g40or")
+belt_name = "Delta Carinae Belt 3"
+field_id = &"belt_2"
+orbital_radius = 26627194.45161827
+width = 2884101.814956695
+dominant_resource = &"platinum"
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 371
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_cn6e6"]
+script = ExtResource("2_k4xec")
+gate_name = "Gate → Vega Tauri"
+target_system_id = 38
+target_system_name = "Vega Tauri"
+pos_x = -29431093.0113202
+pos_y = 340663.2863308857
+pos_z = 22651902.72562483
+
+[sub_resource type="Resource" id="Resource_7ia5s"]
+script = ExtResource("2_k4xec")
+gate_name = "Gate → Spica Virginis"
+target_system_id = 24
+target_system_name = "Spica Virginis"
+pos_x = -4237730.688895669
+pos_y = 260501.45044490462
+pos_z = -36896335.475769706
+
+[sub_resource type="Resource" id="Resource_1owyo"]
+script = ExtResource("2_k4xec")
+gate_name = "Gate → Regulus Scorpii"
+target_system_id = 49
+target_system_name = "Regulus Scorpii"
+pos_x = -20565309.411796402
+pos_y = -681880.7048417688
+pos_z = 30925167.44868536
+
+[sub_resource type="Resource" id="Resource_rxsd0"]
+script = ExtResource("2_k4xec")
+gate_name = "Gate → Polaris Virginis"
+target_system_id = 62
+target_system_name = "Polaris Virginis"
+pos_x = 9844963.216232184
+pos_y = 475622.72388082073
+pos_z = -35810258.75643997
+
+[sub_resource type="Resource" id="Resource_j30dx"]
+script = ExtResource("3_bvt6g")
+planet_name = "Delta Carinae I"
+orbital_radius = 19416939.914226532
+orbital_period = 145.2002699930882
+orbital_angle = 2.1887552066455283
+radius = 3934498.8465309143
+color = Color(0.68586314, 0.488742, 0.25869057, 0.9)
+
+[sub_resource type="Resource" id="Resource_t422d"]
+script = ExtResource("3_bvt6g")
+planet_name = "Delta Carinae II"
+orbital_radius = 33837448.989010006
+orbital_period = 334.035531211146
+orbital_angle = 1.1186681291778087
+radius = 4452606.26077652
+color = Color(0.6972073, 0.41238526, 0.29183394, 0.9)
+
+[sub_resource type="Resource" id="Resource_2j3ak"]
+script = ExtResource("3_bvt6g")
+planet_name = "Delta Carinae III"
+type = 2
+orbital_radius = 58967734.315588415
+orbital_period = 768.4540539547476
+orbital_angle = 0.4367631105138217
+radius = 8680377.60257721
+color = Color(0.24895453, 0.39689577, 0.7782622, 0.9)
+
+[sub_resource type="Resource" id="Resource_1247v"]
+script = ExtResource("3_bvt6g")
+planet_name = "Delta Carinae IV"
+type = 3
+orbital_radius = 102761697.29707384
+orbital_period = 1767.840776992713
+orbital_angle = 5.8583913476632326
+radius = 28077499.866485596
+color = Color(0.8117633, 0.62280977, 0.26424766, 0.9)
+
+[sub_resource type="Resource" id="Resource_y60po"]
+script = ExtResource("5_2barp")
+station_name = "Gateway Platform"
+orbital_radius = 18997317.028920077
+orbital_period = 130.6802429937794
+orbital_angle = 4.189650197759026
+
+[sub_resource type="Resource" id="Resource_lj1qb"]
+script = ExtResource("5_2barp")
+station_name = "Gateway Depot"
+orbital_radius = 34138900.53477822
+orbital_period = 300.6319780900314
+orbital_angle = 1.6330931366556523
+
+[resource]
+script = ExtResource("4_rx7kw")
+system_name = "Delta Carinae"
+seed_value = 1106607197
+star_name = "Delta Carinae"
+star_temperature = 5772.240781784058
+star_radius = 63086387.66649868
+star_color = Color(1, 0.95, 0.7, 1)
+star_luminosity = 0.8460814118385315
+planets = Array[ExtResource("3_bvt6g")]([SubResource("Resource_j30dx"), SubResource("Resource_t422d"), SubResource("Resource_2j3ak"), SubResource("Resource_1247v")])
+stations = Array[ExtResource("5_2barp")]([SubResource("Resource_y60po"), SubResource("Resource_lj1qb")])
+asteroid_belts = Array[ExtResource("1_g40or")]([SubResource("Resource_ursq1"), SubResource("Resource_bacnl"), SubResource("Resource_2q0w0")])
+jump_gates = Array[ExtResource("2_k4xec")]([SubResource("Resource_cn6e6"), SubResource("Resource_7ia5s"), SubResource("Resource_1owyo"), SubResource("Resource_rxsd0")])

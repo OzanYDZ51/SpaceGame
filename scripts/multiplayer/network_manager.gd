@@ -4,10 +4,13 @@ extends Node
 # =============================================================================
 # Network Manager (Autoload) — MMORPG Architecture
 #
+# Transport: WebSocket (runs over HTTP/TCP — deployable on Railway/PaaS).
+#
 # Two modes:
 #   DEV (localhost):  host_and_play() → listen-server on your PC.
-#                     Your friend joins your IP.
-#   PROD (Railway):   connect_to_server(railway_ip) → dedicated headless server.
+#                     Client connects via ws://127.0.0.1:7777
+#   PROD (Railway):   connect_to_server(railway_url) → dedicated headless server.
+#                     Client connects via wss://xxx.up.railway.app
 #
 # In both cases the server is authoritative (validates, relays).
 # The host in listen-server is peer_id=1 and plays normally.
@@ -38,16 +41,16 @@ var is_dedicated_server: bool = false
 var peers: Dictionary = {}
 
 # Server config
-var _server_ip: String = "127.0.0.1"
+var _server_url: String = ""  # Full ws:// or wss:// URL for reconnect
 var _server_port: int = Constants.NET_DEFAULT_PORT
-var _peer: ENetMultiplayerPeer = null
+var _peer: WebSocketMultiplayerPeer = null
 var _reconnect_timer: float = 0.0
 var _reconnect_attempts: int = 0
 const MAX_RECONNECT_ATTEMPTS: int = 5
 const RECONNECT_DELAY: float = 3.0
 
 # Multi-galaxy: routing table (sent from server, used by client for wormhole handoff)
-# Each entry: { "seed": int, "name": String, "ip": String, "port": int }
+# Each entry: { "seed": int, "name": String, "url": String }
 var galaxy_servers: Array[Dictionary] = []
 
 # Server-side: track each player's last known system (in-memory persistence)
@@ -101,8 +104,8 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 		disconnect_from_server()
 
 	_server_port = port
-	_peer = ENetMultiplayerPeer.new()
-	var err := _peer.create_server(port, Constants.NET_MAX_PLAYERS)
+	_peer = WebSocketMultiplayerPeer.new()
+	var err := _peer.create_server(port)
 	if err != OK:
 		push_error("NetworkManager: Failed to host on port %d: %s" % [port, error_string(err)])
 		connection_failed.emit("Impossible d'héberger: " + error_string(err))
@@ -131,9 +134,15 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 ## Start a pure dedicated server (headless, no local player).
 ## Used for production Railway deployment.
 func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
+	# Railway sets PORT env var dynamically
+	var env_port: String = OS.get_environment("PORT")
+	if env_port != "":
+		port = env_port.to_int()
+		print("NetworkManager: Using PORT from environment: %d" % port)
+
 	_server_port = port
-	_peer = ENetMultiplayerPeer.new()
-	var err := _peer.create_server(port, Constants.NET_MAX_PLAYERS)
+	_peer = WebSocketMultiplayerPeer.new()
+	var err := _peer.create_server(port)
 	if err != OK:
 		push_error("NetworkManager: Failed to start dedicated server on port %d: %s" % [port, error_string(err)])
 		connection_failed.emit("Failed to start server: " + error_string(err))
@@ -144,23 +153,33 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	local_peer_id = 1
 	is_host = true
 	is_dedicated_server = true
-	print("NetworkManager: Dedicated server started on port %d (max %d)" % [port, Constants.NET_MAX_PLAYERS])
+	print("NetworkManager: Dedicated WebSocket server started on port %d" % port)
 	connection_succeeded.emit()
 	return OK
 
 
 ## Connect to a remote server as a client (join a host or a Railway server).
-func connect_to_server(ip: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
+## address can be:
+##   - A full URL: "ws://127.0.0.1:7777" or "wss://spacegame.up.railway.app"
+##   - An IP/hostname: "127.0.0.1" (port appended as ws://ip:port)
+func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	if connection_state != ConnectionState.DISCONNECTED:
 		push_warning("NetworkManager: Already connected or connecting")
 		return ERR_ALREADY_IN_USE
 
-	_server_ip = ip
+	# Build WebSocket URL
+	var url: String
+	if address.begins_with("ws://") or address.begins_with("wss://"):
+		url = address
+	else:
+		url = "ws://%s:%d" % [address, port]
+
+	_server_url = url
 	_server_port = port
-	_peer = ENetMultiplayerPeer.new()
-	var err := _peer.create_client(ip, port)
+	_peer = WebSocketMultiplayerPeer.new()
+	var err := _peer.create_client(url)
 	if err != OK:
-		push_error("NetworkManager: Failed to connect to %s:%d: %s" % [ip, port, error_string(err)])
+		push_error("NetworkManager: Failed to connect to %s: %s" % [url, error_string(err)])
 		connection_failed.emit("Connexion échouée: " + error_string(err))
 		return err
 
@@ -168,7 +187,7 @@ func connect_to_server(ip: String, port: int = Constants.NET_DEFAULT_PORT) -> Er
 	connection_state = ConnectionState.CONNECTING
 	is_host = false
 	_reconnect_attempts = 0
-	print("NetworkManager: Connecting to %s:%d..." % [ip, port])
+	print("NetworkManager: Connecting to %s..." % url)
 	return OK
 
 
@@ -221,9 +240,9 @@ func get_local_ip() -> String:
 
 
 ## Check if a server is already running on localhost (same machine).
-## Tries to bind the same port on all interfaces — if it fails, the server is using it.
+## Tries to bind the same port — if it fails, the server is using it.
 func is_local_server_running(port: int = Constants.NET_DEFAULT_PORT) -> bool:
-	var test := UDPServer.new()
+	var test := TCPServer.new()
 	var err := test.listen(port)
 	if err != OK:
 		return true  # Port in use → local server running
@@ -298,7 +317,10 @@ func _attempt_reconnect() -> void:
 		_reconnect_attempts = 0
 		return
 	print("NetworkManager: Reconnect attempt %d/%d" % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
-	connect_to_server(_server_ip, _server_port)
+	if _server_url != "":
+		connect_to_server(_server_url)
+	else:
+		connect_to_server("127.0.0.1", _server_port)
 
 
 # =========================================================================

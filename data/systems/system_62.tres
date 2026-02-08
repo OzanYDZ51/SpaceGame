@@ -1,0 +1,133 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_xxavk"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_jsffj"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_5byu8"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_gt4f0"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_oc83x"]
+
+[sub_resource type="Resource" id="Resource_dduxb"]
+script = ExtResource("1_xxavk")
+belt_name = "Polaris Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 53101578.295385584
+width = 7946411.961596638
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 212
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_fu8tg"]
+script = ExtResource("1_xxavk")
+belt_name = "Polaris Virginis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 116582856.22961344
+width = 17446099.212094504
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+asteroid_count = 500
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_p5sa1"]
+script = ExtResource("2_jsffj")
+gate_name = "Gate → Vega Aquilae"
+target_system_id = 107
+target_system_name = "Vega Aquilae"
+pos_x = -15375340.082365097
+pos_y = 48897.14871111247
+pos_z = 10834860.358689386
+
+[sub_resource type="Resource" id="Resource_ie7n2"]
+script = ExtResource("2_jsffj")
+gate_name = "Gate → Capella Persei"
+target_system_id = 13
+target_system_name = "Capella Persei"
+pos_x = -7535156.734367486
+pos_y = 445038.36739858706
+pos_z = -17234172.293127332
+
+[sub_resource type="Resource" id="Resource_qdldo"]
+script = ExtResource("2_jsffj")
+gate_name = "Gate → Delta Carinae"
+target_system_id = 105
+target_system_name = "Delta Carinae"
+pos_x = 13759940.121271456
+pos_y = -333624.0875842909
+pos_z = 12824169.73919581
+
+[sub_resource type="Resource" id="Resource_s01ik"]
+script = ExtResource("2_jsffj")
+gate_name = "Gate → Procyon Lyrae"
+target_system_id = 46
+target_system_name = "Procyon Lyrae"
+pos_x = 10316935.500996472
+pos_y = 429387.6675289358
+pos_z = -15727559.36275429
+
+[sub_resource type="Resource" id="Resource_5yyas"]
+script = ExtResource("3_5byu8")
+planet_name = "Polaris Virginis I"
+orbital_radius = 15138247.013092041
+orbital_period = 99.95617414087914
+orbital_angle = 4.197198012407231
+radius = 4013562.172651291
+color = Color(0.47760862, 0.59280205, 0.3525569, 0.9)
+
+[sub_resource type="Resource" id="Resource_0vcip"]
+script = ExtResource("3_5byu8")
+planet_name = "Polaris Virginis II"
+type = 4
+orbital_radius = 33235548.391393993
+orbital_period = 325.1625475926536
+orbital_angle = 1.0497414213951928
+radius = 4907512.187957764
+color = Color(0.5707441, 0.7353047, 0.9699931, 0.9)
+
+[sub_resource type="Resource" id="Resource_r6lwv"]
+script = ExtResource("3_5byu8")
+planet_name = "Polaris Virginis III"
+type = 4
+orbital_radius = 72967608.19937718
+orbital_period = 1057.7704005350076
+orbital_angle = 1.2612647698831208
+radius = 4922483.444213867
+color = Color(0.6094754, 0.7833089, 0.9214127, 0.9)
+
+[sub_resource type="Resource" id="Resource_i4a6b"]
+script = ExtResource("3_5byu8")
+planet_name = "Polaris Virginis IV"
+type = 4
+orbital_radius = 160198104.2598497
+orbital_period = 3440.9812216432188
+orbital_angle = 6.083749828417095
+radius = 7484145.164489746
+color = Color(0.5412664, 0.79471874, 0.97528076, 0.9)
+
+[sub_resource type="Resource" id="Resource_d0j5t"]
+script = ExtResource("5_oc83x")
+station_name = "Beta Outpost"
+orbital_radius = 15809446.606444368
+orbital_period = 89.96055672679122
+orbital_angle = 3.5523534602490026
+
+[sub_resource type="Resource" id="Resource_ybki6"]
+script = ExtResource("5_oc83x")
+station_name = "Orbital Terminal"
+orbital_radius = 14726673.382421413
+orbital_period = 89.96055672679122
+orbital_angle = 0.5062397350541065
+
+[resource]
+script = ExtResource("4_gt4f0")
+system_name = "Polaris Virginis"
+seed_value = 2596576826
+star_name = "Polaris Virginis"
+star_spectral_class = "M"
+star_temperature = 3270.083749294281
+star_radius = 19549362.44114637
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.053864073872566226
+planets = Array[ExtResource("3_5byu8")]([SubResource("Resource_5yyas"), SubResource("Resource_0vcip"), SubResource("Resource_r6lwv"), SubResource("Resource_i4a6b")])
+stations = Array[ExtResource("5_oc83x")]([SubResource("Resource_d0j5t"), SubResource("Resource_ybki6")])
+asteroid_belts = Array[ExtResource("1_xxavk")]([SubResource("Resource_dduxb"), SubResource("Resource_fu8tg")])
+jump_gates = Array[ExtResource("2_jsffj")]([SubResource("Resource_p5sa1"), SubResource("Resource_ie7n2"), SubResource("Resource_qdldo"), SubResource("Resource_s01ik")])

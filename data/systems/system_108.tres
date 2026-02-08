@@ -1,0 +1,106 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_3f8ov"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_0jgdb"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_oof2e"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_1xi1o"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_jf26d"]
+
+[sub_resource type="Resource" id="Resource_wfn2v"]
+script = ExtResource("1_3f8ov")
+belt_name = "Alpha Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 14178667.677013177
+width = 1497822.1108786655
+dominant_resource = &"platinum"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 449
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_25bw5"]
+script = ExtResource("2_0jgdb")
+gate_name = "Gate → Sigma Cygni"
+target_system_id = 56
+target_system_name = "Sigma Cygni"
+pos_x = 319655.7252667519
+pos_y = 127581.57521148692
+pos_z = 20348241.76453565
+
+[sub_resource type="Resource" id="Resource_h8sd7"]
+script = ExtResource("2_0jgdb")
+gate_name = "Gate → Phi Scorpii"
+target_system_id = 12
+target_system_name = "Phi Scorpii"
+pos_x = 20293893.048719928
+pos_y = 58502.04971608869
+pos_z = 1520206.439206758
+
+[sub_resource type="Resource" id="Resource_6op56"]
+script = ExtResource("2_0jgdb")
+gate_name = "Gate → Psi Draconis"
+target_system_id = 98
+target_system_name = "Psi Draconis"
+pos_x = 9893566.449610176
+pos_y = 338515.3116690708
+pos_z = 17783994.646811966
+
+[sub_resource type="Resource" id="Resource_2ygbs"]
+script = ExtResource("2_0jgdb")
+gate_name = "Gate → Aldebaran Lyrae"
+target_system_id = 7
+target_system_name = "Aldebaran Lyrae"
+pos_x = -19826604.033963706
+pos_y = 268092.87457457697
+pos_z = 4588997.185780664
+
+[sub_resource type="Resource" id="Resource_5n03p"]
+script = ExtResource("3_oof2e")
+planet_name = "Alpha Leonis I"
+type = 3
+orbital_radius = 10434112.399816515
+orbital_period = 57.197824392870345
+orbital_angle = 0.5994686252230226
+radius = 40187737.94174194
+color = Color(0.7875947, 0.6278701, 0.34992328, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_o1jfr"]
+script = ExtResource("3_oof2e")
+planet_name = "Alpha Leonis II"
+type = 4
+orbital_radius = 17923222.95420984
+orbital_period = 128.77169274226955
+orbital_angle = 6.250494588679944
+radius = 7981576.442718506
+color = Color(0.5394989, 0.73952615, 0.98695344, 0.9)
+
+[sub_resource type="Resource" id="Resource_t8rap"]
+script = ExtResource("5_jf26d")
+station_name = "Alpha Station"
+orbital_radius = 17350752.386353895
+orbital_period = 115.89452346804259
+orbital_angle = 2.1022350949413062
+
+[sub_resource type="Resource" id="Resource_8rm34"]
+script = ExtResource("5_jf26d")
+station_name = "Beta Terminal"
+station_type = 2
+orbital_radius = 10113675.959119614
+orbital_period = 51.478041953583315
+orbital_angle = 2.001942487271632
+
+[resource]
+script = ExtResource("4_1xi1o")
+system_name = "Alpha Leonis"
+seed_value = 2467838740
+star_name = "Alpha Leonis"
+star_spectral_class = "M"
+star_temperature = 2499.6413983404636
+star_radius = 21072822.64023423
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.008052107758820058
+planets = Array[ExtResource("3_oof2e")]([SubResource("Resource_5n03p"), SubResource("Resource_o1jfr")])
+stations = Array[ExtResource("5_jf26d")]([SubResource("Resource_t8rap"), SubResource("Resource_8rm34")])
+asteroid_belts = Array[ExtResource("1_3f8ov")]([SubResource("Resource_wfn2v")])
+jump_gates = Array[ExtResource("2_0jgdb")]([SubResource("Resource_25bw5"), SubResource("Resource_h8sd7"), SubResource("Resource_6op56"), SubResource("Resource_2ygbs")])

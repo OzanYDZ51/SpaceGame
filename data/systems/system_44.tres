@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qq0ng"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_rxxut"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_bntlg"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_0t3m3"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_qpsrv"]
+
+[sub_resource type="Resource" id="Resource_v8vrb"]
+script = ExtResource("1_qq0ng")
+belt_name = "Pi Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21689249.78153386
+width = 1548895.4415976137
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+asteroid_count = 467
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_mtejk"]
+script = ExtResource("2_rxxut")
+gate_name = "Gate → Omicron Leonis"
+target_system_id = 4
+target_system_name = "Omicron Leonis"
+pos_x = -3255781.550477941
+pos_y = -250329.832539352
+pos_z = -20640121.709159866
+
+[sub_resource type="Resource" id="Resource_k1v4y"]
+script = ExtResource("2_rxxut")
+gate_name = "Gate → Deneb Eridani"
+target_system_id = 95
+target_system_name = "Deneb Eridani"
+pos_x = -20640121.70915987
+pos_y = -324558.0292544456
+pos_z = -3255781.5504779345
+
+[sub_resource type="Resource" id="Resource_cuayc"]
+script = ExtResource("2_rxxut")
+gate_name = "Gate → Mu Pavonis"
+target_system_id = 40
+target_system_name = "Mu Pavonis"
+pos_x = -20512812.58144543
+pos_y = -475870.5706435572
+pos_z = 3979856.488852213
+
+[sub_resource type="Resource" id="Resource_sammc"]
+script = ExtResource("2_rxxut")
+gate_name = "Gate → Sigma Lyrae"
+target_system_id = 100
+target_system_name = "Sigma Lyrae"
+pos_x = 3786353.890092609
+pos_y = -93915.36336101661
+pos_z = 20549410.25655835
+
+[sub_resource type="Resource" id="Resource_qckx8"]
+script = ExtResource("3_bntlg")
+planet_name = "Pi Ursae I"
+type = 3
+orbital_radius = 17817011.177539825
+orbital_period = 127.628751996639
+orbital_angle = 6.148687849094882
+radius = 17480638.474225998
+color = Color(0.7526906, 0.6405735, 0.28191793, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_5fikg"]
+script = ExtResource("3_bntlg")
+planet_name = "Pi Ursae II"
+type = 4
+orbital_radius = 25561488.385527894
+orbital_period = 219.31859302889708
+orbital_angle = 4.128193968923273
+radius = 6399155.616760254
+color = Color(0.64541006, 0.7215957, 0.96262634, 0.9)
+
+[sub_resource type="Resource" id="Resource_hwdmq"]
+script = ExtResource("5_qpsrv")
+station_name = "Omega Terminal"
+orbital_radius = 17895328.13031097
+orbital_period = 114.8658767969751
+orbital_angle = 5.909678961666791
+
+[resource]
+script = ExtResource("4_0t3m3")
+system_name = "Pi Ursae"
+seed_value = 2638854408
+star_name = "Pi Ursae"
+star_spectral_class = "M"
+star_temperature = 3102.2462010383606
+star_radius = 40521237.00376749
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.02298054760694504
+planets = Array[ExtResource("3_bntlg")]([SubResource("Resource_qckx8"), SubResource("Resource_5fikg")])
+stations = Array[ExtResource("5_qpsrv")]([SubResource("Resource_hwdmq")])
+asteroid_belts = Array[ExtResource("1_qq0ng")]([SubResource("Resource_v8vrb")])
+jump_gates = Array[ExtResource("2_rxxut")]([SubResource("Resource_mtejk"), SubResource("Resource_k1v4y"), SubResource("Resource_cuayc"), SubResource("Resource_sammc")])

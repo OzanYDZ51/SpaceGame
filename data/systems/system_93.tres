@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ycqqj"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_nj2gb"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_ulkl3"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_12vj0"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_jk3by"]
+
+[sub_resource type="Resource" id="Resource_rwukc"]
+script = ExtResource("1_ycqqj")
+belt_name = "Tau Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 53996591.921381205
+width = 6694747.3359411545
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 292
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_57073"]
+script = ExtResource("1_ycqqj")
+belt_name = "Tau Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 102506551.8952631
+width = 12709236.653611604
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+asteroid_count = 159
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_niehg"]
+script = ExtResource("2_nj2gb")
+gate_name = "Gate → Nova Cygni"
+target_system_id = 102
+target_system_name = "Nova Cygni"
+pos_x = -29580483.466304384
+pos_y = 829022.7617106822
+pos_z = -68121472.95369959
+
+[sub_resource type="Resource" id="Resource_qwxpf"]
+script = ExtResource("2_nj2gb")
+gate_name = "Gate → Sirius Draconis"
+target_system_id = 83
+target_system_name = "Sirius Draconis"
+pos_x = 57223462.1035179
+pos_y = -822842.9520430063
+pos_z = -47339364.84965955
+
+[sub_resource type="Resource" id="Resource_bipje"]
+script = ExtResource("3_ulkl3")
+planet_name = "Tau Draconis I"
+type = 3
+orbital_radius = 19627019.464969635
+orbital_period = 147.56310114135857
+orbital_angle = 4.236261342500297
+radius = 36678471.56524658
+color = Color(0.77885747, 0.6691409, 0.33818626, 0.9)
+
+[sub_resource type="Resource" id="Resource_13p4g"]
+script = ExtResource("3_ulkl3")
+planet_name = "Tau Draconis II"
+type = 4
+orbital_radius = 37259723.58152832
+orbital_period = 385.9718992078098
+orbital_angle = 0.56690776703544
+radius = 8607247.352600098
+color = Color(0.60436887, 0.76568055, 0.9543483, 0.9)
+
+[sub_resource type="Resource" id="Resource_goptx"]
+script = ExtResource("3_ulkl3")
+planet_name = "Tau Draconis III"
+type = 4
+orbital_radius = 70733460.26123409
+orbital_period = 1009.5634059314958
+orbital_angle = 1.940759461313018
+radius = 6854593.276977539
+color = Color(0.60212636, 0.7179266, 0.9880963, 0.9)
+
+[sub_resource type="Resource" id="Resource_y7opx"]
+script = ExtResource("3_ulkl3")
+planet_name = "Tau Draconis IV"
+type = 4
+orbital_radius = 134279643.5292921
+orbital_period = 2640.654080485916
+orbital_angle = 4.43949956562807
+radius = 9354712.963104248
+color = Color(0.6339655, 0.762883, 0.96291643, 0.9)
+
+[sub_resource type="Resource" id="Resource_es8ox"]
+script = ExtResource("5_jk3by")
+station_name = "Beta Depot"
+orbital_radius = 71266682.16287793
+orbital_period = 908.6070653383463
+orbital_angle = 0.4477072357748532
+
+[resource]
+script = ExtResource("4_12vj0")
+system_name = "Tau Draconis"
+seed_value = 3975968372
+star_name = "Tau Draconis"
+star_spectral_class = "M"
+star_temperature = 3484.1303288936615
+star_radius = 12165988.330477476
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06702606159448624
+planets = Array[ExtResource("3_ulkl3")]([SubResource("Resource_bipje"), SubResource("Resource_13p4g"), SubResource("Resource_goptx"), SubResource("Resource_y7opx")])
+stations = Array[ExtResource("5_jk3by")]([SubResource("Resource_es8ox")])
+asteroid_belts = Array[ExtResource("1_ycqqj")]([SubResource("Resource_rwukc"), SubResource("Resource_57073")])
+jump_gates = Array[ExtResource("2_nj2gb")]([SubResource("Resource_niehg"), SubResource("Resource_qwxpf")])

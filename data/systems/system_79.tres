@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_11yi8"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ttv1l"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_0eudl"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_xluu3"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_nfcal"]
+
+[sub_resource type="Resource" id="Resource_chp8v"]
+script = ExtResource("1_11yi8")
+belt_name = "Phi Crucis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 37998471.21468624
+width = 5662897.045481324
+dominant_resource = &"uranium"
+secondary_resource = &"iron"
+asteroid_count = 203
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_unvns"]
+script = ExtResource("1_11yi8")
+belt_name = "Phi Crucis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 17369721.785383478
+width = 2588602.726239782
+dominant_resource = &"copper"
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 372
+
+[sub_resource type="Resource" id="Resource_ef5nh"]
+script = ExtResource("2_ttv1l")
+gate_name = "Gate → Epsilon Centauri"
+target_system_id = 66
+target_system_name = "Epsilon Centauri"
+pos_x = -21576210.016062368
+pos_y = 345493.85630383715
+pos_z = -48433658.605045065
+
+[sub_resource type="Resource" id="Resource_htksj"]
+script = ExtResource("2_ttv1l")
+gate_name = "Gate → Antares Virginis"
+target_system_id = 27
+target_system_name = "Antares Virginis"
+pos_x = 41594493.677741535
+pos_y = 858957.1906851277
+pos_z = -32882369.443511896
+
+[sub_resource type="Resource" id="Resource_1tgio"]
+script = ExtResource("2_ttv1l")
+gate_name = "Gate → Theta Leonis"
+target_system_id = 34
+target_system_name = "Theta Leonis"
+pos_x = -51764546.400907494
+pos_y = -904968.1662939694
+pos_z = 11479715.172232317
+
+[sub_resource type="Resource" id="Resource_1l4wp"]
+script = ExtResource("3_0eudl")
+planet_name = "Phi Crucis I"
+type = 2
+orbital_radius = 10898214.969784021
+orbital_period = 61.056133628804616
+orbital_angle = 0.5699467511298971
+radius = 8618888.139724731
+color = Color(0.1816756, 0.44603816, 0.71120447, 0.9)
+
+[sub_resource type="Resource" id="Resource_src6k"]
+script = ExtResource("3_0eudl")
+planet_name = "Phi Crucis II"
+type = 3
+orbital_radius = 23841228.60098293
+orbital_period = 197.55553037796486
+orbital_angle = 5.461662195833053
+radius = 22084719.53868866
+color = Color(0.8539071, 0.6169465, 0.34904516, 0.9)
+
+[sub_resource type="Resource" id="Resource_f1ffl"]
+script = ExtResource("3_0eudl")
+planet_name = "Phi Crucis III"
+type = 4
+orbital_radius = 52155713.82838955
+orbital_period = 639.2181303223982
+orbital_angle = 2.405727164261325
+radius = 3891088.366508484
+color = Color(0.5849711, 0.79327035, 0.91397, 0.9)
+
+[sub_resource type="Resource" id="Resource_8c1uo"]
+script = ExtResource("5_nfcal")
+station_name = "Gateway Outpost"
+orbital_radius = 10762901.410072146
+orbital_period = 54.950520265924155
+orbital_angle = 0.9031349339379542
+
+[sub_resource type="Resource" id="Resource_wo7tw"]
+script = ExtResource("5_nfcal")
+station_name = "Nexus Terminal"
+orbital_radius = 50022185.210789695
+orbital_period = 575.2963172901584
+orbital_angle = 0.6501699484737891
+
+[resource]
+script = ExtResource("4_xluu3")
+system_name = "Phi Crucis"
+seed_value = 2376300385
+star_name = "Phi Crucis"
+star_spectral_class = "M"
+star_temperature = 3279.3130338191986
+star_radius = 29331686.618053913
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0558450945019722
+planets = Array[ExtResource("3_0eudl")]([SubResource("Resource_1l4wp"), SubResource("Resource_src6k"), SubResource("Resource_f1ffl")])
+stations = Array[ExtResource("5_nfcal")]([SubResource("Resource_8c1uo"), SubResource("Resource_wo7tw")])
+asteroid_belts = Array[ExtResource("1_11yi8")]([SubResource("Resource_chp8v"), SubResource("Resource_unvns")])
+jump_gates = Array[ExtResource("2_ttv1l")]([SubResource("Resource_ef5nh"), SubResource("Resource_htksj"), SubResource("Resource_1tgio")])

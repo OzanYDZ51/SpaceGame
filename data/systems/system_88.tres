@@ -1,0 +1,129 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_nx2p6"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_txq6g"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_qg77o"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_8p21a"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_tingm"]
+
+[sub_resource type="Resource" id="Resource_c0em2"]
+script = ExtResource("1_nx2p6")
+belt_name = "Xi Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 17965713.43252772
+width = 1877712.1270088912
+rare_resource = &"uranium"
+asteroid_count = 277
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_hakhh"]
+script = ExtResource("1_nx2p6")
+belt_name = "Xi Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 30675131.356836744
+width = 3206055.0427147183
+rare_resource = &"crystal"
+asteroid_count = 406
+
+[sub_resource type="Resource" id="Resource_uttmt"]
+script = ExtResource("2_txq6g")
+gate_name = "Gate → Mu Leonis"
+target_system_id = 48
+target_system_name = "Mu Leonis"
+pos_x = 2448150.234701372
+pos_y = -329697.639039229
+pos_z = 16675496.785386594
+
+[sub_resource type="Resource" id="Resource_8ctyd"]
+script = ExtResource("2_txq6g")
+gate_name = "Gate → Mira Phoenicis"
+target_system_id = 99
+target_system_name = "Mira Phoenicis"
+pos_x = 16843814.657110557
+pos_y = 395406.01539144554
+pos_z = -592908.4313910007
+
+[sub_resource type="Resource" id="Resource_1k4xn"]
+script = ExtResource("2_txq6g")
+gate_name = "Gate → Deneb Virginis"
+target_system_id = 85
+target_system_name = "Deneb Virginis"
+pos_x = 14264455.873450546
+pos_y = 274650.1120799564
+pos_z = -8977245.192456828
+
+[sub_resource type="Resource" id="Resource_jl8ay"]
+script = ExtResource("2_txq6g")
+gate_name = "Gate → Sirius Draconis"
+target_system_id = 83
+target_system_name = "Sirius Draconis"
+pos_x = -13547701.92879724
+pos_y = 283401.45927566156
+pos_z = -10026235.837021317
+
+[sub_resource type="Resource" id="Resource_rv4py"]
+script = ExtResource("3_qg77o")
+planet_name = "Xi Draconis I"
+orbital_radius = 13271433.115005493
+orbital_period = 82.04894059538395
+orbital_angle = 5.065647977919886
+radius = 5665255.308151245
+color = Color(0.68049467, 0.44647533, 0.3398068, 0.9)
+
+[sub_resource type="Resource" id="Resource_u8dki"]
+script = ExtResource("3_qg77o")
+planet_name = "Xi Draconis II"
+type = 1
+orbital_radius = 22659993.75004995
+orbital_period = 183.0568237160987
+orbital_angle = 4.926377802266623
+radius = 2322721.1833000183
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_pwe1k"]
+script = ExtResource("3_qg77o")
+planet_name = "Xi Draconis III"
+orbital_radius = 38690268.96362354
+orbital_period = 408.41235079776385
+orbital_angle = 0.8608350204796279
+radius = 4445598.989725113
+color = Color(0.5079893, 0.6632875, 0.42189443, 0.9)
+
+[sub_resource type="Resource" id="Resource_4x8so"]
+script = ExtResource("3_qg77o")
+planet_name = "Xi Draconis IV"
+type = 3
+orbital_radius = 66060782.230985
+orbital_period = 911.196014975358
+orbital_angle = 4.681043116623645
+radius = 22010405.06362915
+color = Color(0.7788086, 0.7325015, 0.2786846, 0.9)
+
+[sub_resource type="Resource" id="Resource_vqxkb"]
+script = ExtResource("5_tingm")
+station_name = "Gamma Station"
+orbital_radius = 13854246.723336736
+orbital_period = 73.84404653584556
+orbital_angle = 5.363394922172384
+
+[sub_resource type="Resource" id="Resource_mceqv"]
+script = ExtResource("5_tingm")
+station_name = "Orbital Station"
+orbital_radius = 13517309.886437517
+orbital_period = 73.84404653584556
+orbital_angle = 5.66627036567032
+
+[resource]
+script = ExtResource("4_8p21a")
+system_name = "Xi Draconis"
+seed_value = 1221351005
+star_name = "Xi Draconis"
+star_spectral_class = "K"
+star_temperature = 3978.219595551491
+star_radius = 60552975.84836483
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.42969622611999514
+planets = Array[ExtResource("3_qg77o")]([SubResource("Resource_rv4py"), SubResource("Resource_u8dki"), SubResource("Resource_pwe1k"), SubResource("Resource_4x8so")])
+stations = Array[ExtResource("5_tingm")]([SubResource("Resource_vqxkb"), SubResource("Resource_mceqv")])
+asteroid_belts = Array[ExtResource("1_nx2p6")]([SubResource("Resource_c0em2"), SubResource("Resource_hakhh")])
+jump_gates = Array[ExtResource("2_txq6g")]([SubResource("Resource_uttmt"), SubResource("Resource_8ctyd"), SubResource("Resource_1k4xn"), SubResource("Resource_jl8ay")])

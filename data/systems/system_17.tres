@@ -1,0 +1,167 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_3hgpr"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_rg32t"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_yp0b0"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_oprxw"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_y7abn"]
+
+[sub_resource type="Resource" id="Resource_57imb"]
+script = ExtResource("1_3hgpr")
+belt_name = "Kappa Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 279033795.35597456
+width = 39812132.84852516
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+asteroid_count = 411
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_kpthb"]
+script = ExtResource("1_3hgpr")
+belt_name = "Kappa Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 588468787.0201113
+width = 83961863.81712955
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 223
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_l4srt"]
+script = ExtResource("1_3hgpr")
+belt_name = "Kappa Tauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 62736972.07934497
+width = 8951219.201784106
+dominant_resource = &"titanium"
+secondary_resource = &"platinum"
+asteroid_count = 479
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_w3n36"]
+script = ExtResource("1_3hgpr")
+belt_name = "Kappa Tauri Belt 4"
+field_id = &"belt_3"
+orbital_radius = 29747942.14165035
+width = 4244392.773293744
+asteroid_count = 479
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_s1p5d"]
+script = ExtResource("2_rg32t")
+gate_name = "Gate → Deneb Leonis"
+target_system_id = 30
+target_system_name = "Deneb Leonis"
+pos_x = 80391083.64072151
+pos_y = -1983801.2212202803
+pos_z = -33003572.899136655
+
+[sub_resource type="Resource" id="Resource_grw43"]
+script = ExtResource("2_rg32t")
+gate_name = "Gate → Chi Tauri"
+target_system_id = 74
+target_system_name = "Chi Tauri"
+pos_x = -38280631.94312018
+pos_y = -1011400.5378193898
+pos_z = -78016378.86414286
+
+[sub_resource type="Resource" id="Resource_vj2fg"]
+script = ExtResource("2_rg32t")
+gate_name = "Gate → Antares Scorpii"
+target_system_id = 113
+target_system_name = "Antares Scorpii"
+pos_x = -57428372.00812985
+pos_y = 432683.59054639266
+pos_z = 65222267.98827191
+
+[sub_resource type="Resource" id="Resource_rhqdp"]
+script = ExtResource("2_rg32t")
+gate_name = "Gate → Fomalhaut Pavonis"
+target_system_id = 111
+target_system_name = "Fomalhaut Pavonis"
+pos_x = -84526342.7857887
+pos_y = -78044.1576902584
+pos_z = -20180672.146820515
+
+[sub_resource type="Resource" id="Resource_inock"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri I"
+orbital_radius = 19136960.20841599
+orbital_period = 142.07107762308414
+orbital_angle = 0.33616879061947913
+radius = 5528617.322444916
+color = Color(0.5961943, 0.4081634, 0.3180331, 0.9)
+
+[sub_resource type="Resource" id="Resource_8pnmr"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri II"
+type = 1
+orbital_radius = 40358924.074884705
+orbital_period = 435.11656141176235
+orbital_angle = 1.2758645518740714
+radius = 1520190.5723661184
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_c87xp"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri III"
+orbital_radius = 85115020.08380523
+orbital_period = 1332.617624799614
+orbital_angle = 2.205803890094483
+radius = 3960851.550102234
+color = Color(0.607992, 0.69193816, 0.3936181, 0.9)
+
+[sub_resource type="Resource" id="Resource_uvdak"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri IV"
+type = 3
+orbital_radius = 179503463.23466164
+orbital_period = 4081.365526893867
+orbital_angle = 3.452916226631948
+radius = 51535387.03918457
+color = Color(0.880023, 0.68461454, 0.27952212, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_osu7e"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri V"
+type = 4
+orbital_radius = 378564127.4772874
+orbital_period = 12499.868119801016
+orbital_angle = 2.38289403250688
+radius = 3943947.196006775
+color = Color(0.5070847, 0.7560398, 0.95909005, 0.9)
+
+[sub_resource type="Resource" id="Resource_5nepy"]
+script = ExtResource("3_yp0b0")
+planet_name = "Kappa Tauri VI"
+type = 4
+orbital_radius = 798373446.5629351
+orbital_period = 38282.94770043048
+orbital_angle = 4.2426549264873055
+radius = 9357188.701629639
+color = Color(0.52664095, 0.71440476, 0.91801196, 0.9)
+
+[sub_resource type="Resource" id="Resource_ujifp"]
+script = ExtResource("5_y7abn")
+station_name = "Beta Outpost"
+orbital_radius = 83902026.1733759
+orbital_period = 1199.3558623196527
+orbital_angle = 3.9625277889019066
+
+[resource]
+script = ExtResource("4_oprxw")
+system_name = "Kappa Tauri"
+seed_value = 1472058031
+star_name = "Kappa Tauri"
+star_spectral_class = "F"
+star_temperature = 7195.26681303978
+star_radius = 93711780.34635784
+star_color = Color(0.95, 0.95, 0.9, 1)
+star_luminosity = 3.5036573
+planets = Array[ExtResource("3_yp0b0")]([SubResource("Resource_inock"), SubResource("Resource_8pnmr"), SubResource("Resource_c87xp"), SubResource("Resource_uvdak"), SubResource("Resource_osu7e"), SubResource("Resource_5nepy")])
+stations = Array[ExtResource("5_y7abn")]([SubResource("Resource_ujifp")])
+asteroid_belts = Array[ExtResource("1_3hgpr")]([SubResource("Resource_57imb"), SubResource("Resource_kpthb"), SubResource("Resource_l4srt"), SubResource("Resource_w3n36")])
+jump_gates = Array[ExtResource("2_rg32t")]([SubResource("Resource_s1p5d"), SubResource("Resource_grw43"), SubResource("Resource_vj2fg"), SubResource("Resource_rhqdp")])

@@ -1,0 +1,104 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_gjnmd"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_2itxo"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_6klms"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_leara"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_gd4mx"]
+
+[sub_resource type="Resource" id="Resource_51gmn"]
+script = ExtResource("1_gjnmd")
+belt_name = "Upsilon Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 29070457.444255788
+width = 2616771.906878646
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 469
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ru4kc"]
+script = ExtResource("2_2itxo")
+gate_name = "Gate → Kappa Phoenicis"
+target_system_id = 51
+target_system_name = "Kappa Phoenicis"
+pos_x = -29070633.13845266
+pos_y = -42428.16373192615
+pos_z = 26991415.96579203
+
+[sub_resource type="Resource" id="Resource_6hhpa"]
+script = ExtResource("2_2itxo")
+gate_name = "Gate → Delta Tauri"
+target_system_id = 36
+target_system_name = "Delta Tauri"
+pos_x = 38966460.48962642
+pos_y = 126290.58909844754
+pos_z = 7433249.8827429265
+
+[sub_resource type="Resource" id="Resource_gmo5c"]
+script = ExtResource("2_2itxo")
+gate_name = "Gate → Gamma Aquilae"
+target_system_id = 89
+target_system_name = "Gamma Aquilae"
+pos_x = 37298506.97705988
+pos_y = -601621.8140163956
+pos_z = -13507761.62771354
+
+[sub_resource type="Resource" id="Resource_ty3uc"]
+script = ExtResource("2_2itxo")
+gate_name = "Gate → Chi Centauri"
+target_system_id = 54
+target_system_name = "Chi Centauri"
+pos_x = -6279458.763338921
+pos_y = -273713.3314137027
+pos_z = 39168950.005692534
+
+[sub_resource type="Resource" id="Resource_wnwau"]
+script = ExtResource("3_6klms")
+planet_name = "Upsilon Virginis I"
+type = 4
+orbital_radius = 22528527.677059174
+orbital_period = 181.4660803967331
+orbital_angle = 0.8167566667706981
+radius = 8034268.856048584
+color = Color(0.50052184, 0.7036394, 0.9173051, 0.9)
+
+[sub_resource type="Resource" id="Resource_6t18l"]
+script = ExtResource("3_6klms")
+planet_name = "Upsilon Virginis II"
+type = 4
+orbital_radius = 35612387.2114524
+orbital_period = 360.6599133929008
+orbital_angle = 1.7722485259047425
+radius = 6051177.024841309
+color = Color(0.63723576, 0.77510536, 0.9693576, 0.9)
+
+[sub_resource type="Resource" id="Resource_sqpkl"]
+script = ExtResource("5_gd4mx")
+station_name = "Orbital Outpost"
+orbital_radius = 33962579.494865336
+orbital_period = 324.59392205361075
+orbital_angle = 1.753778401029904
+
+[sub_resource type="Resource" id="Resource_381kv"]
+script = ExtResource("5_gd4mx")
+station_name = "Port Station"
+orbital_radius = 36669109.479655765
+orbital_period = 324.59392205361075
+orbital_angle = 1.9203235490466726
+
+[resource]
+script = ExtResource("4_leara")
+system_name = "Upsilon Virginis"
+seed_value = 1253973283
+star_name = "Upsilon Virginis"
+star_spectral_class = "M"
+star_temperature = 3194.19167637825
+star_radius = 12522886.001804471
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.022779464423656463
+planets = Array[ExtResource("3_6klms")]([SubResource("Resource_wnwau"), SubResource("Resource_6t18l")])
+stations = Array[ExtResource("5_gd4mx")]([SubResource("Resource_sqpkl"), SubResource("Resource_381kv")])
+asteroid_belts = Array[ExtResource("1_gjnmd")]([SubResource("Resource_51gmn")])
+jump_gates = Array[ExtResource("2_2itxo")]([SubResource("Resource_ru4kc"), SubResource("Resource_6hhpa"), SubResource("Resource_gmo5c"), SubResource("Resource_ty3uc")])

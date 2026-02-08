@@ -1,0 +1,88 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_smit4"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_d2qxa"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_m2550"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_5fjqt"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_bp3bi"]
+
+[sub_resource type="Resource" id="Resource_ye8w4"]
+script = ExtResource("1_smit4")
+belt_name = "Regulus Lyrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 21916079.911239453
+width = 1724380.6491881632
+dominant_resource = &"uranium"
+secondary_resource = &"titanium"
+rare_resource = &"crystal"
+asteroid_count = 471
+
+[sub_resource type="Resource" id="Resource_xhxs2"]
+script = ExtResource("2_d2qxa")
+gate_name = "Gate → Mira Tauri"
+target_system_id = 32
+target_system_name = "Mira Tauri"
+pos_x = 22072507.889249176
+pos_y = 2569.5075101840757
+pos_z = 20468008.032248113
+
+[sub_resource type="Resource" id="Resource_h1p03"]
+script = ExtResource("2_d2qxa")
+gate_name = "Gate → Procyon Persei"
+target_system_id = 61
+target_system_name = "Procyon Persei"
+pos_x = 25767814.92328494
+pos_y = 428097.6063561532
+pos_z = -15561319.719370661
+
+[sub_resource type="Resource" id="Resource_ifubs"]
+script = ExtResource("2_d2qxa")
+gate_name = "Gate → Nu Centauri"
+target_system_id = 71
+target_system_name = "Nu Centauri"
+pos_x = -16820669.382419076
+pos_y = -504057.6965169282
+pos_z = 24963974.820859153
+
+[sub_resource type="Resource" id="Resource_5n7m2"]
+script = ExtResource("3_m2550")
+planet_name = "Regulus Lyrae I"
+type = 2
+orbital_radius = 17605128.288269047
+orbital_period = 125.35886028858357
+orbital_angle = 1.2464142554367283
+radius = 6088507.890701294
+color = Color(0.24618806, 0.44326162, 0.84316015, 0.9)
+
+[sub_resource type="Resource" id="Resource_bsiye"]
+script = ExtResource("3_m2550")
+planet_name = "Regulus Lyrae II"
+type = 3
+orbital_radius = 26227031.534209862
+orbital_period = 227.93968906808837
+orbital_angle = 1.1061284167227374
+radius = 46295478.34396362
+color = Color(0.8074333, 0.737626, 0.37373063, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_7ysf6"]
+script = ExtResource("5_bp3bi")
+station_name = "Dock Hub"
+orbital_radius = 27102075.63157631
+orbital_period = 205.14572016127954
+orbital_angle = 0.390265605248948
+
+[resource]
+script = ExtResource("4_5fjqt")
+system_name = "Regulus Lyrae"
+seed_value = 317867688
+star_name = "Regulus Lyrae"
+star_spectral_class = "M"
+star_temperature = 3452.6696026325226
+star_radius = 22443056.392514702
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.06561436384916305
+planets = Array[ExtResource("3_m2550")]([SubResource("Resource_5n7m2"), SubResource("Resource_bsiye")])
+stations = Array[ExtResource("5_bp3bi")]([SubResource("Resource_7ysf6")])
+asteroid_belts = Array[ExtResource("1_smit4")]([SubResource("Resource_ye8w4")])
+jump_gates = Array[ExtResource("2_d2qxa")]([SubResource("Resource_xhxs2"), SubResource("Resource_h1p03"), SubResource("Resource_ifubs")])

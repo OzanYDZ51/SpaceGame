@@ -1,0 +1,149 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_elav4"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_s45i7"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_sd40o"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_f23sv"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_gejny"]
+
+[sub_resource type="Resource" id="Resource_6wtvl"]
+script = ExtResource("1_elav4")
+belt_name = "Polaris Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 69464909.6606916
+width = 5613204.694339769
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 199
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_2634n"]
+script = ExtResource("1_elav4")
+belt_name = "Polaris Persei Belt 2"
+field_id = &"belt_1"
+orbital_radius = 46115780.09688459
+width = 3726447.1311830375
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 489
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_h8n6a"]
+script = ExtResource("2_s45i7")
+gate_name = "Gate → Phi Centauri"
+target_system_id = 28
+target_system_name = "Phi Centauri"
+pos_x = -12375402.323278882
+pos_y = -117677.62107376667
+pos_z = 15269266.970754026
+
+[sub_resource type="Resource" id="Resource_j3c02"]
+script = ExtResource("2_s45i7")
+gate_name = "Gate → Delta Leonis"
+target_system_id = 110
+target_system_name = "Delta Leonis"
+pos_x = 19650059.207974926
+pos_y = -137986.31302148194
+pos_z = -419844.7454190211
+
+[sub_resource type="Resource" id="Resource_fkhgx"]
+script = ExtResource("2_s45i7")
+gate_name = "Gate → Chi Leonis"
+target_system_id = 31
+target_system_name = "Chi Leonis"
+pos_x = 18129946.60730441
+pos_y = -286115.31557084445
+pos_z = 7589870.387791047
+
+[sub_resource type="Resource" id="Resource_g1m28"]
+script = ExtResource("2_s45i7")
+gate_name = "Gate → Epsilon Tauri"
+target_system_id = 5
+target_system_name = "Epsilon Tauri"
+pos_x = 18832254.137359522
+pos_y = 414232.3090814051
+pos_z = 5625593.354756573
+
+[sub_resource type="Resource" id="Resource_jpo5c"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei I"
+orbital_radius = 16218549.16214943
+orbital_period = 110.84452490420132
+orbital_angle = 3.036346254203381
+radius = 6991884.231567383
+color = Color(0.59477395, 0.5716074, 0.3597279, 0.9)
+
+[sub_resource type="Resource" id="Resource_1lmfw"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei II"
+type = 3
+orbital_radius = 24430250.339672904
+orbital_period = 204.92178007893222
+orbital_angle = 2.7998598588643526
+radius = 26340247.39265442
+color = Color(0.7850032, 0.744322, 0.3415198, 0.9)
+
+[sub_resource type="Resource" id="Resource_pbaoh"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei III"
+type = 3
+orbital_radius = 36799662.268927
+orbital_period = 378.84537812770765
+orbital_angle = 2.480513783515632
+radius = 37883887.29095459
+color = Color(0.79150516, 0.65680933, 0.2937777, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_1wils"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei IV"
+type = 4
+orbital_radius = 55431897.924842186
+orbital_period = 700.3834364187298
+orbital_angle = 0.4935825210189084
+radius = 2105068.0950284004
+color = Color(0.61724555, 0.7786815, 0.980842, 0.9)
+
+[sub_resource type="Resource" id="Resource_jcy82"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei V"
+type = 4
+orbital_radius = 83497921.39654103
+orbital_period = 1294.8210175718452
+orbital_angle = 1.7899194527812048
+radius = 5441166.400909424
+color = Color(0.61867416, 0.79810196, 0.9378339, 0.9)
+
+[sub_resource type="Resource" id="Resource_tyg1h"]
+script = ExtResource("3_sd40o")
+planet_name = "Polaris Persei VI"
+type = 4
+orbital_radius = 125774204.71865962
+orbital_period = 2393.7765806092593
+orbital_angle = 3.307792131619448
+radius = 7960794.925689697
+color = Color(0.59861207, 0.7727779, 0.9076646, 0.9)
+
+[sub_resource type="Resource" id="Resource_8ige2"]
+script = ExtResource("5_gejny")
+station_name = "Beta Platform"
+orbital_radius = 16654543.914504254
+orbital_period = 99.76007241378119
+orbital_angle = 4.154296734288224
+
+[resource]
+script = ExtResource("4_f23sv")
+system_name = "Polaris Persei"
+seed_value = 1776753584
+star_name = "Polaris Persei"
+star_spectral_class = "M"
+star_temperature = 3322.806566953659
+star_radius = 34974142.86788702
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.07430848044157029
+planets = Array[ExtResource("3_sd40o")]([SubResource("Resource_jpo5c"), SubResource("Resource_1lmfw"), SubResource("Resource_pbaoh"), SubResource("Resource_1wils"), SubResource("Resource_jcy82"), SubResource("Resource_tyg1h")])
+stations = Array[ExtResource("5_gejny")]([SubResource("Resource_8ige2")])
+asteroid_belts = Array[ExtResource("1_elav4")]([SubResource("Resource_6wtvl"), SubResource("Resource_2634n")])
+jump_gates = Array[ExtResource("2_s45i7")]([SubResource("Resource_h8n6a"), SubResource("Resource_j3c02"), SubResource("Resource_fkhgx"), SubResource("Resource_g1m28")])

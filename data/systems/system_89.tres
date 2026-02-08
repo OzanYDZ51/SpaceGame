@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_i8w73"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_if6ua"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_erj08"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_guq3w"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ovfmp"]
+
+[sub_resource type="Resource" id="Resource_j6ghs"]
+script = ExtResource("1_i8w73")
+belt_name = "Gamma Aquilae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 22262950.647157438
+width = 3132364.196889404
+dominant_resource = &"uranium"
+secondary_resource = &"titanium"
+rare_resource = &"platinum"
+asteroid_count = 473
+
+[sub_resource type="Resource" id="Resource_l8afk"]
+script = ExtResource("2_if6ua")
+gate_name = "Gate → Chi Centauri"
+target_system_id = 54
+target_system_name = "Chi Centauri"
+pos_x = -9657273.414015949
+pos_y = 762571.949628171
+pos_z = -31044098.04516448
+
+[sub_resource type="Resource" id="Resource_mxf0t"]
+script = ExtResource("2_if6ua")
+gate_name = "Gate → Chi Carinae"
+target_system_id = 6
+target_system_name = "Chi Carinae"
+pos_x = 7052291.578820798
+pos_y = 684883.7487860323
+pos_z = 31737424.85959026
+
+[sub_resource type="Resource" id="Resource_upu71"]
+script = ExtResource("2_if6ua")
+gate_name = "Gate → Upsilon Virginis"
+target_system_id = 114
+target_system_name = "Upsilon Virginis"
+pos_x = -30951702.976843134
+pos_y = -582806.9652523546
+pos_z = -9949423.906142717
+
+[sub_resource type="Resource" id="Resource_bt5dh"]
+script = ExtResource("2_if6ua")
+gate_name = "Gate → Delta Tauri"
+target_system_id = 36
+target_system_name = "Delta Tauri"
+pos_x = -6051915.092618617
+pos_y = -528819.7780913798
+pos_z = -31943282.18800597
+
+[sub_resource type="Resource" id="Resource_ikrx8"]
+script = ExtResource("3_erj08")
+planet_name = "Gamma Aquilae I"
+type = 2
+orbital_radius = 14432040.154933928
+orbital_period = 93.04388518674905
+orbital_angle = 4.5786948398756735
+radius = 6092956.781387329
+color = Color(0.23488663, 0.42776984, 0.8290124, 0.9)
+
+[sub_resource type="Resource" id="Resource_ovdeb"]
+script = ExtResource("3_erj08")
+planet_name = "Gamma Aquilae II"
+type = 3
+orbital_radius = 30093861.139380947
+orbital_period = 280.16450548008095
+orbital_angle = 1.6758309424568094
+radius = 24089069.366455078
+color = Color(0.87874496, 0.69882786, 0.31649753, 0.9)
+
+[sub_resource type="Resource" id="Resource_tn54g"]
+script = ExtResource("5_ovfmp")
+station_name = "Dock Outpost"
+orbital_radius = 29511520.31558728
+orbital_period = 252.14805493207285
+orbital_angle = 3.2515153349849784
+
+[resource]
+script = ExtResource("4_guq3w")
+system_name = "Gamma Aquilae"
+seed_value = 1275487713
+star_name = "Gamma Aquilae"
+star_spectral_class = "K"
+star_temperature = 4227.2302478551865
+star_radius = 42907533.07344541
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.08370379485189915
+planets = Array[ExtResource("3_erj08")]([SubResource("Resource_ikrx8"), SubResource("Resource_ovdeb")])
+stations = Array[ExtResource("5_ovfmp")]([SubResource("Resource_tn54g")])
+asteroid_belts = Array[ExtResource("1_i8w73")]([SubResource("Resource_j6ghs")])
+jump_gates = Array[ExtResource("2_if6ua")]([SubResource("Resource_l8afk"), SubResource("Resource_mxf0t"), SubResource("Resource_upu71"), SubResource("Resource_bt5dh")])

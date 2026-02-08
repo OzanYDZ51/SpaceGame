@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_rql71"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_7xstv"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_u4a3d"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_1fgrd"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_tx2eh"]
+
+[sub_resource type="Resource" id="Resource_f4l80"]
+script = ExtResource("1_rql71")
+belt_name = "Zeta Lyrae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 30163497.510870025
+width = 4277203.6327202
+dominant_resource = &"titanium"
+asteroid_count = 331
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_n8qwy"]
+script = ExtResource("1_rql71")
+belt_name = "Zeta Lyrae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 63294515.66663939
+width = 8975203.629587548
+dominant_resource = &"titanium"
+secondary_resource = &"gold"
+rare_resource = &"uranium"
+asteroid_count = 360
+
+[sub_resource type="Resource" id="Resource_osr3o"]
+script = ExtResource("2_7xstv")
+gate_name = "Gate → Sol Scorpii"
+target_system_id = 80
+target_system_name = "Sol Scorpii"
+pos_x = 7175173.7418804215
+pos_y = -353001.22171869234
+pos_z = 45302264.080854096
+
+[sub_resource type="Resource" id="Resource_nnx5y"]
+script = ExtResource("2_7xstv")
+gate_name = "Gate → Mu Leonis"
+target_system_id = 48
+target_system_name = "Mu Leonis"
+pos_x = 38016479.927467875
+pos_y = 324575.8677992439
+pos_z = -25661751.752404694
+
+[sub_resource type="Resource" id="Resource_s7sy1"]
+script = ExtResource("2_7xstv")
+gate_name = "Gate → Aldebaran Aquilae"
+target_system_id = 65
+target_system_name = "Aldebaran Aquilae"
+pos_x = 19215735.45195977
+pos_y = 325199.7401295966
+pos_z = 41647734.15346758
+
+[sub_resource type="Resource" id="Resource_d44ph"]
+script = ExtResource("2_7xstv")
+gate_name = "Gate → Polaris Scorpii"
+target_system_id = 73
+target_system_name = "Polaris Scorpii"
+pos_x = 38649356.18647675
+pos_y = 775658.1171873522
+pos_z = 24698289.727194972
+
+[sub_resource type="Resource" id="Resource_qchvy"]
+script = ExtResource("3_u4a3d")
+planet_name = "Zeta Lyrae I"
+orbital_radius = 19470488.429069523
+orbital_period = 145.80133924647498
+orbital_angle = 2.4303925716516903
+radius = 6259329.14018631
+color = Color(0.6252355, 0.4477811, 0.2758932, 0.9)
+
+[sub_resource type="Resource" id="Resource_v7b2g"]
+script = ExtResource("3_u4a3d")
+planet_name = "Zeta Lyrae II"
+type = 2
+orbital_radius = 40856506.59267052
+orbital_period = 443.1880979111452
+orbital_angle = 2.503224264218311
+radius = 5378113.925457001
+color = Color(0.18684886, 0.45940545, 0.783413, 0.9)
+
+[sub_resource type="Resource" id="Resource_dy2mb"]
+script = ExtResource("3_u4a3d")
+planet_name = "Zeta Lyrae III"
+type = 3
+orbital_radius = 85732524.74060826
+orbital_period = 1347.1459943043526
+orbital_angle = 5.921830965720822
+radius = 50094871.520996094
+color = Color(0.75394034, 0.6509068, 0.3180265, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_b0x4o"]
+script = ExtResource("5_tx2eh")
+station_name = "Beta Depot"
+orbital_radius = 42866962.50110327
+orbital_period = 398.86928812003066
+orbital_angle = 4.627048191312561
+
+[resource]
+script = ExtResource("4_1fgrd")
+system_name = "Zeta Lyrae"
+seed_value = 3828144298
+star_name = "Zeta Lyrae"
+star_temperature = 5749.662685394287
+star_radius = 72420617.64598487
+star_color = Color(1, 0.95, 0.7, 1)
+star_luminosity = 1.0649319648742677
+planets = Array[ExtResource("3_u4a3d")]([SubResource("Resource_qchvy"), SubResource("Resource_v7b2g"), SubResource("Resource_dy2mb")])
+stations = Array[ExtResource("5_tx2eh")]([SubResource("Resource_b0x4o")])
+asteroid_belts = Array[ExtResource("1_rql71")]([SubResource("Resource_f4l80"), SubResource("Resource_n8qwy")])
+jump_gates = Array[ExtResource("2_7xstv")]([SubResource("Resource_osr3o"), SubResource("Resource_nnx5y"), SubResource("Resource_s7sy1"), SubResource("Resource_d44ph")])

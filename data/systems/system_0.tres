@@ -1,0 +1,116 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_foif1"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_xdnuq"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_27mqd"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_d4j8y"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_lrvsi"]
+
+[sub_resource type="Resource" id="Resource_wc3ua"]
+script = ExtResource("1_foif1")
+belt_name = "Fomalhaut Scorpii Belt 1"
+field_id = &"belt_0"
+orbital_radius = 18684458.46200911
+width = 1714191.8649710335
+secondary_resource = &"gold"
+rare_resource = &"platinum"
+asteroid_count = 420
+
+[sub_resource type="Resource" id="Resource_snhsx"]
+script = ExtResource("1_foif1")
+belt_name = "Fomalhaut Scorpii Belt 2"
+field_id = &"belt_1"
+orbital_radius = 29806339.792196237
+width = 2734560.6671038177
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 160
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_tjpsn"]
+script = ExtResource("2_xdnuq")
+gate_name = "Gate → Canopus Hydrae"
+target_system_id = 45
+target_system_name = "Canopus Hydrae"
+pos_x = 25589242.326051824
+pos_y = -556805.3006699913
+pos_z = -5568129.777877075
+
+[sub_resource type="Resource" id="Resource_xvgtm"]
+script = ExtResource("2_xdnuq")
+gate_name = "Gate → Rho Ursae"
+target_system_id = 117
+target_system_name = "Rho Ursae"
+pos_x = -23660499.57727624
+pos_y = -293785.21311223827
+pos_z = 11224711.657695023
+
+[sub_resource type="Resource" id="Resource_6tjoi"]
+script = ExtResource("2_xdnuq")
+gate_name = "Gate → Regulus Orionis"
+target_system_id = 18
+target_system_name = "Regulus Orionis"
+pos_x = -18447798.37655382
+pos_y = -214190.41141670907
+pos_z = 18587418.516370203
+
+[sub_resource type="Resource" id="Resource_5uhf3"]
+script = ExtResource("2_xdnuq")
+gate_name = "Gate → Kappa Aquilae"
+target_system_id = 115
+target_system_name = "Kappa Aquilae"
+pos_x = 1496537.4264690184
+pos_y = -640989.9865795984
+pos_z = -26145243.69318177
+
+[sub_resource type="Resource" id="Resource_shtb0"]
+script = ExtResource("3_27mqd")
+planet_name = "Fomalhaut Scorpii I"
+orbital_radius = 14398978.799581528
+orbital_period = 92.72434673200983
+orbital_angle = 1.5421477562783705
+radius = 3307531.2972068787
+color = Color(0.6269971, 0.6829311, 0.3800005, 0.9)
+
+[sub_resource type="Resource" id="Resource_6snse"]
+script = ExtResource("3_27mqd")
+planet_name = "Fomalhaut Scorpii II"
+type = 3
+orbital_radius = 22969938.124436695
+orbital_period = 186.82542627356366
+orbital_angle = 1.9316956422142852
+radius = 27272782.32574463
+color = Color(0.8593948, 0.65089685, 0.3229243, 0.9)
+
+[sub_resource type="Resource" id="Resource_xmo6q"]
+script = ExtResource("3_27mqd")
+planet_name = "Fomalhaut Scorpii III"
+type = 4
+orbital_radius = 36642741.45995578
+orbital_period = 376.42475932644646
+orbital_angle = 1.0932646620614361
+radius = 5288258.790969849
+color = Color(0.5947866, 0.76652855, 0.90991294, 0.9)
+
+[sub_resource type="Resource" id="Resource_2e2ve"]
+script = ExtResource("5_lrvsi")
+station_name = "Dock Depot"
+orbital_radius = 23188039.102702662
+orbital_period = 168.1428836462073
+orbital_angle = 0.4192812160598899
+
+[resource]
+script = ExtResource("4_d4j8y")
+system_name = "Fomalhaut Scorpii"
+seed_value = 2784076613
+star_name = "Fomalhaut Scorpii"
+star_spectral_class = "M"
+star_temperature = 3258.344614505768
+star_radius = 7312688.489766419
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.040689155876636504
+planets = Array[ExtResource("3_27mqd")]([SubResource("Resource_shtb0"), SubResource("Resource_6snse"), SubResource("Resource_xmo6q")])
+stations = Array[ExtResource("5_lrvsi")]([SubResource("Resource_2e2ve")])
+asteroid_belts = Array[ExtResource("1_foif1")]([SubResource("Resource_wc3ua"), SubResource("Resource_snhsx")])
+jump_gates = Array[ExtResource("2_xdnuq")]([SubResource("Resource_tjpsn"), SubResource("Resource_xvgtm"), SubResource("Resource_6tjoi"), SubResource("Resource_5uhf3")])

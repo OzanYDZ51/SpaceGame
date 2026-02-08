@@ -1,0 +1,137 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_sar4b"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_dwksm"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_mu0fj"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_6rovn"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ot0q3"]
+
+[sub_resource type="Resource" id="Resource_4mutc"]
+script = ExtResource("1_sar4b")
+belt_name = "Omicron Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25789739.119707562
+width = 3859726.7578836353
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 245
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_8oimt"]
+script = ExtResource("1_sar4b")
+belt_name = "Omicron Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 56625780.69642754
+width = 8474689.872804357
+dominant_resource = &"platinum"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 332
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_c6ulk"]
+script = ExtResource("2_dwksm")
+gate_name = "Gate → Aldebaran Eridani"
+target_system_id = 112
+target_system_name = "Aldebaran Eridani"
+pos_x = -29576651.73415634
+pos_y = -127031.0822069067
+pos_z = 24405395.71022128
+
+[sub_resource type="Resource" id="Resource_034bo"]
+script = ExtResource("2_dwksm")
+gate_name = "Gate → Sigma Lyrae"
+target_system_id = 100
+target_system_name = "Sigma Lyrae"
+pos_x = 37147096.92137034
+pos_y = 658976.7316411507
+pos_z = 9512878.52809962
+
+[sub_resource type="Resource" id="Resource_t2pta"]
+script = ExtResource("2_dwksm")
+gate_name = "Gate → Pi Ursae"
+target_system_id = 44
+target_system_name = "Pi Ursae"
+pos_x = -16086662.838330818
+pos_y = 252434.82519521585
+pos_z = -34808345.92884193
+
+[sub_resource type="Resource" id="Resource_sivj8"]
+script = ExtResource("2_dwksm")
+gate_name = "Gate → Sigma Serpentis"
+target_system_id = 64
+target_system_name = "Sigma Serpentis"
+pos_x = -10095186.186440278
+pos_y = 118470.18083446418
+pos_z = -36993092.37461997
+
+[sub_resource type="Resource" id="Resource_aomfu"]
+script = ExtResource("3_mu0fj")
+planet_name = "Omicron Leonis I"
+type = 4
+orbital_radius = 16140422.224998474
+orbital_period = 110.04456070324333
+orbital_angle = 3.697710498633101
+radius = 8019915.580749512
+color = Color(0.54018563, 0.7315951, 0.9398304, 0.9)
+
+[sub_resource type="Resource" id="Resource_srraa"]
+script = ExtResource("3_mu0fj")
+planet_name = "Omicron Leonis II"
+type = 4
+orbital_radius = 35439056.01441665
+orbital_period = 358.03003549208313
+orbital_angle = 5.133601529189484
+radius = 6508876.800537109
+color = Color(0.60300416, 0.79453874, 0.9028254, 0.9)
+
+[sub_resource type="Resource" id="Resource_36ejg"]
+script = ExtResource("3_mu0fj")
+planet_name = "Omicron Leonis III"
+type = 4
+orbital_radius = 77812505.37843843
+orbital_period = 1164.8509067171397
+orbital_angle = 3.0731612313520937
+radius = 8712688.446044922
+color = Color(0.58878285, 0.74780715, 0.90991354, 0.9)
+
+[sub_resource type="Resource" id="Resource_deyhs"]
+script = ExtResource("3_mu0fj")
+planet_name = "Omicron Leonis IV"
+type = 4
+orbital_radius = 170850656.7106758
+orbital_period = 3789.8430309480186
+orbital_angle = 0.8513719768887357
+radius = 9324202.537536621
+color = Color(0.59201145, 0.7439465, 0.9092558, 0.9)
+
+[sub_resource type="Resource" id="Resource_hi7or"]
+script = ExtResource("5_ot0q3")
+station_name = "Beta Hub"
+orbital_radius = 35345816.81977919
+orbital_period = 322.2270319428748
+orbital_angle = 3.3944099896580537
+
+[sub_resource type="Resource" id="Resource_28xfh"]
+script = ExtResource("5_ot0q3")
+station_name = "Dock Depot"
+station_type = 1
+orbital_radius = 33949903.535432376
+orbital_period = 322.2270319428748
+orbital_angle = 0.8076452852793725
+
+[resource]
+script = ExtResource("4_6rovn")
+system_name = "Omicron Leonis"
+seed_value = 1095572546
+star_name = "Omicron Leonis"
+star_spectral_class = "M"
+star_temperature = 2637.8819823265076
+star_radius = 18283287.80841231
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.012960768327116966
+planets = Array[ExtResource("3_mu0fj")]([SubResource("Resource_aomfu"), SubResource("Resource_srraa"), SubResource("Resource_36ejg"), SubResource("Resource_deyhs")])
+stations = Array[ExtResource("5_ot0q3")]([SubResource("Resource_hi7or"), SubResource("Resource_28xfh")])
+asteroid_belts = Array[ExtResource("1_sar4b")]([SubResource("Resource_4mutc"), SubResource("Resource_8oimt")])
+jump_gates = Array[ExtResource("2_dwksm")]([SubResource("Resource_c6ulk"), SubResource("Resource_034bo"), SubResource("Resource_t2pta"), SubResource("Resource_sivj8")])

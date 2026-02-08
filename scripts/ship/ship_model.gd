@@ -36,6 +36,7 @@ var _model_pivot: Node3D = null
 var _silhouette_points: PackedVector3Array = PackedVector3Array()
 var _visual_aabb_cache: AABB
 var _visual_aabb_cached: bool = false
+var _weapon_meshes: Array[Node3D] = []  # Weapon model instances attached to this ship
 
 
 
@@ -267,3 +268,33 @@ func _build_silhouette_points() -> void:
 	_silhouette_points = PackedVector3Array()
 	for idx in unique:
 		_silhouette_points.append(verts[idx])
+
+
+## Instantiates weapon model scenes at hardpoint positions on this ship model.
+## configs: Array of hardpoint config dicts (each with "position", "id", etc.)
+## weapon_names: Array of weapon StringNames matching hardpoint order (empty = no weapon)
+func apply_equipment(configs: Array[Dictionary], weapon_names: Array[StringName]) -> void:
+	clear_equipment()
+	for i in mini(configs.size(), weapon_names.size()):
+		if weapon_names[i] == &"":
+			continue
+		var weapon := WeaponRegistry.get_weapon(weapon_names[i])
+		if weapon == null or weapon.weapon_model_scene == "":
+			continue
+		var scene: PackedScene = load(weapon.weapon_model_scene) as PackedScene
+		if scene == null:
+			continue
+		var instance := scene.instantiate() as Node3D
+		if instance == null:
+			continue
+		instance.position = configs[i].get("position", Vector3.ZERO)
+		add_child(instance)
+		_weapon_meshes.append(instance)
+
+
+## Removes all weapon model instances from this ship model.
+func clear_equipment() -> void:
+	for mesh in _weapon_meshes:
+		if is_instance_valid(mesh):
+			mesh.queue_free()
+	_weapon_meshes.clear()

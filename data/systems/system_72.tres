@@ -1,0 +1,103 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_xd6d3"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ua6bm"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_biccs"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_qgpfe"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_aigv3"]
+
+[sub_resource type="Resource" id="Resource_pptax"]
+script = ExtResource("1_xd6d3")
+belt_name = "Iota Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25802184.11101942
+width = 1723534.4911179738
+dominant_resource = &"copper"
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 156
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_we65n"]
+script = ExtResource("1_xd6d3")
+belt_name = "Iota Pavonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 36147467.33612081
+width = 2414578.7989225807
+dominant_resource = &"gold"
+rare_resource = &"platinum"
+asteroid_count = 238
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_y3g2e"]
+script = ExtResource("2_ua6bm")
+gate_name = "Gate → Mira Draconis"
+target_system_id = 9
+target_system_name = "Mira Draconis"
+pos_x = 16923967.959294032
+pos_y = -284748.6804059969
+pos_z = -18716988.161162738
+
+[sub_resource type="Resource" id="Resource_f0vij"]
+script = ExtResource("2_ua6bm")
+gate_name = "Gate → Altair Eridani"
+target_system_id = 59
+target_system_name = "Altair Eridani"
+pos_x = 11709464.969516635
+pos_y = -346096.6416523652
+pos_z = -22352511.43473547
+
+[sub_resource type="Resource" id="Resource_1vo6k"]
+script = ExtResource("3_biccs")
+planet_name = "Iota Pavonis I"
+orbital_radius = 21493347.883224487
+orbital_period = 169.10340247638922
+orbital_angle = 2.0670889211106642
+radius = 4744531.92949295
+color = Color(0.6140512, 0.5191925, 0.33274132, 0.9)
+
+[sub_resource type="Resource" id="Resource_gqeo8"]
+script = ExtResource("3_biccs")
+planet_name = "Iota Pavonis II"
+orbital_radius = 30111020.338814355
+orbital_period = 280.4041598643191
+orbital_angle = 3.353149426829996
+radius = 4515802.383422852
+color = Color(0.7009816, 0.53888404, 0.2751233, 0.9)
+
+[sub_resource type="Resource" id="Resource_t84ic"]
+script = ExtResource("3_biccs")
+planet_name = "Iota Pavonis III"
+orbital_radius = 42183914.33342726
+orbital_period = 464.9610340051718
+orbital_angle = 5.090116394613369
+radius = 4189607.322216034
+color = Color(0.466102, 0.5969421, 0.38279667, 0.9)
+
+[sub_resource type="Resource" id="Resource_eboqs"]
+script = ExtResource("5_aigv3")
+station_name = "Beta Terminal"
+orbital_radius = 21701872.693714384
+orbital_period = 152.1930622287503
+orbital_angle = 5.607413590117944
+
+[sub_resource type="Resource" id="Resource_25all"]
+script = ExtResource("5_aigv3")
+station_name = "Omega Depot"
+orbital_radius = 22233833.18705894
+orbital_period = 152.1930622287503
+orbital_angle = 1.1895245780504582
+
+[resource]
+script = ExtResource("4_qgpfe")
+system_name = "Iota Pavonis"
+seed_value = 1117095383
+star_name = "Iota Pavonis"
+star_temperature = 5630.858278274536
+star_radius = 76611969.53467129
+star_color = Color(1, 0.95, 0.7, 1)
+star_luminosity = 1.1194047331809998
+planets = Array[ExtResource("3_biccs")]([SubResource("Resource_1vo6k"), SubResource("Resource_gqeo8"), SubResource("Resource_t84ic")])
+stations = Array[ExtResource("5_aigv3")]([SubResource("Resource_eboqs"), SubResource("Resource_25all")])
+asteroid_belts = Array[ExtResource("1_xd6d3")]([SubResource("Resource_pptax"), SubResource("Resource_we65n")])
+jump_gates = Array[ExtResource("2_ua6bm")]([SubResource("Resource_y3g2e"), SubResource("Resource_f0vij")])

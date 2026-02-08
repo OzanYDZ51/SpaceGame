@@ -1,0 +1,168 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_jocvp"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_dbovc"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_sy6s8"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_6o6m6"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_xqap0"]
+
+[sub_resource type="Resource" id="Resource_pgh7q"]
+script = ExtResource("1_jocvp")
+belt_name = "Sigma Serpentis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 70427448.81358065
+width = 5932170.319989897
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 326
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_uedn6"]
+script = ExtResource("1_jocvp")
+belt_name = "Sigma Serpentis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 19529587.193254575
+width = 1644995.516111035
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 255
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_oygko"]
+script = ExtResource("1_jocvp")
+belt_name = "Sigma Serpentis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 29948565.695136562
+width = 2522595.88464176
+dominant_resource = &"platinum"
+secondary_resource = &"iron"
+asteroid_count = 192
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_gclb8"]
+script = ExtResource("1_jocvp")
+belt_name = "Sigma Serpentis Belt 4"
+field_id = &"belt_3"
+orbital_radius = 45926039.21017343
+width = 3868393.5213729874
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+asteroid_count = 316
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_nie45"]
+script = ExtResource("2_dbovc")
+gate_name = "Gate → Aldebaran Scorpii"
+target_system_id = 94
+target_system_name = "Aldebaran Scorpii"
+pos_x = 26029390.580917526
+pos_y = 933466.0767012319
+pos_z = -28932930.054024544
+
+[sub_resource type="Resource" id="Resource_gt80e"]
+script = ExtResource("2_dbovc")
+gate_name = "Gate → Tau Lyrae"
+target_system_id = 50
+target_system_name = "Tau Lyrae"
+pos_x = -19937235.052657817
+pos_y = 689289.349177259
+pos_z = 33423798.018479396
+
+[sub_resource type="Resource" id="Resource_2mhv8"]
+script = ExtResource("2_dbovc")
+gate_name = "Gate → Sol Cygni"
+target_system_id = 1
+target_system_name = "Sol Cygni"
+pos_x = 38734003.82107905
+pos_y = -433679.94577383244
+pos_z = -3784252.04150941
+
+[sub_resource type="Resource" id="Resource_bwusa"]
+script = ExtResource("2_dbovc")
+gate_name = "Gate → Omicron Leonis"
+target_system_id = 4
+target_system_name = "Omicron Leonis"
+pos_x = -21407961.423656818
+pos_y = 50822.83413768777
+pos_z = 32501427.71030615
+
+[sub_resource type="Resource" id="Resource_8kt4a"]
+script = ExtResource("3_sy6s8")
+planet_name = "Sigma Serpentis I"
+type = 3
+orbital_radius = 15417098.40297699
+orbital_period = 102.73069126933193
+orbital_angle = 1.5814364459757118
+radius = 53010189.53323364
+color = Color(0.761115, 0.69915074, 0.29260346, 0.9)
+
+[sub_resource type="Resource" id="Resource_77o0i"]
+script = ExtResource("3_sy6s8")
+planet_name = "Sigma Serpentis II"
+type = 4
+orbital_radius = 23642075.983532164
+orbital_period = 195.08534996656434
+orbital_angle = 3.3932186828010558
+radius = 3402326.226234436
+color = Color(0.51796097, 0.7796601, 0.93788105, 0.9)
+
+[sub_resource type="Resource" id="Resource_qqxkr"]
+script = ExtResource("3_sy6s8")
+planet_name = "Sigma Serpentis III"
+type = 4
+orbital_radius = 36255055.40674096
+orbital_period = 370.4666375873826
+orbital_angle = 0.3858304355463275
+radius = 6730603.218078613
+color = Color(0.6075796, 0.7339961, 0.93796796, 0.9)
+
+[sub_resource type="Resource" id="Resource_ngxdt"]
+script = ExtResource("3_sy6s8")
+planet_name = "Sigma Serpentis IV"
+type = 4
+orbital_radius = 55597023.0136059
+orbital_period = 703.515305423106
+orbital_angle = 1.6754401443727862
+radius = 2394476.354122162
+color = Color(0.61872584, 0.7519035, 0.99131787, 0.9)
+
+[sub_resource type="Resource" id="Resource_gqe6d"]
+script = ExtResource("3_sy6s8")
+planet_name = "Sigma Serpentis V"
+type = 4
+orbital_radius = 85257874.61355539
+orbital_period = 1335.973971064602
+orbital_angle = 3.8551599944537323
+radius = 3143787.0264053345
+color = Color(0.6175844, 0.7461679, 0.9783984, 0.9)
+
+[sub_resource type="Resource" id="Resource_xgb1i"]
+script = ExtResource("5_xqap0")
+station_name = "Haven Outpost"
+orbital_radius = 35918422.57241466
+orbital_period = 333.41997382864434
+orbital_angle = 2.3620457880023853
+
+[sub_resource type="Resource" id="Resource_alkf8"]
+script = ExtResource("5_xqap0")
+station_name = "Omega Station"
+station_type = 2
+orbital_radius = 23403080.529503908
+orbital_period = 175.5768149699079
+orbital_angle = 0.26487997338266606
+
+[resource]
+script = ExtResource("4_6o6m6")
+system_name = "Sigma Serpentis"
+seed_value = 3296848896
+star_name = "Sigma Serpentis"
+star_spectral_class = "M"
+star_temperature = 2569.601421058178
+star_radius = 33468333.749496937
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.020447500571608546
+planets = Array[ExtResource("3_sy6s8")]([SubResource("Resource_8kt4a"), SubResource("Resource_77o0i"), SubResource("Resource_qqxkr"), SubResource("Resource_ngxdt"), SubResource("Resource_gqe6d")])
+stations = Array[ExtResource("5_xqap0")]([SubResource("Resource_xgb1i"), SubResource("Resource_alkf8")])
+asteroid_belts = Array[ExtResource("1_jocvp")]([SubResource("Resource_pgh7q"), SubResource("Resource_uedn6"), SubResource("Resource_oygko"), SubResource("Resource_gclb8")])
+jump_gates = Array[ExtResource("2_dbovc")]([SubResource("Resource_nie45"), SubResource("Resource_gt80e"), SubResource("Resource_2mhv8"), SubResource("Resource_bwusa")])

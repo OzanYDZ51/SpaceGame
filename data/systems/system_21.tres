@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_lwxiu"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_8df1c"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_3xirx"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_sd7ji"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_yv5dj"]
+
+[sub_resource type="Resource" id="Resource_8t5t7"]
+script = ExtResource("1_lwxiu")
+belt_name = "Kappa Orionis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25557824.631448127
+width = 3439572.675989285
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 355
+
+[sub_resource type="Resource" id="Resource_84whr"]
+script = ExtResource("2_8df1c")
+gate_name = "Gate → Vega Tauri"
+target_system_id = 38
+target_system_name = "Vega Tauri"
+pos_x = -6761445.199764657
+pos_y = -52058.470363626315
+pos_z = -18030563.816440035
+
+[sub_resource type="Resource" id="Resource_cbkhu"]
+script = ExtResource("2_8df1c")
+gate_name = "Gate → Upsilon Pegasi"
+target_system_id = 104
+target_system_name = "Upsilon Pegasi"
+pos_x = -11269773.38011412
+pos_y = 1468.2471843682013
+pos_z = 15614435.010239989
+
+[sub_resource type="Resource" id="Resource_iy00p"]
+script = ExtResource("2_8df1c")
+gate_name = "Gate → Alpha Eridani"
+target_system_id = 60
+target_system_name = "Alpha Eridani"
+pos_x = -9351088.386412293
+pos_y = -429874.8370497256
+pos_z = 16833761.27660251
+
+[sub_resource type="Resource" id="Resource_doj3w"]
+script = ExtResource("2_8df1c")
+gate_name = "Gate → Chi Carinae"
+target_system_id = 6
+target_system_name = "Chi Carinae"
+pos_x = 18829106.335972212
+pos_y = -263521.97625081247
+pos_z = 4035235.720102129
+
+[sub_resource type="Resource" id="Resource_h1qjr"]
+script = ExtResource("3_3xirx")
+planet_name = "Kappa Orionis I"
+orbital_radius = 16958892.941474915
+orbital_period = 118.52023167158944
+orbital_angle = 1.515236898373121
+radius = 2318179.838359356
+color = Color(0.53101027, 0.6074257, 0.4424085, 0.9)
+
+[sub_resource type="Resource" id="Resource_mv5f8"]
+script = ExtResource("3_3xirx")
+planet_name = "Kappa Orionis II"
+type = 4
+orbital_radius = 34156756.32142134
+orbital_period = 338.77486120052777
+orbital_angle = 3.816981998975549
+radius = 2611509.144306183
+color = Color(0.6138531, 0.70091915, 0.955997, 0.9)
+
+[sub_resource type="Resource" id="Resource_mte2o"]
+script = ExtResource("5_yv5dj")
+station_name = "Gateway Hub"
+orbital_radius = 16256644.898012143
+orbital_period = 106.6682085044305
+orbital_angle = 1.664577006256623
+
+[resource]
+script = ExtResource("4_sd7ji")
+system_name = "Kappa Orionis"
+seed_value = 1487676463
+star_name = "Kappa Orionis"
+star_spectral_class = "M"
+star_temperature = 3143.3539390563965
+star_radius = 21085321.90060019
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05948822510242462
+planets = Array[ExtResource("3_3xirx")]([SubResource("Resource_h1qjr"), SubResource("Resource_mv5f8")])
+stations = Array[ExtResource("5_yv5dj")]([SubResource("Resource_mte2o")])
+asteroid_belts = Array[ExtResource("1_lwxiu")]([SubResource("Resource_8t5t7")])
+jump_gates = Array[ExtResource("2_8df1c")]([SubResource("Resource_84whr"), SubResource("Resource_cbkhu"), SubResource("Resource_iy00p"), SubResource("Resource_doj3w")])

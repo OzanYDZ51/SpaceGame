@@ -1,0 +1,117 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_h88a4"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_lsm4y"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_6xo8a"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_aibsf"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_g5g5n"]
+
+[sub_resource type="Resource" id="Resource_yowxr"]
+script = ExtResource("1_h88a4")
+belt_name = "Chi Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 38357359.57147067
+width = 5477593.939786694
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+asteroid_count = 288
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_mtqsi"]
+script = ExtResource("1_h88a4")
+belt_name = "Chi Centauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 80952106.37784678
+width = 11560304.78276375
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 472
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_tx2fl"]
+script = ExtResource("2_lsm4y")
+gate_name = "Gate → Gamma Aquilae"
+target_system_id = 89
+target_system_name = "Gamma Aquilae"
+pos_x = 46856451.08855139
+pos_y = -241748.39828620641
+pos_z = 29201893.420027073
+
+[sub_resource type="Resource" id="Resource_ea3ca"]
+script = ExtResource("2_lsm4y")
+gate_name = "Gate → Rho Crucis"
+target_system_id = 37
+target_system_name = "Rho Crucis"
+pos_x = 17763485.20065094
+pos_y = 470971.6778861836
+pos_z = -52275579.20726163
+
+[sub_resource type="Resource" id="Resource_qhaxu"]
+script = ExtResource("2_lsm4y")
+gate_name = "Gate → Upsilon Virginis"
+target_system_id = 114
+target_system_name = "Upsilon Virginis"
+pos_x = -21107046.679998565
+pos_y = 127554.44892361344
+pos_z = -51017351.64017033
+
+[sub_resource type="Resource" id="Resource_fvprs"]
+script = ExtResource("3_6xo8a")
+planet_name = "Chi Centauri I"
+type = 3
+orbital_radius = 24663374.722003937
+orbital_period = 207.8619494312907
+orbital_angle = 3.161609305237965
+radius = 28384743.9289093
+color = Color(0.87021434, 0.6940858, 0.3846483, 0.9)
+
+[sub_resource type="Resource" id="Resource_tgnh2"]
+script = ExtResource("3_6xo8a")
+planet_name = "Chi Centauri II"
+type = 4
+orbital_radius = 52051344.420937404
+orbital_period = 637.3003702484768
+orbital_angle = 4.684868705917651
+radius = 5690482.139587402
+color = Color(0.5222417, 0.7106034, 0.97912383, 0.9)
+
+[sub_resource type="Resource" id="Resource_8jpqj"]
+script = ExtResource("3_6xo8a")
+planet_name = "Chi Centauri III"
+type = 4
+orbital_radius = 109852868.33475615
+orbital_period = 1953.9495469472645
+orbital_angle = 4.476266418623648
+radius = 7749073.028564453
+color = Color(0.56080127, 0.78842103, 0.9367837, 0.9)
+
+[sub_resource type="Resource" id="Resource_diiyu"]
+script = ExtResource("5_g5g5n")
+station_name = "Omega Outpost"
+orbital_radius = 50862467.246295854
+orbital_period = 573.5703332236292
+orbital_angle = 3.380076482164219
+
+[sub_resource type="Resource" id="Resource_707po"]
+script = ExtResource("5_g5g5n")
+station_name = "Port Hub"
+station_type = 3
+orbital_radius = 52211208.897545695
+orbital_period = 573.5703332236292
+orbital_angle = 5.6349623271191325
+
+[resource]
+script = ExtResource("4_aibsf")
+system_name = "Chi Centauri"
+seed_value = 1292160641
+star_name = "Chi Centauri"
+star_spectral_class = "M"
+star_temperature = 3274.3335485458374
+star_radius = 9550863.110029697
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.044989004075527195
+planets = Array[ExtResource("3_6xo8a")]([SubResource("Resource_fvprs"), SubResource("Resource_tgnh2"), SubResource("Resource_8jpqj")])
+stations = Array[ExtResource("5_g5g5n")]([SubResource("Resource_diiyu"), SubResource("Resource_707po")])
+asteroid_belts = Array[ExtResource("1_h88a4")]([SubResource("Resource_yowxr"), SubResource("Resource_mtqsi")])
+jump_gates = Array[ExtResource("2_lsm4y")]([SubResource("Resource_tx2fl"), SubResource("Resource_ea3ca"), SubResource("Resource_qhaxu")])

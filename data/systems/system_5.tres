@@ -1,0 +1,146 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_wrres"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_flfb4"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_055hx"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_iglxd"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_j7y0x"]
+
+[sub_resource type="Resource" id="Resource_so0d6"]
+script = ExtResource("1_wrres")
+belt_name = "Epsilon Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 23813282.505472206
+width = 3363538.9033157434
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 326
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_2sqkj"]
+script = ExtResource("1_wrres")
+belt_name = "Epsilon Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 104192434.79116106
+width = 14716799.658792341
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+asteroid_count = 326
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_rntpr"]
+script = ExtResource("1_wrres")
+belt_name = "Epsilon Tauri Belt 3"
+field_id = &"belt_2"
+orbital_radius = 49811282.70397089
+width = 7035661.176083729
+secondary_resource = &"ice"
+rare_resource = &"crystal"
+asteroid_count = 167
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_fj0jl"]
+script = ExtResource("2_flfb4")
+gate_name = "Gate → Deneb Crucis"
+target_system_id = 52
+target_system_name = "Deneb Crucis"
+pos_x = -47196869.43026849
+pos_y = 29901.98577435227
+pos_z = -54355069.64466872
+
+[sub_resource type="Resource" id="Resource_yq4xh"]
+script = ExtResource("2_flfb4")
+gate_name = "Gate → Phi Centauri"
+target_system_id = 28
+target_system_name = "Phi Centauri"
+pos_x = -60682854.50550776
+pos_y = -887526.0358231877
+pos_z = 38724788.56182401
+
+[sub_resource type="Resource" id="Resource_ir5xl"]
+script = ExtResource("2_flfb4")
+gate_name = "Gate → Aldebaran Orionis"
+target_system_id = 47
+target_system_name = "Aldebaran Orionis"
+pos_x = -66244026.3425086
+pos_y = 333746.9659317862
+pos_z = -28173516.89135786
+
+[sub_resource type="Resource" id="Resource_3uce0"]
+script = ExtResource("2_flfb4")
+gate_name = "Gate → Polaris Persei"
+target_system_id = 78
+target_system_name = "Polaris Persei"
+pos_x = -61021143.40937142
+pos_y = -1518995.883928122
+pos_z = 38189502.97015564
+
+[sub_resource type="Resource" id="Resource_6fdux"]
+script = ExtResource("3_055hx")
+planet_name = "Epsilon Tauri I"
+type = 4
+orbital_radius = 15404435.247182846
+orbital_period = 102.60414726456473
+orbital_angle = 0.4898652110694567
+radius = 9573469.161987305
+color = Color(0.53808117, 0.7390057, 0.95414484, 0.9)
+
+[sub_resource type="Resource" id="Resource_gudpe"]
+script = ExtResource("3_055hx")
+planet_name = "Epsilon Tauri II"
+type = 4
+orbital_radius = 32222129.76376156
+orbital_period = 310.4042131264014
+orbital_angle = 2.1242104183474475
+radius = 9034839.153289795
+color = Color(0.55555785, 0.7241874, 0.9001435, 0.9)
+
+[sub_resource type="Resource" id="Resource_ln7kp"]
+script = ExtResource("3_055hx")
+planet_name = "Epsilon Tauri III"
+type = 4
+orbital_radius = 67400435.64418021
+orbital_period = 939.05342128306
+orbital_angle = 4.737868191547534
+radius = 3868007.8983306885
+color = Color(0.565868, 0.7338577, 0.95556873, 0.9)
+
+[sub_resource type="Resource" id="Resource_sgxtl"]
+script = ExtResource("3_055hx")
+planet_name = "Epsilon Tauri IV"
+type = 4
+orbital_radius = 140984433.9381419
+orbital_period = 2840.880666991233
+orbital_angle = 0.4092888067845064
+radius = 4378722.667694092
+color = Color(0.64469546, 0.76174724, 0.97095406, 0.9)
+
+[sub_resource type="Resource" id="Resource_vrnae"]
+script = ExtResource("5_j7y0x")
+station_name = "Beta Hub"
+orbital_radius = 68986235.35159065
+orbital_period = 845.148079154754
+orbital_angle = 5.072154288522409
+
+[sub_resource type="Resource" id="Resource_vt2pb"]
+script = ExtResource("5_j7y0x")
+station_name = "Alpha Depot"
+orbital_radius = 14642531.62111866
+orbital_period = 92.34373253810826
+orbital_angle = 3.007036772408676
+
+[resource]
+script = ExtResource("4_iglxd")
+system_name = "Epsilon Tauri"
+seed_value = 1450412626
+star_name = "Epsilon Tauri"
+star_spectral_class = "M"
+star_temperature = 2483.1964783370495
+star_radius = 20065450.323098894
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.007971589021384716
+planets = Array[ExtResource("3_055hx")]([SubResource("Resource_6fdux"), SubResource("Resource_gudpe"), SubResource("Resource_ln7kp"), SubResource("Resource_sgxtl")])
+stations = Array[ExtResource("5_j7y0x")]([SubResource("Resource_vrnae"), SubResource("Resource_vt2pb")])
+asteroid_belts = Array[ExtResource("1_wrres")]([SubResource("Resource_so0d6"), SubResource("Resource_2sqkj"), SubResource("Resource_rntpr")])
+jump_gates = Array[ExtResource("2_flfb4")]([SubResource("Resource_fj0jl"), SubResource("Resource_yq4xh"), SubResource("Resource_ir5xl"), SubResource("Resource_3uce0")])

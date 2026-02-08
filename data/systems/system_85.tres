@@ -1,0 +1,138 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_q2xbi"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_qtcu3"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_7m4j1"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_fwtm3"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_6ogwt"]
+
+[sub_resource type="Resource" id="Resource_tvs7s"]
+script = ExtResource("1_q2xbi")
+belt_name = "Deneb Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 42226402.99875496
+width = 4290444.196139829
+dominant_resource = &"ice"
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 330
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_axrpn"]
+script = ExtResource("1_q2xbi")
+belt_name = "Deneb Virginis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 14943079.341598215
+width = 1518302.3767264136
+dominant_resource = &"ice"
+secondary_resource = &"gold"
+rare_resource = &"platinum"
+asteroid_count = 478
+
+[sub_resource type="Resource" id="Resource_o5dsq"]
+script = ExtResource("1_q2xbi")
+belt_name = "Deneb Virginis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 25119563.895909823
+width = 2552291.4449982294
+dominant_resource = &"crystal"
+secondary_resource = &"uranium"
+asteroid_count = 460
+
+[sub_resource type="Resource" id="Resource_nclak"]
+script = ExtResource("2_qtcu3")
+gate_name = "Gate → Xi Draconis"
+target_system_id = 88
+target_system_name = "Xi Draconis"
+pos_x = -16819153.64023444
+pos_y = 236123.04114173187
+pos_z = -13719322.340096688
+
+[sub_resource type="Resource" id="Resource_iqt2m"]
+script = ExtResource("2_qtcu3")
+gate_name = "Gate → Tau Lyrae"
+target_system_id = 50
+target_system_name = "Tau Lyrae"
+pos_x = -20135222.689773764
+pos_y = -505025.2771974567
+pos_z = 8104106.482426498
+
+[sub_resource type="Resource" id="Resource_8i08h"]
+script = ExtResource("2_qtcu3")
+gate_name = "Gate → Nu Persei"
+target_system_id = 15
+target_system_name = "Nu Persei"
+pos_x = -18391546.817181017
+pos_y = -70964.69250363219
+pos_z = -11526263.068172889
+
+[sub_resource type="Resource" id="Resource_vknug"]
+script = ExtResource("2_qtcu3")
+gate_name = "Gate → Sirius Draconis"
+target_system_id = 83
+target_system_name = "Sirius Draconis"
+pos_x = 21409251.64403915
+pos_y = -9477.362825380324
+pos_z = 3570389.1507081487
+
+[sub_resource type="Resource" id="Resource_jknsx"]
+script = ExtResource("3_7m4j1")
+planet_name = "Deneb Virginis I"
+orbital_radius = 11147323.39978218
+orbital_period = 63.16145778578776
+orbital_angle = 2.642874002744747
+radius = 4570627.6297569275
+color = Color(0.4590622, 0.572648, 0.43518272, 0.9)
+
+[sub_resource type="Resource" id="Resource_1op8k"]
+script = ExtResource("3_7m4j1")
+planet_name = "Deneb Virginis II"
+type = 3
+orbital_radius = 18738835.28341425
+orbital_period = 137.66075098882737
+orbital_angle = 2.3766862040059054
+radius = 23620504.14085388
+color = Color(0.78019714, 0.68112963, 0.2936485, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_vsw7x"]
+script = ExtResource("3_7m4j1")
+planet_name = "Deneb Virginis III"
+type = 4
+orbital_radius = 31500292.508405395
+orbital_period = 300.03237776871055
+orbital_angle = 0.11688845360470045
+radius = 5141135.215759277
+color = Color(0.62936854, 0.7407874, 0.9007095, 0.9)
+
+[sub_resource type="Resource" id="Resource_a100l"]
+script = ExtResource("3_7m4j1")
+planet_name = "Deneb Virginis IV"
+type = 4
+orbital_radius = 52952513.48910454
+orbital_period = 653.9222477207917
+orbital_angle = 0.3628500991230746
+radius = 5790914.297103882
+color = Color(0.5316166, 0.7438113, 0.9204176, 0.9)
+
+[sub_resource type="Resource" id="Resource_sa5hq"]
+script = ExtResource("5_6ogwt")
+station_name = "Beta Platform"
+orbital_radius = 18704924.202707723
+orbital_period = 123.89467588994464
+orbital_angle = 2.297681324838427
+
+[resource]
+script = ExtResource("4_fwtm3")
+system_name = "Deneb Virginis"
+seed_value = 2492636877
+star_name = "Deneb Virginis"
+star_spectral_class = "M"
+star_temperature = 2777.2186160087585
+star_radius = 18633638.569289442
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04690922510623932
+planets = Array[ExtResource("3_7m4j1")]([SubResource("Resource_jknsx"), SubResource("Resource_1op8k"), SubResource("Resource_vsw7x"), SubResource("Resource_a100l")])
+stations = Array[ExtResource("5_6ogwt")]([SubResource("Resource_sa5hq")])
+asteroid_belts = Array[ExtResource("1_q2xbi")]([SubResource("Resource_tvs7s"), SubResource("Resource_axrpn"), SubResource("Resource_o5dsq")])
+jump_gates = Array[ExtResource("2_qtcu3")]([SubResource("Resource_nclak"), SubResource("Resource_iqt2m"), SubResource("Resource_8i08h"), SubResource("Resource_vknug")])

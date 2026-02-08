@@ -1,0 +1,163 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_0r1bc"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_x5efd"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_vggqf"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_lfug7"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_qr5ig"]
+
+[sub_resource type="Resource" id="Resource_q63fb"]
+script = ExtResource("1_0r1bc")
+belt_name = "Fomalhaut Tauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 69036886.60351333
+width = 9179993.386681126
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 290
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_n5fot"]
+script = ExtResource("1_0r1bc")
+belt_name = "Fomalhaut Tauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 34588591.864626035
+width = 4599324.508873792
+dominant_resource = &"copper"
+secondary_resource = &"gold"
+rare_resource = &"platinum"
+asteroid_count = 415
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_x2ehu"]
+script = ExtResource("2_x5efd")
+gate_name = "Gate → Tau Orionis"
+target_system_id = 58
+target_system_name = "Tau Orionis"
+pos_x = 93140866.29959859
+pos_y = -368120.023998447
+pos_z = -33334586.885152567
+
+[sub_resource type="Resource" id="Resource_5u7sv"]
+script = ExtResource("2_x5efd")
+gate_name = "Gate → Deneb Ursae"
+target_system_id = 118
+target_system_name = "Deneb Ursae"
+pos_x = 90962003.14685687
+pos_y = -2275620.1043391465
+pos_z = 38888682.689886585
+
+[sub_resource type="Resource" id="Resource_ukr3g"]
+script = ExtResource("2_x5efd")
+gate_name = "Gate → Aldebaran Orionis"
+target_system_id = 47
+target_system_name = "Aldebaran Orionis"
+pos_x = -41670313.400830805
+pos_y = -2282606.718502478
+pos_z = -89721795.78519383
+
+[sub_resource type="Resource" id="Resource_l3uwq"]
+script = ExtResource("2_x5efd")
+gate_name = "Gate → Regulus Pavonis"
+target_system_id = 67
+target_system_name = "Regulus Pavonis"
+pos_x = -75826328.08821349
+pos_y = 2182465.826190528
+pos_z = -63535687.817966454
+
+[sub_resource type="Resource" id="Resource_u2uag"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri I"
+orbital_radius = 23090280.59244156
+orbital_period = 188.2955513763748
+orbital_angle = 1.2410872674662974
+radius = 6304365.217685699
+color = Color(0.6191766, 0.45013854, 0.31768167, 0.9)
+
+[sub_resource type="Resource" id="Resource_0m44p"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri II"
+orbital_radius = 46086903.13681052
+orbital_period = 530.9608906714709
+orbital_angle = 1.6381321287213264
+radius = 3468584.8355293274
+color = Color(0.5864237, 0.54015535, 0.2745516, 0.9)
+
+[sub_resource type="Resource" id="Resource_qboa6"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri III"
+type = 2
+orbital_radius = 91986870.07021615
+orbital_period = 1497.2178862533326
+orbital_angle = 1.907337517840634
+radius = 7373072.147369385
+color = Color(0.24512547, 0.37556335, 0.7638993, 0.9)
+
+[sub_resource type="Resource" id="Resource_hpj5d"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri IV"
+type = 3
+orbital_radius = 183600625.9781945
+orbital_period = 4221.895507373466
+orbital_angle = 5.861936431193048
+radius = 44483301.639556885
+color = Color(0.8232696, 0.7255566, 0.38148963, 0.9)
+
+[sub_resource type="Resource" id="Resource_rtu3j"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri V"
+type = 4
+orbital_radius = 366456537.0454903
+orbital_period = 11905.01518772554
+orbital_angle = 4.29650267053627
+radius = 5447502.851486206
+color = Color(0.53084147, 0.73004097, 0.97348547, 0.9)
+
+[sub_resource type="Resource" id="Resource_xgnex"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri VI"
+type = 4
+orbital_radius = 731426664.957678
+orbital_period = 33570.0839522077
+orbital_angle = 2.9522894624777525
+radius = 6850356.578826904
+color = Color(0.57158583, 0.74162984, 0.9593745, 0.9)
+
+[sub_resource type="Resource" id="Resource_ijew2"]
+script = ExtResource("3_vggqf")
+planet_name = "Fomalhaut Tauri VII"
+type = 4
+orbital_radius = 1459886540.7733212
+orbital_period = 94661.83106764917
+orbital_angle = 4.446145567352147
+radius = 8499699.592590332
+color = Color(0.51173794, 0.7060748, 0.9166888, 0.9)
+
+[sub_resource type="Resource" id="Resource_yf7g1"]
+script = ExtResource("5_qr5ig")
+station_name = "Nexus Platform"
+orbital_radius = 95926314.28413516
+orbital_period = 1347.4960976279995
+orbital_angle = 5.466401207769065
+
+[sub_resource type="Resource" id="Resource_mslbj"]
+script = ExtResource("5_qr5ig")
+station_name = "Haven Station"
+orbital_radius = 47444466.77030198
+orbital_period = 477.8648016043238
+orbital_angle = 1.6644350680929
+
+[resource]
+script = ExtResource("4_lfug7")
+system_name = "Fomalhaut Tauri"
+seed_value = 2280536422
+star_name = "Fomalhaut Tauri"
+star_spectral_class = "F"
+star_temperature = 7130.263477563858
+star_radius = 81317464.2596688
+star_color = Color(0.95, 0.95, 0.9, 1)
+star_luminosity = 4.062455594539642
+planets = Array[ExtResource("3_vggqf")]([SubResource("Resource_u2uag"), SubResource("Resource_0m44p"), SubResource("Resource_qboa6"), SubResource("Resource_hpj5d"), SubResource("Resource_rtu3j"), SubResource("Resource_xgnex"), SubResource("Resource_ijew2")])
+stations = Array[ExtResource("5_qr5ig")]([SubResource("Resource_yf7g1"), SubResource("Resource_mslbj")])
+asteroid_belts = Array[ExtResource("1_0r1bc")]([SubResource("Resource_q63fb"), SubResource("Resource_n5fot")])
+jump_gates = Array[ExtResource("2_x5efd")]([SubResource("Resource_x2ehu"), SubResource("Resource_5u7sv"), SubResource("Resource_ukr3g"), SubResource("Resource_l3uwq")])

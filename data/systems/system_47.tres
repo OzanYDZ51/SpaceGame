@@ -1,0 +1,103 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_q1kpr"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_34uv5"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_u8gd7"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_u7d2e"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_bo6rq"]
+
+[sub_resource type="Resource" id="Resource_jx8uh"]
+script = ExtResource("1_q1kpr")
+belt_name = "Aldebaran Orionis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 17565265.05615957
+width = 1211856.447325737
+dominant_resource = &"platinum"
+secondary_resource = &"titanium"
+rare_resource = &"crystal"
+asteroid_count = 199
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_nkae2"]
+script = ExtResource("2_34uv5")
+gate_name = "Gate → Mira Phoenicis"
+target_system_id = 99
+target_system_name = "Mira Phoenicis"
+pos_x = 18465036.559340537
+pos_y = 74528.57307103377
+pos_z = -13827691.179492934
+
+[sub_resource type="Resource" id="Resource_kub6h"]
+script = ExtResource("2_34uv5")
+gate_name = "Gate → Fomalhaut Tauri"
+target_system_id = 25
+target_system_name = "Fomalhaut Tauri"
+pos_x = -17700563.240961645
+pos_y = 345469.17862525955
+pos_z = 14793670.249330511
+
+[sub_resource type="Resource" id="Resource_x5tr3"]
+script = ExtResource("2_34uv5")
+gate_name = "Gate → Rigel Tauri"
+target_system_id = 75
+target_system_name = "Rigel Tauri"
+pos_x = -9677655.28132515
+pos_y = 282813.9255441956
+pos_z = -20940525.464969803
+
+[sub_resource type="Resource" id="Resource_0uq3q"]
+script = ExtResource("2_34uv5")
+gate_name = "Gate → Epsilon Tauri"
+target_system_id = 5
+target_system_name = "Epsilon Tauri"
+pos_x = 22595209.158050496
+pos_y = 84437.5011739292
+pos_z = -4649638.867391784
+
+[sub_resource type="Resource" id="Resource_gemmp"]
+script = ExtResource("3_u8gd7")
+planet_name = "Aldebaran Orionis I"
+orbital_radius = 14535623.93784523
+orbital_period = 94.04739304835061
+orbital_angle = 3.28595649933486
+radius = 2952201.48563385
+color = Color(0.6509336, 0.52402705, 0.27720767, 0.9)
+
+[sub_resource type="Resource" id="Resource_4bd5w"]
+script = ExtResource("3_u8gd7")
+planet_name = "Aldebaran Orionis II"
+orbital_radius = 20594906.174473915
+orbital_period = 158.61197412952924
+orbital_angle = 3.759710886180963
+radius = 3899775.8626937866
+color = Color(0.6277295, 0.62328964, 0.3791792, 0.9)
+
+[sub_resource type="Resource" id="Resource_ona7w"]
+script = ExtResource("5_bo6rq")
+station_name = "Beta Outpost"
+orbital_radius = 20068650.12290943
+orbital_period = 142.75077671657633
+orbital_angle = 2.0193166173281725
+
+[sub_resource type="Resource" id="Resource_mkkmp"]
+script = ExtResource("5_bo6rq")
+station_name = "Gamma Station"
+station_type = 2
+orbital_radius = 19935212.38988808
+orbital_period = 142.75077671657633
+orbital_angle = 0.43891020612040055
+
+[resource]
+script = ExtResource("4_u7d2e")
+system_name = "Aldebaran Orionis"
+seed_value = 1077232376
+star_name = "Aldebaran Orionis"
+star_spectral_class = "K"
+star_temperature = 4379.384097456932
+star_radius = 59500045.8750844
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.2207455313205719
+planets = Array[ExtResource("3_u8gd7")]([SubResource("Resource_gemmp"), SubResource("Resource_4bd5w")])
+stations = Array[ExtResource("5_bo6rq")]([SubResource("Resource_ona7w"), SubResource("Resource_mkkmp")])
+asteroid_belts = Array[ExtResource("1_q1kpr")]([SubResource("Resource_jx8uh")])
+jump_gates = Array[ExtResource("2_34uv5")]([SubResource("Resource_nkae2"), SubResource("Resource_kub6h"), SubResource("Resource_x5tr3"), SubResource("Resource_0uq3q")])

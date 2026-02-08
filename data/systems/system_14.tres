@@ -1,0 +1,145 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_2ynlw"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_rn31j"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_tnrdd"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ldtve"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_m8s7o"]
+
+[sub_resource type="Resource" id="Resource_m51n8"]
+script = ExtResource("1_2ynlw")
+belt_name = "Eta Pegasi Belt 1"
+field_id = &"belt_0"
+orbital_radius = 29626158.511331197
+width = 3198757.3050222863
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 225
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_4xlf5"]
+script = ExtResource("1_2ynlw")
+belt_name = "Eta Pegasi Belt 2"
+field_id = &"belt_1"
+orbital_radius = 155923689.63093343
+width = 16835191.138338543
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 204
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_5b120"]
+script = ExtResource("2_rn31j")
+gate_name = "Gate → Capella Tauri"
+target_system_id = 3
+target_system_name = "Capella Tauri"
+pos_x = 14076849.543468112
+pos_y = 616241.7191376198
+pos_z = -21342178.117430292
+
+[sub_resource type="Resource" id="Resource_03maw"]
+script = ExtResource("2_rn31j")
+gate_name = "Gate → Antares Scorpii"
+target_system_id = 113
+target_system_name = "Antares Scorpii"
+pos_x = 25530053.394870978
+pos_y = 2896.214969381613
+pos_z = 1364783.323680273
+
+[sub_resource type="Resource" id="Resource_7axg4"]
+script = ExtResource("2_rn31j")
+gate_name = "Gate → Psi Draconis"
+target_system_id = 98
+target_system_name = "Psi Draconis"
+pos_x = 17158999.108353756
+pos_y = 535251.7811727036
+pos_z = -18952968.35498529
+
+[sub_resource type="Resource" id="Resource_or6ib"]
+script = ExtResource("2_rn31j")
+gate_name = "Gate → Xi Pegasi"
+target_system_id = 39
+target_system_name = "Xi Pegasi"
+pos_x = 24798846.04682638
+pos_y = 258597.68655029533
+pos_z = 6217997.636809
+
+[sub_resource type="Resource" id="Resource_aiawr"]
+script = ExtResource("3_tnrdd")
+planet_name = "Eta Pegasi I"
+type = 3
+orbital_radius = 21629265.248775482
+orbital_period = 170.7099730519948
+orbital_angle = 2.975610202383034
+radius = 33511135.578155518
+color = Color(0.77019835, 0.74393064, 0.33677524, 0.9)
+
+[sub_resource type="Resource" id="Resource_17eas"]
+script = ExtResource("3_tnrdd")
+planet_name = "Eta Pegasi II"
+type = 4
+orbital_radius = 37623051.77388691
+orbital_period = 391.6311917381553
+orbital_angle = 0.027882273545752855
+radius = 9123086.929321289
+color = Color(0.6039294, 0.7071951, 0.9890453, 0.9)
+
+[sub_resource type="Resource" id="Resource_qc2t6"]
+script = ExtResource("3_tnrdd")
+planet_name = "Eta Pegasi III"
+type = 4
+orbital_radius = 65443463.219848014
+orbital_period = 898.4536029159401
+orbital_angle = 4.030446511017874
+radius = 4144958.734512329
+color = Color(0.5773651, 0.7382944, 0.95133436, 0.9)
+
+[sub_resource type="Resource" id="Resource_gfjf2"]
+script = ExtResource("3_tnrdd")
+planet_name = "Eta Pegasi IV"
+type = 4
+orbital_radius = 113835711.78508708
+orbital_period = 2061.1710548641386
+orbital_angle = 3.8534132936737766
+radius = 2689682.8413009644
+color = Color(0.6439779, 0.7168954, 0.90057176, 0.9)
+
+[sub_resource type="Resource" id="Resource_rkbg8"]
+script = ExtResource("3_tnrdd")
+planet_name = "Eta Pegasi V"
+type = 4
+orbital_radius = 198011667.4767798
+orbital_period = 4728.598231028779
+orbital_angle = 4.278060071928011
+radius = 7833611.488342285
+color = Color(0.60587317, 0.72845, 0.9791504, 0.9)
+
+[sub_resource type="Resource" id="Resource_83wvg"]
+script = ExtResource("5_m8s7o")
+station_name = "Omega Terminal"
+orbital_radius = 22566506.602693275
+orbital_period = 153.63897574679532
+orbital_angle = 2.3266427023503344
+
+[sub_resource type="Resource" id="Resource_ctcju"]
+script = ExtResource("5_m8s7o")
+station_name = "Gamma Terminal"
+orbital_radius = 21904410.14610393
+orbital_period = 153.63897574679532
+orbital_angle = 1.515615805858996
+
+[resource]
+script = ExtResource("4_ldtve")
+system_name = "Eta Pegasi"
+seed_value = 4071328335
+star_name = "Eta Pegasi"
+star_spectral_class = "M"
+star_temperature = 3242.8388833999634
+star_radius = 29706338.61401081
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03091466921567917
+planets = Array[ExtResource("3_tnrdd")]([SubResource("Resource_aiawr"), SubResource("Resource_17eas"), SubResource("Resource_qc2t6"), SubResource("Resource_gfjf2"), SubResource("Resource_rkbg8")])
+stations = Array[ExtResource("5_m8s7o")]([SubResource("Resource_83wvg"), SubResource("Resource_ctcju")])
+asteroid_belts = Array[ExtResource("1_2ynlw")]([SubResource("Resource_m51n8"), SubResource("Resource_4xlf5")])
+jump_gates = Array[ExtResource("2_rn31j")]([SubResource("Resource_5b120"), SubResource("Resource_03maw"), SubResource("Resource_7axg4"), SubResource("Resource_or6ib")])

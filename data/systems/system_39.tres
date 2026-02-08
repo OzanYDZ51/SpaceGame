@@ -1,0 +1,154 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_mv5s2"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_a7v5c"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_ijjrb"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_tm5lx"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_supua"]
+
+[sub_resource type="Resource" id="Resource_kekf2"]
+script = ExtResource("1_mv5s2")
+belt_name = "Xi Pegasi Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27195353.79487437
+width = 2021137.664683965
+dominant_resource = &"gold"
+secondary_resource = &"titanium"
+rare_resource = &"platinum"
+asteroid_count = 443
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_vbw0n"]
+script = ExtResource("1_mv5s2")
+belt_name = "Xi Pegasi Belt 2"
+field_id = &"belt_1"
+orbital_radius = 84009913.87312958
+width = 6243551.836705294
+dominant_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 248
+
+[sub_resource type="Resource" id="Resource_0mnow"]
+script = ExtResource("1_mv5s2")
+belt_name = "Xi Pegasi Belt 3"
+field_id = &"belt_2"
+orbital_radius = 39607125.2629334
+width = 2943570.9225396486
+asteroid_count = 296
+
+[sub_resource type="Resource" id="Resource_6l8ys"]
+script = ExtResource("2_a7v5c")
+gate_name = "Gate → Capella Tauri"
+target_system_id = 3
+target_system_name = "Capella Tauri"
+pos_x = 9770946.387167424
+pos_y = -50257.55288425425
+pos_z = 23715490.972239036
+
+[sub_resource type="Resource" id="Resource_hx5ju"]
+script = ExtResource("2_a7v5c")
+gate_name = "Gate → Betelgeuse Centauri"
+target_system_id = 69
+target_system_name = "Betelgeuse Centauri"
+pos_x = -14682587.261601271
+pos_y = -221775.9138613884
+pos_z = 21031346.525144685
+
+[sub_resource type="Resource" id="Resource_4j171"]
+script = ExtResource("2_a7v5c")
+gate_name = "Gate → Fomalhaut Pavonis"
+target_system_id = 111
+target_system_name = "Fomalhaut Pavonis"
+pos_x = -20097993.642588902
+pos_y = 114152.33009543669
+pos_z = 15936328.212537149
+
+[sub_resource type="Resource" id="Resource_7pk3i"]
+script = ExtResource("2_a7v5c")
+gate_name = "Gate → Eta Pegasi"
+target_system_id = 14
+target_system_name = "Eta Pegasi"
+pos_x = 19834983.11623014
+pos_y = 175066.8859803152
+pos_z = 16262513.647469036
+
+[sub_resource type="Resource" id="Resource_6tb73"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi I"
+orbital_radius = 15203662.96172142
+orbital_period = 100.60477500421571
+orbital_angle = 1.975770063599418
+radius = 3829614.6392822266
+color = Color(0.7354809, 0.487581, 0.27799958, 0.9)
+
+[sub_resource type="Resource" id="Resource_pfn8k"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi II"
+type = 1
+orbital_radius = 22142509.633164458
+orbital_period = 176.8220850256838
+orbital_angle = 4.38825614345385
+radius = 1517673.3154803514
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_a4xxv"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi III"
+orbital_radius = 32248197.956584282
+orbital_period = 310.7809718924374
+orbital_angle = 0.4543524884848735
+radius = 3166016.161441803
+color = Color(0.56026083, 0.6041476, 0.3839813, 0.9)
+
+[sub_resource type="Resource" id="Resource_aekjy"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi IV"
+type = 2
+orbital_radius = 46966052.569282524
+orbital_period = 546.2259563129729
+orbital_angle = 4.5895360693306815
+radius = 4693759.381771088
+color = Color(0.169395, 0.42692682, 0.7466587, 0.9)
+
+[sub_resource type="Resource" id="Resource_bojqc"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi V"
+type = 3
+orbital_radius = 68401034.28136635
+orbital_period = 960.0420306726065
+orbital_angle = 0.70789257630436
+radius = 17762456.238269806
+color = Color(0.8816198, 0.6407198, 0.32377607, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_bap42"]
+script = ExtResource("3_ijjrb")
+planet_name = "Xi Pegasi VI"
+type = 3
+orbital_radius = 99618793.46489282
+orbital_period = 1687.3615946033212
+orbital_angle = 1.2840864791732025
+radius = 27959972.620010376
+color = Color(0.88375956, 0.68947786, 0.3214023, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_k71m2"]
+script = ExtResource("5_supua")
+station_name = "Dock Outpost"
+orbital_radius = 22649481.580633387
+orbital_period = 159.13987652311542
+orbital_angle = 0.0780357895667209
+
+[resource]
+script = ExtResource("4_tm5lx")
+system_name = "Xi Pegasi"
+seed_value = 2373605651
+star_name = "Xi Pegasi"
+star_temperature = 5959.123182296753
+star_radius = 73326235.0263953
+star_color = Color(1, 0.95, 0.7, 1)
+star_luminosity = 0.7305836543440819
+planets = Array[ExtResource("3_ijjrb")]([SubResource("Resource_6tb73"), SubResource("Resource_pfn8k"), SubResource("Resource_a4xxv"), SubResource("Resource_aekjy"), SubResource("Resource_bojqc"), SubResource("Resource_bap42")])
+stations = Array[ExtResource("5_supua")]([SubResource("Resource_k71m2")])
+asteroid_belts = Array[ExtResource("1_mv5s2")]([SubResource("Resource_kekf2"), SubResource("Resource_vbw0n"), SubResource("Resource_0mnow")])
+jump_gates = Array[ExtResource("2_a7v5c")]([SubResource("Resource_6l8ys"), SubResource("Resource_hx5ju"), SubResource("Resource_4j171"), SubResource("Resource_7pk3i")])

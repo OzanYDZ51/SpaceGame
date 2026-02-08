@@ -1,0 +1,97 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_d2ml1"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_64e2m"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_71f3j"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_lfngn"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_nua7w"]
+
+[sub_resource type="Resource" id="Resource_wbu75"]
+script = ExtResource("1_d2ml1")
+belt_name = "Alpha Eridani Belt 1"
+field_id = &"belt_0"
+orbital_radius = 33904984.114126176
+width = 4449939.655286394
+dominant_resource = &"copper"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 499
+
+[sub_resource type="Resource" id="Resource_akwy4"]
+script = ExtResource("2_64e2m")
+gate_name = "Gate → Rho Crucis"
+target_system_id = 37
+target_system_name = "Rho Crucis"
+pos_x = -25033097.09121267
+pos_y = 666019.8942337653
+pos_z = -40336515.9245624
+
+[sub_resource type="Resource" id="Resource_n3xj4"]
+script = ExtResource("2_64e2m")
+gate_name = "Gate → Upsilon Pegasi"
+target_system_id = 104
+target_system_name = "Upsilon Pegasi"
+pos_x = -47351318.986078106
+pos_y = -146636.27099834895
+pos_z = -3397507.496568078
+
+[sub_resource type="Resource" id="Resource_ih4qj"]
+script = ExtResource("2_64e2m")
+gate_name = "Gate → Kappa Orionis"
+target_system_id = 21
+target_system_name = "Kappa Orionis"
+pos_x = -41758024.158615485
+pos_y = 860835.5830633102
+pos_z = -22582247.126427487
+
+[sub_resource type="Resource" id="Resource_hjdqd"]
+script = ExtResource("2_64e2m")
+gate_name = "Gate → Pi Carinae"
+target_system_id = 10
+target_system_name = "Pi Carinae"
+pos_x = -40446226.73835695
+pos_y = 129280.97331869893
+pos_z = 24855446.27521253
+
+[sub_resource type="Resource" id="Resource_l1esy"]
+script = ExtResource("3_71f3j")
+planet_name = "Alpha Eridani I"
+type = 2
+orbital_radius = 22780134.975910187
+orbital_period = 184.5145776230806
+orbital_angle = 1.943107433126897
+radius = 5412965.655326843
+color = Color(0.2361644, 0.39964283, 0.7752461, 0.9)
+
+[sub_resource type="Resource" id="Resource_l2bd7"]
+script = ExtResource("3_71f3j")
+planet_name = "Alpha Eridani II"
+type = 3
+orbital_radius = 45029833.25234216
+orbital_period = 512.7985069209641
+orbital_angle = 6.1130778483097
+radius = 22929107.546806335
+color = Color(0.8619729, 0.66280895, 0.33889866, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_nf3kf"]
+script = ExtResource("5_nua7w")
+station_name = "Gamma Platform"
+orbital_radius = 44473049.901081316
+orbital_period = 461.5186562288677
+orbital_angle = 2.543995908120933
+
+[resource]
+script = ExtResource("4_lfngn")
+system_name = "Alpha Eridani"
+seed_value = 4271691623
+star_name = "Alpha Eridani"
+star_spectral_class = "K"
+star_temperature = 3934.2243045568466
+star_radius = 53942981.79953098
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.21187616944313048
+planets = Array[ExtResource("3_71f3j")]([SubResource("Resource_l1esy"), SubResource("Resource_l2bd7")])
+stations = Array[ExtResource("5_nua7w")]([SubResource("Resource_nf3kf")])
+asteroid_belts = Array[ExtResource("1_d2ml1")]([SubResource("Resource_wbu75")])
+jump_gates = Array[ExtResource("2_64e2m")]([SubResource("Resource_akwy4"), SubResource("Resource_n3xj4"), SubResource("Resource_ih4qj"), SubResource("Resource_hjdqd")])

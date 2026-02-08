@@ -1,0 +1,118 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_jph30"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_otepu"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_w324g"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_yxuln"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_y6ni6"]
+
+[sub_resource type="Resource" id="Resource_e8fl2"]
+script = ExtResource("1_jph30")
+belt_name = "Epsilon Centauri Belt 1"
+field_id = &"belt_0"
+orbital_radius = 35624404.633592434
+width = 5118306.5511985095
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 342
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_yn7qg"]
+script = ExtResource("1_jph30")
+belt_name = "Epsilon Centauri Belt 2"
+field_id = &"belt_1"
+orbital_radius = 75560344.21465024
+width = 10856069.281224618
+dominant_resource = &"uranium"
+secondary_resource = &"ice"
+asteroid_count = 223
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_cvg6j"]
+script = ExtResource("2_otepu")
+gate_name = "Gate → Phi Crucis"
+target_system_id = 79
+target_system_name = "Phi Crucis"
+pos_x = -103526398.03466965
+pos_y = 966398.2195049142
+pos_z = -10968758.808418714
+
+[sub_resource type="Resource" id="Resource_lpsrs"]
+script = ExtResource("2_otepu")
+gate_name = "Gate → Antares Virginis"
+target_system_id = 27
+target_system_name = "Antares Virginis"
+pos_x = 101641274.37385362
+pos_y = 256682.4385377923
+pos_z = -22518439.188565496
+
+[sub_resource type="Resource" id="Resource_0cgbt"]
+script = ExtResource("2_otepu")
+gate_name = "Gate → Fomalhaut Eridani"
+target_system_id = 23
+target_system_name = "Fomalhaut Eridani"
+pos_x = -56058574.51678905
+pos_y = -317093.7099067033
+pos_z = -87723799.4102839
+
+[sub_resource type="Resource" id="Resource_4c3p5"]
+script = ExtResource("2_otepu")
+gate_name = "Gate → Capella Serpentis"
+target_system_id = 16
+target_system_name = "Capella Serpentis"
+pos_x = -61561726.267899305
+pos_y = 2553314.7506907107
+pos_z = -83953455.07331042
+
+[sub_resource type="Resource" id="Resource_al67i"]
+script = ExtResource("3_w324g")
+planet_name = "Epsilon Centauri I"
+type = 3
+orbital_radius = 22828638.25559616
+orbital_period = 185.10419162133746
+orbital_angle = 1.4113236503806728
+radius = 33800219.29740906
+color = Color(0.8841997, 0.63155097, 0.27553394, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_kpwmg"]
+script = ExtResource("3_w324g")
+planet_name = "Epsilon Centauri II"
+type = 4
+orbital_radius = 48420171.01158871
+orbital_period = 571.7889027265062
+orbital_angle = 5.474382701556033
+radius = 9702520.847320557
+color = Color(0.57631403, 0.71560055, 0.98719585, 0.9)
+
+[sub_resource type="Resource" id="Resource_rjrkq"]
+script = ExtResource("3_w324g")
+planet_name = "Epsilon Centauri III"
+type = 4
+orbital_radius = 102700517.4177118
+orbital_period = 1766.262267847501
+orbital_angle = 4.731505317136847
+radius = 8537617.683410645
+color = Color(0.63370585, 0.7785643, 0.9983492, 0.9)
+
+[sub_resource type="Resource" id="Resource_5g1q1"]
+script = ExtResource("5_y6ni6")
+station_name = "Port Outpost"
+orbital_radius = 101105853.62903526
+orbital_period = 1589.636041062751
+orbital_angle = 0.3556657435458275
+
+[resource]
+script = ExtResource("4_yxuln")
+system_name = "Epsilon Centauri"
+seed_value = 16443974
+star_name = "Epsilon Centauri"
+star_spectral_class = "M"
+star_temperature = 3162.4654054641724
+star_radius = 16762794.186228514
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04721210241317749
+planets = Array[ExtResource("3_w324g")]([SubResource("Resource_al67i"), SubResource("Resource_kpwmg"), SubResource("Resource_rjrkq")])
+stations = Array[ExtResource("5_y6ni6")]([SubResource("Resource_5g1q1")])
+asteroid_belts = Array[ExtResource("1_jph30")]([SubResource("Resource_e8fl2"), SubResource("Resource_yn7qg")])
+jump_gates = Array[ExtResource("2_otepu")]([SubResource("Resource_cvg6j"), SubResource("Resource_lpsrs"), SubResource("Resource_0cgbt"), SubResource("Resource_4c3p5")])

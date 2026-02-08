@@ -53,9 +53,16 @@ func _run() -> void:
 		# Generate system data from seed
 		var data: StarSystemData = SystemGenerator.generate(sys_seed, connections)
 
-		# Override names with galaxy-consistent names
+		# Replace generator's internal name with the galaxy map name
+		var old_name: String = data.system_name
 		data.system_name = sys_name
 		data.star_name = sys_name
+
+		# Rename all sub-resources to use the galaxy name
+		for p in data.planets:
+			p.planet_name = p.planet_name.replace(old_name, sys_name)
+		for b in data.asteroid_belts:
+			b.belt_name = b.belt_name.replace(old_name, sys_name)
 
 		# Save as .tres
 		var path: String = "res://data/systems/system_%d.tres" % system_id

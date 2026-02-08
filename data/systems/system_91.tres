@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_4o5ca"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_poqcm"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_53t3o"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_b8fw7"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_q1xo8"]
+
+[sub_resource type="Resource" id="Resource_b13fp"]
+script = ExtResource("1_4o5ca")
+belt_name = "Altair Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27793795.507661592
+width = 2043613.4503333138
+secondary_resource = &"ice"
+asteroid_count = 324
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_cy10f"]
+script = ExtResource("2_poqcm")
+gate_name = "Gate → Regulus Ursae"
+target_system_id = 90
+target_system_name = "Regulus Ursae"
+pos_x = -25181890.237665895
+pos_y = -560314.6735074493
+pos_z = -3165139.058236558
+
+[sub_resource type="Resource" id="Resource_fxeef"]
+script = ExtResource("2_poqcm")
+gate_name = "Gate → Betelgeuse Centauri"
+target_system_id = 69
+target_system_name = "Betelgeuse Centauri"
+pos_x = 17104650.76237845
+pos_y = 429122.6473822843
+pos_z = 18750376.62280131
+
+[sub_resource type="Resource" id="Resource_rgsm2"]
+script = ExtResource("2_poqcm")
+gate_name = "Gate → Vega Aquilae"
+target_system_id = 107
+target_system_name = "Vega Aquilae"
+pos_x = -10064986.461478915
+pos_y = -598153.3238775184
+pos_z = 23298964.54201503
+
+[sub_resource type="Resource" id="Resource_cnkod"]
+script = ExtResource("2_poqcm")
+gate_name = "Gate → Upsilon Ursae"
+target_system_id = 103
+target_system_name = "Upsilon Ursae"
+pos_x = -16724220.233831886
+pos_y = -521740.924541449
+pos_z = -19090472.98445263
+
+[sub_resource type="Resource" id="Resource_arxqo"]
+script = ExtResource("3_53t3o")
+planet_name = "Altair Ursae I"
+type = 4
+orbital_radius = 22684761.881828308
+orbital_period = 183.35703656945864
+orbital_angle = 3.287696084481278
+radius = 5780783.414840698
+color = Color(0.61343926, 0.7559711, 0.9070084, 0.9)
+
+[sub_resource type="Resource" id="Resource_yjiwh"]
+script = ExtResource("3_53t3o")
+planet_name = "Altair Ursae II"
+type = 4
+orbital_radius = 32902829.133494876
+orbital_period = 320.2920116316763
+orbital_angle = 0.440650165773847
+radius = 3953368.067741394
+color = Color(0.5357101, 0.7655538, 0.9366754, 0.9)
+
+[sub_resource type="Resource" id="Resource_xu77p"]
+script = ExtResource("5_q1xo8")
+station_name = "Nexus Outpost"
+orbital_radius = 22380025.63434142
+orbital_period = 165.02133291251278
+orbital_angle = 0.3924032445530624
+
+[resource]
+script = ExtResource("4_b8fw7")
+system_name = "Altair Ursae"
+seed_value = 3697523252
+star_name = "Altair Ursae"
+star_spectral_class = "M"
+star_temperature = 2760.541334748268
+star_radius = 8786595.881646127
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.012896682009100914
+planets = Array[ExtResource("3_53t3o")]([SubResource("Resource_arxqo"), SubResource("Resource_yjiwh")])
+stations = Array[ExtResource("5_q1xo8")]([SubResource("Resource_xu77p")])
+asteroid_belts = Array[ExtResource("1_4o5ca")]([SubResource("Resource_b13fp")])
+jump_gates = Array[ExtResource("2_poqcm")]([SubResource("Resource_cy10f"), SubResource("Resource_fxeef"), SubResource("Resource_rgsm2"), SubResource("Resource_cnkod")])

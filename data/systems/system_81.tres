@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_r523r"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_il740"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_w40wh"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_fggv3"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_xd2ru"]
+
+[sub_resource type="Resource" id="Resource_gvv6o"]
+script = ExtResource("1_r523r")
+belt_name = "Spica Pavonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 29894280.550824054
+width = 3651343.9546828996
+dominant_resource = &"crystal"
+secondary_resource = &"ice"
+asteroid_count = 376
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ne7gd"]
+script = ExtResource("1_r523r")
+belt_name = "Spica Pavonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 56176356.44198908
+width = 6861486.401783111
+secondary_resource = &"platinum"
+asteroid_count = 277
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_t5nq2"]
+script = ExtResource("2_il740")
+gate_name = "Gate → Mu Pavonis"
+target_system_id = 40
+target_system_name = "Mu Pavonis"
+pos_x = 40210737.76965608
+pos_y = 875405.8818229929
+pos_z = -3469900.32764067
+
+[sub_resource type="Resource" id="Resource_ejqts"]
+script = ExtResource("2_il740")
+gate_name = "Gate → Fomalhaut Phoenicis"
+target_system_id = 33
+target_system_name = "Fomalhaut Phoenicis"
+pos_x = -39797787.464001566
+pos_y = -866729.410152108
+pos_z = -6714145.756085903
+
+[sub_resource type="Resource" id="Resource_8aw5g"]
+script = ExtResource("3_w40wh")
+planet_name = "Spica Pavonis I"
+orbital_radius = 11050596.684217453
+orbital_period = 62.3411539459704
+orbital_angle = 5.1955854384281
+radius = 5173556.0297966
+color = Color(0.50366247, 0.613673, 0.3669062, 0.9)
+
+[sub_resource type="Resource" id="Resource_r0d7c"]
+script = ExtResource("3_w40wh")
+planet_name = "Spica Pavonis II"
+type = 3
+orbital_radius = 20765920.664116804
+orbital_period = 160.59167562186363
+orbital_angle = 6.025099406237308
+radius = 23316931.72454834
+color = Color(0.8171093, 0.74344957, 0.27139553, 0.9)
+
+[sub_resource type="Resource" id="Resource_rmmhf"]
+script = ExtResource("3_w40wh")
+planet_name = "Spica Pavonis III"
+type = 4
+orbital_radius = 39022640.4375313
+orbital_period = 413.6863796488139
+orbital_angle = 0.26331460422447167
+radius = 5303461.313247681
+color = Color(0.5955586, 0.7890703, 0.96548915, 0.9)
+
+[sub_resource type="Resource" id="Resource_wbn31"]
+script = ExtResource("3_w40wh")
+planet_name = "Spica Pavonis IV"
+type = 4
+orbital_radius = 73330072.44644685
+orbital_period = 1065.6618410901203
+orbital_angle = 5.989956041209378
+radius = 9515693.187713623
+color = Color(0.5281113, 0.7306087, 0.91403806, 0.9)
+
+[sub_resource type="Resource" id="Resource_10ksh"]
+script = ExtResource("5_xd2ru")
+station_name = "Nexus Depot"
+orbital_radius = 37360173.93748207
+orbital_period = 372.3177416839325
+orbital_angle = 1.3173673271226771
+
+[sub_resource type="Resource" id="Resource_saik2"]
+script = ExtResource("5_xd2ru")
+station_name = "Omega Platform"
+station_type = 3
+orbital_radius = 20339685.67126257
+orbital_period = 144.53250805967727
+orbital_angle = 2.771900287653127
+
+[resource]
+script = ExtResource("4_fggv3")
+system_name = "Spica Pavonis"
+seed_value = 1014052260
+star_name = "Spica Pavonis"
+star_spectral_class = "M"
+star_temperature = 3145.4511761665344
+star_radius = 8038043.456270918
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.034852643966674805
+planets = Array[ExtResource("3_w40wh")]([SubResource("Resource_8aw5g"), SubResource("Resource_r0d7c"), SubResource("Resource_rmmhf"), SubResource("Resource_wbn31")])
+stations = Array[ExtResource("5_xd2ru")]([SubResource("Resource_10ksh"), SubResource("Resource_saik2")])
+asteroid_belts = Array[ExtResource("1_r523r")]([SubResource("Resource_gvv6o"), SubResource("Resource_ne7gd")])
+jump_gates = Array[ExtResource("2_il740")]([SubResource("Resource_t5nq2"), SubResource("Resource_ejqts")])

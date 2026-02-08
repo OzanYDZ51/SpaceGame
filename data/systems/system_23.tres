@@ -1,0 +1,136 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_g3kp4"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_q7req"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_85bnn"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_vfcr4"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ulrxd"]
+
+[sub_resource type="Resource" id="Resource_l4m2x"]
+script = ExtResource("1_g3kp4")
+belt_name = "Fomalhaut Eridani Belt 1"
+field_id = &"belt_0"
+orbital_radius = 105250268.76768026
+width = 14415644.921480343
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 235
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_b1yx0"]
+script = ExtResource("1_g3kp4")
+belt_name = "Fomalhaut Eridani Belt 2"
+field_id = &"belt_1"
+orbital_radius = 25255523.80015813
+width = 3459132.86181435
+dominant_resource = &"copper"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 283
+
+[sub_resource type="Resource" id="Resource_tjgsd"]
+script = ExtResource("2_q7req")
+gate_name = "Gate → Capella Serpentis"
+target_system_id = 16
+target_system_name = "Capella Serpentis"
+pos_x = 47674940.77382623
+pos_y = 967299.9014457854
+pos_z = -49631669.94978507
+
+[sub_resource type="Resource" id="Resource_74k6s"]
+script = ExtResource("2_q7req")
+gate_name = "Gate → Epsilon Centauri"
+target_system_id = 66
+target_system_name = "Epsilon Centauri"
+pos_x = 27991646.035823192
+pos_y = 1124485.1099317037
+pos_z = 62870266.358569056
+
+[sub_resource type="Resource" id="Resource_4cdv3"]
+script = ExtResource("2_q7req")
+gate_name = "Gate → Upsilon Draconis"
+target_system_id = 2
+target_system_name = "Upsilon Draconis"
+pos_x = -68817152.23100539
+pos_y = 202229.63772516942
+pos_z = -634191.3014744156
+
+[sub_resource type="Resource" id="Resource_yeag2"]
+script = ExtResource("3_85bnn")
+planet_name = "Fomalhaut Eridani I"
+orbital_radius = 16607691.645622252
+orbital_period = 114.85770993596208
+orbital_angle = 0.27816851264080794
+radius = 2871246.0845708847
+color = Color(0.4628336, 0.5884045, 0.40147224, 0.9)
+
+[sub_resource type="Resource" id="Resource_1e0yl"]
+script = ExtResource("3_85bnn")
+planet_name = "Fomalhaut Eridani II"
+type = 4
+orbital_radius = 33903355.954694
+orbital_period = 335.0119339340994
+orbital_angle = 2.7881673749340354
+radius = 3386689.305305481
+color = Color(0.510268, 0.73507226, 0.93725055, 0.9)
+
+[sub_resource type="Resource" id="Resource_fua2q"]
+script = ExtResource("3_85bnn")
+planet_name = "Fomalhaut Eridani III"
+type = 4
+orbital_radius = 69211156.46397941
+orbital_period = 977.1481247609751
+orbital_angle = 5.4228351796748395
+radius = 9020915.031433105
+color = Color(0.51755977, 0.7210536, 0.96446705, 0.9)
+
+[sub_resource type="Resource" id="Resource_x0apb"]
+script = ExtResource("3_85bnn")
+planet_name = "Fomalhaut Eridani IV"
+type = 4
+orbital_radius = 141289381.07138112
+orbital_period = 2850.1028202527086
+orbital_angle = 4.925698446517301
+radius = 5824393.272399902
+color = Color(0.6022467, 0.7697614, 0.971017, 0.9)
+
+[sub_resource type="Resource" id="Resource_wtss4"]
+script = ExtResource("3_85bnn")
+planet_name = "Fomalhaut Eridani V"
+type = 4
+orbital_radius = 288431666.56120574
+orbital_period = 8313.054981300269
+orbital_angle = 4.971554959596563
+radius = 8996746.063232422
+color = Color(0.5957453, 0.7345022, 0.9927547, 0.9)
+
+[sub_resource type="Resource" id="Resource_r5rtx"]
+script = ExtResource("5_ulrxd")
+station_name = "Beta Platform"
+orbital_radius = 15918085.691618059
+orbital_period = 103.37193894236587
+orbital_angle = 2.966205207381527
+
+[sub_resource type="Resource" id="Resource_iltra"]
+script = ExtResource("5_ulrxd")
+station_name = "Port Outpost"
+station_type = 1
+orbital_radius = 65820074.39542795
+orbital_period = 879.4333122848776
+orbital_angle = 6.140000409559584
+
+[resource]
+script = ExtResource("4_vfcr4")
+system_name = "Fomalhaut Eridani"
+seed_value = 2577481330
+star_name = "Fomalhaut Eridani"
+star_spectral_class = "M"
+star_temperature = 3358.9426457881927
+star_radius = 8420164.878340065
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.04928619652986527
+planets = Array[ExtResource("3_85bnn")]([SubResource("Resource_yeag2"), SubResource("Resource_1e0yl"), SubResource("Resource_fua2q"), SubResource("Resource_x0apb"), SubResource("Resource_wtss4")])
+stations = Array[ExtResource("5_ulrxd")]([SubResource("Resource_r5rtx"), SubResource("Resource_iltra")])
+asteroid_belts = Array[ExtResource("1_g3kp4")]([SubResource("Resource_l4m2x"), SubResource("Resource_b1yx0")])
+jump_gates = Array[ExtResource("2_q7req")]([SubResource("Resource_tjgsd"), SubResource("Resource_74k6s"), SubResource("Resource_4cdv3")])

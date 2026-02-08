@@ -1,0 +1,125 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_ftxiq"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_vw48f"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_3ap3p"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_67tla"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_vjroc"]
+
+[sub_resource type="Resource" id="Resource_whrcm"]
+script = ExtResource("1_ftxiq")
+belt_name = "Vega Carinae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 43755654.1648113
+width = 5289820.641817241
+secondary_resource = &"crystal"
+rare_resource = &"uranium"
+asteroid_count = 475
+
+[sub_resource type="Resource" id="Resource_rbxo8"]
+script = ExtResource("1_ftxiq")
+belt_name = "Vega Carinae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 23445130.58280267
+width = 2834388.79098621
+secondary_resource = &"titanium"
+rare_resource = &"crystal"
+asteroid_count = 220
+zone = "inner"
+
+[sub_resource type="Resource" id="Resource_cqtn6"]
+script = ExtResource("2_vw48f")
+gate_name = "Gate → Omega Leonis"
+target_system_id = 116
+target_system_name = "Omega Leonis"
+pos_x = 32110751.52715397
+pos_y = 183239.98515186796
+pos_z = 4982484.986032976
+
+[sub_resource type="Resource" id="Resource_ij1he"]
+script = ExtResource("2_vw48f")
+gate_name = "Gate → Regulus Tauri"
+target_system_id = 22
+target_system_name = "Regulus Tauri"
+pos_x = -29732536.78161722
+pos_y = 181325.30873692976
+pos_z = -13111131.78960703
+
+[sub_resource type="Resource" id="Resource_fvhph"]
+script = ExtResource("2_vw48f")
+gate_name = "Gate → Deneb Leonis"
+target_system_id = 30
+target_system_name = "Deneb Leonis"
+pos_x = 3991666.7239942467
+pos_y = -642152.1553937115
+pos_z = -32248908.772844113
+
+[sub_resource type="Resource" id="Resource_macp6"]
+script = ExtResource("2_vw48f")
+gate_name = "Gate → Fomalhaut Pavonis"
+target_system_id = 111
+target_system_name = "Fomalhaut Pavonis"
+pos_x = 30615206.908107273
+pos_y = -687619.1833683153
+pos_z = 10891952.36164967
+
+[sub_resource type="Resource" id="Resource_kxask"]
+script = ExtResource("3_3ap3p")
+planet_name = "Vega Carinae I"
+type = 1
+orbital_radius = 16359158.605337143
+orbital_period = 112.28912260082085
+orbital_angle = 1.3179474385095022
+radius = 1842095.7624912262
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_206aj"]
+script = ExtResource("3_3ap3p")
+planet_name = "Vega Carinae II"
+type = 2
+orbital_radius = 30531102.560268193
+orbital_period = 286.2925033625501
+orbital_angle = 4.459547675866618
+radius = 4132242.2325611115
+color = Color(0.22679208, 0.39349392, 0.84076166, 0.9)
+
+[sub_resource type="Resource" id="Resource_5g4t3"]
+script = ExtResource("3_3ap3p")
+planet_name = "Vega Carinae III"
+type = 3
+orbital_radius = 56980205.769354396
+orbital_period = 729.931765278542
+orbital_angle = 1.219138346805651
+radius = 54341456.8901062
+color = Color(0.80868703, 0.6750587, 0.3983817, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_ddouk"]
+script = ExtResource("5_vjroc")
+station_name = "Haven Depot"
+orbital_radius = 29495007.620781764
+orbital_period = 257.66325302629514
+orbital_angle = 4.700127994785425
+
+[sub_resource type="Resource" id="Resource_mqnix"]
+script = ExtResource("5_vjroc")
+station_name = "Nexus Terminal"
+station_type = 3
+orbital_radius = 16670145.3560969
+orbital_period = 101.06021034073876
+orbital_angle = 3.561427016530471
+
+[resource]
+script = ExtResource("4_67tla")
+system_name = "Vega Carinae"
+seed_value = 420612925
+star_name = "Vega Carinae"
+star_spectral_class = "K"
+star_temperature = 4851.836216449738
+star_radius = 51019092.47406721
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.5652349281311035
+planets = Array[ExtResource("3_3ap3p")]([SubResource("Resource_kxask"), SubResource("Resource_206aj"), SubResource("Resource_5g4t3")])
+stations = Array[ExtResource("5_vjroc")]([SubResource("Resource_ddouk"), SubResource("Resource_mqnix")])
+asteroid_belts = Array[ExtResource("1_ftxiq")]([SubResource("Resource_whrcm"), SubResource("Resource_rbxo8")])
+jump_gates = Array[ExtResource("2_vw48f")]([SubResource("Resource_cqtn6"), SubResource("Resource_ij1he"), SubResource("Resource_fvhph"), SubResource("Resource_macp6")])

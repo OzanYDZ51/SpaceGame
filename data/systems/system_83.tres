@@ -1,0 +1,125 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_3folq"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_xllt7"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_r0taa"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_b36j2"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_la4xj"]
+
+[sub_resource type="Resource" id="Resource_8g75u"]
+script = ExtResource("1_3folq")
+belt_name = "Sirius Draconis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 57545381.33979669
+width = 7634987.109979426
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 381
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_kuhu5"]
+script = ExtResource("1_3folq")
+belt_name = "Sirius Draconis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 28878938.042723753
+width = 3831590.208849753
+secondary_resource = &"titanium"
+asteroid_count = 268
+
+[sub_resource type="Resource" id="Resource_fo7np"]
+script = ExtResource("2_xllt7")
+gate_name = "Gate → Sol Scorpii"
+target_system_id = 80
+target_system_name = "Sol Scorpii"
+pos_x = 40057150.48127465
+pos_y = -681581.7617036654
+pos_z = -10365450.821639262
+
+[sub_resource type="Resource" id="Resource_3auqc"]
+script = ExtResource("2_xllt7")
+gate_name = "Gate → Deneb Virginis"
+target_system_id = 85
+target_system_name = "Deneb Virginis"
+pos_x = -9304881.175273295
+pos_y = -742825.6540214943
+pos_z = 40316709.46058655
+
+[sub_resource type="Resource" id="Resource_ncgid"]
+script = ExtResource("2_xllt7")
+gate_name = "Gate → Xi Draconis"
+target_system_id = 88
+target_system_name = "Xi Draconis"
+pos_x = -3919757.674351584
+pos_y = -385626.8578157113
+pos_z = 41190452.47614629
+
+[sub_resource type="Resource" id="Resource_gqwrs"]
+script = ExtResource("2_xllt7")
+gate_name = "Gate → Tau Draconis"
+target_system_id = 93
+target_system_name = "Tau Draconis"
+pos_x = -17781765.608079627
+pos_y = 315727.5020617337
+pos_z = 37360764.00817602
+
+[sub_resource type="Resource" id="Resource_6mat3"]
+script = ExtResource("3_r0taa")
+planet_name = "Sirius Draconis I"
+orbital_radius = 19299962.52059937
+orbital_period = 143.89010924927908
+orbital_angle = 5.417403704243515
+radius = 2840234.234929085
+color = Color(0.6418609, 0.60914606, 0.44422278, 0.9)
+
+[sub_resource type="Resource" id="Resource_yycdu"]
+script = ExtResource("3_r0taa")
+planet_name = "Sirius Draconis II"
+type = 4
+orbital_radius = 38457913.56484813
+orbital_period = 404.7387838545111
+orbital_angle = 5.267004303230489
+radius = 3367699.2654800415
+color = Color(0.5687059, 0.7323159, 0.9060159, 0.9)
+
+[sub_resource type="Resource" id="Resource_w664v"]
+script = ExtResource("3_r0taa")
+planet_name = "Sirius Draconis III"
+type = 4
+orbital_radius = 76632849.11474526
+orbital_period = 1138.4624281036147
+orbital_angle = 0.19044891344168882
+radius = 6475873.947143555
+color = Color(0.5877391, 0.7761413, 0.93701094, 0.9)
+
+[sub_resource type="Resource" id="Resource_ta0d7"]
+script = ExtResource("3_r0taa")
+planet_name = "Sirius Draconis IV"
+type = 4
+orbital_radius = 152701824.3863096
+orbital_period = 3202.3041821202823
+orbital_angle = 2.0043131167607227
+radius = 8862859.725952148
+color = Color(0.52495956, 0.7206081, 0.91569096, 0.9)
+
+[sub_resource type="Resource" id="Resource_7tjl5"]
+script = ExtResource("5_la4xj")
+station_name = "Omega Hub"
+orbital_radius = 38376537.740793444
+orbital_period = 364.26490546906
+orbital_angle = 3.4065953248376033
+
+[resource]
+script = ExtResource("4_b36j2")
+system_name = "Sirius Draconis"
+seed_value = 2607857013
+star_name = "Sirius Draconis"
+star_spectral_class = "M"
+star_temperature = 2932.9309552907944
+star_radius = 39320056.629920006
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.07147401934862137
+planets = Array[ExtResource("3_r0taa")]([SubResource("Resource_6mat3"), SubResource("Resource_yycdu"), SubResource("Resource_w664v"), SubResource("Resource_ta0d7")])
+stations = Array[ExtResource("5_la4xj")]([SubResource("Resource_7tjl5")])
+asteroid_belts = Array[ExtResource("1_3folq")]([SubResource("Resource_8g75u"), SubResource("Resource_kuhu5")])
+jump_gates = Array[ExtResource("2_xllt7")]([SubResource("Resource_fo7np"), SubResource("Resource_3auqc"), SubResource("Resource_ncgid"), SubResource("Resource_gqwrs")])

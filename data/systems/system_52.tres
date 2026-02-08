@@ -1,0 +1,129 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1bbk2"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_7k52m"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_wwmws"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ccaex"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_17xxj"]
+
+[sub_resource type="Resource" id="Resource_tbv0p"]
+script = ExtResource("1_1bbk2")
+belt_name = "Deneb Crucis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 28759375.44975595
+width = 2507463.4578253212
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 156
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_kbikh"]
+script = ExtResource("1_1bbk2")
+belt_name = "Deneb Crucis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 18465751.374827236
+width = 1609986.1721461655
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+asteroid_count = 187
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_myydr"]
+script = ExtResource("1_1bbk2")
+belt_name = "Deneb Crucis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 44791119.48769881
+width = 3905234.1573518235
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+asteroid_count = 387
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ig400"]
+script = ExtResource("2_7k52m")
+gate_name = "Gate → Epsilon Tauri"
+target_system_id = 5
+target_system_name = "Epsilon Tauri"
+pos_x = 7310565.4737581145
+pos_y = 432818.8445483219
+pos_z = -25341327.758695323
+
+[sub_resource type="Resource" id="Resource_rlunf"]
+script = ExtResource("2_7k52m")
+gate_name = "Gate → Regulus Pavonis"
+target_system_id = 67
+target_system_name = "Regulus Pavonis"
+pos_x = -18330707.997535665
+pos_y = 254172.91362272418
+pos_z = 18963449.17014857
+
+[sub_resource type="Resource" id="Resource_tb0bk"]
+script = ExtResource("3_wwmws")
+planet_name = "Deneb Crucis I"
+type = 4
+orbital_radius = 14440785.944461823
+orbital_period = 93.12847463118166
+orbital_angle = 5.414785900115752
+radius = 9033975.12435913
+color = Color(0.5831985, 0.78495014, 0.95271987, 0.9)
+
+[sub_resource type="Resource" id="Resource_v6iy2"]
+script = ExtResource("3_wwmws")
+planet_name = "Deneb Crucis II"
+type = 4
+orbital_radius = 22490716.80519265
+orbital_period = 181.00942532518755
+orbital_angle = 3.7210055848069445
+radius = 9373962.879180908
+color = Color(0.52048415, 0.7133506, 0.9555941, 0.9)
+
+[sub_resource type="Resource" id="Resource_r3u05"]
+script = ExtResource("3_wwmws")
+planet_name = "Deneb Crucis III"
+type = 4
+orbital_radius = 35028034.094319254
+orbital_period = 351.81948578361363
+orbital_angle = 0.19403116679406265
+radius = 3916539.192199707
+color = Color(0.5928889, 0.7771453, 0.9699037, 0.9)
+
+[sub_resource type="Resource" id="Resource_0ha82"]
+script = ExtResource("3_wwmws")
+planet_name = "Deneb Crucis IV"
+type = 4
+orbital_radius = 54554204.88107837
+orbital_period = 683.8149469547137
+orbital_angle = 3.960525674328655
+radius = 5742811.918258667
+color = Color(0.62128216, 0.7154062, 0.98017895, 0.9)
+
+[sub_resource type="Resource" id="Resource_mfdtd"]
+script = ExtResource("5_17xxj")
+station_name = "Port Platform"
+orbital_radius = 14465828.081256807
+orbital_period = 83.8156271680635
+orbital_angle = 3.7401578742338173
+
+[sub_resource type="Resource" id="Resource_01p1x"]
+script = ExtResource("5_17xxj")
+station_name = "Nexus Depot"
+station_type = 2
+orbital_radius = 23374746.63612385
+orbital_period = 162.9084827926688
+orbital_angle = 2.5531556010189083
+
+[resource]
+script = ExtResource("4_ccaex")
+system_name = "Deneb Crucis"
+seed_value = 3754196104
+star_name = "Deneb Crucis"
+star_spectral_class = "M"
+star_temperature = 2907.9267531633377
+star_radius = 14976947.056436539
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0045033017061650756
+planets = Array[ExtResource("3_wwmws")]([SubResource("Resource_tb0bk"), SubResource("Resource_v6iy2"), SubResource("Resource_r3u05"), SubResource("Resource_0ha82")])
+stations = Array[ExtResource("5_17xxj")]([SubResource("Resource_mfdtd"), SubResource("Resource_01p1x")])
+asteroid_belts = Array[ExtResource("1_1bbk2")]([SubResource("Resource_tbv0p"), SubResource("Resource_kbikh"), SubResource("Resource_myydr")])
+jump_gates = Array[ExtResource("2_7k52m")]([SubResource("Resource_ig400"), SubResource("Resource_rlunf")])

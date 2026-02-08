@@ -1,0 +1,151 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_u0xtv"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ji02y"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_v1537"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_mbdh7"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_0aqxw"]
+
+[sub_resource type="Resource" id="Resource_s2qay"]
+script = ExtResource("1_u0xtv")
+belt_name = "Nova Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 27077149.77269241
+width = 2022711.888401212
+dominant_resource = &"crystal"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 464
+
+[sub_resource type="Resource" id="Resource_lcjvx"]
+script = ExtResource("1_u0xtv")
+belt_name = "Nova Virginis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 57660896.98514829
+width = 4307372.925394127
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 498
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_vw7ai"]
+script = ExtResource("1_u0xtv")
+belt_name = "Nova Virginis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 18555118.13632023
+width = 1386100.7661476594
+dominant_resource = &"gold"
+rare_resource = &"crystal"
+asteroid_count = 416
+
+[sub_resource type="Resource" id="Resource_x75i0"]
+script = ExtResource("1_u0xtv")
+belt_name = "Nova Virginis Belt 4"
+field_id = &"belt_3"
+orbital_radius = 39513197.082679205
+width = 2951707.035593507
+dominant_resource = &"platinum"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 370
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_lryr8"]
+script = ExtResource("2_ji02y")
+gate_name = "Gate → Procyon Persei"
+target_system_id = 61
+target_system_name = "Procyon Persei"
+pos_x = 304634.7962459296
+pos_y = 242227.0854587059
+pos_z = 18646084.81937183
+
+[sub_resource type="Resource" id="Resource_igk0s"]
+script = ExtResource("2_ji02y")
+gate_name = "Gate → Aldebaran Leonis"
+target_system_id = 106
+target_system_name = "Aldebaran Leonis"
+pos_x = 12745882.909763282
+pos_y = 49696.07921549221
+pos_z = 13612925.853794135
+
+[sub_resource type="Resource" id="Resource_ry0h0"]
+script = ExtResource("2_ji02y")
+gate_name = "Gate → Betelgeuse Carinae"
+target_system_id = 57
+target_system_name = "Betelgeuse Carinae"
+pos_x = 18572998.51521894
+pos_y = 67869.78404265393
+pos_z = -1677202.3145606287
+
+[sub_resource type="Resource" id="Resource_lknju"]
+script = ExtResource("3_v1537")
+planet_name = "Nova Virginis I"
+orbital_radius = 15089866.220951082
+orbital_period = 99.47737765553632
+orbital_angle = 2.5529698455328753
+radius = 3511253.8635730743
+color = Color(0.5062982, 0.6993969, 0.43055102, 0.9)
+
+[sub_resource type="Resource" id="Resource_kc8sb"]
+script = ExtResource("3_v1537")
+planet_name = "Nova Virginis II"
+type = 3
+orbital_radius = 22020370.05168938
+orbital_period = 175.36106056733777
+orbital_angle = 0.5564514839921378
+radius = 49293379.78363037
+color = Color(0.80770034, 0.659101, 0.26517493, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_8ptrm"]
+script = ExtResource("3_v1537")
+planet_name = "Nova Virginis III"
+type = 3
+orbital_radius = 32133929.493695438
+orbital_period = 309.13060122861077
+orbital_angle = 0.6802261036561522
+radius = 30477373.600006104
+color = Color(0.85998696, 0.6764886, 0.31530142, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_3gvxm"]
+script = ExtResource("3_v1537")
+planet_name = "Nova Virginis IV"
+type = 4
+orbital_radius = 46892464.67166297
+orbital_period = 544.942693131507
+orbital_angle = 0.04734971063693388
+radius = 7524486.064910889
+color = Color(0.5577861, 0.71511775, 0.98629427, 0.9)
+
+[sub_resource type="Resource" id="Resource_0fe3y"]
+script = ExtResource("3_v1537")
+planet_name = "Nova Virginis V"
+type = 4
+orbital_radius = 68429329.2986336
+orbital_period = 960.6377939200123
+orbital_angle = 0.11382779491598086
+radius = 7168583.393096924
+color = Color(0.57261705, 0.72243613, 0.9699508, 0.9)
+
+[sub_resource type="Resource" id="Resource_f7qm4"]
+script = ExtResource("5_0aqxw")
+station_name = "Port Station"
+orbital_radius = 15648573.174650453
+orbital_period = 89.52963988998269
+orbital_angle = 6.0224823511236005
+
+[resource]
+script = ExtResource("4_mbdh7")
+system_name = "Nova Virginis"
+seed_value = 2346611285
+star_name = "Nova Virginis"
+star_spectral_class = "K"
+star_temperature = 4830.92714548111
+star_radius = 47657223.71122241
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.08282002614811063
+planets = Array[ExtResource("3_v1537")]([SubResource("Resource_lknju"), SubResource("Resource_kc8sb"), SubResource("Resource_8ptrm"), SubResource("Resource_3gvxm"), SubResource("Resource_0fe3y")])
+stations = Array[ExtResource("5_0aqxw")]([SubResource("Resource_f7qm4")])
+asteroid_belts = Array[ExtResource("1_u0xtv")]([SubResource("Resource_s2qay"), SubResource("Resource_lcjvx"), SubResource("Resource_vw7ai"), SubResource("Resource_x75i0")])
+jump_gates = Array[ExtResource("2_ji02y")]([SubResource("Resource_lryr8"), SubResource("Resource_igk0s"), SubResource("Resource_ry0h0")])

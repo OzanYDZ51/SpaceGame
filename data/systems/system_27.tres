@@ -1,0 +1,140 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_3c3gu"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_sfe2i"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_xkgsc"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_5nf7t"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_b33i4"]
+
+[sub_resource type="Resource" id="Resource_i1t54"]
+script = ExtResource("1_3c3gu")
+belt_name = "Antares Virginis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 51624403.99608013
+width = 3739046.223941131
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 457
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_igkjs"]
+script = ExtResource("1_3c3gu")
+belt_name = "Antares Virginis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 35795337.30035739
+width = 2592580.4543479667
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 489
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_p83um"]
+script = ExtResource("1_3c3gu")
+belt_name = "Antares Virginis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 24819776.56427079
+width = 1797643.8400866734
+dominant_resource = &"gold"
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 448
+
+[sub_resource type="Resource" id="Resource_aoa6a"]
+script = ExtResource("2_sfe2i")
+gate_name = "Gate → Mira Draconis"
+target_system_id = 9
+target_system_name = "Mira Draconis"
+pos_x = 5862899.760480258
+pos_y = 256814.455054382
+pos_z = 31819300.56417413
+
+[sub_resource type="Resource" id="Resource_3h6mj"]
+script = ExtResource("2_sfe2i")
+gate_name = "Gate → Omega Leonis"
+target_system_id = 116
+target_system_name = "Omega Leonis"
+pos_x = -8968155.63476095
+pos_y = -778175.5697559022
+pos_z = -31087194.574380573
+
+[sub_resource type="Resource" id="Resource_m46fu"]
+script = ExtResource("2_sfe2i")
+gate_name = "Gate → Phi Crucis"
+target_system_id = 79
+target_system_name = "Phi Crucis"
+pos_x = -29628922.03215661
+pos_y = 352549.4482941477
+pos_z = 12998786.912903693
+
+[sub_resource type="Resource" id="Resource_8fdlb"]
+script = ExtResource("2_sfe2i")
+gate_name = "Gate → Epsilon Centauri"
+target_system_id = 66
+target_system_name = "Epsilon Centauri"
+pos_x = -4699689.655071285
+pos_y = 117875.47380239524
+pos_z = -32011785.316359777
+
+[sub_resource type="Resource" id="Resource_2t2iy"]
+script = ExtResource("3_xkgsc")
+planet_name = "Antares Virginis I"
+type = 3
+orbital_radius = 20325666.964054108
+orbital_period = 155.51183714741285
+orbital_angle = 1.5586989071402386
+radius = 30499534.606933594
+color = Color(0.8002357, 0.7352959, 0.36499053, 0.9)
+
+[sub_resource type="Resource" id="Resource_84a6x"]
+script = ExtResource("3_xkgsc")
+planet_name = "Antares Virginis II"
+type = 3
+orbital_radius = 29313886.164487474
+orbital_period = 269.343400836256
+orbital_angle = 3.3146864315032825
+radius = 25086967.945098877
+color = Color(0.814858, 0.72381544, 0.39845815, 0.9)
+
+[sub_resource type="Resource" id="Resource_jp8q1"]
+script = ExtResource("3_xkgsc")
+planet_name = "Antares Virginis III"
+type = 4
+orbital_radius = 42276788.43622731
+orbital_period = 466.49739919973024
+orbital_angle = 5.978401001358445
+radius = 7965428.352355957
+color = Color(0.59439826, 0.7158483, 0.9123405, 0.9)
+
+[sub_resource type="Resource" id="Resource_s85ff"]
+script = ExtResource("3_xkgsc")
+planet_name = "Antares Virginis IV"
+type = 4
+orbital_radius = 60972019.55593296
+orbital_period = 807.9641928647501
+orbital_angle = 3.8637556797670993
+radius = 6816988.468170166
+color = Color(0.56461257, 0.7492303, 0.95229447, 0.9)
+
+[sub_resource type="Resource" id="Resource_oubml"]
+script = ExtResource("5_b33i4")
+station_name = "Beta Hub"
+orbital_radius = 29354929.794309422
+orbital_period = 242.40906075263044
+orbital_angle = 2.5045608798022867
+
+[resource]
+script = ExtResource("4_5nf7t")
+system_name = "Antares Virginis"
+seed_value = 4164068550
+star_name = "Antares Virginis"
+star_spectral_class = "M"
+star_temperature = 2703.4088253974915
+star_radius = 10274465.848015249
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05755187654495239
+planets = Array[ExtResource("3_xkgsc")]([SubResource("Resource_2t2iy"), SubResource("Resource_84a6x"), SubResource("Resource_jp8q1"), SubResource("Resource_s85ff")])
+stations = Array[ExtResource("5_b33i4")]([SubResource("Resource_oubml")])
+asteroid_belts = Array[ExtResource("1_3c3gu")]([SubResource("Resource_i1t54"), SubResource("Resource_igkjs"), SubResource("Resource_p83um")])
+jump_gates = Array[ExtResource("2_sfe2i")]([SubResource("Resource_aoa6a"), SubResource("Resource_3h6mj"), SubResource("Resource_m46fu"), SubResource("Resource_8fdlb")])

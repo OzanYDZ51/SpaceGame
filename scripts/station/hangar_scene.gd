@@ -31,6 +31,10 @@ var _preview_local_pos: Vector3 = Vector3.ZERO
 var _preview_local_rot: Vector3 = Vector3.ZERO
 var _preview_local_scale: Vector3 = Vector3.ONE
 
+# Equipment data for current player ship (passed from DockInstance)
+var _current_hp_configs: Array[Dictionary] = []
+var _current_weapon_names: Array[StringName] = []
+
 # Ship selection state
 var _ship_ids: Array[StringName] = []
 var _current_index: int = 0
@@ -180,12 +184,13 @@ func _input(event: InputEvent) -> void:
 		var new_id: StringName = _ship_ids[_current_index]
 		var data := ShipRegistry.get_ship_data(new_id)
 		if data:
-			display_ship(data.model_path, data.model_scale)
+			var configs := ShipFactory.get_hardpoint_configs(new_id)
+			display_ship(data.model_path, data.model_scale, configs, data.default_loadout)
 			_update_ship_labels(data)
 			ship_selected.emit(new_id)
 
 
-func display_ship(ship_model_path: String, _ship_model_scale: float) -> void:
+func display_ship(ship_model_path: String, _ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = []) -> void:
 	# Place a copy of the player's ship in the hangar.
 	# Uses the exact transform from ShipPreview (editor placement) so WYSIWYG.
 	if _docked_ship:
@@ -211,6 +216,10 @@ func display_ship(ship_model_path: String, _ship_model_scale: float) -> void:
 		add_child(_docked_ship)
 		_docked_ship.position = Vector3(_cam_base_pos.x, _cam_base_pos.y - 5.0, _cam_base_pos.z - 6.0)
 		_docked_ship.rotation_degrees.y = 180.0
+
+	# Apply equipped weapons visuals
+	if not hp_configs.is_empty():
+		_docked_ship.apply_equipment(hp_configs, weapon_names)
 
 
 func setup_ship_selection(current_ship_id: StringName) -> void:

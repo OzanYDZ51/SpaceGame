@@ -1,0 +1,147 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_b4lod"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_8an53"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4uo3f"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_h684c"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_rdmil"]
+
+[sub_resource type="Resource" id="Resource_4f56n"]
+script = ExtResource("1_b4lod")
+belt_name = "Betelgeuse Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 17312458.930178583
+width = 1564872.7527316813
+dominant_resource = &"titanium"
+secondary_resource = &"gold"
+rare_resource = &"crystal"
+asteroid_count = 158
+
+[sub_resource type="Resource" id="Resource_r01kc"]
+script = ExtResource("1_b4lod")
+belt_name = "Betelgeuse Persei Belt 2"
+field_id = &"belt_1"
+orbital_radius = 27421128.76023999
+width = 2478595.1792928814
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 202
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_c6me2"]
+script = ExtResource("1_b4lod")
+belt_name = "Betelgeuse Persei Belt 3"
+field_id = &"belt_2"
+orbital_radius = 43432207.147358954
+width = 3925836.1755547062
+secondary_resource = &"platinum"
+rare_resource = &"uranium"
+asteroid_count = 372
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_6eaam"]
+script = ExtResource("2_8an53")
+gate_name = "Gate → Rigel Tauri"
+target_system_id = 75
+target_system_name = "Rigel Tauri"
+pos_x = 17181016.17616807
+pos_y = 106428.86973976086
+pos_z = -18226951.916709077
+
+[sub_resource type="Resource" id="Resource_48u61"]
+script = ExtResource("2_8an53")
+gate_name = "Gate → Nu Persei"
+target_system_id = 15
+target_system_name = "Nu Persei"
+pos_x = -4986940.507838166
+pos_y = 508975.15896603884
+pos_z = 24546680.37415765
+
+[sub_resource type="Resource" id="Resource_3qlfl"]
+script = ExtResource("2_8an53")
+gate_name = "Gate → Aldebaran Scorpii"
+target_system_id = 94
+target_system_name = "Aldebaran Scorpii"
+pos_x = -10821365.3405149
+pos_y = 8726.423961319379
+pos_z = 22589978.866454843
+
+[sub_resource type="Resource" id="Resource_kgkwx"]
+script = ExtResource("2_8an53")
+gate_name = "Gate → Pi Persei"
+target_system_id = 35
+target_system_name = "Pi Persei"
+pos_x = -23879875.308168463
+pos_y = -220043.887914054
+pos_z = -7560466.142117144
+
+[sub_resource type="Resource" id="Resource_iqnl8"]
+script = ExtResource("3_4uo3f")
+planet_name = "Betelgeuse Persei I"
+orbital_radius = 13400277.048349379
+orbital_period = 83.2466776589462
+orbital_angle = 6.151463320681557
+radius = 5623998.463153839
+color = Color(0.63658476, 0.5555834, 0.43027815, 0.9)
+
+[sub_resource type="Resource" id="Resource_y8thp"]
+script = ExtResource("3_4uo3f")
+planet_name = "Betelgeuse Persei II"
+type = 3
+orbital_radius = 21224640.812007785
+orbital_period = 165.94217110823237
+orbital_angle = 6.013469090473688
+radius = 43691120.14770508
+color = Color(0.82052857, 0.61001354, 0.36744136, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_6wcdr"]
+script = ExtResource("3_4uo3f")
+planet_name = "Betelgeuse Persei III"
+type = 4
+orbital_radius = 33617616.70847219
+orbital_period = 330.7856232404802
+orbital_angle = 5.49610448370402
+radius = 6404294.490814209
+color = Color(0.6063489, 0.7901555, 0.9840008, 0.9)
+
+[sub_resource type="Resource" id="Resource_vcidx"]
+script = ExtResource("3_4uo3f")
+planet_name = "Betelgeuse Persei IV"
+type = 4
+orbital_radius = 53246797.58624572
+orbital_period = 659.3810832523488
+orbital_angle = 2.613686235734237
+radius = 5795846.223831177
+color = Color(0.6098573, 0.7793875, 0.94556856, 0.9)
+
+[sub_resource type="Resource" id="Resource_106l2"]
+script = ExtResource("5_rdmil")
+station_name = "Gateway Outpost"
+orbital_radius = 22048135.519830085
+orbital_period = 149.34795399740915
+orbital_angle = 0.9645297436210676
+
+[sub_resource type="Resource" id="Resource_nhiny"]
+script = ExtResource("5_rdmil")
+station_name = "Gamma Station"
+station_type = 1
+orbital_radius = 12952054.414559875
+orbital_period = 74.92200989305158
+orbital_angle = 3.125147488216932
+
+[resource]
+script = ExtResource("4_h684c")
+system_name = "Betelgeuse Persei"
+seed_value = 2310139769
+star_name = "Betelgeuse Persei"
+star_spectral_class = "M"
+star_temperature = 3314.6224915981293
+star_radius = 25081018.7556982
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03331064051389694
+planets = Array[ExtResource("3_4uo3f")]([SubResource("Resource_iqnl8"), SubResource("Resource_y8thp"), SubResource("Resource_6wcdr"), SubResource("Resource_vcidx")])
+stations = Array[ExtResource("5_rdmil")]([SubResource("Resource_106l2"), SubResource("Resource_nhiny")])
+asteroid_belts = Array[ExtResource("1_b4lod")]([SubResource("Resource_4f56n"), SubResource("Resource_r01kc"), SubResource("Resource_c6me2")])
+jump_gates = Array[ExtResource("2_8an53")]([SubResource("Resource_6eaam"), SubResource("Resource_48u61"), SubResource("Resource_3qlfl"), SubResource("Resource_kgkwx")])

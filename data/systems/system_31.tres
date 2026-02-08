@@ -1,0 +1,168 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_yvh7n"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_2l7tk"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_khn7u"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_thy4e"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_8vjr2"]
+
+[sub_resource type="Resource" id="Resource_s1aw8"]
+script = ExtResource("1_yvh7n")
+belt_name = "Chi Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 449772830.5878157
+width = 56806849.247472934
+dominant_resource = &"crystal"
+secondary_resource = &"platinum"
+asteroid_count = 438
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_0g5mc"]
+script = ExtResource("1_yvh7n")
+belt_name = "Chi Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 233900820.40256846
+width = 29541954.82662597
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+asteroid_count = 406
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_shy58"]
+script = ExtResource("1_yvh7n")
+belt_name = "Chi Leonis Belt 3"
+field_id = &"belt_2"
+orbital_radius = 63257030.42933384
+width = 7989438.994671282
+dominant_resource = &"uranium"
+secondary_resource = &"iron"
+rare_resource = &"platinum"
+asteroid_count = 367
+
+[sub_resource type="Resource" id="Resource_om66t"]
+script = ExtResource("1_yvh7n")
+belt_name = "Chi Leonis Belt 4"
+field_id = &"belt_3"
+orbital_radius = 121638280.6260078
+width = 15363061.0839983
+dominant_resource = &"uranium"
+secondary_resource = &"ice"
+asteroid_count = 422
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_128h5"]
+script = ExtResource("2_2l7tk")
+gate_name = "Gate → Mira Pegasi"
+target_system_id = 29
+target_system_name = "Mira Pegasi"
+pos_x = 47008669.53794935
+pos_y = -821551.3436193318
+pos_z = 10693913.45218415
+
+[sub_resource type="Resource" id="Resource_6d8d8"]
+script = ExtResource("2_2l7tk")
+gate_name = "Gate → Pi Eridani"
+target_system_id = 19
+target_system_name = "Pi Eridani"
+pos_x = -24296965.457531568
+pos_y = -682980.675242885
+pos_z = -41639311.54818065
+
+[sub_resource type="Resource" id="Resource_lc235"]
+script = ExtResource("2_2l7tk")
+gate_name = "Gate → Polaris Persei"
+target_system_id = 78
+target_system_name = "Polaris Persei"
+pos_x = 30055998.33065053
+pos_y = -383562.93536308414
+pos_z = 37693656.77403646
+
+[sub_resource type="Resource" id="Resource_ijyaq"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis I"
+type = 1
+orbital_radius = 22509208.619594574
+orbital_period = 181.2327094903621
+orbital_angle = 1.7897827577158782
+radius = 2597326.0402679443
+color = Color(1, 0.35, 0.15, 0.9)
+
+[sub_resource type="Resource" id="Resource_5mxf4"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis II"
+orbital_radius = 43283432.94265564
+orbital_period = 483.2577103831875
+orbital_angle = 2.8591821466528957
+radius = 6864799.976348877
+color = Color(0.5462778, 0.58098185, 0.37869653, 0.9)
+
+[sub_resource type="Resource" id="Resource_dc1qc"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis III"
+type = 3
+orbital_radius = 83230627.91601205
+orbital_period = 1288.6085260300113
+orbital_angle = 2.741197077952632
+radius = 32027347.087860107
+color = Color(0.76792586, 0.73998576, 0.2601278, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_4tjgc"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis IV"
+type = 4
+orbital_radius = 160045933.33600354
+orbital_period = 3436.0795444744704
+orbital_angle = 1.0682099546151609
+radius = 3290398.955345154
+color = Color(0.5157123, 0.7069833, 0.90135443, 0.9)
+
+[sub_resource type="Resource" id="Resource_f8ttp"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis V"
+type = 4
+orbital_radius = 307755707.4691334
+orbital_period = 9162.319197382763
+orbital_angle = 4.728617867948712
+radius = 7871909.141540527
+color = Color(0.5304114, 0.7958771, 0.99499524, 0.9)
+
+[sub_resource type="Resource" id="Resource_0gxng"]
+script = ExtResource("3_khn7u")
+planet_name = "Chi Leonis VI"
+type = 4
+orbital_radius = 591789953.706498
+orbital_period = 24431.35904979993
+orbital_angle = 3.7662512769230614
+radius = 6711174.488067627
+color = Color(0.5050176, 0.7307197, 0.92422414, 0.9)
+
+[sub_resource type="Resource" id="Resource_ywscb"]
+script = ExtResource("5_8vjr2")
+station_name = "Alpha Hub"
+orbital_radius = 45209696.0854446
+orbital_period = 434.93193934486874
+orbital_angle = 0.2650552660785962
+
+[sub_resource type="Resource" id="Resource_qfh3c"]
+script = ExtResource("5_8vjr2")
+station_name = "Gamma Depot"
+station_type = 1
+orbital_radius = 42092586.220201574
+orbital_period = 434.93193934486874
+orbital_angle = 5.659097432557435
+
+[resource]
+script = ExtResource("4_thy4e")
+system_name = "Chi Leonis"
+seed_value = 1602397381
+star_name = "Chi Leonis"
+star_spectral_class = "K"
+star_temperature = 4866.555464267731
+star_radius = 52386122.240281105
+star_color = Color(1, 0.8, 0.5, 1)
+star_luminosity = 0.4729618573188782
+planets = Array[ExtResource("3_khn7u")]([SubResource("Resource_ijyaq"), SubResource("Resource_5mxf4"), SubResource("Resource_dc1qc"), SubResource("Resource_4tjgc"), SubResource("Resource_f8ttp"), SubResource("Resource_0gxng")])
+stations = Array[ExtResource("5_8vjr2")]([SubResource("Resource_ywscb"), SubResource("Resource_qfh3c")])
+asteroid_belts = Array[ExtResource("1_yvh7n")]([SubResource("Resource_s1aw8"), SubResource("Resource_0g5mc"), SubResource("Resource_shy58"), SubResource("Resource_om66t")])
+jump_gates = Array[ExtResource("2_2l7tk")]([SubResource("Resource_128h5"), SubResource("Resource_6d8d8"), SubResource("Resource_lc235")])

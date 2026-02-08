@@ -1,0 +1,126 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qfvdl"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_ntidv"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_4hdgv"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_24row"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_fdph6"]
+
+[sub_resource type="Resource" id="Resource_s28dp"]
+script = ExtResource("1_qfvdl")
+belt_name = "Betelgeuse Carinae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 32195986.461238004
+width = 3467544.567066462
+dominant_resource = &"platinum"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 353
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_nqiul"]
+script = ExtResource("1_qfvdl")
+belt_name = "Betelgeuse Carinae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 18536200.14980478
+width = 1996369.9575068273
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"uranium"
+asteroid_count = 409
+
+[sub_resource type="Resource" id="Resource_giyeq"]
+script = ExtResource("2_ntidv")
+gate_name = "Gate → Procyon Persei"
+target_system_id = 61
+target_system_name = "Procyon Persei"
+pos_x = 20092170.022594422
+pos_y = -747660.8643647549
+pos_z = -39617539.49004232
+
+[sub_resource type="Resource" id="Resource_t4mp5"]
+script = ExtResource("2_ntidv")
+gate_name = "Gate → Procyon Centauri"
+target_system_id = 55
+target_system_name = "Procyon Centauri"
+pos_x = -34439654.09668893
+pos_y = -717392.5300595938
+pos_z = 28056281.955425285
+
+[sub_resource type="Resource" id="Resource_a05em"]
+script = ExtResource("2_ntidv")
+gate_name = "Gate → Nova Virginis"
+target_system_id = 97
+target_system_name = "Nova Virginis"
+pos_x = 44421000.17312858
+pos_y = -557838.7180905862
+pos_z = -139553.14692076697
+
+[sub_resource type="Resource" id="Resource_b3i3s"]
+script = ExtResource("2_ntidv")
+gate_name = "Gate → Aldebaran Leonis"
+target_system_id = 106
+target_system_name = "Aldebaran Leonis"
+pos_x = -9989578.408126008
+pos_y = -1103915.1817367596
+pos_z = -43283403.91755029
+
+[sub_resource type="Resource" id="Resource_4583b"]
+script = ExtResource("3_4hdgv")
+planet_name = "Betelgeuse Carinae I"
+type = 3
+orbital_radius = 13545275.256037712
+orbital_period = 84.60148693030008
+orbital_angle = 5.027181237522889
+radius = 49365994.930267334
+color = Color(0.8652667, 0.6392425, 0.3212481, 0.9)
+
+[sub_resource type="Resource" id="Resource_iqtyc"]
+script = ExtResource("3_4hdgv")
+planet_name = "Betelgeuse Carinae II"
+type = 4
+orbital_radius = 23527125.04357185
+orbital_period = 193.664284176797
+orbital_angle = 2.6557797021932172
+radius = 6755958.557128906
+color = Color(0.58284277, 0.7063067, 0.98146206, 0.9)
+
+[sub_resource type="Resource" id="Resource_xo2pj"]
+script = ExtResource("3_4hdgv")
+planet_name = "Betelgeuse Carinae III"
+type = 4
+orbital_radius = 40864847.87890416
+orbital_period = 443.3238271167838
+orbital_angle = 4.930735940554862
+radius = 6253880.500793457
+color = Color(0.6415978, 0.7283194, 0.90780956, 0.9)
+
+[sub_resource type="Resource" id="Resource_344ol"]
+script = ExtResource("5_fdph6")
+station_name = "Gamma Station"
+orbital_radius = 41421219.38287945
+orbital_period = 398.9914444051054
+orbital_angle = 2.4940067099844643
+
+[sub_resource type="Resource" id="Resource_qk03u"]
+script = ExtResource("5_fdph6")
+station_name = "Orbital Hub"
+station_type = 1
+orbital_radius = 13351756.278053716
+orbital_period = 76.14133823727008
+orbital_angle = 2.7217253340306256
+
+[resource]
+script = ExtResource("4_24row")
+system_name = "Betelgeuse Carinae"
+seed_value = 3323493119
+star_name = "Betelgeuse Carinae"
+star_spectral_class = "M"
+star_temperature = 2649.1251677274704
+star_radius = 8109156.670478731
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.01989155647158623
+planets = Array[ExtResource("3_4hdgv")]([SubResource("Resource_4583b"), SubResource("Resource_iqtyc"), SubResource("Resource_xo2pj")])
+stations = Array[ExtResource("5_fdph6")]([SubResource("Resource_344ol"), SubResource("Resource_qk03u")])
+asteroid_belts = Array[ExtResource("1_qfvdl")]([SubResource("Resource_s28dp"), SubResource("Resource_nqiul")])
+jump_gates = Array[ExtResource("2_ntidv")]([SubResource("Resource_giyeq"), SubResource("Resource_t4mp5"), SubResource("Resource_a05em"), SubResource("Resource_b3i3s")])

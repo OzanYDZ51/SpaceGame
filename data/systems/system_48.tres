@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_1ja4b"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_prkbc"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_vcghv"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_x1uvu"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_rq4wy"]
+
+[sub_resource type="Resource" id="Resource_8f0ma"]
+script = ExtResource("1_1ja4b")
+belt_name = "Mu Leonis Belt 1"
+field_id = &"belt_0"
+orbital_radius = 36572992.60614555
+width = 2609282.024267357
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"crystal"
+asteroid_count = 376
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_bitxf"]
+script = ExtResource("1_1ja4b")
+belt_name = "Mu Leonis Belt 2"
+field_id = &"belt_1"
+orbital_radius = 25501336.944239743
+width = 1819380.2404949688
+dominant_resource = &"copper"
+secondary_resource = &"ice"
+rare_resource = &"uranium"
+asteroid_count = 433
+
+[sub_resource type="Resource" id="Resource_oq1bx"]
+script = ExtResource("2_prkbc")
+gate_name = "Gate → Xi Draconis"
+target_system_id = 88
+target_system_name = "Xi Draconis"
+pos_x = -27214040.521419723
+pos_y = 227580.79993013805
+pos_z = 18872016.93970052
+
+[sub_resource type="Resource" id="Resource_ddwqv"]
+script = ExtResource("2_prkbc")
+gate_name = "Gate → Sol Scorpii"
+target_system_id = 80
+target_system_name = "Sol Scorpii"
+pos_x = 19212499.603156768
+pos_y = 415141.8141696132
+pos_z = -26974745.297639407
+
+[sub_resource type="Resource" id="Resource_30ytm"]
+script = ExtResource("2_prkbc")
+gate_name = "Gate → Deneb Ursae"
+target_system_id = 118
+target_system_name = "Deneb Ursae"
+pos_x = 16335913.849969838
+pos_y = 290889.5979289582
+pos_z = 28807897.2429468
+
+[sub_resource type="Resource" id="Resource_sdke0"]
+script = ExtResource("2_prkbc")
+gate_name = "Gate → Zeta Lyrae"
+target_system_id = 82
+target_system_name = "Zeta Lyrae"
+pos_x = 29867277.202080023
+pos_y = 454026.8768749611
+pos_z = -14307437.835193599
+
+[sub_resource type="Resource" id="Resource_223um"]
+script = ExtResource("3_vcghv")
+planet_name = "Mu Leonis I"
+type = 3
+orbital_radius = 20952886.34300232
+orbital_period = 162.765377461367
+orbital_angle = 1.6605079873942261
+radius = 44055759.9067688
+color = Color(0.84592587, 0.7449998, 0.36054775, 0.9)
+
+[sub_resource type="Resource" id="Resource_llsxm"]
+script = ExtResource("3_vcghv")
+planet_name = "Mu Leonis II"
+type = 3
+orbital_radius = 30049787.545477163
+orbital_period = 279.5492636619513
+orbital_angle = 4.6914783804599836
+radius = 19208573.10295105
+color = Color(0.8781231, 0.6463051, 0.3241864, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_y4l3d"]
+script = ExtResource("3_vcghv")
+planet_name = "Mu Leonis III"
+type = 4
+orbital_radius = 43096197.66681395
+orbital_period = 480.1253929601079
+orbital_angle = 5.915997269741111
+radius = 5737556.69593811
+color = Color(0.54704034, 0.73499286, 0.90188974, 0.9)
+
+[sub_resource type="Resource" id="Resource_ymbuq"]
+script = ExtResource("5_rq4wy")
+station_name = "Beta Hub"
+orbital_radius = 30117322.127156027
+orbital_period = 251.59433729575616
+orbital_angle = 2.6745348269165863
+
+[resource]
+script = ExtResource("4_x1uvu")
+system_name = "Mu Leonis"
+seed_value = 1605051123
+star_name = "Mu Leonis"
+star_spectral_class = "M"
+star_temperature = 3636.38334274292
+star_radius = 37418994.46001053
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.0678615192770958
+planets = Array[ExtResource("3_vcghv")]([SubResource("Resource_223um"), SubResource("Resource_llsxm"), SubResource("Resource_y4l3d")])
+stations = Array[ExtResource("5_rq4wy")]([SubResource("Resource_ymbuq")])
+asteroid_belts = Array[ExtResource("1_1ja4b")]([SubResource("Resource_8f0ma"), SubResource("Resource_bitxf")])
+jump_gates = Array[ExtResource("2_prkbc")]([SubResource("Resource_oq1bx"), SubResource("Resource_ddwqv"), SubResource("Resource_30ytm"), SubResource("Resource_sdke0")])

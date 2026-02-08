@@ -1,0 +1,95 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_72jun"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_2aers"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_5sa6f"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_waj8b"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_vk7ip"]
+
+[sub_resource type="Resource" id="Resource_me4n3"]
+script = ExtResource("1_72jun")
+belt_name = "Pi Persei Belt 1"
+field_id = &"belt_0"
+orbital_radius = 19839899.894771058
+width = 2331930.660079749
+secondary_resource = &"ice"
+rare_resource = &"platinum"
+asteroid_count = 395
+
+[sub_resource type="Resource" id="Resource_rwevb"]
+script = ExtResource("2_2aers")
+gate_name = "Gate → Pi Eridani"
+target_system_id = 19
+target_system_name = "Pi Eridani"
+pos_x = -3274215.6906961915
+pos_y = 146215.78180563168
+pos_z = 16064579.14051521
+
+[sub_resource type="Resource" id="Resource_wqs7n"]
+script = ExtResource("2_2aers")
+gate_name = "Gate → Delta Leonis"
+target_system_id = 110
+target_system_name = "Delta Leonis"
+pos_x = 12070527.177635308
+pos_y = -190931.39208526217
+pos_z = -11094753.94071653
+
+[sub_resource type="Resource" id="Resource_bouwq"]
+script = ExtResource("2_2aers")
+gate_name = "Gate → Betelgeuse Persei"
+target_system_id = 101
+target_system_name = "Betelgeuse Persei"
+pos_x = -14631231.703837862
+pos_y = -295828.13570560893
+pos_z = -7397178.528309789
+
+[sub_resource type="Resource" id="Resource_k36lh"]
+script = ExtResource("2_2aers")
+gate_name = "Gate → Pi Cygni"
+target_system_id = 76
+target_system_name = "Pi Cygni"
+pos_x = 11937220.455298113
+pos_y = -42697.15990682342
+pos_z = -11238058.513492882
+
+[sub_resource type="Resource" id="Resource_cuwqb"]
+script = ExtResource("3_5sa6f")
+planet_name = "Pi Persei I"
+type = 2
+orbital_radius = 14010073.244571686
+orbital_period = 88.9932059882855
+orbital_angle = 3.7769438270878375
+radius = 4548704.80298996
+color = Color(0.16180372, 0.4234961, 0.8056501, 0.9)
+
+[sub_resource type="Resource" id="Resource_0vul2"]
+script = ExtResource("3_5sa6f")
+planet_name = "Pi Persei II"
+type = 3
+orbital_radius = 25669726.54497043
+orbital_period = 220.71309826887736
+orbital_angle = 6.258085471636401
+radius = 22716836.92932129
+color = Color(0.76220304, 0.63775283, 0.37010252, 0.9)
+
+[sub_resource type="Resource" id="Resource_3iwk2"]
+script = ExtResource("5_vk7ip")
+station_name = "Alpha Outpost"
+orbital_radius = 13394852.587049313
+orbital_period = 80.09388538945694
+orbital_angle = 1.2141857722367553
+
+[resource]
+script = ExtResource("4_waj8b")
+system_name = "Pi Persei"
+seed_value = 2594704778
+star_name = "Pi Persei"
+star_spectral_class = "M"
+star_temperature = 3338.696628808975
+star_radius = 35201951.90116167
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.05006776708364487
+planets = Array[ExtResource("3_5sa6f")]([SubResource("Resource_cuwqb"), SubResource("Resource_0vul2")])
+stations = Array[ExtResource("5_vk7ip")]([SubResource("Resource_3iwk2")])
+asteroid_belts = Array[ExtResource("1_72jun")]([SubResource("Resource_me4n3")])
+jump_gates = Array[ExtResource("2_2aers")]([SubResource("Resource_rwevb"), SubResource("Resource_wqs7n"), SubResource("Resource_bouwq"), SubResource("Resource_k36lh")])

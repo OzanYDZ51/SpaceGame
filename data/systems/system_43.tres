@@ -1,0 +1,138 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_qfgck"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_suoov"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_brk6a"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_ljiou"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_b687y"]
+
+[sub_resource type="Resource" id="Resource_lpxqk"]
+script = ExtResource("1_qfgck")
+belt_name = "Vega Ursae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 44922095.57503114
+width = 3691774.8628039155
+secondary_resource = &"crystal"
+rare_resource = &"platinum"
+asteroid_count = 453
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_qdtlo"]
+script = ExtResource("1_qfgck")
+belt_name = "Vega Ursae Belt 2"
+field_id = &"belt_1"
+orbital_radius = 68154080.88782036
+width = 5601019.262311775
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 290
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_ghvcb"]
+script = ExtResource("1_qfgck")
+belt_name = "Vega Ursae Belt 3"
+field_id = &"belt_2"
+orbital_radius = 29609300.640027598
+width = 2433343.1111975014
+dominant_resource = &"uranium"
+secondary_resource = &"gold"
+rare_resource = &"platinum"
+asteroid_count = 151
+
+[sub_resource type="Resource" id="Resource_v23r3"]
+script = ExtResource("2_suoov")
+gate_name = "Gate → Omicron Serpentis"
+target_system_id = 53
+target_system_name = "Omicron Serpentis"
+pos_x = 26606908.693131313
+pos_y = -125198.91220576754
+pos_z = -4145599.530825471
+
+[sub_resource type="Resource" id="Resource_arfs7"]
+script = ExtResource("2_suoov")
+gate_name = "Gate → Rho Ursae"
+target_system_id = 117
+target_system_name = "Rho Ursae"
+pos_x = -9707999.54038189
+pos_y = 135557.0528658807
+pos_z = -25117092.39937123
+
+[sub_resource type="Resource" id="Resource_vwopq"]
+script = ExtResource("2_suoov")
+gate_name = "Gate → Mira Tauri"
+target_system_id = 32
+target_system_name = "Mira Tauri"
+pos_x = -10069948.506431337
+pos_y = -431528.19634785666
+pos_z = -24974181.122760125
+
+[sub_resource type="Resource" id="Resource_oyfh3"]
+script = ExtResource("2_suoov")
+gate_name = "Gate → Nu Centauri"
+target_system_id = 71
+target_system_name = "Nu Centauri"
+pos_x = -25055599.85074114
+pos_y = 258242.8895181045
+pos_z = -9865622.220323842
+
+[sub_resource type="Resource" id="Resource_rx00g"]
+script = ExtResource("3_brk6a")
+planet_name = "Vega Ursae I"
+type = 3
+orbital_radius = 23525942.862033844
+orbital_period = 193.64968761230756
+orbital_angle = 0.25505784777170926
+radius = 44410543.44177246
+color = Color(0.8280926, 0.6946161, 0.27733245, 0.9)
+
+[sub_resource type="Resource" id="Resource_7vxl1"]
+script = ExtResource("3_brk6a")
+planet_name = "Vega Ursae II"
+type = 3
+orbital_radius = 35692658.41802135
+orbital_period = 361.8800049004027
+orbital_angle = 3.4809402130520395
+radius = 42368876.93405151
+color = Color(0.8888606, 0.6537589, 0.30842116, 0.9)
+
+[sub_resource type="Resource" id="Resource_2w3qh"]
+script = ExtResource("3_brk6a")
+planet_name = "Vega Ursae III"
+type = 4
+orbital_radius = 54151532.73204093
+orbital_period = 676.2579354576369
+orbital_angle = 3.848477665547911
+radius = 3419792.1752929688
+color = Color(0.547675, 0.74710983, 0.92369425, 0.9)
+
+[sub_resource type="Resource" id="Resource_nplml"]
+script = ExtResource("3_brk6a")
+planet_name = "Vega Ursae IV"
+type = 4
+orbital_radius = 82156629.0435998
+orbital_period = 1263.7470683004199
+orbital_angle = 1.5447466478012055
+radius = 7502934.93270874
+color = Color(0.5380601, 0.7552145, 0.9919683, 0.9)
+
+[sub_resource type="Resource" id="Resource_htoq1"]
+script = ExtResource("5_b687y")
+station_name = "Nexus Hub"
+orbital_radius = 23927933.186091483
+orbital_period = 174.2847188510768
+orbital_angle = 5.497570304212757
+
+[resource]
+script = ExtResource("4_ljiou")
+system_name = "Vega Ursae"
+seed_value = 1002296486
+star_name = "Vega Ursae"
+star_spectral_class = "M"
+star_temperature = 3112.4460756778717
+star_radius = 21119831.31461739
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.07375739932060242
+planets = Array[ExtResource("3_brk6a")]([SubResource("Resource_rx00g"), SubResource("Resource_7vxl1"), SubResource("Resource_2w3qh"), SubResource("Resource_nplml")])
+stations = Array[ExtResource("5_b687y")]([SubResource("Resource_htoq1")])
+asteroid_belts = Array[ExtResource("1_qfgck")]([SubResource("Resource_lpxqk"), SubResource("Resource_qdtlo"), SubResource("Resource_ghvcb")])
+jump_gates = Array[ExtResource("2_suoov")]([SubResource("Resource_v23r3"), SubResource("Resource_arfs7"), SubResource("Resource_vwopq"), SubResource("Resource_oyfh3")])

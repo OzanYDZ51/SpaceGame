@@ -1,0 +1,98 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_e0622"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_k8ttr"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_rx7h4"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_vxhvh"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_pwt6h"]
+
+[sub_resource type="Resource" id="Resource_skf47"]
+script = ExtResource("1_e0622")
+belt_name = "Pi Carinae Belt 1"
+field_id = &"belt_0"
+orbital_radius = 25497888.43468494
+width = 3641912.086310652
+dominant_resource = &"ice"
+secondary_resource = &"uranium"
+rare_resource = &"platinum"
+asteroid_count = 187
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_b2sw7"]
+script = ExtResource("2_k8ttr")
+gate_name = "Gate → Phi Centauri"
+target_system_id = 28
+target_system_name = "Phi Centauri"
+pos_x = -13906904.529055165
+pos_y = -304243.31842571864
+pos_z = -14135967.755372614
+
+[sub_resource type="Resource" id="Resource_5h5hi"]
+script = ExtResource("2_k8ttr")
+gate_name = "Gate → Rigel Scorpii"
+target_system_id = 84
+target_system_name = "Rigel Scorpii"
+pos_x = -15638151.953288443
+pos_y = -489055.96727961046
+pos_z = -12193267.87399712
+
+[sub_resource type="Resource" id="Resource_cl4d7"]
+script = ExtResource("2_k8ttr")
+gate_name = "Gate → Rho Crucis"
+target_system_id = 37
+target_system_name = "Rho Crucis"
+pos_x = 19569986.700471416
+pos_y = 322139.61224629404
+pos_z = 3200499.7273177854
+
+[sub_resource type="Resource" id="Resource_6pjqd"]
+script = ExtResource("2_k8ttr")
+gate_name = "Gate → Alpha Eridani"
+target_system_id = 60
+target_system_name = "Alpha Eridani"
+pos_x = 7044347.4905850915
+pos_y = -231375.6890353333
+pos_z = 18536578.605370432
+
+[sub_resource type="Resource" id="Resource_jpeyg"]
+script = ExtResource("3_rx7h4")
+planet_name = "Pi Carinae I"
+type = 3
+orbital_radius = 16393108.218908308
+orbital_period = 112.63884866687687
+orbital_angle = 2.6288633203093004
+radius = 36347582.34024048
+color = Color(0.79525745, 0.61337936, 0.35053372, 0.9)
+has_rings = true
+
+[sub_resource type="Resource" id="Resource_dty0a"]
+script = ExtResource("3_rx7h4")
+planet_name = "Pi Carinae II"
+type = 4
+orbital_radius = 34602668.65046157
+orbital_period = 345.4304631828971
+orbital_angle = 3.4824809349664343
+radius = 7455121.994018555
+color = Color(0.6349597, 0.7737347, 0.9182474, 0.9)
+
+[sub_resource type="Resource" id="Resource_bciir"]
+script = ExtResource("5_pwt6h")
+station_name = "Haven Depot"
+orbital_radius = 16829966.665660065
+orbital_period = 101.37496380018918
+orbital_angle = 3.7155920857129776
+
+[resource]
+script = ExtResource("4_vxhvh")
+system_name = "Pi Carinae"
+seed_value = 1976915860
+star_name = "Pi Carinae"
+star_spectral_class = "M"
+star_temperature = 2434.1486249119043
+star_radius = 29202445.967578888
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.02786766615509987
+planets = Array[ExtResource("3_rx7h4")]([SubResource("Resource_jpeyg"), SubResource("Resource_dty0a")])
+stations = Array[ExtResource("5_pwt6h")]([SubResource("Resource_bciir")])
+asteroid_belts = Array[ExtResource("1_e0622")]([SubResource("Resource_skf47")])
+jump_gates = Array[ExtResource("2_k8ttr")]([SubResource("Resource_b2sw7"), SubResource("Resource_5h5hi"), SubResource("Resource_cl4d7"), SubResource("Resource_6pjqd")])

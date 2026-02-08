@@ -479,18 +479,18 @@ func _setup_network() -> void:
 		NetworkManager.start_dedicated_server(port)
 	else:
 		# Game client → auto-connect to the right server
-		var server_ip: String
-		if Constants.NET_IS_PRODUCTION:
-			server_ip = Constants.NET_PRODUCTION_IP
+		if Constants.NET_GAME_SERVER_URL != "":
+			# Production: connect to Railway game server via WebSocket URL
+			print("GameManager: Production → connecting to %s" % Constants.NET_GAME_SERVER_URL)
+			NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
 		else:
 			# Dev mode: check if a server is running on this machine first
 			if NetworkManager.is_local_server_running(port):
-				server_ip = "127.0.0.1"
 				print("GameManager: Local server detected → connecting to localhost")
+				NetworkManager.connect_to_server("ws://127.0.0.1:%d" % port)
 			else:
-				server_ip = Constants.NET_PUBLIC_IP
-				print("GameManager: No local server → connecting to %s" % server_ip)
-		NetworkManager.connect_to_server(server_ip, port)
+				print("GameManager: No local server → connecting to %s" % Constants.NET_PUBLIC_IP)
+				NetworkManager.connect_to_server("ws://%s:%d" % [Constants.NET_PUBLIC_IP, port])
 
 
 func _on_network_peer_connected(peer_id: int, player_name: String) -> void:
@@ -609,8 +609,7 @@ func _populate_wormhole_targets() -> void:
 					sys["wormhole_target"] = {
 						"seed": candidate.get("seed", 0),
 						"name": candidate.get("name", "Unknown"),
-						"ip": candidate.get("ip", ""),
-						"port": candidate.get("port", Constants.NET_DEFAULT_PORT),
+						"url": candidate.get("url", ""),
 					}
 					found = true
 					target_idx += j + 1
@@ -968,10 +967,9 @@ func _initiate_wormhole_jump() -> void:
 		return
 
 	var target_seed: int = wormhole.target_galaxy_seed
-	var target_ip: String = wormhole.target_server_ip
-	var target_port: int = wormhole.target_server_port
+	var target_url: String = wormhole.target_server_url
 
-	if target_ip.is_empty():
+	if target_url.is_empty():
 		print("GameManager: Wormhole has no target server configured")
 		return
 
@@ -1010,7 +1008,7 @@ func _initiate_wormhole_jump() -> void:
 			map_screen.galaxy = _galaxy
 
 	# 4. Connect to new server
-	NetworkManager.connect_to_server(target_ip, target_port)
+	NetworkManager.connect_to_server(target_url)
 
 	# 5. Wait for connection + config
 	var connected: bool = false

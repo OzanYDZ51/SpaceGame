@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="StarSystemData" format=3]
+
+[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_u3i1l"]
+[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_c1u35"]
+[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_xh5kf"]
+[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_v6cyy"]
+[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_n08oa"]
+
+[sub_resource type="Resource" id="Resource_m3v1e"]
+script = ExtResource("1_u3i1l")
+belt_name = "Deneb Eridani Belt 1"
+field_id = &"belt_0"
+orbital_radius = 41593104.0638841
+width = 3816635.047251353
+dominant_resource = &"ice"
+secondary_resource = &"iron"
+rare_resource = &"crystal"
+asteroid_count = 222
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_l1gar"]
+script = ExtResource("1_u3i1l")
+belt_name = "Deneb Eridani Belt 2"
+field_id = &"belt_1"
+orbital_radius = 26070794.896423697
+width = 2392288.6197328093
+dominant_resource = &"ice"
+secondary_resource = &"platinum"
+rare_resource = &"crystal"
+asteroid_count = 404
+zone = "outer"
+
+[sub_resource type="Resource" id="Resource_8a6tv"]
+script = ExtResource("2_c1u35")
+gate_name = "Gate → Epsilon Virginis"
+target_system_id = 11
+target_system_name = "Epsilon Virginis"
+pos_x = -54519732.52402082
+pos_y = -1227344.1646768863
+pos_z = -8775593.895013893
+
+[sub_resource type="Resource" id="Resource_1dlew"]
+script = ExtResource("2_c1u35")
+gate_name = "Gate → Pi Cygni"
+target_system_id = 76
+target_system_name = "Pi Cygni"
+pos_x = 6128660.982718937
+pos_y = -924391.1966790317
+pos_z = 54880340.7174179
+
+[sub_resource type="Resource" id="Resource_uundc"]
+script = ExtResource("2_c1u35")
+gate_name = "Gate → Fomalhaut Phoenicis"
+target_system_id = 33
+target_system_name = "Fomalhaut Phoenicis"
+pos_x = -23292176.109774448
+pos_y = 1084743.4080095638
+pos_z = -50068820.784718215
+
+[sub_resource type="Resource" id="Resource_e24w8"]
+script = ExtResource("2_c1u35")
+gate_name = "Gate → Pi Ursae"
+target_system_id = 44
+target_system_name = "Pi Ursae"
+pos_x = 53171685.96047644
+pos_y = -603449.7068325077
+pos_z = -14905840.96324159
+
+[sub_resource type="Resource" id="Resource_8keql"]
+script = ExtResource("3_xh5kf")
+planet_name = "Deneb Eridani I"
+type = 3
+orbital_radius = 20090073.347091675
+orbital_period = 152.8158943124821
+orbital_angle = 2.0548406687503618
+radius = 33669017.55332947
+color = Color(0.7825303, 0.6065763, 0.30332142, 0.9)
+
+[sub_resource type="Resource" id="Resource_7oivp"]
+script = ExtResource("3_xh5kf")
+planet_name = "Deneb Eridani II"
+type = 4
+orbital_radius = 32051516.44575572
+orbital_period = 307.94213530754087
+orbital_angle = 6.236258827520492
+radius = 3278547.167778015
+color = Color(0.5504083, 0.7705647, 0.98021305, 0.9)
+
+[sub_resource type="Resource" id="Resource_4ded5"]
+script = ExtResource("3_xh5kf")
+planet_name = "Deneb Eridani III"
+type = 4
+orbital_radius = 51134691.68201248
+orbital_period = 620.5398929502725
+orbital_angle = 4.155947186761909
+radius = 3448732.1376800537
+color = Color(0.56595963, 0.7692266, 0.9604818, 0.9)
+
+[sub_resource type="Resource" id="Resource_722jg"]
+script = ExtResource("5_n08oa")
+station_name = "Gateway Outpost"
+orbital_radius = 52221483.887170024
+orbital_period = 558.4859036552452
+orbital_angle = 5.974268316301238
+
+[resource]
+script = ExtResource("4_v6cyy")
+system_name = "Deneb Eridani"
+seed_value = 3197241474
+star_name = "Deneb Eridani"
+star_spectral_class = "M"
+star_temperature = 2988.7677431106567
+star_radius = 31328048.644268513
+star_color = Color(1, 0.6, 0.4, 1)
+star_luminosity = 0.03495149040222168
+planets = Array[ExtResource("3_xh5kf")]([SubResource("Resource_8keql"), SubResource("Resource_7oivp"), SubResource("Resource_4ded5")])
+stations = Array[ExtResource("5_n08oa")]([SubResource("Resource_722jg")])
+asteroid_belts = Array[ExtResource("1_u3i1l")]([SubResource("Resource_m3v1e"), SubResource("Resource_l1gar")])
+jump_gates = Array[ExtResource("2_c1u35")]([SubResource("Resource_8a6tv"), SubResource("Resource_1dlew"), SubResource("Resource_uundc"), SubResource("Resource_e24w8")])
