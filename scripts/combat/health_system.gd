@@ -165,6 +165,18 @@ func get_total_shield_ratio() -> float:
 	return total / (shield_max_per_facing * 4.0) if shield_max_per_facing > 0.0 else 0.0
 
 
+func revive() -> void:
+	_is_dead = false
+	hull_current = hull_max
+	for i in 4:
+		shield_current[i] = shield_max_per_facing
+		_shield_regen_timers[i] = 0.0
+	subsystem_health = [1.0, 1.0, 1.0]
+	hull_changed.emit(hull_current, hull_max)
+	for i in 4:
+		shield_changed.emit(i, shield_current[i], shield_max_per_facing)
+
+
 func is_dead() -> bool:
 	return _is_dead
 

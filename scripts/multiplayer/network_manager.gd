@@ -25,6 +25,13 @@ signal chat_message_received(sender_name: String, channel: int, text: String)
 signal player_list_updated
 signal server_config_received(config: Dictionary)
 
+# Player death/respawn sync (reliable)
+signal player_died_received(peer_id: int, death_pos: Array)
+signal player_respawned_received(peer_id: int, system_id: int)
+
+# Ship change sync (reliable)
+signal player_ship_changed_received(peer_id: int, new_ship_id: StringName)
+
 # NPC sync signals
 signal npc_batch_received(batch: Array)
 signal npc_spawned(data: Dictionary)
@@ -37,6 +44,7 @@ enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
 var local_player_name: String = "Pilote"
+var local_ship_id: StringName = &"fighter_mk1"
 var local_peer_id: int = -1
 
 ## True when this instance is acting as the server (listen-server host OR dedicated).
@@ -129,8 +137,9 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	var state := NetworkState.new()
 	state.peer_id = 1
 	state.player_name = local_player_name
-	state.ship_id = &"frigate_mk1"
-	state.ship_class = &"Frigate"
+	state.ship_id = local_ship_id
+	var sdata := ShipRegistry.get_ship_data(local_ship_id)
+	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[1] = state
 
 	print("NetworkManager: Hosting on port %d as '%s' — share your IP for friends to join!" % [port, local_player_name])
@@ -292,7 +301,7 @@ func _on_connected_to_server() -> void:
 	print("NetworkManager: Connected! Peer ID = %d" % local_peer_id)
 
 	# Register with the server
-	_rpc_register_player.rpc_id(1, local_player_name, "frigate_mk1")
+	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id))
 	connection_succeeded.emit()
 
 
@@ -524,3 +533,92 @@ func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, 
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 	if npc_auth:
 		npc_auth.validate_hit_claim(sender_id, target_npc, weapon_name, damage_val, hit_dir)
+
+
+# =========================================================================
+# PLAYER DEATH / RESPAWN RPCs (reliable)
+# =========================================================================
+
+## Client -> Server: I just died.
+@rpc("any_peer", "reliable")
+func _rpc_player_died(death_pos: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	# Relay to all peers in the same system
+	var state: NetworkState = peers.get(sender_id)
+	if state == null:
+		return
+	state.is_dead = true
+	for pid in get_peers_in_system(state.system_id):
+		if pid == sender_id:
+			continue
+		if pid == 1 and not is_dedicated_server:
+			player_died_received.emit(sender_id, death_pos)
+		else:
+			_rpc_receive_player_died.rpc_id(pid, sender_id, death_pos)
+
+## Server -> Client: A player has died (reliable notification).
+@rpc("authority", "reliable")
+func _rpc_receive_player_died(pid: int, death_pos: Array) -> void:
+	player_died_received.emit(pid, death_pos)
+
+## Client -> Server: I just respawned.
+@rpc("any_peer", "reliable")
+func _rpc_player_respawned(system_id: int) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var state: NetworkState = peers.get(sender_id)
+	if state:
+		state.is_dead = false
+		state.system_id = system_id
+	# Relay to all peers in the target system
+	for pid in get_peers_in_system(system_id):
+		if pid == sender_id:
+			continue
+		if pid == 1 and not is_dedicated_server:
+			player_respawned_received.emit(sender_id, system_id)
+		else:
+			_rpc_receive_player_respawned.rpc_id(pid, sender_id, system_id)
+
+## Server -> Client: A player has respawned (reliable notification).
+@rpc("authority", "reliable")
+func _rpc_receive_player_respawned(pid: int, system_id: int) -> void:
+	player_respawned_received.emit(pid, system_id)
+
+
+# =========================================================================
+# SHIP CHANGE RPCs (reliable)
+# =========================================================================
+
+## Client -> Server: I changed my ship.
+@rpc("any_peer", "reliable")
+func _rpc_player_ship_changed(new_ship_id_str: String) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var new_sid := StringName(new_ship_id_str)
+	var state: NetworkState = peers.get(sender_id)
+	if state:
+		state.ship_id = new_sid
+		var sdata := ShipRegistry.get_ship_data(new_sid)
+		state.ship_class = sdata.ship_class if sdata else &"Fighter"
+	# Relay to all connected peers
+	for pid in peers:
+		if pid == sender_id:
+			continue
+		if pid == 1 and not is_dedicated_server:
+			player_ship_changed_received.emit(sender_id, new_sid)
+		else:
+			_rpc_receive_player_ship_changed.rpc_id(pid, sender_id, new_ship_id_str)
+
+## Server -> Client: A player changed their ship (reliable notification).
+@rpc("authority", "reliable")
+func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void:
+	var new_sid := StringName(new_ship_id_str)
+	if peers.has(pid):
+		peers[pid].ship_id = new_sid
+		var sdata := ShipRegistry.get_ship_data(new_sid)
+		peers[pid].ship_class = sdata.ship_class if sdata else &"Fighter"
+	player_ship_changed_received.emit(pid, new_sid)

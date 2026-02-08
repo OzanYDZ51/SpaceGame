@@ -299,6 +299,8 @@ func _initialize_game() -> void:
 	player_fleet = PlayerFleet.new()
 	var starting_fleet_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(&"fighter_mk1"))
 	player_fleet.add_ship(starting_fleet_ship)
+	# Tell NetworkManager which ship we're flying (used during registration)
+	NetworkManager.local_ship_id = &"fighter_mk1"
 
 	# Commerce manager
 	_commerce_manager = CommerceManager.new()
@@ -504,6 +506,13 @@ func _setup_network() -> void:
 	# Connect combat sync signals (client-side)
 	NetworkManager.remote_fire_received.connect(_on_remote_fire_received)
 
+	# Connect player death/respawn sync
+	NetworkManager.player_died_received.connect(_on_remote_player_died)
+	NetworkManager.player_respawned_received.connect(_on_remote_player_respawned)
+
+	# Connect ship change sync
+	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
+
 	# === AUTO-CONNECT ON LAUNCH ===
 	# Server is ALWAYS a separate process (--server / --headless).
 	# The game client always auto-connects to the appropriate server.
@@ -542,6 +551,9 @@ func _on_network_peer_connected(peer_id: int, player_name: String) -> void:
 	# Spawn a remote player ship in the universe
 	var remote := RemotePlayerShip.new()
 	remote.peer_id = peer_id
+	# Set ship_id from network state BEFORE add_child (so _ready uses correct model)
+	if NetworkManager.peers.has(peer_id):
+		remote.ship_id = NetworkManager.peers[peer_id].ship_id
 	remote.set_player_name(player_name)
 	remote.name = "RemotePlayer_%d" % peer_id
 	if universe_node:
@@ -879,6 +891,30 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	bolt.look_at(local_pos + dir, Vector3.UP)
 
 
+# =============================================================================
+# REMOTE PLAYER DEATH / RESPAWN SYNC
+# =============================================================================
+
+func _on_remote_player_died(peer_id: int, _death_pos: Array) -> void:
+	if _remote_players.has(peer_id):
+		var remote: RemotePlayerShip = _remote_players[peer_id]
+		if is_instance_valid(remote):
+			remote.show_death_explosion()
+
+
+func _on_remote_player_respawned(peer_id: int, _system_id: int) -> void:
+	# Snapshot buffer is already cleared in RemotePlayerShip.receive_state()
+	# when it detects is_dead transition. Nothing extra needed here.
+	pass
+
+
+func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> void:
+	if _remote_players.has(peer_id):
+		var remote: RemotePlayerShip = _remote_players[peer_id]
+		if is_instance_valid(remote):
+			remote.change_ship_model(new_ship_id)
+
+
 func _handle_map_toggle(view: int) -> void:
 	if _screen_manager == null:
 		return
@@ -1175,12 +1211,22 @@ func _repair_ship() -> void:
 	if model:
 		model.visible = true
 
-	# Repair hull and shields
+	# Revive (resets _is_dead + repairs hull/shields/subsystems)
 	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
 	if health:
-		health.hull_current = health.hull_max
-		for i in health.shield_current.size():
-			health.shield_current[i] = health.shield_max_per_facing
+		health.revive()
+
+	# Reset energy
+	var energy := ship.get_node_or_null("EnergySystem") as EnergySystem
+	if energy:
+		energy.energy_current = energy.energy_max
+		energy.reset_pips()
+
+	# Reset flight state
+	ship.speed_mode = Constants.SpeedMode.NORMAL
+	ship.combat_locked = false
+	ship.cruise_warp_active = false
+	ship.cruise_time = 0.0
 
 
 func current_system_id_safe() -> int:
@@ -1532,6 +1578,27 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 		if player_lod:
 			player_lod.ship_id = data.ship_id
 			player_lod.ship_class = data.ship_class
+
+	# Reconnect ShipNetworkSync to new WeaponManager
+	if _ship_net_sync:
+		_ship_net_sync.reconnect_weapon_signal()
+
+	# Notify multiplayer peers of ship change
+	NetworkManager.local_ship_id = ship_id
+	if NetworkManager.is_connected_to_server():
+		if NetworkManager.is_host:
+			# Host: update own peer state + relay to all clients
+			if NetworkManager.peers.has(1):
+				var my_state: NetworkState = NetworkManager.peers[1]
+				my_state.ship_id = ship_id
+				var sdata_net := ShipRegistry.get_ship_data(ship_id)
+				my_state.ship_class = sdata_net.ship_class if sdata_net else &"Fighter"
+			for pid in NetworkManager.peers:
+				if pid == 1:
+					continue
+				NetworkManager._rpc_receive_player_ship_changed.rpc_id(pid, 1, String(ship_id))
+		else:
+			NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
 
 	SaveManager.trigger_save("ship_changed")
 	print("GameManager: Ship changed to '%s' (%s)" % [data.ship_name, ship_id])

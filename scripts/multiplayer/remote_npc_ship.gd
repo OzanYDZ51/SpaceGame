@@ -33,10 +33,11 @@ func _setup_model() -> void:
 	_ship_model.name = "ShipModel"
 	if data:
 		_ship_model.model_path = data.model_path
-		_ship_model.model_scale = data.model_scale
+		_ship_model.model_scale = ShipFactory.get_scene_model_scale(ship_id)
+		_ship_model.model_rotation_degrees = ShipFactory.get_model_rotation(ship_id)
 	else:
 		_ship_model.model_path = "res://assets/models/tie.glb"
-		_ship_model.model_scale = 10.0
+		_ship_model.model_scale = 2.0
 
 	# Faction color tint
 	if faction == &"hostile":

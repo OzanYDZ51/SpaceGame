@@ -11,6 +11,7 @@ var peer_id: int = -1
 var player_name: String = ""
 var ship_id: StringName = &"fighter_mk1"
 var ship_class: StringName = &"Fighter"
+var _was_dead: bool = false
 
 # Interpolation buffer (ring buffer of snapshots)
 var _snapshots: Array[Dictionary] = []
@@ -31,12 +32,17 @@ func _ready() -> void:
 
 
 func _setup_model() -> void:
+	var data := ShipRegistry.get_ship_data(ship_id)
 	_ship_model = ShipModel.new()
 	_ship_model.name = "ShipModel"
-	# Use same model as player ship
-	_ship_model.model_path = "res://assets/models/tie.glb"
-	_ship_model.model_scale = 10.0
-	# Green tint for other players (distinct from NPCs)
+	if data:
+		_ship_model.model_path = data.model_path
+		_ship_model.model_scale = ShipFactory.get_scene_model_scale(ship_id)
+		_ship_model.model_rotation_degrees = ShipFactory.get_model_rotation(ship_id)
+	else:
+		_ship_model.model_path = "res://assets/models/tie.glb"
+		_ship_model.model_scale = 2.0
+	# Blue tint for other players (distinct from NPCs)
 	_ship_model.color_tint = Color(0.6, 0.85, 1.0)
 	_ship_model.engine_light_color = Color(0.3, 0.7, 1.0)
 	add_child(_ship_model)
@@ -50,17 +56,50 @@ func _setup_name_label() -> void:
 	_name_label.pixel_size = 0.05
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_name_label.no_depth_test = true
-	_name_label.position = Vector3(0, 15, 0)
+	# Position label above ship — scale with model size
+	var label_h := maxf(5.0, ShipFactory.get_scene_model_scale(ship_id) * 1.5)
+	_name_label.position = Vector3(0, label_h, 0)
 	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.8)
 	add_child(_name_label)
 
 
+## Rebuild ship model when the remote player changes ship.
+func change_ship_model(new_ship_id: StringName) -> void:
+	if new_ship_id == ship_id:
+		return
+	ship_id = new_ship_id
+	# Remove old model
+	if _ship_model and is_instance_valid(_ship_model):
+		remove_child(_ship_model)
+		_ship_model.queue_free()
+		_ship_model = null
+	# Build new model
+	_setup_model()
+	# Reposition label height for new ship size
+	if _name_label:
+		var label_h := maxf(5.0, ShipFactory.get_scene_model_scale(ship_id) * 1.5)
+		_name_label.position = Vector3(0, label_h, 0)
+
+
 ## Called when we receive a new state snapshot from the network.
 func receive_state(state: NetworkState) -> void:
+	# Detect ship change from state
+	if state.ship_id != &"" and state.ship_id != ship_id:
+		change_ship_model(state.ship_id)
+
 	# Hide puppet when the remote player is docked, dead, or in cruise warp
 	var should_hide: bool = state.is_docked or state.is_dead or state.is_cruising
 	if visible != (not should_hide):
 		visible = not should_hide
+
+	# Detect death/respawn transitions and clear stale snapshots
+	if state.is_dead and not _was_dead:
+		_was_dead = true
+		_snapshots.clear()
+	elif not state.is_dead and _was_dead:
+		_was_dead = false
+		_snapshots.clear()
+
 	if should_hide:
 		return  # Don't update interpolation while hidden
 
@@ -159,6 +198,18 @@ func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
 func _update_engine_glow(throttle_amount: float) -> void:
 	if _ship_model:
 		_ship_model.update_engine_glow(throttle_amount)
+
+
+## Spawn a death explosion at this puppet's location.
+func show_death_explosion() -> void:
+	var pos := global_position
+	var scene_root := get_tree().current_scene
+	if scene_root == null:
+		return
+	var explosion := ExplosionEffect.new()
+	scene_root.add_child(explosion)
+	explosion.global_position = pos
+	explosion.scale = Vector3.ONE * 3.0
 
 
 ## Update the name label text.
