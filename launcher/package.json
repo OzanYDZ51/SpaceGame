@@ -23,17 +23,33 @@
   "build": {
     "appId": "com.spacegame.launcher",
     "productName": "SpaceGame Launcher",
+    "copyright": "Copyright 2026 SpaceGame",
     "directories": {
       "output": "../build/launcher"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "SpaceGame"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerSidebar": "assets/installerSidebar.bmp",
+      "uninstallerSidebar": "assets/uninstallerSidebar.bmp",
+      "installerHeader": "assets/installerHeader.bmp",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SpaceGame Launcher",
+      "license": "assets/license.html",
+      "displayLanguageSelector": false,
+      "installerLanguages": ["fr", "en_US"]
     },
     "files": [
       "main.js",
