@@ -44,17 +44,20 @@ func _on_body_hit(body: Node3D) -> void:
 	if body == owner_ship:
 		return
 
-	# Multiplayer client: send hit claim to server instead of applying damage locally
+	# Multiplayer client: send hit claim to server for server-managed NPCs only
 	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
-		# Only claim hits on NPC ships (not stations, asteroids, etc.)
-		if body.is_in_group("ships") and body.has_node("HealthSystem"):
-			var hit_dir := (body.global_position - global_position).normalized()
-			NetworkManager._rpc_hit_claim.rpc_id(1,
-				body.name, String(weapon_name), damage,
-				[hit_dir.x, hit_dir.y, hit_dir.z])
-			_spawn_hit_effect(body, {"shield_absorbed": false})  # Visual feedback
-			_return_to_pool()
-			return
+		if body.is_in_group("ships"):
+			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+			if lod_mgr:
+				var lod_data: ShipLODData = lod_mgr.get_ship_data(StringName(body.name))
+				if lod_data and lod_data.is_server_npc:
+					var hit_dir := (body.global_position - global_position).normalized()
+					NetworkManager._rpc_hit_claim.rpc_id(1,
+						body.name, String(weapon_name), damage,
+						[hit_dir.x, hit_dir.y, hit_dir.z])
+					_spawn_hit_effect(body, {"shield_absorbed": false})
+					_return_to_pool()
+					return
 
 	var hit_info := _apply_damage_to(body)
 	_spawn_hit_effect(body, hit_info)

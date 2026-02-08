@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bc351fksvydyb"]
 
-[ext_resource type="PackedScene" uid="uid://1uwxmtr3sm3c" path="res://assets/models/canon_laser.glb" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/canon_laser.glb" id="1"]
 
 [node name="WeaponRoot" type="Node3D" unique_id=1731505413]
 transform = Transform3D(-2, 0, -1.7484555e-07, 0, 2, 0, 1.7484555e-07, 0, -2, 0, 0, 0)

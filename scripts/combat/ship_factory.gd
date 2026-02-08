@@ -253,8 +253,25 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 				# killer_pid=0 means killed by local AI/combat bridge (no player killer)
 				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
 				npc_auth.unregister_npc(npc_name)
+			else:
+				# NPC not registered with NpcAuthority — spawn loot locally (host player)
+				var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+				if not drops.is_empty():
+					var crate := CargoCrate.new()
+					crate.contents = drops
+					crate.global_position = death_pos
+					ship.get_parent().call_deferred("add_child", crate)
 		elif not NetworkManager.is_connected_to_server():
 			# Solo mode: spawn loot crate locally
+			var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+			if not drops.is_empty():
+				var crate := CargoCrate.new()
+				crate.contents = drops
+				crate.global_position = death_pos
+				ship.get_parent().call_deferred("add_child", crate)
+		else:
+			# Client connected to server — local NPC shouldn't exist, but if it does
+			# (timing race), spawn loot locally for responsiveness
 			var drops := LootTable.roll_drops(ship.ship_data.ship_class)
 			if not drops.is_empty():
 				var crate := CargoCrate.new()

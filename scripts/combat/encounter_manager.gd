@@ -129,6 +129,7 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 				lod_data.velocity = vel
 				lod_mgr.register_ship(lod_data.id, lod_data)
 				_active_npc_ids.append(lod_data.id)
+				_register_npc_on_server(lod_data.id, ship_id, unique_faction)
 		else:
 			# Legacy fallback: no LOD manager
 			var parent := get_tree().current_scene.get_node_or_null("Universe")
@@ -141,6 +142,7 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 					brain.set_patrol_area(center, radius)
 				_active_npc_ids.append(StringName(ship.name))
 				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+				_register_npc_on_server(StringName(ship.name), ship_id, unique_faction)
 
 	encounter_started.emit(eid)
 
@@ -167,6 +169,7 @@ func spawn_ambush(ship_ids: Array[StringName], range_dist: float, faction: Strin
 		if ship:
 			_active_npc_ids.append(StringName(ship.name))
 			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+			_register_npc_on_server(StringName(ship.name), ship_id, faction)
 
 	encounter_started.emit(_encounter_counter)
 
@@ -184,6 +187,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 		return
 	_active_npc_ids.append(StringName(leader.name))
 	leader.tree_exiting.connect(_on_npc_removed.bind(StringName(leader.name)))
+	_register_npc_on_server(StringName(leader.name), leader_id, faction)
 
 	# Spawn wingmen in formation
 	for i in wingman_count:
@@ -202,6 +206,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 				brain.current_state = AIBrain.State.FORMATION
 			_active_npc_ids.append(StringName(wingman.name))
 			wingman.tree_exiting.connect(_on_npc_removed.bind(StringName(wingman.name)))
+			_register_npc_on_server(StringName(wingman.name), wingman_id, faction)
 
 	encounter_started.emit(_encounter_counter)
 
