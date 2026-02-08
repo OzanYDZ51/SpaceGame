@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const http = require("http");
-const { spawn, execFile } = require("child_process");
+const { spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 
 // --- Config ---
@@ -306,12 +306,21 @@ ipcMain.handle("launch-game", async () => {
   const auth = getSavedAuth();
   const args = [];
   if (auth?.access_token) {
-    args.push("--auth-token", auth.access_token);
+    args.push("--", "--auth-token", auth.access_token);
   }
 
-  const child = execFile(exePath, args, { cwd: GAME_DIR, detached: true, stdio: "ignore" });
-  child.unref();
-  return { success: true };
+  try {
+    const child = spawn(exePath, args, {
+      cwd: GAME_DIR,
+      detached: true,
+      stdio: "ignore",
+      windowsHide: false,
+    });
+    child.unref();
+    return { success: true };
+  } catch (err) {
+    return { error: "Impossible de lancer le jeu: " + err.message };
+  }
 });
 
 ipcMain.handle("uninstall", async () => {
