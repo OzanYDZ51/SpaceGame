@@ -257,7 +257,6 @@ func _initialize_game() -> void:
 		hud.set_energy_system(player_ship.get_node_or_null("EnergySystem") as EnergySystem)
 		hud.set_targeting_system(player_ship.get_node_or_null("TargetingSystem") as TargetingSystem)
 		hud.set_weapon_manager(player_ship.get_node_or_null("WeaponManager") as WeaponManager)
-		hud.set_player_economy(player_economy)
 
 	# Docking system (child of player ship, scans for nearby stations)
 	_docking_system = DockingSystem.new()
@@ -283,6 +282,10 @@ func _initialize_game() -> void:
 	player_economy.add_credits(1500)
 	player_economy.add_resource(&"ice", 10)
 	player_economy.add_resource(&"iron", 5)
+
+	# Wire economy to HUD (must be after player_economy creation)
+	if hud:
+		hud.set_player_economy(player_economy)
 
 	# Loot pickup system (child of player ship, scans for nearby crates)
 	_loot_pickup = LootPickupSystem.new()
@@ -1089,8 +1092,12 @@ func _on_equipment_requested() -> void:
 		var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
 		var ship_ctrl := player_ship as ShipController
 		var center_off := ship_ctrl.center_offset if ship_ctrl else Vector3.ZERO
+		var root_basis: Basis = Basis.IDENTITY
+		var hp_root := player_ship.get_node_or_null("HardpointRoot") as Node3D
+		if hp_root:
+			root_basis = hp_root.transform.basis
 		if ship_model:
-			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale, center_off, ship_model.model_rotation_degrees)
+			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale, center_off, ship_model.model_rotation_degrees, root_basis)
 		# Close station screen first, then open equipment
 		_screen_manager.close_screen("station")
 		# Small delay to let close transition start, then open equipment
