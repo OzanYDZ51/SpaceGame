@@ -91,6 +91,7 @@ func enter(ctx: Dictionary) -> void:
 		var hp_root := player_ship.get_node_or_null("HardpointRoot") as Node3D
 		if hp_root:
 			root_basis = hp_root.transform.basis
+
 		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
 	# Setup ship selection cycling (A/D keys)

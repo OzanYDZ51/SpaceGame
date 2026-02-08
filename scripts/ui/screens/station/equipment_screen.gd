@@ -306,6 +306,7 @@ func _refresh_viewer_weapons() -> void:
 	for hp in weapon_manager.hardpoints:
 		hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
 		weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+
 	_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
 
 
