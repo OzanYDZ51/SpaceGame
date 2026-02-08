@@ -1,6 +1,6 @@
 {
   "name": "spacegame-launcher",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "SpaceGame Launcher - Login, auto-update, and game launch",
   "main": "main.js",
   "scripts": {
