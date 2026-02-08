@@ -11,13 +11,13 @@ extends Camera3D
 enum CameraMode { THIRD_PERSON, COCKPIT }
 
 @export_group("Third Person")
-@export var cam_height: float = 10.0           ## Height above ship
+@export var cam_height: float = 8.0            ## Height above ship
 @export var cam_distance_default: float = 25.0 ## Default follow distance
 @export var cam_distance_min: float = 8.0      ## Min zoom distance
 @export var cam_distance_max: float = 250.0    ## Max zoom distance
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
 @export var cam_rotation_speed: float = 18.0   ## Rotation follow speed
-@export var cam_look_ahead_y: float = -2.0     ## Look below ship center
+@export var cam_look_ahead_y: float = 0.0      ## Vertical offset for look target
 @export var cam_speed_pull: float = 0.02       ## Extra distance per m/s
 @export var cam_zoom_step: float = 10.0        ## Distance per scroll tick
 
@@ -166,10 +166,10 @@ func _update_third_person(delta: float) -> void:
 	global_position = global_position.lerp(desired_pos, follow)
 
 	# =========================================================================
-	# LOOK TARGET (well ahead of ship center, below camera plane)
+	# LOOK TARGET (far ahead along ship forward to minimize aim offset)
 	# Ship appears in the lower portion of the screen; crosshair area is clear.
 	# =========================================================================
-	var look_ahead: float = 15.0 + minf(_ship.current_speed * 0.05, 50.0)
+	var look_ahead: float = 50.0 + minf(_ship.current_speed * 0.1, 100.0)
 	var look_target: Vector3 = ship_pos + ship_basis * Vector3(0.0, cam_look_ahead_y, -look_ahead)
 
 	# =========================================================================

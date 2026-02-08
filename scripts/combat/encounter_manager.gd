@@ -29,6 +29,10 @@ func clear_all_npcs() -> void:
 
 
 func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> void:
+	# In multiplayer, clients don't spawn NPCs locally — they receive them from the server
+	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+		return
+
 	# Position encounters near the first station if available
 	var base_pos := Vector3(500, 0, -1500)
 	if system_data.stations.size() > 0:
@@ -80,6 +84,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 				lod_data.velocity = Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
 				lod_mgr.register_ship(lod_data.id, lod_data)
 				_active_npc_ids.append(lod_data.id)
+				_register_npc_on_server(lod_data.id, ship_id, faction)
 		else:
 			var ship := ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
 			if ship:
@@ -88,6 +93,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 					brain.set_patrol_area(center, radius)
 				_active_npc_ids.append(StringName(ship.name))
 				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+				_register_npc_on_server(StringName(ship.name), ship_id, faction)
 
 	encounter_started.emit(eid)
 
@@ -216,3 +222,16 @@ func _get_lod_manager() -> ShipLODManager:
 	if mgr is ShipLODManager:
 		return mgr as ShipLODManager
 	return null
+
+
+## Register NPC with NpcAuthority (server only) and notify connected clients.
+func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringName) -> void:
+	if not NetworkManager.is_server():
+		return
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth == null:
+		return
+	var gm := GameManager as GameManagerSystem
+	var system_id: int = gm._system_transition.current_system_id if gm and gm._system_transition else 0
+	npc_auth.register_npc(npc_id, system_id, sid, fac)
+	npc_auth.notify_spawn_to_peers(npc_id, system_id)

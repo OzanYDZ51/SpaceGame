@@ -429,6 +429,13 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 		remote.set_player_name(data.display_name)
 		remote.name = String(id)
 		node = remote
+	elif data.is_server_npc:
+		var remote_npc := RemoteNPCShip.new()
+		remote_npc.npc_id = id
+		remote_npc.ship_id = data.ship_id
+		remote_npc.faction = data.faction
+		remote_npc.name = String(id)
+		node = remote_npc
 	else:
 		var parent := _universe_node if _universe_node else get_tree().current_scene
 		var spawn_id: StringName = data.ship_id if data.ship_id != &"" else data.ship_class
@@ -440,7 +447,7 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 			return
 		node.name = String(id)
 
-	if data.is_remote_player and _universe_node:
+	if (data.is_remote_player or data.is_server_npc) and _universe_node:
 		_universe_node.add_child(node)
 
 	node.global_position = data.position
@@ -530,12 +537,12 @@ func _update_multimesh() -> void:
 func _tick_data_only_ai(delta: float) -> void:
 	for id: StringName in _lod2_ids:
 		var data: ShipLODData = _ships[id]
-		if not data.is_remote_player:
+		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 	for id: StringName in _lod3_ids:
 		var data: ShipLODData = _ships[id]
-		if not data.is_remote_player:
+		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 
@@ -570,7 +577,7 @@ func _tick_combat_bridge() -> void:
 		var data: ShipLODData = _ships.get(id)
 		if data == null:
 			continue
-		if data.is_dead or data.is_remote_player:
+		if data.is_dead or data.is_remote_player or data.is_server_npc:
 			continue
 
 		var nearby := _grid.query_radius(data.position, COMBAT_BRIDGE_RANGE)

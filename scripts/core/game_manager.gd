@@ -31,7 +31,9 @@ var _space_dust: SpaceDust = null
 var _ship_net_sync: ShipNetworkSync = null
 var _chat_relay: NetworkChatRelay = null
 var _server_authority: ServerAuthority = null
+var _npc_authority: NpcAuthority = null
 var _remote_players: Dictionary = {}  # peer_id -> RemotePlayerShip
+var _remote_npcs: Dictionary = {}  # npc_id (StringName) -> true (tracking set)
 var player_inventory: PlayerInventory = null
 var _equipment_screen: EquipmentScreen = null
 var _loot_screen: LootScreen = null
@@ -41,6 +43,9 @@ var player_economy: PlayerEconomy = null
 var _lod_manager: ShipLODManager = null
 var _asteroid_field_mgr: AsteroidFieldManager = null
 var _mining_system: MiningSystem = null
+var _commerce_screen: CommerceScreen = null
+var _commerce_manager: CommerceManager = null
+var player_fleet: PlayerFleet = null
 var _backend_state_loaded: bool = false
 
 
@@ -170,7 +175,14 @@ func _setup_ui_managers() -> void:
 	_station_screen.name = "StationScreen"
 	_station_screen.undock_requested.connect(_on_undock_requested)
 	_station_screen.equipment_requested.connect(_on_equipment_requested)
+	_station_screen.commerce_requested.connect(_on_commerce_requested)
 	_screen_manager.register_screen("station", _station_screen)
+
+	# Register Commerce screen
+	_commerce_screen = CommerceScreen.new()
+	_commerce_screen.name = "CommerceScreen"
+	_commerce_screen.commerce_closed.connect(_on_commerce_closed)
+	_screen_manager.register_screen("commerce", _commerce_screen)
 
 	# Register Equipment screen
 	_equipment_screen = EquipmentScreen.new()
@@ -279,9 +291,20 @@ func _initialize_game() -> void:
 
 	# Player economy (hardcoded starting values for testing)
 	player_economy = PlayerEconomy.new()
-	player_economy.add_credits(1500)
+	player_economy.add_credits(1000000)
 	player_economy.add_resource(&"ice", 10)
 	player_economy.add_resource(&"iron", 5)
+
+	# Player fleet (starts with the player's current ship)
+	player_fleet = PlayerFleet.new()
+	var starting_fleet_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(&"fighter_mk1"))
+	player_fleet.add_ship(starting_fleet_ship)
+
+	# Commerce manager
+	_commerce_manager = CommerceManager.new()
+	_commerce_manager.player_economy = player_economy
+	_commerce_manager.player_inventory = player_inventory
+	_commerce_manager.player_fleet = player_fleet
 
 	# Wire economy to HUD (must be after player_economy creation)
 	if hud:
@@ -462,11 +485,24 @@ func _setup_network() -> void:
 	_server_authority.name = "ServerAuthority"
 	add_child(_server_authority)
 
+	# NPC authority (server-side NPC management + combat validation)
+	_npc_authority = NpcAuthority.new()
+	_npc_authority.name = "NpcAuthority"
+	add_child(_npc_authority)
+
 	# Connect network signals for remote player management
 	NetworkManager.peer_connected.connect(_on_network_peer_connected)
 	NetworkManager.peer_disconnected.connect(_on_network_peer_disconnected)
 	NetworkManager.player_state_received.connect(_on_network_state_received)
 	NetworkManager.server_config_received.connect(_on_server_config_received)
+
+	# Connect NPC sync signals (client-side)
+	NetworkManager.npc_batch_received.connect(_on_npc_batch_received)
+	NetworkManager.npc_spawned.connect(_on_npc_spawned)
+	NetworkManager.npc_died.connect(_on_npc_died)
+
+	# Connect combat sync signals (client-side)
+	NetworkManager.remote_fire_received.connect(_on_remote_fire_received)
 
 	# === AUTO-CONNECT ON LAUNCH ===
 	# Server is ALWAYS a separate process (--server / --headless).
@@ -525,6 +561,10 @@ func _on_network_peer_connected(peer_id: int, player_name: String) -> void:
 		_lod_manager.register_ship(StringName(remote.name), rdata)
 
 	print("GameManager: Spawned remote player '%s' (peer %d)" % [player_name, peer_id])
+
+	# Server: send all NPC spawns in the current system to the new peer
+	if NetworkManager.is_server() and _npc_authority and _system_transition:
+		_npc_authority.send_all_npcs_to_peer(peer_id, _system_transition.current_system_id)
 
 
 func _on_network_peer_disconnected(peer_id: int) -> void:
@@ -631,6 +671,16 @@ func _on_system_unloading(_system_id: int) -> void:
 	for pid in _remote_players.keys():
 		_remove_remote_player(pid)
 
+	# Clear all server NPC data from LOD system
+	if _lod_manager:
+		for npc_id in _remote_npcs.keys():
+			_lod_manager.unregister_ship(npc_id)
+	_remote_npcs.clear()
+
+	# Clear server NPC authority registry for this system
+	if _npc_authority and NetworkManager.is_server():
+		_npc_authority.clear_system_npcs(_system_id)
+
 
 func _on_system_loaded(_system_id: int) -> void:
 	# Update stellar map with new system info
@@ -652,6 +702,181 @@ func _on_navigate_to_entity(entity_id: String) -> void:
 	# Close the map
 	if _screen_manager:
 		_screen_manager.close_top()
+
+
+# =============================================================================
+# NPC SYNC (Client-side handlers)
+# =============================================================================
+
+func _on_npc_spawned(data: Dictionary) -> void:
+	# Server tells us a new NPC has spawned in our system
+	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
+		return  # Host spawns NPCs locally via EncounterManager
+
+	var npc_id := StringName(data.get("nid", ""))
+	if npc_id == &"" or _remote_npcs.has(npc_id):
+		return
+
+	var sid := StringName(data.get("sid", "fighter_mk1"))
+	var fac := StringName(data.get("fac", "hostile"))
+
+	# Create LOD data for this server NPC
+	var lod_data := ShipLODData.new()
+	lod_data.id = npc_id
+	lod_data.ship_id = sid
+	lod_data.ship_class = ShipRegistry.get_ship_data(sid).ship_class if ShipRegistry.get_ship_data(sid) else &"Fighter"
+	lod_data.faction = fac
+	lod_data.is_server_npc = true
+	lod_data.display_name = ShipRegistry.get_ship_data(sid).ship_name if ShipRegistry.get_ship_data(sid) else String(sid)
+	lod_data.position = FloatingOrigin.to_local_pos([data.get("px", 0.0), data.get("py", 0.0), data.get("pz", 0.0)])
+	lod_data.hull_ratio = data.get("hull", 1.0)
+	lod_data.shield_ratio = data.get("shd", 1.0)
+	lod_data.current_lod = ShipLODData.LODLevel.LOD3
+
+	# Faction color
+	if fac == &"hostile":
+		lod_data.color_tint = Color(1.0, 0.55, 0.5)
+	elif fac == &"friendly":
+		lod_data.color_tint = Color(0.5, 1.0, 0.6)
+	else:
+		lod_data.color_tint = Color(0.8, 0.7, 1.0)
+
+	var sdata := ShipRegistry.get_ship_data(sid)
+	if sdata:
+		lod_data.model_scale = sdata.model_scale
+
+	if _lod_manager:
+		_lod_manager.register_ship(npc_id, lod_data)
+	_remote_npcs[npc_id] = true
+
+
+func _on_npc_batch_received(batch: Array) -> void:
+	# Server sends batch of NPC state updates
+	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
+		return  # Host manages NPCs locally
+
+	for state_dict in batch:
+		var npc_id := StringName(state_dict.get("nid", ""))
+		if npc_id == &"":
+			continue
+
+		# Auto-create if we missed the spawn RPC (desync recovery)
+		if not _remote_npcs.has(npc_id):
+			_on_npc_spawned(state_dict)
+
+		# Update LOD data + push snapshot to RemoteNPCShip if promoted
+		if _lod_manager:
+			var lod_data: ShipLODData = _lod_manager.get_ship_data(npc_id)
+			if lod_data:
+				lod_data.position = FloatingOrigin.to_local_pos(
+					[state_dict.get("px", 0.0), state_dict.get("py", 0.0), state_dict.get("pz", 0.0)])
+				lod_data.velocity = Vector3(
+					state_dict.get("vx", 0.0), state_dict.get("vy", 0.0), state_dict.get("vz", 0.0))
+				lod_data.hull_ratio = state_dict.get("hull", 1.0)
+				lod_data.shield_ratio = state_dict.get("shd", 1.0)
+				lod_data.ai_state = state_dict.get("ai", 0)
+				# Push snapshot to RemoteNPCShip if it has a node (LOD0/1)
+				if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+					if lod_data.node_ref is RemoteNPCShip:
+						(lod_data.node_ref as RemoteNPCShip).receive_state(state_dict)
+
+
+func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
+	var npc_id := StringName(npc_id_str)
+
+	# Play death effect
+	if _lod_manager:
+		var lod_data: ShipLODData = _lod_manager.get_ship_data(npc_id)
+		if lod_data:
+			# Spawn explosion at NPC position
+			var pos := lod_data.position
+			if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+				pos = lod_data.node_ref.global_position
+				if lod_data.node_ref is RemoteNPCShip:
+					(lod_data.node_ref as RemoteNPCShip).play_death()
+				else:
+					lod_data.node_ref.queue_free()
+			else:
+				var explosion := ExplosionEffect.new()
+				get_tree().current_scene.add_child(explosion)
+				explosion.global_position = pos
+			lod_data.is_dead = true
+
+		# Unregister from LOD
+		_lod_manager.unregister_ship(npc_id)
+
+	_remote_npcs.erase(npc_id)
+
+	# Spawn loot crate only for the killer (local player)
+	if killer_pid == NetworkManager.local_peer_id and not loot.is_empty():
+		var local_pos := FloatingOrigin.to_local_pos(death_pos)
+		var crate := CargoCrate.new()
+		# Convert untyped RPC array to typed Array[Dictionary]
+		var typed_loot: Array[Dictionary] = []
+		for item in loot:
+			if item is Dictionary:
+				typed_loot.append(item)
+		crate.contents = typed_loot
+		crate.global_position = local_pos
+		if universe_node:
+			universe_node.add_child(crate)
+
+
+# =============================================================================
+# COMBAT SYNC (Remote fire visuals)
+# =============================================================================
+
+func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	# Another player fired — spawn a visual-only projectile
+	if not _remote_players.has(peer_id):
+		return
+	var remote: RemotePlayerShip = _remote_players[peer_id]
+	if not is_instance_valid(remote):
+		return
+
+	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	if weapon == null:
+		return
+
+	# Spawn visual projectile (no collision)
+	var proj_scene_path: String = weapon.projectile_scene_path
+	if proj_scene_path.is_empty():
+		return
+
+	var pool: ProjectilePool = null
+	if _lod_manager:
+		pool = _lod_manager.get_node_or_null("ProjectilePool") as ProjectilePool
+
+	var bolt: BaseProjectile = null
+	if pool:
+		bolt = pool.acquire(proj_scene_path)
+		if bolt:
+			bolt._pool = pool
+	if bolt == null:
+		var scene: PackedScene = load(proj_scene_path)
+		if scene == null:
+			return
+		bolt = scene.instantiate() as BaseProjectile
+		if bolt == null:
+			return
+		get_tree().current_scene.add_child(bolt)
+
+	# Configure as visual-only (no collision)
+	bolt.collision_layer = 0
+	bolt.collision_mask = 0
+	bolt.monitoring = false
+	bolt.owner_ship = remote
+	bolt.damage = 0.0
+	bolt.max_lifetime = weapon.projectile_lifetime
+
+	var local_pos := FloatingOrigin.to_local_pos(fire_pos)
+	var dir := Vector3(
+		fire_dir[0] if fire_dir.size() > 0 else 0.0,
+		fire_dir[1] if fire_dir.size() > 1 else 0.0,
+		fire_dir[2] if fire_dir.size() > 2 else 0.0)
+	bolt.global_position = local_pos
+	bolt.velocity = dir * weapon.projectile_speed
+	bolt.look_at(local_pos + dir, Vector3.UP)
 
 
 func _handle_map_toggle(view: int) -> void:
@@ -1073,6 +1298,33 @@ func _on_docked(station_name: String) -> void:
 		hud.visible = false
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _on_commerce_requested() -> void:
+	if _commerce_screen and _screen_manager and _commerce_manager:
+		# Determine station type from EntityRegistry
+		var stype: int = 0  # Default REPAIR (sells everything)
+		var sname: String = _dock_instance.station_name if _dock_instance else "STATION"
+		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		for ent in stations:
+			if ent.get("name", "") == sname:
+				var extra: Dictionary = ent.get("extra", {})
+				var type_str: String = extra.get("station_type", "repair")
+				match type_str:
+					"repair": stype = 0
+					"trade": stype = 1
+					"military": stype = 2
+					"mining": stype = 3
+				break
+		_commerce_screen.setup(_commerce_manager, stype, sname)
+		_screen_manager.close_screen("station")
+		await get_tree().process_frame
+		_screen_manager.open_screen("commerce")
+
+
+func _on_commerce_closed() -> void:
+	if current_state == GameState.DOCKED:
+		_open_station_terminal()
 
 
 func _on_equipment_closed() -> void:

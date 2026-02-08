@@ -81,6 +81,7 @@ static func _build_blindage_renforce() -> ModuleResource:
 	m.module_type = ModuleResource.ModuleType.COQUE
 	m.hull_bonus = 100.0
 	m.armor_bonus = 5.0
+	m.price = 1500
 	return m
 
 
@@ -91,6 +92,7 @@ static func _build_condensateur() -> ModuleResource:
 	m.module_type = ModuleResource.ModuleType.ENERGIE
 	m.energy_cap_bonus = 20.0
 	m.energy_regen_bonus = 5.0
+	m.price = 2000
 	return m
 
 
@@ -100,6 +102,7 @@ static func _build_amplificateur() -> ModuleResource:
 	m.slot_size = 0  # S
 	m.module_type = ModuleResource.ModuleType.BOUCLIER
 	m.shield_regen_mult = 1.15
+	m.price = 2500
 	return m
 
 
@@ -109,6 +112,7 @@ static func _build_dissipateur() -> ModuleResource:
 	m.slot_size = 0  # S
 	m.module_type = ModuleResource.ModuleType.ARME
 	m.weapon_energy_mult = 0.85
+	m.price = 3000
 	return m
 
 
@@ -118,6 +122,7 @@ static func _build_scanner() -> ModuleResource:
 	m.slot_size = 1  # M
 	m.module_type = ModuleResource.ModuleType.SCANNER
 	# Placeholder — future scanner range bonus
+	m.price = 5000
 	return m
 
 
@@ -128,6 +133,7 @@ static func _build_blindage_lourd() -> ModuleResource:
 	m.module_type = ModuleResource.ModuleType.COQUE
 	m.hull_bonus = 250.0
 	m.armor_bonus = 10.0
+	m.price = 7000
 	return m
 
 
@@ -138,6 +144,7 @@ static func _build_generateur() -> ModuleResource:
 	m.module_type = ModuleResource.ModuleType.ENERGIE
 	m.energy_cap_bonus = 50.0
 	m.energy_regen_bonus = 15.0
+	m.price = 8000
 	return m
 
 
@@ -147,6 +154,7 @@ static func _build_ciblage() -> ModuleResource:
 	m.slot_size = 1  # M
 	m.module_type = ModuleResource.ModuleType.ARME
 	m.weapon_range_mult = 1.2
+	m.price = 10000
 	return m
 
 
@@ -157,6 +165,7 @@ static func _build_reacteur() -> ModuleResource:
 	m.module_type = ModuleResource.ModuleType.ENERGIE
 	m.energy_cap_bonus = 100.0
 	m.energy_regen_bonus = 25.0
+	m.price = 20000
 	return m
 
 
@@ -166,4 +175,5 @@ static func _build_renfort() -> ModuleResource:
 	m.slot_size = 2  # L
 	m.module_type = ModuleResource.ModuleType.BOUCLIER
 	m.shield_cap_mult = 1.3
+	m.price = 25000
 	return m

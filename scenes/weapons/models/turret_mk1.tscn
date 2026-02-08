@@ -6,6 +6,7 @@
 transform = Transform3D(-1.3113416e-07, 0, -3, 0, 3, 0, 3, 0, -1.3113416e-07, 0, 0, 0)
 
 [node name="Model" parent="." instance=ExtResource("1_model")]
+layers = 0
 
 [node name="MuzzlePoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.567, 0.432, 0.011)

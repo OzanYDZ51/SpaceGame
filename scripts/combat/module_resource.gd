@@ -22,6 +22,7 @@ enum ModuleType { COQUE, ENERGIE, BOUCLIER, ARME, SCANNER, MOTEUR }
 @export var shield_cap_mult: float = 1.0
 @export var weapon_energy_mult: float = 1.0
 @export var weapon_range_mult: float = 1.0
+@export var price: int = 0
 
 
 func get_bonuses_text() -> Array[String]:

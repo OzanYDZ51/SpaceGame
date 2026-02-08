@@ -226,24 +226,26 @@ func _setup_3d_viewer() -> void:
 	key_light.rotation_degrees = Vector3(-45, 30, 0)
 	_viewport.add_child(key_light)
 
+	# Scale light positions and range to model size so all ships are well-lit
+	var light_scale := maxf(1.0, _ship_model_scale)
 	var fill_light := OmniLight3D.new()
 	fill_light.light_color = Color(0.8, 0.85, 0.9)
 	fill_light.light_energy = 0.6
-	fill_light.omni_range = 30.0
-	fill_light.position = Vector3(-6, 2, -4)
+	fill_light.omni_range = 30.0 * light_scale
+	fill_light.position = Vector3(-6, 2, -4) * light_scale
 	_viewport.add_child(fill_light)
 
 	var rim_light := OmniLight3D.new()
 	rim_light.light_color = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b)
 	rim_light.light_energy = 0.4
-	rim_light.omni_range = 30.0
-	rim_light.position = Vector3(5, 1, 5)
+	rim_light.omni_range = 30.0 * light_scale
+	rim_light.position = Vector3(5, 1, 5) * light_scale
 	_viewport.add_child(rim_light)
 
 	_viewer_camera = Camera3D.new()
 	_viewer_camera.fov = 40.0
 	_viewer_camera.near = 0.1
-	_viewer_camera.far = 100.0
+	_viewer_camera.far = 500.0
 	_viewport.add_child(_viewer_camera)
 
 	_ship_model = ShipModel.new()
@@ -265,31 +267,35 @@ func _setup_3d_viewer() -> void:
 
 
 func _auto_fit_camera() -> void:
-	# Compute ideal orbit distance so the whole ship + markers fit in view
-	var max_extent: float = 2.0
+	# Compute bounding sphere radius from world origin (camera look-at point)
+	# to the farthest visible point. With skip_centering, the AABB center can
+	# be offset from ShipModel origin, so we check all 8 AABB corners.
+	var max_radius: float = 2.0
 
-	# Use the ship model's visual AABB (accounts for mesh size + scale)
 	if _ship_model:
 		var aabb := _ship_model.get_visual_aabb()
-		var half_size := aabb.size * 0.5
-		max_extent = maxf(max_extent, half_size.x)
-		max_extent = maxf(max_extent, half_size.y)
-		max_extent = maxf(max_extent, half_size.z)
+		# AABB is in ShipModel-local space. ShipModel is at -_ship_center_offset.
+		# Compute distance from world origin to each AABB corner.
+		for i in 8:
+			var corner: Vector3 = aabb.get_endpoint(i) + _ship_model.position
+			max_radius = maxf(max_radius, corner.length())
 
 	# Also consider hardpoint positions (they may extend beyond the mesh)
 	if weapon_manager:
 		for hp in weapon_manager.hardpoints:
 			var pos: Vector3 = _ship_root_basis * hp.position - _ship_center_offset
-			max_extent = maxf(max_extent, abs(pos.x))
-			max_extent = maxf(max_extent, abs(pos.y))
-			max_extent = maxf(max_extent, abs(pos.z))
+			max_radius = maxf(max_radius, pos.length())
 
-	# Distance = extent / tan(half_fov), with generous padding for readability
+	# Distance = radius / tan(half_fov), with padding for readability
 	var half_fov := deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
-	var ideal := max_extent / tan(half_fov) * 1.6
+	var ideal := max_radius / tan(half_fov) * 1.3
 	orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
 	_orbit_max_dist = ideal * 3.0
+
+	# Ensure camera far plane covers the full zoom range
+	if _viewer_camera:
+		_viewer_camera.far = maxf(500.0, _orbit_max_dist + max_radius * 2.0)
 
 
 func _refresh_viewer_weapons() -> void:
@@ -504,14 +510,15 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 
+		var zoom_step := orbit_distance * 0.08  # 8% per scroll tick — consistent across ship sizes
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			orbit_distance = maxf(_orbit_min_dist, orbit_distance - 0.5)
+			orbit_distance = maxf(_orbit_min_dist, orbit_distance - zoom_step)
 			_last_input_time = 0.0
 			_update_orbit_camera()
 			accept_event()
 			return
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			orbit_distance = minf(_orbit_max_dist, orbit_distance + 0.5)
+			orbit_distance = minf(_orbit_max_dist, orbit_distance + zoom_step)
 			_last_input_time = 0.0
 			_update_orbit_camera()
 			accept_event()
@@ -1047,7 +1054,7 @@ func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> voi
 
 	for i in weapon_manager.hardpoints.size():
 		var hp := weapon_manager.hardpoints[i]
-		var world_pos := hp.position - _ship_center_offset
+		var world_pos := _ship_root_basis * hp.position - _ship_center_offset
 
 		var to_marker := (world_pos - _viewer_camera.global_position).normalized()
 		if cam_fwd.dot(to_marker) < 0.1:

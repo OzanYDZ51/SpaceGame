@@ -11,3 +11,4 @@ extends Resource
 @export var regen_rate: float = 12.0  # HP/s
 @export var regen_delay: float = 4.0  # seconds after taking hit
 @export var bleedthrough: float = 0.12  # 0.0-1.0, damage passing through shields
+@export var price: int = 0

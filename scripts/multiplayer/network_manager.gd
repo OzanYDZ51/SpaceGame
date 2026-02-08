@@ -25,6 +25,14 @@ signal chat_message_received(sender_name: String, channel: int, text: String)
 signal player_list_updated
 signal server_config_received(config: Dictionary)
 
+# NPC sync signals
+signal npc_batch_received(batch: Array)
+signal npc_spawned(data: Dictionary)
+signal npc_died(npc_id: String, killer_pid: int, death_pos: Array, loot: Array)
+
+# Combat sync signals
+signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
+
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
@@ -462,3 +470,57 @@ func _rpc_server_config(config: Dictionary) -> void:
 		galaxy_servers.size(),
 	])
 	server_config_received.emit(config)
+
+
+# =========================================================================
+# NPC SYNC RPCs
+# =========================================================================
+
+## Server -> Client: Batch of NPC state updates (10Hz close, 2Hz far).
+@rpc("authority", "unreliable_ordered")
+func _rpc_npc_batch(batch: Array) -> void:
+	npc_batch_received.emit(batch)
+
+
+## Server -> Client: A new NPC has spawned (reliable, single event).
+@rpc("authority", "reliable")
+func _rpc_npc_spawned(npc_dict: Dictionary) -> void:
+	npc_spawned.emit(npc_dict)
+
+
+## Server -> Client: An NPC has died.
+@rpc("authority", "reliable")
+func _rpc_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
+	npc_died.emit(npc_id_str, killer_pid, death_pos, loot)
+
+
+# =========================================================================
+# COMBAT SYNC RPCs
+# =========================================================================
+
+## Client -> Server: Player fired a weapon.
+@rpc("any_peer", "reliable")
+func _rpc_fire_event(weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.relay_fire_event(sender_id, weapon_name, fire_pos, fire_dir)
+
+
+## Server -> Client: Another player fired a weapon (visual only).
+@rpc("authority", "unreliable_ordered")
+func _rpc_remote_fire(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	remote_fire_received.emit(peer_id, weapon_name, fire_pos, fire_dir)
+
+
+## Client -> Server: Player claims a hit on an NPC.
+@rpc("any_peer", "reliable")
+func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.validate_hit_claim(sender_id, target_npc, weapon_name, damage_val, hit_dir)

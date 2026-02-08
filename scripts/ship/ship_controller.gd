@@ -274,10 +274,11 @@ func _handle_player_weapon_input() -> void:
 		_cached_weapon_mgr.fire_group(1, false, target_pos)
 		mark_combat()
 
-	# Turrets auto-track and auto-fire at current target
-	if targeting and targeting.current_target:
-		_cached_weapon_mgr.update_turrets(targeting.current_target)
-		if _cached_weapon_mgr.is_any_weapon_ready(1):
+	# Turrets auto-track and auto-fire at current target (return to rest when no target)
+	if targeting:
+		var turret_target: Node3D = targeting.current_target if is_instance_valid(targeting.current_target) else null
+		_cached_weapon_mgr.update_turrets(turret_target)
+		if turret_target and _cached_weapon_mgr.is_any_weapon_ready(1):
 			mark_combat()
 
 

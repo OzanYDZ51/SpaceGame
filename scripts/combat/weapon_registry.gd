@@ -63,6 +63,7 @@ static func _build_laser_mk1() -> WeaponResource:
 	w.bolt_length = 4.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+	w.price = 500
 	return w
 
 
@@ -83,6 +84,7 @@ static func _build_laser_mk2() -> WeaponResource:
 	w.bolt_length = 5.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk2.tscn"
+	w.price = 2000
 	return w
 
 
@@ -103,6 +105,7 @@ static func _build_plasma_cannon() -> WeaponResource:
 	w.bolt_length = 3.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/plasma_cannon.tscn"
+	w.price = 5000
 	return w
 
 
@@ -123,6 +126,7 @@ static func _build_heavy_plasma() -> WeaponResource:
 	w.bolt_length = 5.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/heavy_plasma.tscn"
+	w.price = 15000
 	return w
 
 
@@ -142,6 +146,7 @@ static func _build_missile_pod() -> WeaponResource:
 	w.tracking_strength = 90.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/missile_pod.tscn"
+	w.price = 8000
 	return w
 
 
@@ -162,6 +167,7 @@ static func _build_torpedo() -> WeaponResource:
 	w.aoe_radius = 30.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/torpedo.tscn"
+	w.price = 20000
 	return w
 
 
@@ -183,6 +189,7 @@ static func _build_railgun() -> WeaponResource:
 	w.bolt_length = 8.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/railgun.tscn"
+	w.price = 25000
 	return w
 
 
@@ -200,6 +207,7 @@ static func _build_mine_layer() -> WeaponResource:
 	w.projectile_lifetime = 30.0
 	w.aoe_radius = 50.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.price = 3000
 	return w
 
 
@@ -220,6 +228,7 @@ static func _build_turret_mk1() -> WeaponResource:
 	w.bolt_length = 3.5
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+	w.price = 6000
 	return w
 
 
@@ -240,6 +249,7 @@ static func _build_auto_cannon() -> WeaponResource:
 	w.bolt_length = 3.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/auto_cannon.tscn"
+	w.price = 4000
 	return w
 
 
@@ -260,6 +270,7 @@ static func _build_point_defense() -> WeaponResource:
 	w.bolt_length = 2.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/point_defense.tscn"
+	w.price = 2500
 	return w
 
 
@@ -278,6 +289,7 @@ static func _build_mining_laser_mk1() -> WeaponResource:
 	w.bolt_color = Color(0.2, 1.0, 0.5)
 	w.bolt_length = 0.0
 	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk1.tscn"
+	w.price = 1000
 	return w
 
 
@@ -296,4 +308,5 @@ static func _build_mining_laser_mk2() -> WeaponResource:
 	w.bolt_color = Color(0.15, 0.9, 0.6)
 	w.bolt_length = 0.0
 	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk2.tscn"
+	w.price = 4000
 	return w

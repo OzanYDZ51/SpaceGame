@@ -71,6 +71,7 @@ static func _build_standard_mk1() -> EngineResource:
 	e.rotation_mult = 1.0
 	e.cruise_mult = 1.0
 	e.boost_drain_mult = 1.0
+	e.price = 600
 	return e
 
 
@@ -83,6 +84,7 @@ static func _build_standard_mk2() -> EngineResource:
 	e.rotation_mult = 1.05
 	e.cruise_mult = 1.05
 	e.boost_drain_mult = 1.0
+	e.price = 1500
 	return e
 
 
@@ -95,6 +97,7 @@ static func _build_combat() -> EngineResource:
 	e.rotation_mult = 1.15
 	e.cruise_mult = 0.9
 	e.boost_drain_mult = 1.0
+	e.price = 6000
 	return e
 
 
@@ -107,6 +110,7 @@ static func _build_exploration() -> EngineResource:
 	e.rotation_mult = 1.0
 	e.cruise_mult = 1.4
 	e.boost_drain_mult = 0.9
+	e.price = 8000
 	return e
 
 
@@ -119,6 +123,7 @@ static func _build_course() -> EngineResource:
 	e.rotation_mult = 1.0
 	e.cruise_mult = 1.2
 	e.boost_drain_mult = 1.2
+	e.price = 10000
 	return e
 
 
@@ -131,6 +136,7 @@ static func _build_militaire() -> EngineResource:
 	e.rotation_mult = 1.1
 	e.cruise_mult = 1.1
 	e.boost_drain_mult = 1.0
+	e.price = 20000
 	return e
 
 
@@ -143,4 +149,5 @@ static func _build_experimental() -> EngineResource:
 	e.rotation_mult = 1.15
 	e.cruise_mult = 1.25
 	e.boost_drain_mult = 1.3
+	e.price = 35000
 	return e

@@ -241,21 +241,32 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	ship.tree_exiting.connect(func(): EntityRegistry.unregister(ship.name))
 
 	health.ship_destroyed.connect(func():
-		# Spawn loot crate at death position (before cleanup)
 		var death_pos: Vector3 = ship.global_position
-		var drops := LootTable.roll_drops(ship.ship_data.ship_class)
-		if not drops.is_empty():
-			var crate := CargoCrate.new()
-			crate.contents = drops
-			crate.global_position = death_pos
-			# Add to same parent (Universe node) so floating origin shifts it
-			ship.get_parent().call_deferred("add_child", crate)
+		var npc_name := StringName(ship.name)
+
+		# On server: broadcast death via NpcAuthority (clients get loot via RPC)
+		if NetworkManager.is_server():
+			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+			if npc_auth and npc_auth._npcs.has(npc_name):
+				var upos := FloatingOrigin.to_universe_pos(death_pos)
+				var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+				# killer_pid=0 means killed by local AI/combat bridge (no player killer)
+				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
+				npc_auth.unregister_npc(npc_name)
+		elif not NetworkManager.is_connected_to_server():
+			# Solo mode: spawn loot crate locally
+			var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+			if not drops.is_empty():
+				var crate := CargoCrate.new()
+				crate.contents = drops
+				crate.global_position = death_pos
+				ship.get_parent().call_deferred("add_child", crate)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system
 		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 		if lod_mgr:
-			lod_mgr.unregister_ship(StringName(ship.name))
+			lod_mgr.unregister_ship(npc_name)
 		ship.set_process(false)
 		ship.set_physics_process(false)
 		# Death effect: scale down and free

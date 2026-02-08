@@ -1,0 +1,128 @@
+class_name CommerceManager
+extends RefCounted
+
+# =============================================================================
+# Commerce Manager - Handles buy/sell transactions
+# =============================================================================
+
+signal purchase_completed(item_type: String, item_id: StringName)
+signal purchase_failed(reason: String)
+
+var player_economy: PlayerEconomy
+var player_inventory: PlayerInventory
+var player_fleet: PlayerFleet
+
+
+func can_afford(amount: int) -> bool:
+	return player_economy.credits >= amount
+
+
+func buy_ship(ship_id: StringName, loadout: FleetShip) -> bool:
+	var ship_data := ShipRegistry.get_ship_data(ship_id)
+	if ship_data == null:
+		purchase_failed.emit("Vaisseau inconnu")
+		return false
+	var total: int = ship_data.price + loadout.get_total_equipment_value()
+	if not can_afford(total):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(total)
+	player_fleet.add_ship(loadout)
+	purchase_completed.emit("ship", ship_id)
+	return true
+
+
+func buy_weapon(weapon_name: StringName) -> bool:
+	var w := WeaponRegistry.get_weapon(weapon_name)
+	if w == null:
+		purchase_failed.emit("Arme inconnue")
+		return false
+	if not can_afford(w.price):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(w.price)
+	player_inventory.add_weapon(weapon_name)
+	purchase_completed.emit("weapon", weapon_name)
+	return true
+
+
+func buy_shield(shield_name: StringName) -> bool:
+	var s := ShieldRegistry.get_shield(shield_name)
+	if s == null:
+		purchase_failed.emit("Bouclier inconnu")
+		return false
+	if not can_afford(s.price):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(s.price)
+	player_inventory.add_shield(shield_name)
+	purchase_completed.emit("shield", shield_name)
+	return true
+
+
+func buy_engine(engine_name: StringName) -> bool:
+	var e := EngineRegistry.get_engine(engine_name)
+	if e == null:
+		purchase_failed.emit("Moteur inconnu")
+		return false
+	if not can_afford(e.price):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(e.price)
+	player_inventory.add_engine(engine_name)
+	purchase_completed.emit("engine", engine_name)
+	return true
+
+
+func buy_module(module_name: StringName) -> bool:
+	var m := ModuleRegistry.get_module(module_name)
+	if m == null:
+		purchase_failed.emit("Module inconnu")
+		return false
+	if not can_afford(m.price):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(m.price)
+	player_inventory.add_module(module_name)
+	purchase_completed.emit("module", module_name)
+	return true
+
+
+func sell_weapon(weapon_name: StringName) -> bool:
+	if not player_inventory.has_weapon(weapon_name):
+		return false
+	var w := WeaponRegistry.get_weapon(weapon_name)
+	if w == null: return false
+	player_inventory.remove_weapon(weapon_name)
+	player_economy.add_credits(w.price / 2)
+	return true
+
+
+func sell_shield(shield_name: StringName) -> bool:
+	if not player_inventory.has_shield(shield_name):
+		return false
+	var s := ShieldRegistry.get_shield(shield_name)
+	if s == null: return false
+	player_inventory.remove_shield(shield_name)
+	player_economy.add_credits(s.price / 2)
+	return true
+
+
+func sell_engine(engine_name: StringName) -> bool:
+	if not player_inventory.has_engine(engine_name):
+		return false
+	var e := EngineRegistry.get_engine(engine_name)
+	if e == null: return false
+	player_inventory.remove_engine(engine_name)
+	player_economy.add_credits(e.price / 2)
+	return true
+
+
+func sell_module(module_name: StringName) -> bool:
+	if not player_inventory.has_module(module_name):
+		return false
+	var m := ModuleRegistry.get_module(module_name)
+	if m == null: return false
+	player_inventory.remove_module(module_name)
+	player_economy.add_credits(m.price / 2)
+	return true

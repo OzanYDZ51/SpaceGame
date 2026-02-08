@@ -9,6 +9,7 @@ extends UIScreen
 
 signal undock_requested
 signal equipment_requested
+signal commerce_requested
 
 @export_group("Layout")
 @export var button_width: float = 280.0
@@ -23,7 +24,7 @@ var _emblem_pulse: float = 0.0
 
 # Service definitions: [name, description, enabled]
 const SERVICES: Array[Array] = [
-	["COMMERCE", "Acheter et vendre des marchandises", false],
+	["COMMERCE", "Acheter et vendre des marchandises", true],
 	["RÉPARATIONS", "Réparer la coque et les boucliers", false],
 	["ÉQUIPEMENT", "Modifier l'armement du vaisseau", true],
 	["RAVITAILLEMENT", "Recharger carburant et munitions", false],
@@ -52,6 +53,9 @@ func _create_buttons() -> void:
 		btn.visible = false
 		add_child(btn)
 		_service_buttons.append(btn)
+		# Connect commerce button (index 0)
+		if i == 0:
+			btn.pressed.connect(_on_commerce_pressed)
 		# Connect equipment button (index 2)
 		if i == 2:
 			btn.pressed.connect(_on_equipment_pressed)
@@ -76,6 +80,10 @@ func _on_closed() -> void:
 		btn.visible = false
 	_undock_button.visible = false
 	# Closing the terminal returns to hangar view (does NOT undock)
+
+
+func _on_commerce_pressed() -> void:
+	commerce_requested.emit()
 
 
 func _on_equipment_pressed() -> void:

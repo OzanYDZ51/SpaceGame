@@ -60,5 +60,8 @@ extends Resource
 @export var engine_slot_size: String = "S"
 @export var module_slots: Array[String] = []  # e.g. ["S", "S"]
 
+# --- Price ---
+@export var price: int = 0
+
 # --- Utility ---
 @export var utility_slot_count: int = 0

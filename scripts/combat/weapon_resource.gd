@@ -31,6 +31,9 @@ enum AmmoType { ENERGY, AMMO }
 @export var tracking_strength: float = 0.0     # missile tracking (deg/s)
 @export var aoe_radius: float = 0.0            # mine/torpedo explosion radius
 
+# --- Price ---
+@export var price: int = 0
+
 # --- Visuals ---
 @export var bolt_color: Color = Color(0.3, 0.7, 1.0)
 @export var bolt_length: float = 4.0

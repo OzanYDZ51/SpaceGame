@@ -37,6 +37,7 @@ var ai_patrol_radius: float = 300.0
 
 # --- Network ---
 var is_remote_player: bool = false
+var is_server_npc: bool = false
 var peer_id: int = 0
 
 # --- LOD bookkeeping ---

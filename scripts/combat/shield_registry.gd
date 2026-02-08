@@ -70,6 +70,7 @@ static func _build_basique_mk1() -> ShieldResource:
 	s.regen_rate = 12.0
 	s.regen_delay = 4.0
 	s.bleedthrough = 0.12
+	s.price = 800
 	return s
 
 
@@ -81,6 +82,7 @@ static func _build_basique_mk2() -> ShieldResource:
 	s.regen_rate = 15.0
 	s.regen_delay = 3.5
 	s.bleedthrough = 0.10
+	s.price = 2000
 	return s
 
 
@@ -92,6 +94,7 @@ static func _build_renforce() -> ShieldResource:
 	s.regen_rate = 18.0
 	s.regen_delay = 4.0
 	s.bleedthrough = 0.08
+	s.price = 5000
 	return s
 
 
@@ -103,6 +106,7 @@ static func _build_prismatique() -> ShieldResource:
 	s.regen_rate = 25.0
 	s.regen_delay = 2.5
 	s.bleedthrough = 0.15
+	s.price = 8000
 	return s
 
 
@@ -114,6 +118,7 @@ static func _build_combat() -> ShieldResource:
 	s.regen_rate = 20.0
 	s.regen_delay = 5.0
 	s.bleedthrough = 0.05
+	s.price = 12000
 	return s
 
 
@@ -125,6 +130,7 @@ static func _build_lourd() -> ShieldResource:
 	s.regen_rate = 25.0
 	s.regen_delay = 6.0
 	s.bleedthrough = 0.03
+	s.price = 25000
 	return s
 
 
@@ -136,4 +142,5 @@ static func _build_experimental() -> ShieldResource:
 	s.regen_rate = 40.0
 	s.regen_delay = 2.0
 	s.bleedthrough = 0.10
+	s.price = 40000
 	return s

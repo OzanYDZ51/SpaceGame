@@ -35,11 +35,27 @@ func _physics_process(delta: float) -> void:
 		_return_to_pool()
 
 
+var weapon_name: StringName = &""  # Set by WeaponManager on fire
+
+
 func _on_body_hit(body: Node3D) -> void:
 	if owner_ship != null and not is_instance_valid(owner_ship):
 		owner_ship = null
 	if body == owner_ship:
 		return
+
+	# Multiplayer client: send hit claim to server instead of applying damage locally
+	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+		# Only claim hits on NPC ships (not stations, asteroids, etc.)
+		if body.is_in_group("ships") and body.has_node("HealthSystem"):
+			var hit_dir := (body.global_position - global_position).normalized()
+			NetworkManager._rpc_hit_claim.rpc_id(1,
+				body.name, String(weapon_name), damage,
+				[hit_dir.x, hit_dir.y, hit_dir.z])
+			_spawn_hit_effect(body, {"shield_absorbed": false})  # Visual feedback
+			_return_to_pool()
+			return
+
 	var hit_info := _apply_damage_to(body)
 	_spawn_hit_effect(body, hit_info)
 	_report_hit_to_owner(body, hit_info)

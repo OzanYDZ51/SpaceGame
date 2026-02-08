@@ -12,3 +12,4 @@ extends Resource
 @export var rotation_mult: float = 1.0
 @export var cruise_mult: float = 1.0
 @export var boost_drain_mult: float = 1.0
+@export var price: int = 0

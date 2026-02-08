@@ -25,6 +25,7 @@ var _target_direction: Vector3 = Vector3.FORWARD  # Local-space desired aim dire
 var _current_yaw: float = 0.0
 var _current_pitch: float = 0.0
 var _can_fire: bool = true  # Turret aligned within tolerance
+var _rest_delay: float = 0.0  # Seconds before returning to rest after losing target
 
 # --- Weapon mesh ---
 var _weapon_mesh_instance: Node3D = null
@@ -53,6 +54,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if is_turret:
+		_rest_delay += delta
 		_update_turret_rotation(delta)
 
 	# Cooldown tick
@@ -152,8 +154,18 @@ func get_cooldown_ratio() -> float:
 func set_target_direction(world_dir: Vector3) -> void:
 	if not is_turret:
 		return
+	_rest_delay = 0.0  # Reset rest timer while tracking
 	# Convert world direction to hardpoint local space
 	_target_direction = global_transform.basis.inverse() * world_dir
+
+
+## Resets turret aim to forward (rest position) after a short delay.
+func clear_target_direction() -> void:
+	if not is_turret:
+		return
+	if _rest_delay < 3.0:
+		return  # Still waiting before returning to rest
+	_target_direction = Vector3.FORWARD
 
 
 func _update_turret_rotation(delta: float) -> void:
@@ -238,6 +250,7 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	bolt.damage_type = mounted_weapon.damage_type
 	bolt.max_lifetime = mounted_weapon.projectile_lifetime
 	bolt.owner_ship = ship_node
+	bolt.weapon_name = mounted_weapon.weapon_name
 
 	var spawn_pos: Vector3
 	var fire_dir: Vector3

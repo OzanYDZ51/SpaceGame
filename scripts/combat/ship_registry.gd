@@ -85,6 +85,7 @@ static func _build_scout_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/scout_mk1.tscn"
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
 	d.module_slots = ["S"] as Array[String]
+	d.price = 5000
 	return d
 
 
@@ -108,6 +109,7 @@ static func _build_interceptor_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/interceptor_mk1.tscn"
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
 	d.module_slots = ["S", "M"] as Array[String]
+	d.price = 15000
 	return d
 
 
@@ -131,6 +133,7 @@ static func _build_fighter_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/fighter_mk1.tscn"
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
 	d.module_slots = ["S", "S"] as Array[String]
+	d.price = 30000
 	return d
 
 
@@ -154,6 +157,7 @@ static func _build_bomber_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/bomber_mk1.tscn"
 	d.shield_slot_size = "M"; d.engine_slot_size = "M"
 	d.module_slots = ["S", "M"] as Array[String]
+	d.price = 45000
 	return d
 
 
@@ -177,6 +181,7 @@ static func _build_corvette_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/corvette_mk1.tscn"
 	d.shield_slot_size = "M"; d.engine_slot_size = "M"
 	d.module_slots = ["S", "M", "M"] as Array[String]
+	d.price = 120000
 	return d
 
 
@@ -200,6 +205,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/frigate_mk1.tscn"
 	d.shield_slot_size = "L"; d.engine_slot_size = "L"
 	d.module_slots = ["S", "M", "M", "L"] as Array[String]
+	d.price = 350000
 	return d
 
 
@@ -223,4 +229,5 @@ static func _build_cruiser_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/cruiser_mk1.tscn"
 	d.shield_slot_size = "L"; d.engine_slot_size = "L"
 	d.module_slots = ["S", "S", "M", "M", "L"] as Array[String]
+	d.price = 1000000
 	return d

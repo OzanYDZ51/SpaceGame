@@ -152,8 +152,13 @@ func update_cooldowns(_delta: float) -> void:
 
 
 ## Call every frame to keep turrets tracking + auto-firing at the current target.
+## When target is null, turrets smoothly return to their rest (forward) orientation.
 func update_turrets(target_node: Node3D) -> void:
 	if target_node == null or not is_instance_valid(target_node):
+		# No target: return all turrets to forward rest position
+		for hp in hardpoints:
+			if hp.is_turret and hp.enabled and hp.mounted_weapon != null:
+				hp.clear_target_direction()
 		return
 
 	# Get target center (use ShipCenter offset if available)
