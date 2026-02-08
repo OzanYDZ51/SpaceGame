@@ -1,0 +1,6 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "./gameserver/Dockerfile"
+
+[deploy]
+restartPolicyType = "on_failure"
