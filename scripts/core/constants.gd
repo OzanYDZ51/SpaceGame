@@ -7,7 +7,7 @@ extends Node
 # =============================================================================
 
 # --- Version ---
-const GAME_VERSION: String = "0.1.19"
+const GAME_VERSION: String = "0.1.20"
 
 # --- Floating Origin ---
 const ORIGIN_SHIFT_THRESHOLD: float = 5000.0
