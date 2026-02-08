@@ -35,7 +35,10 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  ensureDirs();
+  createWindow();
+});
 app.on("window-all-closed", () => app.quit());
 
 // --- Helpers ---
