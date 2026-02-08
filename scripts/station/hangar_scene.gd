@@ -12,7 +12,7 @@ signal ship_selected(ship_id: StringName)
 const LOOK_YAW_RANGE: float = 40.0
 const LOOK_PITCH_RANGE: float = 20.0
 const LOOK_SMOOTH: float = 4.0
-const ARROW_X_OFFSET: float = 8.0
+const ARROW_X_OFFSET: float = 6.0
 
 var _camera: Camera3D = null
 var _cam_t: float = 0.0
@@ -84,36 +84,41 @@ func _draw_prompt() -> void:
 	var font := ThemeDB.fallback_font
 	var pulse := sin(_cam_t * 2.5) * 0.15 + 0.85
 
-	# "HANGAR" title at top center
-	_prompt_ctrl.draw_string(font, Vector2(0, 40), "HANGAR",
-		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 18, Color(0.3, 0.9, 1.0, 0.5))
+	# "HANGAR" title at top center — thin, understated
+	_prompt_ctrl.draw_string(font, Vector2(0, 32), "HANGAR",
+		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 11, Color(0.2, 0.7, 0.85, 0.35))
+	# Thin underline accent
+	var title_w: float = font.get_string_size("HANGAR", HORIZONTAL_ALIGNMENT_CENTER, -1, 11).x
+	var line_x: float = (s.x - title_w) * 0.5
+	_prompt_ctrl.draw_line(Vector2(line_x, 36), Vector2(line_x + title_w, 36),
+		Color(0.15, 0.6, 0.8, 0.2 * pulse), 1.0)
 
 	# Ship selection prompt (above main prompt)
 	if _selection_active and _ship_ids.size() > 1:
-		var sel_cy := s.y - 100.0
-		var sel_pill_w := 420.0
-		var sel_pill_h := 32.0
+		var sel_cy := s.y - 84.0
+		var sel_pill_w := 300.0
+		var sel_pill_h := 22.0
 		var sel_rect := Rect2((s.x - sel_pill_w) * 0.5, sel_cy - sel_pill_h * 0.5, sel_pill_w, sel_pill_h)
-		_prompt_ctrl.draw_rect(sel_rect, Color(0.0, 0.02, 0.06, 0.6))
-		_prompt_ctrl.draw_rect(sel_rect, Color(0.2, 0.8, 0.9, 0.2 * pulse), false, 1.0)
-		var sel_col := Color(0.3, 0.9, 1.0, pulse)
-		_prompt_ctrl.draw_string(font, Vector2(0, sel_cy + 5),
+		_prompt_ctrl.draw_rect(sel_rect, Color(0.0, 0.02, 0.06, 0.5))
+		_prompt_ctrl.draw_rect(sel_rect, Color(0.15, 0.6, 0.8, 0.15 * pulse), false, 1.0)
+		var sel_col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
+		_prompt_ctrl.draw_string(font, Vector2(0, sel_cy + 4),
 			"\u25C0  [A]   CHANGER DE VAISSEAU   [D]  \u25B6",
-			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, sel_col)
+			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 9, sel_col)
 
 	# Main prompt pill
-	var cy := s.y - 60.0
-	var pill_w := 360.0
-	var pill_h := 36.0
+	var cy := s.y - 52.0
+	var pill_w := 260.0
+	var pill_h := 24.0
 	var pill_rect := Rect2((s.x - pill_w) * 0.5, cy - pill_h * 0.5, pill_w, pill_h)
-	_prompt_ctrl.draw_rect(pill_rect, Color(0.0, 0.02, 0.06, 0.7))
-	_prompt_ctrl.draw_rect(pill_rect, Color(0.2, 0.8, 0.9, 0.25 * pulse), false, 1.0)
+	_prompt_ctrl.draw_rect(pill_rect, Color(0.0, 0.02, 0.06, 0.55))
+	_prompt_ctrl.draw_rect(pill_rect, Color(0.15, 0.6, 0.8, 0.18 * pulse), false, 1.0)
 
 	# Key prompts
-	var col := Color(0.3, 0.9, 1.0, pulse)
-	_prompt_ctrl.draw_string(font, Vector2(0, cy + 5),
+	var col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
+	_prompt_ctrl.draw_string(font, Vector2(0, cy + 4),
 		"TERMINAL  [F]        DÉCOLLER  [Échap]",
-		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, col)
+		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, col)
 
 
 func _process(delta: float) -> void:
@@ -234,15 +239,15 @@ func _create_3d_arrows() -> void:
 
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.15, 0.85, 1.0, 0.9)
+	mat.albedo_color = Color(0.12, 0.7, 0.9, 0.6)
 	mat.emission_enabled = true
-	mat.emission = Color(0.15, 0.85, 1.0)
-	mat.emission_energy_multiplier = 2.0
+	mat.emission = Color(0.1, 0.6, 0.85)
+	mat.emission_energy_multiplier = 1.0
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
-	# Left arrow
+	# Left arrow (slim chevron)
 	var prism_left := PrismMesh.new()
-	prism_left.size = Vector3(0.8, 1.5, 0.3)
+	prism_left.size = Vector3(0.35, 0.7, 0.12)
 	_arrow_left = MeshInstance3D.new()
 	_arrow_left.mesh = prism_left
 	_arrow_left.material_override = mat
@@ -251,9 +256,9 @@ func _create_3d_arrows() -> void:
 	_arrow_left.position = _preview_local_pos + Vector3(-ARROW_X_OFFSET, 0, 0)
 	_arrow_left.rotation_degrees = Vector3(0, 0, 90)  # Point left
 
-	# Right arrow
+	# Right arrow (slim chevron)
 	var prism_right := PrismMesh.new()
-	prism_right.size = Vector3(0.8, 1.5, 0.3)
+	prism_right.size = Vector3(0.35, 0.7, 0.12)
 	_arrow_right = MeshInstance3D.new()
 	_arrow_right.mesh = prism_right
 	_arrow_right.material_override = mat
@@ -268,33 +273,33 @@ func _create_ship_labels() -> void:
 	if spawn_point == null:
 		return
 
-	# Ship name label
+	# Ship name label — compact holographic tag
 	_label_name = Label3D.new()
 	_label_name.name = "ShipNameLabel"
-	_label_name.font_size = 32
-	_label_name.modulate = Color(0.15, 0.85, 1.0, 0.95)
-	_label_name.outline_modulate = Color(0, 0, 0, 0.8)
-	_label_name.outline_size = 4
+	_label_name.font_size = 18
+	_label_name.modulate = Color(0.2, 0.8, 0.95, 0.85)
+	_label_name.outline_modulate = Color(0, 0.02, 0.05, 0.6)
+	_label_name.outline_size = 2
 	_label_name.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label_name.no_depth_test = true
 	_label_name.fixed_size = true
-	_label_name.pixel_size = 0.003
+	_label_name.pixel_size = 0.002
 	spawn_point.add_child(_label_name)
-	_label_name.position = _preview_local_pos + Vector3(0, -3.5, 0)
+	_label_name.position = _preview_local_pos + Vector3(0, -3.0, 0)
 
-	# Stats label
+	# Stats label — small, dim secondary info
 	_label_stats = Label3D.new()
 	_label_stats.name = "ShipStatsLabel"
-	_label_stats.font_size = 18
-	_label_stats.modulate = Color(0.45, 0.65, 0.78, 0.8)
-	_label_stats.outline_modulate = Color(0, 0, 0, 0.7)
-	_label_stats.outline_size = 3
+	_label_stats.font_size = 11
+	_label_stats.modulate = Color(0.35, 0.55, 0.68, 0.6)
+	_label_stats.outline_modulate = Color(0, 0.01, 0.04, 0.5)
+	_label_stats.outline_size = 1
 	_label_stats.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label_stats.no_depth_test = true
 	_label_stats.fixed_size = true
-	_label_stats.pixel_size = 0.003
+	_label_stats.pixel_size = 0.002
 	spawn_point.add_child(_label_stats)
-	_label_stats.position = _preview_local_pos + Vector3(0, -4.5, 0)
+	_label_stats.position = _preview_local_pos + Vector3(0, -3.6, 0)
 
 
 func _update_ship_labels(data: ShipData) -> void:

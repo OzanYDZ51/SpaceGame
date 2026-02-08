@@ -9,8 +9,8 @@ extends RefCounted
 # Zoom is in "pixels per meter" (logarithmic scale)
 const ZOOM_MIN: float = 5e-6     # Full system view (~384M meters visible)
 const ZOOM_MAX: float = 2.0       # Tactical view (~960m visible)
-const ZOOM_STEP: float = 1.15     # Multiplier per scroll notch
-const ZOOM_SMOOTH_SPEED: float = 12.0
+const ZOOM_STEP: float = 1.12     # Multiplier per scroll notch
+const ZOOM_SMOOTH_SPEED: float = 8.0
 
 # Zoom presets (pixels per meter)
 const PRESET_TACTICAL: float = 1.0
@@ -33,16 +33,28 @@ var follow_enabled: bool = true
 # Pan limits
 var system_radius: float = 100_000_000.0
 
+# Zoom anchor: world point under cursor stays fixed during smooth zoom
+var _anchor_world_x: float = 0.0
+var _anchor_world_z: float = 0.0
+var _anchor_screen: Vector2 = Vector2.ZERO
+var _anchored: bool = false
+
 
 func update(delta: float) -> void:
 	# Smooth zoom interpolation (logarithmic)
-	if abs(log(zoom) - log(target_zoom)) > 0.001:
+	if absf(log(zoom) - log(target_zoom)) > 0.001:
 		var log_current: float = log(zoom)
 		var log_target: float = log(target_zoom)
-		var log_new: float = lerp(log_current, log_target, minf(ZOOM_SMOOTH_SPEED * delta, 1.0))
+		var log_new: float = lerpf(log_current, log_target, minf(ZOOM_SMOOTH_SPEED * delta, 1.0))
 		zoom = exp(log_new)
+
+		# Keep anchor point fixed on screen each frame
+		if _anchored and not follow_enabled:
+			center_x = _anchor_world_x - (_anchor_screen.x - screen_size.x * 0.5) / zoom
+			center_z = _anchor_world_z - (_anchor_screen.y - screen_size.y * 0.5) / zoom
 	else:
 		zoom = target_zoom
+		_anchored = false
 
 	# Follow entity
 	if follow_enabled and follow_entity_id != "":
@@ -55,19 +67,13 @@ func update(delta: float) -> void:
 
 
 func zoom_at(screen_pos: Vector2, factor: float) -> void:
-	# Zoom towards the mouse position
-	var world_before_x: float = screen_to_universe_x(screen_pos.x)
-	var world_before_z: float = screen_to_universe_z(screen_pos.y)
+	# Record world point under cursor as anchor
+	_anchor_world_x = screen_to_universe_x(screen_pos.x)
+	_anchor_world_z = screen_to_universe_z(screen_pos.y)
+	_anchor_screen = screen_pos
+	_anchored = true
 
 	target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
-
-	# Adjust center so the world point under the mouse stays fixed
-	# (immediate zoom for the adjustment, smooth zoom handles the visual)
-	var new_zoom: float = target_zoom
-	var new_world_x: float = center_x + (screen_pos.x - screen_size.x * 0.5) / new_zoom
-	var new_world_z: float = center_z + (screen_pos.y - screen_size.y * 0.5) / new_zoom
-	center_x -= (new_world_x - world_before_x)
-	center_z -= (new_world_z - world_before_z)
 
 
 func pan(screen_delta: Vector2) -> void:

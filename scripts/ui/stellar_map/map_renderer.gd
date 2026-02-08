@@ -218,7 +218,7 @@ func _draw_asteroid_belts() -> void:
 				var wz: float = pz + sin(angle) * ring_r
 				points.append(camera.universe_to_screen(wx, wz))
 			if points.size() > 1:
-				draw_polyline(points, MapColors.ASTEROID_BELT, 1.0, true)
+				draw_polyline(points, MapColors.ASTEROID_BELT, 1.5, true)
 
 		# Scatter dots between rings (cached universe positions)
 		if radius_px > 30:
@@ -238,7 +238,19 @@ func _draw_asteroid_belts() -> void:
 			for i in dot_count:
 				var sp: Vector2 = camera.universe_to_screen(cached_dots[i][0], cached_dots[i][1])
 				if sp.x > 0 and sp.x < size.x and sp.y > 0 and sp.y < size.y:
-					draw_circle(sp, 1.0, MapColors.ASTEROID_BELT * Color(1, 1, 1, 2.0))
+					draw_circle(sp, 1.5, MapColors.ASTEROID_BELT)
+
+		# Belt label at top of ring (12 o'clock position)
+		if radius_px > 20:
+			var label_wx: float = px
+			var label_wz: float = pz - orbital_r  # top of ring
+			var label_sp: Vector2 = camera.universe_to_screen(label_wx, label_wz)
+			if label_sp.x > 0 and label_sp.x < size.x and label_sp.y > 0 and label_sp.y < size.y:
+				var font := ThemeDB.fallback_font
+				var belt_name: String = ent["name"]
+				var tw: float = font.get_string_size(belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+				var label_col := Color(MapColors.ASTEROID_BELT.r, MapColors.ASTEROID_BELT.g, MapColors.ASTEROID_BELT.b, 0.8)
+				draw_string(font, Vector2(label_sp.x - tw * 0.5, label_sp.y - 6), belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, label_col)
 
 
 # =============================================================================

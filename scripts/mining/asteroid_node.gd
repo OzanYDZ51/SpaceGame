@@ -141,7 +141,7 @@ func _update_label_text() -> void:
 	if _label == null or data == null:
 		return
 	var res := MiningRegistry.get_resource(data.primary_resource)
-	var res_name: String = res.resource_name if res else "?"
+	var res_name: String = res.display_name if res else "?"
 	var size_name: String
 	match data.size:
 		AsteroidData.AsteroidSize.SMALL: size_name = "S"

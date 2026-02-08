@@ -190,10 +190,13 @@ func _process(delta: float) -> void:
 		return
 
 	_camera.screen_size = size
+	var zoom_before: float = _camera.zoom
 	_camera.update(delta)
 
-	# Renderer and entity layer are throttled internally via dirty flags
-	# Only force redraw when something actually changed
+	# Keep dirty while zoom is animating so all layers stay in sync
+	if _camera.zoom != zoom_before:
+		_dirty = true
+
 	if _dirty:
 		_renderer.queue_redraw()
 		_entity_layer.queue_redraw()

@@ -115,6 +115,7 @@ func _ready() -> void:
 	_arsenal_list.row_height = ARSENAL_ROW_H
 	_arsenal_list.item_draw_callback = _draw_arsenal_row
 	_arsenal_list.item_selected.connect(_on_arsenal_selected)
+	_arsenal_list.item_double_clicked.connect(_on_arsenal_double_clicked)
 	_arsenal_list.visible = false
 	add_child(_arsenal_list)
 
@@ -166,6 +167,7 @@ func _on_opened() -> void:
 		_tab_bar.current_tab = 0
 
 	_setup_3d_viewer()
+	_auto_select_slot()
 	_refresh_arsenal()
 	_layout_controls()
 
@@ -433,11 +435,33 @@ func _gui_input(event: InputEvent) -> void:
 			return
 
 	var viewer_w := size.x * VIEWER_RATIO
+	var strip_top := size.y - HP_STRIP_H - 50
+
+	# --- Strip clicks FIRST (hardpoints, module slots, shield/engine remove) ---
+	# Must be checked before viewer area, because the strip overlaps the viewer's x range.
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if _current_tab == 0:
+			if _try_click_hp_strip(event.position):
+				accept_event()
+				return
+		elif _current_tab == 1:
+			if _try_click_module_strip(event.position):
+				accept_event()
+				return
+		elif _current_tab == 2:
+			if _try_click_shield_remove(event.position):
+				accept_event()
+				return
+		elif _current_tab == 3:
+			if _try_click_engine_remove(event.position):
+				accept_event()
+				return
+
+	# --- 3D Viewer area (orbit camera) ---
 	var in_viewer: bool = false
 	if "position" in event:
-		in_viewer = event.position.x < viewer_w and event.position.y > CONTENT_TOP
+		in_viewer = event.position.x < viewer_w and event.position.y > CONTENT_TOP and event.position.y < strip_top
 
-	# Mouse button events in viewer area
 	if event is InputEventMouseButton and in_viewer:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
@@ -472,17 +496,6 @@ func _gui_input(event: InputEvent) -> void:
 		_update_orbit_camera()
 		accept_event()
 		return
-
-	# Strip clicks (hardpoints or module slots)
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		if _current_tab == 0:
-			if _try_click_hp_strip(event.position):
-				accept_event()
-				return
-		elif _current_tab == 1:
-			if _try_click_module_strip(event.position):
-				accept_event()
-				return
 
 	accept_event()
 
@@ -537,14 +550,24 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 	if hp_count == 0:
 		return false
 
-	var card_w := minf(120.0, (strip_rect.size.x - 8) / hp_count)
+	var card_w := minf(120.0, (strip_rect.size.x - 16) / hp_count)
 	var total_w := card_w * hp_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 
+	var card_y := strip_rect.position.y + 20
+
 	for i in hp_count:
 		var card_x := start_x + i * card_w
-		var card_rect := Rect2(card_x, strip_rect.position.y, card_w - 4, strip_rect.size.y)
+		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
+			# Check if clicked on [X] remove button (top-right of card)
+			var hp := weapon_manager.hardpoints[i]
+			if hp.mounted_weapon:
+				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
+				if xb_rect.has_point(mouse_pos):
+					_selected_hardpoint = i
+					_remove_weapon()
+					return true
 			_select_hardpoint(i)
 			return true
 
@@ -566,14 +589,24 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 	if slot_count == 0:
 		return false
 
-	var card_w := minf(120.0, (strip_rect.size.x - 8) / slot_count)
+	var card_w := minf(140.0, (strip_rect.size.x - 16) / slot_count)
 	var total_w := card_w * slot_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 
+	var card_y := strip_rect.position.y + 20
+
 	for i in slot_count:
 		var card_x := start_x + i * card_w
-		var card_rect := Rect2(card_x, strip_rect.position.y + 20, card_w - 4, strip_rect.size.y - 24)
+		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
+			# Check [X] remove button
+			var mod: ModuleResource = equipment_manager.equipped_modules[i] if i < equipment_manager.equipped_modules.size() else null
+			if mod:
+				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
+				if xb_rect.has_point(mouse_pos):
+					_selected_module_slot = i
+					_remove_module()
+					return true
 			_selected_module_slot = i
 			_selected_module = &""
 			if _arsenal_list:
@@ -586,6 +619,32 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 	return false
 
 
+func _try_click_shield_remove(mouse_pos: Vector2) -> bool:
+	if equipment_manager == null or equipment_manager.equipped_shield == null:
+		return false
+	var viewer_w := size.x * VIEWER_RATIO
+	var strip_y := size.y - HP_STRIP_H - 50
+	var y := strip_y + 22
+	var xb_rect := Rect2(viewer_w - 52, y + 1, 14, 14)
+	if xb_rect.has_point(mouse_pos):
+		_remove_shield()
+		return true
+	return false
+
+
+func _try_click_engine_remove(mouse_pos: Vector2) -> bool:
+	if equipment_manager == null or equipment_manager.equipped_engine == null:
+		return false
+	var viewer_w := size.x * VIEWER_RATIO
+	var strip_y := size.y - HP_STRIP_H - 50
+	var y := strip_y + 22
+	var xb_rect := Rect2(viewer_w - 52, y + 1, 14, 14)
+	if xb_rect.has_point(mouse_pos):
+		_remove_engine()
+		return true
+	return false
+
+
 func _select_hardpoint(idx: int) -> void:
 	_selected_hardpoint = idx
 	_selected_weapon = &""
@@ -595,6 +654,28 @@ func _select_hardpoint(idx: int) -> void:
 	_update_button_states()
 	_update_marker_visuals()
 	queue_redraw()
+
+
+## Auto-select the first empty compatible slot for the current tab.
+func _auto_select_slot() -> void:
+	match _current_tab:
+		0:  # Weapons — select first empty hardpoint
+			if weapon_manager and _selected_hardpoint < 0:
+				for i in weapon_manager.hardpoints.size():
+					if weapon_manager.hardpoints[i].mounted_weapon == null:
+						_selected_hardpoint = i
+						return
+				# All occupied: select first
+				if weapon_manager.hardpoints.size() > 0:
+					_selected_hardpoint = 0
+		1:  # Modules — select first empty module slot
+			if equipment_manager and equipment_manager.ship_data and _selected_module_slot < 0:
+				for i in equipment_manager.ship_data.module_slots.size():
+					if i >= equipment_manager.equipped_modules.size() or equipment_manager.equipped_modules[i] == null:
+						_selected_module_slot = i
+						return
+				if equipment_manager.ship_data.module_slots.size() > 0:
+					_selected_module_slot = 0
 
 
 # =============================================================================
@@ -769,8 +850,16 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 		if hp.mounted_weapon:
 			var type_col: Color = TYPE_COLORS.get(hp.mounted_weapon.weapon_type, UITheme.PRIMARY)
 			draw_string(font, Vector2(name_x, card_y + 14), str(hp.mounted_weapon.weapon_name),
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, type_col)
+				HORIZONTAL_ALIGNMENT_LEFT, card_w - 60, UITheme.FONT_SIZE_SMALL, type_col)
 			_draw_weapon_icon(Vector2(name_x + 4, card_y + 26), 5.0, hp.mounted_weapon.weapon_type, type_col)
+			# [X] remove button
+			var xb_x := card_x + card_w - 20
+			var xb_y := card_y + 4
+			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
+			draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
+			draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
+			draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
+				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
 		else:
 			var empty_label := "TOURELLE" if hp.is_turret else "VIDE"
 			var empty_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.5) if hp.is_turret else UITheme.TEXT_DIM
@@ -824,7 +913,15 @@ func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
 		if mod:
 			var mod_col: Color = MODULE_COLORS.get(mod.module_type, UITheme.PRIMARY)
 			draw_string(font, Vector2(name_x, card_y + 14), str(mod.module_name),
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, mod_col)
+				HORIZONTAL_ALIGNMENT_LEFT, card_w - 60, UITheme.FONT_SIZE_SMALL, mod_col)
+			# [X] remove button
+			var xb_x := card_x + card_w - 20
+			var xb_y := card_y + 4
+			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
+			draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
+			draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
+			draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
+				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
 		else:
 			draw_string(font, Vector2(name_x, card_y + 14), "VIDE",
 				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
@@ -855,7 +952,16 @@ func _draw_shield_status_panel(font: Font, s: Vector2) -> void:
 		draw_string(font, Vector2(stats_x, y + 10),
 			"Taille: %s  |  %d HP/f  |  %.0f HP/s  |  %.1fs delai  |  %.0f%% infiltration" % [
 				slot_str, int(sh.shield_hp_per_facing), sh.regen_rate, sh.regen_delay, sh.bleedthrough * 100],
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.55, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.45, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+		# [X] remove button
+		var xb_x := viewer_w - 52
+		var xb_y := y + 1
+		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
+		draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
+		draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
+			HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
 	else:
 		draw_string(font, Vector2(32, y + 10), "Aucun bouclier equipe",
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
@@ -886,7 +992,16 @@ func _draw_engine_status_panel(font: Font, s: Vector2) -> void:
 		draw_string(font, Vector2(stats_x, y + 10),
 			"Taille: %s  |  Accel x%.2f  |  Vit x%.2f  |  Rot x%.2f  |  Cruise x%.2f" % [
 				slot_str, en.accel_mult, en.speed_mult, en.rotation_mult, en.cruise_mult],
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.55, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.45, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+		# [X] remove button
+		var xb_x := viewer_w - 52
+		var xb_y := y + 1
+		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
+		draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
+		draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
+			HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
 	else:
 		draw_string(font, Vector2(32, y + 10), "Aucun moteur equipe",
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
@@ -1144,15 +1259,18 @@ func _draw_comparison(font: Font, px: float, start_y: float, pw: float) -> void:
 
 func _draw_no_selection_msg(font: Font, px: float, start_y: float, pw: float, msg: String) -> void:
 	var center_x := px + pw * 0.5
-	var center_y := start_y + 50
+	var center_y := start_y + 40
 	var cr := 14.0
 	draw_arc(Vector2(center_x, center_y), cr, 0, TAU, 24, UITheme.TEXT_DIM, 1.0)
 	draw_line(Vector2(center_x - cr - 5, center_y), Vector2(center_x - cr + 5, center_y), UITheme.TEXT_DIM, 1.0)
 	draw_line(Vector2(center_x + cr - 5, center_y), Vector2(center_x + cr + 5, center_y), UITheme.TEXT_DIM, 1.0)
 	draw_line(Vector2(center_x, center_y - cr - 5), Vector2(center_x, center_y - cr + 5), UITheme.TEXT_DIM, 1.0)
 	draw_line(Vector2(center_x, center_y + cr - 5), Vector2(center_x, center_y + cr + 5), UITheme.TEXT_DIM, 1.0)
-	draw_string(font, Vector2(px, center_y + 26), msg,
+	draw_string(font, Vector2(px, center_y + 22), msg,
 		HORIZONTAL_ALIGNMENT_CENTER, pw, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	# Hint about double-click
+	draw_string(font, Vector2(px, center_y + 38), "Double-clic = equipement rapide",
+		HORIZONTAL_ALIGNMENT_CENTER, pw, UITheme.FONT_SIZE_TINY, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.35))
 
 
 func _draw_weapon_comparison(font: Font, px: float, start_y: float, pw: float) -> void:
@@ -1487,6 +1605,8 @@ func _on_tab_changed(index: int) -> void:
 	_arsenal_list.visible = true
 	if _arsenal_list:
 		_arsenal_list.selected_index = -1
+	# Auto-select first empty slot for the new tab
+	_auto_select_slot()
 	_refresh_arsenal()
 	_update_button_states()
 	_update_marker_visuals()
@@ -1495,12 +1615,12 @@ func _on_tab_changed(index: int) -> void:
 
 func _on_arsenal_selected(index: int) -> void:
 	if index >= 0 and index < _arsenal_items.size():
-		var name: StringName = _arsenal_items[index]
+		var item_name: StringName = _arsenal_items[index]
 		match _current_tab:
-			0: _selected_weapon = name
-			1: _selected_module = name
-			2: _selected_shield = name
-			3: _selected_engine = name
+			0: _selected_weapon = item_name
+			1: _selected_module = item_name
+			2: _selected_shield = item_name
+			3: _selected_engine = item_name
 	else:
 		match _current_tab:
 			0: _selected_weapon = &""
@@ -1509,6 +1629,15 @@ func _on_arsenal_selected(index: int) -> void:
 			3: _selected_engine = &""
 	_update_button_states()
 	queue_redraw()
+
+
+func _on_arsenal_double_clicked(index: int) -> void:
+	if index < 0 or index >= _arsenal_items.size():
+		return
+	# Select the item first
+	_on_arsenal_selected(index)
+	# Then immediately equip if possible
+	_on_equip_pressed()
 
 
 func _on_equip_pressed() -> void:

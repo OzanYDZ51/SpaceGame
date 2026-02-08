@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SystemEnvironmentData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/environment/system_environment_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+star_light_color = Color(0.95, 0.93, 0.88, 1)
+star_light_energy = 1.1
+ambient_color = Color(0.04, 0.04, 0.06, 1)
+ambient_energy = 0.22
+glow_intensity = 0.52
+glow_bloom = 0.038
+nebula_warm = Color(0.08, 0.04, 0.07, 1)
+nebula_cool = Color(0.04, 0.05, 0.12, 1)
+nebula_accent = Color(0.05, 0.025, 0.14, 1)
+nebula_intensity = 0.38
+star_density = 0.4
+star_brightness = 3.6
+milky_way_intensity = 0.52
+milky_way_width = 0.16
+milky_way_color = Color(0.07, 0.07, 0.15, 1)
+dust_intensity = 0.45

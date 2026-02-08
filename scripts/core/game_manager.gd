@@ -41,12 +41,33 @@ var player_economy: PlayerEconomy = null
 var _lod_manager: ShipLODManager = null
 var _asteroid_field_mgr: AsteroidFieldManager = null
 var _mining_system: MiningSystem = null
+var _backend_state_loaded: bool = false
 
 
 func _ready() -> void:
 	_setup_input_actions()
 	await get_tree().process_frame
+
+	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
+	# If present, set it and load backend state after game init.
+	# If absent (dev/offline), game starts normally with default values.
+	_read_auth_token_from_cli()
 	_initialize_game()
+
+	if AuthManager.is_authenticated:
+		_load_backend_state()
+
+
+func _read_auth_token_from_cli() -> void:
+	var args := OS.get_cmdline_args()
+	for i in args.size():
+		if args[i] == "--auth-token" and i + 1 < args.size():
+			var token: String = args[i + 1]
+			AuthManager.set_token_from_launcher(token)
+			print("GameManager: Auth token received from launcher")
+			return
+	# No token — try restoring from saved session (auto-refresh)
+	# AuthManager._try_restore_session() is already called in its _ready()
 
 
 func _setup_input_actions() -> void:
@@ -259,7 +280,7 @@ func _initialize_game() -> void:
 	# Player economy (hardcoded starting values for testing)
 	player_economy = PlayerEconomy.new()
 	player_economy.add_credits(1500)
-	player_economy.add_resource(&"water", 10)
+	player_economy.add_resource(&"ice", 10)
 	player_economy.add_resource(&"iron", 5)
 
 	# Loot pickup system (child of player ship, scans for nearby crates)
@@ -380,6 +401,31 @@ func _initialize_game() -> void:
 	_setup_network()
 
 	current_state = GameState.PLAYING
+
+	# Start auto-save timer
+	SaveManager.start_auto_save()
+
+
+func _load_backend_state() -> void:
+	if not AuthManager.is_authenticated:
+		return
+	var state: Dictionary = await SaveManager.load_player_state()
+	if not state.is_empty() and not state.has("error"):
+		SaveManager.apply_state(state)
+		_backend_state_loaded = true
+		print("GameManager: Backend state loaded and applied")
+	else:
+		print("GameManager: No backend state (new player or offline)")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		# Save before quit
+		if AuthManager.is_authenticated:
+			SaveManager.trigger_save("game_closing")
+			# Give a moment for the save to start
+			await get_tree().create_timer(0.5).timeout
+		get_tree().quit()
 
 
 func _setup_visual_effects() -> void:
@@ -572,6 +618,7 @@ func _populate_wormhole_targets() -> void:
 
 
 func _on_system_unloading(_system_id: int) -> void:
+	SaveManager.trigger_save("system_jump")
 	# Clear all remote player puppets — they'll be re-created when we receive
 	# states in the new system (filtered by system_id).
 	for pid in _remote_players.keys():
@@ -746,6 +793,7 @@ func _on_player_destroyed() -> void:
 	if current_state == GameState.DEAD:
 		return
 	current_state = GameState.DEAD
+	SaveManager.trigger_save("player_death")
 
 	# Big explosion at player position
 	_spawn_death_explosion()
@@ -885,6 +933,7 @@ func _respawn_at_nearest_repair_station() -> void:
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	current_state = GameState.PLAYING
+	SaveManager.trigger_save("respawned")
 
 
 func _repair_ship() -> void:
@@ -950,7 +999,10 @@ func _initiate_wormhole_jump() -> void:
 	# Instead, use a timer to wait for fade-out.
 	await get_tree().create_timer(0.6).timeout
 
-	# 2. Disconnect from current server
+	# 2. Save state before disconnecting (critical)
+	await SaveManager.save_player_state(true)
+
+	# 3. Disconnect from current server
 	NetworkManager.disconnect_from_server()
 
 	# 3. Switch galaxy
@@ -1002,6 +1054,7 @@ func _on_docked(station_name: String) -> void:
 	if current_state == GameState.DOCKED:
 		return
 	current_state = GameState.DOCKED
+	SaveManager.trigger_save("docked")
 
 	# Stop ship controls + autopilot
 	var ship := player_ship as ShipController
@@ -1080,8 +1133,13 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 		var qty: int = item.get("quantity", 1)
 		if item_type == "credits" and player_economy:
 			player_economy.add_credits(qty)
-		elif item_type in ["water", "iron"] and player_economy:
-			player_economy.add_resource(StringName(item_type), qty)
+		elif player_economy:
+			# Map loot types to economy resource ids
+			var res_id: StringName = _loot_type_to_resource(item_type)
+			if res_id != &"" and PlayerEconomy.RESOURCE_DEFS.has(res_id):
+				player_economy.add_resource(res_id, qty)
+			else:
+				cargo_items.append(item)
 		else:
 			cargo_items.append(item)
 	if player_cargo and not cargo_items.is_empty():
@@ -1089,9 +1147,18 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 	# Destroy the crate
 	if crate and is_instance_valid(crate):
 		crate._destroy()
+	# Mark dirty for periodic save (loot collected)
+	SaveManager.mark_dirty()
 	# Re-capture mouse for flight
 	if current_state == GameState.PLAYING:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+static func _loot_type_to_resource(loot_type: String) -> StringName:
+	match loot_type:
+		"water": return &"ice"
+		"iron": return &"iron"
+	return &""
 
 
 func _on_undock_requested() -> void:
@@ -1121,6 +1188,7 @@ func _on_undock_requested() -> void:
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	current_state = GameState.PLAYING
+	SaveManager.trigger_save("undocked")
 
 
 # =============================================================================
@@ -1210,4 +1278,5 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 			player_lod.ship_id = data.ship_id
 			player_lod.ship_class = data.ship_class
 
+	SaveManager.trigger_save("ship_changed")
 	print("GameManager: Ship changed to '%s' (%s)" % [data.ship_name, ship_id])

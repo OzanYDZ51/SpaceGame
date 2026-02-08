@@ -54,3 +54,15 @@ func get_total_count() -> int:
 func clear() -> void:
 	items.clear()
 	cargo_changed.emit()
+
+
+func serialize() -> Array:
+	var result: Array = []
+	for item in items:
+		result.append({
+			"item_name": item.get("name", ""),
+			"item_type": item.get("type", ""),
+			"quantity": item.get("quantity", 1),
+			"icon_color": item.get("icon_color", ""),
+		})
+	return result

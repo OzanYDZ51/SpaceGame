@@ -87,7 +87,7 @@ static func pick_rare(rng: RandomNumberGenerator, dominant: StringName, secondar
 static func _build_ice() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"ice"
-	r.resource_name = "Glace"
+	r.display_name = "Glace"
 	r.rarity = MiningResource.Rarity.COMMON
 	r.base_value = 5
 	r.mining_difficulty = 0.5
@@ -100,7 +100,7 @@ static func _build_ice() -> MiningResource:
 static func _build_iron() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"iron"
-	r.resource_name = "Fer"
+	r.display_name = "Fer"
 	r.rarity = MiningResource.Rarity.COMMON
 	r.base_value = 10
 	r.mining_difficulty = 1.0
@@ -113,7 +113,7 @@ static func _build_iron() -> MiningResource:
 static func _build_copper() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"copper"
-	r.resource_name = "Cuivre"
+	r.display_name = "Cuivre"
 	r.rarity = MiningResource.Rarity.UNCOMMON
 	r.base_value = 25
 	r.mining_difficulty = 1.2
@@ -126,7 +126,7 @@ static func _build_copper() -> MiningResource:
 static func _build_titanium() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"titanium"
-	r.resource_name = "Titane"
+	r.display_name = "Titane"
 	r.rarity = MiningResource.Rarity.UNCOMMON
 	r.base_value = 40
 	r.mining_difficulty = 1.5
@@ -139,7 +139,7 @@ static func _build_titanium() -> MiningResource:
 static func _build_gold() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"gold"
-	r.resource_name = "Or"
+	r.display_name = "Or"
 	r.rarity = MiningResource.Rarity.RARE
 	r.base_value = 100
 	r.mining_difficulty = 2.0
@@ -152,7 +152,7 @@ static func _build_gold() -> MiningResource:
 static func _build_crystal() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"crystal"
-	r.resource_name = "Cristal"
+	r.display_name = "Cristal"
 	r.rarity = MiningResource.Rarity.RARE
 	r.base_value = 150
 	r.mining_difficulty = 2.5
@@ -165,7 +165,7 @@ static func _build_crystal() -> MiningResource:
 static func _build_uranium() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"uranium"
-	r.resource_name = "Uranium"
+	r.display_name = "Uranium"
 	r.rarity = MiningResource.Rarity.VERY_RARE
 	r.base_value = 200
 	r.mining_difficulty = 3.0
@@ -178,7 +178,7 @@ static func _build_uranium() -> MiningResource:
 static func _build_platinum() -> MiningResource:
 	var r := MiningResource.new()
 	r.resource_id = &"platinum"
-	r.resource_name = "Platine"
+	r.display_name = "Platine"
 	r.rarity = MiningResource.Rarity.LEGENDARY
 	r.base_value = 500
 	r.mining_difficulty = 4.0

@@ -317,12 +317,13 @@ func _populate_system() -> void:
 				"color": Color(0.7, 0.2, 1.0),
 			})
 
-	# Spawn asteroid fields
+	# Spawn asteroid fields (metadata only — asteroids generated locally by manager)
 	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
 	if asteroid_mgr:
+		asteroid_mgr.set_system_seed(current_system_data.seed_value)
 		for i in current_system_data.asteroid_belts.size():
 			var belt: Dictionary = current_system_data.asteroid_belts[i]
-			var field := _generate_asteroid_field(belt, current_system_data.seed_value, i)
+			var field := _generate_asteroid_field(belt, i)
 			asteroid_mgr.populate_field(field)
 
 	# Spawn star impostor (child of main_scene, NOT Universe — avoids FloatingOrigin shift)
@@ -362,18 +363,18 @@ func _configure_environment() -> void:
 	# Find the SpaceEnvironment (root of main scene has the script)
 	var main: Node3D = GameManager.main_scene
 	if main is SpaceEnvironment:
-		main.configure_for_system(current_system_data)
+		main.configure_for_system(current_system_data, current_system_id)
 
 
 func _register_system_entities() -> void:
-	# Star (with node reference to impostor)
+	# Star — no "node" ref: SystemStar is an impostor that follows the camera,
+	# so its global_position ≠ universe (0,0,0). Keep pos fixed at origin.
 	EntityRegistry.register("star_0", {
 		"name": current_system_data.star_name,
 		"type": EntityRegistrySystem.EntityType.STAR,
 		"pos_x": 0.0,
 		"pos_y": 0.0,
 		"pos_z": 0.0,
-		"node": _active_star,
 		"radius": current_system_data.star_radius,
 		"color": current_system_data.star_color,
 		"extra": {
@@ -382,6 +383,24 @@ func _register_system_entities() -> void:
 			"luminosity": current_system_data.star_luminosity,
 		},
 	})
+
+	# Planets
+	for i in current_system_data.planets.size():
+		var planet_data: Dictionary = current_system_data.planets[i]
+		EntityRegistry.register("planet_%d" % i, {
+			"name": planet_data["name"],
+			"type": EntityRegistrySystem.EntityType.PLANET,
+			"orbital_radius": planet_data["orbital_radius"],
+			"orbital_period": planet_data["orbital_period"],
+			"orbital_angle": planet_data.get("orbital_angle", 0.0),
+			"orbital_parent": "star_0",
+			"radius": planet_data["radius"],
+			"color": planet_data["color"],
+			"extra": {
+				"planet_type": planet_data["type"],
+				"has_rings": planet_data.get("has_rings", false),
+			},
+		})
 
 	# Stations
 	var universe := GameManager.universe_node
@@ -416,6 +435,21 @@ func _register_system_entities() -> void:
 			"extra": {
 				"target_system_id": gate_data["target_system_id"],
 				"target_system_name": gate_data["target_system_name"],
+			},
+		})
+
+	# Asteroid belts
+	for i in current_system_data.asteroid_belts.size():
+		var belt_data: Dictionary = current_system_data.asteroid_belts[i]
+		EntityRegistry.register("asteroid_belt_%d" % i, {
+			"name": belt_data.get("name", "Belt %d" % i),
+			"type": EntityRegistrySystem.EntityType.ASTEROID_BELT,
+			"orbital_radius": belt_data["orbital_radius"],
+			"orbital_parent": "star_0",
+			"radius": belt_data["width"],
+			"color": MapColors.ASTEROID_BELT,
+			"extra": {
+				"width": belt_data["width"],
 			},
 		})
 
@@ -499,7 +533,7 @@ func _on_wormhole_player_left() -> void:
 # =============================================================================
 # ASTEROID FIELD GENERATION
 # =============================================================================
-func _generate_asteroid_field(belt_data: Dictionary, system_seed: int, index: int) -> AsteroidFieldData:
+func _generate_asteroid_field(belt_data: Dictionary, index: int) -> AsteroidFieldData:
 	var field := AsteroidFieldData.new()
 	field.field_name = belt_data.get("name", "Belt")
 	field.field_id = StringName(belt_data.get("field_id", "belt_%d" % index))
@@ -508,75 +542,5 @@ func _generate_asteroid_field(belt_data: Dictionary, system_seed: int, index: in
 	field.dominant_resource = belt_data.get("dominant_resource", &"iron")
 	field.secondary_resource = belt_data.get("secondary_resource", &"copper")
 	field.rare_resource = belt_data.get("rare_resource", &"gold")
-
-	var rng := RandomNumberGenerator.new()
-	rng.seed = system_seed * 1000 + index * 31
-
-	var count: int = belt_data.get("asteroid_count", 200)
-
-	for i in count:
-		var asteroid := AsteroidData.new()
-		asteroid.id = StringName("ast_%d_%d" % [index, i])
-		asteroid.field_id = field.field_id
-
-		# Position in a ring: angle + radial offset + vertical spread
-		var angle: float = rng.randf() * TAU
-		var radial_offset: float = (rng.randf() - 0.5) * field.width
-		var orbital_r: float = field.orbital_radius + radial_offset
-		var vertical: float = (rng.randf() - 0.5) * field.width * 0.3
-		asteroid.position = Vector3(
-			cos(angle) * orbital_r,
-			vertical,
-			sin(angle) * orbital_r,
-		)
-
-		# Rotation
-		asteroid.rotation_axis = Vector3(
-			rng.randf() - 0.5,
-			rng.randf() - 0.5,
-			rng.randf() - 0.5,
-		).normalized()
-		asteroid.rotation_speed = rng.randf_range(0.02, 0.15)
-
-		# Size distribution: 60% small, 30% medium, 10% large
-		var size_roll: float = rng.randf()
-		if size_roll < 0.6:
-			asteroid.size = AsteroidData.AsteroidSize.SMALL
-		elif size_roll < 0.9:
-			asteroid.size = AsteroidData.AsteroidSize.MEDIUM
-		else:
-			asteroid.size = AsteroidData.AsteroidSize.LARGE
-
-		asteroid.visual_radius = asteroid.get_radius_for_size()
-		asteroid.health_max = asteroid.get_health_for_size()
-		asteroid.health_current = asteroid.health_max
-
-		# Non-uniform scale for rocky appearance
-		asteroid.scale_distort = Vector3(
-			rng.randf_range(0.7, 1.3),
-			rng.randf_range(0.6, 1.2),
-			rng.randf_range(0.7, 1.3),
-		)
-
-		# Resource distribution: 60% dominant, 25% secondary, 15% rare
-		var res_roll: float = rng.randf()
-		if res_roll < 0.60:
-			asteroid.primary_resource = field.dominant_resource
-		elif res_roll < 0.85:
-			asteroid.primary_resource = field.secondary_resource
-		else:
-			asteroid.primary_resource = field.rare_resource
-
-		# Color tint from resource
-		var res := MiningRegistry.get_resource(asteroid.primary_resource)
-		if res:
-			# Vary slightly for visual variety
-			asteroid.color_tint = Color(
-				res.color.r + rng.randf_range(-0.08, 0.08),
-				res.color.g + rng.randf_range(-0.08, 0.08),
-				res.color.b + rng.randf_range(-0.08, 0.08),
-			).clamp()
-
-		field.asteroids.append(asteroid)
-
+	# No pre-generated asteroids — AsteroidFieldManager generates them locally
 	return field

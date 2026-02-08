@@ -518,7 +518,7 @@ func _draw_mining_prompt(ctrl: Control) -> void:
 	# Resource name (small, dim)
 	if _mining_system and _mining_system.scan_target:
 		var res := MiningRegistry.get_resource(_mining_system.scan_target.primary_resource)
-		var res_name: String = res.resource_name.to_upper() if res else "?"
+		var res_name: String = res.display_name.to_upper() if res else "?"
 		ctrl.draw_string(font, Vector2(0, 13), res_name,
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM * Color(1, 1, 1, pulse))
 
@@ -554,7 +554,7 @@ func _draw_mining_progress(ctrl: Control) -> void:
 
 	# Resource name + extraction text
 	var res := MiningRegistry.get_resource(target.primary_resource)
-	var res_name: String = res.resource_name if res else "?"
+	var res_name: String = res.display_name if res else "?"
 	ctrl.draw_string(font, Vector2(0, 13), ("EXTRACTION: %s" % res_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 10, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
 
@@ -1063,8 +1063,7 @@ func _rebuild_weapon_panel_cache(s: Vector2) -> void:
 	if _weapon_manager == null or _ship == null or _ship.ship_data == null:
 		return
 	var hp_count := _weapon_manager.get_hardpoint_count()
-	var hp_defs: Array = _ship.ship_data.hardpoints
-	if hp_count == 0 or hp_defs.is_empty():
+	if hp_count == 0:
 		return
 
 	var sil_area_w := 140.0
@@ -1085,8 +1084,8 @@ func _rebuild_weapon_panel_cache(s: Vector2) -> void:
 		sil_2d.append(Vector2(v.x, -v.z + v.y * Y_FOLD))
 
 	var hp_2d: Array[Vector2] = []
-	for i in mini(hp_count, hp_defs.size()):
-		var p: Vector3 = hp_defs[i]["position"]
+	for i in hp_count:
+		var p: Vector3 = _weapon_manager.hardpoints[i].position
 		hp_2d.append(Vector2(p.x, -p.z + p.y * Y_FOLD))
 
 	if sil_2d.size() >= 3:
@@ -1190,8 +1189,7 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		return
 
 	var hp_count := _weapon_manager.get_hardpoint_count()
-	var hp_defs: Array = _ship.ship_data.hardpoints
-	if hp_count == 0 or hp_defs.is_empty():
+	if hp_count == 0:
 		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "AUCUNE ARME", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, COL_TEXT_DIM)
 		return
 
@@ -1864,6 +1862,7 @@ const NAV_NPC_RANGE: float = 4000.0
 const NAV_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
 const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
+const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
 const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
@@ -1877,26 +1876,45 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	var cam_pos: Vector3 = cam.global_position
 	var font := ThemeDB.fallback_font
 
-	# Stations + Star + Jump Gates from EntityRegistry
+	# Stations + Star + Jump Gates + Asteroid Belts from EntityRegistry
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
-		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE:
+		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue
 		var world_pos: Vector3
 		var node: Node3D = ent.get("node")
 		if node != null and is_instance_valid(node):
 			world_pos = node.global_position
 		else:
-			world_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			# For asteroid belts, compute a position on the ring nearest to the player
+			if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:
+				var orbit_r: float = ent.get("orbital_radius", 0.0)
+				if orbit_r <= 0.0:
+					continue
+				var player_upos_b: Array = FloatingOrigin.to_universe_pos(cam_pos)
+				var angle_to_player: float = atan2(player_upos_b[2], player_upos_b[0])
+				world_pos = FloatingOrigin.to_local_pos([
+					cos(angle_to_player) * orbit_r,
+					0.0,
+					sin(angle_to_player) * orbit_r,
+				])
+			else:
+				world_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 		var player_upos: Array = FloatingOrigin.to_universe_pos(cam_pos)
 		var dx: float = ent["pos_x"] - player_upos[0]
 		var dy: float = ent["pos_y"] - player_upos[1]
 		var dz: float = ent["pos_z"] - player_upos[2]
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
+		# For belts, show distance to nearest point on the ring
+		if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:
+			var orbit_r: float = ent.get("orbital_radius", 0.0)
+			var player_dist_from_center: float = sqrt(player_upos[0] * player_upos[0] + player_upos[2] * player_upos[2])
+			dist = absf(player_dist_from_center - orbit_r)
 		var marker_col: Color
 		match etype:
 			EntityRegistrySystem.EntityType.STATION: marker_col = NAV_COL_STATION
 			EntityRegistrySystem.EntityType.JUMP_GATE: marker_col = NAV_COL_GATE
+			EntityRegistrySystem.EntityType.ASTEROID_BELT: marker_col = NAV_COL_BELT
 			_: marker_col = NAV_COL_STAR
 		_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, ent["name"], dist, marker_col)
 
@@ -2184,6 +2202,20 @@ func _draw_radar(ctrl: Control) -> void:
 			else:
 				_draw_radar_blip(ctrl, center, radar_r, scale_factor, ship_basis, rel, col, 3.0, false)
 
+	# --- Nearby asteroid blips ---
+	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	if asteroid_mgr:
+		var nearby_asteroids := asteroid_mgr.get_asteroids_in_radius(_ship.global_position, RADAR_RANGE)
+		var ast_col := Color(NAV_COL_BELT.r, NAV_COL_BELT.g, NAV_COL_BELT.b, 0.45)
+		for ast_data in nearby_asteroids:
+			var rel: Vector3 = ast_data.position - _ship.global_position
+			var lx: float = rel.dot(ship_basis.x)
+			var lz: float = rel.dot(ship_basis.z)
+			var radar_pos := Vector2(lx, lz) * scale_factor
+			if radar_pos.length() > radar_r - 4:
+				radar_pos = radar_pos.normalized() * (radar_r - 4)
+			ctrl.draw_circle(center + radar_pos, 1.5, ast_col)
+
 	# --- Player icon (center triangle pointing up = forward) ---
 	var tri_sz := 5.0
 	ctrl.draw_colored_polygon(PackedVector2Array([
@@ -2194,6 +2226,14 @@ func _draw_radar(ctrl: Control) -> void:
 
 	# --- Header ---
 	ctrl.draw_string(font, Vector2(0, 12), "RADAR", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, COL_HEADER)
+
+	# --- Belt status indicator ---
+	if asteroid_mgr:
+		var uni_x: float = _ship.global_position.x + FloatingOrigin.origin_offset_x
+		var uni_z: float = _ship.global_position.z + FloatingOrigin.origin_offset_z
+		var belt_name: String = asteroid_mgr.get_belt_at_position(uni_x, uni_z)
+		if belt_name != "":
+			ctrl.draw_string(font, Vector2(0, s.y - 16), belt_name, HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 8, NAV_COL_BELT)
 
 	# --- Range label ---
 	ctrl.draw_string(font, Vector2(0, s.y - 4), _format_nav_distance(RADAR_RANGE), HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 9, COL_TEXT_DIM)

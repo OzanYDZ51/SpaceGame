@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spacegame
+      POSTGRES_PASSWORD: spacegame
+      POSTGRES_DB: spacegame
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      ENV: development
+      PORT: "3000"
+      DATABASE_URL: postgres://spacegame:spacegame@db:5432/spacegame?sslmode=disable
+      JWT_SECRET: dev-jwt-secret-not-for-production-use-64-chars-minimum-padding
+      SERVER_KEY: dev-server-key
+      ADMIN_KEY: dev-admin-key
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

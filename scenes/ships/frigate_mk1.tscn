@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 
 [node name="FrigateMk1" type="Node3D" unique_id=2078971498]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
 
 [node name="ModelPivot" type="Node3D" parent="." unique_id=729637411]
 

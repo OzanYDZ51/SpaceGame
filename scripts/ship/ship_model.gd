@@ -38,6 +38,7 @@ var _visual_aabb_cache: AABB
 var _visual_aabb_cached: bool = false
 
 
+
 func _ready() -> void:
 	if external_model_instance:
 		_use_external_model()

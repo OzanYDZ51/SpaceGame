@@ -8,6 +8,9 @@ extends RigidBody3D
 # Stats are data-driven from ShipData when available, falls back to Constants.
 # =============================================================================
 
+signal cruise_punch_triggered   ## Emitted when cruise enters explosive phase 2
+signal cruise_exit_triggered    ## Emitted when leaving cruise mode (for VFX)
+
 @export_group("Control")
 @export var is_player_controlled: bool = true
 @export var flight_assist: bool = true
@@ -31,19 +34,26 @@ var speed_mode: int = Constants.SpeedMode.NORMAL
 var current_speed: float = 0.0
 var throttle_input: Vector3 = Vector3.ZERO
 
-# --- Combat lock (no cruise within 30s of combat) ---
-const COMBAT_LOCK_DURATION: float = 30.0
+# --- Combat lock (no cruise while in combat) ---
+const COMBAT_LOCK_DURATION: float = 5.0
 var _last_combat_time: float = -100.0  # Time of last combat action (fire/hit)
 var combat_locked: bool = false  ## Read by HUD for warning display
+
+# --- Cruise two-phase system ---
+const CRUISE_SPOOL_DURATION: float = 10.0  ## Phase 1: slow spool-up
+const CRUISE_PUNCH_DURATION: float = 10.0  ## Phase 2: explosive acceleration
+var cruise_time: float = 0.0               ## Time spent in current cruise (read by camera for FOV)
+var _cruise_punched: bool = false
 
 # --- Autopilot ---
 var autopilot_active: bool = false
 var autopilot_target_id: String = ""
 var autopilot_target_name: String = ""
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
-const AUTOPILOT_ARRIVAL_DIST: float = 15000.0  # 15 km
-const AUTOPILOT_DECEL_DIST: float = 25000.0    # Start decelerating at 25 km
-const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98  # dot product threshold to engage cruise
+const AUTOPILOT_ARRIVAL_DIST: float = 10000.0   # 10 km — disengage autopilot
+const AUTOPILOT_DECEL_DIST: float = 30000.0     # 30 km — drop cruise, approach at 3 km/s
+const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98   # dot product threshold to engage cruise
+const AUTOPILOT_APPROACH_SPEED: float = 3000.0   # 3 km/s — fast final approach during autopilot
 
 # --- Rotation state ---
 var _target_pitch_rate: float = 0.0
@@ -182,9 +192,11 @@ func _read_input() -> void:
 	# === SPEED MODE ===
 	if Input.is_action_just_pressed("toggle_cruise"):
 		if speed_mode == Constants.SpeedMode.CRUISE:
-			speed_mode = Constants.SpeedMode.NORMAL
+			_exit_cruise()
 		elif not combat_locked:
 			speed_mode = Constants.SpeedMode.CRUISE
+			cruise_time = 0.0
+			_cruise_punched = false
 
 	if Input.is_action_pressed("boost") and speed_mode != Constants.SpeedMode.CRUISE:
 		speed_mode = Constants.SpeedMode.BOOST
@@ -299,12 +311,27 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var accel_str := (ship_data.accel_strafe if ship_data else Constants.ACCEL_STRAFE) * engine_mult * engine_accel_mult
 	var accel_vert := (ship_data.accel_vertical if ship_data else Constants.ACCEL_VERTICAL) * engine_mult * engine_accel_mult
 
-	# Cruise mode: progressive acceleration ramp (reaches cruise speed in ~15 seconds)
+	# Cruise mode: two-phase acceleration system
+	# Phase 1 (0-10s): Gentle spool-up — FTL drive charging, speed builds slowly
+	# Phase 2 (10-20s): Explosive punch — massive acceleration to max cruise speed
 	if speed_mode == Constants.SpeedMode.CRUISE and ship_data:
-		var speed_ratio := clampf(current_speed / ship_data.max_speed_cruise, 0.0, 1.0)
-		# Ramp from 1x at standstill to 50x at full cruise speed
-		var cruise_accel_mult := lerpf(1.0, 50.0, speed_ratio)
-		accel_fwd *= cruise_accel_mult
+		cruise_time += dt
+		var cruise_mult: float
+		if cruise_time <= CRUISE_SPOOL_DURATION:
+			# Phase 1: quadratic ease-in (slow start, builds momentum)
+			var t := cruise_time / CRUISE_SPOOL_DURATION
+			cruise_mult = lerpf(1.0, 15.0, t * t)
+		else:
+			# Phase 2: explosive punch — emit signal on first frame
+			if not _cruise_punched:
+				_cruise_punched = true
+				cruise_punch_triggered.emit()
+			var t2 := clampf((cruise_time - CRUISE_SPOOL_DURATION) / CRUISE_PUNCH_DURATION, 0.0, 1.0)
+			cruise_mult = lerpf(50.0, 3000.0, t2)
+		accel_fwd *= cruise_mult
+	else:
+		cruise_time = 0.0
+		_cruise_punched = false
 
 	# =========================================================================
 	# THRUST (Fix 1: throttle_input already normalized in _read_input/set_throttle)
@@ -373,6 +400,10 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	else:
 		max_speed_fwd = Constants.get_max_speed(speed_mode)
 
+	# Autopilot approach: use higher speed limit so final approach doesn't crawl
+	if autopilot_active and speed_mode == Constants.SpeedMode.NORMAL:
+		max_speed_fwd = maxf(max_speed_fwd, AUTOPILOT_APPROACH_SPEED)
+
 	var max_lat := (ship_data.max_speed_lateral if ship_data else 150.0) * engine_speed_mult
 	var max_vert := (ship_data.max_speed_vertical if ship_data else 150.0) * engine_speed_mult
 
@@ -398,6 +429,16 @@ func _fa_axis_brake(vel: float, input: float, dt: float) -> float:
 	return vel
 
 
+# === Cruise exit ===
+
+func _exit_cruise() -> void:
+	if speed_mode == Constants.SpeedMode.CRUISE:
+		speed_mode = Constants.SpeedMode.NORMAL
+		cruise_time = 0.0
+		_cruise_punched = false
+		cruise_exit_triggered.emit()
+
+
 # === Autopilot ===
 
 func engage_autopilot(target_id: String, target_name: String) -> void:
@@ -415,7 +456,7 @@ func disengage_autopilot() -> void:
 	autopilot_target_id = ""
 	autopilot_target_name = ""
 	if speed_mode == Constants.SpeedMode.CRUISE:
-		speed_mode = Constants.SpeedMode.NORMAL
+		_exit_cruise()
 
 
 func _run_autopilot() -> void:
@@ -442,7 +483,7 @@ func _run_autopilot() -> void:
 
 	# Deceleration zone — drop cruise
 	if dist < AUTOPILOT_DECEL_DIST and speed_mode == Constants.SpeedMode.CRUISE:
-		speed_mode = Constants.SpeedMode.NORMAL
+		_exit_cruise()
 
 	# Steer toward target
 	var dir: Vector3 = to_target.normalized()
@@ -455,8 +496,8 @@ func _run_autopilot() -> void:
 	var yaw_speed := ship_data.rotation_yaw_speed if ship_data else 25.0
 
 	# Proportional steering (stronger when far off, gentle when nearly aligned)
-	_target_pitch_rate = clampf(-local_dir.y * 3.0, -1.0, 1.0) * pitch_speed
-	_target_yaw_rate = clampf(local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
+	_target_pitch_rate = clampf(local_dir.y * 3.0, -1.0, 1.0) * pitch_speed
+	_target_yaw_rate = clampf(-local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
 	_target_roll_rate = 0.0
 
 	# Throttle: full forward once reasonably aligned
@@ -477,7 +518,7 @@ func mark_combat() -> void:
 	_last_combat_time = Time.get_ticks_msec() * 0.001
 	# Force exit cruise if combat starts while cruising
 	if speed_mode == Constants.SpeedMode.CRUISE:
-		speed_mode = Constants.SpeedMode.NORMAL
+		_exit_cruise()
 
 
 func _on_combat_damage(_attacker: Node3D) -> void:

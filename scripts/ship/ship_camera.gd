@@ -46,6 +46,8 @@ var _weapon_manager: WeaponManager = null
 
 var _shake_intensity: float = 0.0
 var _shake_offset: Vector3 = Vector3.ZERO
+var _fov_spike: float = 0.0  # Temporary FOV burst (decays) — cruise punch/exit effects
+const FOV_SPIKE_DECAY: float = 3.5
 
 
 func _ready() -> void:
@@ -81,10 +83,25 @@ func _find_combat_systems() -> void:
 	_weapon_manager = _ship.get_node_or_null("WeaponManager") as WeaponManager
 	if _weapon_manager and not _weapon_manager.weapon_fired.is_connected(_on_weapon_fired):
 		_weapon_manager.weapon_fired.connect(_on_weapon_fired)
+	# Cruise VFX signals
+	if not _ship.cruise_punch_triggered.is_connected(_on_cruise_punch):
+		_ship.cruise_punch_triggered.connect(_on_cruise_punch)
+	if not _ship.cruise_exit_triggered.is_connected(_on_cruise_exit):
+		_ship.cruise_exit_triggered.connect(_on_cruise_exit)
 
 
 func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
 	_shake_intensity = maxf(_shake_intensity, cam_shake_fire)
+
+
+func _on_cruise_punch() -> void:
+	_fov_spike = 18.0           # Big FOV burst outward
+	_shake_intensity = maxf(_shake_intensity, 0.6)
+
+
+func _on_cruise_exit() -> void:
+	_fov_spike = -14.0          # FOV slams inward (deceleration punch)
+	_shake_intensity = maxf(_shake_intensity, 0.45)
 
 
 func _input(event: InputEvent) -> void:
@@ -167,11 +184,13 @@ func _update_third_person(delta: float) -> void:
 		look_at(global_position + smooth_forward, ship_basis.y.lerp(Vector3.UP, 0.05))
 
 	# =========================================================================
-	# DYNAMIC FOV
+	# DYNAMIC FOV (phase-aware cruise + spike effects)
 	# =========================================================================
 	var target_fov: float = _get_fov_for_mode(_ship.speed_mode)
 	_current_fov = lerpf(_current_fov, target_fov, 2.0 * delta)
-	fov = _current_fov
+	# Cruise punch/exit spike (decays over time)
+	_fov_spike = lerpf(_fov_spike, 0.0, FOV_SPIKE_DECAY * delta)
+	fov = _current_fov + _fov_spike
 
 
 func _update_cockpit(delta: float) -> void:
@@ -184,13 +203,20 @@ func _update_cockpit(delta: float) -> void:
 	# FOV in cockpit
 	var target_fov: float = _get_fov_for_mode(_ship.speed_mode) + 5.0
 	_current_fov = lerpf(_current_fov, target_fov, 2.0 * delta)
-	fov = _current_fov
+	_fov_spike = lerpf(_fov_spike, 0.0, FOV_SPIKE_DECAY * delta)
+	fov = _current_fov + _fov_spike
 
 
 func _get_fov_for_mode(mode: int) -> float:
 	match mode:
 		Constants.SpeedMode.BOOST: return fov_boost
-		Constants.SpeedMode.CRUISE: return fov_cruise
+		Constants.SpeedMode.CRUISE:
+			# Phase 1 (spool): FOV gradually increases from base toward boost+
+			if _ship and _ship.cruise_time < _ship.CRUISE_SPOOL_DURATION:
+				var t := _ship.cruise_time / _ship.CRUISE_SPOOL_DURATION
+				return lerpf(fov_base, fov_boost + 2.0, t * t)
+			# Phase 2 (punch active): full cruise FOV
+			return fov_cruise
 	return fov_base
 
 

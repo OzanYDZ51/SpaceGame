@@ -209,7 +209,7 @@ static func _generate_stations(rng: RandomNumberGenerator, data: StarSystemData)
 
 
 static func _generate_jump_gates(rng: RandomNumberGenerator, data: StarSystemData, connections: Array[Dictionary]) -> void:
-	# Place gates beyond the outermost station orbit (reachable in ~60s at cruise speed)
+	# Place gates beyond the outermost station orbit (reachable in ~30s at cruise speed)
 	var max_station_orbit: float = 0.0
 	for station in data.stations:
 		max_station_orbit = maxf(max_station_orbit, station["orbital_radius"])

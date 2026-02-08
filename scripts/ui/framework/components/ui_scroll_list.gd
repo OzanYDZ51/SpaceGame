@@ -7,6 +7,7 @@ extends UIComponent
 # =============================================================================
 
 signal item_selected(index: int)
+signal item_double_clicked(index: int)
 
 var items: Array = []
 var row_height: float = UITheme.ROW_HEIGHT
@@ -18,6 +19,9 @@ var item_draw_callback: Callable = Callable()
 var _scroll_offset: float = 0.0
 var _hovered_index: int = -1
 var _max_scroll: float = 0.0
+var _last_click_index: int = -1
+var _last_click_time: float = 0.0
+const DOUBLE_CLICK_TIME := 0.4
 
 
 func _ready() -> void:
@@ -97,8 +101,18 @@ func _gui_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var idx: int = int((event.position.y + _scroll_offset) / row_height)
 			if idx >= 0 and idx < items.size():
-				selected_index = idx
-				item_selected.emit(idx)
+				var now := Time.get_ticks_msec() / 1000.0
+				if idx == _last_click_index and (now - _last_click_time) < DOUBLE_CLICK_TIME:
+					# Double-click
+					selected_index = idx
+					item_double_clicked.emit(idx)
+					_last_click_index = -1
+				else:
+					# Single click
+					selected_index = idx
+					item_selected.emit(idx)
+					_last_click_index = idx
+					_last_click_time = now
 				queue_redraw()
 			accept_event()
 

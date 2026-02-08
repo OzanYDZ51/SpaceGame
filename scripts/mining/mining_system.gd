@@ -63,13 +63,13 @@ func _process(delta: float) -> void:
 
 		# Check energy
 		var energy_sys := _ship.get_node_or_null("EnergySystem") as EnergySystem
-		if energy_sys and energy_sys.current_energy < mining_energy_per_second * delta:
+		if energy_sys and energy_sys.energy_current < mining_energy_per_second * delta:
 			stop_mining()
 			return
 
 		# Drain energy
 		if energy_sys:
-			energy_sys.current_energy -= mining_energy_per_second * delta
+			energy_sys.energy_current -= mining_energy_per_second * delta
 
 		# Update beam visual
 		var source_pos: Vector3 = _ship.global_position + _ship.global_transform.basis * Vector3(0, -2, -20)
@@ -152,19 +152,14 @@ func _do_mining_tick() -> void:
 			"quantity": mining_target.get_yield_per_hit(),
 		}
 
-	# Transfer to cargo
+	# Transfer to PlayerEconomy (unified resource system)
 	if not yield_data.is_empty() and yield_data.get("quantity", 0) > 0:
 		var resource_id: StringName = yield_data["resource_id"]
 		var qty: int = yield_data["quantity"]
 		var mining_res := MiningRegistry.get_resource(resource_id)
-		if mining_res and GameManager.player_cargo:
-			GameManager.player_cargo.add_item({
-				"name": mining_res.resource_name,
-				"type": "ore",
-				"quantity": qty,
-				"icon_color": mining_res.icon_color,
-			})
-			mining_progress.emit(mining_res.resource_name, qty)
+		if mining_res and GameManager.player_economy:
+			GameManager.player_economy.add_resource(resource_id, qty)
+			mining_progress.emit(mining_res.display_name, qty)
 
 	# Update scan label
 	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):

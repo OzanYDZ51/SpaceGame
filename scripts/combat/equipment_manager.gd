@@ -185,3 +185,41 @@ func _apply_module_stats() -> void:
 		_energy_sys.energy_current = minf(_energy_sys.energy_current, _energy_sys.energy_max)
 		_energy_sys.energy_regen_base = ship_data.energy_regen_rate + energy_regen_bonus
 		_energy_sys.energy_changed.emit(_energy_sys.energy_current, _energy_sys.energy_max)
+
+
+# =============================================================================
+# SERIALIZATION (for backend persistence)
+# =============================================================================
+func serialize() -> Dictionary:
+	var data: Dictionary = {}
+
+	# Hardpoints (from WeaponManager sibling)
+	var wm := get_parent().get_node_or_null("WeaponManager") as WeaponManager
+	if wm:
+		var hp_names: Array = []
+		for hp in wm.hardpoints:
+			hp_names.append(str(hp.mounted_weapon.weapon_name) if hp.mounted_weapon else "")
+		data["hardpoints"] = hp_names
+
+	# Shield
+	if equipped_shield:
+		data["shield_name"] = equipped_shield.shield_name
+	else:
+		data["shield_name"] = ""
+
+	# Engine
+	if equipped_engine:
+		data["engine_name"] = equipped_engine.engine_name
+	else:
+		data["engine_name"] = ""
+
+	# Modules
+	var modules: Array = []
+	for mod in equipped_modules:
+		if mod is ModuleResource:
+			modules.append(mod.module_name)
+		else:
+			modules.append("")
+	data["modules"] = modules
+
+	return data

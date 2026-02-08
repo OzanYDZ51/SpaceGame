@@ -77,7 +77,7 @@ static func _build_scout_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.15; d.armor_rating = 2.0
 	d.mass = 20000.0
 	d.accel_forward = 120.0; d.accel_backward = 80.0; d.accel_strafe = 70.0; d.accel_vertical = 70.0
-	d.max_speed_normal = 400.0; d.max_speed_boost = 700.0; d.max_speed_cruise = 58000.0
+	d.max_speed_normal = 400.0; d.max_speed_boost = 700.0; d.max_speed_cruise = 1_000_000.0
 	d.rotation_pitch_speed = 50.0; d.rotation_yaw_speed = 45.0; d.rotation_roll_speed = 70.0
 	d.max_speed_lateral = 200.0; d.max_speed_vertical = 200.0
 	d.rotation_damp_min_factor = 0.20
@@ -100,7 +100,7 @@ static func _build_interceptor_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.12; d.armor_rating = 3.0
 	d.mass = 30000.0
 	d.accel_forward = 100.0; d.accel_backward = 65.0; d.accel_strafe = 55.0; d.accel_vertical = 55.0
-	d.max_speed_normal = 380.0; d.max_speed_boost = 680.0; d.max_speed_cruise = 53000.0
+	d.max_speed_normal = 380.0; d.max_speed_boost = 680.0; d.max_speed_cruise = 900_000.0
 	d.rotation_pitch_speed = 45.0; d.rotation_yaw_speed = 40.0; d.rotation_roll_speed = 65.0
 	d.max_speed_lateral = 180.0; d.max_speed_vertical = 180.0
 	d.rotation_damp_min_factor = 0.18
@@ -123,7 +123,7 @@ static func _build_fighter_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 5.0
 	d.mass = 50000.0
 	d.accel_forward = 80.0; d.accel_backward = 50.0; d.accel_strafe = 40.0; d.accel_vertical = 40.0
-	d.max_speed_normal = 300.0; d.max_speed_boost = 600.0; d.max_speed_cruise = 50000.0
+	d.max_speed_normal = 300.0; d.max_speed_boost = 600.0; d.max_speed_cruise = 850_000.0
 	d.rotation_pitch_speed = 30.0; d.rotation_yaw_speed = 25.0; d.rotation_roll_speed = 50.0
 	d.max_speed_lateral = 150.0; d.max_speed_vertical = 150.0
 	d.rotation_damp_min_factor = 0.15
@@ -146,7 +146,7 @@ static func _build_bomber_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 8.0
 	d.mass = 60000.0
 	d.accel_forward = 60.0; d.accel_backward = 35.0; d.accel_strafe = 30.0; d.accel_vertical = 30.0
-	d.max_speed_normal = 220.0; d.max_speed_boost = 450.0; d.max_speed_cruise = 46000.0
+	d.max_speed_normal = 220.0; d.max_speed_boost = 450.0; d.max_speed_cruise = 780_000.0
 	d.rotation_pitch_speed = 20.0; d.rotation_yaw_speed = 18.0; d.rotation_roll_speed = 35.0
 	d.max_speed_lateral = 100.0; d.max_speed_vertical = 100.0
 	d.rotation_damp_min_factor = 0.10
@@ -169,7 +169,7 @@ static func _build_corvette_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.08; d.armor_rating = 12.0
 	d.mass = 120000.0
 	d.accel_forward = 50.0; d.accel_backward = 30.0; d.accel_strafe = 25.0; d.accel_vertical = 25.0
-	d.max_speed_normal = 200.0; d.max_speed_boost = 400.0; d.max_speed_cruise = 42000.0
+	d.max_speed_normal = 200.0; d.max_speed_boost = 400.0; d.max_speed_cruise = 700_000.0
 	d.rotation_pitch_speed = 15.0; d.rotation_yaw_speed = 12.0; d.rotation_roll_speed = 25.0
 	d.max_speed_lateral = 80.0; d.max_speed_vertical = 80.0
 	d.rotation_damp_min_factor = 0.08
@@ -192,7 +192,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.05; d.armor_rating = 20.0
 	d.mass = 300000.0
 	d.accel_forward = 35.0; d.accel_backward = 20.0; d.accel_strafe = 15.0; d.accel_vertical = 15.0
-	d.max_speed_normal = 150.0; d.max_speed_boost = 300.0; d.max_speed_cruise = 33000.0
+	d.max_speed_normal = 150.0; d.max_speed_boost = 300.0; d.max_speed_cruise = 560_000.0
 	d.rotation_pitch_speed = 10.0; d.rotation_yaw_speed = 8.0; d.rotation_roll_speed = 15.0
 	d.max_speed_lateral = 60.0; d.max_speed_vertical = 60.0
 	d.rotation_damp_min_factor = 0.07
@@ -215,7 +215,7 @@ static func _build_cruiser_mk1() -> ShipData:
 	d.shield_damage_bleedthrough = 0.03; d.armor_rating = 35.0
 	d.mass = 800000.0
 	d.accel_forward = 20.0; d.accel_backward = 12.0; d.accel_strafe = 10.0; d.accel_vertical = 10.0
-	d.max_speed_normal = 100.0; d.max_speed_boost = 200.0; d.max_speed_cruise = 25000.0
+	d.max_speed_normal = 100.0; d.max_speed_boost = 200.0; d.max_speed_cruise = 420_000.0
 	d.rotation_pitch_speed = 6.0; d.rotation_yaw_speed = 5.0; d.rotation_roll_speed = 10.0
 	d.max_speed_lateral = 40.0; d.max_speed_vertical = 40.0
 	d.rotation_damp_min_factor = 0.06

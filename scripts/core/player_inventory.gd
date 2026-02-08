@@ -297,3 +297,27 @@ func is_module_compatible(module_name: StringName, slot_size: String) -> bool:
 		return false
 	var size_str: String = ["S", "M", "L"][module.slot_size]
 	return _SIZE_ORDER.get(size_str, 0) <= _SIZE_ORDER.get(slot_size, 0)
+
+
+# =============================================================================
+# SERIALIZATION (for backend persistence)
+# =============================================================================
+func serialize() -> Array:
+	var items: Array = []
+	for name in _weapons:
+		items.append({"category": "weapon", "item_name": str(name), "quantity": _weapons[name]})
+	for name in _shields:
+		items.append({"category": "shield", "item_name": str(name), "quantity": _shields[name]})
+	for name in _engines:
+		items.append({"category": "engine", "item_name": str(name), "quantity": _engines[name]})
+	for name in _modules:
+		items.append({"category": "module", "item_name": str(name), "quantity": _modules[name]})
+	return items
+
+
+func clear_all() -> void:
+	_weapons.clear()
+	_shields.clear()
+	_engines.clear()
+	_modules.clear()
+	inventory_changed.emit()

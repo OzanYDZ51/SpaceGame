@@ -36,6 +36,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_body_hit(body: Node3D) -> void:
+	if owner_ship != null and not is_instance_valid(owner_ship):
+		owner_ship = null
 	if body == owner_ship:
 		return
 	var hit_info := _apply_damage_to(body)
@@ -54,7 +56,8 @@ func _apply_damage_to(body: Node3D) -> Dictionary:
 	if health == null:
 		return {"shield_absorbed": false}
 	var hit_dir: Vector3 = (body.global_position - global_position).normalized()
-	return health.apply_damage(damage, damage_type, hit_dir, owner_ship)
+	var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
+	return health.apply_damage(damage, damage_type, hit_dir, attacker)
 
 
 func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
@@ -80,7 +83,7 @@ func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
 
 
 func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
-	if owner_ship == null:
+	if not is_instance_valid(owner_ship):
 		return
 	var wm := owner_ship.get_node_or_null("WeaponManager") as WeaponManager
 	if wm == null:

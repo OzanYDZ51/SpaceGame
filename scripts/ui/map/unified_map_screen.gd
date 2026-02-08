@@ -189,8 +189,8 @@ func _draw_galaxy() -> void:
 	var cx: float = s.x * 0.5
 	var cy: float = s.y * 0.5
 
-	# Dark background
-	draw_rect(Rect2(Vector2.ZERO, s), UITheme.BG_DARK)
+	# Fully opaque background (no 3D scene bleed-through)
+	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 1.0))
 
 	# Title
 	_draw_galaxy_title(s, font)

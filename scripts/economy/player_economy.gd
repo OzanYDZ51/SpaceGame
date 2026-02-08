@@ -12,10 +12,17 @@ signal resources_changed(resource_id: StringName, new_amount: int)
 var credits: int = 0
 var resources: Dictionary = {}  # StringName -> int
 
-# Resource definitions (display name, color for HUD, icon shape)
+# Resource definitions (display name, color for HUD)
+# Includes all minable ores — single source of truth for the economy.
 const RESOURCE_DEFS := {
-	&"water": { "name": "EAU", "color": Color(0.3, 0.75, 1.0) },
-	&"iron": { "name": "FER", "color": Color(0.72, 0.72, 0.78) },
+	&"ice": { "name": "GLACE", "color": Color(0.6, 0.8, 1.0) },
+	&"iron": { "name": "FER", "color": Color(0.6, 0.58, 0.55) },
+	&"copper": { "name": "CUIVRE", "color": Color(0.85, 0.55, 0.25) },
+	&"titanium": { "name": "TITANE", "color": Color(0.75, 0.8, 0.9) },
+	&"gold": { "name": "OR", "color": Color(1.0, 0.85, 0.3) },
+	&"crystal": { "name": "CRISTAL", "color": Color(0.4, 0.8, 0.9) },
+	&"uranium": { "name": "URANIUM", "color": Color(0.3, 1.0, 0.4) },
+	&"platinum": { "name": "PLATINE", "color": Color(0.95, 0.95, 1.0) },
 }
 
 const CREDITS_COLOR := Color(1.0, 0.85, 0.2)

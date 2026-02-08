@@ -3,28 +3,18 @@ extends Node3D
 
 # =============================================================================
 # Space Environment Setup
-# Configures lighting + skybox per star system.
-# Skybox is handled by the Sky resource in WorldEnvironment (always at infinity).
+# Applies a SystemEnvironmentData to the scene (lighting + skybox).
+# Data resolved by SystemEnvironmentRegistry (preset .tres + overrides).
 # =============================================================================
 
 @export_group("Default Star Light")
 @export var default_star_color: Color = Color(0.95, 0.9, 0.85)
-@export var default_star_energy: float = 0.8
+@export var default_star_energy: float = 1.0
 
 @onready var star_light: DirectionalLight3D = $StarLight
 @onready var world_env: WorldEnvironment = $WorldEnvironment
 
-# Spectral class → nebula color palettes
-# Darkened nebula palettes — faint wisps, not dense clouds
-const NEBULA_PALETTES := {
-	"M": { "warm": Color(0.09, 0.015, 0.01), "cool": Color(0.025, 0.01, 0.04), "accent": Color(0.05, 0.005, 0.03) },
-	"K": { "warm": Color(0.07, 0.02, 0.015), "cool": Color(0.015, 0.015, 0.045), "accent": Color(0.04, 0.01, 0.05) },
-	"G": { "warm": Color(0.06, 0.01, 0.02), "cool": Color(0.01, 0.015, 0.05), "accent": Color(0.03, 0.005, 0.06) },
-	"F": { "warm": Color(0.04, 0.015, 0.03), "cool": Color(0.015, 0.02, 0.06), "accent": Color(0.025, 0.01, 0.07) },
-	"A": { "warm": Color(0.03, 0.02, 0.05), "cool": Color(0.01, 0.025, 0.075), "accent": Color(0.02, 0.015, 0.08) },
-	"B": { "warm": Color(0.02, 0.015, 0.07), "cool": Color(0.005, 0.02, 0.09), "accent": Color(0.015, 0.01, 0.10) },
-	"O": { "warm": Color(0.015, 0.02, 0.09), "cool": Color(0.005, 0.025, 0.11), "accent": Color(0.01, 0.015, 0.125) },
-}
+var _current_env_data: SystemEnvironmentData = null
 
 
 func _ready() -> void:
@@ -34,27 +24,39 @@ func _ready() -> void:
 		star_light.shadow_enabled = false
 
 
-func configure_for_system(system_data: StarSystemData) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = system_data.seed_value + 9999  # Offset to not correlate with planet gen
+## Called by SystemTransition when entering a new system.
+func configure_for_system(system_data: StarSystemData, system_id: int = -1) -> void:
+	_current_env_data = SystemEnvironmentRegistry.get_environment(
+		system_id,
+		system_data.star_spectral_class,
+		system_data.seed_value,
+		system_data.star_color,
+		system_data.star_luminosity,
+	)
+	apply_environment(_current_env_data)
 
-	# --- Star light (reduced for dark stylized look) ---
+
+## Apply a SystemEnvironmentData to the scene. Can also be called directly
+## with a custom resource for testing in the editor.
+func apply_environment(env_data: SystemEnvironmentData) -> void:
+	_current_env_data = env_data
+
+	# --- Star light ---
 	if star_light:
-		star_light.light_color = system_data.star_color
-		star_light.light_energy = clampf(system_data.star_luminosity * 0.3 + 0.5, 0.5, 1.8)
+		star_light.light_color = env_data.star_light_color
+		star_light.light_energy = env_data.star_light_energy
 
 	if world_env == null or world_env.environment == null:
 		return
 	var env: Environment = world_env.environment
 
-	# --- Ambient light (very low — space is dark) ---
-	var ambient_tint := system_data.star_color.lerp(Color.WHITE, 0.6)
-	env.ambient_light_color = Color(ambient_tint.r * 0.03, ambient_tint.g * 0.03, ambient_tint.b * 0.05, 1.0)
-	env.ambient_light_energy = clampf(0.06 + system_data.star_luminosity * 0.03, 0.06, 0.2)
+	# --- Ambient light ---
+	env.ambient_light_color = env_data.ambient_color
+	env.ambient_light_energy = env_data.ambient_energy
 
-	# --- Glow tweaks (subtle, only bright things glow) ---
-	env.glow_intensity = clampf(0.35 + system_data.star_luminosity * 0.08, 0.35, 0.7)
-	env.glow_bloom = clampf(0.01 + system_data.star_luminosity * 0.005, 0.01, 0.04)
+	# --- Glow ---
+	env.glow_intensity = env_data.glow_intensity
+	env.glow_bloom = env_data.glow_bloom
 
 	# --- Skybox shader parameters ---
 	if env.sky == null or env.sky.sky_material == null:
@@ -63,27 +65,17 @@ func configure_for_system(system_data: StarSystemData) -> void:
 	if sky_mat == null:
 		return
 
-	var spectral: String = system_data.star_spectral_class
-	var palette: Dictionary = NEBULA_PALETTES.get(spectral, NEBULA_PALETTES["G"])
-
-	# Nebula colors with slight randomization
-	var warm := palette["warm"] as Color
-	var cool := palette["cool"] as Color
-	var accent := palette["accent"] as Color
-	warm = warm.lerp(Color(rng.randf() * 0.1, rng.randf() * 0.05, rng.randf() * 0.05), 0.3)
-	cool = cool.lerp(Color(rng.randf() * 0.05, rng.randf() * 0.05, rng.randf() * 0.1), 0.3)
-	accent = accent.lerp(Color(rng.randf() * 0.05, rng.randf() * 0.03, rng.randf() * 0.1), 0.3)
-
-	sky_mat.set_shader_parameter("nebula_warm", Vector3(warm.r, warm.g, warm.b))
-	sky_mat.set_shader_parameter("nebula_cool", Vector3(cool.r, cool.g, cool.b))
-	sky_mat.set_shader_parameter("nebula_accent", Vector3(accent.r, accent.g, accent.b))
-	sky_mat.set_shader_parameter("nebula_intensity", rng.randf_range(0.08, 0.25))
-	sky_mat.set_shader_parameter("star_density", rng.randf_range(0.25, 0.5))
-	sky_mat.set_shader_parameter("star_brightness", rng.randf_range(2.4, 3.2))
-	sky_mat.set_shader_parameter("milky_way_intensity", rng.randf_range(0.15, 0.4))
-	sky_mat.set_shader_parameter("dust_intensity", rng.randf_range(0.45, 0.8))
-	sky_mat.set_shader_parameter("milky_way_color", Vector3(
-		0.03 + rng.randf() * 0.04,
-		0.025 + rng.randf() * 0.04,
-		0.05 + rng.randf() * 0.06,
-	))
+	sky_mat.set_shader_parameter("nebula_warm",
+		Vector3(env_data.nebula_warm.r, env_data.nebula_warm.g, env_data.nebula_warm.b))
+	sky_mat.set_shader_parameter("nebula_cool",
+		Vector3(env_data.nebula_cool.r, env_data.nebula_cool.g, env_data.nebula_cool.b))
+	sky_mat.set_shader_parameter("nebula_accent",
+		Vector3(env_data.nebula_accent.r, env_data.nebula_accent.g, env_data.nebula_accent.b))
+	sky_mat.set_shader_parameter("nebula_intensity", env_data.nebula_intensity)
+	sky_mat.set_shader_parameter("star_density", env_data.star_density)
+	sky_mat.set_shader_parameter("star_brightness", env_data.star_brightness)
+	sky_mat.set_shader_parameter("milky_way_intensity", env_data.milky_way_intensity)
+	sky_mat.set_shader_parameter("milky_way_width", env_data.milky_way_width)
+	sky_mat.set_shader_parameter("milky_way_color",
+		Vector3(env_data.milky_way_color.r, env_data.milky_way_color.g, env_data.milky_way_color.b))
+	sky_mat.set_shader_parameter("dust_intensity", env_data.dust_intensity)

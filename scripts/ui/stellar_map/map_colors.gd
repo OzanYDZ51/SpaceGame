@@ -7,7 +7,7 @@ extends RefCounted
 # =============================================================================
 
 # --- Background ---
-const BG := Color(0.0, 0.01, 0.03, 0.92)
+const BG := Color(0.0, 0.01, 0.03, 1.0)
 const BG_PANEL := Color(0.0, 0.02, 0.05, 0.85)
 
 # --- Grid ---
@@ -47,7 +47,7 @@ const NPC_SHIP := Color(0.6, 0.6, 0.7, 0.7)  # fallback
 const FILTER_ACTIVE := Color(0.15, 0.85, 1.0, 0.7)
 const FILTER_INACTIVE := Color(0.4, 0.4, 0.5, 0.3)
 
-const ASTEROID_BELT := Color(0.5, 0.4, 0.3, 0.2)
+const ASTEROID_BELT := Color(0.7, 0.55, 0.35, 0.5)
 const JUMP_GATE := Color(0.15, 0.6, 1.0, 0.9)
 
 # --- Orbit lines ---

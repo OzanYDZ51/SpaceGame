@@ -24,7 +24,7 @@ const ACCEL_VERTICAL: float = 40.0
 # Max speeds per mode
 const MAX_SPEED_NORMAL: float = 300.0
 const MAX_SPEED_BOOST: float = 600.0
-const MAX_SPEED_CRUISE: float = 50000.0  # 50 km/s — reaches gates in ~60s
+const MAX_SPEED_CRUISE: float = 1_000_000.0  # 1000 km/s — reaches gates in ~30-40s
 
 # Rotation speed in degrees/sec (mouse input scales this)
 const ROTATION_PITCH_SPEED: float = 24.0    # Heavy capital ship feel
@@ -95,6 +95,12 @@ const JUMP_GATE_RANGE: float = 120.0     # Max distance between connected system
 const FTL_FUEL_PER_UNIT: float = 1.0
 const FTL_CHARGE_TIME: float = 10.0      # Seconds to spool FTL drive
 const JUMP_GATE_TRANSIT_TIME: float = 5.0 # Seconds for gate transition
+
+# --- Backend (Go + PostgreSQL) ---
+const BACKEND_URL_DEV: String = "http://localhost:3000"
+const BACKEND_URL_PROD: String = ""             # Railway backend URL (set when deployed)
+const BACKEND_WS_DEV: String = "ws://localhost:3000/ws"
+const BACKEND_WS_PROD: String = ""              # Railway WS URL (set when deployed)
 
 # --- Network (MMORPG) ---
 const NET_DEFAULT_PORT: int = 7777
