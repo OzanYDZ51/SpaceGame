@@ -197,15 +197,6 @@ async function checkUpdatesAndPrepare() {
     gameVersionEl.classList.add(info.gameNeedsUpdate ? "warning" : (info.gameInstalled ? "ok" : ""));
   }
 
-  // Auto-update launcher
-  if (info.launcherNeedsUpdate && info.remote.launcher.download_url) {
-    setStatus("Mise a jour du launcher...");
-    showProgress("MISE A JOUR DU LAUNCHER");
-    await window.launcher.updateLauncher(info.remote.launcher.download_url);
-    setStatus("Redemarrage...");
-    return;
-  }
-
   // Auto-update game
   if (info.gameNeedsUpdate && info.remote.game.download_url) {
     setStatus("Mise a jour du jeu...");
@@ -263,20 +254,35 @@ document.getElementById("btn-minimize").addEventListener("click", () => window.l
 document.getElementById("btn-close").addEventListener("click", () => window.launcher.windowClose());
 
 // =========================================================================
-// INIT — Check saved session
+// INIT — Check launcher update FIRST, then auth
 // =========================================================================
 
 async function init() {
+  // Step 1: Check if the launcher itself needs an update (before login)
+  try {
+    const info = await window.launcher.checkUpdates();
+    launcherVersionEl.textContent = "v" + info.launcherVersion;
+
+    if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
+      setStatus("Mise a jour du launcher...");
+      showProgress("MISE A JOUR DU LAUNCHER");
+      await window.launcher.updateLauncher(info.remote.launcher.download_url);
+      setStatus("Redemarrage...");
+      return; // Launcher will restart
+    }
+  } catch {
+    // Server unreachable — continue with auth flow anyway
+  }
+
+  // Step 2: Auth flow
   const auth = await window.launcher.getSavedAuth();
   if (auth?.access_token && auth?.username) {
-    // Try to refresh token to verify it's still valid
     const refreshResult = await window.launcher.refreshToken();
     if (refreshResult.success) {
       showMain(auth.username);
       checkUpdatesAndPrepare();
       return;
     }
-    // Token expired, show login
   }
   showAuth();
 }

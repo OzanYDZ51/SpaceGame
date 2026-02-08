@@ -30,8 +30,9 @@
       "target": "nsis"
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
       "runAfterFinish": true
     },
     "files": [

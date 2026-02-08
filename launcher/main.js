@@ -266,12 +266,13 @@ ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
       mainWindow.webContents.send("progress", { phase: "launcher", received, total });
   });
 
-  // Resolve the launcher exe path so we can relaunch after silent install
+  // Resolve the launcher install dir so silent update installs to the same place
   const launcherExe = process.execPath;
+  const launcherDir = path.dirname(launcherExe);
   const bat = [
     `@echo off`,
     `timeout /t 3 /nobreak >nul`,
-    `"${installerPath}" /S`,
+    `"${installerPath}" /S /D=${launcherDir}`,
     `timeout /t 2 /nobreak >nul`,
     `start "" "${launcherExe}"`,
     `del "${batPath}"`,
