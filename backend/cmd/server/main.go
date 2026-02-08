@@ -73,7 +73,19 @@ func main() {
 	auth.Post("/refresh", middleware.RateLimit(20, time.Minute), authH.Refresh)
 	auth.Post("/logout", authH.Logout)
 
-	// JWT-protected routes
+	// Server-to-server (game server key auth) — registered BEFORE protected group
+	server := v1.Group("/server", middleware.ServerKey(cfg.ServerKey))
+	serverH := handler.NewServerHandler(authSvc, playerSvc)
+	server.Post("/validate-token", serverH.ValidateToken)
+	server.Post("/save-state", serverH.SaveState)
+
+	// Admin — registered BEFORE protected group
+	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))
+	adminH := handler.NewAdminHandler(playerRepo, clanRepo, wsHub)
+	admin.Get("/stats", adminH.Stats)
+	admin.Post("/announce", adminH.Announce)
+
+	// JWT-protected routes (catch-all — must be LAST)
 	protected := v1.Group("", middleware.Auth(cfg.JWTSecret))
 
 	// Player
@@ -99,18 +111,6 @@ func main() {
 	clans.Get("/:id/activity", clanH.GetActivity)
 	clans.Get("/:id/diplomacy", clanH.GetDiplomacy)
 	clans.Put("/:id/diplomacy", clanH.SetDiplomacy)
-
-	// Server-to-server (game server key auth)
-	server := v1.Group("/server", middleware.ServerKey(cfg.ServerKey))
-	serverH := handler.NewServerHandler(authSvc, playerSvc)
-	server.Post("/validate-token", serverH.ValidateToken)
-	server.Post("/save-state", serverH.SaveState)
-
-	// Admin
-	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))
-	adminH := handler.NewAdminHandler(playerRepo, clanRepo, wsHub)
-	admin.Get("/stats", adminH.Stats)
-	admin.Post("/announce", adminH.Announce)
 
 	// WebSocket
 	wsH := handler.NewWSHandler(wsHub, cfg.JWTSecret)

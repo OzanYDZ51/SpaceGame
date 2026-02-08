@@ -32,9 +32,9 @@ func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> 
 	# Position encounters near the first station if available
 	var base_pos := Vector3(500, 0, -1500)
 	if system_data.stations.size() > 0:
-		var st: Dictionary = system_data.stations[0]
-		var orbit_r: float = st["orbital_radius"]
-		var angle: float = st.get("orbital_angle", 0.0)
+		var st: StationData = system_data.stations[0]
+		var orbit_r: float = st.orbital_radius
+		var angle: float = st.orbital_angle
 		base_pos = Vector3(cos(angle) * orbit_r + 500, 100, sin(angle) * orbit_r - 1500)
 
 	match danger_level:

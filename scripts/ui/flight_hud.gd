@@ -41,7 +41,7 @@ var _system_transition: SystemTransition = null
 var _mining_system: MiningSystem = null
 var _gate_prompt: Control = null
 var _wormhole_prompt: Control = null
-var _mining_prompt: Control = null
+var _mining_heat: Control = null
 var _mining_progress: Control = null
 var _economy_panel: Control = null
 var _player_economy: PlayerEconomy = null
@@ -208,10 +208,10 @@ func _build_hud() -> void:
 	_wormhole_prompt.visible = false
 	add_child(_wormhole_prompt)
 
-	_mining_prompt = _make_ctrl(0.5, 0.5, 0.5, 0.5, -120, 215, 120, 250)
-	_mining_prompt.draw.connect(_draw_mining_prompt.bind(_mining_prompt))
-	_mining_prompt.visible = false
-	add_child(_mining_prompt)
+	_mining_heat = _make_ctrl(0.5, 0.5, 0.5, 0.5, -100, 215, 100, 250)
+	_mining_heat.draw.connect(_draw_mining_heat.bind(_mining_heat))
+	_mining_heat.visible = false
+	add_child(_mining_heat)
 
 	_mining_progress = _make_ctrl(0.5, 0.5, 0.5, 0.5, -140, 255, 140, 290)
 	_mining_progress.draw.connect(_draw_mining_progress.bind(_mining_progress))
@@ -340,11 +340,11 @@ func _process(delta: float) -> void:
 		if show_wh:
 			_wormhole_prompt.queue_redraw()
 
-	if _mining_prompt:
-		var show_mine: bool = _mining_system != null and _mining_system.scan_target != null and not _mining_system.is_mining
-		_mining_prompt.visible = show_mine
-		if show_mine:
-			_mining_prompt.queue_redraw()
+	if _mining_heat:
+		var show_heat: bool = _mining_system != null and _mining_system.heat > 0.01
+		_mining_heat.visible = show_heat
+		if show_heat:
+			_mining_heat.queue_redraw()
 
 	if _mining_progress:
 		var show_prog: bool = _mining_system != null and _mining_system.is_mining
@@ -501,37 +501,56 @@ func _draw_wormhole_prompt(ctrl: Control) -> void:
 
 
 # =============================================================================
-# MINING PROMPT
+# MINING HEAT BAR
 # =============================================================================
-func _draw_mining_prompt(ctrl: Control) -> void:
+func _draw_mining_heat(ctrl: Control) -> void:
+	if _mining_system == null:
+		return
 	var s := ctrl.size
 	var font := ThemeDB.fallback_font
-	var cx: float = s.x * 0.5
-	var pulse: float = 0.7 + sin(_pulse_t * 3.0) * 0.3
+	var heat_ratio: float = _mining_system.heat
+	var overheated: bool = _mining_system.is_overheated
 
-	# Background (green mining tint)
-	var mine_col := Color(0.2, 1.0, 0.5)
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
-	ctrl.draw_rect(bg_rect, Color(0.0, 0.06, 0.02, 0.6 * pulse))
-	ctrl.draw_rect(bg_rect, Color(mine_col.r, mine_col.g, mine_col.b, 0.3 * pulse), false, 1.0)
+	# Colors: green → yellow → orange → red as heat rises
+	var heat_col: Color
+	if heat_ratio < 0.5:
+		heat_col = Color(0.2, 1.0, 0.5).lerp(Color(1.0, 0.9, 0.2), heat_ratio * 2.0)
+	else:
+		heat_col = Color(1.0, 0.9, 0.2).lerp(Color(1.0, 0.2, 0.1), (heat_ratio - 0.5) * 2.0)
 
-	# Resource name (small, dim)
-	if _mining_system and _mining_system.scan_target:
-		var res := MiningRegistry.get_resource(_mining_system.scan_target.primary_resource)
-		var res_name: String = res.display_name.to_upper() if res else "?"
-		ctrl.draw_string(font, Vector2(0, 13), res_name,
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM * Color(1, 1, 1, pulse))
+	var pulse: float = 1.0
+	if overheated:
+		pulse = 0.5 + sin(_pulse_t * 8.0) * 0.5  # fast blink when overheated
 
-	# "MINAGE  [B]" main text
-	var text_col := Color(mine_col.r, mine_col.g, mine_col.b, pulse)
-	ctrl.draw_string(font, Vector2(0, 28), "MINAGE  [B]",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+	# Background
+	var bg_rect := Rect2(Vector2(6, 0), Vector2(s.x - 12, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.02, 0.02, 0.02, 0.6))
+	ctrl.draw_rect(bg_rect, Color(heat_col.r, heat_col.g, heat_col.b, 0.25 * pulse), false, 1.0)
 
-	# Small diamonds flanking the text
-	var tw: float = font.get_string_size("MINAGE  [B]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	var dy: float = 24.0
-	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
-	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+	# Label
+	var label: String = "SURCHAUFFE" if overheated else "CHALEUR"
+	ctrl.draw_string(font, Vector2(0, 11), label,
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse))
+
+	# Heat bar
+	var bar_x: float = 12.0
+	var bar_y: float = 16.0
+	var bar_w: float = s.x - 24.0
+	var bar_h: float = 8.0
+
+	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.08, 0.08, 0.08, 0.8))
+	var fill_w: float = (bar_w - 2) * heat_ratio
+	var fill_col := Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse)
+	ctrl.draw_rect(Rect2(bar_x + 1, bar_y + 1, fill_w, bar_h - 2), fill_col)
+	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(heat_col.r, heat_col.g, heat_col.b, 0.4), false, 1.0)
+
+	# Overheat threshold marker
+	var thresh_x: float = bar_x + 1 + (bar_w - 2) * MiningSystem.OVERHEAT_THRESHOLD
+	ctrl.draw_line(Vector2(thresh_x, bar_y), Vector2(thresh_x, bar_y + bar_h), Color(1, 1, 1, 0.2), 1.0)
+
+	# Percentage
+	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 10), "%d%%" % int(heat_ratio * 100.0),
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 8, COL_TEXT_DIM)
 
 
 # =============================================================================
@@ -1882,9 +1901,9 @@ func _draw_nav_markers(ctrl: Control) -> void:
 		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue
 		var world_pos: Vector3
-		var node: Node3D = ent.get("node")
-		if node != null and is_instance_valid(node):
-			world_pos = node.global_position
+		var node_ref = ent.get("node")
+		if node_ref != null and is_instance_valid(node_ref):
+			world_pos = (node_ref as Node3D).global_position
 		else:
 			# For asteroid belts, compute a position on the ring nearest to the player
 			if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:

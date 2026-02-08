@@ -30,6 +30,10 @@ var _info_visible: bool = false
 var _info_system: Dictionary = {}
 var _galaxy_dirty: bool = true
 
+# Resolved StarSystemData for the selected system (cached)
+var _resolved_data: StarSystemData = null
+var _resolved_system_id: int = -1
+
 # --- Constants ---
 const ZOOM_MIN: float = 0.3
 const ZOOM_MAX: float = 8.0
@@ -96,6 +100,8 @@ func _activate_system_view() -> void:
 	current_view = ViewMode.SYSTEM
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_is_panning = false
+	# Force redraw to clear stale galaxy rendering (opaque background)
+	queue_redraw()
 	if stellar_map:
 		if not stellar_map._is_open:
 			stellar_map.open()
@@ -112,8 +118,11 @@ func _activate_galaxy_view() -> void:
 	_hovered_system = -1
 	_info_visible = false
 	_is_panning = false
+	_resolved_data = null
+	_resolved_system_id = -1
 	# Center on current system
 	_center_galaxy_on_current()
+	_galaxy_dirty = true
 	# Fit galaxy in view
 	if galaxy and size.x > 0:
 		var fit: float = (size.x * 0.35) / Constants.GALAXY_RADIUS
@@ -161,9 +170,9 @@ func _process(delta: float) -> void:
 
 	# Full opacity, no transition
 	modulate.a = 1.0
-	if _galaxy_dirty:
-		queue_redraw()
-		_galaxy_dirty = false
+	# Always redraw while open for real-time updates
+	queue_redraw()
+	_galaxy_dirty = false
 
 
 # =============================================================================
@@ -407,9 +416,33 @@ func _draw_current_system_marker(cx: float, cy: float) -> void:
 func _draw_info_panel(s: Vector2, font: Font) -> void:
 	var current_id: int = system_transition.current_system_id if system_transition else -1
 	var panel_w: float = 280.0
-	var panel_h: float = 240.0
 	var panel_x: float = s.x - panel_w - UITheme.MARGIN_SCREEN
 	var panel_y: float = UITheme.MARGIN_SCREEN + 50
+	var line_h: float = UITheme.ROW_HEIGHT
+	var kv_w: float = panel_w - 28
+
+	# --- Calculate dynamic panel height ---
+	var row_count: int = 7  # name + class + faction + danger + station + portals + visited
+	var connections: Array = _info_system.get("connections", [])
+	if connections.size() > 0 and _cam_zoom > 1.0:
+		row_count += 1 + connections.size()  # header + each connection
+	# Resolved data rows
+	if _resolved_data:
+		row_count += 1  # separator
+		if _resolved_data.planets.size() > 0:
+			row_count += 1  # planet count
+		if _resolved_data.stations.size() > 0:
+			row_count += _resolved_data.stations.size()  # each station
+		if _resolved_data.asteroid_belts.size() > 0:
+			row_count += 1  # belt header
+			row_count += mini(_resolved_data.asteroid_belts.size(), 5)  # each belt (cap at 5)
+	var sys_id: int = _info_system.get("id", -1)
+	if sys_id != current_id and sys_id >= 0 and current_id >= 0:
+		var cur_sys: Dictionary = galaxy.get_system(current_id)
+		if not cur_sys.is_empty() and sys_id in cur_sys["connections"]:
+			row_count += 1
+
+	var panel_h: float = 50.0 + row_count * line_h
 	var rect := Rect2(panel_x, panel_y, panel_w, panel_h)
 
 	# Background + border
@@ -426,8 +459,6 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 
 	var x: float = panel_x + 14
 	var y: float = panel_y + 24
-	var line_h: float = UITheme.ROW_HEIGHT
-	var kv_w: float = panel_w - 28
 
 	# System name
 	draw_string(font, Vector2(x, y), _info_system.get("name", "Unknown"), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
@@ -458,18 +489,57 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 	y += line_h
 
 	# Connections
-	var connections: Array = _info_system.get("connections", [])
 	_draw_kv(font, x, y, kv_w, "PORTAILS", str(connections.size()))
 	y += line_h
 
 	# Visited
-	var sys_id: int = _info_system.get("id", -1)
 	var visited: bool = system_transition != null and system_transition.has_visited(sys_id)
 	_draw_kv(font, x, y, kv_w, "VISITE", "Oui" if visited or sys_id == current_id else "Non")
-	y += line_h + 8
+	y += line_h
+
+	# --- Resolved StarSystemData details ---
+	if _resolved_data:
+		y += 4
+		draw_line(Vector2(x, y), Vector2(panel_x + panel_w - 14, y), UITheme.BORDER, 1.0)
+		y += line_h
+
+		# Planets
+		if _resolved_data.planets.size() > 0:
+			var planet_types: Dictionary = {}
+			for pd in _resolved_data.planets:
+				var pt: String = pd.get_type_string()
+				planet_types[pt] = planet_types.get(pt, 0) + 1
+			var parts: Array[String] = []
+			for pt_name in planet_types:
+				parts.append("%d %s" % [planet_types[pt_name], _planet_type_short(pt_name)])
+			_draw_kv(font, x, y, kv_w, "PLANÈTES", "%d  (%s)" % [_resolved_data.planets.size(), ", ".join(parts)])
+			y += line_h
+
+		# Stations with types
+		if _resolved_data.stations.size() > 0:
+			for sd in _resolved_data.stations:
+				var type_label: String = _station_type_label(sd.get_type_string())
+				_draw_kv(font, x, y, kv_w, "STATION", "%s  [%s]" % [sd.station_name, type_label])
+				y += line_h
+
+		# Asteroid belts with resources
+		if _resolved_data.asteroid_belts.size() > 0:
+			draw_string(font, Vector2(x, y), "Ceintures d'astéroides: %d" % _resolved_data.asteroid_belts.size(), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			y += line_h - 2
+			var belt_count: int = 0
+			for bd in _resolved_data.asteroid_belts:
+				if belt_count >= 5:
+					break
+				var res_label: String = _resource_short(String(bd.dominant_resource))
+				if bd.secondary_resource != &"":
+					res_label += " + " + _resource_short(String(bd.secondary_resource))
+				draw_string(font, Vector2(x + 8, y), "%s  [%s]" % [bd.belt_name, res_label], HORIZONTAL_ALIGNMENT_LEFT, kv_w - 8, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+				y += line_h - 2
+				belt_count += 1
 
 	# Connected system names
 	if connections.size() > 0 and _cam_zoom > 1.0:
+		y += 4
 		draw_string(font, Vector2(x, y), "Connexions:", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		y += 14
 		for conn_id in connections:
@@ -492,6 +562,38 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 func _draw_kv(font: Font, x: float, y: float, w: float, key: String, value: String) -> void:
 	draw_string(font, Vector2(x, y), key, HORIZONTAL_ALIGNMENT_LEFT, w * 0.4, UITheme.FONT_SIZE_BODY, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(x + w * 0.4, y), value, HORIZONTAL_ALIGNMENT_LEFT, w * 0.6, UITheme.FONT_SIZE_BODY, UITheme.LABEL_VALUE)
+
+
+func _planet_type_short(pt: String) -> String:
+	match pt:
+		"rocky": return "Roc."
+		"lava": return "Volc."
+		"ocean": return "Océan."
+		"gas_giant": return "Géante"
+		"ice": return "Glace"
+	return pt
+
+
+func _station_type_label(stype: String) -> String:
+	match stype:
+		"repair": return "Réparation"
+		"trade": return "Commerce"
+		"military": return "Militaire"
+		"mining": return "Extraction"
+	return stype.capitalize()
+
+
+func _resource_short(res_id: String) -> String:
+	match res_id:
+		"ice": return "Glace"
+		"iron": return "Fer"
+		"copper": return "Cuivre"
+		"titanium": return "Titane"
+		"gold": return "Or"
+		"crystal": return "Cristal"
+		"uranium": return "Uranium"
+		"platinum": return "Platine"
+	return res_id.capitalize()
 
 
 func _draw_galaxy_legend(s: Vector2, font: Font) -> void:
@@ -612,10 +714,42 @@ func _handle_click(screen_pos: Vector2) -> void:
 		_selected_system = hit
 		_info_system = galaxy.get_system(hit)
 		_info_visible = true
+		_resolve_system_data(hit)
 	else:
 		_selected_system = -1
 		_info_visible = false
+		_resolved_data = null
+		_resolved_system_id = -1
 	_galaxy_dirty = true
+
+
+func _resolve_system_data(system_id: int) -> void:
+	if system_id == _resolved_system_id and _resolved_data != null:
+		return
+	# Check override first
+	var override := SystemDataRegistry.get_override(system_id)
+	if override:
+		_resolved_data = override
+		_resolved_system_id = system_id
+		return
+	# Generate from seed
+	var sys: Dictionary = galaxy.get_system(system_id)
+	if sys.is_empty():
+		_resolved_data = null
+		_resolved_system_id = -1
+		return
+	var connections: Array[Dictionary] = []
+	for conn_id in sys["connections"]:
+		var conn_sys: Dictionary = galaxy.get_system(conn_id)
+		if not conn_sys.is_empty():
+			connections.append({
+				"target_id": conn_id,
+				"target_name": conn_sys["name"],
+			})
+	_resolved_data = SystemGenerator.generate(sys["seed"], connections)
+	_resolved_data.system_name = sys["name"]
+	_resolved_data.star_name = sys["name"]
+	_resolved_system_id = system_id
 
 
 func _get_system_at(screen_pos: Vector2) -> int:

@@ -6,9 +6,6 @@ extends Node
 # Autoload: ApiClient
 # =============================================================================
 
-signal request_completed(result: Dictionary)
-signal request_failed(error: String, status_code: int)
-
 const POOL_SIZE: int = 4
 const REQUEST_TIMEOUT: float = 10.0
 

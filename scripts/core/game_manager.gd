@@ -110,8 +110,6 @@ func _setup_input_actions() -> void:
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
 		"toggle_weapon_4": KEY_4,
-		# Mining
-		"mine": KEY_B,
 	}
 
 	# Mouse button actions (separate because they use InputEventMouseButton)
@@ -297,6 +295,11 @@ func _initialize_game() -> void:
 	_mining_system.name = "MiningSystem"
 	player_ship.add_child(_mining_system)
 
+	# Wire mining system to weapon manager (for hardpoint positions)
+	var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm:
+		_mining_system.set_weapon_manager(wm)
+
 	# Wire mining system to HUD
 	if hud:
 		hud.set_mining_system(_mining_system)
@@ -420,12 +423,11 @@ func _load_backend_state() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		# Save before quit
+		# Save before quit (no await — _notification must not be a coroutine)
 		if AuthManager.is_authenticated:
 			SaveManager.trigger_save("game_closing")
-			# Give a moment for the save to start
-			await get_tree().create_timer(0.5).timeout
-		get_tree().quit()
+		# Quit is deferred so the save request has time to start
+		get_tree().quit.call_deferred()
 
 
 func _setup_visual_effects() -> void:
@@ -749,16 +751,6 @@ func _input(event: InputEvent) -> void:
 				_open_loot_screen(crate)
 			get_viewport().set_input_as_handled()
 			return
-
-	# Mining with B key (hold to mine, release to stop)
-	if event.is_action_pressed("mine") and current_state == GameState.PLAYING:
-		if _mining_system and _mining_system.scan_target != null:
-			_mining_system.start_mining()
-			get_viewport().set_input_as_handled()
-			return
-	if event.is_action_released("mine"):
-		if _mining_system and _mining_system.is_mining:
-			_mining_system.stop_mining()
 
 	# Jump gate with J key
 	if event.is_action_pressed("gate_jump") and current_state == GameState.PLAYING:
@@ -1265,6 +1257,10 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 		hud.set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
 		hud.set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
 		hud.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+
+	# Rewire mining system to new weapon manager
+	if _mining_system:
+		_mining_system.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
 
 	# Reconnect player death signal
 	if health:

@@ -73,7 +73,6 @@ func _create_transition_overlay() -> void:
 	_transition_overlay.modulate.a = 0.0
 	_transition_overlay.visible = false
 	_transition_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Will be added to UI layer by GameManager
 
 
 func get_transition_overlay() -> ColorRect:
@@ -133,33 +132,36 @@ func _execute_transition() -> void:
 	# 4. Reset floating origin
 	FloatingOrigin.reset_origin()
 
-	# 5. Generate new system
+	# 5. Resolve system data: override .tres > procedural
 	var galaxy_sys: Dictionary = galaxy.get_system(_pending_target_id)
-	var connections := _build_connection_list(_pending_target_id)
-	current_system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
-
-	# Override system name with galaxy-generated name (consistent across sessions)
-	current_system_data.system_name = galaxy_sys["name"]
-	current_system_data.star_name = galaxy_sys["name"]
+	var override_data := SystemDataRegistry.get_override(_pending_target_id)
+	if override_data:
+		current_system_data = override_data
+	else:
+		var connections := _build_connection_list(_pending_target_id)
+		current_system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
+		# Override names with galaxy-consistent names
+		current_system_data.system_name = galaxy_sys["name"]
+		current_system_data.star_name = galaxy_sys["name"]
 
 	current_system_id = _pending_target_id
 
-	# 5. Populate scene
+	# 6. Populate scene
 	_populate_system()
 
-	# 6. Position player
+	# 7. Position player
 	_position_player()
 
-	# 7. Configure environment
+	# 8. Configure environment
 	_configure_environment()
 
-	# 8. Register entities
+	# 9. Register entities
 	_register_system_entities()
 
-	# 9. Spawn encounters based on danger level
+	# 10. Spawn encounters based on danger level
 	_spawn_encounters(galaxy_sys["danger_level"])
 
-	# 10. Notify
+	# 11. Notify
 	system_loaded.emit(current_system_id)
 
 	# If we were in a fade transition, start fade in
@@ -202,7 +204,6 @@ func _cleanup_current_system() -> void:
 
 	# Remove dynamically spawned children of Universe (stations, etc.)
 	for child in universe.get_children():
-		# Don't free the MultiMesh instance (child of Universe, managed by LOD manager)
 		if child.name == "LOD2_MultiMesh":
 			continue
 		child.queue_free()
@@ -250,29 +251,28 @@ func _populate_system() -> void:
 
 	# Spawn stations
 	for i in current_system_data.stations.size():
-		var station_data: Dictionary = current_system_data.stations[i]
+		var sd: StationData = current_system_data.stations[i]
 		var station := SpaceStation.new()
 		station.name = "Station_%d" % i
-		station.station_name = station_data["name"]
+		station.station_name = sd.station_name
 
-		# Position station in orbit (use orbital angle for initial position)
-		var orbit_r: float = station_data["orbital_radius"]
-		var angle: float = station_data.get("orbital_angle", 0.0)
+		var orbit_r: float = sd.orbital_radius
+		var angle: float = sd.orbital_angle
 		station.transform = Transform3D.IDENTITY
 		station.position = Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
-		station.scale = Vector3(100, 100, 100)  # Match original AlphaStation scale
+		station.scale = Vector3(100, 100, 100)
 
 		universe.add_child(station)
 
 	# Spawn jump gates
 	for i in current_system_data.jump_gates.size():
-		var gate_data: Dictionary = current_system_data.jump_gates[i]
+		var gd: JumpGateData = current_system_data.jump_gates[i]
 		var gate := JumpGate.new()
 		gate.name = "JumpGate_%d" % i
-		gate.setup(gate_data)
 		gate.player_nearby.connect(_on_gate_player_nearby)
 		gate.player_left.connect(_on_gate_player_left)
 		universe.add_child(gate)
+		gate.setup_from_data(gd)
 
 	# Spawn wormhole gate if this system has one
 	_wormhole_nearby = false
@@ -280,13 +280,11 @@ func _populate_system() -> void:
 	var galaxy_sys: Dictionary = galaxy.get_system(current_system_id)
 	if not galaxy_sys.is_empty() and galaxy_sys.has("wormhole_target"):
 		var wh_data: Dictionary = galaxy_sys["wormhole_target"]
-		# Only spawn if routing info is available (filled by server config)
 		if wh_data.has("seed"):
 			var wormhole := WormholeGate.new()
 			wormhole.name = "WormholeGate"
-			# Position at the opposite edge from the system center
-			var sys_angle: float = atan2(galaxy_sys["y"], galaxy_sys["x"]) + PI  # Opposite side
-			var gate_dist: float = 25_000_000.0  # 25 Mm from center
+			var sys_angle: float = atan2(galaxy_sys["y"], galaxy_sys["x"]) + PI
+			var gate_dist: float = 25_000_000.0
 			wormhole.global_position = Vector3(
 				cos(sys_angle) * gate_dist,
 				0,
@@ -305,7 +303,6 @@ func _populate_system() -> void:
 			wormhole.player_left_wormhole.connect(_on_wormhole_player_left)
 			universe.add_child(wormhole)
 
-			# Register in EntityRegistry
 			EntityRegistry.register("wormhole_0", {
 				"name": "Wormhole → " + wh_data.get("name", "?"),
 				"type": EntityRegistrySystem.EntityType.JUMP_GATE,
@@ -317,16 +314,16 @@ func _populate_system() -> void:
 				"color": Color(0.7, 0.2, 1.0),
 			})
 
-	# Spawn asteroid fields (metadata only — asteroids generated locally by manager)
+	# Spawn asteroid fields
 	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
 	if asteroid_mgr:
 		asteroid_mgr.set_system_seed(current_system_data.seed_value)
 		for i in current_system_data.asteroid_belts.size():
-			var belt: Dictionary = current_system_data.asteroid_belts[i]
+			var belt: AsteroidBeltData = current_system_data.asteroid_belts[i]
 			var field := _generate_asteroid_field(belt, i)
 			asteroid_mgr.populate_field(field)
 
-	# Spawn star impostor (child of main_scene, NOT Universe — avoids FloatingOrigin shift)
+	# Spawn star impostor (child of main_scene, NOT Universe)
 	_active_star = SystemStar.new()
 	_active_star.name = "SystemStar"
 	_active_star.setup(
@@ -342,33 +339,29 @@ func _position_player() -> void:
 	if ship == null:
 		return
 
-	# Spawn near first station or at origin
 	if current_system_data.stations.size() > 0:
-		var st: Dictionary = current_system_data.stations[0]
-		var orbit_r: float = st["orbital_radius"]
-		var angle: float = st.get("orbital_angle", 0.0)
+		var st: StationData = current_system_data.stations[0]
+		var orbit_r: float = st.orbital_radius
+		var angle: float = st.orbital_angle
 		var station_pos := Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
-		var offset := Vector3(0, 100, 500)  # Offset from station (clear of model)
+		var offset := Vector3(0, 100, 500)
 		ship.global_position = station_pos + offset
 	else:
 		ship.global_position = Vector3(0, 0, 500)
 
-	# Reset velocity
 	if ship is RigidBody3D:
 		ship.linear_velocity = Vector3.ZERO
 		ship.angular_velocity = Vector3.ZERO
 
 
 func _configure_environment() -> void:
-	# Find the SpaceEnvironment (root of main scene has the script)
 	var main: Node3D = GameManager.main_scene
 	if main is SpaceEnvironment:
 		main.configure_for_system(current_system_data, current_system_id)
 
 
 func _register_system_entities() -> void:
-	# Star — no "node" ref: SystemStar is an impostor that follows the camera,
-	# so its global_position ≠ universe (0,0,0). Keep pos fixed at origin.
+	# Star
 	EntityRegistry.register("star_0", {
 		"name": current_system_data.star_name,
 		"type": EntityRegistrySystem.EntityType.STAR,
@@ -386,70 +379,78 @@ func _register_system_entities() -> void:
 
 	# Planets
 	for i in current_system_data.planets.size():
-		var planet_data: Dictionary = current_system_data.planets[i]
+		var pd: PlanetData = current_system_data.planets[i]
 		EntityRegistry.register("planet_%d" % i, {
-			"name": planet_data["name"],
+			"name": pd.planet_name,
 			"type": EntityRegistrySystem.EntityType.PLANET,
-			"orbital_radius": planet_data["orbital_radius"],
-			"orbital_period": planet_data["orbital_period"],
-			"orbital_angle": planet_data.get("orbital_angle", 0.0),
+			"orbital_radius": pd.orbital_radius,
+			"orbital_period": pd.orbital_period,
+			"orbital_angle": pd.orbital_angle,
 			"orbital_parent": "star_0",
-			"radius": planet_data["radius"],
-			"color": planet_data["color"],
+			"radius": pd.radius,
+			"color": pd.color,
 			"extra": {
-				"planet_type": planet_data["type"],
-				"has_rings": planet_data.get("has_rings", false),
+				"planet_type": pd.get_type_string(),
+				"has_rings": pd.has_rings,
 			},
 		})
 
 	# Stations
 	var universe := GameManager.universe_node
 	for i in current_system_data.stations.size():
-		var station_data: Dictionary = current_system_data.stations[i]
+		var sd: StationData = current_system_data.stations[i]
 		var node: Node3D = universe.get_node_or_null("Station_%d" % i) if universe else null
 		EntityRegistry.register("station_%d" % i, {
-			"name": station_data["name"],
+			"name": sd.station_name,
 			"type": EntityRegistrySystem.EntityType.STATION,
 			"node": node,
-			"orbital_radius": station_data["orbital_radius"],
-			"orbital_period": station_data["orbital_period"],
-			"orbital_angle": station_data.get("orbital_angle", 0.0),
+			"orbital_radius": sd.orbital_radius,
+			"orbital_period": sd.orbital_period,
+			"orbital_angle": sd.orbital_angle,
 			"orbital_parent": "star_0",
 			"radius": 100.0,
 			"color": MapColors.STATION_TEAL,
+			"extra": {
+				"station_type": sd.get_type_string(),
+			},
 		})
 
 	# Jump gates
 	for i in current_system_data.jump_gates.size():
-		var gate_data: Dictionary = current_system_data.jump_gates[i]
+		var gd: JumpGateData = current_system_data.jump_gates[i]
 		var gate_node: Node3D = universe.get_node_or_null("JumpGate_%d" % i) if universe else null
 		EntityRegistry.register("jump_gate_%d" % i, {
-			"name": gate_data["name"],
+			"name": gd.gate_name,
 			"type": EntityRegistrySystem.EntityType.JUMP_GATE,
 			"node": gate_node,
-			"pos_x": gate_data["pos_x"],
-			"pos_y": gate_data["pos_y"],
-			"pos_z": gate_data["pos_z"],
+			"pos_x": gd.pos_x,
+			"pos_y": gd.pos_y,
+			"pos_z": gd.pos_z,
 			"radius": 55.0,
 			"color": MapColors.JUMP_GATE,
 			"extra": {
-				"target_system_id": gate_data["target_system_id"],
-				"target_system_name": gate_data["target_system_name"],
+				"target_system_id": gd.target_system_id,
+				"target_system_name": gd.target_system_name,
 			},
 		})
 
 	# Asteroid belts
 	for i in current_system_data.asteroid_belts.size():
-		var belt_data: Dictionary = current_system_data.asteroid_belts[i]
+		var bd: AsteroidBeltData = current_system_data.asteroid_belts[i]
 		EntityRegistry.register("asteroid_belt_%d" % i, {
-			"name": belt_data.get("name", "Belt %d" % i),
+			"name": bd.belt_name,
 			"type": EntityRegistrySystem.EntityType.ASTEROID_BELT,
-			"orbital_radius": belt_data["orbital_radius"],
+			"orbital_radius": bd.orbital_radius,
 			"orbital_parent": "star_0",
-			"radius": belt_data["width"],
+			"radius": bd.width,
 			"color": MapColors.ASTEROID_BELT,
 			"extra": {
-				"width": belt_data["width"],
+				"width": bd.width,
+				"dominant_resource": String(bd.dominant_resource),
+				"secondary_resource": String(bd.secondary_resource),
+				"rare_resource": String(bd.rare_resource),
+				"zone": bd.zone,
+				"asteroid_count": bd.asteroid_count,
 			},
 		})
 
@@ -480,7 +481,7 @@ func has_visited(system_id: int) -> bool:
 	return _system_states.has(system_id) and _system_states[system_id].get("visited", false)
 
 
-# === Gate proximity API (used by GameManager for J key, FlightHUD for prompt) ===
+# === Gate proximity API ===
 
 func can_gate_jump() -> bool:
 	return _active_gate_target_id >= 0 and not _is_transitioning
@@ -533,14 +534,13 @@ func _on_wormhole_player_left() -> void:
 # =============================================================================
 # ASTEROID FIELD GENERATION
 # =============================================================================
-func _generate_asteroid_field(belt_data: Dictionary, index: int) -> AsteroidFieldData:
+func _generate_asteroid_field(belt: AsteroidBeltData, index: int) -> AsteroidFieldData:
 	var field := AsteroidFieldData.new()
-	field.field_name = belt_data.get("name", "Belt")
-	field.field_id = StringName(belt_data.get("field_id", "belt_%d" % index))
-	field.orbital_radius = belt_data.get("orbital_radius", 50_000_000.0)
-	field.width = belt_data.get("width", 5_000_000.0)
-	field.dominant_resource = belt_data.get("dominant_resource", &"iron")
-	field.secondary_resource = belt_data.get("secondary_resource", &"copper")
-	field.rare_resource = belt_data.get("rare_resource", &"gold")
-	# No pre-generated asteroids — AsteroidFieldManager generates them locally
+	field.field_name = belt.belt_name
+	field.field_id = belt.field_id if belt.field_id != &"" else StringName("belt_%d" % index)
+	field.orbital_radius = belt.orbital_radius
+	field.width = belt.width
+	field.dominant_resource = belt.dominant_resource
+	field.secondary_resource = belt.secondary_resource
+	field.rare_resource = belt.rare_resource
 	return field

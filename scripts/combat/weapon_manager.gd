@@ -114,13 +114,17 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 			hardpoints[hp_idx].set_target_direction(aim_dir)
 
 	if sequential:
-		# Fire one hardpoint at a time, cycling through (skip disabled)
+		# Fire one hardpoint at a time, cycling through (skip disabled + mining lasers)
 		var attempts := 0
 		while attempts < group.size():
 			var idx: int = _fire_index.get(group_index, 0) % group.size()
 			_fire_index[group_index] = idx + 1
 			var hp_idx: int = group[idx]
 			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
+				# Skip mining lasers — handled by MiningSystem
+				if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
+					attempts += 1
+					continue
 				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
@@ -129,9 +133,12 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 					return
 			attempts += 1
 	else:
-		# Fire all hardpoints in group simultaneously (skip disabled)
+		# Fire all hardpoints in group simultaneously (skip disabled + mining lasers)
 		for hp_idx in group:
 			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
+				# Skip mining lasers — handled by MiningSystem
+				if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
+					continue
 				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
@@ -213,3 +220,24 @@ func _on_projectile_hit(hit_info: Dictionary, damage_amount: float, killed: bool
 func set_weapon_group(group_index: int, hardpoint_indices: Array) -> void:
 	if group_index >= 0 and group_index < weapon_groups.size():
 		weapon_groups[group_index] = hardpoint_indices
+
+
+func get_mining_hardpoints_in_group(group_index: int) -> Array[Hardpoint]:
+	var result: Array[Hardpoint] = []
+	if group_index < 0 or group_index >= weapon_groups.size():
+		return result
+	for hp_idx in weapon_groups[group_index]:
+		if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
+			if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
+				result.append(hardpoints[hp_idx])
+	return result
+
+
+func has_combat_weapons_in_group(group_index: int) -> bool:
+	if group_index < 0 or group_index >= weapon_groups.size():
+		return false
+	for hp_idx in weapon_groups[group_index]:
+		if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled and hardpoints[hp_idx].mounted_weapon:
+			if hardpoints[hp_idx].mounted_weapon.weapon_type != WeaponResource.WeaponType.MINING_LASER:
+				return true
+	return false

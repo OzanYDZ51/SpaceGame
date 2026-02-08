@@ -197,9 +197,10 @@ func _process(delta: float) -> void:
 	if _camera.zoom != zoom_before:
 		_dirty = true
 
+	# Always redraw while open so entity positions update in real-time
+	_renderer.queue_redraw()
+	_entity_layer.queue_redraw()
 	if _dirty:
-		_renderer.queue_redraw()
-		_entity_layer.queue_redraw()
 		_info_panel.queue_redraw()
 		_dirty = false
 

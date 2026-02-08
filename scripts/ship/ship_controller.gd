@@ -39,6 +39,11 @@ const COMBAT_LOCK_DURATION: float = 5.0
 var _last_combat_time: float = -100.0  # Time of last combat action (fire/hit)
 var combat_locked: bool = false  ## Read by HUD for warning display
 
+# --- Cruise warp (phase 2 punch: no collision, invisible to others) ---
+var cruise_warp_active: bool = false
+var _pre_warp_collision_layer: int = 0
+var _pre_warp_collision_mask: int = 0
+
 # --- Cruise two-phase system ---
 const CRUISE_SPOOL_DURATION: float = 10.0  ## Phase 1: slow spool-up
 const CRUISE_PUNCH_DURATION: float = 10.0  ## Phase 2: explosive acceleration
@@ -71,6 +76,7 @@ var _cached_energy_sys: EnergySystem = null
 var _cached_weapon_mgr: WeaponManager = null
 var _cached_model: ShipModel = null
 var _cached_targeting: TargetingSystem = null
+var _cached_mining_sys: MiningSystem = null
 var _refs_cached: bool = false
 
 # --- Crosshair raycast throttle ---
@@ -96,6 +102,7 @@ func _cache_refs() -> void:
 	_cached_weapon_mgr = get_node_or_null("WeaponManager") as WeaponManager
 	_cached_model = get_node_or_null("ShipModel") as ShipModel
 	_cached_targeting = get_node_or_null("TargetingSystem") as TargetingSystem
+	_cached_mining_sys = get_node_or_null("MiningSystem") as MiningSystem
 	_refs_cached = true
 
 	# Connect health system damage signal for combat lock
@@ -251,8 +258,18 @@ func _handle_player_weapon_input() -> void:
 			_cached_weapon_mgr.toggle_hardpoint(i)
 
 	if Input.is_action_pressed("fire_primary"):
+		# Fire combat weapons (mining lasers are skipped by fire_group)
 		_cached_weapon_mgr.fire_group(0, true, target_pos)
-		mark_combat()
+		# Fire mining laser if equipped
+		if _cached_mining_sys and _cached_mining_sys.has_mining_laser():
+			_cached_mining_sys.try_fire(target_pos)
+		# Only mark combat if we have non-mining weapons in primary group
+		if _cached_weapon_mgr.has_combat_weapons_in_group(0):
+			mark_combat()
+	elif _cached_mining_sys and _cached_mining_sys._is_firing:
+		# Fire released — stop mining beam
+		_cached_mining_sys.stop_firing()
+
 	if Input.is_action_pressed("fire_secondary"):
 		_cached_weapon_mgr.fire_group(1, false, target_pos)
 		mark_combat()
@@ -326,11 +343,14 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			if not _cruise_punched:
 				_cruise_punched = true
 				cruise_punch_triggered.emit()
+				_enter_cruise_warp()
 			var t2 := clampf((cruise_time - CRUISE_SPOOL_DURATION) / CRUISE_PUNCH_DURATION, 0.0, 1.0)
 			cruise_mult = lerpf(50.0, 3000.0, t2)
 		accel_fwd *= cruise_mult
 	else:
 		cruise_time = 0.0
+		if _cruise_punched:
+			_exit_cruise_warp()
 		_cruise_punched = false
 
 	# =========================================================================
@@ -436,7 +456,26 @@ func _exit_cruise() -> void:
 		speed_mode = Constants.SpeedMode.NORMAL
 		cruise_time = 0.0
 		_cruise_punched = false
+		_exit_cruise_warp()
 		cruise_exit_triggered.emit()
+
+
+func _enter_cruise_warp() -> void:
+	if cruise_warp_active:
+		return
+	_pre_warp_collision_layer = collision_layer
+	_pre_warp_collision_mask = collision_mask
+	collision_layer = 0
+	collision_mask = 0
+	cruise_warp_active = true
+
+
+func _exit_cruise_warp() -> void:
+	if not cruise_warp_active:
+		return
+	collision_layer = _pre_warp_collision_layer
+	collision_mask = _pre_warp_collision_mask
+	cruise_warp_active = false
 
 
 # === Autopilot ===

@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="CylinderMesh" id="CylMesh_barrel"]
+top_radius = 0.05
+bottom_radius = 0.09
+height = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Mat_barrel"]
+albedo_color = Color(0.15, 0.55, 0.4, 1)
+metallic = 0.65
+roughness = 0.35
+
+[node name="WeaponRoot" type="Node3D"]
+
+[node name="ModelPivot" type="Node3D" parent="."]
+
+[node name="Barrel" type="MeshInstance3D" parent="ModelPivot"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, -0.35)
+mesh = SubResource("CylMesh_barrel")
+surface_material_override/0 = SubResource("Mat_barrel")
+
+[node name="MuzzlePoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)

@@ -50,6 +50,7 @@ func _send_state() -> void:
 	if gm:
 		state.is_docked = gm.current_state == GameManagerSystem.GameState.DOCKED
 		state.is_dead = gm.current_state == GameManagerSystem.GameState.DEAD
+	state.is_cruising = _ship.cruise_warp_active
 
 	# Combat state
 	var health := _ship.get_node_or_null("HealthSystem") as HealthSystem

@@ -28,6 +28,11 @@ var _can_fire: bool = true  # Turret aligned within tolerance
 # --- Weapon mesh ---
 var _weapon_mesh_instance: Node3D = null
 
+# --- Muzzle points (detected from weapon model scene) ---
+var _muzzle_points: Array[Node3D] = []
+var _muzzle_index: int = 0
+var _turret_base: Node3D = null  # Future: static turret base mesh
+
 # --- Internals ---
 var _cooldown_timer: float = 0.0
 var _projectile_scene: PackedScene = null
@@ -105,6 +110,9 @@ func mount_weapon(weapon: WeaponResource) -> bool:
 func unmount_weapon() -> void:
 	mounted_weapon = null
 	_projectile_scene = null
+	_muzzle_points.clear()
+	_muzzle_index = 0
+	_turret_base = null
 	_remove_weapon_mesh()
 
 
@@ -220,20 +228,21 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	var fire_dir: Vector3
 	var up_hint: Vector3
 
+	var muzzle := get_muzzle_transform()
+	spawn_pos = muzzle.origin
+
 	if is_turret and _turret_pivot:
-		# Turret: spawn from pivot position, fire along pivot forward
-		spawn_pos = _turret_pivot.global_position
-		fire_dir = (-_turret_pivot.global_transform.basis.z).normalized()
-		up_hint = _turret_pivot.global_transform.basis.y
+		# Turret: fire along muzzle forward (already aimed by turret rotation)
+		fire_dir = (-muzzle.basis.z).normalized()
+		up_hint = muzzle.basis.y
 	else:
-		# Fixed: same logic as before
-		spawn_pos = global_position
-		var ship_basis: Basis = ship_node.global_transform.basis if ship_node else Basis.IDENTITY
+		# Fixed: aim from muzzle toward target
 		fire_dir = (target_pos - spawn_pos).normalized()
-		# Safety: if target is too close or behind, fall back to ship forward
+		var ship_basis: Basis = ship_node.global_transform.basis if ship_node else Basis.IDENTITY
+		# Safety: if target is too close or behind, fall back to muzzle forward
 		if fire_dir.length() < 0.5 or ship_basis.z.dot(fire_dir) > 0.5:
-			fire_dir = (ship_basis * Vector3.FORWARD).normalized()
-		up_hint = ship_basis.y
+			fire_dir = (-muzzle.basis.z).normalized()
+		up_hint = muzzle.basis.y
 
 	bolt.velocity = fire_dir * mounted_weapon.projectile_speed + ship_velocity
 	bolt.global_transform = Transform3D(Basis.looking_at(fire_dir, up_hint), spawn_pos)
@@ -261,6 +270,48 @@ func _load_weapon_mesh(weapon: WeaponResource) -> void:
 	# Attach to turret pivot if turret, otherwise directly to hardpoint
 	var attach_parent: Node3D = _turret_pivot if _turret_pivot else self
 	attach_parent.add_child(_weapon_mesh_instance)
+
+	# Find muzzle points in the weapon model
+	_muzzle_points.clear()
+	_muzzle_index = 0
+	_find_muzzle_points(_weapon_mesh_instance)
+
+	# Future: detect TurretBase / TurretRotator for advanced turret rigs
+	_turret_base = _weapon_mesh_instance.get_node_or_null("TurretBase")
+
+
+func _find_muzzle_points(root: Node3D) -> void:
+	for child in root.get_children():
+		if child is Node3D:
+			var child_name: String = child.name
+			if child_name == "MuzzlePoint" or child_name.begins_with("MuzzlePoint_"):
+				_muzzle_points.append(child as Node3D)
+			# Recurse into children (e.g. TurretRotator/MuzzlePoint)
+			_find_muzzle_points(child as Node3D)
+
+
+## Returns the current muzzle's global transform (position + direction).
+## Cycles _muzzle_index for multi-barrel alternation.
+## Fallback: if no muzzle points, returns hardpoint/pivot transform.
+func get_muzzle_transform() -> Transform3D:
+	if _muzzle_points.is_empty():
+		if _turret_pivot:
+			return _turret_pivot.global_transform
+		return global_transform
+
+	var muzzle: Node3D = _muzzle_points[_muzzle_index % _muzzle_points.size()]
+	_muzzle_index = (_muzzle_index + 1) % _muzzle_points.size()
+	return muzzle.global_transform
+
+
+## Returns the first muzzle's global transform without cycling.
+## Use for continuous beams (mining laser) that shouldn't alternate barrels.
+func get_muzzle_transform_stable() -> Transform3D:
+	if _muzzle_points.is_empty():
+		if _turret_pivot:
+			return _turret_pivot.global_transform
+		return global_transform
+	return _muzzle_points[0].global_transform
 
 
 func _remove_weapon_mesh() -> void:

@@ -56,7 +56,7 @@ func (h *WSHub) Run() {
 			log.Printf("WS: %s disconnected (total: %d)", client.Username, len(h.clients))
 
 		case message := <-h.broadcast:
-			h.mu.RLock()
+			h.mu.Lock()
 			for client := range h.clients {
 				select {
 				case client.Send <- message:
@@ -65,7 +65,7 @@ func (h *WSHub) Run() {
 					delete(h.clients, client)
 				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 
 		case <-h.done:
 			return

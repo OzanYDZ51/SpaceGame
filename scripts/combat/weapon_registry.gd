@@ -61,6 +61,7 @@ static func _build_laser_mk1() -> WeaponResource:
 	w.bolt_color = Color(0.3, 0.7, 1.0)
 	w.bolt_length = 4.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 	return w
 
 
@@ -80,6 +81,7 @@ static func _build_laser_mk2() -> WeaponResource:
 	w.bolt_color = Color(0.2, 0.5, 1.0)
 	w.bolt_length = 5.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk2.tscn"
 	return w
 
 
@@ -99,6 +101,7 @@ static func _build_plasma_cannon() -> WeaponResource:
 	w.bolt_color = Color(1.0, 0.4, 0.15)
 	w.bolt_length = 3.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/plasma_cannon.tscn"
 	return w
 
 
@@ -118,6 +121,7 @@ static func _build_heavy_plasma() -> WeaponResource:
 	w.bolt_color = Color(1.0, 0.3, 0.05)
 	w.bolt_length = 5.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/heavy_plasma.tscn"
 	return w
 
 
@@ -136,6 +140,7 @@ static func _build_missile_pod() -> WeaponResource:
 	w.projectile_scene_path = "res://scenes/weapons/missile.tscn"
 	w.tracking_strength = 90.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/missile_pod.tscn"
 	return w
 
 
@@ -155,6 +160,7 @@ static func _build_torpedo() -> WeaponResource:
 	w.tracking_strength = 45.0
 	w.aoe_radius = 30.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/torpedo.tscn"
 	return w
 
 
@@ -175,6 +181,7 @@ static func _build_railgun() -> WeaponResource:
 	w.bolt_color = Color(1.0, 1.0, 1.0)
 	w.bolt_length = 8.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/railgun.tscn"
 	return w
 
 
@@ -211,6 +218,7 @@ static func _build_auto_cannon() -> WeaponResource:
 	w.bolt_color = Color(1.0, 0.8, 0.3)
 	w.bolt_length = 3.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/auto_cannon.tscn"
 	return w
 
 
@@ -230,6 +238,7 @@ static func _build_point_defense() -> WeaponResource:
 	w.bolt_color = Color(0.8, 0.3, 0.3)
 	w.bolt_length = 2.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/point_defense.tscn"
 	return w
 
 
@@ -247,6 +256,7 @@ static func _build_mining_laser_mk1() -> WeaponResource:
 	w.projectile_lifetime = 0.0
 	w.bolt_color = Color(0.2, 1.0, 0.5)
 	w.bolt_length = 0.0
+	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk1.tscn"
 	return w
 
 
@@ -264,4 +274,5 @@ static func _build_mining_laser_mk2() -> WeaponResource:
 	w.projectile_lifetime = 0.0
 	w.bolt_color = Color(0.15, 0.9, 0.6)
 	w.bolt_length = 0.0
+	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk2.tscn"
 	return w

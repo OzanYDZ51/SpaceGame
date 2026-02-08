@@ -26,13 +26,17 @@ func _ready() -> void:
 
 ## Called by SystemTransition when entering a new system.
 func configure_for_system(system_data: StarSystemData, system_id: int = -1) -> void:
-	_current_env_data = SystemEnvironmentRegistry.get_environment(
-		system_id,
-		system_data.star_spectral_class,
-		system_data.seed_value,
-		system_data.star_color,
-		system_data.star_luminosity,
-	)
+	# Priority: StarSystemData.environment_override > env override .tres > spectral preset
+	if system_data.environment_override:
+		_current_env_data = system_data.environment_override
+	else:
+		_current_env_data = SystemEnvironmentRegistry.get_environment(
+			system_id,
+			system_data.star_spectral_class,
+			system_data.seed_value,
+			system_data.star_color,
+			system_data.star_luminosity,
+		)
 	apply_environment(_current_env_data)
 
 

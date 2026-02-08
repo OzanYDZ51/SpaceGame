@@ -109,6 +109,17 @@ func setup(data: Dictionary) -> void:
 		_label.text = gate_name
 
 
+## Setup from typed JumpGateData resource.
+func setup_from_data(data: JumpGateData) -> void:
+	target_system_id = data.target_system_id
+	target_system_name = data.target_system_name
+	gate_name = data.gate_name
+	global_position = Vector3(data.pos_x, data.pos_y, data.pos_z)
+
+	if _label:
+		_label.text = gate_name
+
+
 func _process(delta: float) -> void:
 	if _ring_mesh:
 		_ring_mesh.rotate_y(deg_to_rad(spin_speed * delta))

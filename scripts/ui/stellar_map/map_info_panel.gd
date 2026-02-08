@@ -56,6 +56,10 @@ func _draw() -> void:
 	if extra.has("spectral_class"): row_count += 1
 	if extra.has("temperature"): row_count += 1
 	if extra.has("planet_type"): row_count += 1
+	if extra.has("station_type"): row_count += 1
+	if extra.has("dominant_resource"): row_count += 1
+	if extra.has("secondary_resource") and extra["secondary_resource"] != "": row_count += 1
+	if extra.has("zone"): row_count += 1
 	if extra.has("faction"): row_count += 1
 	if extra.has("ship_class"): row_count += 1
 
@@ -136,6 +140,18 @@ func _draw() -> void:
 	if extra.has("planet_type"):
 		_draw_row(font, x, value_x, y, "CORPS", _planet_type_to_french(extra["planet_type"]))
 		y += 18
+	if extra.has("station_type"):
+		_draw_row(font, x, value_x, y, "SERVICE", _station_type_to_french(extra["station_type"]))
+		y += 18
+	if extra.has("dominant_resource"):
+		_draw_row(font, x, value_x, y, "RESSOURCE", _resource_label(extra["dominant_resource"]))
+		y += 18
+	if extra.has("secondary_resource") and extra["secondary_resource"] != "":
+		_draw_row(font, x, value_x, y, "SECONDAIRE", _resource_label(extra["secondary_resource"]))
+		y += 18
+	if extra.has("zone"):
+		_draw_row(font, x, value_x, y, "ZONE", _zone_to_french(extra["zone"]))
+		y += 18
 
 	# NPC ship extras: faction + class
 	if extra.has("faction"):
@@ -187,3 +203,33 @@ func _faction_to_label(f: String) -> String:
 		"hostile": return "Hostile"
 		"friendly": return "Allié"
 	return "Neutre"
+
+
+func _station_type_to_french(stype: String) -> String:
+	match stype:
+		"repair": return "Réparation"
+		"trade": return "Commerce"
+		"military": return "Militaire"
+		"mining": return "Extraction"
+	return stype.capitalize()
+
+
+func _resource_label(res_id: String) -> String:
+	match res_id:
+		"ice": return "Glace"
+		"iron": return "Fer"
+		"copper": return "Cuivre"
+		"titanium": return "Titane"
+		"gold": return "Or"
+		"crystal": return "Cristal"
+		"uranium": return "Uranium"
+		"platinum": return "Platine"
+	return res_id.capitalize()
+
+
+func _zone_to_french(zone: String) -> String:
+	match zone:
+		"inner": return "Intérieure"
+		"mid": return "Médiane"
+		"outer": return "Extérieure"
+	return zone.capitalize()
