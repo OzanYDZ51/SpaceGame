@@ -881,14 +881,27 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
 
-	var local_pos := FloatingOrigin.to_local_pos(fire_pos)
+	# Extract direction and ship velocity from fire_dir array
 	var dir := Vector3(
 		fire_dir[0] if fire_dir.size() > 0 else 0.0,
 		fire_dir[1] if fire_dir.size() > 1 else 0.0,
 		fire_dir[2] if fire_dir.size() > 2 else 0.0)
-	bolt.global_position = local_pos
-	bolt.velocity = dir * weapon.projectile_speed
-	bolt.look_at(local_pos + dir, Vector3.UP)
+	var ship_vel := Vector3(
+		fire_dir[3] if fire_dir.size() > 3 else 0.0,
+		fire_dir[4] if fire_dir.size() > 4 else 0.0,
+		fire_dir[5] if fire_dir.size() > 5 else 0.0)
+
+	# Spawn from puppet's visual position (not raw universe pos) to avoid
+	# interpolation-lag offset that makes shots appear from wrong location
+	var spawn_pos: Vector3
+	if is_instance_valid(remote):
+		spawn_pos = remote.global_position + dir * 5.0  # Slight offset ahead for muzzle
+	else:
+		spawn_pos = FloatingOrigin.to_local_pos(fire_pos)
+	bolt.global_position = spawn_pos
+	bolt.velocity = dir * weapon.projectile_speed + ship_vel
+	if dir.length_squared() > 0.001:
+		bolt.look_at(spawn_pos + dir, Vector3.UP)
 
 
 # =============================================================================

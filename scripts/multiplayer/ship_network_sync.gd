@@ -127,13 +127,22 @@ func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
 	var hp: Hardpoint = wm.hardpoints[hardpoint_id]
 	var muzzle := hp.get_muzzle_transform()
 	var fire_pos := FloatingOrigin.to_universe_pos(muzzle.origin)
-	var fire_dir := (-muzzle.basis.z).normalized()
+	# Use actual aim direction (toward crosshair) matching local fire behavior
+	var fire_dir: Vector3
+	var aim_to_muzzle := _ship._aim_point - muzzle.origin
+	if aim_to_muzzle.length_squared() > 1.0:
+		fire_dir = aim_to_muzzle.normalized()
+	else:
+		fire_dir = (-muzzle.basis.z).normalized()
+	var ship_vel := _ship.linear_velocity
 
 	if NetworkManager.is_host:
 		# Host: relay directly via NpcAuthority
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 		if npc_auth:
-			npc_auth.relay_fire_event(1, String(weapon_name_str), fire_pos, [fire_dir.x, fire_dir.y, fire_dir.z])
+			npc_auth.relay_fire_event(1, String(weapon_name_str), fire_pos,
+				[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
 	else:
 		NetworkManager._rpc_fire_event.rpc_id(1,
-			String(weapon_name_str), fire_pos, [fire_dir.x, fire_dir.y, fire_dir.z])
+			String(weapon_name_str), fire_pos,
+			[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
