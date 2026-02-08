@@ -30,7 +30,7 @@ func _ready() -> void:
 	_right_panel.draw.connect(_draw_right_panel.bind(_right_panel))
 	add_child(_right_panel)
 
-	_economy_panel = HudDrawHelpers.make_ctrl(0.0, 0.0, 0.0, 0.0, 16, 12, 195, 62)
+	_economy_panel = HudDrawHelpers.make_ctrl(0.0, 0.0, 0.0, 0.0, 16, 12, 230, 180)
 	_economy_panel.draw.connect(_draw_economy_panel.bind(_economy_panel))
 	add_child(_economy_panel)
 
@@ -236,36 +236,82 @@ func _draw_economy_panel(ctrl: Control) -> void:
 	if player_economy == null:
 		return
 	var font := ThemeDB.fallback_font
-	var s := ctrl.size
+	var w := ctrl.size.x
 
-	ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.05, 0.55))
-	ctrl.draw_line(Vector2(0, 0), Vector2(s.x, 0), UITheme.PRIMARY_DIM, 1.0)
-	ctrl.draw_line(Vector2(0, 0), Vector2(0, 8), UITheme.PRIMARY, 1.0)
+	# Collect resources with qty > 0
+	var active_resources: Array[Dictionary] = []
+	for res_id: StringName in PlayerEconomy.RESOURCE_DEFS:
+		var qty: int = player_economy.get_resource(res_id)
+		if qty > 0:
+			var res_def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
+			active_resources.append({
+				"name": res_def["name"],
+				"color": res_def["color"],
+				"qty": qty,
+			})
 
-	var x := 8.0
+	# Calculate panel height dynamically
+	var row_h := 18.0
+	var res_rows: int = ceili(active_resources.size() / 2.0)
+	var panel_h: float = 16.0 + 28.0 + 8.0 + res_rows * row_h + 10.0  # top + credits + sep + resources + bottom
+	ctrl.custom_minimum_size.y = panel_h
+	ctrl.size.y = panel_h
+
+	# --- Panel background ---
+	var bg := Rect2(Vector2.ZERO, Vector2(w, panel_h))
+	ctrl.draw_rect(bg, Color(0.0, 0.02, 0.05, 0.6))
+	# Top + left accent lines
+	ctrl.draw_line(Vector2(0, 0), Vector2(w, 0), UITheme.PRIMARY_DIM, 1.0)
+	ctrl.draw_line(Vector2(0, 0), Vector2(0, 10), UITheme.PRIMARY, 1.5)
+	# Bottom fade line
+	ctrl.draw_line(Vector2(4, panel_h - 1), Vector2(w - 4, panel_h - 1), UITheme.PRIMARY_FAINT, 1.0)
+
+	var x := 10.0
 	var y := 16.0
 
+	# --- Credits (prominent, golden) ---
 	var cr_col := PlayerEconomy.CREDITS_COLOR
-	HudDrawHelpers.draw_diamond(ctrl, Vector2(x + 4, y - 3), 4.0, cr_col)
-	var cr_text := PlayerEconomy.format_credits(player_economy.credits) + " CR"
-	ctrl.draw_string(font, Vector2(x + 14, y), cr_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, cr_col)
+	# Diamond icon
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(x + 5, y - 3), 5.0, cr_col)
+	# Amount
+	var cr_amount := PlayerEconomy.format_credits(player_economy.credits)
+	ctrl.draw_string(font, Vector2(x + 16, y), cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, cr_col)
+	# "CR" label dimmer, to the right
+	var amt_w := font.get_string_size(cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	ctrl.draw_string(font, Vector2(x + 18 + amt_w, y), "CR", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(cr_col.r, cr_col.g, cr_col.b, 0.5))
 
-	y += 22.0
+	y += 14.0
 
-	var rx := x
-	for res_id: StringName in PlayerEconomy.RESOURCE_DEFS:
-		var res_def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
-		var res_col: Color = res_def["color"]
-		var res_name: String = res_def["name"]
-		var qty: int = player_economy.get_resource(res_id)
+	# --- Separator ---
+	ctrl.draw_line(Vector2(x, y), Vector2(w - x, y), UITheme.PRIMARY_FAINT, 1.0)
+	y += 10.0
 
-		ctrl.draw_rect(Rect2(Vector2(rx, y - 8), Vector2(8, 8)), res_col)
-		ctrl.draw_rect(Rect2(Vector2(rx, y - 8), Vector2(8, 8)), Color(res_col.r, res_col.g, res_col.b, 0.4), false, 1.0)
+	# --- Resources (2-column grid, only qty > 0) ---
+	if active_resources.is_empty():
+		ctrl.draw_string(font, Vector2(x + 2, y + 10), "AUCUNE RESSOURCE", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	else:
+		var col_w: float = (w - x * 2) / 2.0
+		for i in active_resources.size():
+			var col: int = i % 2
+			var row: int = i / 2
+			var rx: float = x + col * col_w
+			var ry: float = y + row * row_h
 
-		var res_text := "%d %s" % [qty, res_name]
-		ctrl.draw_string(font, Vector2(rx + 12, y), res_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(res_col.r, res_col.g, res_col.b, 0.85))
+			var res: Dictionary = active_resources[i]
+			var rc: Color = res["color"]
 
-		rx += font.get_string_size(res_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 22.0
+			# Colored square icon
+			ctrl.draw_rect(Rect2(rx, ry, 8, 8), rc)
+			ctrl.draw_rect(Rect2(rx, ry, 8, 8), Color(rc.r, rc.g, rc.b, 0.35), false, 1.0)
 
-	var sy: float = fmod(scan_line_y, s.y)
-	ctrl.draw_line(Vector2(0, sy), Vector2(s.x, sy), UITheme.SCANLINE, 1.0)
+			# Quantity (bright)
+			var qty_str := str(res["qty"])
+			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(rc.r, rc.g, rc.b, 0.95))
+
+			# Name (dimmer, after quantity)
+			var qty_w := font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(rc.r, rc.g, rc.b, 0.45))
+
+	# Scanline
+	var sy: float = fmod(scan_line_y, panel_h)
+	ctrl.draw_line(Vector2(0, sy), Vector2(w, sy), UITheme.SCANLINE, 1.0)
