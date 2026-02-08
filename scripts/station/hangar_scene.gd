@@ -186,42 +186,42 @@ func _input(event: InputEvent) -> void:
 		if data:
 			var configs := ShipFactory.get_hardpoint_configs(new_id)
 			var model_rot := ShipFactory.get_model_rotation(new_id)
-			display_ship(data.model_path, data.model_scale, configs, data.default_loadout, model_rot)
+			var rb := ShipFactory.get_root_basis(new_id)
+			var sms := ShipFactory.get_scene_model_scale(new_id)
+			display_ship(data.model_path, sms, configs, data.default_loadout, model_rot, rb)
 			_update_ship_labels(data)
 			ship_selected.emit(new_id)
 
 
-func display_ship(ship_model_path: String, _ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = [], model_rotation: Vector3 = Vector3.ZERO) -> void:
-	# Place a copy of the player's ship in the hangar.
-	# Uses the exact transform from ShipPreview (editor placement) so WYSIWYG.
+func display_ship(ship_model_path: String, ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = [], model_rotation: Vector3 = Vector3.ZERO, root_basis: Basis = Basis.IDENTITY) -> void:
+	# Uses actual scene model_scale (no override). ShipPreview's scale applied
+	# to the node itself for uniform hangar fit (mesh + weapons scale together).
 	if _docked_ship:
 		_docked_ship.queue_free()
 		_docked_ship = null
 
 	_docked_ship = ShipModel.new()
 	_docked_ship.model_path = ship_model_path
-	# Use the scale the user set on ShipPreview in the editor (X component as uniform)
-	_docked_ship.model_scale = _preview_local_scale.x
+	_docked_ship.model_scale = ship_model_scale  # actual scene value — never overridden
 	_docked_ship.model_rotation_degrees = model_rotation
+	_docked_ship.skip_centering = true  # keep raw positions so weapons align with mesh
 	_docked_ship.engine_light_color = Color(0.3, 0.5, 1.0)
 	_docked_ship.name = "DockedShip"
 
-	# Add as child of ShipSpawnPoint so it inherits the marker's world transform
 	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
 	if spawn_point:
 		spawn_point.add_child(_docked_ship)
-		# Apply the same local offset as ShipPreview had in the editor
 		_docked_ship.position = _preview_local_pos
 		_docked_ship.rotation_degrees = _preview_local_rot
+		# Uniform node scale from ShipPreview — scales everything together
+		_docked_ship.scale = _preview_local_scale
 	else:
-		# Fallback: in front of camera
 		add_child(_docked_ship)
 		_docked_ship.position = Vector3(_cam_base_pos.x, _cam_base_pos.y - 5.0, _cam_base_pos.z - 6.0)
 		_docked_ship.rotation_degrees.y = 180.0
 
-	# Apply equipped weapons visuals
 	if not hp_configs.is_empty():
-		_docked_ship.apply_equipment(hp_configs, weapon_names)
+		_docked_ship.apply_equipment(hp_configs, weapon_names, root_basis)
 
 
 func setup_ship_selection(current_ship_id: StringName) -> void:

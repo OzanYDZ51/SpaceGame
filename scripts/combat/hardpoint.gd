@@ -18,7 +18,8 @@ var enabled: bool = true
 var is_turret: bool = false
 var turret_arc_degrees: float = 180.0
 var turret_speed_deg_s: float = 90.0
-var turret_vertical_arc: float = 45.0
+var turret_pitch_min: float = -45.0  # Lowest pitch (negative = aim down)
+var turret_pitch_max: float = 45.0   # Highest pitch (positive = aim up)
 var _turret_pivot: Node3D = null
 var _target_direction: Vector3 = Vector3.FORWARD  # Local-space desired aim direction
 var _current_yaw: float = 0.0
@@ -80,7 +81,8 @@ func setup_from_config(cfg: Dictionary) -> void:
 	is_turret = cfg.get("is_turret", false)
 	turret_arc_degrees = cfg.get("turret_arc_degrees", 180.0)
 	turret_speed_deg_s = cfg.get("turret_speed_deg_s", 90.0)
-	turret_vertical_arc = cfg.get("turret_vertical_arc", 45.0)
+	turret_pitch_min = cfg.get("turret_pitch_min", -45.0)
+	turret_pitch_max = cfg.get("turret_pitch_max", 45.0)
 	name = "Hardpoint_%d" % slot_id
 
 	if is_turret:
@@ -97,6 +99,12 @@ func _setup_turret_pivot() -> void:
 func mount_weapon(weapon: WeaponResource) -> bool:
 	if not can_mount(weapon):
 		return false
+	# Clean up previous weapon if re-mounting (e.g. save load after factory default)
+	if mounted_weapon:
+		_remove_weapon_mesh()
+		_muzzle_points.clear()
+		_muzzle_index = 0
+		_turret_base = null
 	mounted_weapon = weapon
 	if weapon.projectile_scene_path != "":
 		_projectile_scene = load(weapon.projectile_scene_path) as PackedScene
@@ -158,36 +166,26 @@ func _update_turret_rotation(delta: float) -> void:
 		dir = Vector3.FORWARD
 
 	# Yaw = rotation around Y axis (horizontal)
-	var raw_yaw := rad_to_deg(atan2(dir.x, -dir.z))
+	# Negate dir.x: in Godot, positive rotation_degrees.y = CCW from above = turn LEFT
+	# So target to the right (dir.x > 0) needs negative yaw
+	var raw_yaw := rad_to_deg(atan2(-dir.x, -dir.z))
 	# Pitch = rotation around X axis (vertical)
+	# Positive dir.y = target above = need positive rotation_degrees.x to tilt up
 	var horizontal_dist := sqrt(dir.x * dir.x + dir.z * dir.z)
-	var raw_pitch := rad_to_deg(atan2(-dir.y, horizontal_dist))
+	var raw_pitch := rad_to_deg(atan2(dir.y, horizontal_dist))
 
 	# Check if target is within arc BEFORE clamping
 	var half_arc := turret_arc_degrees * 0.5
-	var target_in_arc := absf(raw_yaw) <= half_arc + 5.0 and absf(raw_pitch) <= turret_vertical_arc + 5.0
+	var target_in_arc := absf(raw_yaw) <= half_arc + 5.0 and raw_pitch >= turret_pitch_min - 5.0 and raw_pitch <= turret_pitch_max + 5.0
 
 	# Clamp to arc limits (turret still tracks to edge even if out of arc)
 	var clamped_yaw := clampf(raw_yaw, -half_arc, half_arc)
-	var clamped_pitch := clampf(raw_pitch, -turret_vertical_arc, turret_vertical_arc)
+	var clamped_pitch := clampf(raw_pitch, turret_pitch_min, turret_pitch_max)
 
-	# Fast proportional tracking + move_toward for snappy response
-	# This eliminates lag when the ship rotates
-	var max_step := turret_speed_deg_s * delta
-	var yaw_diff := clamped_yaw - _current_yaw
-	var pitch_diff := clamped_pitch - _current_pitch
-	# Proportional: jump 80% of the remaining error, clamped to max speed
-	var yaw_step := clampf(yaw_diff * 8.0 * delta, -max_step * 3.0, max_step * 3.0)
-	var pitch_step := clampf(pitch_diff * 8.0 * delta, -max_step * 3.0, max_step * 3.0)
-	# Blend: use proportional when far, move_toward when close for precision
-	if absf(yaw_diff) > 10.0:
-		_current_yaw += yaw_step
-	else:
-		_current_yaw = move_toward(_current_yaw, clamped_yaw, max_step * 2.0)
-	if absf(pitch_diff) > 10.0:
-		_current_pitch += pitch_step
-	else:
-		_current_pitch = move_toward(_current_pitch, clamped_pitch, max_step * 2.0)
+	# Smooth but fast rotation: move_toward at 2x speed for responsive tracking
+	var max_step := turret_speed_deg_s * delta * 2.0
+	_current_yaw = move_toward(_current_yaw, clamped_yaw, max_step)
+	_current_pitch = move_toward(_current_pitch, clamped_pitch, max_step)
 
 	# Apply rotation to pivot
 	_turret_pivot.rotation_degrees = Vector3(_current_pitch, _current_yaw, 0.0)

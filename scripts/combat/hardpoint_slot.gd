@@ -14,7 +14,8 @@ extends Node3D
 @export var is_turret: bool = false
 @export_range(0, 360) var turret_arc_degrees: float = 180.0
 @export_range(10, 360) var turret_speed_deg_s: float = 90.0
-@export_range(0, 90) var turret_vertical_arc: float = 45.0
+@export_range(-90, 0) var turret_pitch_min: float = -45.0  ## Lowest pitch (negative = aim down)
+@export_range(0, 90) var turret_pitch_max: float = 45.0   ## Highest pitch (positive = aim up)
 
 ## Weapon model scene to preview in the editor (e.g. "res://scenes/weapons/models/laser_mk1.tscn").
 ## Editor-only: not used at runtime. Lets you see exactly how the weapon looks on the ship.
@@ -222,5 +223,6 @@ func get_slot_config() -> Dictionary:
 		"is_turret": is_turret,
 		"turret_arc_degrees": turret_arc_degrees,
 		"turret_speed_deg_s": turret_speed_deg_s,
-		"turret_vertical_arc": turret_vertical_arc,
+		"turret_pitch_min": turret_pitch_min,
+		"turret_pitch_max": turret_pitch_max,
 	}

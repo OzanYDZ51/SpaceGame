@@ -37,6 +37,7 @@ var _silhouette_points: PackedVector3Array = PackedVector3Array()
 var _visual_aabb_cache: AABB
 var _visual_aabb_cached: bool = false
 var _weapon_meshes: Array[Node3D] = []  # Weapon model instances attached to this ship
+var _weapon_mount_root: Node3D = null  # Wrapper with root_basis for correct weapon positioning
 
 
 
@@ -274,8 +275,17 @@ func _build_silhouette_points() -> void:
 ## Instantiates weapon model scenes at hardpoint positions on this ship model.
 ## configs: Array of hardpoint config dicts (each with "position", "id", etc.)
 ## weapon_names: Array of weapon StringNames matching hardpoint order (empty = no weapon)
-func apply_equipment(configs: Array[Dictionary], weapon_names: Array[StringName]) -> void:
+func apply_equipment(configs: Array[Dictionary], weapon_names: Array[StringName], root_basis: Basis = Basis.IDENTITY) -> void:
 	clear_equipment()
+
+	# Wrapper node with root_basis (ship scene root's rotation+scale).
+	# No runtime scaling — everything uses the scene's actual values.
+	var mount_root := Node3D.new()
+	mount_root.name = "WeaponMountRoot"
+	mount_root.transform.basis = root_basis
+	add_child(mount_root)
+	_weapon_mount_root = mount_root
+
 	for i in mini(configs.size(), weapon_names.size()):
 		if weapon_names[i] == &"":
 			continue
@@ -288,14 +298,11 @@ func apply_equipment(configs: Array[Dictionary], weapon_names: Array[StringName]
 		var instance := scene.instantiate() as Node3D
 		if instance == null:
 			continue
-		# Wrap in a pivot at the hardpoint position/rotation so the weapon scene's
-		# own transform (rotation, offset) is preserved intact.
-		# No runtime scaling — weapon scene defines its own size (WYSIWYG with editor).
 		var pivot := Node3D.new()
 		pivot.name = "WeaponMount_%d" % i
 		pivot.position = configs[i].get("position", Vector3.ZERO)
 		pivot.rotation_degrees = configs[i].get("rotation_degrees", Vector3.ZERO)
-		add_child(pivot)
+		mount_root.add_child(pivot)
 		pivot.add_child(instance)
 		_weapon_meshes.append(pivot)
 
@@ -306,3 +313,6 @@ func clear_equipment() -> void:
 		if is_instance_valid(mesh):
 			mesh.queue_free()
 	_weapon_meshes.clear()
+	if _weapon_mount_root and is_instance_valid(_weapon_mount_root):
+		_weapon_mount_root.queue_free()
+		_weapon_mount_root = null

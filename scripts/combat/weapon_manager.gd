@@ -20,7 +20,8 @@ var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 
 
 ## Creates hardpoints from config dictionaries (extracted from HardpointSlot nodes in ship scenes).
-func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D) -> void:
+## hardpoint_parent: Node3D to parent hardpoints under (e.g. HardpointRoot). Falls back to ship_node.
+func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D, hardpoint_parent: Node3D = null) -> void:
 	_ship = ship_node
 
 	# Create weapon audio
@@ -28,14 +29,15 @@ func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidB
 	_weapon_audio.name = "WeaponAudio"
 	add_child(_weapon_audio)
 
-	_create_hardpoints_from_configs(configs, ship_node)
+	var parent: Node3D = hardpoint_parent if hardpoint_parent else ship_node
+	_create_hardpoints_from_configs(configs, parent)
 
 
-func _create_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D) -> void:
+func _create_hardpoints_from_configs(configs: Array[Dictionary], parent: Node3D) -> void:
 	for cfg in configs:
 		var hp := Hardpoint.new()
 		hp.setup_from_config(cfg)
-		ship_node.add_child(hp)
+		parent.add_child(hp)
 		hardpoints.append(hp)
 
 	# Default: all hardpoints in group 0

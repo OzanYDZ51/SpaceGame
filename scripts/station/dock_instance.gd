@@ -86,7 +86,12 @@ func enter(ctx: Dictionary) -> void:
 			for hp in wm.hardpoints:
 				hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
 				weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
-		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees)
+		# Get root_basis from HardpointRoot node for correct weapon positioning
+		var root_basis: Basis = Basis.IDENTITY
+		var hp_root := player_ship.get_node_or_null("HardpointRoot") as Node3D
+		if hp_root:
+			root_basis = hp_root.transform.basis
+		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
 	# Setup ship selection cycling (A/D keys)
 	var ship_ctrl := player_ship as ShipController

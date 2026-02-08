@@ -68,4 +68,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.800923, 8)
 gizmo_extents = 3.0
 
 [node name="ShipPreview" parent="ShipSpawnPoint" unique_id=611153424 instance=ExtResource("3_ship_preview")]
-transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, -1.1458678, -8.755791)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, 0, -1.1458678, -8.755791)

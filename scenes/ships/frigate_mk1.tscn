@@ -21,43 +21,54 @@ script = ExtResource("2_hpslot")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5031402, 3.3362806, -20.01847)
 script = ExtResource("2_hpslot")
 slot_id = 1
+preview_weapon_scene = "uid://bc351fksvydyb"
 
 [node name="Hardpoint_2" type="Node3D" parent="." unique_id=1594141449]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -3.6163156, 4.8231926, -14.879)
+transform = Transform3D(-0.009619059, -0.16955146, 0.98547447, -0.017964933, 0.9853902, 0.16936159, -0.9997923, -0.016074888, -0.012524504, -3.7782495, 4.2993402, -14.879001)
 script = ExtResource("2_hpslot")
 slot_id = 2
 slot_size = "M"
 is_turret = true
 turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
+turret_pitch_min = -5.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_3" type="Node3D" parent="." unique_id=1012248232]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 3.5298085, 4.8798923, -14.952035)
+transform = Transform3D(-4.2946834e-08, 0.18621539, -0.9825091, 8.139734e-09, 0.9825091, 0.18621539, 1, -4.6567563e-16, -4.371138e-08, 3.7353275, 4.2737846, -14.952037)
 script = ExtResource("2_hpslot")
 slot_id = 3
 slot_size = "M"
 is_turret = true
 turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
+turret_pitch_min = -5.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_4" type="Node3D" parent="." unique_id=11545077]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -5.096926, 4.6481495, 1.070276)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -4.773727, 3.972074, 1.070276)
 script = ExtResource("2_hpslot")
 slot_id = 4
 slot_size = "M"
 is_turret = true
 turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
+turret_pitch_min = -10.0
+turret_pitch_max = 50.0
 preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_5" type="Node3D" parent="." unique_id=2020738195]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.9503717, 4.4635243, 1.0065722)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.9503717, 4.003662, 1.0065722)
 script = ExtResource("2_hpslot")
 slot_id = 5
 slot_size = "M"
 is_turret = true
 turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
+turret_pitch_min = -10.0
+turret_pitch_max = 50.0
 preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_6" type="Node3D" parent="." unique_id=1084057416]

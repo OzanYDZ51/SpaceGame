@@ -24,6 +24,7 @@ var _ship_model_path: String = "res://assets/models/tie.glb"
 var _ship_model_scale: float = 1.0
 var _ship_model_rotation: Vector3 = Vector3.ZERO
 var _ship_center_offset: Vector3 = Vector3.ZERO
+var _ship_root_basis: Basis = Basis.IDENTITY
 var _hp_markers: Array[Dictionary] = []  # {mesh: MeshInstance3D, body: StaticBody3D, index: int}
 
 # --- Orbit Camera ---
@@ -143,11 +144,12 @@ func _ready() -> void:
 	add_child(_back_btn)
 
 
-func setup_ship_viewer(model_path: String, model_scale: float, center_offset: Vector3 = Vector3.ZERO, model_rotation: Vector3 = Vector3.ZERO) -> void:
+func setup_ship_viewer(model_path: String, model_scale: float, center_offset: Vector3 = Vector3.ZERO, model_rotation: Vector3 = Vector3.ZERO, root_basis: Basis = Basis.IDENTITY) -> void:
 	_ship_model_path = model_path
 	_ship_model_scale = model_scale
 	_ship_model_rotation = model_rotation
 	_ship_center_offset = center_offset
+	_ship_root_basis = root_basis
 
 
 # =============================================================================
@@ -277,7 +279,7 @@ func _auto_fit_camera() -> void:
 	# Also consider hardpoint positions (they may extend beyond the mesh)
 	if weapon_manager:
 		for hp in weapon_manager.hardpoints:
-			var pos: Vector3 = hp.position - _ship_center_offset
+			var pos: Vector3 = _ship_root_basis * hp.position - _ship_center_offset
 			max_extent = maxf(max_extent, abs(pos.x))
 			max_extent = maxf(max_extent, abs(pos.y))
 			max_extent = maxf(max_extent, abs(pos.z))
@@ -298,7 +300,7 @@ func _refresh_viewer_weapons() -> void:
 	for hp in weapon_manager.hardpoints:
 		hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
 		weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
-	_ship_model.apply_equipment(hp_configs, weapon_names)
+	_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
 
 
 func _cleanup_3d_viewer() -> void:
@@ -341,11 +343,11 @@ func _create_hardpoint_markers() -> void:
 		mat.no_depth_test = true
 		mat.render_priority = 10
 		mesh_inst.material_override = mat
-		mesh_inst.position = hp.position - _ship_center_offset
+		mesh_inst.position = _ship_root_basis * hp.position - _ship_center_offset
 		_viewport.add_child(mesh_inst)
 
 		var body := StaticBody3D.new()
-		body.position = hp.position - _ship_center_offset
+		body.position = _ship_root_basis * hp.position - _ship_center_offset
 		var col_shape := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
 		shape.radius = 0.3 * _ship_model_scale
