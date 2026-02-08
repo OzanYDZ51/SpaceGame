@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://c31lr44ihge4w"]
+[gd_scene format=3]
 
-[ext_resource type="PackedScene" uid="uid://cg3cexixj4nqs" path="res://assets/models/tourelle.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/models/tourelle.glb" id="1_model"]
 
 [node name="WeaponRoot" type="Node3D"]
 transform = Transform3D(-1.3113416e-07, 0, -3, 0, 3, 0, 3, 0, -1.3113416e-07, 0, 0, 0)

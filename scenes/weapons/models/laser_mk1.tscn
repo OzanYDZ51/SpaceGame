@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://bc351fksvydyb"]
+[gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://assets/models/canon_laser.glb" id="1"]
 

@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/models/tie.glb" id="1_model"]
 [ext_resource type="Script" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 
 [node name="ScoutMk1" type="Node3D"]

@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://bh4ni5q22v2iw"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://b3a6s2wrpu2vc" path="res://scripts/ship/ship_controller.gd" id="1_ctrl"]
-[ext_resource type="Script" uid="uid://dv5l8k2cl43ww" path="res://scripts/ship/ship_model.gd" id="2_model"]
-[ext_resource type="Script" uid="uid://sg22aobnrtrs" path="res://scripts/ship/ship_camera.gd" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/ship/ship_controller.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://scripts/ship/ship_model.gd" id="2_model"]
+[ext_resource type="Script" path="res://scripts/ship/ship_camera.gd" id="3_cam"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ship"]
 size = Vector3(28, 12, 36)

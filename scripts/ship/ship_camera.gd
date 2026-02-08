@@ -180,12 +180,12 @@ func _update_third_person(delta: float) -> void:
 	var desired_forward: Vector3 = (look_target - global_position).normalized()
 	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
-	if smooth_forward.length() > 0.001:
+	if smooth_forward.length_squared() > 0.001:
 		var up_vec := ship_basis.y.lerp(Vector3.UP, 0.05).normalized()
-		# Robust colinear check: try ship_basis.x, then hard fallback to world UP/RIGHT
-		if absf(smooth_forward.dot(up_vec)) > 0.99:
+		# Ensure up is never colinear with forward (cross product near zero = colinear)
+		if smooth_forward.cross(up_vec).length_squared() < 0.01:
 			up_vec = ship_basis.x.normalized()
-			if absf(smooth_forward.dot(up_vec)) > 0.99:
+			if smooth_forward.cross(up_vec).length_squared() < 0.01:
 				up_vec = Vector3.UP if absf(smooth_forward.y) < 0.9 else Vector3.RIGHT
 		look_at(global_position + smooth_forward, up_vec)
 

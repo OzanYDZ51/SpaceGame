@@ -1,11 +1,11 @@
-[gd_scene format=3 uid="uid://c2mmccwr18vwx"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://bnof7w71n7mod" path="res://scripts/environment/space_environment.gd" id="1_env"]
+[ext_resource type="Script" path="res://scripts/environment/space_environment.gd" id="1_env"]
 [ext_resource type="Script" path="res://scripts/ui/hud/flight_hud.gd" id="3_hud"]
 [ext_resource type="Script" path="res://scripts/ui/chat_panel.gd" id="6_chat"]
 [ext_resource type="Script" path="res://scripts/ui/stellar_map/stellar_map.gd" id="7_map"]
 [ext_resource type="PackedScene" path="res://scenes/ship/player_ship.tscn" id="4_ship"]
-[ext_resource type="Shader" uid="uid://dsmymqysdprha" path="res://shaders/skybox_stars.gdshader" id="5_skyshader"]
+[ext_resource type="Shader" path="res://shaders/skybox_stars.gdshader" id="5_skyshader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_sky"]
 shader = ExtResource("5_skyshader")

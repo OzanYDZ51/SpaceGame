@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://c11x8illje3wj"]
+[gd_scene format=3]
 
-[ext_resource type="PackedScene" uid="uid://dmd3iltniwm6r" path="res://assets/models/hangar_interior.glb" id="1_model"]
-[ext_resource type="Script" uid="uid://lnsnvsxprhlw" path="res://scripts/station/hangar_scene.gd" id="2_script"]
-[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="3_ship_preview"]
+[ext_resource type="PackedScene" path="res://assets/models/hangar_interior.glb" id="1_model"]
+[ext_resource type="Script" path="res://scripts/station/hangar_scene.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://assets/models/tie.glb" id="3_ship_preview"]
 
 [sub_resource type="Environment" id="env_hangar"]
 background_mode = 1
