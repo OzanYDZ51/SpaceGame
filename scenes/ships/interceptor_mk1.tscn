@@ -33,5 +33,5 @@ slot_id = 2
 slot_size = "M"
 is_turret = true
 turret_arc_degrees = 180.0
-turret_speed_deg_s = 90.0
+turret_speed_deg_s = 120.0
 turret_vertical_arc = 45.0

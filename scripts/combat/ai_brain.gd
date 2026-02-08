@@ -90,6 +90,13 @@ func _process(delta: float) -> void:
 	if current_state == State.DEAD:
 		return
 
+	# Turrets track + auto-fire every frame (smooth rotation, not 10Hz)
+	if target and is_instance_valid(target) and weapons_enabled:
+		if current_state in [State.ATTACK, State.PURSUE, State.EVADE]:
+			var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+			if wm:
+				wm.update_turrets(target)
+
 	_tick_timer -= delta
 	if _tick_timer > 0.0:
 		return
@@ -128,7 +135,6 @@ func _process(delta: float) -> void:
 		State.FORMATION:
 			_tick_formation()
 
-	# DEBUG: periodic state report
 	_debug_timer -= TICK_INTERVAL
 
 

@@ -50,6 +50,7 @@ func equip_weapons(weapon_names: Array[StringName]) -> void:
 		var weapon := WeaponRegistry.get_weapon(weapon_names[i])
 		if weapon:
 			hardpoints[i].mount_weapon(weapon)
+	_recalculate_groups()
 
 
 func toggle_hardpoint(index: int) -> void:
@@ -107,24 +108,20 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 
 	var ship_vel: Vector3 = _ship.linear_velocity if _ship else Vector3.ZERO
 
-	# Update turret aim direction for all turrets in this group
-	for hp_idx in group:
-		if hp_idx < hardpoints.size() and hardpoints[hp_idx].is_turret:
-			var aim_dir := (target_pos - hardpoints[hp_idx].global_position).normalized()
-			hardpoints[hp_idx].set_target_direction(aim_dir)
-
 	if sequential:
-		# Fire one hardpoint at a time, cycling through (skip disabled + mining lasers)
+		# Fire one hardpoint at a time, cycling through (skip disabled, mining lasers, turrets)
 		var attempts := 0
 		while attempts < group.size():
 			var idx: int = _fire_index.get(group_index, 0) % group.size()
 			_fire_index[group_index] = idx + 1
 			var hp_idx: int = group[idx]
 			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
-				# Skip mining lasers — handled by MiningSystem
-				if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
-					attempts += 1
-					continue
+				if hardpoints[hp_idx].mounted_weapon:
+					var wtype: int = hardpoints[hp_idx].mounted_weapon.weapon_type
+					# Skip mining lasers (MiningSystem) and turrets (update_turrets)
+					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
+						attempts += 1
+						continue
 				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
@@ -133,12 +130,13 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 					return
 			attempts += 1
 	else:
-		# Fire all hardpoints in group simultaneously (skip disabled + mining lasers)
+		# Fire all hardpoints in group simultaneously (skip disabled, mining lasers, turrets)
 		for hp_idx in group:
 			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
-				# Skip mining lasers — handled by MiningSystem
-				if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
-					continue
+				if hardpoints[hp_idx].mounted_weapon:
+					var wtype: int = hardpoints[hp_idx].mounted_weapon.weapon_type
+					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
+						continue
 				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
@@ -149,6 +147,75 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 func update_cooldowns(_delta: float) -> void:
 	# Hardpoint cooldowns are handled in Hardpoint._process()
 	pass
+
+
+## Call every frame to keep turrets tracking + auto-firing at the current target.
+func update_turrets(target_node: Node3D) -> void:
+	if target_node == null or not is_instance_valid(target_node):
+		return
+
+	# Get target center (use ShipCenter offset if available)
+	var target_pos: Vector3
+	if target_node is ShipController and (target_node as ShipController).center_offset != Vector3.ZERO:
+		target_pos = target_node.global_position + target_node.global_transform.basis * (target_node as ShipController).center_offset
+	else:
+		target_pos = target_node.global_position
+
+	var target_vel := Vector3.ZERO
+	if target_node is RigidBody3D:
+		target_vel = (target_node as RigidBody3D).linear_velocity
+	var ship_vel: Vector3 = _ship.linear_velocity if _ship else Vector3.ZERO
+
+	for hp in hardpoints:
+		if not hp.is_turret or not hp.enabled or hp.mounted_weapon == null:
+			continue
+		if hp.mounted_weapon.weapon_type != WeaponResource.WeaponType.TURRET:
+			continue
+
+		# Quadratic lead prediction per turret (same as TargetingSystem)
+		var lead_pos := _solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed)
+
+		# Update aim direction
+		var aim_dir := (lead_pos - hp.global_position).normalized()
+		hp.set_target_direction(aim_dir)
+
+		# Auto-fire when aligned
+		var bolt := hp.try_fire(lead_pos, ship_vel)
+		if bolt:
+			weapon_fired.emit(hp.slot_id, hp.mounted_weapon.weapon_name)
+			if _weapon_audio:
+				_weapon_audio.play_fire(hp.global_position)
+
+
+## Quadratic intercept prediction: solves where to aim so projectile meets target.
+static func _solve_turret_lead(turret_pos: Vector3, ship_vel: Vector3, target_pos: Vector3, target_vel: Vector3, projectile_speed: float) -> Vector3:
+	var rel_pos: Vector3 = target_pos - turret_pos
+	var rel_vel: Vector3 = target_vel - ship_vel
+
+	# Solve |rel_pos + rel_vel * t|² = (projectile_speed * t)²
+	var a: float = rel_vel.dot(rel_vel) - projectile_speed * projectile_speed
+	var b: float = 2.0 * rel_pos.dot(rel_vel)
+	var c: float = rel_pos.dot(rel_pos)
+
+	var tof: float = 0.0
+	var discriminant: float = b * b - 4.0 * a * c
+
+	if absf(a) < 0.001:
+		if absf(b) > 0.001:
+			tof = -c / b
+	elif discriminant >= 0.0:
+		var sqrt_d: float = sqrt(discriminant)
+		var t1: float = (-b - sqrt_d) / (2.0 * a)
+		var t2: float = (-b + sqrt_d) / (2.0 * a)
+		if t1 > 0.01 and t2 > 0.01:
+			tof = minf(t1, t2)
+		elif t1 > 0.01:
+			tof = t1
+		elif t2 > 0.01:
+			tof = t2
+
+	tof = clampf(tof, 0.0, 5.0)
+	return target_pos + target_vel * tof
 
 
 func swap_weapon(hardpoint_index: int, weapon_name: StringName) -> StringName:

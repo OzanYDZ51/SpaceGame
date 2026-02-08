@@ -185,12 +185,13 @@ func _input(event: InputEvent) -> void:
 		var data := ShipRegistry.get_ship_data(new_id)
 		if data:
 			var configs := ShipFactory.get_hardpoint_configs(new_id)
-			display_ship(data.model_path, data.model_scale, configs, data.default_loadout)
+			var model_rot := ShipFactory.get_model_rotation(new_id)
+			display_ship(data.model_path, data.model_scale, configs, data.default_loadout, model_rot)
 			_update_ship_labels(data)
 			ship_selected.emit(new_id)
 
 
-func display_ship(ship_model_path: String, _ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = []) -> void:
+func display_ship(ship_model_path: String, _ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = [], model_rotation: Vector3 = Vector3.ZERO) -> void:
 	# Place a copy of the player's ship in the hangar.
 	# Uses the exact transform from ShipPreview (editor placement) so WYSIWYG.
 	if _docked_ship:
@@ -201,6 +202,7 @@ func display_ship(ship_model_path: String, _ship_model_scale: float, hp_configs:
 	_docked_ship.model_path = ship_model_path
 	# Use the scale the user set on ShipPreview in the editor (X component as uniform)
 	_docked_ship.model_scale = _preview_local_scale.x
+	_docked_ship.model_rotation_degrees = model_rotation
 	_docked_ship.engine_light_color = Color(0.3, 0.5, 1.0)
 	_docked_ship.name = "DockedShip"
 

@@ -39,9 +39,10 @@ func _scan_crates() -> void:
 	var best_crate: CargoCrate = null
 
 	for ent in crates:
-		var node: Node3D = ent.get("node")
-		if node == null or not is_instance_valid(node):
+		var node_ref = ent.get("node")
+		if node_ref == null or not is_instance_valid(node_ref):
 			continue
+		var node: Node3D = node_ref
 		if not node is CargoCrate:
 			continue
 		var dist: float = _ship.global_position.distance_to(node.global_position)

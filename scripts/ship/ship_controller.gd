@@ -274,6 +274,12 @@ func _handle_player_weapon_input() -> void:
 		_cached_weapon_mgr.fire_group(1, false, target_pos)
 		mark_combat()
 
+	# Turrets auto-track and auto-fire at current target
+	if targeting and targeting.current_target:
+		_cached_weapon_mgr.update_turrets(targeting.current_target)
+		if _cached_weapon_mgr.is_any_weapon_ready(1):
+			mark_combat()
+
 
 const WEAPON_CONVERGENCE_DISTANCE: float = 500.0  ## Meters ahead of ship where projectiles meet
 
@@ -506,9 +512,9 @@ func _run_autopilot() -> void:
 		return
 
 	var target_world: Vector3
-	var node: Node3D = ent.get("node")
-	if node and is_instance_valid(node):
-		target_world = node.global_position
+	var node_ref = ent.get("node")
+	if node_ref != null and is_instance_valid(node_ref):
+		target_world = (node_ref as Node3D).global_position
 	else:
 		target_world = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 

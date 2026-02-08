@@ -43,16 +43,16 @@ script = ExtResource("2_0dtjq")
 gate_name = "Gate → Fomalhaut Scorpii"
 target_system_id = 0
 target_system_name = "Fomalhaut Scorpii"
-pos_x = -23349882.106691845
+pos_x = -70648.125
 pos_y = 299804.83300978836
-pos_z = -16964682.374423016
+pos_z = -2841646.2
 
 [sub_resource type="Resource" id="Resource_j165x"]
 script = ExtResource("2_0dtjq")
 gate_name = "Gate → Omicron Serpentis"
 target_system_id = 53
 target_system_name = "Omicron Serpentis"
-pos_x = -12860144.199409487
+pos_x = -12860144.199409489
 pos_y = -445927.2730530154
 pos_z = -25838617.09983453
 
@@ -63,13 +63,13 @@ target_system_id = 70
 target_system_name = "Arcturus Scorpii"
 pos_x = -6083508.547430953
 pos_y = 405102.61980257067
-pos_z = 28213620.225252934
+pos_z = 28213620.225252938
 
 [sub_resource type="Resource" id="Resource_m7erj"]
 script = ExtResource("3_byyem")
 planet_name = "Regulus Orionis I"
-orbital_radius = 14213995.337486269
-orbital_period = 90.94325555113389
+orbital_radius = 14213995.337486267
+orbital_period = 90.94325555113387
 orbital_angle = 0.45131692176704946
 radius = 6719145.894050598
 color = Color(0.646657, 0.6083586, 0.35751766, 0.9)
@@ -79,9 +79,9 @@ script = ExtResource("3_byyem")
 planet_name = "Regulus Orionis II"
 type = 3
 orbital_radius = 27199413.70132196
-orbital_period = 240.73296112508962
+orbital_period = 240.7329611250896
 orbital_angle = 3.025192498633263
-radius = 24136744.141578674
+radius = 24136744.14157867
 color = Color(0.7862128, 0.63068104, 0.3403626, 0.9)
 has_rings = true
 
@@ -98,8 +98,8 @@ color = Color(0.58247423, 0.7363011, 0.9506059, 0.9)
 [sub_resource type="Resource" id="Resource_0ghlk"]
 script = ExtResource("5_kfc0q")
 station_name = "Gateway Hub"
-orbital_radius = 25862041.550477106
-orbital_period = 216.65966501258066
+orbital_radius = 25862041.550477102
+orbital_period = 216.65966501258063
 orbital_angle = 5.2265627872733065
 
 [resource]
@@ -108,10 +108,10 @@ system_name = "Regulus Orionis"
 seed_value = 1371244028
 star_name = "Regulus Orionis"
 star_spectral_class = "M"
-star_temperature = 2953.0517548322678
+star_temperature = 2953.051754832268
 star_radius = 25881479.85657453
 star_color = Color(1, 0.6, 0.4, 1)
-star_luminosity = 0.050515085816383365
+star_luminosity = 0.05051508581638336
 planets = Array[ExtResource("3_byyem")]([SubResource("Resource_m7erj"), SubResource("Resource_l4wh2"), SubResource("Resource_k46ax")])
 stations = Array[ExtResource("5_kfc0q")]([SubResource("Resource_0ghlk")])
 asteroid_belts = Array[ExtResource("1_wv6bs")]([SubResource("Resource_nqmms"), SubResource("Resource_8upf2")])

@@ -22,6 +22,7 @@ var _viewer_camera: Camera3D = null
 var _ship_model: ShipModel = null
 var _ship_model_path: String = "res://assets/models/tie.glb"
 var _ship_model_scale: float = 1.0
+var _ship_model_rotation: Vector3 = Vector3.ZERO
 var _ship_center_offset: Vector3 = Vector3.ZERO
 var _hp_markers: Array[Dictionary] = []  # {mesh: MeshInstance3D, body: StaticBody3D, index: int}
 
@@ -142,9 +143,10 @@ func _ready() -> void:
 	add_child(_back_btn)
 
 
-func setup_ship_viewer(model_path: String, model_scale: float, center_offset: Vector3 = Vector3.ZERO) -> void:
+func setup_ship_viewer(model_path: String, model_scale: float, center_offset: Vector3 = Vector3.ZERO, model_rotation: Vector3 = Vector3.ZERO) -> void:
 	_ship_model_path = model_path
 	_ship_model_scale = model_scale
+	_ship_model_rotation = model_rotation
 	_ship_center_offset = center_offset
 
 
@@ -245,6 +247,7 @@ func _setup_3d_viewer() -> void:
 	_ship_model = ShipModel.new()
 	_ship_model.model_path = _ship_model_path
 	_ship_model.model_scale = _ship_model_scale
+	_ship_model.model_rotation_degrees = _ship_model_rotation
 	_ship_model.skip_centering = true
 	_ship_model.engine_light_color = Color(0.3, 0.5, 1.0)
 	# Offset so the ShipCenter marker aligns with the viewport origin
@@ -293,7 +296,7 @@ func _refresh_viewer_weapons() -> void:
 	var hp_configs: Array[Dictionary] = []
 	var weapon_names: Array[StringName] = []
 	for hp in weapon_manager.hardpoints:
-		hp_configs.append({"position": hp.position, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
+		hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
 		weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
 	_ship_model.apply_equipment(hp_configs, weapon_names)
 
@@ -366,21 +369,31 @@ func _update_marker_visuals() -> void:
 			continue
 
 		var hp := weapon_manager.hardpoints[idx]
+		var has_weapon_model: bool = hp.mounted_weapon != null and hp.mounted_weapon.weapon_model_scene != ""
 
 		if idx == _selected_hardpoint:
+			# Selected: show marker even with weapon model (pulsing highlight)
+			mesh.visible = true
 			var type_col := _get_hp_marker_color(hp)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
 			var pulse := 1.0 + sin(_pulse_time * 4.0) * 0.5
 			mat.emission_energy_multiplier = pulse
+		elif has_weapon_model:
+			# Has weapon with 3D model: hide marker (weapon mesh is visible)
+			mesh.visible = false
 		elif hp.mounted_weapon:
+			# Has weapon but no 3D model: show colored marker
+			mesh.visible = true
 			var type_col := _get_hp_marker_color(hp)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
 			mat.emission_energy_multiplier = 0.5
 		else:
+			# Empty slot: show dim marker
+			mesh.visible = true
 			mat.albedo_color = Color(0.3, 0.3, 0.3)
 			mat.emission_enabled = false
 

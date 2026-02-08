@@ -10,7 +10,7 @@
 script = ExtResource("1_1fmfb")
 belt_name = "Nu Persei Belt 1"
 field_id = &"belt_0"
-orbital_radius = 25643667.588092722
+orbital_radius = 25643667.58809272
 width = 2754675.8689315477
 dominant_resource = &"platinum"
 secondary_resource = &"crystal"
@@ -77,9 +77,9 @@ color = Color(0.5732106, 0.7450605, 0.9878315, 0.9)
 [sub_resource type="Resource" id="Resource_4saqd"]
 script = ExtResource("5_nyv5y")
 station_name = "Omega Depot"
-orbital_radius = 18436758.04145906
+orbital_radius = 16092234.0
 orbital_period = 124.07464861753022
-orbital_angle = 5.628748506505705
+orbital_angle = -0.6345881697359858
 
 [resource]
 script = ExtResource("4_r5wr7")

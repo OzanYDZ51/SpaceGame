@@ -27,24 +27,38 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -3.6
 script = ExtResource("2_hpslot")
 slot_id = 2
 slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 120.0
 
 [node name="Hardpoint_3" type="Node3D" parent="." unique_id=1012248232]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 3.5298085, 4.8798923, -14.952035)
 script = ExtResource("2_hpslot")
 slot_id = 3
 slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 120.0
 
 [node name="Hardpoint_4" type="Node3D" parent="." unique_id=11545077]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -5.096926, 4.6481495, 1.070276)
 script = ExtResource("2_hpslot")
 slot_id = 4
 slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 120.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_5" type="Node3D" parent="." unique_id=2020738195]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.9503717, 4.4635243, 1.0065722)
 script = ExtResource("2_hpslot")
 slot_id = 5
 slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 120.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="Hardpoint_6" type="Node3D" parent="." unique_id=1084057416]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -4.482454, 5.625717, -8.055141)

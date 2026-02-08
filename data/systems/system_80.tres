@@ -1,10 +1,10 @@
-[gd_resource type="Resource" script_class="StarSystemData" format=3]
+[gd_resource type="Resource" script_class="StarSystemData" format=3 uid="uid://bwaadggmn2n4d"]
 
-[ext_resource type="Script" path="res://scripts/universe/asteroid_belt_data.gd" id="1_dv0rx"]
-[ext_resource type="Script" path="res://scripts/universe/jump_gate_data.gd" id="2_hc26d"]
-[ext_resource type="Script" path="res://scripts/universe/planet_data.gd" id="3_2uy8j"]
-[ext_resource type="Script" path="res://scripts/universe/star_system_data.gd" id="4_g7k02"]
-[ext_resource type="Script" path="res://scripts/universe/station_data.gd" id="5_ggd3c"]
+[ext_resource type="Script" uid="uid://doxpok4r6qedh" path="res://scripts/universe/asteroid_belt_data.gd" id="1_dv0rx"]
+[ext_resource type="Script" uid="uid://05or0a07s1mq" path="res://scripts/universe/jump_gate_data.gd" id="2_hc26d"]
+[ext_resource type="Script" uid="uid://hcafm6yk5ncg" path="res://scripts/universe/planet_data.gd" id="3_2uy8j"]
+[ext_resource type="Script" uid="uid://br8lpu8ou2kwj" path="res://scripts/universe/star_system_data.gd" id="4_g7k02"]
+[ext_resource type="Script" uid="uid://dj68tm0vlli0v" path="res://scripts/universe/station_data.gd" id="5_ggd3c"]
 
 [sub_resource type="Resource" id="Resource_n1yxh"]
 script = ExtResource("1_dv0rx")
@@ -39,7 +39,7 @@ script = ExtResource("2_hc26d")
 gate_name = "Gate → Mu Leonis"
 target_system_id = 48
 target_system_name = "Mu Leonis"
-pos_x = 27927563.075847406
+pos_x = 27927563.07584741
 pos_y = 531700.2749959541
 pos_z = -9320590.124059722
 
@@ -66,7 +66,7 @@ script = ExtResource("3_2uy8j")
 planet_name = "Sol Scorpii II"
 type = 3
 orbital_radius = 26549201.06402279
-orbital_period = 232.15253412491202
+orbital_period = 232.152534124912
 orbital_angle = 4.971778165785425
 radius = 32387522.45903015
 color = Color(0.7967409, 0.6669879, 0.26167223, 0.9)
@@ -87,7 +87,7 @@ script = ExtResource("3_2uy8j")
 planet_name = "Sol Scorpii IV"
 type = 4
 orbital_radius = 112724981.42047696
-orbital_period = 2031.0775343397606
+orbital_period = 2031.0775343397609
 orbital_angle = 5.408876179209297
 radius = 7392948.150634766
 color = Color(0.5535067, 0.75527614, 0.9889545, 0.9)
@@ -99,7 +99,7 @@ type = 4
 orbital_radius = 232276102.60240313
 orbital_period = 6007.628091430975
 orbital_angle = 4.426173107533313
-radius = 4141872.1675872803
+radius = 4141872.16758728
 color = Color(0.6349725, 0.78198045, 0.911776, 0.9)
 
 [sub_resource type="Resource" id="Resource_e6f52"]

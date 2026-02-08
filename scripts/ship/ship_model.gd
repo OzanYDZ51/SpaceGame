@@ -58,6 +58,7 @@ func _use_external_model() -> void:
 	add_child(_model_pivot)
 
 	_model_instance = external_model_instance
+	_model_instance.set_owner(null)
 	_model_pivot.add_child(_model_instance)
 	# Skip _center_model() — the ship scene already has correct positioning
 
@@ -287,9 +288,16 @@ func apply_equipment(configs: Array[Dictionary], weapon_names: Array[StringName]
 		var instance := scene.instantiate() as Node3D
 		if instance == null:
 			continue
-		instance.position = configs[i].get("position", Vector3.ZERO)
-		add_child(instance)
-		_weapon_meshes.append(instance)
+		# Wrap in a pivot at the hardpoint position/rotation so the weapon scene's
+		# own transform (rotation, offset) is preserved intact.
+		# No runtime scaling — weapon scene defines its own size (WYSIWYG with editor).
+		var pivot := Node3D.new()
+		pivot.name = "WeaponMount_%d" % i
+		pivot.position = configs[i].get("position", Vector3.ZERO)
+		pivot.rotation_degrees = configs[i].get("rotation_degrees", Vector3.ZERO)
+		add_child(pivot)
+		pivot.add_child(instance)
+		_weapon_meshes.append(pivot)
 
 
 ## Removes all weapon model instances from this ship model.

@@ -206,7 +206,10 @@ func _setup_ui_managers() -> void:
 
 
 func _initialize_game() -> void:
-	main_scene = get_tree().current_scene
+	var scene := get_tree().current_scene
+	if not scene is Node3D:
+		return
+	main_scene = scene
 
 	universe_node = main_scene.get_node_or_null("Universe")
 	if universe_node == null:
@@ -1011,19 +1014,18 @@ func _initiate_wormhole_jump() -> void:
 	NetworkManager.connect_to_server(target_url)
 
 	# 5. Wait for connection + config
-	var connected: bool = false
-	var config_received: bool = false
+	var state: Array = [false, false]  # [connected, config_received]
 	var timeout: float = 10.0
 
 	var on_connected := func():
-		connected = true
+		state[0] = true
 	var on_config := func(_cfg: Dictionary):
-		config_received = true
+		state[1] = true
 
 	NetworkManager.connection_succeeded.connect(on_connected, CONNECT_ONE_SHOT)
 	NetworkManager.server_config_received.connect(on_config, CONNECT_ONE_SHOT)
 
-	while not (connected and config_received) and timeout > 0:
+	while not (state[0] and state[1]) and timeout > 0:
 		await get_tree().create_timer(0.1).timeout
 		timeout -= 0.1
 
@@ -1088,7 +1090,7 @@ func _on_equipment_requested() -> void:
 		var ship_ctrl := player_ship as ShipController
 		var center_off := ship_ctrl.center_offset if ship_ctrl else Vector3.ZERO
 		if ship_model:
-			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale, center_off)
+			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale, center_off, ship_model.model_rotation_degrees)
 		# Close station screen first, then open equipment
 		_screen_manager.close_screen("station")
 		# Small delay to let close transition start, then open equipment

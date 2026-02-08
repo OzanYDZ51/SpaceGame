@@ -181,7 +181,10 @@ func _update_third_person(delta: float) -> void:
 	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
 	if smooth_forward.length() > 0.001:
-		look_at(global_position + smooth_forward, ship_basis.y.lerp(Vector3.UP, 0.05))
+		var up_vec := ship_basis.y.lerp(Vector3.UP, 0.05)
+		if absf(smooth_forward.dot(up_vec.normalized())) > 0.999:
+			up_vec = ship_basis.x
+		look_at(global_position + smooth_forward, up_vec)
 
 	# =========================================================================
 	# DYNAMIC FOV (phase-aware cruise + spike effects)

@@ -39,6 +39,7 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	ship_model.name = "ShipModel"
 	ship_model.model_path = data.model_path
 	ship_model.model_scale = scene_result.model_scale
+	ship_model.model_rotation_degrees = scene_result.model_rotation
 	ship_model.external_model_instance = scene_result.get("model_node", null)
 	controller.add_child(ship_model)
 
@@ -149,6 +150,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	ship_model.name = "ShipModel"
 	ship_model.model_path = data.model_path
 	ship_model.model_scale = scene_result.model_scale
+	ship_model.model_rotation_degrees = scene_result.model_rotation
 	ship_model.external_model_instance = scene_result.get("model_node", null)
 	# Faction color tint + engine light color
 	if faction_name == &"hostile":
@@ -311,27 +313,62 @@ static func create_npc_data_only(ship_id: StringName, behavior_name: StringName,
 
 ## Returns hardpoint configs for a ship_id (lightweight, no collision generation).
 ## Used by display systems (hangar, equipment screen) to show weapon visuals.
-static var _config_cache: Dictionary = {}
+static var _config_cache: Dictionary = {}  # ship_id -> Array[Dictionary]
+static var _rotation_cache: Dictionary = {}  # ship_id -> Vector3
 
 static func get_hardpoint_configs(ship_id: StringName) -> Array[Dictionary]:
 	if _config_cache.has(ship_id):
 		return _config_cache[ship_id]
+	_cache_scene_info(ship_id)
+	return _config_cache.get(ship_id, [] as Array[Dictionary])
+
+
+static func get_model_rotation(ship_id: StringName) -> Vector3:
+	if _rotation_cache.has(ship_id):
+		return _rotation_cache[ship_id]
+	_cache_scene_info(ship_id)
+	return _rotation_cache.get(ship_id, Vector3.ZERO)
+
+
+static func _cache_scene_info(ship_id: StringName) -> void:
 	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null or data.ship_scene_path == "":
-		return []
+		_config_cache[ship_id] = [] as Array[Dictionary]
+		_rotation_cache[ship_id] = Vector3.ZERO
+		return
 	if not _scene_cache.has(data.ship_scene_path):
 		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
 		if packed == null:
-			return []
+			_config_cache[ship_id] = [] as Array[Dictionary]
+			_rotation_cache[ship_id] = Vector3.ZERO
+			return
 		_scene_cache[data.ship_scene_path] = packed
 	var instance: Node3D = _scene_cache[data.ship_scene_path].instantiate() as Node3D
 	var configs: Array[Dictionary] = []
+	var root_rotation: Vector3 = instance.rotation_degrees
+	var model_rot: Vector3 = Vector3.ZERO
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
+		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
+			model_rot = root_rotation + child.rotation_degrees
+
+	# Transform hardpoint configs by root's rotation
+	var root_basis := instance.transform.basis.orthonormalized()
+	if not root_basis.is_equal_approx(Basis.IDENTITY):
+		for i in configs.size():
+			configs[i]["position"] = root_basis * configs[i]["position"]
+			if configs[i].has("direction"):
+				configs[i]["direction"] = (root_basis * configs[i]["direction"]).normalized()
+			var hp_rot: Vector3 = configs[i].get("rotation_degrees", Vector3.ZERO)
+			var hp_basis := Basis.from_euler(Vector3(deg_to_rad(hp_rot.x), deg_to_rad(hp_rot.y), deg_to_rad(hp_rot.z)))
+			var composed := root_basis * hp_basis
+			var euler := composed.get_euler()
+			configs[i]["rotation_degrees"] = Vector3(rad_to_deg(euler.x), rad_to_deg(euler.y), rad_to_deg(euler.z))
+
 	instance.queue_free()
 	_config_cache[ship_id] = configs
-	return configs
+	_rotation_cache[ship_id] = model_rot
 
 
 ## Loads a ship scene and extracts HardpointSlot configs and model node.
@@ -352,7 +389,12 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 	var configs: Array[Dictionary] = []
 	var model_node: Node3D = null
 	var scene_model_scale: float = 1.0
+	var scene_model_rotation: Vector3 = Vector3.ZERO
 	var center_offset: Vector3 = Vector3.ZERO
+
+	# Capture root node rotation and scale (user may set these on root instead of ModelPivot)
+	var root_rotation: Vector3 = instance.rotation_degrees
+	var root_scale: float = instance.scale.x  # Assuming uniform scale
 
 	for child in instance.get_children():
 		if child is HardpointSlot:
@@ -360,7 +402,9 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 		elif child.name == "ShipCenter":
 			center_offset = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
-			scene_model_scale = child.scale.x  # Scene defines the model scale
+			# Combine root + ModelPivot scale and rotation
+			scene_model_scale = root_scale * child.scale.x
+			scene_model_rotation = root_rotation + child.rotation_degrees
 			if child.get_child_count() > 0:
 				var inner_model: Node3D = child.get_child(0) as Node3D
 				child.remove_child(inner_model)
@@ -376,6 +420,30 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 				instance.remove_child(child)
 				model_node = child
 				break
+
+	# Transform hardpoint configs and center_offset by root's rotation and scale
+	# (children are in root's local space — need to convert to ShipController space)
+	var root_basis := instance.transform.basis.orthonormalized()
+	var has_root_rotation := not root_basis.is_equal_approx(Basis.IDENTITY)
+	var has_root_scale := not is_equal_approx(root_scale, 1.0)
+
+	if has_root_rotation or has_root_scale:
+		for i in configs.size():
+			if has_root_rotation:
+				configs[i]["position"] = root_basis * configs[i]["position"]
+				if configs[i].has("direction"):
+					configs[i]["direction"] = (root_basis * configs[i]["direction"]).normalized()
+				var hp_rot: Vector3 = configs[i].get("rotation_degrees", Vector3.ZERO)
+				var hp_basis := Basis.from_euler(Vector3(deg_to_rad(hp_rot.x), deg_to_rad(hp_rot.y), deg_to_rad(hp_rot.z)))
+				var composed := root_basis * hp_basis
+				var euler := composed.get_euler()
+				configs[i]["rotation_degrees"] = Vector3(rad_to_deg(euler.x), rad_to_deg(euler.y), rad_to_deg(euler.z))
+			if has_root_scale:
+				configs[i]["position"] *= root_scale
+		if has_root_rotation:
+			center_offset = root_basis * center_offset
+		if has_root_scale:
+			center_offset *= root_scale
 
 	# Clean up the temporary instance
 	instance.queue_free()
@@ -398,6 +466,7 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 		"configs": configs,
 		"model_node": model_node,
 		"model_scale": scene_model_scale,
+		"model_rotation": scene_model_rotation,
 		"collision_shape": col_node,
 		"center_offset": center_offset,
 	}

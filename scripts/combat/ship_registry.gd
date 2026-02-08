@@ -95,7 +95,7 @@ static func _build_interceptor_mk1() -> ShipData:
 	d.ship_class = &"Interceptor"
 	d.model_path = "res://assets/models/tie.glb"
 	d.model_scale = 2.0
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Plasma Cannon"]
+	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1"]
 	d.hull_hp = 600.0; d.shield_hp = 350.0; d.shield_regen_rate = 12.0; d.shield_regen_delay = 3.5
 	d.shield_damage_bleedthrough = 0.12; d.armor_rating = 3.0
 	d.mass = 30000.0
@@ -187,7 +187,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.ship_class = &"Frigate"
 	d.model_path = "res://assets/models/frigate_mk1.glb"
 	d.model_scale = 1.0
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Laser Mk2", &"Laser Mk2", &"Plasma Cannon", &"Plasma Cannon", &"Railgun", &"Railgun"]
+	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Railgun", &"Railgun"]
 	d.hull_hp = 5000.0; d.shield_hp = 2500.0; d.shield_regen_rate = 30.0; d.shield_regen_delay = 6.0
 	d.shield_damage_bleedthrough = 0.05; d.armor_rating = 20.0
 	d.mass = 300000.0

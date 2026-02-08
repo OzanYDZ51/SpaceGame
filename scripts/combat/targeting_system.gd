@@ -107,7 +107,7 @@ func get_lead_indicator_position() -> Vector3:
 
 	var ship := get_parent() as RigidBody3D
 	if ship == null:
-		return current_target.global_position
+		return _get_target_center()
 
 	# Get weapon speed (use first mounted weapon or default)
 	var projectile_speed := 800.0
@@ -115,7 +115,7 @@ func get_lead_indicator_position() -> Vector3:
 	if wm and not wm.hardpoints.is_empty() and wm.hardpoints[0].mounted_weapon:
 		projectile_speed = wm.hardpoints[0].mounted_weapon.projectile_speed
 
-	var target_pos: Vector3 = current_target.global_position
+	var target_pos: Vector3 = _get_target_center()
 	var target_vel := Vector3.ZERO
 	if current_target is RigidBody3D:
 		target_vel = (current_target as RigidBody3D).linear_velocity
@@ -163,7 +163,14 @@ func get_target_distance() -> float:
 	var ship := get_parent() as Node3D
 	if ship == null:
 		return -1.0
-	return ship.global_position.distance_to(current_target.global_position)
+	return ship.global_position.distance_to(_get_target_center())
+
+
+## Returns the visual center of the current target (using ShipCenter offset if available)
+func _get_target_center() -> Vector3:
+	if current_target is ShipController and (current_target as ShipController).center_offset != Vector3.ZERO:
+		return current_target.global_position + current_target.global_transform.basis * (current_target as ShipController).center_offset
+	return current_target.global_position
 
 
 func _set_target(new_target: Node3D) -> void:

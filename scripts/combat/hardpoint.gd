@@ -76,6 +76,7 @@ func setup_from_config(cfg: Dictionary) -> void:
 	slot_id = cfg.get("id", 0)
 	slot_size = cfg.get("size", "S")
 	position = cfg.get("position", Vector3.ZERO)
+	rotation_degrees = cfg.get("rotation_degrees", Vector3.ZERO)
 	is_turret = cfg.get("is_turret", false)
 	turret_arc_degrees = cfg.get("turret_arc_degrees", 180.0)
 	turret_speed_deg_s = cfg.get("turret_speed_deg_s", 90.0)
@@ -157,28 +158,44 @@ func _update_turret_rotation(delta: float) -> void:
 		dir = Vector3.FORWARD
 
 	# Yaw = rotation around Y axis (horizontal)
-	var target_yaw := rad_to_deg(atan2(dir.x, -dir.z))
+	var raw_yaw := rad_to_deg(atan2(dir.x, -dir.z))
 	# Pitch = rotation around X axis (vertical)
 	var horizontal_dist := sqrt(dir.x * dir.x + dir.z * dir.z)
-	var target_pitch := rad_to_deg(atan2(-dir.y, horizontal_dist))
+	var raw_pitch := rad_to_deg(atan2(-dir.y, horizontal_dist))
 
-	# Clamp to arc limits
+	# Check if target is within arc BEFORE clamping
 	var half_arc := turret_arc_degrees * 0.5
-	target_yaw = clampf(target_yaw, -half_arc, half_arc)
-	target_pitch = clampf(target_pitch, -turret_vertical_arc, turret_vertical_arc)
+	var target_in_arc := absf(raw_yaw) <= half_arc + 5.0 and absf(raw_pitch) <= turret_vertical_arc + 5.0
 
-	# Smooth rotation toward target
+	# Clamp to arc limits (turret still tracks to edge even if out of arc)
+	var clamped_yaw := clampf(raw_yaw, -half_arc, half_arc)
+	var clamped_pitch := clampf(raw_pitch, -turret_vertical_arc, turret_vertical_arc)
+
+	# Fast proportional tracking + move_toward for snappy response
+	# This eliminates lag when the ship rotates
 	var max_step := turret_speed_deg_s * delta
-	_current_yaw = move_toward(_current_yaw, target_yaw, max_step)
-	_current_pitch = move_toward(_current_pitch, target_pitch, max_step)
+	var yaw_diff := clamped_yaw - _current_yaw
+	var pitch_diff := clamped_pitch - _current_pitch
+	# Proportional: jump 80% of the remaining error, clamped to max speed
+	var yaw_step := clampf(yaw_diff * 8.0 * delta, -max_step * 3.0, max_step * 3.0)
+	var pitch_step := clampf(pitch_diff * 8.0 * delta, -max_step * 3.0, max_step * 3.0)
+	# Blend: use proportional when far, move_toward when close for precision
+	if absf(yaw_diff) > 10.0:
+		_current_yaw += yaw_step
+	else:
+		_current_yaw = move_toward(_current_yaw, clamped_yaw, max_step * 2.0)
+	if absf(pitch_diff) > 10.0:
+		_current_pitch += pitch_step
+	else:
+		_current_pitch = move_toward(_current_pitch, clamped_pitch, max_step * 2.0)
 
 	# Apply rotation to pivot
 	_turret_pivot.rotation_degrees = Vector3(_current_pitch, _current_yaw, 0.0)
 
-	# Check alignment: can fire if within 5 degrees of target
-	var yaw_error := absf(_current_yaw - target_yaw)
-	var pitch_error := absf(_current_pitch - target_pitch)
-	_can_fire = (yaw_error < 5.0 and pitch_error < 5.0)
+	# Can fire only if: target is within arc AND turret is aligned to it
+	var yaw_error := absf(_current_yaw - clamped_yaw)
+	var pitch_error := absf(_current_pitch - clamped_pitch)
+	_can_fire = target_in_arc and (yaw_error < 3.0 and pitch_error < 3.0)
 
 
 func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
@@ -232,8 +249,12 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	spawn_pos = muzzle.origin
 
 	if is_turret and _turret_pivot:
-		# Turret: fire along muzzle forward (already aimed by turret rotation)
-		fire_dir = (-muzzle.basis.z).normalized()
+		# Turret: fire from muzzle directly toward the lead target position
+		# (not along muzzle -Z, which has rotation lag and pivot offset error)
+		fire_dir = (target_pos - spawn_pos).normalized()
+		# Safety: if target is too close, fall back to muzzle forward
+		if fire_dir.length_squared() < 0.25:
+			fire_dir = (-muzzle.basis.z).normalized()
 		up_hint = muzzle.basis.y
 	else:
 		# Fixed: aim from muzzle toward target
@@ -267,17 +288,29 @@ func _load_weapon_mesh(weapon: WeaponResource) -> void:
 	if scene == null:
 		return
 	_weapon_mesh_instance = scene.instantiate()
-	# Attach to turret pivot if turret, otherwise directly to hardpoint
-	var attach_parent: Node3D = _turret_pivot if _turret_pivot else self
-	attach_parent.add_child(_weapon_mesh_instance)
+	# No runtime scaling — weapon scene defines its own size (WYSIWYG with editor)
+
+	# Detect TurretBase node: if present, base stays fixed on hardpoint,
+	# only TurretGun (sibling or child) rotates on the pivot.
+	_turret_base = _weapon_mesh_instance.get_node_or_null("TurretBase")
+	var turret_gun: Node3D = _weapon_mesh_instance.get_node_or_null("TurretGun")
+
+	if is_turret and _turret_base and turret_gun:
+		# Advanced turret rig: base fixed, gun rotates
+		add_child(_weapon_mesh_instance)  # Whole scene on hardpoint (fixed)
+		turret_gun.reparent(_turret_pivot)  # Move gun under pivot (rotates)
+	else:
+		# Simple weapon: attach everything to turret pivot (or hardpoint if fixed)
+		var attach_parent: Node3D = _turret_pivot if _turret_pivot else self
+		attach_parent.add_child(_weapon_mesh_instance)
 
 	# Find muzzle points in the weapon model
 	_muzzle_points.clear()
 	_muzzle_index = 0
 	_find_muzzle_points(_weapon_mesh_instance)
-
-	# Future: detect TurretBase / TurretRotator for advanced turret rigs
-	_turret_base = _weapon_mesh_instance.get_node_or_null("TurretBase")
+	# Also search in turret gun if reparented
+	if turret_gun:
+		_find_muzzle_points(turret_gun)
 
 
 func _find_muzzle_points(root: Node3D) -> void:
@@ -351,3 +384,10 @@ func _get_ship_node() -> Node3D:
 func _get_projectile_pool() -> ProjectilePool:
 	_cache_refs_if_needed()
 	return _cached_pool
+
+
+func _get_ship_model() -> ShipModel:
+	var ship := _get_ship_node()
+	if ship:
+		return ship.get_node_or_null("ShipModel") as ShipModel
+	return null

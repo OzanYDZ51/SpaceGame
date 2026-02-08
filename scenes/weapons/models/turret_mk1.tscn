@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://c31lr44ihge4w"]
+
+[ext_resource type="PackedScene" uid="uid://cg3cexixj4nqs" path="res://assets/models/tourelle.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://c3dyllljptkow" path="res://scripts/weapons/turret_model_setup.gd" id="2_script"]
+
+[node name="WeaponRoot" type="Node3D" unique_id=1329956783]
+transform = Transform3D(-1.3113416e-07, 0, -3, 0, 3, 0, 3, 0, -1.3113416e-07, 0, 0, 0)
+script = ExtResource("2_script")
+
+[node name="TurretBase" type="Node3D" parent="." unique_id=1568211535]
+
+[node name="Model" parent="TurretBase" unique_id=945933653 instance=ExtResource("1_model")]
+
+[node name="TurretGun" type="Node3D" parent="." unique_id=1337440221]
+
+[node name="MuzzlePoint" type="Marker3D" parent="TurretGun" unique_id=2055288923]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.56698936, 0.43177205, 0.011049874)

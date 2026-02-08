@@ -32,6 +32,13 @@ func _process(delta: float) -> void:
 	if is_docked or _ship == null:
 		return
 
+	# Safety: clear stale station ref (e.g. freed during system transition)
+	if nearest_station_node != null and not is_instance_valid(nearest_station_node):
+		nearest_station_node = null
+		if can_dock:
+			can_dock = false
+			dock_unavailable.emit()
+
 	_check_timer -= delta
 	if _check_timer <= 0.0:
 		_check_timer = scan_interval
@@ -47,9 +54,11 @@ func _scan_stations() -> void:
 	for ent in entities.values():
 		if ent["type"] != EntityRegistrySystem.EntityType.STATION:
 			continue
-		var node: Node3D = ent.get("node")
-		if node == null or not is_instance_valid(node):
+		# Use untyped var to safely handle freed node references
+		var node_ref = ent.get("node")
+		if node_ref == null or not is_instance_valid(node_ref):
 			continue
+		var node: Node3D = node_ref
 		var dist: float = _ship.global_position.distance_to(node.global_position)
 		if dist < best_dist:
 			best_dist = dist

@@ -22,6 +22,7 @@ static func get_weapon(weapon_name: StringName) -> WeaponResource:
 		&"Torpedo": w = _build_torpedo()
 		&"Railgun": w = _build_railgun()
 		&"Mine Layer": w = _build_mine_layer()
+		&"Turret Mk1": w = _build_turret_mk1()
 		&"Auto Cannon": w = _build_auto_cannon()
 		&"Point Defense": w = _build_point_defense()
 		&"Mining Laser Mk1": w = _build_mining_laser_mk1()
@@ -199,6 +200,26 @@ static func _build_mine_layer() -> WeaponResource:
 	w.projectile_lifetime = 30.0
 	w.aoe_radius = 50.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	return w
+
+
+static func _build_turret_mk1() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Turret Mk1"
+	w.weapon_type = WeaponResource.WeaponType.TURRET
+	w.slot_size = WeaponResource.SlotSize.M
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 25.0
+	w.damage_type = &"kinetic"
+	w.fire_rate = 4.0
+	w.energy_cost_per_shot = 4.0
+	w.projectile_speed = 1000.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(1.0, 0.6, 0.2)
+	w.bolt_length = 3.5
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 	return w
 
 

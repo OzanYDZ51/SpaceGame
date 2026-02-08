@@ -6,6 +6,7 @@ extends Node3D
 # Hardpoint Slot - Editor-visible weapon mount point (@tool).
 # Place as child of a ship scene to define weapon positions visually.
 # Draws a colored sphere gizmo + direction arrow in editor.
+# Set preview_weapon_scene to see the actual weapon model on the ship.
 # =============================================================================
 
 @export var slot_id: int = 0
@@ -15,15 +16,25 @@ extends Node3D
 @export_range(10, 360) var turret_speed_deg_s: float = 90.0
 @export_range(0, 90) var turret_vertical_arc: float = 45.0
 
+## Weapon model scene to preview in the editor (e.g. "res://scenes/weapons/models/laser_mk1.tscn").
+## Editor-only: not used at runtime. Lets you see exactly how the weapon looks on the ship.
+@export_file("*.tscn") var preview_weapon_scene: String = "":
+	set(value):
+		preview_weapon_scene = value
+		if Engine.is_editor_hint():
+			_reload_weapon_preview()
+
 var _gizmo_mesh: MeshInstance3D = null
 var _arrow_mesh: MeshInstance3D = null
 var _arc_mesh: MeshInstance3D = null
 var _label: Label3D = null
+var _weapon_preview: Node3D = null
 
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		_create_gizmo()
+		_reload_weapon_preview()
 
 
 func _process(_delta: float) -> void:
@@ -31,6 +42,38 @@ func _process(_delta: float) -> void:
 		_update_gizmo_color()
 		_update_label()
 
+
+# =============================================================================
+# WEAPON PREVIEW (editor only)
+# =============================================================================
+
+func _reload_weapon_preview() -> void:
+	# Remove old preview
+	if _weapon_preview and is_instance_valid(_weapon_preview):
+		_weapon_preview.queue_free()
+		_weapon_preview = null
+
+	if preview_weapon_scene == "":
+		return
+
+	var scene: PackedScene = load(preview_weapon_scene) as PackedScene
+	if scene == null:
+		push_warning("HardpointSlot #%d: Could not load preview '%s'" % [slot_id, preview_weapon_scene])
+		return
+
+	_weapon_preview = scene.instantiate() as Node3D
+	if _weapon_preview == null:
+		return
+
+	_weapon_preview.name = "_WeaponPreview"
+	add_child(_weapon_preview)
+	# Don't save the preview instance into the scene file
+	_weapon_preview.owner = null
+
+
+# =============================================================================
+# GIZMO
+# =============================================================================
 
 func _create_gizmo() -> void:
 	# Sphere gizmo
@@ -174,6 +217,7 @@ func get_slot_config() -> Dictionary:
 		"id": slot_id,
 		"size": slot_size,
 		"position": position,
+		"rotation_degrees": rotation_degrees,
 		"direction": -basis.z,  # Forward direction of the slot
 		"is_turret": is_turret,
 		"turret_arc_degrees": turret_arc_degrees,
