@@ -5,23 +5,23 @@ shader_type sky;
 // Milky Way band, multi-layer nebulae, dust lanes, star halos, color temperature
 // =============================================================================
 
-uniform float star_density : hint_range(0.0, 1.0) = 0.6;
-uniform float star_brightness : hint_range(0.0, 5.0) = 2.2;
-uniform float twinkle_speed : hint_range(0.0, 5.0) = 0.7;
+uniform float star_density : hint_range(0.0, 1.0) = 0.35;
+uniform float star_brightness : hint_range(0.0, 5.0) = 2.8;
+uniform float twinkle_speed : hint_range(0.0, 5.0) = 0.5;
 
-// Nebula palette
-uniform vec3 nebula_warm : source_color = vec3(0.12, 0.02, 0.04);   // deep crimson
-uniform vec3 nebula_cool : source_color = vec3(0.02, 0.03, 0.10);   // dark blue
-uniform vec3 nebula_accent : source_color = vec3(0.06, 0.01, 0.12); // purple
-uniform float nebula_intensity : hint_range(0.0, 1.5) = 0.45;
+// Nebula palette (dark stylized — faint wisps)
+uniform vec3 nebula_warm : source_color = vec3(0.06, 0.01, 0.02);   // muted crimson
+uniform vec3 nebula_cool : source_color = vec3(0.01, 0.015, 0.05);  // deep blue
+uniform vec3 nebula_accent : source_color = vec3(0.03, 0.005, 0.06); // faint purple
+uniform float nebula_intensity : hint_range(0.0, 1.5) = 0.18;
 
-// Milky Way
-uniform float milky_way_intensity : hint_range(0.0, 2.0) = 0.7;
-uniform float milky_way_width : hint_range(0.05, 0.5) = 0.18;
-uniform vec3 milky_way_color : source_color = vec3(0.12, 0.10, 0.16);
+// Milky Way (subtle band)
+uniform float milky_way_intensity : hint_range(0.0, 2.0) = 0.3;
+uniform float milky_way_width : hint_range(0.05, 0.5) = 0.14;
+uniform vec3 milky_way_color : source_color = vec3(0.05, 0.04, 0.08);
 
-// Dust lanes
-uniform float dust_intensity : hint_range(0.0, 1.0) = 0.5;
+// Dust lanes (heavier — more void)
+uniform float dust_intensity : hint_range(0.0, 1.0) = 0.65;
 
 // ─── Noise utilities (gradient noise, no sin()) ─────────────────────────────
 
@@ -249,8 +249,8 @@ void sky() {
 	// === COMPOSE ===
 	vec3 sky_color = vec3(0.0);
 
-	// Base deep space (very subtle gradient)
-	sky_color += vec3(0.003, 0.003, 0.008);
+	// Base deep space (near pure black with faint cold tint)
+	sky_color += vec3(0.001, 0.001, 0.004);
 
 	// Add nebulae
 	sky_color += nebula;
@@ -258,11 +258,11 @@ void sky() {
 	// Add Milky Way glow
 	sky_color += mw_col;
 
-	// Apply dust (absorbs light behind it)
-	sky_color *= (1.0 - dust * 0.7);
+	// Apply dust (absorbs more light — deeper void pockets)
+	sky_color *= (1.0 - dust * 0.85);
 
-	// Add stars on top (dust partially dims stars too)
-	total_stars *= (1.0 - dust * 0.4);
+	// Add stars on top (dust dims stars more aggressively)
+	total_stars *= (1.0 - dust * 0.55);
 	sky_color += total_stars;
 
 	COLOR = sky_color;

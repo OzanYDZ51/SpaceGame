@@ -27,6 +27,7 @@ const STAR_SUFFIXES := ["Centauri", "Eridani", "Cygni", "Draconis", "Orionis", "
 # Station name parts
 const STATION_PREFIXES := ["Alpha", "Beta", "Gamma", "Omega", "Nexus", "Haven", "Port", "Dock", "Orbital", "Gateway"]
 const STATION_SUFFIXES := ["Station", "Hub", "Outpost", "Terminal", "Platform", "Depot"]
+const STATION_TYPES := ["repair", "trade", "military", "mining"]
 
 # Scale factor: we compress real AU distances to game-friendly distances
 # 1 AU real = ~150 billion meters. In game we use ~50 million meters per AU for playability.
@@ -121,20 +122,54 @@ static func generate(seed_val: int, connections: Array[Dictionary] = []) -> Star
 		data.planets.append(planet)
 		current_orbit *= orbit_spacing_factor
 
-	# Asteroid belts (0-2, placed between planet orbits)
-	var num_belts: int = rng.randi_range(0, mini(2, num_planets - 1))
+	# Asteroid belts (2-5, placed between planet orbits)
+	var num_belts: int = rng.randi_range(2, mini(5, num_planets))
+	var used_indices: Array[int] = []
 	for i in num_belts:
-		var belt_index: int = rng.randi_range(1, num_planets - 1)
-		if belt_index < data.planets.size():
-			var inner_orbit: float = data.planets[belt_index - 1]["orbital_radius"]
-			var outer_orbit: float = data.planets[belt_index]["orbital_radius"]
-			var belt_r: float = (inner_orbit + outer_orbit) * 0.5
-			var belt_width: float = (outer_orbit - inner_orbit) * 0.15
-			data.asteroid_belts.append({
-				"name": data.system_name + " Belt " + str(i + 1),
-				"orbital_radius": belt_r,
-				"width": belt_width,
-			})
+		# Pick a gap between planets (avoid duplicates)
+		var belt_index: int = -1
+		for _try in 10:
+			var candidate: int = rng.randi_range(1, num_planets - 1)
+			if candidate not in used_indices and candidate < data.planets.size():
+				belt_index = candidate
+				used_indices.append(candidate)
+				break
+		if belt_index < 0:
+			continue
+
+		var inner_orbit: float = data.planets[belt_index - 1]["orbital_radius"]
+		var outer_orbit: float = data.planets[belt_index]["orbital_radius"]
+		var belt_r: float = (inner_orbit + outer_orbit) * 0.5
+		var belt_width: float = (outer_orbit - inner_orbit) * 0.2
+
+		# Determine zone based on orbital position relative to frost line
+		var zone: String
+		if belt_r < habitable_zone_inner:
+			zone = "inner"
+		elif belt_r < frost_line:
+			zone = "mid"
+		else:
+			zone = "outer"
+
+		# Resource distribution
+		var dominant: StringName = MiningRegistry.pick_resource_for_zone(rng, zone)
+		var secondary: StringName = MiningRegistry.pick_secondary(rng, zone, dominant)
+		var rare: StringName = MiningRegistry.pick_rare(rng, dominant, secondary)
+
+		# Asteroid count scales with belt width
+		var asteroid_count: int = rng.randi_range(150, 500)
+
+		data.asteroid_belts.append({
+			"name": data.system_name + " Belt " + str(i + 1),
+			"field_id": "belt_%d" % i,
+			"orbital_radius": belt_r,
+			"width": belt_width,
+			"dominant_resource": dominant,
+			"secondary_resource": secondary,
+			"rare_resource": rare,
+			"asteroid_count": asteroid_count,
+			"zone": zone,
+		})
 
 	# Generate stations
 	_generate_stations(rng, data)
@@ -156,8 +191,16 @@ static func _generate_stations(rng: RandomNumberGenerator, data: StarSystemData)
 		var prefix: String = STATION_PREFIXES[rng.randi() % STATION_PREFIXES.size()]
 		var suffix: String = STATION_SUFFIXES[rng.randi() % STATION_SUFFIXES.size()]
 
+		# First station in every system is always "repair" type
+		var station_type: String
+		if i == 0:
+			station_type = "repair"
+		else:
+			station_type = STATION_TYPES[rng.randi() % STATION_TYPES.size()]
+
 		data.stations.append({
 			"name": prefix + " " + suffix,
+			"station_type": station_type,
 			"orbital_radius": station_orbit,
 			"orbital_parent": "star_0",
 			"orbital_period": planet["orbital_period"] * 0.9,

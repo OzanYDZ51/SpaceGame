@@ -34,6 +34,8 @@ var _engine_glow_intensity: float = 0.0
 var _model_instance: Node3D = null
 var _model_pivot: Node3D = null
 var _silhouette_points: PackedVector3Array = PackedVector3Array()
+var _visual_aabb_cache: AABB
+var _visual_aabb_cached: bool = false
 
 
 func _ready() -> void:
@@ -174,6 +176,21 @@ func update_engine_glow(thrust_amount: float) -> void:
 	_engine_glow_intensity = lerp(_engine_glow_intensity, thrust_amount, 0.1)
 	for light in _engine_lights:
 		light.light_energy = 0.5 + _engine_glow_intensity * 4.0
+
+
+func get_visual_aabb() -> AABB:
+	## Returns the ship's visual AABB in ShipModel-local space (with model_pivot
+	## scale and centering applied). Cached after first call.
+	if _visual_aabb_cached:
+		return _visual_aabb_cache
+	if _model_instance == null or _model_pivot == null:
+		return AABB(Vector3(-1, -1, -1), Vector3(2, 2, 2))
+	var raw_aabb := _get_combined_aabb(_model_instance)
+	# Apply model_instance offset (centering) and model_pivot scale
+	var pivot_xform := _model_pivot.transform * _model_instance.transform
+	_visual_aabb_cache = _transform_aabb(raw_aabb, pivot_xform)
+	_visual_aabb_cached = true
+	return _visual_aabb_cache
 
 
 func get_silhouette_points() -> PackedVector3Array:

@@ -24,6 +24,8 @@ static func get_weapon(weapon_name: StringName) -> WeaponResource:
 		&"Mine Layer": w = _build_mine_layer()
 		&"Auto Cannon": w = _build_auto_cannon()
 		&"Point Defense": w = _build_point_defense()
+		&"Mining Laser Mk1": w = _build_mining_laser_mk1()
+		&"Mining Laser Mk2": w = _build_mining_laser_mk2()
 		_:
 			push_error("WeaponRegistry: Unknown weapon '%s'" % weapon_name)
 			return null
@@ -228,4 +230,38 @@ static func _build_point_defense() -> WeaponResource:
 	w.bolt_color = Color(0.8, 0.3, 0.3)
 	w.bolt_length = 2.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	return w
+
+
+static func _build_mining_laser_mk1() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Mining Laser Mk1"
+	w.weapon_type = WeaponResource.WeaponType.MINING_LASER
+	w.slot_size = WeaponResource.SlotSize.S
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 10.0
+	w.damage_type = &"thermal"
+	w.fire_rate = 2.0  # ticks per second (continuous beam)
+	w.energy_cost_per_shot = 4.0  # energy per second
+	w.projectile_speed = 0.0
+	w.projectile_lifetime = 0.0
+	w.bolt_color = Color(0.2, 1.0, 0.5)
+	w.bolt_length = 0.0
+	return w
+
+
+static func _build_mining_laser_mk2() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Mining Laser Mk2"
+	w.weapon_type = WeaponResource.WeaponType.MINING_LASER
+	w.slot_size = WeaponResource.SlotSize.M
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 20.0
+	w.damage_type = &"thermal"
+	w.fire_rate = 2.0
+	w.energy_cost_per_shot = 6.0
+	w.projectile_speed = 0.0
+	w.projectile_lifetime = 0.0
+	w.bolt_color = Color(0.15, 0.9, 0.6)
+	w.bolt_length = 0.0
 	return w

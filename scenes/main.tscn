@@ -9,17 +9,17 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_sky"]
 shader = ExtResource("5_skyshader")
-shader_parameter/star_density = 0.6
-shader_parameter/star_brightness = 2.2
-shader_parameter/twinkle_speed = 0.7
-shader_parameter/nebula_warm = Color(0.12, 0.02, 0.04, 1)
-shader_parameter/nebula_cool = Color(0.02, 0.03, 0.10, 1)
-shader_parameter/nebula_accent = Color(0.06, 0.01, 0.12, 1)
-shader_parameter/nebula_intensity = 0.45
-shader_parameter/milky_way_intensity = 0.7
-shader_parameter/milky_way_width = 0.18
-shader_parameter/milky_way_color = Color(0.12, 0.10, 0.16, 1)
-shader_parameter/dust_intensity = 0.5
+shader_parameter/star_density = 0.35
+shader_parameter/star_brightness = 2.8
+shader_parameter/twinkle_speed = 0.5
+shader_parameter/nebula_warm = Color(0.06, 0.01, 0.02, 1)
+shader_parameter/nebula_cool = Color(0.01, 0.015, 0.05, 1)
+shader_parameter/nebula_accent = Color(0.03, 0.005, 0.06, 1)
+shader_parameter/nebula_intensity = 0.18
+shader_parameter/milky_way_intensity = 0.3
+shader_parameter/milky_way_width = 0.14
+shader_parameter/milky_way_color = Color(0.05, 0.04, 0.08, 1)
+shader_parameter/dust_intensity = 0.65
 
 [sub_resource type="Sky" id="Sky_space"]
 sky_material = SubResource("ShaderMat_sky")
@@ -30,17 +30,17 @@ radiance_size = 2
 background_mode = 2
 sky = SubResource("Sky_space")
 ambient_light_source = 2
-ambient_light_color = Color(0.04, 0.04, 0.08, 1)
-ambient_light_energy = 0.25
+ambient_light_color = Color(0.015, 0.015, 0.03, 1)
+ambient_light_energy = 0.1
 tonemap_mode = 3
 tonemap_white = 6.0
 glow_enabled = true
-glow_intensity = 0.8
-glow_strength = 1.2
-glow_bloom = 0.05
+glow_intensity = 0.45
+glow_strength = 0.8
+glow_bloom = 0.02
 glow_blend_mode = 0
-glow_hdr_threshold = 0.8
-glow_hdr_scale = 2.5
+glow_hdr_threshold = 1.2
+glow_hdr_scale = 2.0
 
 [node name="Main" type="Node3D" unique_id=2132800667]
 script = ExtResource("1_env")
@@ -50,8 +50,8 @@ environment = SubResource("Env_space")
 
 [node name="StarLight" type="DirectionalLight3D" parent="." unique_id=2050582671]
 transform = Transform3D(0.866, -0.25, 0.433, 0, 0.866, 0.5, -0.5, -0.433, 0.75, 0, 0, 0)
-light_color = Color(1, 0.95, 0.9, 1)
-light_energy = 1.5
+light_color = Color(0.95, 0.9, 0.85, 1)
+light_energy = 0.8
 shadow_enabled = false
 
 [node name="Universe" type="Node3D" parent="." unique_id=1205757707]

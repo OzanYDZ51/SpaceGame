@@ -2,14 +2,15 @@ class_name ShieldHitEffect
 extends Node3D
 
 # =============================================================================
-# Shield Hit Effect - Curved energy patch at projectile impact on shields
-# SphereMesh centered on ship — shader only renders a smooth curved cap
-# around the impact point (~70 deg). Appears with fade-in, blue gradient.
+# Shield Hit Effect - AABB-based ellipsoid shield at projectile impact
+# Uses SphereMesh(radius=1) scaled non-uniformly by ship AABB so the shield
+# conforms to the hull silhouette. Shader renders a curved cap around impact.
 # Parented to the target ship so it moves with it.
 # =============================================================================
 
 const DURATION: float = 0.8
-const DEFAULT_SHIELD_RADIUS: float = 20.0
+const SHIELD_PADDING: float = 0.6  # Multiplier: how much larger than AABB
+const FALLBACK_RADIUS: float = 10.0
 
 var _age: float = 0.0
 var _intensity: float = 1.0
@@ -19,16 +20,26 @@ var _flash_light: OmniLight3D = null
 
 func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, intensity: float = 1.0) -> void:
 	_intensity = clampf(intensity, 0.5, 3.0)
-	position = Vector3.ZERO  # Centered on parent ship
 
-	# Shield radius: pushed out further from ship for cleaner look
-	var shield_radius := DEFAULT_SHIELD_RADIUS
+	# Get AABB from ShipModel for hull-conforming ellipsoid
+	var shield_half_extents := Vector3.ONE * FALLBACK_RADIUS
+	var shield_center := Vector3.ZERO
 	var ship_model := target_ship.get_node_or_null("ShipModel")
 	if ship_model is ShipModel:
-		shield_radius = ship_model.model_scale * 3.0
+		var aabb: AABB = ship_model.get_visual_aabb()
+		if aabb.size.length() > 0.1:
+			shield_half_extents = aabb.size * 0.5 * SHIELD_PADDING
+			shield_center = aabb.get_center()
+			# Ensure minimum size on any axis
+			shield_half_extents = shield_half_extents.clamp(
+				Vector3.ONE * 2.0, Vector3.ONE * 200.0
+			)
 
-	# Impact direction in ship's local space (for shader)
-	var impact_world := (hit_world_pos - target_ship.global_position)
+	# Center shield mesh on AABB center (not ship origin)
+	position = shield_center
+
+	# Impact direction in ship's local space, relative to shield center
+	var impact_world := hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
 	if impact_world.length_squared() < 0.01:
 		impact_world = -target_ship.global_transform.basis.z
 	var impact_local: Vector3 = target_ship.global_transform.basis.inverse() * impact_world.normalized()
@@ -45,21 +56,23 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	_shield_mat.set_shader_parameter("impact_direction", impact_local)
 	_shield_mat.set_shader_parameter("effect_time", 0.0)
 	_shield_mat.set_shader_parameter("shield_health", shield_ratio)
+	_shield_mat.set_shader_parameter("shield_scale", shield_half_extents)
 
-	# === Sphere mesh (only a curved cap is visible via shader) ===
+	# === Unit sphere scaled to AABB ellipsoid ===
 	var shield_mesh := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
-	sphere.radius = shield_radius
-	sphere.height = shield_radius * 2.0
+	sphere.radius = 1.0
+	sphere.height = 2.0
 	sphere.radial_segments = 48
 	sphere.rings = 24
 	shield_mesh.mesh = sphere
+	shield_mesh.scale = shield_half_extents
 	shield_mesh.material_override = _shield_mat
 	shield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(shield_mesh)
 
-	# === Flash light at impact point on shield surface ===
-	var flash_pos := impact_local * shield_radius
+	# === Flash light at impact point on ellipsoid surface ===
+	var flash_pos := impact_local * shield_half_extents
 	_flash_light = OmniLight3D.new()
 	_flash_light.position = flash_pos
 	var flash_col := Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)

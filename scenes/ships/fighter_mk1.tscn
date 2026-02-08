@@ -11,11 +11,14 @@ transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 [node name="TieModel" parent="ModelPivot" unique_id=344390485 instance=ExtResource("1_model")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0064897537, -0.014919281, 0.0030748844)
 
+[node name="ShipCenter" type="Marker3D" parent="." unique_id=953168776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 15.379076, 0)
+
 [node name="Hardpoint_0" type="Node3D" parent="." unique_id=112966100]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1.2719746, 12.373792, 3.8310618)
 script = ExtResource("2_hpslot")
 
 [node name="Hardpoint_1" type="Node3D" parent="." unique_id=86753981]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.3814666, 12.398228, 3.7640504)
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.3814666, 12.398228, 3.7640505)
 script = ExtResource("2_hpslot")
 slot_id = 1

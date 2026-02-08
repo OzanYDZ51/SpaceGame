@@ -11,13 +11,13 @@ extends Camera3D
 enum CameraMode { THIRD_PERSON, COCKPIT }
 
 @export_group("Third Person")
-@export var cam_height: float = 34.0           ## Height above ship
-@export var cam_distance_default: float = 50.0 ## Default follow distance
-@export var cam_distance_min: float = 20.0     ## Min zoom distance
+@export var cam_height: float = 10.0           ## Height above ship
+@export var cam_distance_default: float = 25.0 ## Default follow distance
+@export var cam_distance_min: float = 8.0      ## Min zoom distance
 @export var cam_distance_max: float = 250.0    ## Max zoom distance
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
 @export var cam_rotation_speed: float = 18.0   ## Rotation follow speed
-@export var cam_look_ahead_y: float = -5.0     ## Look below ship center
+@export var cam_look_ahead_y: float = -2.0     ## Look below ship center
 @export var cam_speed_pull: float = 0.02       ## Extra distance per m/s
 @export var cam_zoom_step: float = 10.0        ## Distance per scroll tick
 
@@ -33,7 +33,7 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 @export var fov_cruise: float = 95.0
 
 @export_group("Cockpit")
-@export var cockpit_offset: Vector3 = Vector3(0.0, 8.0, -25.0)
+@export var cockpit_offset: Vector3 = Vector3(0.0, 3.0, -5.0)
 
 var camera_mode: CameraMode = CameraMode.THIRD_PERSON
 var target_distance: float = 50.0
@@ -62,8 +62,9 @@ func _ready() -> void:
 	# Initialize camera position immediately behind and above ship
 	if _ship:
 		var ship_basis: Basis = _ship.global_transform.basis
-		global_position = _ship.global_position + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
-		look_at(_ship.global_position, ship_basis.y)
+		var center: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
+		global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
+		look_at(center, ship_basis.y)
 
 	# Camera is top_level so floating origin shifts don't move it automatically.
 	# We must shift it manually to avoid the camera lagging behind after each shift.
@@ -115,7 +116,8 @@ func _process(delta: float) -> void:
 
 func _update_third_person(delta: float) -> void:
 	var ship_basis: Basis = _ship.global_transform.basis
-	var ship_pos: Vector3 = _ship.global_position
+	# Use ShipCenter offset as the visual center of the ship
+	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	# =========================================================================
 	# DYNAMIC DISTANCE (speed pull-back only)
@@ -147,7 +149,7 @@ func _update_third_person(delta: float) -> void:
 	global_position = global_position.lerp(desired_pos, follow)
 
 	# =========================================================================
-	# LOOK TARGET (well ahead of ship, below camera plane)
+	# LOOK TARGET (well ahead of ship center, below camera plane)
 	# Ship appears in the lower portion of the screen; crosshair area is clear.
 	# =========================================================================
 	var look_ahead: float = 15.0 + minf(_ship.current_speed * 0.05, 50.0)
@@ -174,7 +176,7 @@ func _update_third_person(delta: float) -> void:
 
 func _update_cockpit(delta: float) -> void:
 	var ship_basis: Basis = _ship.global_transform.basis
-	var ship_pos: Vector3 = _ship.global_position
+	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	global_position = ship_pos + ship_basis * cockpit_offset
 	global_transform.basis = ship_basis

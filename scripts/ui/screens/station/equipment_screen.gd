@@ -22,6 +22,7 @@ var _viewer_camera: Camera3D = null
 var _ship_model: ShipModel = null
 var _ship_model_path: String = "res://assets/models/tie.glb"
 var _ship_model_scale: float = 1.0
+var _ship_center_offset: Vector3 = Vector3.ZERO
 var _hp_markers: Array[Dictionary] = []  # {mesh: MeshInstance3D, body: StaticBody3D, index: int}
 
 # --- Orbit Camera ---
@@ -140,9 +141,10 @@ func _ready() -> void:
 	add_child(_back_btn)
 
 
-func setup_ship_viewer(model_path: String, model_scale: float) -> void:
+func setup_ship_viewer(model_path: String, model_scale: float, center_offset: Vector3 = Vector3.ZERO) -> void:
 	_ship_model_path = model_path
 	_ship_model_scale = model_scale
+	_ship_center_offset = center_offset
 
 
 # =============================================================================
@@ -243,6 +245,8 @@ func _setup_3d_viewer() -> void:
 	_ship_model.model_scale = _ship_model_scale
 	_ship_model.skip_centering = true
 	_ship_model.engine_light_color = Color(0.3, 0.5, 1.0)
+	# Offset so the ShipCenter marker aligns with the viewport origin
+	_ship_model.position = -_ship_center_offset
 	_viewport.add_child(_ship_model)
 
 	_create_hardpoint_markers()
@@ -253,19 +257,29 @@ func _setup_3d_viewer() -> void:
 func _auto_fit_camera() -> void:
 	# Compute ideal orbit distance so the whole ship + markers fit in view
 	var max_extent: float = 2.0
+
+	# Use the ship model's visual AABB (accounts for mesh size + scale)
+	if _ship_model:
+		var aabb := _ship_model.get_visual_aabb()
+		var half_size := aabb.size * 0.5
+		max_extent = maxf(max_extent, half_size.x)
+		max_extent = maxf(max_extent, half_size.y)
+		max_extent = maxf(max_extent, half_size.z)
+
+	# Also consider hardpoint positions (they may extend beyond the mesh)
 	if weapon_manager:
 		for hp in weapon_manager.hardpoints:
-			var pos: Vector3 = hp.position
+			var pos: Vector3 = hp.position - _ship_center_offset
 			max_extent = maxf(max_extent, abs(pos.x))
 			max_extent = maxf(max_extent, abs(pos.y))
 			max_extent = maxf(max_extent, abs(pos.z))
 
-	# Distance = extent / tan(half_fov), with padding
+	# Distance = extent / tan(half_fov), with generous padding for readability
 	var half_fov := deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
-	var ideal := max_extent / tan(half_fov) * 1.2
+	var ideal := max_extent / tan(half_fov) * 1.6
 	orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
-	_orbit_max_dist = ideal * 2.5
+	_orbit_max_dist = ideal * 3.0
 
 
 func _cleanup_3d_viewer() -> void:
@@ -305,12 +319,14 @@ func _create_hardpoint_markers() -> void:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = Color(0.3, 0.3, 0.3)
 		mat.emission_enabled = false
+		mat.no_depth_test = true
+		mat.render_priority = 10
 		mesh_inst.material_override = mat
-		mesh_inst.position = hp.position
+		mesh_inst.position = hp.position - _ship_center_offset
 		_viewport.add_child(mesh_inst)
 
 		var body := StaticBody3D.new()
-		body.position = hp.position
+		body.position = hp.position - _ship_center_offset
 		var col_shape := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
 		shape.radius = 0.3 * _ship_model_scale
@@ -391,8 +407,11 @@ func _process(delta: float) -> void:
 		orbit_yaw += AUTO_ROTATE_SPEED * delta
 		_update_orbit_camera()
 
-	if _current_tab == 0 and _selected_hardpoint >= 0 and weapon_manager:
+	if _current_tab == 0 and weapon_manager:
 		_update_marker_visuals()
+
+	# Redraw every frame so projected labels track the orbiting camera
+	queue_redraw()
 
 
 # =============================================================================
@@ -884,7 +903,7 @@ func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> voi
 
 	for i in weapon_manager.hardpoints.size():
 		var hp := weapon_manager.hardpoints[i]
-		var world_pos := hp.position
+		var world_pos := hp.position - _ship_center_offset
 
 		var to_marker := (world_pos - _viewer_camera.global_position).normalized()
 		if cam_fwd.dot(to_marker) < 0.1:

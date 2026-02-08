@@ -57,6 +57,13 @@ func _setup_name_label() -> void:
 
 ## Called when we receive a new state snapshot from the network.
 func receive_state(state: NetworkState) -> void:
+	# Hide puppet when the remote player is docked or dead
+	var should_hide: bool = state.is_docked or state.is_dead
+	if visible != (not should_hide):
+		visible = not should_hide
+	if should_hide:
+		return  # Don't update interpolation while hidden
+
 	var snapshot := {
 		"pos": [state.pos_x, state.pos_y, state.pos_z],
 		"vel": state.velocity,

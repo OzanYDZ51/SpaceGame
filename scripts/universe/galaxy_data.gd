@@ -40,3 +40,31 @@ func get_connections(id: int) -> Array:
 	if sys.is_empty():
 		return []
 	return sys["connections"]
+
+
+## BFS search for the nearest system with a station (for respawn).
+## Returns the system id, or from_id if none found.
+func find_nearest_repair_system(from_id: int) -> int:
+	# Current system has a station? Use it directly
+	var current := get_system(from_id)
+	if not current.is_empty() and current.get("has_station", false):
+		return from_id
+
+	# BFS through jump gate connections
+	var visited: Dictionary = {}
+	var queue: Array[int] = [from_id]
+	visited[from_id] = true
+
+	while queue.size() > 0:
+		var sys_id: int = queue.pop_front()
+		for conn_id in get_connections(sys_id):
+			if visited.has(conn_id):
+				continue
+			visited[conn_id] = true
+			var conn_sys := get_system(conn_id)
+			if not conn_sys.is_empty() and conn_sys.get("has_station", false):
+				return conn_id
+			queue.append(conn_id)
+
+	# Fallback: no reachable station, stay in current system
+	return from_id

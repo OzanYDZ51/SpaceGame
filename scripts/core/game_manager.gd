@@ -37,7 +37,10 @@ var _equipment_screen: EquipmentScreen = null
 var _loot_screen: LootScreen = null
 var _loot_pickup: LootPickupSystem = null
 var player_cargo: PlayerCargo = null
+var player_economy: PlayerEconomy = null
 var _lod_manager: ShipLODManager = null
+var _asteroid_field_mgr: AsteroidFieldManager = null
+var _mining_system: MiningSystem = null
 
 
 func _ready() -> void:
@@ -79,11 +82,15 @@ func _setup_input_actions() -> void:
 		"toggle_multiplayer": KEY_P,
 		# Jump gate
 		"gate_jump": KEY_J,
+		# Wormhole
+		"wormhole_jump": KEY_W,
 		# Weapon toggles
 		"toggle_weapon_1": KEY_1,
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
 		"toggle_weapon_4": KEY_4,
+		# Mining
+		"mine": KEY_B,
 	}
 
 	# Mouse button actions (separate because they use InputEventMouseButton)
@@ -197,7 +204,7 @@ func _initialize_game() -> void:
 	FloatingOrigin.set_universe_node(universe_node)
 
 	# Setup player ship with combat systems
-	ShipFactory.setup_player_ship(&"frigate_mk1", player_ship as ShipController)
+	ShipFactory.setup_player_ship(&"fighter_mk1", player_ship as ShipController)
 
 	# Create player inventory with starting weapons
 	player_inventory = PlayerInventory.new()
@@ -205,6 +212,7 @@ func _initialize_game() -> void:
 	player_inventory.add_weapon(&"Mine Layer", 2)
 	player_inventory.add_weapon(&"Laser Mk2", 1)
 	player_inventory.add_weapon(&"Plasma Cannon", 1)
+	player_inventory.add_weapon(&"Mining Laser Mk1", 1)
 	# Starting equipment items
 	player_inventory.add_shield(&"Bouclier Basique Mk2", 1)
 	player_inventory.add_shield(&"Bouclier Prismatique", 1)
@@ -227,6 +235,7 @@ func _initialize_game() -> void:
 		hud.set_energy_system(player_ship.get_node_or_null("EnergySystem") as EnergySystem)
 		hud.set_targeting_system(player_ship.get_node_or_null("TargetingSystem") as TargetingSystem)
 		hud.set_weapon_manager(player_ship.get_node_or_null("WeaponManager") as WeaponManager)
+		hud.set_player_economy(player_economy)
 
 	# Docking system (child of player ship, scans for nearby stations)
 	_docking_system = DockingSystem.new()
@@ -238,6 +247,7 @@ func _initialize_game() -> void:
 	_dock_instance = DockInstance.new()
 	_dock_instance.name = "DockInstance"
 	add_child(_dock_instance)
+	_dock_instance.ship_change_requested.connect(_on_ship_change_requested)
 
 	# Wire docking system to HUD for dock prompt display
 	if hud:
@@ -245,6 +255,12 @@ func _initialize_game() -> void:
 
 	# Player cargo inventory
 	player_cargo = PlayerCargo.new()
+
+	# Player economy (hardcoded starting values for testing)
+	player_economy = PlayerEconomy.new()
+	player_economy.add_credits(1500)
+	player_economy.add_resource(&"water", 10)
+	player_economy.add_resource(&"iron", 5)
 
 	# Loot pickup system (child of player ship, scans for nearby crates)
 	_loot_pickup = LootPickupSystem.new()
@@ -255,13 +271,22 @@ func _initialize_game() -> void:
 	if hud:
 		hud.set_loot_pickup_system(_loot_pickup)
 
+	# Mining system (child of player ship, handles mining mechanics)
+	_mining_system = MiningSystem.new()
+	_mining_system.name = "MiningSystem"
+	player_ship.add_child(_mining_system)
+
+	# Wire mining system to HUD
+	if hud:
+		hud.set_mining_system(_mining_system)
+
 	# Note: system_transition wired to HUD after creation (see below)
 
 	# Wire stellar map
 	_stellar_map = main_scene.get_node_or_null("UI/StellarMap") as StellarMap
 
 	# Generate galaxy
-	_galaxy = GalaxyGenerator.generate(Constants.GALAXY_SEED)
+	_galaxy = GalaxyGenerator.generate(Constants.galaxy_seed)
 
 	# Create system transition manager
 	_system_transition = SystemTransition.new()
@@ -269,6 +294,7 @@ func _initialize_game() -> void:
 	_system_transition.galaxy = _galaxy
 	add_child(_system_transition)
 	_system_transition.system_loaded.connect(_on_system_loaded)
+	_system_transition.system_unloading.connect(_on_system_unloading)
 
 	# Wire system transition to HUD for gate prompt display
 	var hud_ref := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
@@ -303,6 +329,16 @@ func _initialize_game() -> void:
 	proj_pool.warm_pool("res://scenes/weapons/plasma_bolt.tscn", 80)
 	proj_pool.warm_pool("res://scenes/weapons/missile.tscn", 40)
 	proj_pool.warm_pool("res://scenes/weapons/railgun_slug.tscn", 30)
+
+	# Asteroid Field Manager (must exist before system loading)
+	_asteroid_field_mgr = AsteroidFieldManager.new()
+	_asteroid_field_mgr.name = "AsteroidFieldManager"
+	add_child(_asteroid_field_mgr)
+	_asteroid_field_mgr.initialize(universe_node)
+
+	# Wire mining system to asteroid field manager
+	if _mining_system:
+		_mining_system.set_asteroid_manager(_asteroid_field_mgr)
 
 	# Encounter Manager (must exist before system loading)
 	_encounter_manager = EncounterManager.new()
@@ -376,6 +412,7 @@ func _setup_network() -> void:
 	NetworkManager.peer_connected.connect(_on_network_peer_connected)
 	NetworkManager.peer_disconnected.connect(_on_network_peer_disconnected)
 	NetworkManager.player_state_received.connect(_on_network_state_received)
+	NetworkManager.server_config_received.connect(_on_server_config_received)
 
 	# === AUTO-CONNECT ON LAUNCH ===
 	# Server is ALWAYS a separate process (--server / --headless).
@@ -437,9 +474,12 @@ func _on_network_peer_connected(peer_id: int, player_name: String) -> void:
 
 
 func _on_network_peer_disconnected(peer_id: int) -> void:
+	_remove_remote_player(peer_id)
+
+
+func _remove_remote_player(peer_id: int) -> void:
 	if _remote_players.has(peer_id):
 		var remote: RemotePlayerShip = _remote_players[peer_id]
-		# Unregister from LOD system
 		if _lod_manager:
 			_lod_manager.unregister_ship(StringName("RemotePlayer_%d" % peer_id))
 		if is_instance_valid(remote):
@@ -449,6 +489,13 @@ func _on_network_peer_disconnected(peer_id: int) -> void:
 
 
 func _on_network_state_received(peer_id: int, state: NetworkState) -> void:
+	# Filter: only show players in the same star system
+	var local_sys_id: int = _system_transition.current_system_id if _system_transition else -1
+	if state.system_id != local_sys_id:
+		# Player is in a different system — remove their puppet if it exists
+		_remove_remote_player(peer_id)
+		return
+
 	if not _remote_players.has(peer_id):
 		# Late arrival: create the puppet if we don't have it yet
 		if NetworkManager.peers.has(peer_id):
@@ -460,7 +507,6 @@ func _on_network_state_received(peer_id: int, state: NetworkState) -> void:
 		var rid := StringName("RemotePlayer_%d" % peer_id)
 		var rdata := _lod_manager.get_ship_data(rid)
 		if rdata:
-			# Convert universe float64 pos to local scene pos
 			rdata.position = FloatingOrigin.to_local_pos([state.pos_x, state.pos_y, state.pos_z])
 			rdata.velocity = state.velocity
 
@@ -468,6 +514,68 @@ func _on_network_state_received(peer_id: int, state: NetworkState) -> void:
 		var remote: RemotePlayerShip = _remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.receive_state(state)
+
+
+func _on_server_config_received(config: Dictionary) -> void:
+	var server_seed: int = config.get("galaxy_seed", Constants.galaxy_seed)
+	var spawn_system: int = config.get("spawn_system_id", -1)
+
+	# Re-generate galaxy if seed differs
+	if server_seed != Constants.galaxy_seed:
+		Constants.galaxy_seed = server_seed
+		_galaxy = GalaxyGenerator.generate(server_seed)
+		if _system_transition:
+			_system_transition.galaxy = _galaxy
+		# Update map screen with new galaxy
+		if _screen_manager:
+			var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
+			if map_screen:
+				map_screen.galaxy = _galaxy
+		print("GameManager: Galaxy regenerated with seed %d from server" % server_seed)
+
+	# Populate wormhole targets from the server's galaxy routing table
+	_populate_wormhole_targets()
+
+	# Jump to server-assigned spawn system if valid
+	if spawn_system >= 0 and spawn_system < _galaxy.systems.size():
+		if _system_transition and _system_transition.current_system_id != spawn_system:
+			_system_transition.jump_to_system(spawn_system)
+			print("GameManager: Jumped to server-assigned system %d" % spawn_system)
+
+
+func _populate_wormhole_targets() -> void:
+	# Fill wormhole_target dicts in galaxy systems with server routing info.
+	# Each wormhole system gets a random (seeded) target from the routing table.
+	if _galaxy == null or NetworkManager.galaxy_servers.is_empty():
+		return
+	var servers := NetworkManager.galaxy_servers
+	var current_seed: int = Constants.galaxy_seed
+	var target_idx: int = 0
+	for sys in _galaxy.systems:
+		if sys.has("wormhole_target"):
+			# Find a server that is NOT the current galaxy
+			var found := false
+			for j in servers.size():
+				var candidate: Dictionary = servers[(target_idx + j) % servers.size()]
+				if candidate.get("seed", 0) != current_seed:
+					sys["wormhole_target"] = {
+						"seed": candidate.get("seed", 0),
+						"name": candidate.get("name", "Unknown"),
+						"ip": candidate.get("ip", ""),
+						"port": candidate.get("port", Constants.NET_DEFAULT_PORT),
+					}
+					found = true
+					target_idx += j + 1
+					break
+			if not found:
+				sys["wormhole_target"] = {}  # No valid target
+
+
+func _on_system_unloading(_system_id: int) -> void:
+	# Clear all remote player puppets — they'll be re-created when we receive
+	# states in the new system (filtered by system_id).
+	for pid in _remote_players.keys():
+		_remove_remote_player(pid)
 
 
 func _on_system_loaded(_system_id: int) -> void:
@@ -527,10 +635,10 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# Restart on R when dead
+	# Respawn on R when dead
 	if current_state == GameState.DEAD:
 		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_R:
-			get_tree().reload_current_scene()
+			_respawn_at_nearest_repair_station()
 		return
 
 	# Map keys (M/G) always work — open/switch/close the unified map
@@ -595,10 +703,27 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
+	# Mining with B key (hold to mine, release to stop)
+	if event.is_action_pressed("mine") and current_state == GameState.PLAYING:
+		if _mining_system and _mining_system.scan_target != null:
+			_mining_system.start_mining()
+			get_viewport().set_input_as_handled()
+			return
+	if event.is_action_released("mine"):
+		if _mining_system and _mining_system.is_mining:
+			_mining_system.stop_mining()
+
 	# Jump gate with J key
 	if event.is_action_pressed("gate_jump") and current_state == GameState.PLAYING:
 		if _system_transition and _system_transition.can_gate_jump():
 			_system_transition.initiate_gate_jump(_system_transition.get_gate_target_id())
+			get_viewport().set_input_as_handled()
+			return
+
+	# Wormhole with W key
+	if event.is_action_pressed("wormhole_jump") and current_state == GameState.PLAYING:
+		if _system_transition and _system_transition.can_wormhole_jump():
+			_initiate_wormhole_jump()
 			get_viewport().set_input_as_handled()
 			return
 
@@ -708,7 +833,7 @@ func _create_death_screen() -> void:
 
 	# Restart prompt
 	var prompt := Label.new()
-	prompt.text = "Appuyez sur [R] pour recommencer"
+	prompt.text = "Appuyez sur [R] pour respawn à la station de réparation"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	prompt.set_anchors_preset(Control.PRESET_CENTER)
@@ -725,6 +850,149 @@ func _create_death_screen() -> void:
 		ui_layer.add_child(_death_screen)
 	else:
 		main_scene.add_child(_death_screen)
+
+
+# =============================================================================
+# RESPAWN
+# =============================================================================
+func _respawn_at_nearest_repair_station() -> void:
+	if current_state != GameState.DEAD:
+		return
+
+	# Find target system via BFS
+	var target_sys: int = current_system_id_safe()
+	if _galaxy:
+		target_sys = _galaxy.find_nearest_repair_system(target_sys)
+
+	# Remove death screen
+	if _death_screen and is_instance_valid(_death_screen):
+		_death_screen.queue_free()
+		_death_screen = null
+
+	# Restore player ship
+	_repair_ship()
+
+	# Jump to target system (or reposition if same system)
+	if _system_transition and target_sys != _system_transition.current_system_id:
+		_system_transition.jump_to_system(target_sys)
+	elif _system_transition:
+		_system_transition._position_player()
+
+	# Restore HUD
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+	if hud:
+		hud.visible = true
+
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	current_state = GameState.PLAYING
+
+
+func _repair_ship() -> void:
+	var ship := player_ship as ShipController
+	if ship == null:
+		return
+
+	# Unfreeze and show
+	ship.freeze = false
+	ship.is_player_controlled = true
+	ship.linear_velocity = Vector3.ZERO
+	ship.angular_velocity = Vector3.ZERO
+	ship.collision_layer = Constants.LAYER_SHIPS
+	ship.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_PROJECTILES
+
+	var model := ship.get_node_or_null("ShipModel") as Node3D
+	if model:
+		model.visible = true
+
+	# Repair hull and shields
+	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	if health:
+		health.hull_current = health.hull_max
+		for i in health.shield_current.size():
+			health.shield_current[i] = health.shield_max_per_facing
+
+
+func current_system_id_safe() -> int:
+	if _system_transition:
+		return _system_transition.current_system_id
+	return 0
+
+
+# =============================================================================
+# WORMHOLE INTER-GALAXY JUMP
+# =============================================================================
+func _initiate_wormhole_jump() -> void:
+	var wormhole := _system_transition.get_active_wormhole()
+	if wormhole == null:
+		return
+
+	var target_seed: int = wormhole.target_galaxy_seed
+	var target_ip: String = wormhole.target_server_ip
+	var target_port: int = wormhole.target_server_port
+
+	if target_ip.is_empty():
+		print("GameManager: Wormhole has no target server configured")
+		return
+
+	# 1. Start fade out
+	if _system_transition._transition_overlay:
+		_system_transition._transition_overlay.visible = true
+		_system_transition._transition_overlay.modulate.a = 0.0
+	_system_transition._is_transitioning = true
+	_system_transition._transition_phase = 1
+	_system_transition._transition_alpha = 0.0
+	_system_transition._transition_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_system_transition.transition_started.emit()
+
+	# Wait for fade to complete
+	await _system_transition.transition_finished
+	# At this point transition_finished won't fire since we'll break the chain.
+	# Instead, use a timer to wait for fade-out.
+	await get_tree().create_timer(0.6).timeout
+
+	# 2. Disconnect from current server
+	NetworkManager.disconnect_from_server()
+
+	# 3. Switch galaxy
+	Constants.galaxy_seed = target_seed
+	_galaxy = GalaxyGenerator.generate(target_seed)
+	if _system_transition:
+		_system_transition.galaxy = _galaxy
+
+	# Update map
+	if _screen_manager:
+		var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
+		if map_screen:
+			map_screen.galaxy = _galaxy
+
+	# 4. Connect to new server
+	NetworkManager.connect_to_server(target_ip, target_port)
+
+	# 5. Wait for connection + config
+	var connected: bool = false
+	var config_received: bool = false
+	var timeout: float = 10.0
+
+	var on_connected := func():
+		connected = true
+	var on_config := func(_cfg: Dictionary):
+		config_received = true
+
+	NetworkManager.connection_succeeded.connect(on_connected, CONNECT_ONE_SHOT)
+	NetworkManager.server_config_received.connect(on_config, CONNECT_ONE_SHOT)
+
+	while not (connected and config_received) and timeout > 0:
+		await get_tree().create_timer(0.1).timeout
+		timeout -= 0.1
+
+	# 6. Jump to spawn system in new galaxy
+	var spawn_sys: int = _galaxy.player_home_system
+	_system_transition.jump_to_system(spawn_sys)
+
+	# 7. Fade in
+	_system_transition._transition_phase = 3
+	_system_transition._transition_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	print("GameManager: Wormhole jump complete — galaxy seed %d, system %d" % [target_seed, spawn_sys])
 
 
 # =============================================================================
@@ -774,8 +1042,10 @@ func _on_equipment_requested() -> void:
 		_equipment_screen.equipment_manager = em
 		# Pass ship model info for the 3D viewer
 		var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
+		var ship_ctrl := player_ship as ShipController
+		var center_off := ship_ctrl.center_offset if ship_ctrl else Vector3.ZERO
 		if ship_model:
-			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale)
+			_equipment_screen.setup_ship_viewer(ship_model.model_path, ship_model.model_scale, center_off)
 		# Close station screen first, then open equipment
 		_screen_manager.close_screen("station")
 		# Small delay to let close transition start, then open equipment
@@ -803,9 +1073,19 @@ func _open_loot_screen(crate: CargoCrate) -> void:
 
 
 func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) -> void:
-	# Transfer selected items to player cargo
-	if player_cargo and not selected_items.is_empty():
-		player_cargo.add_items(selected_items)
+	# Extract credits and economy resources; rest goes to cargo
+	var cargo_items: Array[Dictionary] = []
+	for item in selected_items:
+		var item_type: String = item.get("type", "")
+		var qty: int = item.get("quantity", 1)
+		if item_type == "credits" and player_economy:
+			player_economy.add_credits(qty)
+		elif item_type in ["water", "iron"] and player_economy:
+			player_economy.add_resource(StringName(item_type), qty)
+		else:
+			cargo_items.append(item)
+	if player_cargo and not cargo_items.is_empty():
+		player_cargo.add_items(cargo_items)
 	# Destroy the crate
 	if crate and is_instance_valid(crate):
 		crate._destroy()
@@ -869,3 +1149,65 @@ func _build_dock_context(station_name: String) -> Dictionary:
 		"encounter_manager": _encounter_manager,
 		"net_sync": _ship_net_sync,
 	}
+
+
+func _on_ship_change_requested(ship_id: StringName) -> void:
+	if current_state != GameState.DOCKED or player_ship == null:
+		return
+
+	var data := ShipRegistry.get_ship_data(ship_id)
+	if data == null:
+		push_error("GameManager: Unknown ship_id '%s' for ship change" % ship_id)
+		return
+
+	var ship := player_ship as ShipController
+
+	# Strip old combat components
+	for comp_name in ["HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
+		var comp := ship.get_node_or_null(comp_name)
+		if comp:
+			ship.remove_child(comp)
+			comp.free()
+
+	# Strip old ShipModel and CollisionShape3D (ShipFactory replaces them)
+	var old_model := ship.get_node_or_null("ShipModel")
+	if old_model:
+		ship.remove_child(old_model)
+		old_model.free()
+	var old_col := ship.get_node_or_null("CollisionShape3D")
+	if old_col:
+		ship.remove_child(old_col)
+		old_col.free()
+
+	# Rebuild with new ship
+	ShipFactory.setup_player_ship(ship_id, ship)
+
+	# Repair the new ship (full hull + shields)
+	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	if health:
+		health.hull_current = health.hull_max
+		for i in health.shield_current.size():
+			health.shield_current[i] = health.shield_max_per_facing
+
+	# Rewire HUD to new combat systems
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud:
+		hud.set_ship(ship)
+		hud.set_health_system(ship.get_node_or_null("HealthSystem") as HealthSystem)
+		hud.set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
+		hud.set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
+		hud.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+
+	# Reconnect player death signal
+	if health:
+		if not health.ship_destroyed.is_connected(_on_player_destroyed):
+			health.ship_destroyed.connect(_on_player_destroyed)
+
+	# Update LOD player data
+	if _lod_manager:
+		var player_lod := _lod_manager.get_ship_data(&"player_ship")
+		if player_lod:
+			player_lod.ship_id = data.ship_id
+			player_lod.ship_class = data.ship_class
+
+	print("GameManager: Ship changed to '%s' (%s)" % [data.ship_name, ship_id])

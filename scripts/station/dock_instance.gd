@@ -9,6 +9,7 @@ extends Node
 
 signal entered(station_name: String)
 signal left()
+signal ship_change_requested(ship_id: StringName)
 
 var is_active: bool = false
 var station_name: String = ""
@@ -80,6 +81,13 @@ func enter(ctx: Dictionary) -> void:
 	if ship_model:
 		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale)
 
+	# Setup ship selection cycling (A/D keys)
+	var ship_ctrl := player_ship as ShipController
+	var current_ship_id: StringName = ship_ctrl.ship_data.ship_id if ship_ctrl and ship_ctrl.ship_data else &"fighter_mk1"
+	hangar_scene.setup_ship_selection(current_ship_id)
+	if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
+		hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
+
 	# Repair ship while docked
 	_repair_ship(player_ship)
 
@@ -138,6 +146,10 @@ func leave(ctx: Dictionary) -> void:
 	is_active = false
 	station_name = ""
 	left.emit()
+
+
+func _on_hangar_ship_selected(ship_id: StringName) -> void:
+	ship_change_requested.emit(ship_id)
 
 
 func _repair_ship(ship: Node3D) -> void:

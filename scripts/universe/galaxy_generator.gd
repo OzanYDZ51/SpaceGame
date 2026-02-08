@@ -86,7 +86,10 @@ static func generate(master_seed: int) -> GalaxyData:
 	# 5. Assign danger levels (higher at edges, lower near center)
 	_assign_danger_levels(galaxy.systems, radius)
 
-	# 6. Player home: station-bearing system closest to center
+	# 6. Place wormholes at high-danger edge systems (1-3 per galaxy)
+	_place_wormholes(rng, galaxy.systems, radius)
+
+	# 7. Player home: station-bearing system closest to center
 	galaxy.player_home_system = _find_home_system(galaxy.systems)
 
 	# Ensure home system is safe
@@ -263,6 +266,32 @@ static func _assign_danger_levels(systems: Array[Dictionary], radius: float) -> 
 			danger -= 1
 
 		sys["danger_level"] = clampi(danger, 1, 5)
+
+
+static func _place_wormholes(rng: RandomNumberGenerator, systems: Array[Dictionary], radius: float) -> void:
+	# Select 1-3 edge systems (high distance from center) as wormhole hosts.
+	# Wormhole targets are left empty — filled by the server's routing table at runtime.
+	var num_wormholes: int = rng.randi_range(1, 3)
+
+	# Sort systems by distance from center (descending) to find edge systems
+	var edge_candidates: Array[Dictionary] = []
+	for sys in systems:
+		var dist: float = sqrt(sys["x"] * sys["x"] + sys["y"] * sys["y"])
+		edge_candidates.append({ "id": sys["id"], "dist": dist })
+	edge_candidates.sort_custom(func(a, b): return a["dist"] > b["dist"])
+
+	var placed: int = 0
+	for candidate in edge_candidates:
+		if placed >= num_wormholes:
+			break
+		var sys_id: int = candidate["id"]
+		# Skip home system candidates (stations near center)
+		if candidate["dist"] < radius * 0.5:
+			break
+		# Mark system as having a wormhole (target info filled by server config)
+		systems[sys_id]["wormhole_target"] = {}
+		systems[sys_id]["danger_level"] = clampi(systems[sys_id]["danger_level"] + 1, 1, 5)
+		placed += 1
 
 
 static func _find_home_system(systems: Array[Dictionary]) -> int:

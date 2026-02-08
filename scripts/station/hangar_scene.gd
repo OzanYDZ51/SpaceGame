@@ -4,12 +4,15 @@ extends Node3D
 # =============================================================================
 # Hangar Scene - 3D interior for docked state
 # Camera + lights + model are positioned in the .tscn via the Godot editor.
-# This script only handles: mouse parallax, idle sway, prompt overlay.
+# Handles: mouse parallax, idle sway, prompt overlay, ship selection cycling.
 # =============================================================================
+
+signal ship_selected(ship_id: StringName)
 
 const LOOK_YAW_RANGE: float = 40.0
 const LOOK_PITCH_RANGE: float = 20.0
 const LOOK_SMOOTH: float = 4.0
+const ARROW_X_OFFSET: float = 8.0
 
 var _camera: Camera3D = null
 var _cam_t: float = 0.0
@@ -27,6 +30,15 @@ var _docked_ship: ShipModel = null
 var _preview_local_pos: Vector3 = Vector3.ZERO
 var _preview_local_rot: Vector3 = Vector3.ZERO
 var _preview_local_scale: Vector3 = Vector3.ONE
+
+# Ship selection state
+var _ship_ids: Array[StringName] = []
+var _current_index: int = 0
+var _arrow_left: MeshInstance3D = null
+var _arrow_right: MeshInstance3D = null
+var _label_name: Label3D = null
+var _label_stats: Label3D = null
+var _selection_active: bool = false
 
 
 func _ready() -> void:
@@ -70,19 +82,32 @@ func _draw_prompt() -> void:
 
 	var s := _prompt_ctrl.size
 	var font := ThemeDB.fallback_font
-	var cy := s.y - 60.0
 	var pulse := sin(_cam_t * 2.5) * 0.15 + 0.85
 
-	# Dark pill background
+	# "HANGAR" title at top center
+	_prompt_ctrl.draw_string(font, Vector2(0, 40), "HANGAR",
+		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 18, Color(0.3, 0.9, 1.0, 0.5))
+
+	# Ship selection prompt (above main prompt)
+	if _selection_active and _ship_ids.size() > 1:
+		var sel_cy := s.y - 100.0
+		var sel_pill_w := 420.0
+		var sel_pill_h := 32.0
+		var sel_rect := Rect2((s.x - sel_pill_w) * 0.5, sel_cy - sel_pill_h * 0.5, sel_pill_w, sel_pill_h)
+		_prompt_ctrl.draw_rect(sel_rect, Color(0.0, 0.02, 0.06, 0.6))
+		_prompt_ctrl.draw_rect(sel_rect, Color(0.2, 0.8, 0.9, 0.2 * pulse), false, 1.0)
+		var sel_col := Color(0.3, 0.9, 1.0, pulse)
+		_prompt_ctrl.draw_string(font, Vector2(0, sel_cy + 5),
+			"\u25C0  [A]   CHANGER DE VAISSEAU   [D]  \u25B6",
+			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, sel_col)
+
+	# Main prompt pill
+	var cy := s.y - 60.0
 	var pill_w := 360.0
 	var pill_h := 36.0
 	var pill_rect := Rect2((s.x - pill_w) * 0.5, cy - pill_h * 0.5, pill_w, pill_h)
 	_prompt_ctrl.draw_rect(pill_rect, Color(0.0, 0.02, 0.06, 0.7))
 	_prompt_ctrl.draw_rect(pill_rect, Color(0.2, 0.8, 0.9, 0.25 * pulse), false, 1.0)
-
-	# "HANGAR" title at top center
-	_prompt_ctrl.draw_string(font, Vector2(0, 40), "HANGAR",
-		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 18, Color(0.3, 0.9, 1.0, 0.5))
 
 	# Key prompts
 	var col := Color(0.3, 0.9, 1.0, pulse)
@@ -117,8 +142,42 @@ func _process(delta: float) -> void:
 	_camera.position.x = _cam_base_pos.x + sway_x
 	_camera.position.y = _cam_base_pos.y + sway_y
 
+	# Arrow pulse animation
+	if _selection_active and _ship_ids.size() > 1:
+		var pulse_scale: float = 1.0 + sin(_cam_t * 3.0) * 0.1
+		if _arrow_left:
+			_arrow_left.scale = Vector3.ONE * pulse_scale
+		if _arrow_right:
+			_arrow_right.scale = Vector3.ONE * pulse_scale
+
 	if _prompt_ctrl:
 		_prompt_ctrl.queue_redraw()
+
+
+func _input(event: InputEvent) -> void:
+	if not _selection_active or terminal_open:
+		return
+	if _ship_ids.size() <= 1:
+		return
+	if not (event is InputEventKey) or not event.pressed:
+		return
+
+	var changed := false
+	if event.physical_keycode == KEY_A:
+		_current_index = (_current_index - 1 + _ship_ids.size()) % _ship_ids.size()
+		changed = true
+	elif event.physical_keycode == KEY_D:
+		_current_index = (_current_index + 1) % _ship_ids.size()
+		changed = true
+
+	if changed:
+		get_viewport().set_input_as_handled()
+		var new_id: StringName = _ship_ids[_current_index]
+		var data := ShipRegistry.get_ship_data(new_id)
+		if data:
+			display_ship(data.model_path, data.model_scale)
+			_update_ship_labels(data)
+			ship_selected.emit(new_id)
 
 
 func display_ship(ship_model_path: String, _ship_model_scale: float) -> void:
@@ -149,6 +208,121 @@ func display_ship(ship_model_path: String, _ship_model_scale: float) -> void:
 		_docked_ship.rotation_degrees.y = 180.0
 
 
+func setup_ship_selection(current_ship_id: StringName) -> void:
+	_ship_ids.clear()
+	_ship_ids = ShipRegistry.get_all_ship_ids()
+	# Sort for consistent ordering
+	_ship_ids.sort()
+	_current_index = _ship_ids.find(current_ship_id)
+	if _current_index < 0:
+		_current_index = 0
+	_selection_active = true
+
+	if _ship_ids.size() > 1:
+		_create_3d_arrows()
+		_create_ship_labels()
+		# Set initial label text
+		var data := ShipRegistry.get_ship_data(_ship_ids[_current_index])
+		if data:
+			_update_ship_labels(data)
+
+
+func _create_3d_arrows() -> void:
+	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	if spawn_point == null:
+		return
+
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(0.15, 0.85, 1.0, 0.9)
+	mat.emission_enabled = true
+	mat.emission = Color(0.15, 0.85, 1.0)
+	mat.emission_energy_multiplier = 2.0
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+	# Left arrow
+	var prism_left := PrismMesh.new()
+	prism_left.size = Vector3(0.8, 1.5, 0.3)
+	_arrow_left = MeshInstance3D.new()
+	_arrow_left.mesh = prism_left
+	_arrow_left.material_override = mat
+	_arrow_left.name = "ArrowLeft"
+	spawn_point.add_child(_arrow_left)
+	_arrow_left.position = _preview_local_pos + Vector3(-ARROW_X_OFFSET, 0, 0)
+	_arrow_left.rotation_degrees = Vector3(0, 0, 90)  # Point left
+
+	# Right arrow
+	var prism_right := PrismMesh.new()
+	prism_right.size = Vector3(0.8, 1.5, 0.3)
+	_arrow_right = MeshInstance3D.new()
+	_arrow_right.mesh = prism_right
+	_arrow_right.material_override = mat
+	_arrow_right.name = "ArrowRight"
+	spawn_point.add_child(_arrow_right)
+	_arrow_right.position = _preview_local_pos + Vector3(ARROW_X_OFFSET, 0, 0)
+	_arrow_right.rotation_degrees = Vector3(0, 0, -90)  # Point right
+
+
+func _create_ship_labels() -> void:
+	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	if spawn_point == null:
+		return
+
+	# Ship name label
+	_label_name = Label3D.new()
+	_label_name.name = "ShipNameLabel"
+	_label_name.font_size = 32
+	_label_name.modulate = Color(0.15, 0.85, 1.0, 0.95)
+	_label_name.outline_modulate = Color(0, 0, 0, 0.8)
+	_label_name.outline_size = 4
+	_label_name.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_name.no_depth_test = true
+	_label_name.fixed_size = true
+	_label_name.pixel_size = 0.003
+	spawn_point.add_child(_label_name)
+	_label_name.position = _preview_local_pos + Vector3(0, -3.5, 0)
+
+	# Stats label
+	_label_stats = Label3D.new()
+	_label_stats.name = "ShipStatsLabel"
+	_label_stats.font_size = 18
+	_label_stats.modulate = Color(0.45, 0.65, 0.78, 0.8)
+	_label_stats.outline_modulate = Color(0, 0, 0, 0.7)
+	_label_stats.outline_size = 3
+	_label_stats.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_stats.no_depth_test = true
+	_label_stats.fixed_size = true
+	_label_stats.pixel_size = 0.003
+	spawn_point.add_child(_label_stats)
+	_label_stats.position = _preview_local_pos + Vector3(0, -4.5, 0)
+
+
+func _update_ship_labels(data: ShipData) -> void:
+	if _label_name:
+		_label_name.text = String(data.ship_name).to_upper()
+	if _label_stats:
+		var weapons_count: int = data.default_loadout.size()
+		_label_stats.text = "Coque: %d  |  Bouclier: %d  |  Vitesse: %d  |  Armes: %d" % [
+			int(data.hull_hp), int(data.shield_hp), int(data.max_speed_normal), weapons_count
+		]
+
+
+func _cleanup_selection_visuals() -> void:
+	if _arrow_left:
+		_arrow_left.queue_free()
+		_arrow_left = null
+	if _arrow_right:
+		_arrow_right.queue_free()
+		_arrow_right = null
+	if _label_name:
+		_label_name.queue_free()
+		_label_name = null
+	if _label_stats:
+		_label_stats.queue_free()
+		_label_stats = null
+	_selection_active = false
+
+
 func activate() -> void:
 	if _camera:
 		_camera.current = true
@@ -160,6 +334,7 @@ func activate() -> void:
 func deactivate() -> void:
 	if _camera:
 		_camera.current = false
+	_cleanup_selection_visuals()
 	if _docked_ship:
 		_docked_ship.queue_free()
 		_docked_ship = null

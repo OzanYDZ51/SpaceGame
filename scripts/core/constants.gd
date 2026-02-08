@@ -88,7 +88,7 @@ const AU_IN_METERS: float = 149_597_870_700.0
 const SYSTEM_RADIUS: float = 100_000_000.0
 
 # --- Galaxy Scale ---
-const GALAXY_SEED: int = 12345
+var galaxy_seed: int = 12345
 const GALAXY_SYSTEM_COUNT: int = 120
 const GALAXY_RADIUS: float = 500.0       # Galaxy map units (abstract, not meters)
 const JUMP_GATE_RANGE: float = 120.0     # Max distance between connected systems (galaxy units)
@@ -105,6 +105,12 @@ const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instea
 const NET_PUBLIC_IP: String = "92.184.140.5"  # Host's public IPv4 (dev)
 const NET_PRODUCTION_IP: String = ""      # Railway server IP (set when deployed)
 const NET_IS_PRODUCTION: bool = false     # false=dev (connect to NET_PUBLIC_IP), true=prod (connect to NET_PRODUCTION_IP)
+
+# --- Mining ---
+const MINING_RANGE: float = 300.0
+const MINING_SCAN_RANGE: float = 500.0
+const MINING_BASE_EXTRACTION_RATE: float = 10.0
+const ASTEROID_RESPAWN_TIME: float = 300.0
 
 # --- Physics Layers ---
 const LAYER_SHIPS: int = 1

@@ -33,6 +33,10 @@ var _active_star: SystemStar = null
 var _active_gate_target_id: int = -1
 var _active_gate_target_name: String = ""
 
+# Wormhole proximity state
+var _active_wormhole: WormholeGate = null
+var _wormhole_nearby: bool = false
+
 const FADE_SPEED: float = 2.0
 
 
@@ -169,6 +173,11 @@ func _cleanup_current_system() -> void:
 	if universe == null:
 		return
 
+	# Clean up asteroid fields
+	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	if asteroid_mgr:
+		asteroid_mgr.clear_all()
+
 	# Clean up star impostor (child of main_scene, not Universe)
 	if _active_star and is_instance_valid(_active_star):
 		_active_star.queue_free()
@@ -264,6 +273,57 @@ func _populate_system() -> void:
 		gate.player_nearby.connect(_on_gate_player_nearby)
 		gate.player_left.connect(_on_gate_player_left)
 		universe.add_child(gate)
+
+	# Spawn wormhole gate if this system has one
+	_wormhole_nearby = false
+	_active_wormhole = null
+	var galaxy_sys: Dictionary = galaxy.get_system(current_system_id)
+	if not galaxy_sys.is_empty() and galaxy_sys.has("wormhole_target"):
+		var wh_data: Dictionary = galaxy_sys["wormhole_target"]
+		# Only spawn if routing info is available (filled by server config)
+		if wh_data.has("seed"):
+			var wormhole := WormholeGate.new()
+			wormhole.name = "WormholeGate"
+			# Position at the opposite edge from the system center
+			var sys_angle: float = atan2(galaxy_sys["y"], galaxy_sys["x"]) + PI  # Opposite side
+			var gate_dist: float = 25_000_000.0  # 25 Mm from center
+			wormhole.global_position = Vector3(
+				cos(sys_angle) * gate_dist,
+				0,
+				sin(sys_angle) * gate_dist,
+			)
+			wormhole.setup({
+				"target_seed": wh_data.get("seed", 0),
+				"target_name": wh_data.get("name", "Unknown Galaxy"),
+				"target_ip": wh_data.get("ip", ""),
+				"target_port": wh_data.get("port", Constants.NET_DEFAULT_PORT),
+				"pos_x": wormhole.global_position.x,
+				"pos_y": 0.0,
+				"pos_z": wormhole.global_position.z,
+			})
+			wormhole.player_nearby_wormhole.connect(_on_wormhole_player_nearby.bind(wormhole))
+			wormhole.player_left_wormhole.connect(_on_wormhole_player_left)
+			universe.add_child(wormhole)
+
+			# Register in EntityRegistry
+			EntityRegistry.register("wormhole_0", {
+				"name": "Wormhole → " + wh_data.get("name", "?"),
+				"type": EntityRegistrySystem.EntityType.JUMP_GATE,
+				"node": wormhole,
+				"pos_x": wormhole.global_position.x,
+				"pos_y": 0.0,
+				"pos_z": wormhole.global_position.z,
+				"radius": 75.0,
+				"color": Color(0.7, 0.2, 1.0),
+			})
+
+	# Spawn asteroid fields
+	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	if asteroid_mgr:
+		for i in current_system_data.asteroid_belts.size():
+			var belt: Dictionary = current_system_data.asteroid_belts[i]
+			var field := _generate_asteroid_field(belt, current_system_data.seed_value, i)
+			asteroid_mgr.populate_field(field)
 
 	# Spawn star impostor (child of main_scene, NOT Universe — avoids FloatingOrigin shift)
 	_active_star = SystemStar.new()
@@ -408,3 +468,115 @@ func _on_gate_player_nearby(target_id: int, target_name: String) -> void:
 func _on_gate_player_left() -> void:
 	_active_gate_target_id = -1
 	_active_gate_target_name = ""
+
+
+# === Wormhole proximity API ===
+
+func can_wormhole_jump() -> bool:
+	return _wormhole_nearby and _active_wormhole != null and not _is_transitioning
+
+
+func get_wormhole_target_name() -> String:
+	if _active_wormhole:
+		return _active_wormhole.target_galaxy_name
+	return ""
+
+
+func get_active_wormhole() -> WormholeGate:
+	return _active_wormhole
+
+
+func _on_wormhole_player_nearby(_target_name: String, wormhole: WormholeGate) -> void:
+	_wormhole_nearby = true
+	_active_wormhole = wormhole
+
+
+func _on_wormhole_player_left() -> void:
+	_wormhole_nearby = false
+	_active_wormhole = null
+
+
+# =============================================================================
+# ASTEROID FIELD GENERATION
+# =============================================================================
+func _generate_asteroid_field(belt_data: Dictionary, system_seed: int, index: int) -> AsteroidFieldData:
+	var field := AsteroidFieldData.new()
+	field.field_name = belt_data.get("name", "Belt")
+	field.field_id = StringName(belt_data.get("field_id", "belt_%d" % index))
+	field.orbital_radius = belt_data.get("orbital_radius", 50_000_000.0)
+	field.width = belt_data.get("width", 5_000_000.0)
+	field.dominant_resource = belt_data.get("dominant_resource", &"iron")
+	field.secondary_resource = belt_data.get("secondary_resource", &"copper")
+	field.rare_resource = belt_data.get("rare_resource", &"gold")
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = system_seed * 1000 + index * 31
+
+	var count: int = belt_data.get("asteroid_count", 200)
+
+	for i in count:
+		var asteroid := AsteroidData.new()
+		asteroid.id = StringName("ast_%d_%d" % [index, i])
+		asteroid.field_id = field.field_id
+
+		# Position in a ring: angle + radial offset + vertical spread
+		var angle: float = rng.randf() * TAU
+		var radial_offset: float = (rng.randf() - 0.5) * field.width
+		var orbital_r: float = field.orbital_radius + radial_offset
+		var vertical: float = (rng.randf() - 0.5) * field.width * 0.3
+		asteroid.position = Vector3(
+			cos(angle) * orbital_r,
+			vertical,
+			sin(angle) * orbital_r,
+		)
+
+		# Rotation
+		asteroid.rotation_axis = Vector3(
+			rng.randf() - 0.5,
+			rng.randf() - 0.5,
+			rng.randf() - 0.5,
+		).normalized()
+		asteroid.rotation_speed = rng.randf_range(0.02, 0.15)
+
+		# Size distribution: 60% small, 30% medium, 10% large
+		var size_roll: float = rng.randf()
+		if size_roll < 0.6:
+			asteroid.size = AsteroidData.AsteroidSize.SMALL
+		elif size_roll < 0.9:
+			asteroid.size = AsteroidData.AsteroidSize.MEDIUM
+		else:
+			asteroid.size = AsteroidData.AsteroidSize.LARGE
+
+		asteroid.visual_radius = asteroid.get_radius_for_size()
+		asteroid.health_max = asteroid.get_health_for_size()
+		asteroid.health_current = asteroid.health_max
+
+		# Non-uniform scale for rocky appearance
+		asteroid.scale_distort = Vector3(
+			rng.randf_range(0.7, 1.3),
+			rng.randf_range(0.6, 1.2),
+			rng.randf_range(0.7, 1.3),
+		)
+
+		# Resource distribution: 60% dominant, 25% secondary, 15% rare
+		var res_roll: float = rng.randf()
+		if res_roll < 0.60:
+			asteroid.primary_resource = field.dominant_resource
+		elif res_roll < 0.85:
+			asteroid.primary_resource = field.secondary_resource
+		else:
+			asteroid.primary_resource = field.rare_resource
+
+		# Color tint from resource
+		var res := MiningRegistry.get_resource(asteroid.primary_resource)
+		if res:
+			# Vary slightly for visual variety
+			asteroid.color_tint = Color(
+				res.color.r + rng.randf_range(-0.08, 0.08),
+				res.color.g + rng.randf_range(-0.08, 0.08),
+				res.color.b + rng.randf_range(-0.08, 0.08),
+			).clamp()
+
+		field.asteroids.append(asteroid)
+
+	return field

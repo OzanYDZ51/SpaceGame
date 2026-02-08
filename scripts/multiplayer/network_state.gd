@@ -26,6 +26,10 @@ var throttle: float = 0.0
 var hull_ratio: float = 1.0
 var shield_ratios: Array[float] = [1.0, 1.0, 1.0, 1.0]
 
+# Status flags
+var is_docked: bool = false
+var is_dead: bool = false
+
 # Timing
 var timestamp: float = 0.0
 
@@ -48,6 +52,8 @@ func to_dict() -> Dictionary:
 		"thr": throttle,
 		"hull": hull_ratio,
 		"shd": shield_ratios,
+		"dk": is_docked,
+		"dead": is_dead,
 		"t": timestamp,
 	}
 
@@ -67,6 +73,8 @@ func from_dict(d: Dictionary) -> void:
 	throttle = d.get("thr", 0.0)
 	hull_ratio = d.get("hull", 1.0)
 	shield_ratios = d.get("shd", [1.0, 1.0, 1.0, 1.0])
+	is_docked = d.get("dk", false)
+	is_dead = d.get("dead", false)
 	timestamp = d.get("t", 0.0)
 
 

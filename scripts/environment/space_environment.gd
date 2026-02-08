@@ -8,21 +8,22 @@ extends Node3D
 # =============================================================================
 
 @export_group("Default Star Light")
-@export var default_star_color: Color = Color(1.0, 0.95, 0.9)
-@export var default_star_energy: float = 1.5
+@export var default_star_color: Color = Color(0.95, 0.9, 0.85)
+@export var default_star_energy: float = 0.8
 
 @onready var star_light: DirectionalLight3D = $StarLight
 @onready var world_env: WorldEnvironment = $WorldEnvironment
 
 # Spectral class → nebula color palettes
+# Darkened nebula palettes — faint wisps, not dense clouds
 const NEBULA_PALETTES := {
-	"M": { "warm": Color(0.18, 0.03, 0.02), "cool": Color(0.05, 0.02, 0.08), "accent": Color(0.10, 0.01, 0.06) },
-	"K": { "warm": Color(0.14, 0.04, 0.03), "cool": Color(0.03, 0.03, 0.09), "accent": Color(0.08, 0.02, 0.10) },
-	"G": { "warm": Color(0.12, 0.02, 0.04), "cool": Color(0.02, 0.03, 0.10), "accent": Color(0.06, 0.01, 0.12) },
-	"F": { "warm": Color(0.08, 0.03, 0.06), "cool": Color(0.03, 0.04, 0.12), "accent": Color(0.05, 0.02, 0.14) },
-	"A": { "warm": Color(0.06, 0.04, 0.10), "cool": Color(0.02, 0.05, 0.15), "accent": Color(0.04, 0.03, 0.16) },
-	"B": { "warm": Color(0.04, 0.03, 0.14), "cool": Color(0.01, 0.04, 0.18), "accent": Color(0.03, 0.02, 0.20) },
-	"O": { "warm": Color(0.03, 0.04, 0.18), "cool": Color(0.01, 0.05, 0.22), "accent": Color(0.02, 0.03, 0.25) },
+	"M": { "warm": Color(0.09, 0.015, 0.01), "cool": Color(0.025, 0.01, 0.04), "accent": Color(0.05, 0.005, 0.03) },
+	"K": { "warm": Color(0.07, 0.02, 0.015), "cool": Color(0.015, 0.015, 0.045), "accent": Color(0.04, 0.01, 0.05) },
+	"G": { "warm": Color(0.06, 0.01, 0.02), "cool": Color(0.01, 0.015, 0.05), "accent": Color(0.03, 0.005, 0.06) },
+	"F": { "warm": Color(0.04, 0.015, 0.03), "cool": Color(0.015, 0.02, 0.06), "accent": Color(0.025, 0.01, 0.07) },
+	"A": { "warm": Color(0.03, 0.02, 0.05), "cool": Color(0.01, 0.025, 0.075), "accent": Color(0.02, 0.015, 0.08) },
+	"B": { "warm": Color(0.02, 0.015, 0.07), "cool": Color(0.005, 0.02, 0.09), "accent": Color(0.015, 0.01, 0.10) },
+	"O": { "warm": Color(0.015, 0.02, 0.09), "cool": Color(0.005, 0.025, 0.11), "accent": Color(0.01, 0.015, 0.125) },
 }
 
 
@@ -37,23 +38,23 @@ func configure_for_system(system_data: StarSystemData) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = system_data.seed_value + 9999  # Offset to not correlate with planet gen
 
-	# --- Star light ---
+	# --- Star light (reduced for dark stylized look) ---
 	if star_light:
 		star_light.light_color = system_data.star_color
-		star_light.light_energy = clampf(system_data.star_luminosity * 0.5 + 0.8, 0.8, 3.0)
+		star_light.light_energy = clampf(system_data.star_luminosity * 0.3 + 0.5, 0.5, 1.8)
 
 	if world_env == null or world_env.environment == null:
 		return
 	var env: Environment = world_env.environment
 
-	# --- Ambient light tinted by star ---
+	# --- Ambient light (very low — space is dark) ---
 	var ambient_tint := system_data.star_color.lerp(Color.WHITE, 0.6)
-	env.ambient_light_color = Color(ambient_tint.r * 0.08, ambient_tint.g * 0.08, ambient_tint.b * 0.12, 1.0)
-	env.ambient_light_energy = clampf(0.15 + system_data.star_luminosity * 0.05, 0.15, 0.4)
+	env.ambient_light_color = Color(ambient_tint.r * 0.03, ambient_tint.g * 0.03, ambient_tint.b * 0.05, 1.0)
+	env.ambient_light_energy = clampf(0.06 + system_data.star_luminosity * 0.03, 0.06, 0.2)
 
-	# --- Glow tweaks per star type ---
-	env.glow_intensity = clampf(0.6 + system_data.star_luminosity * 0.1, 0.6, 1.2)
-	env.glow_bloom = clampf(0.03 + system_data.star_luminosity * 0.01, 0.03, 0.08)
+	# --- Glow tweaks (subtle, only bright things glow) ---
+	env.glow_intensity = clampf(0.35 + system_data.star_luminosity * 0.08, 0.35, 0.7)
+	env.glow_bloom = clampf(0.01 + system_data.star_luminosity * 0.005, 0.01, 0.04)
 
 	# --- Skybox shader parameters ---
 	if env.sky == null or env.sky.sky_material == null:
@@ -76,13 +77,13 @@ func configure_for_system(system_data: StarSystemData) -> void:
 	sky_mat.set_shader_parameter("nebula_warm", Vector3(warm.r, warm.g, warm.b))
 	sky_mat.set_shader_parameter("nebula_cool", Vector3(cool.r, cool.g, cool.b))
 	sky_mat.set_shader_parameter("nebula_accent", Vector3(accent.r, accent.g, accent.b))
-	sky_mat.set_shader_parameter("nebula_intensity", rng.randf_range(0.15, 0.5))
-	sky_mat.set_shader_parameter("star_density", rng.randf_range(0.4, 0.8))
-	sky_mat.set_shader_parameter("star_brightness", rng.randf_range(1.8, 2.8))
-	sky_mat.set_shader_parameter("milky_way_intensity", rng.randf_range(0.4, 0.9))
-	sky_mat.set_shader_parameter("dust_intensity", rng.randf_range(0.2, 0.7))
+	sky_mat.set_shader_parameter("nebula_intensity", rng.randf_range(0.08, 0.25))
+	sky_mat.set_shader_parameter("star_density", rng.randf_range(0.25, 0.5))
+	sky_mat.set_shader_parameter("star_brightness", rng.randf_range(2.4, 3.2))
+	sky_mat.set_shader_parameter("milky_way_intensity", rng.randf_range(0.15, 0.4))
+	sky_mat.set_shader_parameter("dust_intensity", rng.randf_range(0.45, 0.8))
 	sky_mat.set_shader_parameter("milky_way_color", Vector3(
-		0.08 + rng.randf() * 0.08,
-		0.06 + rng.randf() * 0.08,
-		0.10 + rng.randf() * 0.10,
+		0.03 + rng.randf() * 0.04,
+		0.025 + rng.randf() * 0.04,
+		0.05 + rng.randf() * 0.06,
 	))

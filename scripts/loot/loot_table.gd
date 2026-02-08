@@ -6,12 +6,14 @@ extends RefCounted
 # Placeholder items for now; real economy items plug in later.
 # =============================================================================
 
-# Item types (placeholder)
+# Item types
 const TYPE_CREDITS := "credits"
 const TYPE_METAL := "metal"
 const TYPE_ELECTRONICS := "electronics"
 const TYPE_WEAPON_PART := "weapon_part"
 const TYPE_DATA_CHIP := "data_chip"
+const TYPE_WATER := "water"
+const TYPE_IRON := "iron"
 
 # Colors per type (for UI display)
 const TYPE_COLORS := {
@@ -20,10 +22,12 @@ const TYPE_COLORS := {
 	"electronics": Color(0.3, 0.8, 1.0),
 	"weapon_part": Color(1.0, 0.5, 0.2),
 	"data_chip": Color(0.6, 1.0, 0.4),
+	"water": Color(0.3, 0.75, 1.0),
+	"iron": Color(0.72, 0.72, 0.78),
 }
 
-# Material pool for random rolls
-const MATERIAL_POOL: Array[String] = ["metal", "electronics"]
+# Material pool for random rolls (includes economy resources)
+const MATERIAL_POOL: Array[String] = ["metal", "electronics", "water", "iron"]
 
 
 static func roll_drops(ship_class: StringName) -> Array[Dictionary]:

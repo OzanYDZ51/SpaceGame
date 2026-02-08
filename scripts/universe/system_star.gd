@@ -43,7 +43,7 @@ func _build_visuals() -> void:
 	mat.albedo_color = _star_color
 	mat.emission_enabled = true
 	mat.emission = _star_color
-	mat.emission_energy_multiplier = clampf(3.0 + _star_luminosity * 0.5, 3.0, 8.0)
+	mat.emission_energy_multiplier = clampf(2.0 + _star_luminosity * 0.3, 2.0, 5.0)
 
 	_mesh_instance = MeshInstance3D.new()
 	_mesh_instance.mesh = mesh
@@ -54,8 +54,8 @@ func _build_visuals() -> void:
 	# Glow light
 	_light = OmniLight3D.new()
 	_light.light_color = _star_color
-	_light.light_energy = clampf(_star_luminosity * 0.3, 0.2, 2.0)
-	_light.omni_range = 800.0
+	_light.light_energy = clampf(_star_luminosity * 0.2, 0.1, 1.2)
+	_light.omni_range = 500.0
 	_light.omni_attenuation = 1.5
 	_light.shadow_enabled = false
 	add_child(_light)

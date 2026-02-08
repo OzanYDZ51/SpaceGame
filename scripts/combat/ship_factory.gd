@@ -28,6 +28,7 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 
 	# Load ship scene (source of truth for model, hardpoints, collision)
 	var scene_result := _load_ship_scene(data)
+	controller.center_offset = scene_result.center_offset
 
 	# Replace the old ShipModel (its _ready() already loaded the default model)
 	var old_model := controller.get_node_or_null("ShipModel")
@@ -322,14 +323,17 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 	var packed_scene: PackedScene = _scene_cache[data.ship_scene_path]
 	var instance: Node3D = packed_scene.instantiate() as Node3D
 
-	# Extract HardpointSlot configs, model node, and model scale from scene
+	# Extract HardpointSlot configs, model node, model scale, and center offset from scene
 	var configs: Array[Dictionary] = []
 	var model_node: Node3D = null
 	var scene_model_scale: float = 1.0
+	var center_offset: Vector3 = Vector3.ZERO
 
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
+		elif child.name == "ShipCenter":
+			center_offset = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
 			scene_model_scale = child.scale.x  # Scene defines the model scale
 			if child.get_child_count() > 0:
@@ -370,6 +374,7 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 		"model_node": model_node,
 		"model_scale": scene_model_scale,
 		"collision_shape": col_node,
+		"center_offset": center_offset,
 	}
 
 

@@ -20,6 +20,7 @@ signal connection_failed(reason: String)
 signal player_state_received(peer_id: int, state: NetworkState)
 signal chat_message_received(sender_name: String, channel: int, text: String)
 signal player_list_updated
+signal server_config_received(config: Dictionary)
 
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
@@ -45,9 +46,17 @@ var _reconnect_attempts: int = 0
 const MAX_RECONNECT_ATTEMPTS: int = 5
 const RECONNECT_DELAY: float = 3.0
 
+# Multi-galaxy: routing table (sent from server, used by client for wormhole handoff)
+# Each entry: { "seed": int, "name": String, "ip": String, "port": int }
+var galaxy_servers: Array[Dictionary] = []
+
+# Server-side: track each player's last known system (in-memory persistence)
+var _player_last_system: Dictionary = {}  # peer_id -> system_id
+
 
 func _ready() -> void:
 	is_dedicated_server = _check_dedicated_server()
+	_parse_galaxy_seed_arg()
 
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -69,6 +78,16 @@ func _check_dedicated_server() -> bool:
 		if arg == "--server" or arg == "--headless":
 			return true
 	return DisplayServer.get_name() == "headless"
+
+
+func _parse_galaxy_seed_arg() -> void:
+	var args := OS.get_cmdline_args()
+	for i in args.size():
+		if args[i] == "--galaxy-seed" and i + 1 < args.size():
+			var seed_val: int = args[i + 1].to_int()
+			if seed_val != 0:
+				Constants.galaxy_seed = seed_val
+				print("NetworkManager: Galaxy seed set to %d from CLI" % seed_val)
 
 
 # =========================================================================
@@ -230,6 +249,7 @@ func _on_peer_disconnected(id: int) -> void:
 	print("NetworkManager: Peer disconnected: %d" % id)
 	if peers.has(id):
 		peers.erase(id)
+	# Keep _player_last_system[id] for reconnect persistence (don't erase)
 
 	if is_server():
 		_rpc_player_left.rpc(id)
@@ -301,6 +321,14 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[sender_id] = state
 
+	# Send server config to the new client (galaxy seed, spawn system, routing)
+	var config := {
+		"galaxy_seed": Constants.galaxy_seed,
+		"spawn_system_id": _player_last_system.get(sender_id, -1),
+		"galaxies": galaxy_servers,
+	}
+	_rpc_server_config.rpc_id(sender_id, config)
+
 	# Notify ALL clients (including new one) about this player
 	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)
 
@@ -361,16 +389,10 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 		var state: NetworkState = peers[sender_id]
 		state.from_dict(state_dict)
 		state.peer_id = sender_id
-
-		# Relay to all other peers (including host if host != sender)
-		for pid in peers:
-			if pid == sender_id:
-				continue
-			if pid == 1 and not is_dedicated_server:
-				# Host is local — emit signal directly instead of RPC to self
-				player_state_received.emit(sender_id, state)
-			else:
-				_rpc_receive_remote_state.rpc_id(pid, sender_id, state_dict)
+		# Track last known system for reconnect persistence
+		_player_last_system[sender_id] = state.system_id
+		# ServerAuthority handles broadcasting to other peers (system-filtered).
+		# Do NOT relay here — it would duplicate bandwidth and cause cross-system ghosts.
 
 
 ## Server -> Client: Another player's state update.
@@ -406,3 +428,15 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_chat(sender_name: String, channel: int, text: String) -> void:
 	chat_message_received.emit(sender_name, channel, text)
+
+
+## Server -> Single client: Server configuration (galaxy seed, spawn system, routing table).
+@rpc("authority", "reliable")
+func _rpc_server_config(config: Dictionary) -> void:
+	galaxy_servers = config.get("galaxies", [])
+	print("NetworkManager: Received server config — galaxy_seed=%d, spawn=%d, %d galaxy servers" % [
+		config.get("galaxy_seed", 0),
+		config.get("spawn_system_id", -1),
+		galaxy_servers.size(),
+	])
+	server_config_received.emit(config)

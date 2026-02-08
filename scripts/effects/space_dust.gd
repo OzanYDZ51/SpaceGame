@@ -28,13 +28,13 @@ func _ready() -> void:
 	mat.scale_min = 0.7
 	mat.scale_max = 1.8
 
-	# Color ramp: fade in, hold, fade out — dim blue-white
+	# Color ramp: fade in, hold, fade out — subtle dim blue-white
 	var grad := Gradient.new()
 	grad.colors = PackedColorArray([
-		Color(0.6, 0.75, 1.0, 0.0),
-		Color(0.7, 0.85, 1.0, 0.4),
-		Color(0.65, 0.8, 1.0, 0.35),
-		Color(0.5, 0.6, 0.85, 0.0),
+		Color(0.4, 0.5, 0.8, 0.0),
+		Color(0.5, 0.6, 0.85, 0.2),
+		Color(0.45, 0.55, 0.8, 0.15),
+		Color(0.3, 0.4, 0.65, 0.0),
 	])
 	grad.offsets = PackedFloat32Array([0.0, 0.08, 0.75, 1.0])
 	var grad_tex := GradientTexture1D.new()
@@ -42,7 +42,7 @@ func _ready() -> void:
 	mat.color_ramp = grad_tex
 
 	process_material = mat
-	amount = 180
+	amount = 120
 	lifetime = 4.0
 	local_coords = false
 	emitting = true
@@ -58,8 +58,8 @@ func _ready() -> void:
 	mesh_mat.vertex_color_use_as_albedo = true
 	mesh_mat.albedo_texture = soft_tex
 	mesh_mat.emission_enabled = true
-	mesh_mat.emission = Color(0.5, 0.7, 1.0)
-	mesh_mat.emission_energy_multiplier = 1.2
+	mesh_mat.emission = Color(0.3, 0.45, 0.7)
+	mesh_mat.emission_energy_multiplier = 0.6
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mesh_mat.no_depth_test = true

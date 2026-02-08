@@ -5,7 +5,7 @@ extends Resource
 # Weapon Resource - Defines all stats for a weapon type
 # =============================================================================
 
-enum WeaponType { LASER, PLASMA, MISSILE, RAILGUN, MINE, TURRET }
+enum WeaponType { LASER, PLASMA, MISSILE, RAILGUN, MINE, TURRET, MINING_LASER }
 enum SlotSize { S, M, L }
 enum AmmoType { ENERGY, AMMO }
 

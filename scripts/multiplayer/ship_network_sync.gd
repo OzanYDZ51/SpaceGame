@@ -46,6 +46,11 @@ func _send_state() -> void:
 	if gm and gm._system_transition:
 		state.system_id = gm._system_transition.current_system_id
 
+	# Status flags
+	if gm:
+		state.is_docked = gm.current_state == GameManagerSystem.GameState.DOCKED
+		state.is_dead = gm.current_state == GameManagerSystem.GameState.DEAD
+
 	# Combat state
 	var health := _ship.get_node_or_null("HealthSystem") as HealthSystem
 	if health:

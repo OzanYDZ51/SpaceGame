@@ -4,6 +4,7 @@ render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
 uniform vec3 impact_direction = vec3(0.0, 0.0, -1.0);
 uniform float effect_time = 0.0;
 uniform float shield_health = 1.0;
+uniform vec3 shield_scale = vec3(1.0, 1.0, 1.0);
 
 varying vec3 local_normal;
 
@@ -12,8 +13,9 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 n = normalize(local_normal);
-	vec3 imp = normalize(impact_direction);
+	// Normalize VERTEX by shield_scale so angular math stays circular on ellipsoid
+	vec3 n = normalize(local_normal / shield_scale);
+	vec3 imp = normalize(impact_direction / shield_scale);
 
 	// Angular distance from impact point (0 = hit, PI = opposite)
 	float ang = acos(clamp(dot(n, imp), -1.0, 1.0));
@@ -40,7 +42,11 @@ void fragment() {
 	float r2 = max(0.0, effect_time - 0.08) * 2.0;
 	float w2 = smoothstep(0.035, 0.0, abs(ang - r2)) * max(0.0, 1.0 - effect_time * 2.0) * 0.4;
 
-	float alpha = (glow + w1 + w2) * cap * fade_in * fade_out;
+	// === Fresnel edge glow at cap boundary ===
+	float fresnel = pow(1.0 - abs(dot(normalize(local_normal), VIEW)), 3.0);
+	float edge_glow = fresnel * cap * fade_in * fade_out * 0.15;
+
+	float alpha = (glow + w1 + w2 + edge_glow) * cap * fade_in * fade_out;
 
 	// Blue gradient: bright white-blue at impact center → deep blue at cap edge
 	vec3 c_center = vec3(0.4, 0.65, 1.0);
@@ -52,7 +58,7 @@ void fragment() {
 	vec3 c_low = vec3(1.0, 0.18, 0.03);
 	col = mix(c_low, col, clamp(shield_health, 0.0, 1.0));
 
-	float emit = 0.5 + glow * 3.0 + (w1 + w2) * 1.5;
+	float emit = 0.5 + glow * 3.0 + (w1 + w2) * 1.5 + edge_glow * 2.0;
 
 	ALBEDO = col;
 	EMISSION = col * emit;

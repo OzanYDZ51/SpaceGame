@@ -17,6 +17,7 @@ extends RigidBody3D
 
 @export_group("Ship Data")
 @export var ship_data: ShipData = null
+var center_offset: Vector3 = Vector3.ZERO  ## Visual center from ship scene ShipCenter marker
 
 # --- Engine equipment multipliers (set by EquipmentManager) ---
 var engine_accel_mult: float = 1.0
@@ -39,6 +40,7 @@ var combat_locked: bool = false  ## Read by HUD for warning display
 var autopilot_active: bool = false
 var autopilot_target_id: String = ""
 var autopilot_target_name: String = ""
+var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
 const AUTOPILOT_ARRIVAL_DIST: float = 15000.0  # 15 km
 const AUTOPILOT_DECEL_DIST: float = 25000.0    # Start decelerating at 25 km
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98  # dot product threshold to engage cruise
@@ -109,6 +111,33 @@ func _process(delta: float) -> void:
 
 
 func _read_input() -> void:
+	# === COMBAT LOCK UPDATE (always runs) ===
+	combat_locked = (Time.get_ticks_msec() * 0.001 - _last_combat_time) < COMBAT_LOCK_DURATION
+
+	# === AUTOPILOT (runs even when GUI has focus, e.g. during screen close transition) ===
+	if autopilot_active:
+		# Grace period: ignore mouse input right after engage (mouse recapture generates spurious motion)
+		if _autopilot_grace_frames > 0:
+			_autopilot_grace_frames -= 1
+			_mouse_delta = Vector2.ZERO
+			_run_autopilot()
+			return
+		# Only manual flight input cancels autopilot (not combat lock — cruise is blocked separately)
+		var has_manual_input := false
+		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and _mouse_delta.length_squared() > 4.0:
+			has_manual_input = true
+		for act in ["move_forward", "move_backward", "strafe_left", "strafe_right", "strafe_up", "strafe_down"]:
+			if Input.is_action_pressed(act):
+				has_manual_input = true
+				break
+		if has_manual_input:
+			disengage_autopilot()
+		else:
+			_run_autopilot()
+			_mouse_delta = Vector2.ZERO
+			return
+
+	# === GUI FOCUS CHECK (only for manual flight, not autopilot) ===
 	if get_viewport().gui_get_focus_owner() != null:
 		throttle_input = Vector3.ZERO
 		_target_pitch_rate = 0.0
@@ -116,26 +145,6 @@ func _read_input() -> void:
 		_target_roll_rate = 0.0
 		_mouse_delta = Vector2.ZERO
 		return
-
-	# === COMBAT LOCK UPDATE ===
-	combat_locked = (Time.get_ticks_msec() * 0.001 - _last_combat_time) < COMBAT_LOCK_DURATION
-
-	# === AUTOPILOT ===
-	if autopilot_active:
-		# Any manual input cancels autopilot
-		var has_manual_input := false
-		if _mouse_delta.length_squared() > 4.0:
-			has_manual_input = true
-		for act in ["move_forward", "move_backward", "strafe_left", "strafe_right", "strafe_up", "strafe_down"]:
-			if Input.is_action_pressed(act):
-				has_manual_input = true
-				break
-		if has_manual_input or combat_locked:
-			disengage_autopilot()
-		else:
-			_run_autopilot()
-			_mouse_delta = Vector2.ZERO
-			return
 
 	# === THRUST ===
 	var thrust := Vector3.ZERO
@@ -395,6 +404,10 @@ func engage_autopilot(target_id: String, target_name: String) -> void:
 	autopilot_active = true
 	autopilot_target_id = target_id
 	autopilot_target_name = target_name
+	_mouse_delta = Vector2.ZERO
+	_autopilot_grace_frames = 10  # Ignore mouse until map close transition finishes + mouse recapture settles
+	# Release any lingering GUI focus so it doesn't interfere later
+	get_viewport().gui_release_focus()
 
 
 func disengage_autopilot() -> void:

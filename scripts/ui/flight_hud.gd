@@ -38,7 +38,13 @@ var _last_tracked_target: Node3D = null
 var _docking_system: DockingSystem = null
 var _loot_pickup: LootPickupSystem = null
 var _system_transition: SystemTransition = null
+var _mining_system: MiningSystem = null
 var _gate_prompt: Control = null
+var _wormhole_prompt: Control = null
+var _mining_prompt: Control = null
+var _mining_progress: Control = null
+var _economy_panel: Control = null
+var _player_economy: PlayerEconomy = null
 
 var _sil_verts: PackedVector3Array = PackedVector3Array()
 var _silhouette_ship: Node3D = null
@@ -133,9 +139,11 @@ func set_weapon_manager(w: WeaponManager) -> void:
 	_weapon_manager = w
 	if _weapon_manager:
 		_weapon_manager.hit_landed.connect(_on_hit_landed)
+func set_player_economy(pe: PlayerEconomy) -> void: _player_economy = pe
 func set_docking_system(d: DockingSystem) -> void: _docking_system = d
 func set_loot_pickup_system(lps: LootPickupSystem) -> void: _loot_pickup = lps
 func set_system_transition(st: SystemTransition) -> void: _system_transition = st
+func set_mining_system(ms: MiningSystem) -> void: _mining_system = ms
 
 
 func _build_hud() -> void:
@@ -195,6 +203,26 @@ func _build_hud() -> void:
 	_gate_prompt.visible = false
 	add_child(_gate_prompt)
 
+	_wormhole_prompt = _make_ctrl(0.5, 0.5, 0.5, 0.5, -130, 175, 130, 210)
+	_wormhole_prompt.draw.connect(_draw_wormhole_prompt.bind(_wormhole_prompt))
+	_wormhole_prompt.visible = false
+	add_child(_wormhole_prompt)
+
+	_mining_prompt = _make_ctrl(0.5, 0.5, 0.5, 0.5, -120, 215, 120, 250)
+	_mining_prompt.draw.connect(_draw_mining_prompt.bind(_mining_prompt))
+	_mining_prompt.visible = false
+	add_child(_mining_prompt)
+
+	_mining_progress = _make_ctrl(0.5, 0.5, 0.5, 0.5, -140, 255, 140, 290)
+	_mining_progress.draw.connect(_draw_mining_progress.bind(_mining_progress))
+	_mining_progress.visible = false
+	add_child(_mining_progress)
+
+	# Economy panel (top-left corner)
+	_economy_panel = _make_ctrl(0.0, 0.0, 0.0, 0.0, 16, 12, 195, 62)
+	_economy_panel.draw.connect(_draw_economy_panel.bind(_economy_panel))
+	add_child(_economy_panel)
+
 	_nav_markers = _make_ctrl(0.0, 0.0, 1.0, 1.0, 0, 0, 0, 0)
 	_nav_markers.draw.connect(_draw_nav_markers.bind(_nav_markers))
 	add_child(_nav_markers)
@@ -238,6 +266,7 @@ func _process(delta: float) -> void:
 	_top_bar.visible = not is_cockpit
 	_compass.visible = not is_cockpit
 	_weapon_panel.visible = not is_cockpit
+	_economy_panel.visible = not is_cockpit
 	_cockpit_overlay.visible = is_cockpit
 
 	# Target tracking & flash decay
@@ -277,6 +306,7 @@ func _process(delta: float) -> void:
 			_right_panel.queue_redraw()
 			_top_bar.queue_redraw()
 			_weapon_panel.queue_redraw()
+			_economy_panel.queue_redraw()
 
 	if _slow_dirty:
 		_slow_dirty = false
@@ -303,6 +333,24 @@ func _process(delta: float) -> void:
 		_gate_prompt.visible = show_gate
 		if show_gate:
 			_gate_prompt.queue_redraw()
+
+	if _wormhole_prompt:
+		var show_wh: bool = _system_transition != null and _system_transition.can_wormhole_jump()
+		_wormhole_prompt.visible = show_wh
+		if show_wh:
+			_wormhole_prompt.queue_redraw()
+
+	if _mining_prompt:
+		var show_mine: bool = _mining_system != null and _mining_system.scan_target != null and not _mining_system.is_mining
+		_mining_prompt.visible = show_mine
+		if show_mine:
+			_mining_prompt.queue_redraw()
+
+	if _mining_progress:
+		var show_prog: bool = _mining_system != null and _mining_system.is_mining
+		_mining_progress.visible = show_prog
+		if show_prog:
+			_mining_progress.queue_redraw()
 
 
 # =============================================================================
@@ -420,6 +468,116 @@ func _draw_gate_prompt(ctrl: Control) -> void:
 	var dy: float = 24.0
 	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+func _draw_wormhole_prompt(ctrl: Control) -> void:
+	var s := ctrl.size
+	var font := ThemeDB.fallback_font
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(_pulse_t * 3.0) * 0.3
+
+	# Background (purple/magenta wormhole tint)
+	var wh_col := Color(0.7, 0.2, 1.0)
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.06, 0.0, 0.08, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(wh_col.r, wh_col.g, wh_col.b, 0.3 * pulse), false, 1.0)
+
+	# Target galaxy name (small, dim)
+	if _system_transition:
+		var target_name: String = _system_transition.get_wormhole_target_name().to_upper()
+		ctrl.draw_string(font, Vector2(0, 13), target_name,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM * Color(1, 1, 1, pulse))
+
+	# "WORMHOLE  [W]" main text
+	var text_col := Color(wh_col.r, wh_col.g, wh_col.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 28), "WORMHOLE  [W]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+
+	# Small diamonds flanking the text
+	var tw: float = font.get_string_size("WORMHOLE  [W]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var dy: float = 24.0
+	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+# =============================================================================
+# MINING PROMPT
+# =============================================================================
+func _draw_mining_prompt(ctrl: Control) -> void:
+	var s := ctrl.size
+	var font := ThemeDB.fallback_font
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(_pulse_t * 3.0) * 0.3
+
+	# Background (green mining tint)
+	var mine_col := Color(0.2, 1.0, 0.5)
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.06, 0.02, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(mine_col.r, mine_col.g, mine_col.b, 0.3 * pulse), false, 1.0)
+
+	# Resource name (small, dim)
+	if _mining_system and _mining_system.scan_target:
+		var res := MiningRegistry.get_resource(_mining_system.scan_target.primary_resource)
+		var res_name: String = res.resource_name.to_upper() if res else "?"
+		ctrl.draw_string(font, Vector2(0, 13), res_name,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM * Color(1, 1, 1, pulse))
+
+	# "MINAGE  [B]" main text
+	var text_col := Color(mine_col.r, mine_col.g, mine_col.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 28), "MINAGE  [B]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+
+	# Small diamonds flanking the text
+	var tw: float = font.get_string_size("MINAGE  [B]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var dy: float = 24.0
+	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+# =============================================================================
+# MINING PROGRESS BAR
+# =============================================================================
+func _draw_mining_progress(ctrl: Control) -> void:
+	if _mining_system == null or _mining_system.mining_target == null:
+		return
+	var s := ctrl.size
+	var font := ThemeDB.fallback_font
+	var target := _mining_system.mining_target
+	var pulse: float = 0.8 + sin(_pulse_t * 5.0) * 0.2
+
+	var mine_col := Color(0.2, 1.0, 0.5)
+
+	# Background
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.02, 0.7))
+	ctrl.draw_rect(bg_rect, Color(mine_col.r, mine_col.g, mine_col.b, 0.4 * pulse), false, 1.0)
+
+	# Resource name + extraction text
+	var res := MiningRegistry.get_resource(target.primary_resource)
+	var res_name: String = res.resource_name if res else "?"
+	ctrl.draw_string(font, Vector2(0, 13), ("EXTRACTION: %s" % res_name).to_upper(),
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 10, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
+
+	# Health bar
+	var bar_x: float = 20.0
+	var bar_y: float = 18.0
+	var bar_w: float = s.x - 40.0
+	var bar_h: float = 10.0
+	var hp_ratio: float = target.health_current / target.health_max if target.health_max > 0 else 0.0
+	hp_ratio = clampf(hp_ratio, 0.0, 1.0)
+
+	# Bar background
+	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.1, 0.12, 0.1, 0.8))
+	# Bar fill
+	var fill_col := mine_col * Color(1, 1, 1, pulse)
+	ctrl.draw_rect(Rect2(bar_x + 1, bar_y + 1, (bar_w - 2) * hp_ratio, bar_h - 2), fill_col)
+	# Bar border
+	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(mine_col.r, mine_col.g, mine_col.b, 0.5), false, 1.0)
+
+	# HP percentage
+	var hp_text := "%d%%" % int(hp_ratio * 100.0)
+	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 2), hp_text,
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM)
 
 
 # =============================================================================
@@ -745,6 +903,57 @@ func _draw_left_panel(ctrl: Control) -> void:
 			var fc := COL_DANGER * Color(1, 1, 1, flash)
 			ctrl.draw_circle(Vector2(x + 4, y - 3), 3.5, fc)
 			ctrl.draw_string(font, Vector2(x + 13, y), "AV DÉSACTIVÉ", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, fc)
+
+
+# =============================================================================
+# ECONOMY PANEL - Credits + resources (top-left)
+# =============================================================================
+func _draw_economy_panel(ctrl: Control) -> void:
+	if _player_economy == null:
+		return
+	var font := ThemeDB.fallback_font
+	var s := ctrl.size
+
+	# Semi-transparent background
+	ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.05, 0.55))
+	# Top border accent
+	ctrl.draw_line(Vector2(0, 0), Vector2(s.x, 0), COL_PRIMARY_DIM, 1.0)
+	ctrl.draw_line(Vector2(0, 0), Vector2(0, 8), COL_PRIMARY, 1.0)
+
+	var x := 8.0
+	var y := 16.0
+
+	# --- Credits line ---
+	var cr_col := PlayerEconomy.CREDITS_COLOR
+	# Diamond icon
+	_draw_diamond(ctrl, Vector2(x + 4, y - 3), 4.0, cr_col)
+	# Amount
+	var cr_text := PlayerEconomy.format_credits(_player_economy.credits) + " CR"
+	ctrl.draw_string(font, Vector2(x + 14, y), cr_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, cr_col)
+
+	y += 22.0
+
+	# --- Resources line (compact, side by side) ---
+	var rx := x
+	for res_id: StringName in PlayerEconomy.RESOURCE_DEFS:
+		var res_def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
+		var res_col: Color = res_def["color"]
+		var res_name: String = res_def["name"]
+		var qty: int = _player_economy.get_resource(res_id)
+
+		# Small colored square icon
+		ctrl.draw_rect(Rect2(Vector2(rx, y - 8), Vector2(8, 8)), res_col)
+		ctrl.draw_rect(Rect2(Vector2(rx, y - 8), Vector2(8, 8)), Color(res_col.r, res_col.g, res_col.b, 0.4), false, 1.0)
+
+		# Quantity + name
+		var res_text := "%d %s" % [qty, res_name]
+		ctrl.draw_string(font, Vector2(rx + 12, y), res_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(res_col.r, res_col.g, res_col.b, 0.85))
+
+		rx += font.get_string_size(res_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 22.0
+
+	# Scanline
+	var sy: float = fmod(_scan_line_y, s.y)
+	ctrl.draw_line(Vector2(0, sy), Vector2(s.x, sy), COL_SCANLINE, 1.0)
 
 
 # =============================================================================
