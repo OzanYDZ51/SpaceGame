@@ -19,6 +19,8 @@ var _star_luminosity: float = 1.0
 
 var _mesh_instance: MeshInstance3D = null
 var _light: OmniLight3D = null
+var _last_cam_pos: Vector3 = Vector3(INF, INF, INF)
+var _last_origin_x: float = INF
 
 
 func setup(star_color: Color, star_radius: float, star_luminosity: float) -> void:
@@ -33,8 +35,8 @@ func _build_visuals() -> void:
 	var mesh := SphereMesh.new()
 	mesh.radius = 1.0
 	mesh.height = 2.0
-	mesh.radial_segments = 32
-	mesh.rings = 16
+	mesh.radial_segments = 16
+	mesh.rings = 8
 
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -64,15 +66,20 @@ func _process(_delta: float) -> void:
 	if cam == null:
 		return
 
+	var cam_pos := cam.global_position
+	# Skip update if camera and origin haven't changed meaningfully
+	if cam_pos.distance_squared_to(_last_cam_pos) < 1.0 and FloatingOrigin.origin_offset_x == _last_origin_x:
+		return
+	_last_cam_pos = cam_pos
+	_last_origin_x = FloatingOrigin.origin_offset_x
+
 	# True star position in local scene coords is always at (0,0,0) minus FloatingOrigin offset.
-	# Star universe pos is (0,0,0). Local pos = universe_pos - origin_offset.
 	var star_local := Vector3(
 		-FloatingOrigin.origin_offset_x,
 		-FloatingOrigin.origin_offset_y,
 		-FloatingOrigin.origin_offset_z
 	)
 
-	var cam_pos := cam.global_position
 	var to_star := star_local - cam_pos
 	var actual_distance := to_star.length()
 
@@ -86,9 +93,7 @@ func _process(_delta: float) -> void:
 	# Position impostor at clamped distance along the direction
 	global_position = cam_pos + direction * IMPOSTOR_DISTANCE
 
-	# Scale based on angular size: visual_radius = IMPOSTOR_DISTANCE * actual_radius / actual_distance
+	# Scale based on angular size
 	var visual_radius: float = IMPOSTOR_DISTANCE * _star_radius / actual_distance
 	visual_radius = clampf(visual_radius, MIN_VISUAL_RADIUS, MAX_VISUAL_RADIUS)
 	_mesh_instance.scale = Vector3.ONE * visual_radius
-
-	# Light stays at impostor position (already parented)

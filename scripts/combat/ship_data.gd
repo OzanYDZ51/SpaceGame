@@ -2,13 +2,23 @@ class_name ShipData
 extends Resource
 
 # =============================================================================
-# Ship Data - Defines all stats for a ship class
-# Used by ShipRegistry to define ship archetypes, by ShipFactory to configure ships.
+# Ship Data - Defines all stats for a specific ship variant.
+# ship_id is the unique key (e.g. "scout_mk1", "viper").
+# ship_class is the role/category (e.g. "Scout", "Fighter") — used for loot, display.
 # =============================================================================
 
 # --- Identity ---
+@export var ship_id: StringName = &""
 @export var ship_name: StringName = &""
 @export var ship_class: StringName = &""
+
+# --- Model ---
+@export var model_path: String = "res://assets/models/tie.glb"
+@export var model_scale: float = 2.0
+@export var ship_scene_path: String = ""  # Path to .tscn with model + HardpointSlots + CollisionShape3D
+
+# --- Default Loadout ---
+@export var default_loadout: Array[StringName] = []
 
 # --- Hull & Shields ---
 @export var hull_hp: float = 1000.0
@@ -26,7 +36,7 @@ extends Resource
 @export var accel_vertical: float = 40.0
 @export var max_speed_normal: float = 300.0
 @export var max_speed_boost: float = 600.0
-@export var max_speed_cruise: float = 3000.0
+@export var max_speed_cruise: float = 50000.0
 @export var rotation_pitch_speed: float = 30.0
 @export var rotation_yaw_speed: float = 25.0
 @export var rotation_roll_speed: float = 50.0
@@ -39,9 +49,16 @@ extends Resource
 @export var energy_regen_rate: float = 20.0
 @export var boost_energy_drain: float = 15.0
 
+# --- Collision ---
+@export var collision_size: Vector3 = Vector3(28, 12, 36)
+
 # --- Hardpoints ---
-# Each entry: {id: int, size: "S"/"M"/"L", position: Vector3, direction: Vector3}
 @export var hardpoints: Array[Dictionary] = []
+
+# --- Equipment Slots ---
+@export var shield_slot_size: String = "S"
+@export var engine_slot_size: String = "S"
+@export var module_slots: Array[String] = []  # e.g. ["S", "S"]
 
 # --- Utility ---
 @export var utility_slot_count: int = 0

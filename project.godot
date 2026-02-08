@@ -116,7 +116,5 @@ toggle_mouse_capture={
 [rendering]
 
 textures/canvas_textures/default_texture_filter=2
-textures/default_filters/anisotropic_filtering_level=4
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
-anti_aliasing/quality/msaa_3d=0
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)

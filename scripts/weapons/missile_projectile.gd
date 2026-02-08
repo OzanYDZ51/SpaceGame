@@ -28,4 +28,5 @@ func _physics_process(delta: float) -> void:
 	global_position += velocity * delta
 	_lifetime += delta
 	if _lifetime >= max_lifetime:
+		_spawn_dissipate_effect()
 		_return_to_pool()

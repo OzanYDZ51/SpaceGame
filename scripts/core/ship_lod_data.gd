@@ -10,6 +10,7 @@ enum LODLevel { LOD0, LOD1, LOD2, LOD3 }
 
 # --- Identity ---
 var id: StringName = &""
+var ship_id: StringName = &""
 var ship_class: StringName = &""
 var faction: StringName = &"hostile"
 var display_name: String = ""
@@ -102,4 +103,6 @@ func capture_from_node(ship: Node3D) -> void:
 
 	if ship is ShipController:
 		faction = (ship as ShipController).faction
-		ship_class = (ship as ShipController).ship_data.ship_class if (ship as ShipController).ship_data else &""
+		if (ship as ShipController).ship_data:
+			ship_id = (ship as ShipController).ship_data.ship_id
+			ship_class = (ship as ShipController).ship_data.ship_class

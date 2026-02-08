@@ -39,20 +39,20 @@ func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> 
 
 	match danger_level:
 		0:
-			spawn_free_for_all(300, &"Scout", base_pos, 800.0)
+			spawn_patrol(2, &"scout_mk1", base_pos, 400.0, &"hostile")
 		1:
-			spawn_patrol(3, &"Scout", base_pos, 300.0, &"neutral")
+			spawn_patrol(2, &"scout_mk1", base_pos, 300.0, &"neutral")
 		2:
-			spawn_patrol(3, &"Interceptor", base_pos, 400.0, &"hostile")
+			spawn_patrol(2, &"interceptor_mk1", base_pos, 400.0, &"hostile")
 		3:
-			spawn_patrol(4, &"Fighter", base_pos, 500.0, &"hostile")
+			spawn_patrol(2, &"fighter_mk1", base_pos, 500.0, &"hostile")
 		4:
-			spawn_formation(&"Corvette", &"Fighter", 3, base_pos, &"hostile")
+			spawn_formation(&"corvette_mk1", &"fighter_mk1", 1, base_pos, &"hostile")
 		5:
-			spawn_formation(&"Frigate", &"Interceptor", 5, base_pos, &"hostile")
+			spawn_formation(&"frigate_mk1", &"interceptor_mk1", 1, base_pos, &"hostile")
 
 
-func spawn_patrol(count: int, ship_class: StringName, center: Vector3, radius: float, faction: StringName = &"hostile") -> void:
+func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile") -> void:
 	_encounter_counter += 1
 	var eid := _encounter_counter
 
@@ -73,7 +73,7 @@ func spawn_patrol(count: int, ship_class: StringName, center: Vector3, radius: f
 
 		# If LOD manager exists and spawn is far away, use data-only (LOD2)
 		if lod_mgr and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE:
-			var lod_data := ShipFactory.create_npc_data_only(ship_class, &"balanced", pos, faction)
+			var lod_data := ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
 			if lod_data:
 				lod_data.ai_patrol_center = center
 				lod_data.ai_patrol_radius = radius
@@ -81,7 +81,7 @@ func spawn_patrol(count: int, ship_class: StringName, center: Vector3, radius: f
 				lod_mgr.register_ship(lod_data.id, lod_data)
 				_active_npc_ids.append(lod_data.id)
 		else:
-			var ship := ShipFactory.spawn_npc_ship(ship_class, &"balanced", pos, parent, faction)
+			var ship := ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
 			if ship:
 				var brain := ship.get_node_or_null("AIBrain") as AIBrain
 				if brain:
@@ -92,7 +92,7 @@ func spawn_patrol(count: int, ship_class: StringName, center: Vector3, radius: f
 	encounter_started.emit(eid)
 
 
-func spawn_free_for_all(count: int, ship_class: StringName, center: Vector3, radius: float) -> void:
+func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius: float) -> void:
 	_encounter_counter += 1
 	var eid := _encounter_counter
 
@@ -116,7 +116,7 @@ func spawn_free_for_all(count: int, ship_class: StringName, center: Vector3, rad
 
 		if lod_mgr:
 			# All spawn as data-only (LOD2) — LOD manager promotes nearby ones
-			var lod_data := ShipFactory.create_npc_data_only(ship_class, &"aggressive", pos, unique_faction)
+			var lod_data := ShipFactory.create_npc_data_only(ship_id, &"aggressive", pos, unique_faction)
 			if lod_data:
 				lod_data.ai_patrol_center = center
 				lod_data.ai_patrol_radius = radius
@@ -128,7 +128,7 @@ func spawn_free_for_all(count: int, ship_class: StringName, center: Vector3, rad
 			var parent := get_tree().current_scene.get_node_or_null("Universe")
 			if parent == null:
 				parent = get_tree().current_scene
-			var ship := ShipFactory.spawn_npc_ship(ship_class, &"aggressive", pos, parent, unique_faction)
+			var ship := ShipFactory.spawn_npc_ship(ship_id, &"aggressive", pos, parent, unique_faction)
 			if ship:
 				var brain := ship.get_node_or_null("AIBrain") as AIBrain
 				if brain:
@@ -139,7 +139,7 @@ func spawn_free_for_all(count: int, ship_class: StringName, center: Vector3, rad
 	encounter_started.emit(eid)
 
 
-func spawn_ambush(classes: Array[StringName], range_dist: float, faction: StringName = &"hostile") -> void:
+func spawn_ambush(ship_ids: Array[StringName], range_dist: float, faction: StringName = &"hostile") -> void:
 	_encounter_counter += 1
 	var player := GameManager.player_ship
 	if player == null:
@@ -149,7 +149,7 @@ func spawn_ambush(classes: Array[StringName], range_dist: float, faction: String
 	if parent == null:
 		parent = get_tree().current_scene
 
-	for ship_class in classes:
+	for ship_id in ship_ids:
 		var offset := Vector3(
 			randf_range(-range_dist, range_dist),
 			randf_range(-range_dist * 0.3, range_dist * 0.3),
@@ -157,7 +157,7 @@ func spawn_ambush(classes: Array[StringName], range_dist: float, faction: String
 		)
 		var pos: Vector3 = player.global_position + offset
 
-		var ship := ShipFactory.spawn_npc_ship(ship_class, &"aggressive", pos, parent, faction)
+		var ship := ShipFactory.spawn_npc_ship(ship_id, &"aggressive", pos, parent, faction)
 		if ship:
 			_active_npc_ids.append(StringName(ship.name))
 			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
@@ -165,7 +165,7 @@ func spawn_ambush(classes: Array[StringName], range_dist: float, faction: String
 	encounter_started.emit(_encounter_counter)
 
 
-func spawn_formation(leader_class: StringName, wingman_class: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile") -> void:
+func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile") -> void:
 	_encounter_counter += 1
 
 	var parent := get_tree().current_scene.get_node_or_null("Universe")
@@ -173,7 +173,7 @@ func spawn_formation(leader_class: StringName, wingman_class: StringName, wingma
 		parent = get_tree().current_scene
 
 	# Spawn leader
-	var leader := ShipFactory.spawn_npc_ship(leader_class, &"aggressive", pos, parent, faction)
+	var leader := ShipFactory.spawn_npc_ship(leader_id, &"aggressive", pos, parent, faction)
 	if leader == null:
 		return
 	_active_npc_ids.append(StringName(leader.name))
@@ -187,7 +187,7 @@ func spawn_formation(leader_class: StringName, wingman_class: StringName, wingma
 		var offset := Vector3(side * 60.0 * row, 0.0, 40.0 * row)
 		var wing_pos: Vector3 = pos + offset
 
-		var wingman := ShipFactory.spawn_npc_ship(wingman_class, &"balanced", wing_pos, parent, faction)
+		var wingman := ShipFactory.spawn_npc_ship(wingman_id, &"balanced", wing_pos, parent, faction)
 		if wingman:
 			var brain := wingman.get_node_or_null("AIBrain") as AIBrain
 			if brain:

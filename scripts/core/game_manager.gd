@@ -77,6 +77,8 @@ func _setup_input_actions() -> void:
 		"dock": KEY_F,
 		# Multiplayer
 		"toggle_multiplayer": KEY_P,
+		# Jump gate
+		"gate_jump": KEY_J,
 		# Weapon toggles
 		"toggle_weapon_1": KEY_1,
 		"toggle_weapon_2": KEY_2,
@@ -129,6 +131,7 @@ func _setup_ui_managers() -> void:
 		map_screen.galaxy = _galaxy
 		map_screen.system_transition = _system_transition
 		_stellar_map.view_switch_requested.connect(func(): map_screen.switch_to_view(UnifiedMapScreen.ViewMode.GALAXY))
+		_stellar_map.navigate_to_requested.connect(_on_navigate_to_entity)
 		_screen_manager.register_screen("map", map_screen)
 
 	# Register Clan screen
@@ -194,7 +197,7 @@ func _initialize_game() -> void:
 	FloatingOrigin.set_universe_node(universe_node)
 
 	# Setup player ship with combat systems
-	ShipFactory.setup_player_ship(&"Fighter", player_ship as ShipController)
+	ShipFactory.setup_player_ship(&"frigate_mk1", player_ship as ShipController)
 
 	# Create player inventory with starting weapons
 	player_inventory = PlayerInventory.new()
@@ -202,6 +205,14 @@ func _initialize_game() -> void:
 	player_inventory.add_weapon(&"Mine Layer", 2)
 	player_inventory.add_weapon(&"Laser Mk2", 1)
 	player_inventory.add_weapon(&"Plasma Cannon", 1)
+	# Starting equipment items
+	player_inventory.add_shield(&"Bouclier Basique Mk2", 1)
+	player_inventory.add_shield(&"Bouclier Prismatique", 1)
+	player_inventory.add_engine(&"Propulseur Standard Mk2", 1)
+	player_inventory.add_engine(&"Propulseur de Combat", 1)
+	player_inventory.add_module(&"Condensateur d'Energie", 1)
+	player_inventory.add_module(&"Dissipateur Thermique", 1)
+	player_inventory.add_module(&"Amplificateur de Bouclier", 1)
 
 	# Connect player death signal
 	var player_health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
@@ -244,6 +255,8 @@ func _initialize_game() -> void:
 	if hud:
 		hud.set_loot_pickup_system(_loot_pickup)
 
+	# Note: system_transition wired to HUD after creation (see below)
+
 	# Wire stellar map
 	_stellar_map = main_scene.get_node_or_null("UI/StellarMap") as StellarMap
 
@@ -257,6 +270,11 @@ func _initialize_game() -> void:
 	add_child(_system_transition)
 	_system_transition.system_loaded.connect(_on_system_loaded)
 
+	# Wire system transition to HUD for gate prompt display
+	var hud_ref := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud_ref:
+		hud_ref.set_system_transition(_system_transition)
+
 	# Ship LOD Manager (must exist before encounter manager spawns ships)
 	_lod_manager = ShipLODManager.new()
 	_lod_manager.name = "ShipLODManager"
@@ -266,7 +284,8 @@ func _initialize_game() -> void:
 	# Register player ship in LOD system (always LOD0)
 	var player_lod := ShipLODData.new()
 	player_lod.id = &"player_ship"
-	player_lod.ship_class = &"Fighter"
+	player_lod.ship_id = &"frigate_mk1"
+	player_lod.ship_class = &"Frigate"
 	player_lod.faction = &"neutral"
 	player_lod.display_name = "Player"
 	player_lod.node_ref = player_ship
@@ -279,6 +298,11 @@ func _initialize_game() -> void:
 	var proj_pool := ProjectilePool.new()
 	proj_pool.name = "ProjectilePool"
 	_lod_manager.add_child(proj_pool)
+	# Pre-warm pools for all projectile types to avoid runtime instantiation
+	proj_pool.warm_pool("res://scenes/weapons/laser_bolt.tscn", 150)
+	proj_pool.warm_pool("res://scenes/weapons/plasma_bolt.tscn", 80)
+	proj_pool.warm_pool("res://scenes/weapons/missile.tscn", 40)
+	proj_pool.warm_pool("res://scenes/weapons/railgun_slug.tscn", 30)
 
 	# Encounter Manager (must exist before system loading)
 	_encounter_manager = EncounterManager.new()
@@ -452,6 +476,22 @@ func _on_system_loaded(_system_id: int) -> void:
 		_stellar_map.set_system_name(_system_transition.current_system_data.system_name)
 
 
+func _on_navigate_to_entity(entity_id: String) -> void:
+	var ent: Dictionary = EntityRegistry.get_entity(entity_id)
+	if ent.is_empty():
+		return
+	var ship := player_ship as ShipController
+	if ship == null or current_state != GameState.PLAYING:
+		return
+
+	# Engage autopilot
+	ship.engage_autopilot(entity_id, ent["name"])
+
+	# Close the map
+	if _screen_manager:
+		_screen_manager.close_top()
+
+
 func _handle_map_toggle(view: int) -> void:
 	if _screen_manager == null:
 		return
@@ -552,6 +592,13 @@ func _input(event: InputEvent) -> void:
 			var crate := _loot_pickup.request_pickup()
 			if crate:
 				_open_loot_screen(crate)
+			get_viewport().set_input_as_handled()
+			return
+
+	# Jump gate with J key
+	if event.is_action_pressed("gate_jump") and current_state == GameState.PLAYING:
+		if _system_transition and _system_transition.can_gate_jump():
+			_system_transition.initiate_gate_jump(_system_transition.get_gate_target_id())
 			get_viewport().set_input_as_handled()
 			return
 
@@ -688,9 +735,10 @@ func _on_docked(station_name: String) -> void:
 		return
 	current_state = GameState.DOCKED
 
-	# Stop ship controls
+	# Stop ship controls + autopilot
 	var ship := player_ship as ShipController
 	if ship:
+		ship.disengage_autopilot()
 		ship.is_player_controlled = false
 		ship.throttle_input = Vector3.ZERO
 		ship.set_rotation_target(0, 0, 0)
@@ -722,6 +770,8 @@ func _on_equipment_requested() -> void:
 		_equipment_screen.player_inventory = player_inventory
 		var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
 		_equipment_screen.weapon_manager = wm
+		var em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+		_equipment_screen.equipment_manager = em
 		# Pass ship model info for the 3D viewer
 		var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
 		if ship_model:

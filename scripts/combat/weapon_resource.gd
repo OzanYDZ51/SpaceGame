@@ -5,7 +5,7 @@ extends Resource
 # Weapon Resource - Defines all stats for a weapon type
 # =============================================================================
 
-enum WeaponType { LASER, PLASMA, MISSILE, RAILGUN, MINE }
+enum WeaponType { LASER, PLASMA, MISSILE, RAILGUN, MINE, TURRET }
 enum SlotSize { S, M, L }
 enum AmmoType { ENERGY, AMMO }
 
@@ -35,3 +35,4 @@ enum AmmoType { ENERGY, AMMO }
 @export var bolt_color: Color = Color(0.3, 0.7, 1.0)
 @export var bolt_length: float = 4.0
 @export var fire_sound_path: String = "res://assets/sounds/laser_fire.mp3"
+@export var weapon_model_scene: String = ""  # Path to 3D mesh scene for weapon visual

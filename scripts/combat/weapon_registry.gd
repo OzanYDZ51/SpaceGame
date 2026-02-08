@@ -22,6 +22,8 @@ static func get_weapon(weapon_name: StringName) -> WeaponResource:
 		&"Torpedo": w = _build_torpedo()
 		&"Railgun": w = _build_railgun()
 		&"Mine Layer": w = _build_mine_layer()
+		&"Auto Cannon": w = _build_auto_cannon()
+		&"Point Defense": w = _build_point_defense()
 		_:
 			push_error("WeaponRegistry: Unknown weapon '%s'" % weapon_name)
 			return null
@@ -30,15 +32,12 @@ static func get_weapon(weapon_name: StringName) -> WeaponResource:
 	return w
 
 
-static func get_default_loadout(ship_class: StringName) -> Array[StringName]:
-	match ship_class:
-		&"Scout": return [&"Laser Mk1", &"Laser Mk1"]
-		&"Interceptor": return [&"Laser Mk1", &"Laser Mk1", &"Plasma Cannon"]
-		&"Fighter": return [&"Laser Mk1", &"Laser Mk1"]
-		&"Bomber": return [&"Plasma Cannon", &"Plasma Cannon", &"Torpedo"]
-		&"Corvette": return [&"Laser Mk1", &"Laser Mk1", &"Laser Mk2", &"Laser Mk2", &"Heavy Plasma"]
-		&"Frigate": return [&"Laser Mk1", &"Laser Mk1", &"Laser Mk2", &"Laser Mk2", &"Plasma Cannon", &"Plasma Cannon", &"Railgun", &"Railgun"]
-		&"Cruiser": return [&"Laser Mk1", &"Laser Mk1", &"Laser Mk1", &"Laser Mk1", &"Laser Mk2", &"Laser Mk2", &"Plasma Cannon", &"Plasma Cannon", &"Heavy Plasma", &"Railgun", &"Railgun"]
+## DEPRECATED: Default loadouts are now stored in ShipData.default_loadout.
+## Kept for backward compatibility — delegates to ShipData if ship_id is passed.
+static func get_default_loadout(ship_id: StringName) -> Array[StringName]:
+	var data := ShipRegistry.get_ship_data(ship_id)
+	if data and not data.default_loadout.is_empty():
+		return data.default_loadout
 	return []
 
 
@@ -93,7 +92,7 @@ static func _build_plasma_cannon() -> WeaponResource:
 	w.fire_rate = 3.0
 	w.energy_cost_per_shot = 12.0
 	w.projectile_speed = 600.0
-	w.projectile_lifetime = 2.5
+	w.projectile_lifetime = 3.0
 	w.projectile_scene_path = "res://scenes/weapons/plasma_bolt.tscn"
 	w.bolt_color = Color(1.0, 0.4, 0.15)
 	w.bolt_length = 3.0
@@ -112,7 +111,7 @@ static func _build_heavy_plasma() -> WeaponResource:
 	w.fire_rate = 1.5
 	w.energy_cost_per_shot = 25.0
 	w.projectile_speed = 500.0
-	w.projectile_lifetime = 3.0
+	w.projectile_lifetime = 3.5
 	w.projectile_scene_path = "res://scenes/weapons/plasma_bolt.tscn"
 	w.bolt_color = Color(1.0, 0.3, 0.05)
 	w.bolt_length = 5.0
@@ -168,7 +167,7 @@ static func _build_railgun() -> WeaponResource:
 	w.fire_rate = 0.5
 	w.energy_cost_per_shot = 40.0
 	w.projectile_speed = 2000.0
-	w.projectile_lifetime = 2.0
+	w.projectile_lifetime = 3.0
 	w.projectile_scene_path = "res://scenes/weapons/railgun_slug.tscn"
 	w.charge_time = 1.0
 	w.bolt_color = Color(1.0, 1.0, 1.0)
@@ -190,5 +189,43 @@ static func _build_mine_layer() -> WeaponResource:
 	w.projectile_speed = 0.0
 	w.projectile_lifetime = 30.0
 	w.aoe_radius = 50.0
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	return w
+
+
+static func _build_auto_cannon() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Auto Cannon"
+	w.weapon_type = WeaponResource.WeaponType.TURRET
+	w.slot_size = WeaponResource.SlotSize.M
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 18.0
+	w.damage_type = &"kinetic"
+	w.fire_rate = 8.0
+	w.energy_cost_per_shot = 3.0
+	w.projectile_speed = 900.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(1.0, 0.8, 0.3)
+	w.bolt_length = 3.0
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	return w
+
+
+static func _build_point_defense() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Point Defense"
+	w.weapon_type = WeaponResource.WeaponType.TURRET
+	w.slot_size = WeaponResource.SlotSize.S
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 8.0
+	w.damage_type = &"thermal"
+	w.fire_rate = 12.0
+	w.energy_cost_per_shot = 2.0
+	w.projectile_speed = 1200.0
+	w.projectile_lifetime = 2.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(0.8, 0.3, 0.3)
+	w.bolt_length = 2.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	return w

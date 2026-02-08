@@ -44,6 +44,9 @@ var _pilot: AIPilot = null
 var _health: HealthSystem = null
 var _evade_timer: float = 0.0
 var _debug_timer: float = 0.0
+var _cached_lod_mgr: ShipLODManager = null
+var _cached_target_health: HealthSystem = null
+var _cached_target_ref: Node3D = null
 
 
 func setup(behavior_name: StringName) -> void:
@@ -71,6 +74,9 @@ func _ready() -> void:
 	# React to damage: if patrolling/idle and get shot, immediately pursue the attacker
 	if _health:
 		_health.damage_taken.connect(_on_damage_taken)
+
+	# Cache LOD manager (autoload child, never changes)
+	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 
 	# Generate initial patrol waypoints
 	if _ship:
@@ -277,14 +283,13 @@ func _detect_threats() -> void:
 		return
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
-	if lod_mgr:
+	if _cached_lod_mgr:
 		var self_id := StringName(_ship.name)
-		var results := lod_mgr.get_nearest_ships(_ship.global_position, DETECTION_RANGE, 5, self_id)
+		var results := _cached_lod_mgr.get_nearest_ships(_ship.global_position, DETECTION_RANGE, 5, self_id)
 		var nearest_threat: Node3D = null
 		var nearest_dist: float = DETECTION_RANGE
 		for entry in results:
-			var data := lod_mgr.get_ship_data(entry["id"])
+			var data := _cached_lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
 				continue
 			if data.faction == _ship.faction:
@@ -329,8 +334,11 @@ func _is_target_valid() -> bool:
 		return false
 	if not target.is_inside_tree():
 		return false
-	var health := target.get_node_or_null("HealthSystem") as HealthSystem
-	if health and health.is_dead():
+	# Cache target's HealthSystem (refresh when target changes)
+	if _cached_target_ref != target:
+		_cached_target_ref = target
+		_cached_target_health = target.get_node_or_null("HealthSystem") as HealthSystem
+	if _cached_target_health and _cached_target_health.is_dead():
 		return false
 	return true
 

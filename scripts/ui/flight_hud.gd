@@ -37,6 +37,8 @@ var _prev_target_hull: float = 0.0
 var _last_tracked_target: Node3D = null
 var _docking_system: DockingSystem = null
 var _loot_pickup: LootPickupSystem = null
+var _system_transition: SystemTransition = null
+var _gate_prompt: Control = null
 
 var _sil_verts: PackedVector3Array = PackedVector3Array()
 var _silhouette_ship: Node3D = null
@@ -133,6 +135,7 @@ func set_weapon_manager(w: WeaponManager) -> void:
 		_weapon_manager.hit_landed.connect(_on_hit_landed)
 func set_docking_system(d: DockingSystem) -> void: _docking_system = d
 func set_loot_pickup_system(lps: LootPickupSystem) -> void: _loot_pickup = lps
+func set_system_transition(st: SystemTransition) -> void: _system_transition = st
 
 
 func _build_hud() -> void:
@@ -186,6 +189,11 @@ func _build_hud() -> void:
 	_loot_prompt.draw.connect(_draw_loot_prompt.bind(_loot_prompt))
 	_loot_prompt.visible = false
 	add_child(_loot_prompt)
+
+	_gate_prompt = _make_ctrl(0.5, 0.5, 0.5, 0.5, -120, 135, 120, 170)
+	_gate_prompt.draw.connect(_draw_gate_prompt.bind(_gate_prompt))
+	_gate_prompt.visible = false
+	add_child(_gate_prompt)
 
 	_nav_markers = _make_ctrl(0.0, 0.0, 1.0, 1.0, 0, 0, 0, 0)
 	_nav_markers.draw.connect(_draw_nav_markers.bind(_nav_markers))
@@ -251,24 +259,24 @@ func _process(delta: float) -> void:
 		_cockpit_overlay.queue_redraw()
 		_warnings.queue_redraw()
 		_target_overlay.queue_redraw()
-		if _slow_dirty:
-			_nav_markers.queue_redraw()
-			_radar.queue_redraw()
+		_nav_markers.queue_redraw()
+		_radar.queue_redraw()
 	else:
-		# Fast: crosshair, warnings, target_overlay (small, cheap draws)
+		# Fast: crosshair, warnings, target_overlay, nav_markers, radar, compass
+		# Nav markers + radar MUST redraw every frame to stay synced with camera
 		_crosshair.queue_redraw()
 		_warnings.queue_redraw()
 		_target_overlay.queue_redraw()
-		# Slow: everything else (entity queries, complex geometry)
+		_nav_markers.queue_redraw()
+		_radar.queue_redraw()
+		_compass.queue_redraw()
+		# Slow: panels and gauges (entity queries, complex geometry)
 		if _slow_dirty:
 			_speed_arc.queue_redraw()
 			_left_panel.queue_redraw()
 			_right_panel.queue_redraw()
 			_top_bar.queue_redraw()
-			_compass.queue_redraw()
 			_weapon_panel.queue_redraw()
-			_nav_markers.queue_redraw()
-			_radar.queue_redraw()
 
 	if _slow_dirty:
 		_slow_dirty = false
@@ -289,6 +297,12 @@ func _process(delta: float) -> void:
 		_loot_prompt.visible = show_loot
 		if show_loot:
 			_loot_prompt.queue_redraw()
+
+	if _gate_prompt:
+		var show_gate: bool = _system_transition != null and _system_transition.can_gate_jump()
+		_gate_prompt.visible = show_gate
+		if show_gate:
+			_gate_prompt.queue_redraw()
 
 
 # =============================================================================
@@ -370,6 +384,39 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 
 	# Small diamonds flanking the text
 	var tw: float = font.get_string_size("SOUTE  [X]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var dy: float = 24.0
+	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+# =============================================================================
+# GATE PROMPT
+# =============================================================================
+func _draw_gate_prompt(ctrl: Control) -> void:
+	var s := ctrl.size
+	var font := ThemeDB.fallback_font
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(_pulse_t * 3.0) * 0.3
+
+	# Background (blue portal tint)
+	var gate_col := NAV_COL_GATE
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.02, 0.08, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(gate_col.r, gate_col.g, gate_col.b, 0.3 * pulse), false, 1.0)
+
+	# Target system name (small, dim)
+	if _system_transition:
+		var target_name: String = _system_transition.get_gate_target_name().to_upper()
+		ctrl.draw_string(font, Vector2(0, 13), target_name,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, COL_TEXT_DIM * Color(1, 1, 1, pulse))
+
+	# "SAUT  [J]" main text
+	var text_col := Color(gate_col.r, gate_col.g, gate_col.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 28), "SAUT  [J]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+
+	# Small diamonds flanking the text
+	var tw: float = font.get_string_size("SAUT  [J]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var dy: float = 24.0
 	_draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	_draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
@@ -609,10 +656,21 @@ func _draw_speed_arc(ctrl: Control) -> void:
 		ctrl.draw_circle(Vector2(cx + cos(fe) * (r - 4), cy + sin(fe) * (r - 4)), 3.0, fc)
 
 	var font := ThemeDB.fallback_font
-	var st: String = "%.1f" % _ship.current_speed if _ship.current_speed < 10.0 else "%.0f" % _ship.current_speed
-	var sw := font.get_string_size(st, HORIZONTAL_ALIGNMENT_CENTER, -1, 28).x
-	ctrl.draw_string(font, Vector2(cx - sw / 2.0, cy - 50), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, COL_TEXT)
-	ctrl.draw_string(font, Vector2(cx - 15, cy - 35), "M/S", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COL_TEXT_DIM)
+	var speed_label: String
+	var speed_unit: String
+	if _ship.current_speed >= 1000.0:
+		speed_label = "%.1f" % (_ship.current_speed / 1000.0)
+		speed_unit = "KM/S"
+	elif _ship.current_speed < 10.0:
+		speed_label = "%.1f" % _ship.current_speed
+		speed_unit = "M/S"
+	else:
+		speed_label = "%.0f" % _ship.current_speed
+		speed_unit = "M/S"
+	var sw := font.get_string_size(speed_label, HORIZONTAL_ALIGNMENT_CENTER, -1, 28).x
+	ctrl.draw_string(font, Vector2(cx - sw / 2.0, cy - 50), speed_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, COL_TEXT)
+	var uw := font.get_string_size(speed_unit, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
+	ctrl.draw_string(font, Vector2(cx - uw / 2.0, cy - 35), speed_unit, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COL_TEXT_DIM)
 
 	var mt := _get_mode_text()
 	var mc := _get_mode_color()
@@ -1487,7 +1545,11 @@ func _draw_top_bar(ctrl: Control) -> void:
 	var fps_str := "%d FPS" % Engine.get_frames_per_second()
 	ctrl.draw_string(font, Vector2(10, 38), fps_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, COL_TEXT_DIM)
 
-	var st := "%.0f m/s" % _ship.current_speed
+	var st: String
+	if _ship.current_speed >= 1000.0:
+		st = "%.1f km/s" % (_ship.current_speed / 1000.0)
+	else:
+		st = "%.0f m/s" % _ship.current_speed
 	var sw := font.get_string_size(st, HORIZONTAL_ALIGNMENT_RIGHT, -1, 12).x
 	ctrl.draw_string(font, Vector2(ctrl.size.x - sw - 10, 24), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COL_TEXT)
 
@@ -1541,7 +1603,12 @@ func _draw_warnings(ctrl: Control) -> void:
 		var tw := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 20), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, COL_DANGER * Color(1, 1, 1, flash))
 
-	if _ship.speed_mode == Constants.SpeedMode.CRUISE and _ship.current_speed > 2500:
+	if _ship.combat_locked:
+		var flash := absf(sin(_warning_flash * 1.5)) * 0.6 + 0.4
+		var wt := "CROISIÈRE BLOQUÉE — COMBAT"
+		var tw := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
+		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 38), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COL_DANGER * Color(1, 1, 1, flash))
+	elif _ship.speed_mode == Constants.SpeedMode.CRUISE and _ship.current_speed > 2500:
 		var wt := "VITESSE ÉLEVÉE"
 		var tw := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 38), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, COL_WARN)
@@ -1558,14 +1625,36 @@ func _draw_warnings(ctrl: Control) -> void:
 		var tw := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 74), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, COL_DANGER * Color(1, 1, 1, flash))
 
+	# Autopilot indicator
+	if _ship and _ship.autopilot_active:
+		var ap_col := NAV_COL_GATE
+		var pulse := 0.7 + sin(_warning_flash * 0.8) * 0.3
+		var ap_text := "AUTOPILOTE → " + _ship.autopilot_target_name.to_upper()
+		# Compute distance to target
+		var ap_ent: Dictionary = EntityRegistry.get_entity(_ship.autopilot_target_id)
+		if not ap_ent.is_empty():
+			var player_upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+			var dx: float = ap_ent["pos_x"] - player_upos[0]
+			var dy: float = ap_ent["pos_y"] - player_upos[1]
+			var dz: float = ap_ent["pos_z"] - player_upos[2]
+			var ap_dist: float = sqrt(dx * dx + dy * dy + dz * dz)
+			ap_text += "  " + _format_nav_distance(ap_dist)
+		var ap_tw := font.get_string_size(ap_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 12).x
+		# Background pill
+		var pill_w := ap_tw + 20.0
+		ctrl.draw_rect(Rect2(cx - pill_w / 2.0, -8, pill_w, 20), Color(0.0, 0.05, 0.15, 0.7 * pulse))
+		ctrl.draw_rect(Rect2(cx - pill_w / 2.0, -8, pill_w, 20), Color(ap_col.r, ap_col.g, ap_col.b, 0.4 * pulse), false, 1.0)
+		ctrl.draw_string(font, Vector2(cx - ap_tw / 2.0, 6), ap_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(ap_col.r, ap_col.g, ap_col.b, pulse))
+
 
 # =============================================================================
 # NAVIGATION MARKERS - BSGO-style POI indicators with distance
 # =============================================================================
 const NAV_EDGE_MARGIN: float = 40.0
-const NAV_NPC_RANGE: float = 3000.0
+const NAV_NPC_RANGE: float = 4000.0
 const NAV_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
 const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
+const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
@@ -1579,10 +1668,10 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	var cam_pos: Vector3 = cam.global_position
 	var font := ThemeDB.fallback_font
 
-	# Stations + Star from EntityRegistry
+	# Stations + Star + Jump Gates from EntityRegistry
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
-		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR:
+		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE:
 			continue
 		var world_pos: Vector3
 		var node: Node3D = ent.get("node")
@@ -1595,46 +1684,48 @@ func _draw_nav_markers(ctrl: Control) -> void:
 		var dy: float = ent["pos_y"] - player_upos[1]
 		var dz: float = ent["pos_z"] - player_upos[2]
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
-		var marker_col: Color = NAV_COL_STATION if etype == EntityRegistrySystem.EntityType.STATION else NAV_COL_STAR
+		var marker_col: Color
+		match etype:
+			EntityRegistrySystem.EntityType.STATION: marker_col = NAV_COL_STATION
+			EntityRegistrySystem.EntityType.JUMP_GATE: marker_col = NAV_COL_GATE
+			_: marker_col = NAV_COL_STAR
 		_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, ent["name"], dist, marker_col)
 
-	# NPC ships — use LOD manager if available (LOD0/LOD1 only, LOD2+ have Label3D tags)
+	# NPC ships — HUD nav markers (diamond + name + distance) for all LOD levels
 	if _ship:
 		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 		if lod_mgr:
 			var nearby := lod_mgr.get_ships_in_radius(cam_pos, NAV_NPC_RANGE)
-			var npc_marker_count: int = 0
-			var _used_screen_spots: Array[Vector2] = []
+			var npc_drawn: int = 0
+			var _used_spots: Array[Vector2] = []
 			for npc_id in nearby:
 				if npc_id == &"player_ship":
 					continue
-				if npc_marker_count >= 30:
-					break  # Cap NPC markers to avoid clutter
+				if npc_drawn >= 40:
+					break
 				var data := lod_mgr.get_ship_data(npc_id)
 				if data == null or data.is_dead:
 					continue
-				# Skip LOD2+ ships — they have their own Label3D name tags
-				if data.current_lod >= ShipLODData.LODLevel.LOD2:
-					continue
 				var world_pos: Vector3 = data.position
 				var dist: float = cam_pos.distance_to(world_pos)
-				# Dedup: skip if another marker is too close on screen
+				# Screen-space dedup: skip if another marker is within 30px
 				var to_ent := world_pos - cam_pos
-				var dot_fwd: float = cam_fwd.dot(to_ent.normalized())
-				if dot_fwd > 0.1:
-					var sp := cam.unproject_position(world_pos)
-					var too_close := false
-					for used_sp in _used_screen_spots:
-						if sp.distance_to(used_sp) < 40.0:
-							too_close = true
-							break
-					if too_close:
-						continue
-					_used_screen_spots.append(sp)
+				if to_ent.length() > 0.1:
+					var dot_fwd: float = cam_fwd.dot(to_ent.normalized())
+					if dot_fwd > 0.1:
+						var sp := cam.unproject_position(world_pos)
+						var too_close := false
+						for used in _used_spots:
+							if sp.distance_to(used) < 30.0:
+								too_close = true
+								break
+						if too_close:
+							continue
+						_used_spots.append(sp)
 				var nav_name := data.display_name if not data.display_name.is_empty() else String(data.ship_class)
 				var nav_col := _get_faction_nav_color(data.faction)
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, nav_name, dist, nav_col)
-				npc_marker_count += 1
+				npc_drawn += 1
 		else:
 			for ship_node in get_tree().get_nodes_in_group("ships"):
 				if ship_node == _ship or not is_instance_valid(ship_node) or not ship_node is Node3D:
@@ -1815,7 +1906,7 @@ func _draw_radar(ctrl: Control) -> void:
 			Color(RADAR_COL_SWEEP.r, RADAR_COL_SWEEP.g, RADAR_COL_SWEEP.b, alpha), 1.0)
 	ctrl.draw_line(center, center + Vector2(cos(sweep_angle), sin(sweep_angle)) * radar_r, RADAR_COL_SWEEP, 2.0)
 
-	# --- Entity blips: Stations ---
+	# --- Entity blips: Stations + Jump Gates ---
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
 		if etype == EntityRegistrySystem.EntityType.STATION:
@@ -1823,6 +1914,19 @@ func _draw_radar(ctrl: Control) -> void:
 			if node and is_instance_valid(node):
 				var rel := node.global_position - _ship.global_position
 				_draw_radar_blip(ctrl, center, radar_r, scale_factor, ship_basis, rel, NAV_COL_STATION, 4.0, true)
+		elif etype == EntityRegistrySystem.EntityType.JUMP_GATE:
+			var node: Node3D = ent.get("node")
+			if node and is_instance_valid(node):
+				var rel := node.global_position - _ship.global_position
+				if rel.length() > RADAR_RANGE:
+					# Gate always far away — show direction arrow on edge
+					var lx: float = rel.dot(ship_basis.x)
+					var lz: float = rel.dot(ship_basis.z)
+					if Vector2(lx, lz).length() > 0.01:
+						var dir := Vector2(lx, lz).normalized()
+						_draw_diamond(ctrl, center + dir * (radar_r - 6), 3.0, NAV_COL_GATE)
+				else:
+					_draw_radar_blip(ctrl, center, radar_r, scale_factor, ship_basis, rel, NAV_COL_GATE, 4.0, true)
 		elif etype == EntityRegistrySystem.EntityType.STAR:
 			# Star: direction arrow on edge (always far away)
 			var star_local := Vector3(

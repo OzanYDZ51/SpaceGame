@@ -560,5 +560,9 @@ func get_entity_at(screen_pos: Vector2) -> String:
 	return best_id
 
 
-func update_hover(screen_pos: Vector2) -> void:
-	_hover_id = get_entity_at(screen_pos)
+func update_hover(screen_pos: Vector2) -> bool:
+	var new_id := get_entity_at(screen_pos)
+	if new_id == _hover_id:
+		return false
+	_hover_id = new_id
+	return true

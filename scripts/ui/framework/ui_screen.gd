@@ -77,7 +77,9 @@ func _process(delta: float) -> void:
 		_transition_alpha = minf(1.0, _transition_alpha + delta / UITheme.TRANSITION_SPEED)
 
 	modulate.a = _transition_alpha
-	queue_redraw()
+	# Only redraw during transitions (alpha changing), not when fully open
+	if _transition_alpha < 1.0 or _closing:
+		queue_redraw()
 
 
 func _draw() -> void:

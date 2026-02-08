@@ -24,7 +24,7 @@ shader_parameter/dust_intensity = 0.5
 [sub_resource type="Sky" id="Sky_space"]
 sky_material = SubResource("ShaderMat_sky")
 process_mode = 0
-radiance_size = 5
+radiance_size = 2
 
 [sub_resource type="Environment" id="Env_space"]
 background_mode = 2

@@ -19,7 +19,8 @@ var _ship: RigidBody3D = null
 var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 
 
-func setup_hardpoints(ship_data: ShipData, ship_node: RigidBody3D) -> void:
+## Creates hardpoints from config dictionaries (extracted from HardpointSlot nodes in ship scenes).
+func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D) -> void:
 	_ship = ship_node
 
 	# Create weapon audio
@@ -27,10 +28,13 @@ func setup_hardpoints(ship_data: ShipData, ship_node: RigidBody3D) -> void:
 	_weapon_audio.name = "WeaponAudio"
 	add_child(_weapon_audio)
 
-	# Create Hardpoint nodes
-	for hp_def in ship_data.hardpoints:
+	_create_hardpoints_from_configs(configs, ship_node)
+
+
+func _create_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D) -> void:
+	for cfg in configs:
 		var hp := Hardpoint.new()
-		hp.setup(hp_def.id, hp_def.size, hp_def.position, hp_def.get("direction", Vector3.FORWARD))
+		hp.setup_from_config(cfg)
 		ship_node.add_child(hp)
 		hardpoints.append(hp)
 
@@ -103,6 +107,12 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 
 	var ship_vel: Vector3 = _ship.linear_velocity if _ship else Vector3.ZERO
 
+	# Update turret aim direction for all turrets in this group
+	for hp_idx in group:
+		if hp_idx < hardpoints.size() and hardpoints[hp_idx].is_turret:
+			var aim_dir := (target_pos - hardpoints[hp_idx].global_position).normalized()
+			hardpoints[hp_idx].set_target_direction(aim_dir)
+
 	if sequential:
 		# Fire one hardpoint at a time, cycling through (skip disabled)
 		var attempts := 0
@@ -166,11 +176,21 @@ func _recalculate_groups() -> void:
 	for i in hardpoints.size():
 		if hardpoints[i].mounted_weapon == null:
 			continue
-		var ws: String = ["S", "M", "L"][hardpoints[i].mounted_weapon.slot_size]
-		match ws:
-			"S": weapon_groups[0].append(i)
-			"M": weapon_groups[1].append(i)
-			"L": weapon_groups[2].append(i)
+		var wtype: int = hardpoints[i].mounted_weapon.weapon_type
+		# TURRET weapons go to group 1 (with missiles)
+		if wtype == WeaponResource.WeaponType.TURRET:
+			weapon_groups[1].append(i)
+			continue
+		# MISSILE goes to group 1
+		if wtype == WeaponResource.WeaponType.MISSILE:
+			weapon_groups[1].append(i)
+			continue
+		# RAILGUN and MINE go to group 2
+		if wtype == WeaponResource.WeaponType.RAILGUN or wtype == WeaponResource.WeaponType.MINE:
+			weapon_groups[2].append(i)
+			continue
+		# LASER, PLASMA go to group 0
+		weapon_groups[0].append(i)
 	# Fallback: if group 0 empty, copy group 1 so primary fire still works
 	if weapon_groups[0].is_empty() and not weapon_groups[1].is_empty():
 		weapon_groups[0] = weapon_groups[1].duplicate()

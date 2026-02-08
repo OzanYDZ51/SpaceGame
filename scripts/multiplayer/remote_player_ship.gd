@@ -9,6 +9,7 @@ extends Node3D
 
 var peer_id: int = -1
 var player_name: String = ""
+var ship_id: StringName = &"fighter_mk1"
 var ship_class: StringName = &"Fighter"
 
 # Interpolation buffer (ring buffer of snapshots)
@@ -84,9 +85,9 @@ func _process(_delta: float) -> void:
 		_apply_snapshot(_snapshots[0])
 		return
 
-	# Find two snapshots to interpolate between
+	# Find two snapshots to interpolate between (search from end — most recent is most likely)
 	var from_idx: int = -1
-	for i in range(_snapshots.size() - 1):
+	for i in range(_snapshots.size() - 2, -1, -1):
 		if _snapshots[i]["time"] <= render_time and _snapshots[i + 1]["time"] >= render_time:
 			from_idx = i
 			break
@@ -110,11 +111,11 @@ func _process(_delta: float) -> void:
 func _apply_snapshot(snap: Dictionary) -> void:
 	var local_pos := FloatingOrigin.to_local_pos(snap["pos"])
 
-	# Snap threshold check
+	# Snap if teleported (system change, etc.), otherwise lerp for smoothing
 	if global_position.distance_to(local_pos) > Constants.NET_SNAP_THRESHOLD * 10.0:
 		global_position = local_pos
 	else:
-		global_position = local_pos
+		global_position = global_position.lerp(local_pos, 0.5)
 
 	rotation_degrees = snap["rot"]
 	_update_engine_glow(snap.get("thr", 0.0))
@@ -132,11 +133,11 @@ func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
 
 	var local_pos := FloatingOrigin.to_local_pos(interp_pos)
 
-	# Snap if too far (teleport/system change)
+	# Snap if too far (teleport/system change), otherwise use interpolated position directly
 	if global_position.distance_to(local_pos) > Constants.NET_SNAP_THRESHOLD * 10.0:
 		global_position = local_pos
 	else:
-		global_position = local_pos
+		global_position = global_position.lerp(local_pos, 0.65)
 
 	# Slerp rotation
 	var rot_from: Vector3 = from["rot"]

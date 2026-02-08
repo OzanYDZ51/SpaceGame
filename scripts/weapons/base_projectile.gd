@@ -7,6 +7,8 @@ extends Area3D
 # Spawns ShieldHitEffect or HullHitEffect based on whether shields absorbed.
 # =============================================================================
 
+const _DissipateEffect = preload("res://scripts/effects/projectile_dissipate_effect.gd")
+
 var velocity: Vector3 = Vector3.ZERO
 var damage: float = 25.0
 var damage_type: StringName = &"thermal"
@@ -29,6 +31,7 @@ func _physics_process(delta: float) -> void:
 	global_position += velocity * delta
 	_lifetime += delta
 	if _lifetime >= max_lifetime:
+		_spawn_dissipate_effect()
 		_return_to_pool()
 
 
@@ -94,3 +97,21 @@ func _return_to_pool() -> void:
 		_pool.release(self)
 	else:
 		queue_free()
+
+
+func _spawn_dissipate_effect() -> void:
+	var scene_root := get_tree().current_scene
+	if scene_root == null:
+		return
+	var effect := _DissipateEffect.new()
+	scene_root.add_child(effect)
+	effect.global_position = global_position
+	var dir := velocity.normalized() if velocity.length_squared() > 0.01 else Vector3.FORWARD
+	var color := Color(0.5, 0.7, 1.0)
+	if damage_type == &"thermal":
+		color = Color(0.3, 0.6, 1.0)
+	elif damage_type == &"kinetic":
+		color = Color(0.8, 0.85, 1.0)
+	elif damage_type == &"explosive":
+		color = Color(1.0, 0.5, 0.2)
+	effect.setup(dir, color)

@@ -166,8 +166,12 @@ static func _generate_stations(rng: RandomNumberGenerator, data: StarSystemData)
 
 
 static func _generate_jump_gates(rng: RandomNumberGenerator, data: StarSystemData, connections: Array[Dictionary]) -> void:
-	# Place jump gates at system edge, spaced around the periphery
-	var gate_radius: float = Constants.SYSTEM_RADIUS * 0.8
+	# Place gates beyond the outermost station orbit (reachable in ~60s at cruise speed)
+	var max_station_orbit: float = 0.0
+	for station in data.stations:
+		max_station_orbit = maxf(max_station_orbit, station["orbital_radius"])
+	# Gate radius = outermost station orbit + 3 Mm buffer (fallback to 20 Mm if no stations)
+	var gate_radius: float = max_station_orbit + 3_000_000.0 if max_station_orbit > 0 else 20_000_000.0
 	var gate_count: int = connections.size()
 	if gate_count == 0:
 		return

@@ -28,6 +28,7 @@ var _selected_system: int = -1
 var _hovered_system: int = -1
 var _info_visible: bool = false
 var _info_system: Dictionary = {}
+var _galaxy_dirty: bool = true
 
 # --- Constants ---
 const ZOOM_MIN: float = 0.3
@@ -125,6 +126,7 @@ func _center_galaxy_on_current() -> void:
 		var sys: Dictionary = galaxy.get_system(system_transition.current_system_id)
 		if not sys.is_empty():
 			_cam_center = Vector2(sys["x"], sys["y"])
+			_galaxy_dirty = true
 
 
 ## Override: immediate close (no transition), closes StellarMap too.
@@ -155,10 +157,13 @@ func _process(delta: float) -> void:
 			_cam_zoom = lerpf(_cam_zoom, _cam_target_zoom, delta * ZOOM_SMOOTH)
 			if absf(_cam_zoom - _cam_target_zoom) < 0.001:
 				_cam_zoom = _cam_target_zoom
+			_galaxy_dirty = true
 
 	# Full opacity, no transition
 	modulate.a = 1.0
-	queue_redraw()
+	if _galaxy_dirty:
+		queue_redraw()
+		_galaxy_dirty = false
 
 
 # =============================================================================
@@ -576,8 +581,12 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		if _is_panning:
 			_cam_center -= event.relative / _cam_zoom
+			_galaxy_dirty = true
 		else:
+			var old_hover := _hovered_system
 			_update_hover(event.position)
+			if _hovered_system != old_hover:
+				_galaxy_dirty = true
 		get_viewport().set_input_as_handled()
 		return
 
@@ -590,6 +599,7 @@ func _zoom_at(screen_pos: Vector2, factor: float) -> void:
 	var new_screen_pos := _galaxy_to_screen(galaxy_pos.x, galaxy_pos.y, cx, cy)
 	var diff := screen_pos - new_screen_pos
 	_cam_center -= diff / _cam_target_zoom
+	_galaxy_dirty = true
 
 
 func _update_hover(screen_pos: Vector2) -> void:
@@ -605,6 +615,7 @@ func _handle_click(screen_pos: Vector2) -> void:
 	else:
 		_selected_system = -1
 		_info_visible = false
+	_galaxy_dirty = true
 
 
 func _get_system_at(screen_pos: Vector2) -> int:

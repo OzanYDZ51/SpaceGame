@@ -16,11 +16,18 @@ extends Node3D
 ## Rotation offset in degrees (adjust in inspector to orient the model facing -Z)
 @export var model_rotation_degrees: Vector3 = Vector3.ZERO
 
+## If true, skip AABB auto-centering (scene-based models handle their own positioning)
+var skip_centering: bool = false
+
 ## Color tint applied to the model (white = no tint)
 var color_tint: Color = Color.WHITE
 
 ## Engine light color (blue for player, can be red/orange for NPCs)
 var engine_light_color: Color = Color(0.3, 0.5, 1.0)
+
+## If set, this pre-instantiated model is used instead of loading from model_path.
+## Used when a ship scene provides the model directly.
+var external_model_instance: Node3D = null
 
 var _engine_lights: Array[OmniLight3D] = []
 var _engine_glow_intensity: float = 0.0
@@ -30,10 +37,25 @@ var _silhouette_points: PackedVector3Array = PackedVector3Array()
 
 
 func _ready() -> void:
-	_load_model()
+	if external_model_instance:
+		_use_external_model()
+	else:
+		_load_model()
 	if color_tint != Color.WHITE:
 		_apply_color_tint()
 	_add_engine_lights()
+
+
+func _use_external_model() -> void:
+	_model_pivot = Node3D.new()
+	_model_pivot.name = "ModelPivot"
+	_model_pivot.rotation_degrees = model_rotation_degrees
+	_model_pivot.scale = Vector3.ONE * model_scale
+	add_child(_model_pivot)
+
+	_model_instance = external_model_instance
+	_model_pivot.add_child(_model_instance)
+	# Skip _center_model() — the ship scene already has correct positioning
 
 
 func _load_model() -> void:
@@ -55,8 +77,9 @@ func _load_model() -> void:
 
 	_model_pivot.add_child(_model_instance)
 
-	# Auto-center based on combined AABB
-	_center_model()
+	# Auto-center based on combined AABB (skip for scene-based models)
+	if not skip_centering:
+		_center_model()
 
 
 

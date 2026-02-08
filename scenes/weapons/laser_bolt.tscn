@@ -44,8 +44,3 @@ mesh = SubResource("CylinderMesh_bolt")
 scale = Vector3(0.4, 1.0, 0.4)
 material_override = SubResource("Mat_core")
 
-[node name="BoltLight" type="OmniLight3D" parent="."]
-light_color = Color(0.3, 0.7, 1.0, 1)
-light_energy = 2.0
-omni_range = 15.0
-omni_attenuation = 1.5

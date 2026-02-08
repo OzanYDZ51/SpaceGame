@@ -2,28 +2,23 @@ class_name ShipFactory
 extends RefCounted
 
 # =============================================================================
-# Ship Factory - Creates and configures ships with all combat systems
+# Ship Factory - Creates and configures ships with all combat systems.
+# All lookups use ship_id (unique per ship variant), NOT ship_class (category).
+# Ship scenes (.tscn) are the single source of truth for hardpoints, collision,
+# and model. Forward direction is -Z (Godot convention). ModelPivot in each
+# scene rotates the 3D model to face -Z if needed.
 # =============================================================================
 
-# Reference mount positions for TIE model — fire from central ball.
-const _REF_MOUNTS := [
-	Vector3(-0.3, 0.0, -1.5),   # 0: Center left
-	Vector3(0.3, 0.0, -1.5),    # 1: Center right
-	Vector3(0.0, 0.0, -1.5),    # 2: Center
-	Vector3(-0.2, 0.2, -1.5),   # 3: Upper left
-	Vector3(0.2, 0.2, -1.5),    # 4: Upper right
-	Vector3(-0.2, -0.2, -1.5),  # 5: Lower left
-	Vector3(0.2, -0.2, -1.5),   # 6: Lower right
-	Vector3(-0.15, 0.0, -1.5),  # 7: Inner left
-	Vector3(0.15, 0.0, -1.5),   # 8: Inner right
-	Vector3(-0.1, -0.1, -1.5),  # 9: Under left
-	Vector3(0.1, -0.1, -1.5),   # 10: Under right
-]
+# Scene cache to avoid reloading ship scenes every spawn
+static var _scene_cache: Dictionary = {}
+# Convex collision shape cache — one ConvexPolygonShape3D per ship_scene_path (shared resource)
+static var _convex_cache: Dictionary = {}
 
-static func setup_player_ship(ship_class: StringName, controller: ShipController) -> void:
-	var data := ShipRegistry.get_ship_data(ship_class)
+
+static func setup_player_ship(ship_id: StringName, controller: ShipController) -> void:
+	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null:
-		push_error("ShipFactory: Could not find ship data for '%s'" % ship_class)
+		push_error("ShipFactory: Could not find ship data for '%s'" % ship_id)
 		return
 
 	controller.ship_data = data
@@ -31,10 +26,27 @@ static func setup_player_ship(ship_class: StringName, controller: ShipController
 	controller.mass = data.mass
 	controller.add_to_group("ships")
 
-	# Apply model scale to player ship
-	var player_model := controller.get_node_or_null("ShipModel") as ShipModel
-	if player_model:
-		player_model.model_scale = _get_model_scale(ship_class)
+	# Load ship scene (source of truth for model, hardpoints, collision)
+	var scene_result := _load_ship_scene(data)
+
+	# Replace the old ShipModel (its _ready() already loaded the default model)
+	var old_model := controller.get_node_or_null("ShipModel")
+	if old_model:
+		controller.remove_child(old_model)
+		old_model.free()
+	var ship_model := ShipModel.new()
+	ship_model.name = "ShipModel"
+	ship_model.model_path = data.model_path
+	ship_model.model_scale = scene_result.model_scale
+	ship_model.external_model_instance = scene_result.get("model_node", null)
+	controller.add_child(ship_model)
+
+	# Replace the old CollisionShape3D with convex collision from mesh
+	var old_col := controller.get_node_or_null("CollisionShape3D")
+	if old_col:
+		controller.remove_child(old_col)
+		old_col.free()
+	controller.add_child(scene_result.collision_shape)
 
 	# Health System
 	var health := HealthSystem.new()
@@ -52,11 +64,11 @@ static func setup_player_ship(ship_class: StringName, controller: ShipController
 	var wm := WeaponManager.new()
 	wm.name = "WeaponManager"
 	controller.add_child(wm)
-	wm.setup_hardpoints(data, controller)
 
-	# Equip default weapons
-	var loadout := WeaponRegistry.get_default_loadout(ship_class)
-	wm.equip_weapons(loadout)
+	wm.setup_hardpoints_from_configs(scene_result.configs, controller)
+
+	# Equip default weapons from ShipData
+	wm.equip_weapons(data.default_loadout)
 
 	# Set up weapon groups: S weapons in group 0, M weapons in group 1, L in group 2
 	var group_s: Array = []
@@ -81,18 +93,37 @@ static func setup_player_ship(ship_class: StringName, controller: ShipController
 	targeting.name = "TargetingSystem"
 	controller.add_child(targeting)
 
+	# Equipment Manager (shields, engines, modules)
+	var em := EquipmentManager.new()
+	em.name = "EquipmentManager"
+	controller.add_child(em)
+	em.setup(data)
+	# Equip defaults
+	var default_shield_name := ShieldRegistry.get_default_shield(data.ship_class)
+	var default_shield := ShieldRegistry.get_shield(default_shield_name)
+	if default_shield:
+		em.equip_shield(default_shield)
+	var default_engine_name := EngineRegistry.get_default_engine(data.ship_class)
+	var default_engine := EngineRegistry.get_engine(default_engine_name)
+	if default_engine:
+		em.equip_engine(default_engine)
+	var default_mods := ModuleRegistry.get_default_modules(data.ship_class)
+	for i in mini(default_mods.size(), data.module_slots.size()):
+		var mod := ModuleRegistry.get_module(default_mods[i])
+		if mod:
+			em.equip_module(i, mod)
 
 
-static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false) -> ShipController:
+static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false) -> ShipController:
 	# Create RigidBody3D ship
 	var ship := ShipController.new()
-	ship.name = "NPC_%s_%d" % [ship_class, randi() % 10000]
+	ship.name = "NPC_%s_%d" % [ship_id, randi() % 10000]
 	ship.is_player_controlled = false
 	ship.faction = faction_name
 
-	var data := ShipRegistry.get_ship_data(ship_class)
+	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null:
-		push_error("ShipFactory: Unknown ship class '%s'" % ship_class)
+		push_error("ShipFactory: Unknown ship_id '%s'" % ship_id)
 		ship.queue_free()
 		return null
 
@@ -108,26 +139,16 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 	ship.collision_layer = Constants.LAYER_SHIPS
 	ship.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
 
-	# Add collision shape
-	var col_shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	match ship_class:
-		&"Scout": box.size = Vector3(16, 8, 22)
-		&"Interceptor": box.size = Vector3(20, 9, 26)
-		&"Fighter": box.size = Vector3(28, 12, 36)
-		&"Bomber": box.size = Vector3(30, 14, 38)
-		&"Corvette": box.size = Vector3(40, 18, 50)
-		&"Frigate": box.size = Vector3(55, 22, 70)
-		&"Cruiser": box.size = Vector3(80, 30, 100)
-		_: box.size = Vector3(28, 12, 36)
-	col_shape.shape = box
-	ship.add_child(col_shape)
+	# Load ship scene (source of truth for model, hardpoints, collision)
+	var scene_result := _load_ship_scene(data)
+	ship.add_child(scene_result.collision_shape)
 
-	# Add real ship model (same .glb as player, scaled per class, tinted by faction)
+	# Add ship model from ShipData (path + scale), tinted by faction
 	var ship_model := ShipModel.new()
 	ship_model.name = "ShipModel"
-	ship_model.model_path = "res://assets/models/tie.glb"
-	ship_model.model_scale = _get_model_scale(ship_class)
+	ship_model.model_path = data.model_path
+	ship_model.model_scale = scene_result.model_scale
+	ship_model.external_model_instance = scene_result.get("model_node", null)
 	# Faction color tint + engine light color
 	if faction_name == &"hostile":
 		ship_model.color_tint = Color(1.0, 0.55, 0.5)  # Red-ish tint
@@ -154,7 +175,7 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 			"color": _get_faction_map_color(faction_name),
 			"extra": {
 				"faction": String(faction_name),
-				"ship_class": String(ship_class),
+				"ship_class": String(data.ship_class),
 			},
 		})
 
@@ -174,10 +195,9 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 	var wm := WeaponManager.new()
 	wm.name = "WeaponManager"
 	ship.add_child(wm)
-	wm.setup_hardpoints(data, ship)
-	_position_npc_hardpoints(wm, _get_model_scale(ship_class))
-	var loadout := WeaponRegistry.get_default_loadout(ship_class)
-	wm.equip_weapons(loadout)
+
+	wm.setup_hardpoints_from_configs(scene_result.configs, ship)
+	wm.equip_weapons(data.default_loadout)
 	# All weapons in group 0 for NPCs
 	var all_indices: Array = []
 	for i in wm.hardpoints.size():
@@ -234,16 +254,17 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 		if lod_mgr:
 			var lod_data := ShipLODData.new()
 			lod_data.id = StringName(ship.name)
-			lod_data.ship_class = ship_class
+			lod_data.ship_id = data.ship_id
+			lod_data.ship_class = data.ship_class
 			lod_data.faction = faction_name
-			# Extract unique number from node name (NPC_Scout_1234 → 234)
+			# Extract unique number from node name (NPC_scout_mk1_1234 → 234)
 			var name_parts := ship.name.split("_")
 			var name_suffix := name_parts[-1].right(3) if name_parts.size() > 0 else str(randi() % 1000)
 			lod_data.display_name = "%s #%s" % [data.ship_name, name_suffix]
 			lod_data.position = pos
 			lod_data.node_ref = ship
 			lod_data.current_lod = ShipLODData.LODLevel.LOD0
-			lod_data.model_scale = _get_model_scale(ship_class)
+			lod_data.model_scale = scene_result.model_scale
 			lod_data.behavior_name = behavior_name
 			if faction_name == &"hostile":
 				lod_data.color_tint = Color(1.0, 0.55, 0.5)
@@ -256,22 +277,23 @@ static func spawn_npc_ship(ship_class: StringName, behavior_name: StringName, po
 	return ship
 
 
-static func create_npc_data_only(ship_class: StringName, behavior_name: StringName, pos: Vector3, faction_name: StringName = &"hostile") -> ShipLODData:
-	var data := ShipRegistry.get_ship_data(ship_class)
+static func create_npc_data_only(ship_id: StringName, behavior_name: StringName, pos: Vector3, faction_name: StringName = &"hostile") -> ShipLODData:
+	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null:
-		push_error("ShipFactory: Unknown ship class '%s'" % ship_class)
+		push_error("ShipFactory: Unknown ship_id '%s'" % ship_id)
 		return null
 
 	var lod_data := ShipLODData.new()
 	var uid := randi() % 100000
-	lod_data.id = StringName("NPC_%s_%d" % [ship_class, uid])
-	lod_data.ship_class = ship_class
+	lod_data.id = StringName("NPC_%s_%d" % [ship_id, uid])
+	lod_data.ship_id = data.ship_id
+	lod_data.ship_class = data.ship_class
 	lod_data.faction = faction_name
 	lod_data.display_name = "%s #%d" % [data.ship_name, uid % 1000]
 	lod_data.behavior_name = behavior_name
 	lod_data.position = pos
 	lod_data.velocity = Vector3.ZERO
-	lod_data.model_scale = _get_model_scale(ship_class)
+	lod_data.model_scale = data.model_scale
 	lod_data.current_lod = ShipLODData.LODLevel.LOD3
 	lod_data.node_ref = null
 
@@ -286,18 +308,106 @@ static func create_npc_data_only(ship_class: StringName, behavior_name: StringNa
 	return lod_data
 
 
-static func _get_model_scale(ship_class: StringName) -> float:
-	# Scale the ship model proportionally based on class size
-	# Base: Fighter = 10.0 scale (matches player ship)
-	match ship_class:
-		&"Scout": return 2.0
-		&"Interceptor": return 2.0
-		&"Fighter": return 2.0
-		&"Bomber": return 2.0
-		&"Corvette": return 2.0
-		&"Frigate": return 2.0
-		&"Cruiser": return 2.0
-	return 2.0
+## Loads a ship scene and extracts HardpointSlot configs and model node.
+## Generates a ConvexPolygonShape3D collision from the mesh (cached per ship type).
+static func _load_ship_scene(data: ShipData) -> Dictionary:
+	assert(data.ship_scene_path != "", "ShipFactory: ship_scene_path is empty for '%s'" % data.ship_id)
+
+	# Check cache
+	if not _scene_cache.has(data.ship_scene_path):
+		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
+		assert(packed != null, "ShipFactory: Could not load ship scene '%s'" % data.ship_scene_path)
+		_scene_cache[data.ship_scene_path] = packed
+
+	var packed_scene: PackedScene = _scene_cache[data.ship_scene_path]
+	var instance: Node3D = packed_scene.instantiate() as Node3D
+
+	# Extract HardpointSlot configs, model node, and model scale from scene
+	var configs: Array[Dictionary] = []
+	var model_node: Node3D = null
+	var scene_model_scale: float = 1.0
+
+	for child in instance.get_children():
+		if child is HardpointSlot:
+			configs.append(child.get_slot_config())
+		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
+			scene_model_scale = child.scale.x  # Scene defines the model scale
+			if child.get_child_count() > 0:
+				var inner_model: Node3D = child.get_child(0) as Node3D
+				child.remove_child(inner_model)
+				model_node = inner_model
+			else:
+				instance.remove_child(child)
+				model_node = child
+
+	# If no model pivot found, look for first non-HardpointSlot child with mesh
+	if model_node == null:
+		for child in instance.get_children():
+			if not (child is HardpointSlot):
+				instance.remove_child(child)
+				model_node = child
+				break
+
+	# Clean up the temporary instance
+	instance.queue_free()
+
+	assert(not configs.is_empty(), "ShipFactory: No HardpointSlots in scene '%s'" % data.ship_scene_path)
+	assert(model_node != null, "ShipFactory: No model found in scene '%s'" % data.ship_scene_path)
+
+	# Generate convex collision from model mesh (cached per ship type)
+	var convex_shape: ConvexPolygonShape3D
+	if _convex_cache.has(data.ship_scene_path):
+		convex_shape = _convex_cache[data.ship_scene_path]
+	else:
+		convex_shape = _generate_convex_shape(model_node, scene_model_scale)
+		_convex_cache[data.ship_scene_path] = convex_shape
+
+	var col_node := CollisionShape3D.new()
+	col_node.shape = convex_shape
+
+	return {
+		"configs": configs,
+		"model_node": model_node,
+		"model_scale": scene_model_scale,
+		"collision_shape": col_node,
+	}
+
+
+## Generates a ConvexPolygonShape3D from all MeshInstance3D vertices in a model node tree.
+## Vertices are scaled by model_scale to match the visual size.
+static func _generate_convex_shape(model_root: Node3D, model_scale: float) -> ConvexPolygonShape3D:
+	var verts := PackedVector3Array()
+	_collect_mesh_vertices(model_root, verts, Transform3D.IDENTITY)
+	assert(not verts.is_empty(), "ShipFactory: No mesh vertices found for convex collision")
+
+	# Scale vertices to match visual model size
+	if not is_equal_approx(model_scale, 1.0):
+		for i in verts.size():
+			verts[i] *= model_scale
+
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = verts
+	return shape
+
+
+## Recursively collects all mesh vertices from a node tree, applying transforms.
+static func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent_xform: Transform3D) -> void:
+	var xform := parent_xform
+	if node is Node3D:
+		xform = parent_xform * (node as Node3D).transform
+
+	if node is MeshInstance3D:
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		if mesh:
+			for si in mesh.get_surface_count():
+				var arrays := mesh.surface_get_arrays(si)
+				if arrays.size() > Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX] != null:
+					var surface_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+					for v in surface_verts:
+						verts.append(xform * v)
+
+	for child in node.get_children():
+		_collect_mesh_vertices(child, verts, xform)
 
 
 static func _get_faction_map_color(faction: StringName) -> Color:
@@ -305,12 +415,3 @@ static func _get_faction_map_color(faction: StringName) -> Color:
 		&"hostile": return MapColors.NPC_HOSTILE
 		&"friendly": return MapColors.NPC_FRIENDLY
 	return MapColors.NPC_NEUTRAL
-
-
-static func _position_npc_hardpoints(wm: WeaponManager, model_scale: float) -> void:
-	# Place hardpoints at standard model-relative positions, scaled for ship class.
-	# All NPCs use the same .glb model so mount points are consistent.
-	var s: float = model_scale / 10.0  # Ratio vs Fighter (reference)
-	for i in wm.hardpoints.size():
-		if i < _REF_MOUNTS.size():
-			wm.hardpoints[i].position = _REF_MOUNTS[i] * s

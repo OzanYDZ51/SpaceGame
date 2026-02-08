@@ -15,6 +15,8 @@ var _targetable_ships: Array[Node3D] = []
 var _scan_timer: float = 0.0
 const SCAN_INTERVAL: float = 0.5
 var _current_target_index: int = -1
+var _cached_target_health: HealthSystem = null
+var _cached_target_ref: Node3D = null  # tracks which target the cached health belongs to
 
 
 func _process(delta: float) -> void:
@@ -28,9 +30,11 @@ func _process(delta: float) -> void:
 		if not is_instance_valid(current_target) or not current_target.is_inside_tree():
 			clear_target()
 			return
-		# Check if target has a health system and is dead
-		var health := current_target.get_node_or_null("HealthSystem") as HealthSystem
-		if health and health.is_dead():
+		# Check if target has a health system and is dead (cached)
+		if _cached_target_ref != current_target:
+			_cached_target_ref = current_target
+			_cached_target_health = current_target.get_node_or_null("HealthSystem") as HealthSystem
+		if _cached_target_health and _cached_target_health.is_dead():
 			clear_target()
 			return
 		# Check range
@@ -89,6 +93,8 @@ func clear_target() -> void:
 	if current_target != null:
 		current_target = null
 		_current_target_index = -1
+		_cached_target_ref = null
+		_cached_target_health = null
 		target_lost.emit()
 
 
@@ -105,7 +111,7 @@ func get_lead_indicator_position() -> Vector3:
 
 	# Get weapon speed (use first mounted weapon or default)
 	var projectile_speed := 800.0
-	var wm := ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm := ship.get_node_or_null("WeaponManager") as WeaponManager  # Called rarely (only when target exists)
 	if wm and not wm.hardpoints.is_empty() and wm.hardpoints[0].mounted_weapon:
 		projectile_speed = wm.hardpoints[0].mounted_weapon.projectile_speed
 

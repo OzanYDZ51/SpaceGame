@@ -31,8 +31,3 @@ rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource("CylinderMesh_slug")
 material_override = SubResource("Mat_slug")
 
-[node name="SlugLight" type="OmniLight3D" parent="."]
-light_color = Color(0.9, 0.95, 1.0, 1)
-light_energy = 4.0
-omni_range = 25.0
-omni_attenuation = 2.0

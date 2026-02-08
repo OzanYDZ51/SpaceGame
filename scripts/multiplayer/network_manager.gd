@@ -99,7 +99,8 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	var state := NetworkState.new()
 	state.peer_id = 1
 	state.player_name = local_player_name
-	state.ship_class = &"Fighter"
+	state.ship_id = &"frigate_mk1"
+	state.ship_class = &"Frigate"
 	peers[1] = state
 
 	print("NetworkManager: Hosting on port %d as '%s' — share your IP for friends to join!" % [port, local_player_name])
@@ -244,7 +245,7 @@ func _on_connected_to_server() -> void:
 	print("NetworkManager: Connected! Peer ID = %d" % local_peer_id)
 
 	# Register with the server
-	_rpc_register_player.rpc_id(1, local_player_name, "Fighter")
+	_rpc_register_player.rpc_id(1, local_player_name, "frigate_mk1")
 	connection_succeeded.emit()
 
 
@@ -286,20 +287,22 @@ func _attempt_reconnect() -> void:
 
 ## Client -> Server: Register as a new player.
 @rpc("any_peer", "reliable")
-func _rpc_register_player(player_name: String, ship_class: String) -> void:
+func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	print("NetworkManager: Player '%s' registered (peer %d, ship %s)" % [player_name, sender_id, ship_class])
+	print("NetworkManager: Player '%s' registered (peer %d, ship %s)" % [player_name, sender_id, ship_id_str])
 
 	var state := NetworkState.new()
 	state.peer_id = sender_id
 	state.player_name = player_name
-	state.ship_class = StringName(ship_class)
+	state.ship_id = StringName(ship_id_str)
+	var sdata := ShipRegistry.get_ship_data(state.ship_id)
+	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[sender_id] = state
 
 	# Notify ALL clients (including new one) about this player
-	_rpc_player_registered.rpc(sender_id, player_name, ship_class)
+	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)
 
 	# Also notify locally on the host (for GameManager to spawn puppet)
 	if not is_dedicated_server:
@@ -310,13 +313,15 @@ func _rpc_register_player(player_name: String, ship_class: String) -> void:
 
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
-func _rpc_player_registered(pid: int, pname: String, ship_class: String) -> void:
+func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> void:
 	if peers.has(pid):
 		return
 	var state := NetworkState.new()
 	state.peer_id = pid
 	state.player_name = pname
-	state.ship_class = StringName(ship_class)
+	state.ship_id = StringName(ship_id_str)
+	var sdata := ShipRegistry.get_ship_data(state.ship_id)
+	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[pid] = state
 
 	print("NetworkManager: Player '%s' (peer %d) registered" % [pname, pid])

@@ -7,6 +7,8 @@ extends Node
 # =============================================================================
 
 var _ship: ShipController = null
+var _cached_wm: WeaponManager = null
+var _cached_targeting: TargetingSystem = null
 
 # Persistent combat maneuver (prevents jittery random-per-tick movement)
 var _maneuver_dir: Vector3 = Vector3.ZERO
@@ -19,6 +21,13 @@ var _jink_timer: float = 0.0
 
 func _ready() -> void:
 	_ship = get_parent() as ShipController
+	if _ship:
+		_cache_refs.call_deferred()
+
+
+func _cache_refs() -> void:
+	_cached_wm = _ship.get_node_or_null("WeaponManager") as WeaponManager
+	_cached_targeting = _ship.get_node_or_null("TargetingSystem") as TargetingSystem
 
 
 func fly_intercept(target: Node3D, arrival_dist: float = 50.0) -> void:
@@ -144,16 +153,14 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	if _ship == null or target == null or not is_instance_valid(target):
 		return
 
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
-	if wm == null:
+	if _cached_wm == null:
 		return
 
 	# Calculate lead position
-	var targeting := _ship.get_node_or_null("TargetingSystem") as TargetingSystem
 	var target_pos: Vector3
-	if targeting:
-		targeting.current_target = target
-		target_pos = targeting.get_lead_indicator_position()
+	if _cached_targeting:
+		_cached_targeting.current_target = target
+		target_pos = _cached_targeting.get_lead_indicator_position()
 	else:
 		target_pos = target.global_position
 
@@ -170,7 +177,7 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	var forward: Vector3 = -_ship.global_transform.basis.z
 	var dot: float = forward.dot(to_target)
 	if dot > 0.75:
-		wm.fire_group(0, true, target_pos)
+		_cached_wm.fire_group(0, true, target_pos)
 
 
 func evade_random(delta: float, amplitude: float = 30.0, frequency: float = 2.0) -> void:

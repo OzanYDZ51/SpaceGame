@@ -23,6 +23,7 @@ var _was_mouse_captured: bool = false
 ## Tab emits view_switch_requested instead of being consumed silently.
 var managed_externally: bool = false
 signal view_switch_requested
+signal navigate_to_requested(entity_id: String)
 
 # Pan state
 var _is_panning: bool = false
@@ -191,11 +192,10 @@ func _process(delta: float) -> void:
 	_camera.screen_size = size
 	_camera.update(delta)
 
-	# Always redraw renderer (scanline is animated)
-	_renderer.queue_redraw()
-
-	# Only redraw entities/panel when dirty or there's a selected entity (pulsing ring)
-	if _dirty or _entity_layer.selected_id != "":
+	# Renderer and entity layer are throttled internally via dirty flags
+	# Only force redraw when something actually changed
+	if _dirty:
+		_renderer.queue_redraw()
 		_entity_layer.queue_redraw()
 		_info_panel.queue_redraw()
 		_dirty = false
@@ -323,9 +323,9 @@ func _input(event: InputEvent) -> void:
 			var hit_id: String = _entity_layer.get_entity_at(event.position)
 			var now: float = Time.get_ticks_msec() / 1000.0
 
-			# Double-click: same entity within 0.4s -> center + zoom
+			# Double-click: same entity within 0.4s -> navigate to it
 			if hit_id != "" and hit_id == _last_click_id and (now - _last_click_time) < 0.4:
-				_center_on_entity(hit_id)
+				navigate_to_requested.emit(hit_id)
 				_last_click_id = ""
 			else:
 				_select_entity(hit_id)
@@ -348,8 +348,8 @@ func _input(event: InputEvent) -> void:
 			_camera.pan(event.relative)
 			_dirty = true
 		else:
-			_entity_layer.update_hover(event.position)
-			_dirty = true
+			if _entity_layer.update_hover(event.position):
+				_dirty = true
 		get_viewport().set_input_as_handled()
 		return
 

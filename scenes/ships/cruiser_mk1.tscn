@@ -1,0 +1,88 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="1_model"]
+[ext_resource type="Script" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+
+[node name="CruiserMk1" type="Node3D"]
+
+[node name="ModelPivot" type="Node3D" parent="."]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+
+[node name="TieModel" parent="ModelPivot" instance=ExtResource("1_model")]
+
+[node name="Hardpoint_0" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 8, -50)
+script = ExtResource("2_hpslot")
+slot_id = 0
+slot_size = "S"
+is_turret = false
+
+[node name="Hardpoint_1" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 8, -50)
+script = ExtResource("2_hpslot")
+slot_id = 1
+slot_size = "S"
+is_turret = false
+
+[node name="Hardpoint_2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35, 3, -45)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "S"
+is_turret = false
+
+[node name="Hardpoint_3" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 3, -45)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "S"
+is_turret = false
+
+[node name="Hardpoint_4" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -40)
+script = ExtResource("2_hpslot")
+slot_id = 4
+slot_size = "M"
+is_turret = false
+
+[node name="Hardpoint_5" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -40)
+script = ExtResource("2_hpslot")
+slot_id = 5
+slot_size = "M"
+is_turret = false
+
+[node name="Hardpoint_6" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, -3, -35)
+script = ExtResource("2_hpslot")
+slot_id = 6
+slot_size = "M"
+is_turret = false
+
+[node name="Hardpoint_7" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, -3, -35)
+script = ExtResource("2_hpslot")
+slot_id = 7
+slot_size = "M"
+is_turret = false
+
+[node name="Hardpoint_8" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, -5, -30)
+script = ExtResource("2_hpslot")
+slot_id = 8
+slot_size = "L"
+is_turret = false
+
+[node name="Hardpoint_9" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, -5, -30)
+script = ExtResource("2_hpslot")
+slot_id = 9
+slot_size = "L"
+is_turret = false
+
+[node name="Hardpoint_10" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -7, -25)
+script = ExtResource("2_hpslot")
+slot_id = 10
+slot_size = "L"
+is_turret = false

@@ -40,8 +40,3 @@ mesh = SubResource("SphereMesh_plasma")
 scale = Vector3(0.5, 0.5, 0.5)
 material_override = SubResource("Mat_plasma_core")
 
-[node name="BoltLight" type="OmniLight3D" parent="."]
-light_color = Color(1.0, 0.4, 0.15, 1)
-light_energy = 3.0
-omni_range = 20.0
-omni_attenuation = 1.5

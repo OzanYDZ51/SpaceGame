@@ -29,6 +29,10 @@ var _pending_target_id: int = -1
 # Active star impostor (child of main_scene, not Universe)
 var _active_star: SystemStar = null
 
+# Gate proximity state (set by JumpGate signals, read by GameManager for J key)
+var _active_gate_target_id: int = -1
+var _active_gate_target_name: String = ""
+
 const FADE_SPEED: float = 2.0
 
 
@@ -112,13 +116,20 @@ func _execute_transition() -> void:
 	if current_system_id >= 0:
 		_save_system_state()
 
-	# 2. Cleanup current system
+	# 2. Clear gate proximity + autopilot (old entities about to be destroyed)
+	_active_gate_target_id = -1
+	_active_gate_target_name = ""
+	var ship := GameManager.player_ship as ShipController
+	if ship:
+		ship.disengage_autopilot()
+
+	# 3. Cleanup current system
 	_cleanup_current_system()
 
-	# 3. Reset floating origin
+	# 4. Reset floating origin
 	FloatingOrigin.reset_origin()
 
-	# 4. Generate new system
+	# 5. Generate new system
 	var galaxy_sys: Dictionary = galaxy.get_system(_pending_target_id)
 	var connections := _build_connection_list(_pending_target_id)
 	current_system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
@@ -171,7 +182,8 @@ func _cleanup_current_system() -> void:
 		if GameManager.player_ship:
 			var player_lod := ShipLODData.new()
 			player_lod.id = &"player_ship"
-			player_lod.ship_class = &"Fighter"
+			player_lod.ship_id = &"frigate_mk1"
+			player_lod.ship_class = &"Frigate"
 			player_lod.faction = &"neutral"
 			player_lod.display_name = "Player"
 			player_lod.node_ref = GameManager.player_ship
@@ -242,6 +254,16 @@ func _populate_system() -> void:
 		station.scale = Vector3(100, 100, 100)  # Match original AlphaStation scale
 
 		universe.add_child(station)
+
+	# Spawn jump gates
+	for i in current_system_data.jump_gates.size():
+		var gate_data: Dictionary = current_system_data.jump_gates[i]
+		var gate := JumpGate.new()
+		gate.name = "JumpGate_%d" % i
+		gate.setup(gate_data)
+		gate.player_nearby.connect(_on_gate_player_nearby)
+		gate.player_left.connect(_on_gate_player_left)
+		universe.add_child(gate)
 
 	# Spawn star impostor (child of main_scene, NOT Universe — avoids FloatingOrigin shift)
 	_active_star = SystemStar.new()
@@ -318,6 +340,25 @@ func _register_system_entities() -> void:
 			"color": MapColors.STATION_TEAL,
 		})
 
+	# Jump gates
+	for i in current_system_data.jump_gates.size():
+		var gate_data: Dictionary = current_system_data.jump_gates[i]
+		var gate_node: Node3D = universe.get_node_or_null("JumpGate_%d" % i) if universe else null
+		EntityRegistry.register("jump_gate_%d" % i, {
+			"name": gate_data["name"],
+			"type": EntityRegistrySystem.EntityType.JUMP_GATE,
+			"node": gate_node,
+			"pos_x": gate_data["pos_x"],
+			"pos_y": gate_data["pos_y"],
+			"pos_z": gate_data["pos_z"],
+			"radius": 55.0,
+			"color": MapColors.JUMP_GATE,
+			"extra": {
+				"target_system_id": gate_data["target_system_id"],
+				"target_system_name": gate_data["target_system_name"],
+			},
+		})
+
 
 func _spawn_encounters(danger_level: int) -> void:
 	var encounter_mgr := _get_encounter_manager()
@@ -343,3 +384,27 @@ func _save_system_state() -> void:
 
 func has_visited(system_id: int) -> bool:
 	return _system_states.has(system_id) and _system_states[system_id].get("visited", false)
+
+
+# === Gate proximity API (used by GameManager for J key, FlightHUD for prompt) ===
+
+func can_gate_jump() -> bool:
+	return _active_gate_target_id >= 0 and not _is_transitioning
+
+
+func get_gate_target_name() -> String:
+	return _active_gate_target_name
+
+
+func get_gate_target_id() -> int:
+	return _active_gate_target_id
+
+
+func _on_gate_player_nearby(target_id: int, target_name: String) -> void:
+	_active_gate_target_id = target_id
+	_active_gate_target_name = target_name
+
+
+func _on_gate_player_left() -> void:
+	_active_gate_target_id = -1
+	_active_gate_target_name = ""

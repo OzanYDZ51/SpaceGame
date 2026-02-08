@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://b3k636hvamcik"]
+
+[ext_resource type="PackedScene" uid="uid://cj5eyy14di2lx" path="res://assets/models/frigate_mk1.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+
+[node name="FrigateMk1" type="Node3D" unique_id=2078971498]
+
+[node name="ModelPivot" type="Node3D" parent="." unique_id=729637411]
+
+[node name="FrigateModel" parent="ModelPivot" unique_id=1245955718 instance=ExtResource("1_model")]
+
+[node name="Hardpoint_0" type="Node3D" parent="." unique_id=671140870]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.584701, 3.2932508, -19.936855)
+script = ExtResource("2_hpslot")
+
+[node name="Hardpoint_1" type="Node3D" parent="." unique_id=711738505]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5031402, 3.3362806, -20.01847)
+script = ExtResource("2_hpslot")
+slot_id = 1
+
+[node name="Hardpoint_2" type="Node3D" parent="." unique_id=1594141449]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -3.6163156, 4.8231926, -14.879)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "M"
+
+[node name="Hardpoint_3" type="Node3D" parent="." unique_id=1012248232]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 3.5298085, 4.8798923, -14.952035)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "M"
+
+[node name="Hardpoint_4" type="Node3D" parent="." unique_id=11545077]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -5.096926, 4.6481495, 1.070276)
+script = ExtResource("2_hpslot")
+slot_id = 4
+slot_size = "M"
+
+[node name="Hardpoint_5" type="Node3D" parent="." unique_id=2020738195]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.9503717, 4.4635243, 1.0065722)
+script = ExtResource("2_hpslot")
+slot_id = 5
+slot_size = "M"
+
+[node name="Hardpoint_6" type="Node3D" parent="." unique_id=1084057416]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -4.482454, 5.625717, -8.055141)
+script = ExtResource("2_hpslot")
+slot_id = 6
+slot_size = "L"
+
+[node name="Hardpoint_7" type="Node3D" parent="." unique_id=1045904041]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.5766306, 5.6893835, -8.252962)
+script = ExtResource("2_hpslot")
+slot_id = 7
+slot_size = "L"

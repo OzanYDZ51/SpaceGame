@@ -14,6 +14,9 @@ var _entities: Dictionary = {}
 # Vector3i -> Array[StringName]
 var _cells: Dictionary = {}
 
+# Reusable Vector3i for lookups (avoids allocation in hot loops)
+var _lookup_cell := Vector3i.ZERO
+
 
 func _init(p_cell_size: float = 500.0) -> void:
 	cell_size = p_cell_size
@@ -85,22 +88,27 @@ func query_radius(center: Vector3, radius: float) -> Array[StringName]:
 	for cx in range(min_cell.x, max_cell.x + 1):
 		for cy in range(min_cell.y, max_cell.y + 1):
 			for cz in range(min_cell.z, max_cell.z + 1):
-				var cell := Vector3i(cx, cy, cz)
-				if not _cells.has(cell):
+				_lookup_cell.x = cx
+				_lookup_cell.y = cy
+				_lookup_cell.z = cz
+				if not _cells.has(_lookup_cell):
 					continue
-				for id: StringName in _cells[cell]:
+				for id: StringName in _cells[_lookup_cell]:
 					var pos: Vector3 = _entities[id]["pos"]
 					if center.distance_squared_to(pos) <= r_sq:
 						result.append(id)
 	return result
 
 
+## Returns up to `count` nearest entities as Array of {id, dist_sq} Dicts.
+## Optimized: reuses query_radius, sorts in-place, truncates.
 func query_nearest(center: Vector3, radius: float, count: int) -> Array[Dictionary]:
 	var ids := query_radius(center, radius)
 	var scored: Array[Dictionary] = []
-	for id in ids:
-		var pos: Vector3 = _entities[id]["pos"]
-		scored.append({ "id": id, "dist_sq": center.distance_squared_to(pos) })
+	scored.resize(ids.size())
+	for i in ids.size():
+		var pos: Vector3 = _entities[ids[i]]["pos"]
+		scored[i] = { "id": ids[i], "dist_sq": center.distance_squared_to(pos) }
 	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return a["dist_sq"] < b["dist_sq"])
 	if scored.size() > count:

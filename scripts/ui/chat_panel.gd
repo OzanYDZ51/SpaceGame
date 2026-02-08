@@ -74,6 +74,7 @@ var _max_messages_per_channel: int = 100
 var _demo_names := ["StarPilot_X", "NovaHunter", "CptDarkStar", "GhostRider77", "NebulaFox", "IronViper", "CosmicDust", "ZeroGrav", "ShadowFleet", "AstroKnight"]
 var _demo_timer: float = 0.0
 var _demo_interval: float = 4.0
+var _bg_redraw_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -256,8 +257,11 @@ func _process(delta: float) -> void:
 	_fade_alpha = lerp(_fade_alpha, _target_alpha, delta * 8.0)
 	modulate.a = _fade_alpha
 
-	# Redraw background for animations
-	_panel_bg.queue_redraw()
+	# Throttle background redraw to ~10Hz (scanline animation doesn't need 60fps)
+	_bg_redraw_timer -= delta
+	if _bg_redraw_timer <= 0.0:
+		_bg_redraw_timer = 0.1
+		_panel_bg.queue_redraw()
 
 	# Demo messages (simulate multiplayer chat)
 	_demo_timer += delta

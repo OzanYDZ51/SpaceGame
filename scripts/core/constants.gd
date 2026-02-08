@@ -24,7 +24,7 @@ const ACCEL_VERTICAL: float = 40.0
 # Max speeds per mode
 const MAX_SPEED_NORMAL: float = 300.0
 const MAX_SPEED_BOOST: float = 600.0
-const MAX_SPEED_CRUISE: float = 3000.0
+const MAX_SPEED_CRUISE: float = 50000.0  # 50 km/s — reaches gates in ~60s
 
 # Rotation speed in degrees/sec (mouse input scales this)
 const ROTATION_PITCH_SPEED: float = 24.0    # Heavy capital ship feel
