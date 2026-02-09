@@ -283,25 +283,6 @@ func _initialize_game() -> void:
 	player_inventory.add_module(&"Dissipateur Thermique", 1)
 	player_inventory.add_module(&"Amplificateur de Bouclier", 1)
 
-	# Connect player death signal
-	var player_health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
-	if player_health:
-		player_health.ship_destroyed.connect(_on_player_destroyed)
-
-	# Connect autopilot cancel signal (player manually overrides route)
-	var ship_ctrl := player_ship as ShipController
-	if ship_ctrl:
-		ship_ctrl.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
-
-	# Wire HUD to ship and combat systems
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
-	if hud:
-		hud.set_ship(player_ship as ShipController)
-		hud.set_health_system(player_ship.get_node_or_null("HealthSystem") as HealthSystem)
-		hud.set_energy_system(player_ship.get_node_or_null("EnergySystem") as EnergySystem)
-		hud.set_targeting_system(player_ship.get_node_or_null("TargetingSystem") as TargetingSystem)
-		hud.set_weapon_manager(player_ship.get_node_or_null("WeaponManager") as WeaponManager)
-
 	# Docking system (child of player ship, scans for nearby stations)
 	_docking_system = DockingSystem.new()
 	_docking_system.name = "DockingSystem"
@@ -315,6 +296,7 @@ func _initialize_game() -> void:
 	_dock_instance.ship_change_requested.connect(_on_ship_change_requested)
 
 	# Wire docking system to HUD for dock prompt display
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
 	if hud:
 		hud.set_docking_system(_docking_system)
 
@@ -364,14 +346,13 @@ func _initialize_game() -> void:
 	_mining_system.name = "MiningSystem"
 	player_ship.add_child(_mining_system)
 
-	# Wire mining system to weapon manager (for hardpoint positions)
-	var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
-	if wm:
-		_mining_system.set_weapon_manager(wm)
-
 	# Wire mining system to HUD
 	if hud:
 		hud.set_mining_system(_mining_system)
+
+	# Wire all ship-dependent systems (signals, HUD, mining, LOD, network)
+	# Must be after mining system creation so weapon_manager gets wired.
+	_rewire_ship_systems()
 
 	# Note: system_transition wired to HUD after creation (see below)
 
@@ -1753,6 +1734,46 @@ func _build_dock_context(station_name: String) -> Dictionary:
 	}
 
 
+## Rewire all systems that depend on the player ship's components.
+## Called once at init and again on every ship change. Add new ship-dependent
+## wiring here so ship changes don't break future features.
+func _rewire_ship_systems() -> void:
+	var ship := player_ship as ShipController
+	if ship == null:
+		return
+
+	# --- Signals ---
+	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	if health and not health.ship_destroyed.is_connected(_on_player_destroyed):
+		health.ship_destroyed.connect(_on_player_destroyed)
+	if not ship.autopilot_disengaged_by_player.is_connected(_on_autopilot_cancelled_by_player):
+		ship.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
+
+	# --- HUD ---
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud:
+		hud.set_ship(ship)
+		hud.set_health_system(health)
+		hud.set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
+		hud.set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
+		hud.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+
+	# --- Mining ---
+	if _mining_system:
+		_mining_system.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+
+	# --- LOD ---
+	if _lod_manager:
+		var player_lod := _lod_manager.get_ship_data(&"player_ship")
+		if player_lod and ship.ship_data:
+			player_lod.ship_id = ship.ship_data.ship_id
+			player_lod.ship_class = ship.ship_data.ship_class
+
+	# --- Network ---
+	if _ship_net_sync:
+		_ship_net_sync.reconnect_weapon_signal()
+
+
 func _on_ship_change_requested(fleet_index: int) -> void:
 	if current_state != GameState.DOCKED or player_ship == null:
 		return
@@ -1820,21 +1841,8 @@ func _on_ship_change_requested(fleet_index: int) -> void:
 	# Update fleet active index
 	player_fleet.set_active(fleet_index)
 
-	# Reconnect GameManager-owned signals
-	if health and not health.ship_destroyed.is_connected(_on_player_destroyed):
-		health.ship_destroyed.connect(_on_player_destroyed)
-	if not ship.autopilot_disengaged_by_player.is_connected(_on_autopilot_cancelled_by_player):
-		ship.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
-
-	# Update LOD player data
-	if _lod_manager:
-		var player_lod := _lod_manager.get_ship_data(&"player_ship")
-		if player_lod:
-			player_lod.ship_id = data.ship_id
-			player_lod.ship_class = data.ship_class
-
-	# Notify all systems to rewire (HUD, mining, network sync handle themselves)
-	player_ship_rebuilt.emit(ship)
+	# Rewire all ship-dependent systems (HUD, signals, mining, LOD, network)
+	_rewire_ship_systems()
 
 	# Notify multiplayer peers of ship change
 	NetworkManager.local_ship_id = ship_id

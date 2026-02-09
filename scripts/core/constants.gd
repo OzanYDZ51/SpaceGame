@@ -2,7 +2,7 @@ class_name GameConstants
 extends Node
 
 # =============================================================================
-# SpaceGame Global Constants
+# Imperion Online Global Constants
 # Tuned for responsive, fluid space flight (Star Citizen / Elite feel)
 # =============================================================================
 
