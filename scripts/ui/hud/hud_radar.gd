@@ -41,6 +41,8 @@ func _get_faction_nav_color(faction: StringName) -> Color:
 		return Color(1.0, 0.3, 0.2, 0.85)
 	elif faction == &"friendly":
 		return Color(0.3, 0.9, 0.4, 0.85)
+	elif faction == &"player_fleet":
+		return Color(0.4, 0.65, 1.0, 0.9)
 	return Color(0.6, 0.4, 0.9, 0.85)
 
 
@@ -50,6 +52,8 @@ func _get_npc_nav_color(node: Node) -> Color:
 		return Color(1.0, 0.3, 0.2, 0.85)
 	elif faction == &"friendly":
 		return Color(0.3, 0.9, 0.4, 0.85)
+	elif faction == &"player_fleet":
+		return Color(0.4, 0.65, 1.0, 0.9)
 	return Color(0.6, 0.4, 0.9, 0.85)
 
 

@@ -24,6 +24,8 @@ func _ready() -> void:
 	if wm:
 		wm.weapon_fired.connect(_on_weapon_fired)
 
+	GameManager.player_ship_rebuilt.connect(func(_ship_ref: ShipController): reconnect_weapon_signal())
+
 
 func _physics_process(delta: float) -> void:
 	if not NetworkManager.is_connected_to_server():

@@ -1,7 +1,7 @@
 {
-  "name": "spacegame-launcher",
+  "name": "imperion-online-launcher",
   "version": "1.0.8",
-  "description": "SpaceGame Launcher - Login, auto-update, and game launch",
+  "description": "Imperion Online Launcher - Login, auto-update, and game launch",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/OzanYDZ51/SpaceGame"
+    "url": "https://github.com/OzanYDZ51/ImperionOnline"
   },
   "author": "OzanYDZ51",
   "license": "MIT",
@@ -22,9 +22,9 @@
     "discord-rpc": "^4.0.1"
   },
   "build": {
-    "appId": "com.spacegame.launcher",
-    "productName": "SpaceGame Launcher",
-    "copyright": "Copyright 2026 SpaceGame",
+    "appId": "com.imperion-online.launcher",
+    "productName": "Imperion Online Launcher",
+    "copyright": "Copyright 2026 Imperion Online",
     "directories": {
       "output": "../build/launcher"
     },
@@ -32,7 +32,7 @@
       "target": "nsis",
       "icon": "assets/icon.ico",
       "requestedExecutionLevel": "asInvoker",
-      "publisherName": "SpaceGame"
+      "publisherName": "Imperion Online"
     },
     "nsis": {
       "oneClick": false,
@@ -47,7 +47,7 @@
       "installerHeaderIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SpaceGame Launcher",
+      "shortcutName": "Imperion Online Launcher",
       "license": "assets/license.html",
       "displayLanguageSelector": false,
       "installerLanguages": [

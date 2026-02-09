@@ -563,6 +563,28 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 	_draw_kv(font, x, y, kv_w, "VISITE", "Oui" if visited or sys_id == current_id else "Non")
 	y += line_h
 
+	# Fleet ships in this system
+	if GameManager.player_fleet:
+		var fleet_indices := GameManager.player_fleet.get_ships_in_system(sys_id)
+		if not fleet_indices.is_empty():
+			var docked_count: int = 0
+			var deployed_count: int = 0
+			for fi in fleet_indices:
+				var fs := GameManager.player_fleet.ships[fi]
+				if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+					docked_count += 1
+				elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+					deployed_count += 1
+			var fleet_text: String = ""
+			if docked_count > 0:
+				fleet_text += "%d docke%s" % [docked_count, "s" if docked_count > 1 else ""]
+			if deployed_count > 0:
+				if fleet_text != "":
+					fleet_text += ", "
+				fleet_text += "%d deploye%s" % [deployed_count, "s" if deployed_count > 1 else ""]
+			_draw_kv(font, x, y, kv_w, "FLOTTE", fleet_text)
+			y += line_h
+
 	# --- Resolved StarSystemData details ---
 	if _resolved_data:
 		y += 4

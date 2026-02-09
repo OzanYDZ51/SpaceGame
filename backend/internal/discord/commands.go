@@ -64,14 +64,14 @@ func (h *CommandHandler) cmdStatus(ctx context.Context, s *discordgo.Session, m 
 	online := h.wsHub.OnlineCount()
 
 	embed := &discordgo.MessageEmbed{
-		Title: "SpaceGame — Statut du serveur",
+		Title: "Imperion Online — Statut du serveur",
 		Color: 0x2ECC71,
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Joueurs en ligne", Value: fmt.Sprintf("%d", online), Inline: true},
 			{Name: "Status", Value: "EN LIGNE", Inline: true},
 		},
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Footer:    &discordgo.MessageEmbedFooter{Text: "SpaceGame"},
+		Footer:    &discordgo.MessageEmbedFooter{Text: "Imperion Online"},
 	}
 	s.ChannelMessageSendEmbed(m.ChannelID, embed)
 }
@@ -109,7 +109,7 @@ func (h *CommandHandler) cmdPlayer(ctx context.Context, s *discordgo.Session, m 
 			{Name: "K/D", Value: kd, Inline: true},
 		},
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Footer:    &discordgo.MessageEmbedFooter{Text: "SpaceGame"},
+		Footer:    &discordgo.MessageEmbedFooter{Text: "Imperion Online"},
 	}
 	s.ChannelMessageSendEmbed(m.ChannelID, embed)
 }
@@ -130,10 +130,10 @@ func (h *CommandHandler) cmdLink(ctx context.Context, s *discordgo.Session, m *d
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title:       "Lier votre compte SpaceGame",
+		Title:       "Lier votre compte Imperion Online",
 		Description: fmt.Sprintf("Votre code de liaison: **%s**\n\nEntrez ce code dans le jeu:\n`/discord %s`\n\nLe code expire dans 10 minutes.", code, code),
 		Color:       0x00C8FF,
-		Footer:      &discordgo.MessageEmbedFooter{Text: "SpaceGame"},
+		Footer:      &discordgo.MessageEmbedFooter{Text: "Imperion Online"},
 	}
 
 	// Send as DM
@@ -148,15 +148,15 @@ func (h *CommandHandler) cmdLink(ctx context.Context, s *discordgo.Session, m *d
 
 func (h *CommandHandler) cmdHelp(s *discordgo.Session, m *discordgo.MessageCreate) {
 	embed := &discordgo.MessageEmbed{
-		Title: "SpaceGame Bot — Commandes",
+		Title: "Imperion Online Bot — Commandes",
 		Color: 0x00C8FF,
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "`!status`", Value: "Affiche le statut du serveur et le nombre de joueurs en ligne"},
 			{Name: "`!player <nom>`", Value: "Affiche les stats publiques d'un joueur"},
-			{Name: "`!link`", Value: "Lie votre compte Discord à votre compte SpaceGame"},
+			{Name: "`!link`", Value: "Lie votre compte Discord à votre compte Imperion Online"},
 			{Name: "`!help`", Value: "Affiche cette aide"},
 		},
-		Footer: &discordgo.MessageEmbedFooter{Text: "SpaceGame"},
+		Footer: &discordgo.MessageEmbedFooter{Text: "Imperion Online"},
 	}
 	s.ChannelMessageSendEmbed(m.ChannelID, embed)
 }

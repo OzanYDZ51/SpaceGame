@@ -42,6 +42,7 @@ const NPC_HOSTILE := Color(1.0, 0.3, 0.3, 0.9)
 const NPC_FRIENDLY := Color(0.3, 1.0, 0.45, 0.9)
 const NPC_NEUTRAL := Color(0.7, 0.55, 1.0, 0.8)
 const NPC_SHIP := Color(0.6, 0.6, 0.7, 0.7)  # fallback
+const FLEET_SHIP := Color(0.4, 0.65, 1.0, 0.95)  # Blue for player fleet
 
 # Filter indicator
 const FILTER_ACTIVE := Color(0.15, 0.85, 1.0, 0.7)

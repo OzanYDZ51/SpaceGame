@@ -203,6 +203,15 @@ func apply_state(state: Dictionary) -> void:
 	if not svc_data.is_empty() and GameManager.station_services:
 		GameManager.station_services.deserialize(svc_data)
 
+	# Fleet
+	var fleet_data: Array = state.get("fleet", [])
+	if not fleet_data.is_empty():
+		GameManager.player_fleet = PlayerFleet.deserialize(fleet_data)
+		if GameManager._fleet_deployment_mgr:
+			GameManager._fleet_deployment_mgr.initialize(GameManager.player_fleet)
+		if GameManager._commerce_manager:
+			GameManager._commerce_manager.player_fleet = GameManager.player_fleet
+
 	# Kills & deaths
 	# These are tracked on the backend, not locally (read-only here)
 
@@ -274,6 +283,10 @@ func _collect_state() -> Dictionary:
 	# Station services
 	if GameManager.station_services:
 		state["station_services"] = GameManager.station_services.serialize()
+
+	# Fleet
+	if GameManager.player_fleet:
+		state["fleet"] = GameManager.player_fleet.serialize()
 
 	return state
 

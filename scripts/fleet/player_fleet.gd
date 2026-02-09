@@ -7,6 +7,9 @@ extends RefCounted
 
 signal fleet_changed
 signal active_ship_changed(ship: FleetShip)
+signal ship_deployed(fleet_index: int)
+signal ship_retrieved(fleet_index: int)
+signal ship_lost(fleet_index: int)
 
 var ships: Array[FleetShip] = []
 var active_index: int = 0
@@ -68,3 +71,30 @@ static func deserialize(data: Array) -> PlayerFleet:
 		if data[i].get("active", false):
 			fleet.active_index = i
 	return fleet
+
+
+func get_ships_at_station(station_id: String) -> Array[int]:
+	var result: Array[int] = []
+	for i in ships.size():
+		var fs := ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_station_id == station_id:
+			result.append(i)
+	return result
+
+
+func get_deployed_in_system(system_id: int) -> Array[int]:
+	var result: Array[int] = []
+	for i in ships.size():
+		var fs := ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.docked_system_id == system_id:
+			result.append(i)
+	return result
+
+
+func get_ships_in_system(system_id: int) -> Array[int]:
+	var result: Array[int] = []
+	for i in ships.size():
+		var fs := ships[i]
+		if fs.docked_system_id == system_id and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+			result.append(i)
+	return result

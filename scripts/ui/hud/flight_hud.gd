@@ -35,6 +35,7 @@ var _slow_dirty: bool = true
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_components()
+	GameManager.player_ship_rebuilt.connect(rewire_to_ship)
 
 
 func _build_components() -> void:
@@ -153,6 +154,15 @@ func set_system_transition(st: SystemTransition) -> void:
 
 func set_mining_system(ms: MiningSystem) -> void:
 	_mining.mining_system = ms
+
+
+## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.
+func rewire_to_ship(ship: ShipController) -> void:
+	set_ship(ship)
+	set_health_system(ship.get_node_or_null("HealthSystem") as HealthSystem)
+	set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
+	set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
+	set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
 
 
 # =============================================================================

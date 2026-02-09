@@ -24,6 +24,7 @@ var _was_mouse_captured: bool = false
 var managed_externally: bool = false
 signal view_switch_requested
 signal navigate_to_requested(entity_id: String)
+signal station_long_pressed(station_id: String)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
 var _preview_entities: Dictionary = {}
@@ -37,6 +38,14 @@ var _pan_start: Vector2 = Vector2.ZERO
 # Double-click detection
 var _last_click_time: float = 0.0
 var _last_click_id: String = ""
+
+# Hold-click detection for fleet management
+var _hold_start_time: float = 0.0
+var _hold_entity_id: String = ""
+var _hold_start_pos: Vector2 = Vector2.ZERO
+var _hold_triggered: bool = false
+const HOLD_DURATION: float = 0.5
+const HOLD_MAX_MOVE: float = 10.0
 
 # Filters: EntityType (int) -> bool (true = hidden)
 # Special key -1 = orbit lines
@@ -237,6 +246,17 @@ func _process(delta: float) -> void:
 	if _camera.zoom != zoom_before:
 		_dirty = true
 
+	# Hold-click detection for fleet management (station long press)
+	if _hold_entity_id != "" and not _hold_triggered:
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if now - _hold_start_time >= HOLD_DURATION:
+			# Check if held entity is a station
+			var ent := EntityRegistry.get_entity(_hold_entity_id)
+			if not ent.is_empty() and ent.get("type") == EntityRegistrySystem.EntityType.STATION:
+				_hold_triggered = true
+				station_long_pressed.emit(_hold_entity_id)
+			_hold_entity_id = ""
+
 	# Always redraw while open so entity positions update in real-time
 	_renderer.queue_redraw()
 	_entity_layer.queue_redraw()
@@ -362,19 +382,29 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Left click = select entity (+ double-click detection)
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			var hit_id: String = _entity_layer.get_entity_at(event.position)
-			var now: float = Time.get_ticks_msec() / 1000.0
+		# Left click = select entity (+ double-click + hold detection)
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				var hit_id: String = _entity_layer.get_entity_at(event.position)
+				var now: float = Time.get_ticks_msec() / 1000.0
 
-			# Double-click: same entity within 0.4s -> navigate to it
-			if hit_id != "" and hit_id == _last_click_id and (now - _last_click_time) < 0.4:
-				navigate_to_requested.emit(hit_id)
-				_last_click_id = ""
+				# Start hold tracking
+				_hold_start_time = now
+				_hold_entity_id = hit_id
+				_hold_start_pos = event.position
+				_hold_triggered = false
+
+				# Double-click: same entity within 0.4s -> navigate to it
+				if hit_id != "" and hit_id == _last_click_id and (now - _last_click_time) < 0.4:
+					navigate_to_requested.emit(hit_id)
+					_last_click_id = ""
+				else:
+					_select_entity(hit_id)
+					_last_click_id = hit_id
+					_last_click_time = now
 			else:
-				_select_entity(hit_id)
-				_last_click_id = hit_id
-				_last_click_time = now
+				# Release: clear hold tracking
+				_hold_entity_id = ""
 
 			get_viewport().set_input_as_handled()
 			return
@@ -388,6 +418,9 @@ func _input(event: InputEvent) -> void:
 
 	# Mouse motion
 	if event is InputEventMouseMotion:
+		# Cancel hold if mouse moved too far
+		if _hold_entity_id != "" and event.position.distance_to(_hold_start_pos) > HOLD_MAX_MOVE:
+			_hold_entity_id = ""
 		if _is_panning:
 			_camera.pan(event.relative)
 			_dirty = true

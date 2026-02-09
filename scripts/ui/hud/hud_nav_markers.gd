@@ -16,6 +16,7 @@ const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
 const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
+const NAV_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
 
 var _nav_markers: Control = null
 
@@ -112,6 +113,8 @@ func _draw_nav_markers(ctrl: Control) -> void:
 							continue
 						_used_spots.append(sp)
 				var nav_name := data.display_name if not data.display_name.is_empty() else String(data.ship_class)
+				if data.faction == &"player_fleet":
+					nav_name += " [FLOTTE]"
 				var nav_col := _get_faction_nav_color(data.faction)
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, nav_name, dist, nav_col)
 				npc_drawn += 1
@@ -199,6 +202,8 @@ func _get_npc_nav_color(node: Node) -> Color:
 		return NAV_COL_HOSTILE
 	elif faction == &"friendly":
 		return NAV_COL_FRIENDLY
+	elif faction == &"player_fleet":
+		return NAV_COL_FLEET
 	return NAV_COL_NEUTRAL_NPC
 
 
@@ -207,6 +212,8 @@ func _get_faction_nav_color(faction: StringName) -> Color:
 		return NAV_COL_HOSTILE
 	elif faction == &"friendly":
 		return NAV_COL_FRIENDLY
+	elif faction == &"player_fleet":
+		return NAV_COL_FLEET
 	return NAV_COL_NEUTRAL_NPC
 
 

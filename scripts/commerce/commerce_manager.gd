@@ -27,6 +27,15 @@ func buy_ship(ship_id: StringName) -> bool:
 		return false
 	player_economy.spend_credits(ship_data.price)
 	var bare_ship := FleetShip.create_bare(ship_id)
+	bare_ship.docked_system_id = GameManager.current_system_id_safe()
+	# Resolve current docked station ID from dock instance
+	if GameManager._dock_instance:
+		var station_name: String = GameManager._dock_instance.station_name
+		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		for ent in stations:
+			if ent.get("name", "") == station_name:
+				bare_ship.docked_station_id = ent.get("id", "")
+				break
 	player_fleet.add_ship(bare_ship)
 	purchase_completed.emit("ship", ship_id)
 	return true

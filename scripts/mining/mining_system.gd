@@ -43,6 +43,11 @@ func _ready() -> void:
 	_beam = MiningLaserBeam.new()
 	_beam.name = "MiningLaserBeam"
 	add_child(_beam)
+	GameManager.player_ship_rebuilt.connect(_on_player_ship_rebuilt)
+
+
+func _on_player_ship_rebuilt(ship: ShipController) -> void:
+	set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
 
 
 func set_asteroid_manager(mgr: AsteroidFieldManager) -> void:

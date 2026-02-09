@@ -1,5 +1,5 @@
 """
-Generate installer assets for SpaceGame Launcher NSIS installer.
+Generate installer assets for Imperion Online Launcher NSIS installer.
 - icon.ico (256x256, 128, 64, 48, 32, 16)
 - installerSidebar.bmp (164x314)
 - installerHeader.bmp (150x57)
@@ -124,9 +124,9 @@ def create_sidebar():
         font_small = ImageFont.load_default()
 
     # SPACE
-    draw.text((15, 30), "SPACE", fill=(0, 80, 120), font=font_large)
-    # GAME in bright
-    draw.text((15, 55), "GAME", fill=CYAN, font=font_large)
+    draw.text((15, 30), "IMPERION", fill=(0, 80, 120), font=font_large)
+    # ONLINE in bright
+    draw.text((15, 55), "ONLINE", fill=CYAN, font=font_large)
 
     # Decorative line
     draw.line([(15, 90), (w-20, 90)], fill=CYAN_DIM, width=1)
@@ -170,7 +170,7 @@ def create_header():
         font = ImageFont.load_default()
         font_sm = ImageFont.load_default()
 
-    draw.text((8, 10), "SPACEGAME", fill=CYAN, font=font)
+    draw.text((8, 10), "IMPERION", fill=CYAN, font=font)
     draw.text((8, 30), "INSTALLATION", fill=CYAN_DIM, font=font_sm)
 
     # Bottom accent line
@@ -207,8 +207,8 @@ def create_uninstaller_sidebar():
         font_large = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
-    draw.text((15, 30), "SPACE", fill=(80, 30, 30), font=font_large)
-    draw.text((15, 55), "GAME", fill=(200, 60, 60), font=font_large)
+    draw.text((15, 30), "IMPERION", fill=(80, 30, 30), font=font_large)
+    draw.text((15, 55), "ONLINE", fill=(200, 60, 60), font=font_large)
     draw.line([(15, 90), (w-20, 90)], fill=(120, 40, 40), width=1)
     draw.text((15, 100), "DESINSTALLATION", fill=(140, 50, 50), font=font_small)
 

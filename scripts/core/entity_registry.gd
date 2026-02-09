@@ -11,7 +11,7 @@ extends Node
 signal entity_registered(id: String)
 signal entity_unregistered(id: String)
 
-enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, ASTEROID, JUMP_GATE, CARGO_CRATE }
+enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, ASTEROID, JUMP_GATE, CARGO_CRATE, SHIP_FLEET }
 
 # Entity data stored as dictionaries for flexibility:
 # {

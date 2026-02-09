@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# SpaceGame — Railway Full Deployment Script
+# Imperion Online — Railway Full Deployment Script
 #
 # Provisions all 3 services + database on Railway from scratch.
 # Run from project root: bash deploy/railway-setup.sh
@@ -20,7 +20,7 @@ NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════╗"
-echo "║     SpaceGame — Railway Deployment Setup     ║"
+echo "║   Imperion Online — Railway Deployment Setup  ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -65,7 +65,7 @@ echo ""
 
 # --- Step 2: Create project ---
 echo -e "${CYAN}[2/6] Creating Railway project...${NC}"
-railway init --name spacegame
+railway init --name imperion-online
 echo ""
 
 # --- Step 3: Add PostgreSQL ---

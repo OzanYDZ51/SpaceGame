@@ -187,7 +187,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("SpaceGame backend running on :%s (%s)", cfg.Port, cfg.Env)
+	log.Printf("Imperion Online backend running on :%s (%s)", cfg.Port, cfg.Env)
 
 	<-quit
 	log.Println("Shutting down...")

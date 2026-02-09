@@ -12,7 +12,7 @@ const BACKEND_URL =
   process.env.BACKEND_URL || "https://backend-production-05a9.up.railway.app";
 const INSTALL_DIR = path.join(
   process.env.LOCALAPPDATA || app.getPath("userData"),
-  "SpaceGame"
+  "ImperionOnline"
 );
 const GAME_DIR = path.join(INSTALL_DIR, "game");
 const VERSION_FILE = path.join(INSTALL_DIR, "version.json");
@@ -58,12 +58,12 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip("SpaceGame Launcher");
+  tray.setToolTip("Imperion Online Launcher");
 
   const updateTrayMenu = () => {
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: isGameRunning ? "SpaceGame en cours..." : "SpaceGame Launcher",
+        label: isGameRunning ? "Imperion Online en cours..." : "Imperion Online Launcher",
         enabled: false,
       },
       { type: "separator" },
@@ -164,7 +164,7 @@ function httpRequest(method, urlStr, body) {
       path: url.pathname + url.search,
       method,
       headers: {
-        "User-Agent": "SpaceGameLauncher/1.0",
+        "User-Agent": "ImperionOnlineLauncher/1.0",
         "Content-Type": "application/json",
       },
     };
@@ -194,7 +194,7 @@ function downloadFile(url, destPath, progressCb) {
     const doRequest = (requestUrl) => {
       const mod = requestUrl.startsWith("https") ? https : http;
       mod
-        .get(requestUrl, { headers: { "User-Agent": "SpaceGameLauncher/1.0" } }, (res) => {
+        .get(requestUrl, { headers: { "User-Agent": "ImperionOnlineLauncher/1.0" } }, (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             return doRequest(res.headers.location);
           }
@@ -313,7 +313,7 @@ ipcMain.handle("check-updates", async () => {
   const launcherVersion = getLauncherVersion();
   const gameVersion = getGameVersion();
   const gameInstalled =
-    gameVersion !== null && fs.existsSync(path.join(GAME_DIR, "SpaceGame.exe"));
+    gameVersion !== null && fs.existsSync(path.join(GAME_DIR, "ImperionOnline.exe"));
 
   try {
     const res = await httpRequest("GET", `${BACKEND_URL}/api/v1/updates`);
@@ -332,8 +332,8 @@ ipcMain.handle("check-updates", async () => {
 
 ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
   const tempDir = app.getPath("temp");
-  const installerPath = path.join(tempDir, "SpaceGameLauncherSetup.exe");
-  const batPath = path.join(tempDir, "spacegame_launcher_update.bat");
+  const installerPath = path.join(tempDir, "ImperionOnlineLauncherSetup.exe");
+  const batPath = path.join(tempDir, "imperion_launcher_update.bat");
 
   await downloadFile(downloadUrl, installerPath, (received, total) => {
     if (mainWindow && !mainWindow.isDestroyed())
@@ -361,7 +361,7 @@ ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
 
 ipcMain.handle("update-game", async (_event, downloadUrl, version) => {
   ensureDirs();
-  const zipPath = path.join(INSTALL_DIR, "SpaceGame.zip");
+  const zipPath = path.join(INSTALL_DIR, "ImperionOnline.zip");
 
   await downloadFile(downloadUrl, zipPath, (received, total) => {
     if (mainWindow && !mainWindow.isDestroyed())
@@ -402,8 +402,8 @@ ipcMain.handle("get-changelog", async () => {
 // =========================================================================
 
 ipcMain.handle("launch-game", async () => {
-  const exePath = path.join(GAME_DIR, "SpaceGame.exe");
-  if (!fs.existsSync(exePath)) return { error: "SpaceGame.exe introuvable" };
+  const exePath = path.join(GAME_DIR, "ImperionOnline.exe");
+  if (!fs.existsSync(exePath)) return { error: "ImperionOnline.exe introuvable" };
 
   // Pass auth token to game if logged in
   const auth = getSavedAuth();

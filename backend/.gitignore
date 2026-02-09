@@ -2,4 +2,3 @@ bin/
 *.exe
 .env
 go.sum
-discord.json

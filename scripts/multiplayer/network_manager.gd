@@ -38,6 +38,11 @@ signal npc_batch_received(batch: Array)
 signal npc_spawned(data: Dictionary)
 signal npc_died(npc_id: String, killer_pid: int, death_pos: Array, loot: Array)
 
+# Fleet sync signals
+signal fleet_ship_deployed(owner_pid: int, fleet_index: int, npc_id: String, spawn_data: Dictionary)
+signal fleet_ship_retrieved(owner_pid: int, fleet_index: int, npc_id: String)
+signal fleet_command_changed(owner_pid: int, fleet_index: int, npc_id: String, cmd: String, params: Dictionary)
+
 # Combat sync signals
 signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
 
@@ -178,7 +183,7 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 
 ## Connect to a remote server as a client (join a host or a Railway server).
 ## address can be:
-##   - A full URL: "ws://127.0.0.1:7777" or "wss://spacegame.up.railway.app"
+##   - A full URL: "ws://127.0.0.1:7777" or "wss://imperion.up.railway.app"
 ##   - An IP/hostname: "127.0.0.1" (port appended as ws://ip:port)
 func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	if connection_state != ConnectionState.DISCONNECTED:
@@ -723,3 +728,58 @@ func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void
 		var sdata := ShipRegistry.get_ship_data(new_sid)
 		peers[pid].ship_class = sdata.ship_class if sdata else &"Fighter"
 	player_ship_changed_received.emit(pid, new_sid)
+
+
+# =========================================================================
+# FLEET DEPLOYMENT RPCs
+# =========================================================================
+
+## Client -> Server: Request to deploy a fleet ship.
+@rpc("any_peer", "reliable")
+func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: String) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.handle_fleet_deploy_request(sender_id, fleet_index, StringName(cmd_str), JSON.parse_string(params_json) if params_json != "" else {})
+
+
+## Client -> Server: Request to retrieve a fleet ship.
+@rpc("any_peer", "reliable")
+func _rpc_request_fleet_retrieve(fleet_index: int) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.handle_fleet_retrieve_request(sender_id, fleet_index)
+
+
+## Client -> Server: Request to change fleet ship command.
+@rpc("any_peer", "reliable")
+func _rpc_request_fleet_command(fleet_index: int, cmd_str: String, params_json: String) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.handle_fleet_command_request(sender_id, fleet_index, StringName(cmd_str), JSON.parse_string(params_json) if params_json != "" else {})
+
+
+## Server -> Client: A fleet ship has been deployed.
+@rpc("authority", "reliable")
+func _rpc_fleet_deployed(owner_pid: int, fleet_idx: int, npc_id_str: String, spawn_data: Dictionary) -> void:
+	fleet_ship_deployed.emit(owner_pid, fleet_idx, npc_id_str, spawn_data)
+
+
+## Server -> Client: A fleet ship has been retrieved (despawned).
+@rpc("authority", "reliable")
+func _rpc_fleet_retrieved(owner_pid: int, fleet_idx: int, npc_id_str: String) -> void:
+	fleet_ship_retrieved.emit(owner_pid, fleet_idx, npc_id_str)
+
+
+## Server -> Client: A fleet ship's command has changed.
+@rpc("authority", "reliable")
+func _rpc_fleet_command_changed(owner_pid: int, fleet_idx: int, npc_id_str: String, cmd_str: String, params: Dictionary) -> void:
+	fleet_command_changed.emit(owner_pid, fleet_idx, npc_id_str, cmd_str, params)

@@ -1,4 +1,4 @@
-name: Build and Release SpaceGame
+name: Build and Release Imperion Online
 
 on:
   push:
@@ -74,20 +74,20 @@ jobs:
         run: |
           mkdir -p build
           cd ${{ github.workspace }}
-          godot --headless --export-release "Windows Desktop" build/SpaceGame.exe
+          godot --headless --export-release "Windows Desktop" build/ImperionOnline.exe
 
       - name: Package release
         run: |
           cd build
-          zip -r ../SpaceGame.zip SpaceGame.exe SpaceGame.pck
+          zip -r ../ImperionOnline.zip ImperionOnline.exe ImperionOnline.pck
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: SpaceGame ${{ steps.version.outputs.tag }}
+          name: Imperion Online ${{ steps.version.outputs.tag }}
           body: "Automated build from commit ${{ github.sha }}"
-          files: SpaceGame.zip
+          files: ImperionOnline.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

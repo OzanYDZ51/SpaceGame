@@ -301,6 +301,13 @@ func _detect_threats() -> void:
 				continue
 			if data.faction == _ship.faction:
 				continue
+			# Never target fleet ships or player if we ARE fleet
+			if _ship.faction == &"player_fleet" and data.faction == &"player_fleet":
+				continue
+			if _ship.faction == &"player_fleet" and entry["id"] == &"player_ship":
+				continue
+			if data.faction == &"player_fleet" and _ship.faction != &"hostile":
+				continue
 			# Only target ships with a scene node (can't fight LOD2)
 			if data.node_ref == null or not is_instance_valid(data.node_ref):
 				continue
@@ -323,6 +330,11 @@ func _detect_threats() -> void:
 		if node is ShipController:
 			var other := node as ShipController
 			if other.faction == _ship.faction:
+				continue
+			# Fleet ships and player don't target each other
+			if _ship.faction == &"player_fleet" and (other.faction == &"player_fleet" or other.faction == &"neutral"):
+				continue
+			if other.faction == &"player_fleet" and _ship.faction != &"hostile":
 				continue
 			var dist: float = _ship.global_position.distance_to(other.global_position)
 			if dist < fallback_dist:

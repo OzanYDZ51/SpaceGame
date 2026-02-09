@@ -23,6 +23,7 @@ var _draw_order: Array = [
 	EntityRegistrySystem.EntityType.STATION,
 	EntityRegistrySystem.EntityType.JUMP_GATE,
 	EntityRegistrySystem.EntityType.SHIP_NPC,
+	EntityRegistrySystem.EntityType.SHIP_FLEET,
 	EntityRegistrySystem.EntityType.SHIP_PLAYER,
 ]
 
@@ -95,6 +96,8 @@ func _draw_entity(ent: Dictionary, font: Font) -> void:
 			_draw_jump_gate(screen_pos, ent, is_selected, font)
 		EntityRegistrySystem.EntityType.SHIP_NPC:
 			_draw_npc_ship(screen_pos, ent, is_selected, font)
+		EntityRegistrySystem.EntityType.SHIP_FLEET:
+			_draw_fleet_ship(screen_pos, ent, is_selected, font)
 
 	# Selection ring
 	if is_selected:
@@ -404,6 +407,60 @@ func _draw_npc_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font
 		var label_text: String = ent["name"]
 		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
 		draw_string(font, pos + Vector2(-tw * 0.5, s + 12), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, col)
+
+
+# =============================================================================
+# FLEET SHIP (blue diamond, distinct from NPC triangles)
+# =============================================================================
+func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) -> void:
+	var col: Color = MapColors.FLEET_SHIP
+	var s: float = 6.0
+
+	# Pulsing glow
+	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
+	draw_circle(pos, s * 2.5, Color(col.r, col.g, col.b, 0.06 * pulse))
+
+	# Diamond shape
+	var points := PackedVector2Array([
+		pos + Vector2(0, -s),
+		pos + Vector2(s * 0.8, 0),
+		pos + Vector2(0, s),
+		pos + Vector2(-s * 0.8, 0),
+	])
+	draw_colored_polygon(points, Color(col.r, col.g, col.b, 0.8 * pulse))
+
+	# Inner bright center
+	var inner_s: float = s * 0.35
+	var inner_points := PackedVector2Array([
+		pos + Vector2(0, -inner_s),
+		pos + Vector2(inner_s, 0),
+		pos + Vector2(0, inner_s),
+		pos + Vector2(-inner_s, 0),
+	])
+	draw_colored_polygon(inner_points, Color(0.8, 0.9, 1.0, 0.4))
+
+	# Border
+	var border_points := PackedVector2Array([
+		pos + Vector2(0, -s - 1),
+		pos + Vector2(s * 0.8 + 1, 0),
+		pos + Vector2(0, s + 1),
+		pos + Vector2(-s * 0.8 - 1, 0),
+		pos + Vector2(0, -s - 1),
+	])
+	draw_polyline(border_points, Color(col.r, col.g, col.b, 0.6), 1.0)
+
+	# Label
+	var show_label: bool = is_selected or camera.zoom > 0.003
+	if show_label:
+		var label_text: String = ent["name"]
+		var extra: Dictionary = ent.get("extra", {})
+		var cmd_name: String = extra.get("command", "")
+		if cmd_name != "":
+			var cmd_data := FleetCommand.get_command(StringName(cmd_name))
+			if not cmd_data.is_empty():
+				label_text += " [%s]" % cmd_data.get("display_name", "")
+		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+		draw_string(font, pos + Vector2(-tw * 0.5, s + 14), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, col)
 
 
 # =============================================================================

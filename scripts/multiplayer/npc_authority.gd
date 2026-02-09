@@ -26,6 +26,11 @@ var _npcs: Dictionary = {}
 # system_id -> Array[StringName] npc_ids
 var _npcs_by_system: Dictionary = {}
 
+# Fleet NPC tracking: npc_id -> { owner_pid, fleet_index }
+var _fleet_npcs: Dictionary = {}
+# owner_pid -> Array[StringName] npc_ids
+var _fleet_npcs_by_owner: Dictionary = {}
+
 
 func _ready() -> void:
 	NetworkManager.connection_succeeded.connect(_check_activation)
@@ -376,3 +381,186 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 			NetworkManager.npc_died.emit(String(npc_id), killer_pid, death_pos, loot)
 		else:
 			NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), killer_pid, death_pos, loot)
+
+	# Clean up fleet tracking if this was a fleet NPC
+	_unregister_fleet_npc(npc_id)
+
+
+# =========================================================================
+# FLEET NPC MANAGEMENT
+# =========================================================================
+
+func register_fleet_npc(npc_id: StringName, owner_pid: int, fleet_index: int) -> void:
+	_fleet_npcs[npc_id] = { "owner_pid": owner_pid, "fleet_index": fleet_index }
+	if not _fleet_npcs_by_owner.has(owner_pid):
+		_fleet_npcs_by_owner[owner_pid] = []
+	var owner_list: Array = _fleet_npcs_by_owner[owner_pid]
+	if not owner_list.has(npc_id):
+		owner_list.append(npc_id)
+
+
+func _unregister_fleet_npc(npc_id: StringName) -> void:
+	if not _fleet_npcs.has(npc_id):
+		return
+	var info: Dictionary = _fleet_npcs[npc_id]
+	var owner_pid: int = info.get("owner_pid", -1)
+	if _fleet_npcs_by_owner.has(owner_pid):
+		var owner_list: Array = _fleet_npcs_by_owner[owner_pid]
+		owner_list.erase(npc_id)
+		if owner_list.is_empty():
+			_fleet_npcs_by_owner.erase(owner_pid)
+	_fleet_npcs.erase(npc_id)
+
+
+func is_fleet_npc(npc_id: StringName) -> bool:
+	return _fleet_npcs.has(npc_id)
+
+
+func get_fleet_npc_owner(npc_id: StringName) -> int:
+	if _fleet_npcs.has(npc_id):
+		return _fleet_npcs[npc_id].get("owner_pid", -1)
+	return -1
+
+
+## Server handles deploy request from a client (or host).
+func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
+	if not _active:
+		return
+
+	# Server-side: execute the deploy via FleetDeploymentManager
+	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	if fleet_mgr == null:
+		return
+
+	# For the host (pid=1), deploy directly
+	# For remote clients, we trust the server fleet state
+	var success := fleet_mgr.deploy_ship(fleet_index, cmd, params)
+	if not success:
+		return
+
+	# Get the spawned NPC info
+	var fleet: PlayerFleet = GameManager.player_fleet
+	if fleet == null or fleet_index >= fleet.ships.size():
+		return
+	var fs := fleet.ships[fleet_index]
+	var npc_id := fs.deployed_npc_id
+
+	# Register as fleet NPC
+	register_fleet_npc(npc_id, sender_pid, fleet_index)
+
+	# Build spawn data for broadcast
+	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var spawn_data := {
+		"sid": String(fs.ship_id),
+		"fac": "player_fleet",
+		"cmd": String(cmd),
+		"owner_name": _get_peer_name(sender_pid),
+	}
+	if lod_mgr:
+		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
+		if lod_data:
+			var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+			spawn_data["px"] = upos[0]
+			spawn_data["py"] = upos[1]
+			spawn_data["pz"] = upos[2]
+
+	# Also register with standard NPC authority for state sync
+	var sys_id: int = GameManager.current_system_id_safe()
+	register_npc(npc_id, sys_id, StringName(fs.ship_id), &"player_fleet")
+
+	# Broadcast to all peers in system
+	_broadcast_fleet_event_deploy(sender_pid, fleet_index, npc_id, spawn_data, sys_id)
+
+	# Notify spawn for NPC state sync
+	notify_spawn_to_peers(npc_id, sys_id)
+
+
+## Server handles retrieve request from a client (or host).
+func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
+	if not _active:
+		return
+
+	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	if fleet_mgr == null:
+		return
+
+	var fleet: PlayerFleet = GameManager.player_fleet
+	if fleet == null or fleet_index >= fleet.ships.size():
+		return
+	var fs := fleet.ships[fleet_index]
+	var npc_id := fs.deployed_npc_id
+	var sys_id: int = GameManager.current_system_id_safe()
+
+	var success := fleet_mgr.retrieve_ship(fleet_index)
+	if not success:
+		return
+
+	# Clean up NPC authority tracking
+	unregister_npc(npc_id)
+	_unregister_fleet_npc(npc_id)
+
+	# Broadcast retrieval to all peers in system
+	_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
+
+
+## Server handles command change request from a client (or host).
+func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
+	if not _active:
+		return
+
+	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	if fleet_mgr == null:
+		return
+
+	var fleet: PlayerFleet = GameManager.player_fleet
+	if fleet == null or fleet_index >= fleet.ships.size():
+		return
+	var fs := fleet.ships[fleet_index]
+	var npc_id := fs.deployed_npc_id
+	var sys_id: int = GameManager.current_system_id_safe()
+
+	var success := fleet_mgr.change_command(fleet_index, cmd, params)
+	if not success:
+		return
+
+	# Broadcast command change to all peers in system
+	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
+
+
+func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: StringName, spawn_data: Dictionary, system_id: int) -> void:
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	for pid in peers_in_sys:
+		if pid == owner_pid:
+			continue  # Owner already sees it locally
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.fleet_ship_deployed.emit(owner_pid, fleet_idx, String(npc_id), spawn_data)
+		else:
+			NetworkManager._rpc_fleet_deployed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), spawn_data)
+
+
+func _broadcast_fleet_event_retrieve(owner_pid: int, fleet_idx: int, npc_id: StringName, system_id: int) -> void:
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	for pid in peers_in_sys:
+		if pid == owner_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.fleet_ship_retrieved.emit(owner_pid, fleet_idx, String(npc_id))
+		else:
+			NetworkManager._rpc_fleet_retrieved.rpc_id(pid, owner_pid, fleet_idx, String(npc_id))
+
+
+func _broadcast_fleet_event_command(owner_pid: int, fleet_idx: int, npc_id: StringName, cmd: StringName, params: Dictionary, system_id: int) -> void:
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	for pid in peers_in_sys:
+		if pid == owner_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.fleet_command_changed.emit(owner_pid, fleet_idx, String(npc_id), String(cmd), params)
+		else:
+			NetworkManager._rpc_fleet_command_changed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), String(cmd), params)
+
+
+func _get_peer_name(pid: int) -> String:
+	if NetworkManager.peers.has(pid):
+		return NetworkManager.peers[pid].player_name
+	return "Pilote #%d" % pid

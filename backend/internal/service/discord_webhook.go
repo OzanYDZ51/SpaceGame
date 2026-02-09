@@ -88,13 +88,13 @@ func (s *DiscordWebhookService) send(webhookURL string, payload discordWebhookPa
 // SendDevlog posts a new version update to #devlog.
 func (s *DiscordWebhookService) SendDevlog(version, summary string) {
 	s.send(s.webhookDevlog, discordWebhookPayload{
-		Username: "SpaceGame Devlog",
+		Username: "Imperion Online Devlog",
 		Embeds: []discordEmbed{{
 			Title:       fmt.Sprintf("🚀 Mise à jour %s", version),
 			Description: summary,
 			Color:       0x3498DB, // Blue
 			Timestamp:   time.Now().UTC().Format(time.RFC3339),
-			Footer:      &discordFooter{Text: "SpaceGame Devlog"},
+			Footer:      &discordFooter{Text: "Imperion Online Devlog"},
 		}},
 	})
 }
@@ -108,7 +108,7 @@ func (s *DiscordWebhookService) SendServerStatus(online bool, playerCount int) {
 		status = "HORS LIGNE"
 	}
 	s.send(s.webhookStatus, discordWebhookPayload{
-		Username: "SpaceGame Server",
+		Username: "Imperion Online Server",
 		Embeds: []discordEmbed{{
 			Title: fmt.Sprintf("Serveur %s", status),
 			Color: color,
@@ -124,7 +124,7 @@ func (s *DiscordWebhookService) SendServerStatus(online bool, playerCount int) {
 // SendKillFeed posts a PvP kill to #kill-feed.
 func (s *DiscordWebhookService) SendKillFeed(killer, victim, weapon, system string) {
 	s.send(s.webhookKills, discordWebhookPayload{
-		Username: "SpaceGame Kill Feed",
+		Username: "Imperion Online Kill Feed",
 		Embeds: []discordEmbed{{
 			Title:       fmt.Sprintf("💀 %s a détruit %s", killer, victim),
 			Color:       0xE74C3C, // Red
@@ -140,7 +140,7 @@ func (s *DiscordWebhookService) SendKillFeed(killer, victim, weapon, system stri
 // SendGameEvent posts a notable game event to #events.
 func (s *DiscordWebhookService) SendGameEvent(eventType, title, description string) {
 	s.send(s.webhookEvents, discordWebhookPayload{
-		Username: "SpaceGame Events",
+		Username: "Imperion Online Events",
 		Embeds: []discordEmbed{{
 			Title:       title,
 			Description: description,
@@ -161,7 +161,7 @@ func (s *DiscordWebhookService) SendBugReport(reporter, title, description, syst
 		{Name: "Position", Value: position, Inline: true},
 	}
 	s.send(s.webhookBugs, discordWebhookPayload{
-		Username: "SpaceGame Bug Reports",
+		Username: "Imperion Online Bug Reports",
 		Embeds: []discordEmbed{{
 			Title:       fmt.Sprintf("🐛 %s", title),
 			Description: description,
@@ -175,7 +175,7 @@ func (s *DiscordWebhookService) SendBugReport(reporter, title, description, syst
 // SendClanEvent posts a clan event to #clan-activity.
 func (s *DiscordWebhookService) SendClanEvent(eventType, clanName, details string) {
 	s.send(s.webhookClans, discordWebhookPayload{
-		Username: "SpaceGame Clans",
+		Username: "Imperion Online Clans",
 		Embeds: []discordEmbed{{
 			Title:       fmt.Sprintf("⚔️ [%s] %s", clanName, eventType),
 			Description: details,

@@ -5,12 +5,22 @@ extends RefCounted
 # Fleet Ship - Represents a single owned ship with its loadout
 # =============================================================================
 
+enum DeploymentState { DOCKED, DEPLOYED, DESTROYED }
+
 var ship_id: StringName = &""
 var custom_name: String = ""
 var weapons: Array[StringName] = []     # per hardpoint (empty = &"")
 var shield_name: StringName = &""
 var engine_name: StringName = &""
 var modules: Array[StringName] = []     # per slot (empty = &"")
+
+# Deployment tracking
+var deployment_state: DeploymentState = DeploymentState.DOCKED
+var docked_station_id: String = ""       # EntityRegistry station ID
+var docked_system_id: int = -1           # System where docked/deployed
+var deployed_npc_id: StringName = &""    # Transient: ShipLODManager NPC ref
+var deployed_command: StringName = &""   # Current command ID
+var deployed_command_params: Dictionary = {}
 
 
 static func create_bare(sid: StringName) -> FleetShip:
@@ -76,14 +86,20 @@ func get_total_equipment_value() -> int:
 
 
 func serialize() -> Dictionary:
-	return {
+	var d := {
 		"ship_id": String(ship_id),
 		"custom_name": custom_name,
 		"weapons": weapons.map(func(w): return String(w)),
 		"shield": String(shield_name),
 		"engine": String(engine_name),
 		"modules": modules.map(func(m): return String(m)),
+		"deployment_state": deployment_state,
+		"docked_station_id": docked_station_id,
+		"docked_system_id": docked_system_id,
+		"deployed_command": String(deployed_command),
+		"deployed_command_params": deployed_command_params,
 	}
+	return d
 
 
 static func deserialize(data: Dictionary) -> FleetShip:
@@ -96,4 +112,9 @@ static func deserialize(data: Dictionary) -> FleetShip:
 	fs.engine_name = StringName(data.get("engine", ""))
 	for m in data.get("modules", []):
 		fs.modules.append(StringName(m))
+	fs.deployment_state = data.get("deployment_state", DeploymentState.DOCKED) as DeploymentState
+	fs.docked_station_id = data.get("docked_station_id", "")
+	fs.docked_system_id = int(data.get("docked_system_id", -1))
+	fs.deployed_command = StringName(data.get("deployed_command", ""))
+	fs.deployed_command_params = data.get("deployed_command_params", {})
 	return fs

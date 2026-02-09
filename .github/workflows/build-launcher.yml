@@ -77,7 +77,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: SpaceGame Launcher ${{ steps.version.outputs.tag }}
+          name: Imperion Online Launcher ${{ steps.version.outputs.tag }}
           body: "Automated launcher build from commit ${{ github.sha }}"
           files: ${{ steps.find.outputs.exe }}
         env:

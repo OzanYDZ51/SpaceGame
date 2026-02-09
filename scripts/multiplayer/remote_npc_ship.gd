@@ -46,6 +46,9 @@ func _setup_model() -> void:
 	elif faction == &"friendly":
 		_ship_model.color_tint = Color(0.5, 1.0, 0.6)
 		_ship_model.engine_light_color = Color(0.2, 1.0, 0.4)
+	elif faction == &"player_fleet":
+		_ship_model.color_tint = Color(0.5, 0.7, 1.0)
+		_ship_model.engine_light_color = Color(0.3, 0.5, 1.0)
 	else:
 		_ship_model.color_tint = Color(0.8, 0.7, 1.0)
 		_ship_model.engine_light_color = Color(0.5, 0.4, 1.0)
@@ -56,6 +59,8 @@ func _setup_model() -> void:
 func _setup_name_label() -> void:
 	var data := ShipRegistry.get_ship_data(ship_id)
 	var display_name: String = String(data.ship_name) if data else String(ship_id)
+	if faction == &"player_fleet":
+		display_name += " [FLOTTE]"
 
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"
@@ -70,6 +75,8 @@ func _setup_name_label() -> void:
 		_name_label.modulate = Color(1.0, 0.4, 0.3, 0.8)
 	elif faction == &"friendly":
 		_name_label.modulate = Color(0.3, 1.0, 0.5, 0.8)
+	elif faction == &"player_fleet":
+		_name_label.modulate = Color(0.4, 0.65, 1.0, 0.9)
 	else:
 		_name_label.modulate = Color(0.7, 0.6, 1.0, 0.8)
 

@@ -1,4 +1,4 @@
-# SpaceGame - Claude Code Project Instructions
+# Imperion Online - Claude Code Project Instructions
 
 ## Project Overview
 A multiplayer open-world space game built with **Godot 4.6** (GDScript).

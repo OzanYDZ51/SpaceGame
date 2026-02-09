@@ -7,6 +7,10 @@ extends Node
 # Input actions are defined in code for reliability across keyboard layouts.
 # =============================================================================
 
+## Emitted after ShipFactory rebuilds the player ship (init + ship change).
+## Systems (HUD, MiningSystem, ShipNetworkSync) connect to self-rewire.
+signal player_ship_rebuilt(ship: ShipController)
+
 enum GameState { LOADING, PLAYING, PAUSED, MENU, DEAD, DOCKED }
 
 var current_state: GameState = GameState.LOADING
@@ -47,12 +51,14 @@ var _commerce_screen: CommerceScreen = null
 var _commerce_manager: CommerceManager = null
 var player_fleet: PlayerFleet = null
 var _route_manager: RouteManager = null
+var _fleet_deployment_mgr: FleetDeploymentManager = null
 var station_services: StationServices = null
 var _docked_station_idx: int = 0
 var _backend_state_loaded: bool = false
 var _discord_rpc: DiscordRPC = null
 var _event_reporter: EventReporter = null
 var _bug_report_screen: BugReportScreen = null
+var _fleet_panel: FleetManagementPanel = null
 
 
 func _ready() -> void:
@@ -170,6 +176,15 @@ func _setup_ui_managers() -> void:
 		_stellar_map.view_switch_requested.connect(func(): map_screen.switch_to_view(UnifiedMapScreen.ViewMode.GALAXY))
 		_stellar_map.navigate_to_requested.connect(_on_navigate_to_entity)
 		_screen_manager.register_screen("map", map_screen)
+
+	# Register Fleet Management Panel
+	_fleet_panel = FleetManagementPanel.new()
+	_fleet_panel.name = "FleetManagementPanel"
+	_screen_manager.register_screen("fleet", _fleet_panel)
+
+	# Connect station long press from stellar map
+	if _stellar_map:
+		_stellar_map.station_long_pressed.connect(_on_station_long_pressed)
 
 	# Register Clan screen
 	var clan_screen := ClanScreen.new()
@@ -318,6 +333,12 @@ func _initialize_game() -> void:
 	player_fleet.add_ship(starting_fleet_ship)
 	# Tell NetworkManager which ship we're flying (used during registration)
 	NetworkManager.local_ship_id = &"fighter_mk1"
+
+	# Fleet Deployment Manager
+	_fleet_deployment_mgr = FleetDeploymentManager.new()
+	_fleet_deployment_mgr.name = "FleetDeploymentManager"
+	add_child(_fleet_deployment_mgr)
+	_fleet_deployment_mgr.initialize(player_fleet)
 
 	# Commerce manager
 	_commerce_manager = CommerceManager.new()
@@ -546,6 +567,9 @@ func _setup_network() -> void:
 	NetworkManager.npc_spawned.connect(_on_npc_spawned)
 	NetworkManager.npc_died.connect(_on_npc_died)
 
+	# Connect fleet sync signals (client-side)
+	NetworkManager.fleet_ship_retrieved.connect(_on_remote_fleet_retrieved)
+
 	# Connect combat sync signals (client-side)
 	NetworkManager.remote_fire_received.connect(_on_remote_fire_received)
 
@@ -724,6 +748,10 @@ func _populate_wormhole_targets() -> void:
 
 
 func _on_system_unloading(_system_id: int) -> void:
+	# Auto-retrieve all deployed fleet ships before system unloads
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.auto_retrieve_all()
+
 	SaveManager.trigger_save("system_jump")
 	# Clear all remote player puppets — they'll be re-created when we receive
 	# states in the new system (filtered by system_id).
@@ -753,6 +781,33 @@ func _on_system_loaded(system_id: int) -> void:
 	# Notify route manager (continues multi-system autopilot)
 	if _route_manager:
 		_route_manager.on_system_loaded(system_id)
+
+	# Redeploy fleet ships that were deployed in this system (from save)
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.redeploy_saved_ships()
+
+
+func _on_station_long_pressed(station_id: String) -> void:
+	if _fleet_panel == null or _screen_manager == null or player_fleet == null:
+		return
+	var ent := EntityRegistry.get_entity(station_id)
+	if ent.is_empty():
+		return
+	var station_name: String = ent.get("name", "STATION")
+	var sys_id: int = current_system_id_safe()
+
+	# Check if player has any ships in this system
+	var ships_in_sys := player_fleet.get_ships_in_system(sys_id)
+	if ships_in_sys.is_empty():
+		if _toast_manager:
+			_toast_manager.show_toast("AUCUN VAISSEAU DANS CE SYSTEME")
+		return
+
+	_fleet_panel.setup(station_id, station_name, sys_id)
+	# Close map, open fleet panel
+	_screen_manager.close_screen("map")
+	await get_tree().process_frame
+	_screen_manager.open_screen("fleet")
 
 
 func _on_navigate_to_entity(entity_id: String) -> void:
@@ -850,6 +905,8 @@ func _on_npc_spawned(data: Dictionary) -> void:
 		lod_data.color_tint = Color(1.0, 0.55, 0.5)
 	elif fac == &"friendly":
 		lod_data.color_tint = Color(0.5, 1.0, 0.6)
+	elif fac == &"player_fleet":
+		lod_data.color_tint = Color(0.5, 0.7, 1.0)
 	else:
 		lod_data.color_tint = Color(0.8, 0.7, 1.0)
 
@@ -932,6 +989,23 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 		crate.global_position = local_pos
 		if universe_node:
 			universe_node.add_child(crate)
+
+
+# =============================================================================
+# FLEET SYNC (Client-side handlers)
+# =============================================================================
+
+func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: String) -> void:
+	# Another player retrieved their fleet ship — remove from our view
+	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
+		return  # Host handles retrieval locally
+	var npc_id := StringName(npc_id_str)
+	if _lod_manager:
+		var lod_data: ShipLODData = _lod_manager.get_ship_data(npc_id)
+		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			lod_data.node_ref.queue_free()
+		_lod_manager.unregister_ship(npc_id)
+	_remote_npcs.erase(npc_id)
 
 
 # =============================================================================
@@ -1175,6 +1249,8 @@ func _on_player_destroyed() -> void:
 	current_state = GameState.DEAD
 	if _route_manager:
 		_route_manager.cancel_route()
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.auto_retrieve_all()
 	if _discord_rpc:
 		_discord_rpc.update_from_game_state(current_state)
 	SaveManager.trigger_save("player_death")
@@ -1369,6 +1445,8 @@ func current_system_id_safe() -> int:
 func _initiate_wormhole_jump() -> void:
 	if _route_manager:
 		_route_manager.cancel_route()
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.auto_retrieve_all()
 	var wormhole := _system_transition.get_active_wormhole()
 	if wormhole == null:
 		return
@@ -1713,25 +1791,16 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 		for i in health.shield_current.size():
 			health.shield_current[i] = health.shield_max_per_facing
 
-	# Rewire HUD to new combat systems
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
-	if hud:
-		hud.set_ship(ship)
-		hud.set_health_system(ship.get_node_or_null("HealthSystem") as HealthSystem)
-		hud.set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
-		hud.set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
-		hud.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+	# Update fleet active index (must match the ship we're now flying)
+	if player_fleet:
+		for i in player_fleet.ships.size():
+			if player_fleet.ships[i].ship_id == ship_id:
+				player_fleet.set_active(i)
+				break
 
-	# Rewire mining system to new weapon manager
-	if _mining_system:
-		_mining_system.set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
-
-	# Reconnect player death signal
-	if health:
-		if not health.ship_destroyed.is_connected(_on_player_destroyed):
-			health.ship_destroyed.connect(_on_player_destroyed)
-
-	# Reconnect autopilot cancel signal
+	# Reconnect GameManager-owned signals
+	if health and not health.ship_destroyed.is_connected(_on_player_destroyed):
+		health.ship_destroyed.connect(_on_player_destroyed)
 	if not ship.autopilot_disengaged_by_player.is_connected(_on_autopilot_cancelled_by_player):
 		ship.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
 
@@ -1742,9 +1811,8 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 			player_lod.ship_id = data.ship_id
 			player_lod.ship_class = data.ship_class
 
-	# Reconnect ShipNetworkSync to new WeaponManager
-	if _ship_net_sync:
-		_ship_net_sync.reconnect_weapon_signal()
+	# Notify all systems to rewire (HUD, mining, network sync handle themselves)
+	player_ship_rebuilt.emit(ship)
 
 	# Notify multiplayer peers of ship change
 	NetworkManager.local_ship_id = ship_id

@@ -1,5 +1,5 @@
 // =========================================================================
-// SpaceGame Launcher — Frontend Logic
+// Imperion Online Launcher — Frontend Logic
 // Flow: Check saved auth → Login/Register → Check updates → Play
 // =========================================================================
 

@@ -48,13 +48,13 @@ func Load() *Config {
 	return &Config{
 		Env:         getEnv("ENV", "development"),
 		Port:        getEnv("PORT", "3000"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://spacegame:spacegame@localhost:5432/spacegame?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://imperion:imperion@localhost:5432/imperion?sslmode=disable"),
 		JWTSecret:   getEnv("JWT_SECRET", "dev-jwt-secret-not-for-production-use-64-chars-minimum-padding"),
 		ServerKey:   getEnv("SERVER_KEY", "dev-server-key"),
 		AdminKey:    getEnv("ADMIN_KEY", "dev-admin-key"),
 		GithubToken: getEnv("GITHUB_TOKEN", ""),
 		GithubOwner: getEnv("GITHUB_OWNER", "OzanYDZ51"),
-		GithubRepo:  getEnv("GITHUB_REPO", "SpaceGame"),
+		GithubRepo:  getEnv("GITHUB_REPO", "ImperionOnline"),
 		// Discord — file first, env var override
 		DiscordBotToken:      getEnvOr("DISCORD_BOT_TOKEN", dc.BotToken),
 		DiscordGuildID:       getEnvOr("DISCORD_GUILD_ID", dc.GuildID),
