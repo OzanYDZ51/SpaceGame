@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+
 	"spacegame-backend/internal/model"
 	"spacegame-backend/internal/service"
 
@@ -34,10 +36,10 @@ func (h *BugReportHandler) Submit(c *fiber.Ctx) error {
 	username, _ := c.Locals("username").(string)
 	system := "Inconnu"
 	if req.SystemID > 0 {
-		system = "Système #" + string(rune('0'+req.SystemID%10)) // Simple display
+		system = fmt.Sprintf("Système #%d", req.SystemID)
 	}
 
-	h.eventSvc.RecordBugReport(c.Context(), username, req.Title, req.Description, system, req.Position, req.SystemID)
+	h.eventSvc.RecordBugReport(c.Context(), username, req.Title, req.Description, system, req.Position, req.SystemID, req.GameVersion, req.ScreenshotB64)
 
 	return c.Status(201).JSON(fiber.Map{"status": "submitted"})
 }

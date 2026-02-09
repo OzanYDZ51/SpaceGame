@@ -283,13 +283,6 @@ func _collect_state() -> Dictionary:
 		var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
 		if em:
 			state["equipment"] = em.serialize()
-		var wm := ship.get_node_or_null("WeaponManager") as WeaponManager
-		if wm and not state.has("equipment"):
-			# Fallback: at least save hardpoints
-			var hardpoints: Array = []
-			for hp in wm.hardpoints:
-				hardpoints.append(str(hp.mounted_weapon.weapon_name) if hp.mounted_weapon else "")
-			state["equipment"] = {"hardpoints": hardpoints}
 
 	# Station services
 	if GameManager.station_services:

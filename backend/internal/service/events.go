@@ -55,18 +55,23 @@ func (s *EventService) RecordEconomyEvent(ctx context.Context, eventType, detail
 }
 
 // RecordBugReport saves a bug report and sends it to the bug-reports webhook.
-func (s *EventService) RecordBugReport(ctx context.Context, reporter, title, description, system, position string, systemID int) {
-	details, _ := json.Marshal(map[string]string{
+func (s *EventService) RecordBugReport(ctx context.Context, reporter, title, description, system, position string, systemID int, gameVersion, screenshotB64 string) {
+	detailsMap := map[string]string{
 		"title":       title,
 		"description": description,
 		"system":      system,
 		"position":    position,
-	})
+		"version":     gameVersion,
+	}
+	if screenshotB64 != "" {
+		detailsMap["screenshot_b64"] = screenshotB64
+	}
+	details, _ := json.Marshal(detailsMap)
 	_, err := s.eventRepo.Create(ctx, "bug_report", reporter, "", details, systemID)
 	if err != nil {
 		log.Printf("[events] failed to record bug report: %v", err)
 	}
-	s.webhooks.SendBugReport(reporter, title, description, system, position)
+	s.webhooks.SendBugReport(reporter, title, description, system, position, gameVersion)
 }
 
 // RecordClanEvent saves a clan event and sends it to the clan-activity webhook.

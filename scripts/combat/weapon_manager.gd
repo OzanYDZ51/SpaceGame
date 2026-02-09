@@ -49,9 +49,12 @@ func _create_hardpoints_from_configs(configs: Array[Dictionary], parent: Node3D)
 
 func equip_weapons(weapon_names: Array[StringName]) -> void:
 	for i in mini(weapon_names.size(), hardpoints.size()):
-		var weapon := WeaponRegistry.get_weapon(weapon_names[i])
-		if weapon:
-			hardpoints[i].mount_weapon(weapon)
+		if weapon_names[i] == &"":
+			hardpoints[i].unmount_weapon()
+		else:
+			var weapon := WeaponRegistry.get_weapon(weapon_names[i])
+			if weapon:
+				hardpoints[i].mount_weapon(weapon)
 	_recalculate_groups()
 
 

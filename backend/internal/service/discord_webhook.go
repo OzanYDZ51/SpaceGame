@@ -154,11 +154,14 @@ func (s *DiscordWebhookService) SendGameEvent(eventType, title, description stri
 }
 
 // SendBugReport posts a bug report to #bug-reports.
-func (s *DiscordWebhookService) SendBugReport(reporter, title, description, system, position string) {
+func (s *DiscordWebhookService) SendBugReport(reporter, title, description, system, position, gameVersion string) {
 	fields := []discordField{
 		{Name: "Rapporteur", Value: reporter, Inline: true},
 		{Name: "Système", Value: system, Inline: true},
 		{Name: "Position", Value: position, Inline: true},
+	}
+	if gameVersion != "" {
+		fields = append(fields, discordField{Name: "Version", Value: gameVersion, Inline: true})
 	}
 	s.send(s.webhookBugs, discordWebhookPayload{
 		Username: "Imperion Online Bug Reports",

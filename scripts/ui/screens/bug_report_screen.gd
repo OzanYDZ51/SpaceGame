@@ -152,6 +152,11 @@ func _update_context_info() -> void:
 
 
 func _on_submit() -> void:
+	if not AuthManager.is_authenticated:
+		if GameManager._toast_manager:
+			GameManager._toast_manager.show_toast("Connexion requise pour envoyer un rapport", UIToast.ToastType.ERROR)
+		return
+
 	var title_text: String = _title_input.get_text().strip_edges()
 	var desc_text: String = _desc_input.get_text().strip_edges()
 
@@ -196,6 +201,7 @@ func _on_submit() -> void:
 		"description": desc_text,
 		"system_id": system_id,
 		"position": position_str,
+		"game_version": Constants.GAME_VERSION,
 		"screenshot_b64": screenshot_b64,
 	}
 
@@ -223,7 +229,7 @@ func _on_submit() -> void:
 			_on_close()
 		else:
 			if GameManager._toast_manager:
-				GameManager._toast_manager.show_toast("Erreur d'envoi", UIToast.ToastType.ERROR)
+				GameManager._toast_manager.show_toast("Erreur d'envoi (code %d)" % code, UIToast.ToastType.ERROR)
 	)
 
 	http.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))

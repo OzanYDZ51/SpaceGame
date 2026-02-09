@@ -31,9 +31,10 @@ type GameEventRequest struct {
 
 // BugReportRequest is sent by a player to report a bug.
 type BugReportRequest struct {
-	Title        string `json:"title"`
-	Description  string `json:"description"`
-	SystemID     int    `json:"system_id"`
-	Position     string `json:"position"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	SystemID      int    `json:"system_id"`
+	Position      string `json:"position"`
+	GameVersion   string `json:"game_version"`
 	ScreenshotB64 string `json:"screenshot_b64,omitempty"`
 }

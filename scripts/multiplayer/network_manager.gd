@@ -473,27 +473,26 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 		sender_name = peers[sender_id].player_name
 
 	if is_server():
-		# Channel-scoped routing
+		# Channel-scoped routing — never relay back to sender (they already showed it locally)
 		match channel:
-			0, 3:  # GLOBAL, TRADE → broadcast to all
-				_rpc_receive_chat.rpc(sender_name, channel, text)
 			1:  # SYSTEM → only peers in same system
 				var sender_sys: int = peers[sender_id].system_id if peers.has(sender_id) else -1
 				for pid in get_peers_in_system(sender_sys):
+					if pid == sender_id:
+						continue
 					if pid == 1 and not is_dedicated_server:
 						chat_message_received.emit(sender_name, channel, text)
 					else:
 						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 				return
-			2:  # CLAN → only peers in same clan (if ClanManager exists)
-				# For now, broadcast to all (clan filtering TBD)
-				_rpc_receive_chat.rpc(sender_name, channel, text)
-			_:
-				_rpc_receive_chat.rpc(sender_name, channel, text)
-
-		# Deliver locally on host (for GLOBAL/TRADE/CLAN)
-		if not is_dedicated_server:
-			chat_message_received.emit(sender_name, channel, text)
+			_:  # GLOBAL, TRADE, CLAN, etc. → broadcast to all except sender
+				for pid in peers:
+					if pid == sender_id:
+						continue
+					if pid == 1 and not is_dedicated_server:
+						chat_message_received.emit(sender_name, channel, text)
+					else:
+						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 
 
 ## Server -> All/Some clients: Chat message broadcast.
@@ -552,18 +551,17 @@ func _deliver_whisper_from_host(target_name: String, text: String) -> void:
 func _relay_chat_from_host(channel: int, text: String) -> void:
 	var sender_name: String = local_player_name
 	match channel:
-		0, 3:  # GLOBAL, TRADE
-			_rpc_receive_chat.rpc(sender_name, channel, text)
 		1:  # SYSTEM → only peers in same system
 			var host_sys: int = peers[1].system_id if peers.has(1) else -1
 			for pid in get_peers_in_system(host_sys):
 				if pid == 1:
 					continue  # Host already showed message locally
 				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
-		2:  # CLAN
-			_rpc_receive_chat.rpc(sender_name, channel, text)
-		_:
-			_rpc_receive_chat.rpc(sender_name, channel, text)
+		_:  # GLOBAL, TRADE, CLAN → all clients (host already showed locally)
+			for pid in peers:
+				if pid == 1:
+					continue
+				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 
 
 ## Find a peer ID by player name (server-side only).

@@ -66,13 +66,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
-	# If present, set it and load backend state after game init.
-	# If absent (dev/offline), game starts normally with default values.
+	# Authentication is REQUIRED — the launcher handles login/register.
 	_read_auth_token_from_cli()
 	_initialize_game()
 
 	if AuthManager.is_authenticated:
 		_load_backend_state()
+	else:
+		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 
 
 func _read_auth_token_from_cli() -> void:
@@ -177,12 +178,22 @@ func _setup_ui_managers() -> void:
 		_stellar_map.navigate_to_requested.connect(_on_navigate_to_entity)
 		_screen_manager.register_screen("map", map_screen)
 
-	# Register Fleet Management Panel
+		# Pass fleet data to both map panels
+		if player_fleet and _galaxy:
+			_stellar_map.set_fleet(player_fleet, _galaxy)
+			map_screen.set_fleet(player_fleet, _galaxy)
+
+		# Connect fleet deploy/retrieve signals from stellar map
+		_stellar_map.fleet_deploy_requested.connect(_on_fleet_deploy_from_map)
+		_stellar_map.fleet_retrieve_requested.connect(_on_fleet_retrieve_from_map)
+		_stellar_map.fleet_command_change_requested.connect(_on_fleet_command_change_from_map)
+
+	# Register Fleet Management Panel (kept for backwards compatibility)
 	_fleet_panel = FleetManagementPanel.new()
 	_fleet_panel.name = "FleetManagementPanel"
 	_screen_manager.register_screen("fleet", _fleet_panel)
 
-	# Connect station long press from stellar map
+	# Connect station long press from stellar map (opens station detail in-map)
 	if _stellar_map:
 		_stellar_map.station_long_pressed.connect(_on_station_long_pressed)
 
@@ -313,6 +324,25 @@ func _initialize_game() -> void:
 	player_fleet = PlayerFleet.new()
 	var starting_fleet_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(&"fighter_mk1"))
 	player_fleet.add_ship(starting_fleet_ship)
+	# Equip starting loadout from fleet data (weapons + shield + engine + modules)
+	var start_wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+	if start_wm:
+		start_wm.equip_weapons(starting_fleet_ship.weapons)
+	var start_em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+	if start_em:
+		if starting_fleet_ship.shield_name != &"":
+			var shield_res := ShieldRegistry.get_shield(starting_fleet_ship.shield_name)
+			if shield_res:
+				start_em.equip_shield(shield_res)
+		if starting_fleet_ship.engine_name != &"":
+			var engine_res := EngineRegistry.get_engine(starting_fleet_ship.engine_name)
+			if engine_res:
+				start_em.equip_engine(engine_res)
+		for i in starting_fleet_ship.modules.size():
+			if starting_fleet_ship.modules[i] != &"":
+				var mod_res := ModuleRegistry.get_module(starting_fleet_ship.modules[i])
+				if mod_res:
+					start_em.equip_module(i, mod_res)
 	# Tell NetworkManager which ship we're flying (used during registration)
 	NetworkManager.local_ship_id = &"fighter_mk1"
 
@@ -484,7 +514,7 @@ func _load_backend_state() -> void:
 		_backend_state_loaded = true
 		print("GameManager: Backend state loaded and applied")
 	else:
-		print("GameManager: No backend state (new player or offline)")
+		print("GameManager: No backend state (new player)")
 
 
 func _notification(what: int) -> void:
@@ -769,26 +799,25 @@ func _on_system_loaded(system_id: int) -> void:
 
 
 func _on_station_long_pressed(station_id: String) -> void:
-	if _fleet_panel == null or _screen_manager == null or player_fleet == null:
+	# Open station detail directly in the map (no screen switch)
+	if _stellar_map == null or player_fleet == null:
 		return
-	var ent := EntityRegistry.get_entity(station_id)
-	if ent.is_empty():
-		return
-	var station_name: String = ent.get("name", "STATION")
-	var sys_id: int = current_system_id_safe()
+	_stellar_map._open_station_detail(station_id)
 
-	# Check if player has any ships in this system
-	var ships_in_sys := player_fleet.get_ships_in_system(sys_id)
-	if ships_in_sys.is_empty():
-		if _toast_manager:
-			_toast_manager.show_toast("AUCUN VAISSEAU DANS CE SYSTEME")
-		return
 
-	_fleet_panel.setup(station_id, station_name, sys_id)
-	# Close map, open fleet panel
-	_screen_manager.close_screen("map")
-	await get_tree().process_frame
-	_screen_manager.open_screen("fleet")
+func _on_fleet_deploy_from_map(fleet_index: int, command: StringName, params: Dictionary) -> void:
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.request_deploy(fleet_index, command, params)
+
+
+func _on_fleet_retrieve_from_map(fleet_index: int) -> void:
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.request_retrieve(fleet_index)
+
+
+func _on_fleet_command_change_from_map(fleet_index: int, command: StringName, params: Dictionary) -> void:
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.request_change_command(fleet_index, command, params)
 
 
 func _on_navigate_to_entity(entity_id: String) -> void:
@@ -1118,6 +1147,12 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Skip all game keybinds when a text field (chat, search, etc.) has focus
+	if event is InputEventKey:
+		var focus_owner := get_viewport().gui_get_focus_owner()
+		if focus_owner is LineEdit or focus_owner is TextEdit:
+			return
+
 	# Respawn on R when dead
 	if current_state == GameState.DEAD:
 		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_R:

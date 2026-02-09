@@ -14,6 +14,9 @@ var stellar_map: StellarMap = null
 var galaxy: GalaxyData = null
 var system_transition: SystemTransition = null
 
+# Fleet panel for galaxy view (independent scroll state from system view)
+var _galaxy_fleet_panel: MapFleetPanel = null
+
 var current_view: ViewMode = ViewMode.SYSTEM
 var _requested_view: ViewMode = ViewMode.SYSTEM
 
@@ -78,6 +81,17 @@ func _ready() -> void:
 	# In SYSTEM mode, StellarMap handles input/rendering; we're just an overlay for the indicator
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# Galaxy fleet panel (visible only in galaxy view)
+	_galaxy_fleet_panel = MapFleetPanel.new()
+	_galaxy_fleet_panel.name = "GalaxyFleetPanel"
+	_galaxy_fleet_panel.anchor_left = 0.0
+	_galaxy_fleet_panel.anchor_top = 0.0
+	_galaxy_fleet_panel.anchor_right = 1.0
+	_galaxy_fleet_panel.anchor_bottom = 1.0
+	_galaxy_fleet_panel.visible = false
+	_galaxy_fleet_panel.ship_selected.connect(_on_galaxy_fleet_ship_selected)
+	add_child(_galaxy_fleet_panel)
+
 
 ## Set the initial view before opening.
 func set_initial_view(view: int) -> void:
@@ -107,6 +121,8 @@ func _activate_system_view() -> void:
 	current_view = ViewMode.SYSTEM
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_is_panning = false
+	if _galaxy_fleet_panel:
+		_galaxy_fleet_panel.visible = false
 	# Force redraw to clear stale galaxy rendering (opaque background)
 	queue_redraw()
 	if stellar_map:
@@ -120,6 +136,8 @@ func _activate_system_view() -> void:
 func _activate_galaxy_view() -> void:
 	current_view = ViewMode.GALAXY
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	if _galaxy_fleet_panel:
+		_galaxy_fleet_panel.visible = true
 	# Remember previewed system before clearing
 	var was_previewing: int = _preview_system_id
 	# Clear preview mode if active
@@ -201,6 +219,8 @@ func _process(delta: float) -> void:
 	modulate.a = 1.0
 	# Always redraw while open for real-time updates
 	queue_redraw()
+	if _galaxy_fleet_panel and _galaxy_fleet_panel.visible:
+		_galaxy_fleet_panel.queue_redraw()
 	_galaxy_dirty = false
 
 
@@ -747,13 +767,19 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	# Mouse zoom
+	# Mouse zoom (route through fleet panel first)
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			if _galaxy_fleet_panel and _galaxy_fleet_panel.handle_scroll(event.position, 1):
+				get_viewport().set_input_as_handled()
+				return
 			_zoom_at(event.position, ZOOM_STEP)
 			get_viewport().set_input_as_handled()
 			return
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if _galaxy_fleet_panel and _galaxy_fleet_panel.handle_scroll(event.position, -1):
+				get_viewport().set_input_as_handled()
+				return
 			_zoom_at(event.position, 1.0 / ZOOM_STEP)
 			get_viewport().set_input_as_handled()
 			return
@@ -764,8 +790,11 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Click to select
+		# Click - route through fleet panel first, then galaxy selection
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			if _galaxy_fleet_panel and _galaxy_fleet_panel.handle_click(event.position):
+				get_viewport().set_input_as_handled()
+				return
 			_handle_click(event.position)
 			get_viewport().set_input_as_handled()
 			return
@@ -1037,6 +1066,27 @@ func _start_route_to_selected() -> void:
 	GameManager.start_galaxy_route(_selected_system)
 	# Close the map
 	close()
+
+
+func set_fleet(fleet: PlayerFleet, gal: GalaxyData) -> void:
+	if _galaxy_fleet_panel:
+		_galaxy_fleet_panel.set_fleet(fleet)
+		_galaxy_fleet_panel.set_galaxy(gal)
+
+
+func _on_galaxy_fleet_ship_selected(fleet_index: int, system_id: int) -> void:
+	# Center galaxy camera on the ship's system
+	if galaxy == null or system_id < 0:
+		return
+	var sys: Dictionary = galaxy.get_system(system_id)
+	if sys.is_empty():
+		return
+	_cam_center = Vector2(sys["x"], sys["y"])
+	_selected_system = system_id
+	_info_system = sys
+	_info_visible = true
+	_resolve_system_data(system_id)
+	_galaxy_dirty = true
 
 
 ## Override _gui_input — galaxy uses _input() instead, system mode uses StellarMap.

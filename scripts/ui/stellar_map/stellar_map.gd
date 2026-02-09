@@ -11,6 +11,8 @@ var _camera: MapCamera = null
 var _renderer: MapRenderer = null
 var _entity_layer: MapEntities = null
 var _info_panel: MapInfoPanel = null
+var _fleet_panel: MapFleetPanel = null
+var _station_detail: MapStationDetail = null
 var _search: MapSearch = null
 var _legend: MapLegend = null
 
@@ -25,6 +27,9 @@ var managed_externally: bool = false
 signal view_switch_requested
 signal navigate_to_requested(entity_id: String)
 signal station_long_pressed(station_id: String)
+signal fleet_deploy_requested(fleet_index: int, command: StringName, params: Dictionary)
+signal fleet_retrieve_requested(fleet_index: int)
+signal fleet_command_change_requested(fleet_index: int, command: StringName, params: Dictionary)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
 var _preview_entities: Dictionary = {}
@@ -101,6 +106,24 @@ func _build_children() -> void:
 	_setup_full_rect(_info_panel)
 	_info_panel.camera = _camera
 	add_child(_info_panel)
+
+	# Fleet panel (left side)
+	_fleet_panel = MapFleetPanel.new()
+	_fleet_panel.name = "MapFleetPanel"
+	_setup_full_rect(_fleet_panel)
+	_fleet_panel.ship_selected.connect(_on_fleet_ship_selected)
+	add_child(_fleet_panel)
+
+	# Station detail panel (right side, replaces info panel)
+	_station_detail = MapStationDetail.new()
+	_station_detail.name = "MapStationDetail"
+	_setup_full_rect(_station_detail)
+	_station_detail.visible = false
+	_station_detail.deploy_requested.connect(func(fi, cmd, params): fleet_deploy_requested.emit(fi, cmd, params))
+	_station_detail.retrieve_requested.connect(func(fi): fleet_retrieve_requested.emit(fi))
+	_station_detail.command_change_requested.connect(func(fi, cmd, params): fleet_command_change_requested.emit(fi, cmd, params))
+	_station_detail.closed.connect(_on_station_detail_closed)
+	add_child(_station_detail)
 
 	# Search bar
 	_search = MapSearch.new()
@@ -213,6 +236,8 @@ func close() -> void:
 	visible = false
 	_is_panning = false
 	_search.close()
+	if _station_detail.is_active():
+		_station_detail.close()
 
 	# Restore mouse capture (skip when managed — UIScreenManager handles it)
 	if _was_mouse_captured and not managed_externally:
@@ -270,6 +295,9 @@ func _process(delta: float) -> void:
 	# Always redraw while open so entity positions update in real-time
 	_renderer.queue_redraw()
 	_entity_layer.queue_redraw()
+	_fleet_panel.queue_redraw()
+	if _station_detail.is_active():
+		_station_detail.queue_redraw()
 	if _dirty:
 		_info_panel.queue_redraw()
 		_dirty = false
@@ -290,6 +318,11 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		# Close on Escape or M (unless managed externally)
 		if event.physical_keycode == KEY_ESCAPE:
+			# If station detail is open, close it first
+			if _station_detail.is_active():
+				_station_detail.close()
+				get_viewport().set_input_as_handled()
+				return
 			if managed_externally:
 				# Don't consume — let UIScreenManager handle close via close_top()
 				return
@@ -371,14 +404,26 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	# Mouse wheel = zoom
+	# Mouse wheel = zoom (route through panels first)
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			if _fleet_panel.handle_scroll(event.position, 1):
+				get_viewport().set_input_as_handled()
+				return
+			if _station_detail.handle_scroll(event.position, 1):
+				get_viewport().set_input_as_handled()
+				return
 			_camera.zoom_at(event.position, MapCamera.ZOOM_STEP)
 			_dirty = true
 			get_viewport().set_input_as_handled()
 			return
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if _fleet_panel.handle_scroll(event.position, -1):
+				get_viewport().set_input_as_handled()
+				return
+			if _station_detail.handle_scroll(event.position, -1):
+				get_viewport().set_input_as_handled()
+				return
 			_camera.zoom_at(event.position, 1.0 / MapCamera.ZOOM_STEP)
 			_dirty = true
 			get_viewport().set_input_as_handled()
@@ -392,9 +437,18 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Left click = select entity (+ double-click + hold detection)
+		# Left click = route through panels, then select entity
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
+				# Fleet panel gets first priority (left side)
+				if _fleet_panel.handle_click(event.position):
+					get_viewport().set_input_as_handled()
+					return
+				# Station detail gets second priority (right side)
+				if _station_detail.is_active() and _station_detail.handle_click(event.position):
+					get_viewport().set_input_as_handled()
+					return
+
 				var hit_id: String = _entity_layer.get_entity_at(event.position)
 				var now: float = Time.get_ticks_msec() / 1000.0
 
@@ -404,11 +458,19 @@ func _input(event: InputEvent) -> void:
 				_hold_start_pos = event.position
 				_hold_triggered = false
 
-				# Double-click: same entity within 0.4s -> navigate to it
+				# Second click on same station -> open station detail
 				if hit_id != "" and hit_id == _last_click_id and (now - _last_click_time) < 0.4:
-					navigate_to_requested.emit(hit_id)
-					_last_click_id = ""
+					var ent := EntityRegistry.get_entity(hit_id)
+					if not ent.is_empty() and ent.get("type") == EntityRegistrySystem.EntityType.STATION:
+						_open_station_detail(hit_id)
+						_last_click_id = ""
+					else:
+						navigate_to_requested.emit(hit_id)
+						_last_click_id = ""
 				else:
+					# Close station detail if clicking elsewhere
+					if _station_detail.is_active():
+						_station_detail.close()
 					_select_entity(hit_id)
 					_last_click_id = hit_id
 					_last_click_time = now
@@ -467,6 +529,48 @@ func _sync_filters() -> void:
 	# Entity layer and renderer share the same dict reference, but update dirty
 	_entity_layer.filters = _filters
 	_renderer.filters = _filters
+	_dirty = true
+
+
+func set_fleet(fleet: PlayerFleet, galaxy: GalaxyData) -> void:
+	_fleet_panel.set_fleet(fleet)
+	_fleet_panel.set_galaxy(galaxy)
+	_station_detail.set_fleet(fleet)
+
+
+func _on_fleet_ship_selected(fleet_index: int, system_id: int) -> void:
+	# Center map on the entity if in current system
+	if _fleet_panel._fleet == null:
+		return
+	var fs := _fleet_panel._fleet.ships[fleet_index]
+	# If ship is docked at a station, try to center on that station
+	if fs.docked_station_id != "":
+		var ent := EntityRegistry.get_entity(fs.docked_station_id)
+		if not ent.is_empty():
+			_center_on_entity(fs.docked_station_id)
+			return
+	# For deployed ships, try to find their NPC in EntityRegistry
+	if fs.deployed_npc_id != &"":
+		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+		if not ent.is_empty():
+			_center_on_entity(String(fs.deployed_npc_id))
+			return
+
+
+func _on_station_detail_closed() -> void:
+	_info_panel.visible = true
+	_dirty = true
+
+
+func _open_station_detail(station_id: String) -> void:
+	var ent := EntityRegistry.get_entity(station_id)
+	if ent.is_empty():
+		return
+	var station_name: String = ent.get("name", "STATION")
+	var station_type: String = ent.get("extra", {}).get("station_type", "")
+	var sys_id: int = GameManager.current_system_id_safe()
+	_info_panel.visible = false
+	_station_detail.open_station(station_id, station_name, station_type, sys_id)
 	_dirty = true
 
 

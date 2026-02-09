@@ -83,8 +83,8 @@ func _ready() -> void:
 	_build_chat()
 	_add_system_messages()
 
-	# Don't capture mouse on the main control, only children handle it
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Stop mouse events from passing through to the game (e.g. firing weapons)
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _build_chat() -> void:
@@ -102,7 +102,7 @@ func _build_chat() -> void:
 	_panel_bg = Control.new()
 	_panel_bg.anchor_right = 1.0
 	_panel_bg.anchor_bottom = 1.0
-	_panel_bg.mouse_filter = Control.MOUSE_FILTER_PASS
+	_panel_bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel_bg.draw.connect(_draw_panel_bg.bind(_panel_bg))
 	add_child(_panel_bg)
 
@@ -113,14 +113,14 @@ func _build_chat() -> void:
 	tab_bar.offset_bottom = 26
 	tab_bar.offset_left = 2
 	tab_bar.offset_right = -2
-	tab_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tab_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(tab_bar)
 
 	_tab_container = HBoxContainer.new()
 	_tab_container.anchor_right = 1.0
 	_tab_container.anchor_bottom = 1.0
 	_tab_container.add_theme_constant_override("separation", 2)
-	_tab_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tab_container.mouse_filter = Control.MOUSE_FILTER_PASS
 	tab_bar.add_child(_tab_container)
 
 	for ch in Channel.values():
@@ -186,7 +186,7 @@ func _build_chat() -> void:
 	_message_scroll.offset_left = 4
 	_message_scroll.offset_right = -4
 	_message_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_message_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	_message_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Scrollbar style
 	var sb_style := StyleBoxFlat.new()
@@ -265,7 +265,7 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
 
-	if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+	if event.physical_keycode == KEY_ENTER or event.physical_keycode == KEY_KP_ENTER:
 		if not _is_focused and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			_input_field.grab_focus()
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -275,10 +275,12 @@ func _input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			get_viewport().set_input_as_handled()
 		elif _is_focused:
-			# Enter with text: let LineEdit handle it, but consume so ship doesn't react
-			get_viewport().set_input_as_handled()
-	elif _is_focused:
-		# Chat has focus: consume ALL keyboard events so ship doesn't move while typing
+			# Enter with text: DON'T consume — let LineEdit receive it for text_submitted
+			pass
+	elif event.physical_keycode == KEY_ESCAPE and _is_focused:
+		_input_field.clear()
+		_input_field.release_focus()
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		get_viewport().set_input_as_handled()
 
 

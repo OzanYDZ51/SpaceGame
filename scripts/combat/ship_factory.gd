@@ -74,9 +74,6 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 
 	wm.setup_hardpoints_from_configs(scene_result.configs, controller, hp_root)
 
-	# Equip default weapons from ShipData
-	wm.equip_weapons(data.default_loadout)
-
 	# Set up weapon groups: S weapons in group 0, M weapons in group 1, L in group 2
 	var group_s: Array = []
 	var group_m: Array = []

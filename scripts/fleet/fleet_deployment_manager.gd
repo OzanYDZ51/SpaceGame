@@ -240,7 +240,7 @@ func get_deployed_npc(fleet_index: int) -> ShipController:
 # MULTIPLAYER-AWARE PUBLIC API
 # =========================================================================
 # These methods route through server RPCs when connected to multiplayer,
-# or execute locally when offline/singleplayer.
+# or execute locally in singleplayer.
 
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
@@ -254,7 +254,7 @@ func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 		else:
 			deploy_ship(fleet_index, cmd, params)
 	else:
-		# Offline / singleplayer
+		# Singleplayer
 		deploy_ship(fleet_index, cmd, params)
 
 

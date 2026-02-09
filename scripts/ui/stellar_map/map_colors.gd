@@ -44,6 +44,19 @@ const NPC_NEUTRAL := Color(0.7, 0.55, 1.0, 0.8)
 const NPC_SHIP := Color(0.6, 0.6, 0.7, 0.7)  # fallback
 const FLEET_SHIP := Color(0.4, 0.65, 1.0, 0.95)  # Blue for player fleet
 
+# --- Fleet panel (left side) ---
+const FLEET_PANEL_BG := Color(0.0, 0.02, 0.05, 0.9)
+const FLEET_STATUS_ACTIVE := Color(0.2, 1.0, 0.5, 0.9)
+const FLEET_STATUS_DOCKED := Color(0.5, 0.6, 0.7, 0.7)
+const FLEET_STATUS_DEPLOYED := Color(0.4, 0.7, 1.0, 0.9)
+const FLEET_STATUS_DESTROYED := Color(1.0, 0.3, 0.2, 0.8)
+
+# --- Station detail panel (right side) ---
+const STATION_DETAIL_BG := Color(0.0, 0.03, 0.06, 0.9)
+const ACTION_BUTTON := Color(0.1, 0.5, 0.9, 0.9)
+const ACTION_BUTTON_HOVER := Color(0.2, 0.6, 1.0, 1.0)
+const ACTION_BUTTON_DANGER := Color(0.8, 0.3, 0.1, 0.9)
+
 # Filter indicator
 const FILTER_ACTIVE := Color(0.15, 0.85, 1.0, 0.7)
 const FILTER_INACTIVE := Color(0.4, 0.4, 0.5, 0.3)
