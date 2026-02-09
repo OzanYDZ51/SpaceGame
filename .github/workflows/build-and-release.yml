@@ -94,8 +94,8 @@ jobs:
       - name: Post devlog to Discord
         if: success()
         run: |
-          # Extract commit message (community-friendly summary)
-          MSG=$(git log -1 --pretty=%B --skip=1 | head -20)
+          # Extract commit message (community-friendly summary, strip Co-Authored-By trailers)
+          MSG=$(git log -1 --pretty=%B --skip=1 | grep -v 'Co-Authored-By:' | sed '/^[[:space:]]*$/d' | head -20)
           VERSION="${{ steps.version.outputs.version }}"
 
           # Post to backend changelog API (stores in DB + sends Discord webhook)
