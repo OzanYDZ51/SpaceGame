@@ -9,7 +9,7 @@ extends Node
 
 signal entered(station_name: String)
 signal left()
-signal ship_change_requested(ship_id: StringName)
+signal ship_change_requested(fleet_index: int)
 
 var is_active: bool = false
 var station_name: String = ""
@@ -95,15 +95,15 @@ func enter(ctx: Dictionary) -> void:
 		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
 	# Setup ship selection cycling (A/D keys) — only owned ships
-	var ship_ctrl := player_ship as ShipController
-	var current_ship_id: StringName = ship_ctrl.ship_data.ship_id if ship_ctrl and ship_ctrl.ship_data else &"fighter_mk1"
-	var owned_ids: Array[StringName] = []
-	if GameManager.player_fleet:
-		for fs in GameManager.player_fleet.ships:
-			owned_ids.append(fs.ship_id)
-	hangar_scene.setup_ship_selection(current_ship_id, owned_ids)
+	var fleet_indices: Array = _get_switchable_fleet_indices()
+	var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
+	hangar_scene.setup_ship_selection(active_idx, fleet_indices)
 	if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
 		hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
+
+	# Refresh hangar list when fleet changes (e.g. buying a new ship)
+	if GameManager.player_fleet and not GameManager.player_fleet.fleet_changed.is_connected(_on_fleet_changed):
+		GameManager.player_fleet.fleet_changed.connect(_on_fleet_changed)
 
 	entered.emit(station_name)
 
@@ -157,13 +157,39 @@ func leave(ctx: Dictionary) -> void:
 	if ship_cam:
 		ship_cam.current = true
 
+	# Disconnect fleet change listener
+	if GameManager.player_fleet and GameManager.player_fleet.fleet_changed.is_connected(_on_fleet_changed):
+		GameManager.player_fleet.fleet_changed.disconnect(_on_fleet_changed)
+
 	is_active = false
 	station_name = ""
 	left.emit()
 
 
-func _on_hangar_ship_selected(ship_id: StringName) -> void:
-	ship_change_requested.emit(ship_id)
+func _on_hangar_ship_selected(fleet_index: int) -> void:
+	ship_change_requested.emit(fleet_index)
+
+
+func _on_fleet_changed() -> void:
+	if hangar_scene == null or not is_active:
+		return
+	var fleet_indices: Array = _get_switchable_fleet_indices()
+	var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
+	hangar_scene.refresh_ship_list(active_idx, fleet_indices)
+
+
+func _get_switchable_fleet_indices() -> Array:
+	var result: Array[int] = []
+	if GameManager.player_fleet == null:
+		return result
+	for i in GameManager.player_fleet.ships.size():
+		var fs := GameManager.player_fleet.ships[i]
+		# Can only switch to docked ships (not deployed/destroyed)
+		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+			result.append(i)
+		elif i == GameManager.player_fleet.active_index:
+			result.append(i)  # Always include active ship
+	return result
 
 
 func repair_ship(ship: Node3D) -> void:

@@ -95,14 +95,8 @@ func apply_state(state: Dictionary) -> void:
 	if state.is_empty():
 		return
 
-	# Ship
+	# Ship — deferred until after fleet is restored (see below)
 	var ship_id: String = state.get("current_ship_id", "fighter_mk1")
-	var ship := GameManager.player_ship as ShipController
-	if ship and ship_id != "":
-		# Only change ship if different from current
-		var current_model := ship.get_node_or_null("ShipModel") as ShipModel
-		if current_model == null or str(ship.ship_data.ship_id if ship.ship_data else &"fighter_mk1") != ship_id:
-			GameManager._on_ship_change_requested(StringName(ship_id))
 
 	# Position
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
@@ -172,6 +166,7 @@ func apply_state(state: Dictionary) -> void:
 			cargo.add_items(items_to_add)
 
 	# Equipment
+	var ship := GameManager.player_ship as ShipController
 	var equipment: Dictionary = state.get("equipment", {})
 	if not equipment.is_empty() and ship:
 		var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
@@ -211,6 +206,22 @@ func apply_state(state: Dictionary) -> void:
 			GameManager._fleet_deployment_mgr.initialize(GameManager.player_fleet)
 		if GameManager._commerce_manager:
 			GameManager._commerce_manager.player_fleet = GameManager.player_fleet
+
+	# Ship change (now that fleet is restored, use active_index)
+	ship = GameManager.player_ship as ShipController
+	if ship and ship_id != "":
+		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else &"fighter_mk1")
+		if current_sid != ship_id and GameManager.player_fleet:
+			# Find fleet index for saved ship_id (prefer active_index)
+			var target_idx: int = GameManager.player_fleet.active_index
+			var active_fs := GameManager.player_fleet.get_active()
+			if active_fs == null or str(active_fs.ship_id) != ship_id:
+				# Active doesn't match, search for it
+				for i in GameManager.player_fleet.ships.size():
+					if str(GameManager.player_fleet.ships[i].ship_id) == ship_id:
+						target_idx = i
+						break
+			GameManager._on_ship_change_requested(target_idx)
 
 	# Kills & deaths
 	# These are tracked on the backend, not locally (read-only here)

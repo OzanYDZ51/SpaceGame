@@ -84,7 +84,7 @@ func _draw() -> void:
 		draw_rect(rect, Color(0.05, 0.15, 0.25, 0.8))
 		draw_rect(rect, UITheme.BORDER, false, 1.0)
 
-		draw_string(font, Vector2(rect.position.x + 12, rect.position.y + 22), display_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 24, UITheme.FONT_SIZE_BODY, UITheme.TEXT_PRIMARY)
+		draw_string(font, Vector2(rect.position.x + 12, rect.position.y + 22), display_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 24, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 		draw_string(font, Vector2(rect.position.x + 12, rect.position.y + 40), description, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 24, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 

@@ -72,8 +72,8 @@ func _rebuild_cards() -> void:
 		return
 
 	# Gather ships docked at this station + deployed in this system
-	var docked_indices := _fleet.get_ships_at_station(station_id)
-	var deployed_indices := _fleet.get_deployed_in_system(system_id)
+	var docked_indices: Array[int] = _fleet.get_ships_at_station(station_id)
+	var deployed_indices: Array[int] = _fleet.get_deployed_in_system(system_id)
 
 	# Add docked ships first, then deployed
 	for idx in docked_indices:
@@ -159,7 +159,7 @@ func _draw_ship_card(font: Font, rect: Rect2, card: FleetShipCard) -> void:
 	draw_rect(rect, border_col, false, 1.0)
 
 	# Ship name
-	var name_col: Color = UITheme.TEXT_PRIMARY if not card.is_active else Color(0.2, 1.0, 0.5, 0.9)
+	var name_col: Color = UITheme.TEXT if not card.is_active else Color(0.2, 1.0, 0.5, 0.9)
 	draw_string(font, rect.position + Vector2(12, 22), card.custom_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 24, UITheme.FONT_SIZE_BODY, name_col)
 
 	# Status label
@@ -204,7 +204,7 @@ func _draw_detail_panel(font: Font) -> void:
 	var y: float = DETAIL_Y + 30.0
 
 	# Ship name
-	draw_string(font, Vector2(DETAIL_X + 20, y), fs.custom_name, HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 40, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_PRIMARY)
+	draw_string(font, Vector2(DETAIL_X + 20, y), fs.custom_name, HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 40, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 30.0
 
 	# Ship class

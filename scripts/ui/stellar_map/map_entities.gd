@@ -14,6 +14,10 @@ var _pulse_t: float = 0.0
 var _player_id: String = ""
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 
+# Hold progress (set by StellarMap for visual feedback)
+var hold_entity_id: String = ""
+var hold_progress: float = 0.0  # 0..1
+
 const HIT_RADIUS: float = 16.0  # click detection radius in pixels
 
 # Draw order: background entities first, player always on top
@@ -60,6 +64,25 @@ func _draw() -> void:
 		for ent in entities.values():
 			if ent["type"] == draw_type:
 				_draw_entity(ent, font)
+
+	# Hold progress arc (AoE-style ring that fills while holding on a station)
+	if hold_entity_id != "" and hold_progress > 0.0 and entities.has(hold_entity_id):
+		var held_ent: Dictionary = entities[hold_entity_id]
+		var held_pos: Vector2 = camera.universe_to_screen(held_ent["pos_x"], held_ent["pos_z"])
+		var arc_radius: float = 22.0
+		var arc_width: float = 3.0
+		# Background ring (dim)
+		draw_arc(held_pos, arc_radius, 0, TAU, 48, Color(1.0, 0.8, 0.2, 0.15), arc_width, true)
+		# Progress arc (clockwise from top: -PI/2 to -PI/2 + progress * TAU)
+		var start_angle: float = -PI / 2.0
+		var end_angle: float = start_angle + hold_progress * TAU
+		var arc_segments: int = maxi(4, int(48.0 * hold_progress))
+		var arc_col := Color(1.0, 0.8, 0.2, 0.9)
+		draw_arc(held_pos, arc_radius, start_angle, end_angle, arc_segments, arc_col, arc_width, true)
+		# Bright dot at the leading edge
+		var dot_angle: float = end_angle
+		var dot_pos: Vector2 = held_pos + Vector2(cos(dot_angle), sin(dot_angle)) * arc_radius
+		draw_circle(dot_pos, arc_width * 0.8, Color(1.0, 0.9, 0.4, 1.0))
 
 	# Off-screen indicator for selected entity
 	if selected_id != "":

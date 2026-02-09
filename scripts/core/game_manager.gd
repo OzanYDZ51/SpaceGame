@@ -1753,10 +1753,16 @@ func _build_dock_context(station_name: String) -> Dictionary:
 	}
 
 
-func _on_ship_change_requested(ship_id: StringName) -> void:
+func _on_ship_change_requested(fleet_index: int) -> void:
 	if current_state != GameState.DOCKED or player_ship == null:
 		return
+	if player_fleet == null or fleet_index < 0 or fleet_index >= player_fleet.ships.size():
+		return
+	if fleet_index == player_fleet.active_index:
+		return  # Already flying this ship
 
+	var fs := player_fleet.ships[fleet_index]
+	var ship_id := fs.ship_id
 	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null:
 		push_error("GameManager: Unknown ship_id '%s' for ship change" % ship_id)
@@ -1784,6 +1790,26 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 	# Rebuild with new ship
 	ShipFactory.setup_player_ship(ship_id, ship)
 
+	# Equip FleetShip's loadout (weapons, shield, engine, modules)
+	var wm := ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm and not fs.weapons.is_empty():
+		wm.equip_weapons(fs.weapons)
+	var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
+	if em:
+		if fs.shield_name != &"":
+			var shield_res := ShieldRegistry.get_shield(fs.shield_name)
+			if shield_res:
+				em.equip_shield(shield_res)
+		if fs.engine_name != &"":
+			var engine_res := EngineRegistry.get_engine(fs.engine_name)
+			if engine_res:
+				em.equip_engine(engine_res)
+		for i in fs.modules.size():
+			if fs.modules[i] != &"":
+				var mod_res := ModuleRegistry.get_module(fs.modules[i])
+				if mod_res:
+					em.equip_module(i, mod_res)
+
 	# Repair the new ship (full hull + shields)
 	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
 	if health:
@@ -1791,12 +1817,8 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 		for i in health.shield_current.size():
 			health.shield_current[i] = health.shield_max_per_facing
 
-	# Update fleet active index (must match the ship we're now flying)
-	if player_fleet:
-		for i in player_fleet.ships.size():
-			if player_fleet.ships[i].ship_id == ship_id:
-				player_fleet.set_active(i)
-				break
+	# Update fleet active index
+	player_fleet.set_active(fleet_index)
 
 	# Reconnect GameManager-owned signals
 	if health and not health.ship_destroyed.is_connected(_on_player_destroyed):

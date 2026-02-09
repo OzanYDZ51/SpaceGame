@@ -7,7 +7,7 @@ extends Node3D
 # Handles: mouse parallax, idle sway, prompt overlay, ship selection cycling.
 # =============================================================================
 
-signal ship_selected(ship_id: StringName)
+signal ship_selected(fleet_index: int)
 
 const LOOK_YAW_RANGE: float = 40.0
 const LOOK_PITCH_RANGE: float = 20.0
@@ -32,7 +32,7 @@ var _preview_local_rot: Vector3 = Vector3.ZERO
 var _preview_local_scale: Vector3 = Vector3.ONE
 
 # Ship selection state
-var _ship_ids: Array[StringName] = []
+var _fleet_indices: Array[int] = []
 var _current_index: int = 0
 var _arrow_left: MeshInstance3D = null
 var _arrow_right: MeshInstance3D = null
@@ -94,7 +94,7 @@ func _draw_prompt() -> void:
 		Color(0.15, 0.6, 0.8, 0.2 * pulse), 1.0)
 
 	# Ship selection prompt (above main prompt)
-	if _selection_active and _ship_ids.size() > 1:
+	if _selection_active and _fleet_indices.size() > 1:
 		var sel_cy := s.y - 84.0
 		var sel_pill_w := 300.0
 		var sel_pill_h := 22.0
@@ -148,7 +148,7 @@ func _process(delta: float) -> void:
 	_camera.position.y = _cam_base_pos.y + sway_y
 
 	# Arrow pulse animation
-	if _selection_active and _ship_ids.size() > 1:
+	if _selection_active and _fleet_indices.size() > 1:
 		var pulse_scale: float = 1.0 + sin(_cam_t * 3.0) * 0.1
 		if _arrow_left:
 			_arrow_left.scale = Vector3.ONE * pulse_scale
@@ -162,31 +162,24 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _selection_active or terminal_open:
 		return
-	if _ship_ids.size() <= 1:
+	if _fleet_indices.size() <= 1:
 		return
 	if not (event is InputEventKey) or not event.pressed:
 		return
 
 	var changed := false
 	if event.physical_keycode == KEY_A:
-		_current_index = (_current_index - 1 + _ship_ids.size()) % _ship_ids.size()
+		_current_index = (_current_index - 1 + _fleet_indices.size()) % _fleet_indices.size()
 		changed = true
 	elif event.physical_keycode == KEY_D:
-		_current_index = (_current_index + 1) % _ship_ids.size()
+		_current_index = (_current_index + 1) % _fleet_indices.size()
 		changed = true
 
 	if changed:
 		get_viewport().set_input_as_handled()
-		var new_id: StringName = _ship_ids[_current_index]
-		var data := ShipRegistry.get_ship_data(new_id)
-		if data:
-			var configs := ShipFactory.get_hardpoint_configs(new_id)
-			var model_rot := ShipFactory.get_model_rotation(new_id)
-			var rb := ShipFactory.get_root_basis(new_id)
-			var sms := ShipFactory.get_scene_model_scale(new_id)
-			display_ship(data.model_path, sms, configs, data.default_loadout, model_rot, rb)
-			_update_ship_labels(data)
-			ship_selected.emit(new_id)
+		var fleet_idx: int = _fleet_indices[_current_index]
+		_display_fleet_ship(fleet_idx)
+		ship_selected.emit(fleet_idx)
 
 
 func display_ship(ship_model_path: String, ship_model_scale: float, hp_configs: Array[Dictionary] = [], weapon_names: Array[StringName] = [], model_rotation: Vector3 = Vector3.ZERO, root_basis: Basis = Basis.IDENTITY) -> void:
@@ -220,26 +213,53 @@ func display_ship(ship_model_path: String, ship_model_scale: float, hp_configs: 
 		_docked_ship.apply_equipment(hp_configs, weapon_names, root_basis)
 
 
-func setup_ship_selection(current_ship_id: StringName, owned_ids: Array[StringName] = []) -> void:
-	_ship_ids.clear()
-	if owned_ids.is_empty():
-		_ship_ids = ShipRegistry.get_all_ship_ids()
-	else:
-		_ship_ids.assign(owned_ids)
-	# Sort for consistent ordering
-	_ship_ids.sort()
-	_current_index = _ship_ids.find(current_ship_id)
+func setup_ship_selection(active_fleet_index: int, fleet_indices: Array[int]) -> void:
+	_fleet_indices.clear()
+	_fleet_indices.assign(fleet_indices)
+	_current_index = _fleet_indices.find(active_fleet_index)
 	if _current_index < 0:
 		_current_index = 0
 	_selection_active = true
 
-	if _ship_ids.size() > 1:
+	if _fleet_indices.size() > 1:
 		_create_3d_arrows()
 		_create_ship_labels()
 		# Set initial label text
-		var data := ShipRegistry.get_ship_data(_ship_ids[_current_index])
-		if data:
-			_update_ship_labels(data)
+		if _current_index < _fleet_indices.size():
+			var fleet := GameManager.player_fleet
+			if fleet:
+				var fs := fleet.ships[_fleet_indices[_current_index]]
+				var data := ShipRegistry.get_ship_data(fs.ship_id)
+				if data:
+					_update_ship_labels(data, fs.custom_name)
+
+
+## Refresh the ship list (called when fleet changes, e.g. after buying a ship).
+func refresh_ship_list(active_fleet_index: int, fleet_indices: Array[int]) -> void:
+	_cleanup_selection_visuals()
+	setup_ship_selection(active_fleet_index, fleet_indices)
+	# Re-display the currently selected ship
+	if _current_index >= 0 and _current_index < _fleet_indices.size():
+		_display_fleet_ship(_fleet_indices[_current_index])
+
+
+## Display a fleet ship in the hangar by fleet index.
+func _display_fleet_ship(fleet_idx: int) -> void:
+	var fleet := GameManager.player_fleet
+	if fleet == null or fleet_idx < 0 or fleet_idx >= fleet.ships.size():
+		return
+	var fs := fleet.ships[fleet_idx]
+	var ship_id := fs.ship_id
+	var data := ShipRegistry.get_ship_data(ship_id)
+	if data == null:
+		return
+	var configs := ShipFactory.get_hardpoint_configs(ship_id)
+	var model_rot := ShipFactory.get_model_rotation(ship_id)
+	var rb := ShipFactory.get_root_basis(ship_id)
+	var sms := ShipFactory.get_scene_model_scale(ship_id)
+	# Show equipped weapons from FleetShip loadout (not defaults)
+	display_ship(data.model_path, sms, configs, fs.weapons, model_rot, rb)
+	_update_ship_labels(data, fs.custom_name)
 
 
 func _create_3d_arrows() -> void:
@@ -312,12 +332,13 @@ func _create_ship_labels() -> void:
 	_label_stats.position = _preview_local_pos + Vector3(0, -3.6, 0)
 
 
-func _update_ship_labels(data: ShipData) -> void:
+func _update_ship_labels(data: ShipData, custom_name: String = "") -> void:
 	if _label_name:
-		_label_name.text = String(data.ship_name).to_upper()
+		var display_name := custom_name if custom_name != "" else String(data.ship_name)
+		_label_name.text = display_name.to_upper()
 	if _label_stats:
-		var weapons_count: int = data.default_loadout.size()
-		_label_stats.text = "Coque: %d  |  Bouclier: %d  |  Vitesse: %d  |  Armes: %d" % [
+		var weapons_count: int = data.hardpoints.size()
+		_label_stats.text = "Coque: %d  |  Bouclier: %d  |  Vitesse: %d  |  Emplacements: %d" % [
 			int(data.hull_hp), int(data.shield_hp), int(data.max_speed_normal), weapons_count
 		]
 

@@ -44,8 +44,9 @@ var _hold_start_time: float = 0.0
 var _hold_entity_id: String = ""
 var _hold_start_pos: Vector2 = Vector2.ZERO
 var _hold_triggered: bool = false
-const HOLD_DURATION: float = 0.5
-const HOLD_MAX_MOVE: float = 10.0
+var _hold_progress: float = 0.0  # 0..1, for visual feedback
+const HOLD_DURATION: float = 0.6
+const HOLD_MAX_MOVE: float = 30.0
 
 # Filters: EntityType (int) -> bool (true = hidden)
 # Special key -1 = orbit lines
@@ -249,13 +250,22 @@ func _process(delta: float) -> void:
 	# Hold-click detection for fleet management (station long press)
 	if _hold_entity_id != "" and not _hold_triggered:
 		var now: float = Time.get_ticks_msec() / 1000.0
-		if now - _hold_start_time >= HOLD_DURATION:
+		var elapsed: float = now - _hold_start_time
+		_hold_progress = clampf(elapsed / HOLD_DURATION, 0.0, 1.0)
+		if elapsed >= HOLD_DURATION:
 			# Check if held entity is a station
 			var ent := EntityRegistry.get_entity(_hold_entity_id)
 			if not ent.is_empty() and ent.get("type") == EntityRegistrySystem.EntityType.STATION:
 				_hold_triggered = true
 				station_long_pressed.emit(_hold_entity_id)
 			_hold_entity_id = ""
+			_hold_progress = 0.0
+	else:
+		_hold_progress = 0.0
+
+	# Pass hold state to entity layer for visual feedback
+	_entity_layer.hold_entity_id = _hold_entity_id
+	_entity_layer.hold_progress = _hold_progress
 
 	# Always redraw while open so entity positions update in real-time
 	_renderer.queue_redraw()

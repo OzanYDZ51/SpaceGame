@@ -24,6 +24,9 @@ static func get_ship_data(ship_id: StringName) -> ShipData:
 			return null
 
 	_cache[ship_id] = data
+	# Populate hardpoints from ship scene (needed for DATA-mode equipment screen)
+	if data.hardpoints.is_empty() and data.ship_scene_path != "":
+		data.hardpoints = ShipFactory.get_hardpoint_configs(ship_id)
 	return data
 
 
