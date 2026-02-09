@@ -104,5 +104,5 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"version\": \"$VERSION\", \"summary\": $(echo "$MSG" | jq -Rs .)}" || true
         env:
-          BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BACKEND_URL: https://backend-production-05a9.up.railway.app
+          ADMIN_KEY: dev-admin-key
