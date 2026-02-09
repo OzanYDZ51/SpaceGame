@@ -87,7 +87,7 @@ func (h *CommandHandler) cmdPlayer(ctx context.Context, s *discordgo.Session, m 
 	if player.ClanID != nil {
 		clan, err := h.clanRepo.GetByID(ctx, *player.ClanID)
 		if err == nil && clan != nil {
-			clanName = fmt.Sprintf("[%s] %s", clan.Tag, clan.Name)
+			clanName = fmt.Sprintf("[%s] %s", clan.ClanTag, clan.ClanName)
 		}
 	}
 
