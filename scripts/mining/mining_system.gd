@@ -137,10 +137,6 @@ func _process(delta: float) -> void:
 
 	# Mining extraction tick
 	if is_mining and mining_target != null:
-		var target_pos: Vector3 = mining_target.position
-		if mining_target.node_ref and is_instance_valid(mining_target.node_ref):
-			target_pos = mining_target.node_ref.global_position
-
 		# Check if target depleted
 		if mining_target.is_depleted:
 			_stop_extraction()

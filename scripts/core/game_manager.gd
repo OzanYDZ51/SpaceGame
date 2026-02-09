@@ -46,7 +46,11 @@ var _mining_system: MiningSystem = null
 var _commerce_screen: CommerceScreen = null
 var _commerce_manager: CommerceManager = null
 var player_fleet: PlayerFleet = null
+var _route_manager: RouteManager = null
 var _backend_state_loaded: bool = false
+var _discord_rpc: DiscordRPC = null
+var _event_reporter: EventReporter = null
+var _bug_report_screen: BugReportScreen = null
 
 
 func _ready() -> void:
@@ -200,6 +204,11 @@ func _setup_ui_managers() -> void:
 	mp_screen.name = "MultiplayerMenuScreen"
 	_screen_manager.register_screen("multiplayer", mp_screen)
 
+	# Register Bug Report screen (F12)
+	_bug_report_screen = BugReportScreen.new()
+	_bug_report_screen.name = "BugReportScreen"
+	_screen_manager.register_screen("bug_report", _bug_report_screen)
+
 	# Tooltip manager
 	_tooltip_manager = UITooltipManager.new()
 	_tooltip_manager.name = "UITooltipManager"
@@ -260,6 +269,11 @@ func _initialize_game() -> void:
 	var player_health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
 	if player_health:
 		player_health.ship_destroyed.connect(_on_player_destroyed)
+
+	# Connect autopilot cancel signal (player manually overrides route)
+	var ship_ctrl := player_ship as ShipController
+	if ship_ctrl:
+		ship_ctrl.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
 
 	# Wire HUD to ship and combat systems
 	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
@@ -395,6 +409,16 @@ func _initialize_game() -> void:
 	if _mining_system:
 		_mining_system.set_asteroid_manager(_asteroid_field_mgr)
 
+	# Route Manager (multi-system autopilot)
+	_route_manager = RouteManager.new()
+	_route_manager.name = "RouteManager"
+	_route_manager.system_transition = _system_transition
+	_route_manager.galaxy_data = _galaxy
+	add_child(_route_manager)
+	_route_manager.route_completed.connect(_on_route_completed)
+	_route_manager.route_cancelled.connect(_on_route_cancelled)
+	_system_transition.gate_proximity_entered.connect(_route_manager.on_gate_proximity)
+
 	# Encounter Manager (must exist before system loading)
 	_encounter_manager = EncounterManager.new()
 	_encounter_manager.name = "EncounterManager"
@@ -435,6 +459,8 @@ func _initialize_game() -> void:
 	_setup_network()
 
 	current_state = GameState.PLAYING
+	if _discord_rpc:
+		_discord_rpc.update_from_game_state(current_state)
 
 	# Start auto-save timer
 	SaveManager.start_auto_save()
@@ -491,6 +517,16 @@ func _setup_network() -> void:
 	_npc_authority = NpcAuthority.new()
 	_npc_authority.name = "NpcAuthority"
 	add_child(_npc_authority)
+
+	# Discord Rich Presence (connects to launcher's TCP bridge)
+	_discord_rpc = DiscordRPC.new()
+	_discord_rpc.name = "DiscordRPC"
+	add_child(_discord_rpc)
+
+	# Event Reporter (sends game events to backend for Discord webhooks)
+	_event_reporter = EventReporter.new()
+	_event_reporter.name = "EventReporter"
+	add_child(_event_reporter)
 
 	# Connect network signals for remote player management
 	NetworkManager.peer_connected.connect(_on_network_peer_connected)
@@ -694,10 +730,18 @@ func _on_system_unloading(_system_id: int) -> void:
 		_npc_authority.clear_system_npcs(_system_id)
 
 
-func _on_system_loaded(_system_id: int) -> void:
+func _on_system_loaded(system_id: int) -> void:
 	# Update stellar map with new system info
 	if _stellar_map and _system_transition.current_system_data:
 		_stellar_map.set_system_name(_system_transition.current_system_data.system_name)
+
+	# Update Discord RPC with current system name
+	if _discord_rpc and _system_transition.current_system_data:
+		_discord_rpc.set_system(_system_transition.current_system_data.system_name)
+
+	# Notify route manager (continues multi-system autopilot)
+	if _route_manager:
+		_route_manager.on_system_loaded(system_id)
 
 
 func _on_navigate_to_entity(entity_id: String) -> void:
@@ -708,12 +752,57 @@ func _on_navigate_to_entity(entity_id: String) -> void:
 	if ship == null or current_state != GameState.PLAYING:
 		return
 
+	# Manual navigation cancels any active route
+	if _route_manager and _route_manager.is_route_active():
+		_route_manager.cancel_route()
+
 	# Engage autopilot
 	ship.engage_autopilot(entity_id, ent["name"])
 
 	# Close the map
 	if _screen_manager:
 		_screen_manager.close_top()
+
+
+# =============================================================================
+# GALAXY ROUTE (multi-system autopilot)
+# =============================================================================
+func start_galaxy_route(target_sys_id: int) -> void:
+	if _route_manager == null or _system_transition == null or _galaxy == null:
+		return
+
+	var current_sys: int = _system_transition.current_system_id
+	if current_sys == target_sys_id:
+		if _toast_manager:
+			_toast_manager.show_toast("DEJA SUR PLACE")
+		return
+
+	var success: bool = _route_manager.start_route(current_sys, target_sys_id)
+	if not success:
+		if _toast_manager:
+			_toast_manager.show_toast("AUCUNE ROUTE TROUVEE")
+		return
+
+	var sys_name: String = _galaxy.get_system_name(target_sys_id)
+	var jumps: int = _route_manager.get_jumps_total()
+	if _toast_manager:
+		_toast_manager.show_toast("ROUTE VERS %s — %d saut%s" % [sys_name, jumps, "s" if jumps > 1 else ""])
+
+
+func _on_route_completed() -> void:
+	if _toast_manager:
+		_toast_manager.show_toast("DESTINATION ATTEINTE")
+
+
+func _on_route_cancelled() -> void:
+	pass  # Silent cancel (user initiated or system event)
+
+
+func _on_autopilot_cancelled_by_player() -> void:
+	if _route_manager and _route_manager.is_route_active():
+		_route_manager.cancel_route()
+		if _toast_manager:
+			_toast_manager.show_toast("ROUTE ANNULEE")
 
 
 # =============================================================================
@@ -739,7 +828,7 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	lod_data.ship_class = ShipRegistry.get_ship_data(sid).ship_class if ShipRegistry.get_ship_data(sid) else &"Fighter"
 	lod_data.faction = fac
 	lod_data.is_server_npc = true
-	lod_data.display_name = ShipRegistry.get_ship_data(sid).ship_name if ShipRegistry.get_ship_data(sid) else String(sid)
+	lod_data.display_name = String(ShipRegistry.get_ship_data(sid).ship_name) if ShipRegistry.get_ship_data(sid) else String(sid)
 	lod_data.position = FloatingOrigin.to_local_pos([data.get("px", 0.0), data.get("py", 0.0), data.get("pz", 0.0)])
 	lod_data.hull_ratio = data.get("hull", 1.0)
 	lod_data.shield_ratio = data.get("shd", 1.0)
@@ -915,7 +1004,7 @@ func _on_remote_player_died(peer_id: int, _death_pos: Array) -> void:
 			remote.show_death_explosion()
 
 
-func _on_remote_player_respawned(peer_id: int, _system_id: int) -> void:
+func _on_remote_player_respawned(_peer_id: int, _system_id: int) -> void:
 	# Snapshot buffer is already cleared in RemotePlayerShip.receive_state()
 	# when it detects is_dead transition. Nothing extra needed here.
 	pass
@@ -986,6 +1075,15 @@ func _input(event: InputEvent) -> void:
 			var top := _screen_manager.get_top_screen()
 			if top == null or top == _screen_manager._screens.get("multiplayer"):
 				_screen_manager.toggle_screen("multiplayer")
+				get_viewport().set_input_as_handled()
+				return
+
+	# Bug report screen (F12) — works from anywhere
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F12:
+		if _screen_manager:
+			var top := _screen_manager.get_top_screen()
+			if top == null or top == _screen_manager._screens.get("bug_report"):
+				_screen_manager.toggle_screen("bug_report")
 				get_viewport().set_input_as_handled()
 				return
 
@@ -1064,6 +1162,10 @@ func _on_player_destroyed() -> void:
 	if current_state == GameState.DEAD:
 		return
 	current_state = GameState.DEAD
+	if _route_manager:
+		_route_manager.cancel_route()
+	if _discord_rpc:
+		_discord_rpc.update_from_game_state(current_state)
 	SaveManager.trigger_save("player_death")
 
 	# Big explosion at player position
@@ -1204,6 +1306,8 @@ func _respawn_at_nearest_repair_station() -> void:
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	current_state = GameState.PLAYING
+	if _discord_rpc:
+		_discord_rpc.update_from_game_state(current_state)
 	SaveManager.trigger_save("respawned")
 
 
@@ -1252,6 +1356,8 @@ func current_system_id_safe() -> int:
 # WORMHOLE INTER-GALAXY JUMP
 # =============================================================================
 func _initiate_wormhole_jump() -> void:
+	if _route_manager:
+		_route_manager.cancel_route()
 	var wormhole := _system_transition.get_active_wormhole()
 	if wormhole == null:
 		return
@@ -1333,6 +1439,10 @@ func _on_docked(station_name: String) -> void:
 	if current_state == GameState.DOCKED:
 		return
 	current_state = GameState.DOCKED
+	if _route_manager:
+		_route_manager.cancel_route()
+	if _discord_rpc:
+		_discord_rpc.update_from_game_state(current_state)
 	SaveManager.trigger_save("docked")
 
 	# Stop ship controls + autopilot
@@ -1395,6 +1505,7 @@ func _on_equipment_closed() -> void:
 func _on_equipment_requested() -> void:
 	if _equipment_screen and _screen_manager:
 		_equipment_screen.player_inventory = player_inventory
+		_equipment_screen.player_fleet = player_fleet
 		var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
 		_equipment_screen.weapon_manager = wm
 		var em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
@@ -1498,6 +1609,8 @@ func _on_undock_requested() -> void:
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	current_state = GameState.PLAYING
+	if _discord_rpc:
+		_discord_rpc.update_from_game_state(current_state)
 	SaveManager.trigger_save("undocked")
 
 
@@ -1584,6 +1697,10 @@ func _on_ship_change_requested(ship_id: StringName) -> void:
 	if health:
 		if not health.ship_destroyed.is_connected(_on_player_destroyed):
 			health.ship_destroyed.connect(_on_player_destroyed)
+
+	# Reconnect autopilot cancel signal
+	if not ship.autopilot_disengaged_by_player.is_connected(_on_autopilot_cancelled_by_player):
+		ship.autopilot_disengaged_by_player.connect(_on_autopilot_cancelled_by_player)
 
 	# Update LOD player data
 	if _lod_manager:

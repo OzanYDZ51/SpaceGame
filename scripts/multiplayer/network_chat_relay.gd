@@ -4,10 +4,11 @@ extends Node
 # =============================================================================
 # Network Chat Relay - Bridges ChatPanel <-> NetworkManager for multiplayer.
 # Listens to ChatPanel.message_sent and sends over network.
-# Listens to NetworkManager.chat_message_received and displays locally.
+# Listens to NetworkManager signals and displays locally.
 # =============================================================================
 
 var _chat_panel: ChatPanel = null
+var _last_whisper_from: String = ""
 
 
 func _ready() -> void:
@@ -17,6 +18,10 @@ func _ready() -> void:
 
 	# Listen for network chat messages
 	NetworkManager.chat_message_received.connect(_on_network_chat_received)
+	NetworkManager.whisper_received.connect(_on_whisper_received)
+
+	# Note: join/leave messages are broadcast by the server via SYSTEM channel chat RPCs.
+	# No need to listen to peer_connected/peer_disconnected here.
 
 
 func _find_chat_panel() -> void:
@@ -32,10 +37,17 @@ func _find_chat_panel() -> void:
 func _on_local_message_sent(channel_name: String, text: String) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
+
+	# Handle whisper commands from ChatPanel
+	if channel_name.begins_with("WHISPER:"):
+		var target_name: String = channel_name.substr(8)
+		_send_whisper(target_name, text)
+		return
+
 	var channel: int = _channel_name_to_int(channel_name)
 	if NetworkManager.is_host:
-		# Host: relay directly to all clients
-		NetworkManager._rpc_receive_chat.rpc(NetworkManager.local_player_name, channel, text)
+		# Host: route through scoped relay logic
+		NetworkManager._relay_chat_from_host(channel, text)
 	else:
 		# Client: send to server
 		NetworkManager._rpc_chat_message.rpc_id(1, channel, text)
@@ -48,8 +60,32 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String) 
 	# Don't duplicate our own messages (already shown locally)
 	if sender_name == NetworkManager.local_player_name:
 		return
+
 	var color := Color(0.3, 0.85, 1.0)  # Default player color
+	if channel == ChatPanel.Channel.SYSTEM:
+		color = Color(1.0, 0.85, 0.3)
+		sender_name = "SYSTÈME"
 	_chat_panel.add_message(channel, sender_name, text, color)
+
+
+## Send a whisper (private message) to a specific player.
+func _send_whisper(target_name: String, text: String) -> void:
+	if not NetworkManager.is_connected_to_server():
+		return
+	if NetworkManager.is_host:
+		NetworkManager._deliver_whisper_from_host(target_name, text)
+	else:
+		NetworkManager._rpc_whisper.rpc_id(1, target_name, text)
+
+
+## Received a whisper from another player.
+func _on_whisper_received(sender_name: String, text: String) -> void:
+	if _chat_panel == null:
+		return
+	_last_whisper_from = sender_name
+	_chat_panel._private_target = sender_name
+	_chat_panel.add_message(ChatPanel.Channel.PRIVATE, "← " + sender_name, text, Color(0.85, 0.5, 1.0))
+
 
 
 func _channel_name_to_int(channel_name: String) -> int:

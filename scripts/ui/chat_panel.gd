@@ -70,11 +70,8 @@ var _fade_alpha: float = 0.6
 var _target_alpha: float = 0.6
 var _max_messages_per_channel: int = 100
 
-# Fake player names for demo messages
-var _demo_names := ["StarPilot_X", "NovaHunter", "CptDarkStar", "GhostRider77", "NebulaFox", "IronViper", "CosmicDust", "ZeroGrav", "ShadowFleet", "AstroKnight"]
-var _demo_timer: float = 0.0
-var _demo_interval: float = 4.0
 var _bg_redraw_timer: float = 0.0
+var _private_target: String = ""  # Target player name for PRIVATE channel
 
 
 func _ready() -> void:
@@ -263,13 +260,6 @@ func _process(delta: float) -> void:
 		_bg_redraw_timer = 0.1
 		_panel_bg.queue_redraw()
 
-	# Demo messages (simulate multiplayer chat)
-	_demo_timer += delta
-	if _demo_timer >= _demo_interval:
-		_demo_timer = 0.0
-		_demo_interval = randf_range(3.0, 8.0)
-		_spawn_demo_message()
-
 
 func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
@@ -327,13 +317,17 @@ func _on_message_submitted(text: String) -> void:
 
 	_input_field.clear()
 
-	# Add player's message
-	add_message(_current_channel, "Joueur", text, Color(0.3, 0.85, 1.0))
+	# Handle slash commands
+	if text.begins_with("/"):
+		_handle_command(text)
+		_input_field.grab_focus()
+		return
 
-	# Emit signal for network sending
+	var player_name: String = NetworkManager.local_player_name
+
+	add_message(_current_channel, player_name, text, Color(0.3, 0.85, 1.0))
 	message_sent.emit(CHANNEL_NAMES[_current_channel], text)
 
-	# Keep focus on input
 	_input_field.grab_focus()
 
 
@@ -448,59 +442,73 @@ func _draw_panel_bg(ctrl: Control) -> void:
 
 
 # =============================================================================
-# DEMO MESSAGES - Simulated multiplayer chat for testing
+# SYSTEM MESSAGES & COMMANDS
 # =============================================================================
 func _add_system_messages() -> void:
-	add_message(Channel.SYSTEM, "SYSTÈME", "Connexion établie. Bienvenue dans le Secteur Alpha.", Color(1.0, 0.85, 0.3))
-	add_message(Channel.SYSTEM, "SYSTÈME", "Canal de communication ouvert. 247 pilotes en ligne.", Color(1.0, 0.85, 0.3))
-	add_message(Channel.GLOBAL, "StarPilot_X", "Quelqu'un près de la Station Alpha ? Besoin d'escorte pour un convoi", Color(0.3, 0.85, 1.0))
-	add_message(Channel.GLOBAL, "NovaHunter", "Attention aux pirates près de la ceinture d'astéroïdes", Color(0.9, 0.4, 0.4))
-	add_message(Channel.TRADE, "CosmicDust", "Vend Canons Plasma Mk3 x5 - 12k crédits pièce", Color(0.5, 0.9, 0.5))
-	add_message(Channel.GLOBAL, "GhostRider77", "o7 commandants", Color(0.6, 0.8, 0.6))
+	add_message(Channel.SYSTEM, "SYSTÈME", "Canal de communication ouvert. Tapez /help pour les commandes.", Color(1.0, 0.85, 0.3))
 
 
-func _spawn_demo_message() -> void:
-	var channel: int = [Channel.GLOBAL, Channel.GLOBAL, Channel.GLOBAL, Channel.TRADE, Channel.SYSTEM].pick_random()
-	var name_idx := randi_range(0, _demo_names.size() - 1)
-	var author: String = _demo_names[name_idx]
-	var author_color := Color(randf_range(0.4, 1.0), randf_range(0.5, 1.0), randf_range(0.6, 1.0))
+func add_system_message(text: String) -> void:
+	add_message(Channel.SYSTEM, "SYSTÈME", text, Color(1.0, 0.85, 0.3))
 
-	var messages_global := [
-		"Quelqu'un pour un run dans la nébuleuse ?",
-		"Je viens d'atteindre 50k crédits, je suis riche !",
-		"o7 volez prudemment tout le monde",
-		"Où trouver du deutérium dans le coin ?",
-		"Cette station a les meilleurs prix de réparation",
-		"Nouveau joueur ici, des conseils ?",
-		"Prudence dans le secteur 7, forte activité pirate",
-		"Je cherche un clan, quelqu'un recrute ?",
-		"Ce jeu est incroyable",
-		"GG pour le dogfight de tout à l'heure",
-		"Quelqu'un fait du commerce de minerais rares ?",
-		"Comment activer le mode croisière déjà ?",
-		"Flotte en formation à la Station Alpha, tous bienvenus",
-	]
-	var messages_trade := [
-		"Ach Générateur de Bouclier Mk2, offre 8k",
-		"Vend Conteneurs de cargo x20 pas cher",
-		"Recherche drones de combat, MP svp",
-		"Vend Laser Minier amélioré, 15k à débattre",
-		"Besoin d'un transporteur pour 200 unités de minerai",
-	]
-	var messages_system := [
-		"Champ d'astéroïdes détecté à proximité.",
-		"Contact signal : Vaisseau inconnu.",
-		"Scan du secteur terminé.",
-	]
 
-	var text: String
-	match channel:
-		Channel.GLOBAL: text = messages_global.pick_random()
-		Channel.TRADE: text = messages_trade.pick_random()
-		Channel.SYSTEM:
-			text = messages_system.pick_random()
-			author = "SYSTÈME"
-			author_color = Color(1.0, 0.85, 0.3)
-		_: text = messages_global.pick_random()
+func set_private_target(player_name: String) -> void:
+	_private_target = player_name
+	_current_channel = Channel.PRIVATE
+	_on_tab_pressed(Channel.PRIVATE)
+	_input_field.placeholder_text = "MP à %s..." % player_name
 
-	add_message(channel, author, text, author_color)
+
+func _handle_command(text: String) -> void:
+	var parts := text.strip_edges().split(" ", false)
+	if parts.is_empty():
+		return
+	var cmd: String = parts[0].to_lower()
+
+	match cmd:
+		"/help":
+			add_system_message("--- Commandes disponibles ---")
+			add_system_message("/w <joueur> <message> — Message privé")
+			add_system_message("/mp <joueur> <message> — Message privé")
+			add_system_message("/r <message> — Répondre au dernier MP")
+			add_system_message("/joueurs — Lister les joueurs du système")
+			add_system_message("/players — Lister les joueurs du système")
+			add_system_message("/clear — Vider le canal actuel")
+
+		"/clear":
+			_messages[_current_channel].clear()
+			_refresh_messages()
+			add_system_message("Canal vidé.")
+
+		"/joueurs", "/players":
+			var names: PackedStringArray = []
+			for pid in NetworkManager.peers:
+				var state: NetworkState = NetworkManager.peers[pid]
+				names.append(state.player_name)
+			if names.is_empty():
+				add_system_message("Aucun autre joueur dans le secteur.")
+			else:
+				add_system_message("Joueurs connectés (%d) : %s" % [names.size(), ", ".join(names)])
+
+		"/w", "/mp":
+			if parts.size() < 3:
+				add_system_message("Usage : /w <joueur> <message>")
+				return
+			var target_name: String = parts[1]
+			var msg_text: String = " ".join(parts.slice(2))
+			message_sent.emit("WHISPER:" + target_name, msg_text)
+			add_message(Channel.PRIVATE, "→ " + target_name, msg_text, Color(0.85, 0.5, 1.0))
+
+		"/r":
+			if parts.size() < 2:
+				add_system_message("Usage : /r <message>")
+				return
+			if _private_target.is_empty():
+				add_system_message("Aucun MP reçu auquel répondre.")
+				return
+			var msg_text: String = " ".join(parts.slice(1))
+			message_sent.emit("WHISPER:" + _private_target, msg_text)
+			add_message(Channel.PRIVATE, "→ " + _private_target, msg_text, Color(0.85, 0.5, 1.0))
+
+		_:
+			add_system_message("Commande inconnue : %s. Tapez /help." % cmd)

@@ -22,6 +22,7 @@ signal connection_succeeded
 signal connection_failed(reason: String)
 signal player_state_received(peer_id: int, state: NetworkState)
 signal chat_message_received(sender_name: String, channel: int, text: String)
+signal whisper_received(sender_name: String, text: String)
 signal player_list_updated
 signal server_config_received(config: Dictionary)
 
@@ -283,12 +284,18 @@ func _on_peer_connected(id: int) -> void:
 
 func _on_peer_disconnected(id: int) -> void:
 	print("NetworkManager: Peer disconnected: %d" % id)
+	var left_name := "Pilote #%d" % id
 	if peers.has(id):
+		left_name = peers[id].player_name
 		peers.erase(id)
 	# Keep _player_last_system[id] for reconnect persistence (don't erase)
 
 	if is_server():
 		_rpc_player_left.rpc(id)
+		# Broadcast system chat: player left
+		_rpc_receive_chat.rpc(left_name, 1, "%s a quitté." % left_name)
+		if not is_dedicated_server:
+			chat_message_received.emit(left_name, 1, "%s a quitté." % left_name)
 
 	peer_disconnected.emit(id)
 	player_list_updated.emit()
@@ -371,6 +378,11 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	# Notify ALL clients (including new one) about this player
 	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)
 
+	# Broadcast system chat: player joined
+	_rpc_receive_chat.rpc(player_name, 1, "%s a rejoint le secteur." % player_name)
+	if not is_dedicated_server:
+		chat_message_received.emit(player_name, 1, "%s a rejoint le secteur." % player_name)
+
 	# Also notify locally on the host (for GameManager to spawn puppet)
 	if not is_dedicated_server:
 		peer_connected.emit(sender_id, player_name)
@@ -447,7 +459,7 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 	player_state_received.emit(pid, state)
 
 
-## Client/Host -> Server: Chat message.
+## Client/Host -> Server: Chat message (scoped by channel).
 @rpc("any_peer", "reliable")
 func _rpc_chat_message(channel: int, text: String) -> void:
 	var sender_id := multiplayer.get_remote_sender_id()
@@ -456,17 +468,106 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 		sender_name = peers[sender_id].player_name
 
 	if is_server():
-		# Relay to all clients
-		_rpc_receive_chat.rpc(sender_name, channel, text)
-		# Also deliver locally on host
+		# Channel-scoped routing
+		match channel:
+			0, 3:  # GLOBAL, TRADE → broadcast to all
+				_rpc_receive_chat.rpc(sender_name, channel, text)
+			1:  # SYSTEM → only peers in same system
+				var sender_sys: int = peers[sender_id].system_id if peers.has(sender_id) else -1
+				for pid in get_peers_in_system(sender_sys):
+					if pid == 1 and not is_dedicated_server:
+						chat_message_received.emit(sender_name, channel, text)
+					else:
+						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
+				return
+			2:  # CLAN → only peers in same clan (if ClanManager exists)
+				# For now, broadcast to all (clan filtering TBD)
+				_rpc_receive_chat.rpc(sender_name, channel, text)
+			_:
+				_rpc_receive_chat.rpc(sender_name, channel, text)
+
+		# Deliver locally on host (for GLOBAL/TRADE/CLAN)
 		if not is_dedicated_server:
 			chat_message_received.emit(sender_name, channel, text)
 
 
-## Server -> All clients: Chat message broadcast.
+## Server -> All/Some clients: Chat message broadcast.
 @rpc("authority", "reliable")
 func _rpc_receive_chat(sender_name: String, channel: int, text: String) -> void:
 	chat_message_received.emit(sender_name, channel, text)
+
+
+## Client -> Server: Whisper (private message) to a named player.
+@rpc("any_peer", "reliable")
+func _rpc_whisper(target_name: String, text: String) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var sender_name := "Unknown"
+	if peers.has(sender_id):
+		sender_name = peers[sender_id].player_name
+
+	# Find target peer by name
+	var target_pid: int = _find_peer_by_name(target_name)
+	if target_pid == -1:
+		# Target not found — notify sender
+		if sender_id == 1 and not is_dedicated_server:
+			whisper_received.emit("SYSTÈME", "Joueur '%s' introuvable." % target_name)
+		else:
+			_rpc_receive_whisper.rpc_id(sender_id, "SYSTÈME", "Joueur '%s' introuvable." % target_name)
+		return
+
+	# Deliver to target
+	if target_pid == 1 and not is_dedicated_server:
+		whisper_received.emit(sender_name, text)
+	else:
+		_rpc_receive_whisper.rpc_id(target_pid, sender_name, text)
+
+
+## Server -> Client: Whisper received.
+@rpc("authority", "reliable")
+func _rpc_receive_whisper(sender_name: String, text: String) -> void:
+	whisper_received.emit(sender_name, text)
+
+
+## Host helper: deliver a whisper when the host is the sender.
+func _deliver_whisper_from_host(target_name: String, text: String) -> void:
+	var target_pid: int = _find_peer_by_name(target_name)
+	if target_pid == -1:
+		whisper_received.emit("SYSTÈME", "Joueur '%s' introuvable." % target_name)
+		return
+	if target_pid == 1:
+		# Whispering to self (host)
+		whisper_received.emit(local_player_name, text)
+	else:
+		_rpc_receive_whisper.rpc_id(target_pid, local_player_name, text)
+
+
+## Host sends a chat message using the same scoped routing as client messages.
+func _relay_chat_from_host(channel: int, text: String) -> void:
+	var sender_name: String = local_player_name
+	match channel:
+		0, 3:  # GLOBAL, TRADE
+			_rpc_receive_chat.rpc(sender_name, channel, text)
+		1:  # SYSTEM → only peers in same system
+			var host_sys: int = peers[1].system_id if peers.has(1) else -1
+			for pid in get_peers_in_system(host_sys):
+				if pid == 1:
+					continue  # Host already showed message locally
+				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
+		2:  # CLAN
+			_rpc_receive_chat.rpc(sender_name, channel, text)
+		_:
+			_rpc_receive_chat.rpc(sender_name, channel, text)
+
+
+## Find a peer ID by player name (server-side only).
+func _find_peer_by_name(player_name: String) -> int:
+	for pid in peers:
+		var state: NetworkState = peers[pid]
+		if state.player_name.to_lower() == player_name.to_lower():
+			return pid
+	return -1
 
 
 ## Server -> Single client: Server configuration (galaxy seed, spawn system, routing table).

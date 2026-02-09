@@ -7,7 +7,6 @@ extends StaticBody3D
 # different destination: a different galaxy seed + server IP.
 # =============================================================================
 
-signal player_entered_wormhole(target_galaxy_seed: int, target_server_url: String)
 signal player_nearby_wormhole(target_name: String)
 signal player_left_wormhole()
 

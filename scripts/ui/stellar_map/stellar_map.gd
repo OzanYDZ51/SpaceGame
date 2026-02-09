@@ -25,6 +25,11 @@ var managed_externally: bool = false
 signal view_switch_requested
 signal navigate_to_requested(entity_id: String)
 
+## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
+var _preview_entities: Dictionary = {}
+var _preview_system_name: String = ""
+var _saved_system_name: String = ""
+
 # Pan state
 var _is_panning: bool = false
 var _pan_start: Vector2 = Vector2.ZERO
@@ -123,6 +128,33 @@ func set_system_name(sname: String) -> void:
 	_renderer._system_name = sname
 
 
+func set_preview(entities: Dictionary, system_name: String) -> void:
+	_saved_system_name = _renderer._system_name
+	_preview_entities = entities
+	_preview_system_name = system_name
+	_entity_layer.preview_entities = _preview_entities
+	_renderer.preview_entities = _preview_entities
+	_renderer._belt_dot_cache.clear()
+	_info_panel.preview_entities = _preview_entities
+	_renderer._system_name = "APERÇU : " + system_name
+	_entity_layer.selected_id = ""
+	_info_panel.set_selected("")
+
+
+func clear_preview() -> void:
+	_preview_entities = {}
+	_preview_system_name = ""
+	_entity_layer.preview_entities = {}
+	_renderer.preview_entities = {}
+	_renderer._belt_dot_cache.clear()
+	_info_panel.preview_entities = {}
+	if not _saved_system_name.is_empty():
+		_renderer._system_name = _saved_system_name
+		_saved_system_name = ""
+	_entity_layer.selected_id = ""
+	_info_panel.set_selected("")
+
+
 func toggle() -> void:
 	if _is_open:
 		close()
@@ -159,8 +191,9 @@ func open() -> void:
 	_camera.zoom = fit_zoom
 	_camera.target_zoom = fit_zoom
 
-	# Show legend on first open (brief help)
-	_legend.show_legend()
+	# Show legend on first open (not in preview mode)
+	if _preview_entities.is_empty():
+		_legend.show_legend()
 
 
 func close() -> void:
@@ -178,10 +211,17 @@ func close() -> void:
 
 func _update_system_radius() -> void:
 	var max_r: float = Constants.SYSTEM_RADIUS
-	for ent in EntityRegistry.get_all().values():
+	var entities: Dictionary = _preview_entities if not _preview_entities.is_empty() else EntityRegistry.get_all()
+	for ent in entities.values():
 		var r: float = ent["orbital_radius"]
 		if r > max_r:
 			max_r = r
+		# Also check absolute positions (jump gates)
+		var px: float = absf(ent["pos_x"])
+		var pz: float = absf(ent["pos_z"])
+		var pos_r: float = sqrt(px * px + pz * pz)
+		if pos_r > max_r:
+			max_r = pos_r
 	_camera.system_radius = max_r
 
 

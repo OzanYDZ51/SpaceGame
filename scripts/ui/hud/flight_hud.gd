@@ -17,6 +17,7 @@ var _cockpit: HudCockpit = null
 var _damage_feedback: HudDamageFeedback = null
 var _prompts: HudPrompts = null
 var _mining: HudMining = null
+var _route: HudRoute = null
 
 # --- Shared animation state ---
 var _scan_line_y: float = 0.0
@@ -88,6 +89,11 @@ func _build_components() -> void:
 	_mining = HudMining.new()
 	_mining.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(_mining)
+
+	# Route: multi-system autopilot progress indicator
+	_route = HudRoute.new()
+	_route.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(_route)
 
 
 # =============================================================================
@@ -189,6 +195,7 @@ func _process(delta: float) -> void:
 	_cockpit.warning_flash = _warning_flash
 	_prompts.pulse_t = _pulse_t
 	_mining.pulse_t = _pulse_t
+	_route.pulse_t = _pulse_t
 
 	# Detect cockpit mode
 	var cam := get_viewport().get_camera_3d()
@@ -220,6 +227,7 @@ func _process(delta: float) -> void:
 		_weapon_panel.redraw_slow()
 		_slow_dirty = false
 
-	# Prompts + mining (conditional visibility)
+	# Prompts + mining + route (conditional visibility)
 	_prompts.update_visibility()
 	_mining.update_visibility()
+	_route.update_visibility()

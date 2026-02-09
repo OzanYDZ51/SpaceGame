@@ -10,6 +10,7 @@ extends RigidBody3D
 
 signal cruise_punch_triggered   ## Emitted when cruise enters explosive phase 2
 signal cruise_exit_triggered    ## Emitted when leaving cruise mode (for VFX)
+signal autopilot_disengaged_by_player  ## Emitted when player manually cancels autopilot
 
 @export_group("Control")
 @export var is_player_controlled: bool = true
@@ -54,11 +55,14 @@ var _cruise_punched: bool = false
 var autopilot_active: bool = false
 var autopilot_target_id: String = ""
 var autopilot_target_name: String = ""
+var autopilot_is_gate: bool = false  # True when navigating to a jump gate (closer approach)
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
-const AUTOPILOT_ARRIVAL_DIST: float = 10000.0   # 10 km — disengage autopilot
-const AUTOPILOT_DECEL_DIST: float = 30000.0     # 30 km — drop cruise, approach at 3 km/s
-const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98   # dot product threshold to engage cruise
-const AUTOPILOT_APPROACH_SPEED: float = 3000.0   # 3 km/s — fast final approach during autopilot
+const AUTOPILOT_ARRIVAL_DIST: float = 10000.0        # 10 km — disengage autopilot (general)
+const AUTOPILOT_GATE_ARRIVAL_DIST: float = 200.0     # 200m — close approach for gate trigger
+const AUTOPILOT_DECEL_DIST: float = 30000.0          # 30 km — drop cruise, approach at 3 km/s
+const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
+const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
+const AUTOPILOT_APPROACH_SPEED: float = 3000.0        # 3 km/s — fast final approach during autopilot
 
 # --- Rotation state ---
 var _target_pitch_rate: float = 0.0
@@ -149,6 +153,7 @@ func _read_input() -> void:
 				break
 		if has_manual_input:
 			disengage_autopilot()
+			autopilot_disengaged_by_player.emit()
 		else:
 			_run_autopilot()
 			_mouse_delta = Vector2.ZERO
@@ -487,10 +492,11 @@ func _exit_cruise_warp() -> void:
 
 # === Autopilot ===
 
-func engage_autopilot(target_id: String, target_name: String) -> void:
+func engage_autopilot(target_id: String, target_name: String, is_gate: bool = false) -> void:
 	autopilot_active = true
 	autopilot_target_id = target_id
 	autopilot_target_name = target_name
+	autopilot_is_gate = is_gate
 	_mouse_delta = Vector2.ZERO
 	_autopilot_grace_frames = 10  # Ignore mouse until map close transition finishes + mouse recapture settles
 	# Release any lingering GUI focus so it doesn't interfere later
@@ -501,6 +507,7 @@ func disengage_autopilot() -> void:
 	autopilot_active = false
 	autopilot_target_id = ""
 	autopilot_target_name = ""
+	autopilot_is_gate = false
 	if speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
 
@@ -522,13 +529,15 @@ func _run_autopilot() -> void:
 	var to_target: Vector3 = target_world - global_position
 	var dist: float = to_target.length()
 
-	# Arrived — disengage
-	if dist < AUTOPILOT_ARRIVAL_DIST:
+	# Arrived — disengage (gate uses much closer distance)
+	var arrival_dist: float = AUTOPILOT_GATE_ARRIVAL_DIST if autopilot_is_gate else AUTOPILOT_ARRIVAL_DIST
+	if dist < arrival_dist:
 		disengage_autopilot()
 		return
 
-	# Deceleration zone — drop cruise
-	if dist < AUTOPILOT_DECEL_DIST and speed_mode == Constants.SpeedMode.CRUISE:
+	# Deceleration zone — drop cruise (gate uses shorter decel zone)
+	var decel_dist: float = AUTOPILOT_GATE_DECEL_DIST if autopilot_is_gate else AUTOPILOT_DECEL_DIST
+	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
 
 	# Steer toward target
@@ -553,7 +562,7 @@ func _run_autopilot() -> void:
 		throttle_input = Vector3.ZERO
 
 	# Engage cruise once well aligned and outside decel zone
-	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > AUTOPILOT_DECEL_DIST and not combat_locked:
+	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
 

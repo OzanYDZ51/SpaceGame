@@ -34,6 +34,13 @@ var _galaxy_dirty: bool = true
 var _resolved_data: StarSystemData = null
 var _resolved_system_id: int = -1
 
+# Double-click detection for galaxy view
+var _last_galaxy_click_time: float = 0.0
+var _last_galaxy_click_id: int = -1
+
+# Preview mode: showing another system's contents in system view
+var _preview_system_id: int = -1
+
 # --- Constants ---
 const ZOOM_MIN: float = 0.3
 const ZOOM_MAX: float = 8.0
@@ -103,6 +110,9 @@ func _activate_system_view() -> void:
 	# Force redraw to clear stale galaxy rendering (opaque background)
 	queue_redraw()
 	if stellar_map:
+		# Clear preview if switching to system view via Tab/M (not via double-click)
+		if _preview_system_id < 0 and not stellar_map._preview_entities.is_empty():
+			stellar_map.clear_preview()
 		if not stellar_map._is_open:
 			stellar_map.open()
 
@@ -110,18 +120,33 @@ func _activate_system_view() -> void:
 func _activate_galaxy_view() -> void:
 	current_view = ViewMode.GALAXY
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Remember previewed system before clearing
+	var was_previewing: int = _preview_system_id
+	# Clear preview mode if active
+	if stellar_map and _preview_system_id >= 0:
+		stellar_map.clear_preview()
+	_preview_system_id = -1
 	# Close stellar map if open
 	if stellar_map and stellar_map._is_open:
 		stellar_map.close()
 	# Reset galaxy selection
-	_selected_system = -1
 	_hovered_system = -1
-	_info_visible = false
 	_is_panning = false
-	_resolved_data = null
-	_resolved_system_id = -1
-	# Center on current system
-	_center_galaxy_on_current()
+	# If returning from preview, keep that system selected and center on it
+	if was_previewing >= 0 and galaxy:
+		_selected_system = was_previewing
+		_info_system = galaxy.get_system(was_previewing)
+		_info_visible = true
+		_resolve_system_data(was_previewing)
+		var sys: Dictionary = galaxy.get_system(was_previewing)
+		if not sys.is_empty():
+			_cam_center = Vector2(sys["x"], sys["y"])
+	else:
+		_selected_system = -1
+		_info_visible = false
+		_resolved_data = null
+		_resolved_system_id = -1
+		_center_galaxy_on_current()
 	_galaxy_dirty = true
 	# Fit galaxy in view
 	if galaxy and size.x > 0:
@@ -142,8 +167,12 @@ func _center_galaxy_on_current() -> void:
 func close() -> void:
 	if not _is_open:
 		return
-	if stellar_map and stellar_map._is_open:
-		stellar_map.close()
+	if stellar_map:
+		if _preview_system_id >= 0:
+			stellar_map.clear_preview()
+		if stellar_map._is_open:
+			stellar_map.close()
+	_preview_system_id = -1
 	_is_panning = false
 	_is_open = false
 	visible = false
@@ -206,6 +235,9 @@ func _draw_galaxy() -> void:
 
 	# Connections
 	_draw_connections(cx, cy)
+
+	# Route overlay (on top of connections, below dots)
+	_draw_route_path(cx, cy)
 
 	# Faction territory circles
 	_draw_faction_territories(cx, cy)
@@ -282,12 +314,13 @@ func _draw_view_indicator() -> void:
 	# Tab hint
 	draw_string(font, Vector2(cx - 135, text_y), "[TAB]", HORIZONTAL_ALIGNMENT_LEFT, 50, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
-	# SYSTEM label
-	var sys_col: Color = UITheme.PRIMARY if current_view == ViewMode.SYSTEM else UITheme.TEXT_DIM
-	draw_string(font, Vector2(cx - 75, text_y), "SYSTEM", HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, sys_col)
+	# SYSTEM label (show APERÇU when in preview mode)
+	var sys_label: String = "APERÇU" if (_preview_system_id >= 0 and current_view == ViewMode.SYSTEM) else "SYSTEM"
+	var sys_col: Color = UITheme.ACCENT if (_preview_system_id >= 0 and current_view == ViewMode.SYSTEM) else (UITheme.PRIMARY if current_view == ViewMode.SYSTEM else UITheme.TEXT_DIM)
+	draw_string(font, Vector2(cx - 75, text_y), sys_label, HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, sys_col)
 	# Underline active
 	if current_view == ViewMode.SYSTEM:
-		draw_line(Vector2(cx - 75, text_y + 3), Vector2(cx - 10, text_y + 3), UITheme.PRIMARY, 2.0)
+		draw_line(Vector2(cx - 75, text_y + 3), Vector2(cx - 10, text_y + 3), sys_col, 2.0)
 
 	# Separator
 	draw_string(font, Vector2(cx - 2, text_y), "|", HORIZONTAL_ALIGNMENT_CENTER, 10, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
@@ -413,6 +446,38 @@ func _draw_current_system_marker(cx: float, cy: float) -> void:
 	draw_string(font, pos + Vector2(-15, -ring_radius - 6), "ICI", HORIZONTAL_ALIGNMENT_CENTER, 30, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 
+func _draw_route_path(cx: float, cy: float) -> void:
+	var rm: RouteManager = GameManager._route_manager
+	if rm == null or rm.route.is_empty():
+		return
+
+	var pulse: float = UITheme.get_pulse(0.6)
+	var route_col := Color(0.0, 0.9, 1.0, 0.6 + pulse * 0.3)
+	var completed_col := Color(0.0, 0.6, 0.8, 0.25)
+
+	for i in rm.route.size() - 1:
+		var a_id: int = rm.route[i]
+		var b_id: int = rm.route[i + 1]
+		var a_sys: Dictionary = galaxy.get_system(a_id)
+		var b_sys: Dictionary = galaxy.get_system(b_id)
+		if a_sys.is_empty() or b_sys.is_empty():
+			continue
+		var a_pos := _galaxy_to_screen(a_sys["x"], a_sys["y"], cx, cy)
+		var b_pos := _galaxy_to_screen(b_sys["x"], b_sys["y"], cx, cy)
+
+		var col: Color = completed_col if i < rm.route_index else route_col
+		draw_line(a_pos, b_pos, col, 3.0)
+
+	# Destination marker (pulsing ring on final system)
+	if rm.route.size() > 0:
+		var dest_id: int = rm.route[rm.route.size() - 1]
+		var dest_sys: Dictionary = galaxy.get_system(dest_id)
+		if not dest_sys.is_empty():
+			var dest_pos := _galaxy_to_screen(dest_sys["x"], dest_sys["y"], cx, cy)
+			var ring_r: float = DOT_SELECTED_RADIUS + 6.0 + pulse * 3.0
+			draw_arc(dest_pos, ring_r, 0, TAU, 24, Color(1.0, 0.8, 0.0, 0.5 + pulse * 0.3), 2.0)
+
+
 func _draw_info_panel(s: Vector2, font: Font) -> void:
 	var current_id: int = system_transition.current_system_id if system_transition else -1
 	var panel_w: float = 280.0
@@ -441,6 +506,7 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 		var cur_sys: Dictionary = galaxy.get_system(current_id)
 		if not cur_sys.is_empty() and sys_id in cur_sys["connections"]:
 			row_count += 1
+		row_count += 1  # Autopilot hint
 
 	var panel_h: float = 50.0 + row_count * line_h
 	var rect := Rect2(panel_x, panel_y, panel_w, panel_h)
@@ -551,12 +617,16 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 				draw_string(font, Vector2(x + 8, y), conn_name, HORIZONTAL_ALIGNMENT_LEFT, kv_w - 8, UITheme.FONT_SIZE_SMALL, conn_col)
 				y += 13
 
-	# Jump instruction
+	# Action hints
 	if sys_id != current_id and sys_id >= 0 and current_id >= 0:
 		var cur_sys: Dictionary = galaxy.get_system(current_id)
 		if not cur_sys.is_empty() and sys_id in cur_sys["connections"]:
 			y += 4
 			draw_string(font, Vector2(x, y), "Rejoignez le portail pour sauter", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+			y += line_h
+		# Autopilot hint
+		y += 4
+		draw_string(font, Vector2(x, y), "[ENTRER] = Autopilote", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.PRIMARY)
 
 
 func _draw_kv(font: Font, x: float, y: float, w: float, key: String, value: String) -> void:
@@ -600,7 +670,7 @@ func _draw_galaxy_legend(s: Vector2, font: Font) -> void:
 	var x: float = UITheme.MARGIN_SCREEN
 	var y: float = s.y - UITheme.MARGIN_SCREEN - 80
 
-	draw_string(font, Vector2(x, y), "Click = Selectionner | Scroll = Zoom | MMB = Deplacer | Tab/M = Vue Systeme", HORIZONTAL_ALIGNMENT_LEFT, 600, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(x, y), "Click = Selectionner | Double-clic = Voir systeme | Entrer = Autopilote | Scroll = Zoom | MMB = Deplacer", HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	y += 14
 
 	# Spectral class legend
@@ -638,6 +708,11 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 		# Tab or M → switch to system view
 		if event.physical_keycode == KEY_TAB:
 			switch_to_view(ViewMode.SYSTEM)
+			get_viewport().set_input_as_handled()
+			return
+		# Enter → start route to selected system
+		if event.physical_keycode == KEY_ENTER and _selected_system >= 0:
+			_start_route_to_selected()
 			get_viewport().set_input_as_handled()
 			return
 		# M and G are handled by GameManager (fires first as autoload)
@@ -710,12 +785,23 @@ func _update_hover(screen_pos: Vector2) -> void:
 
 func _handle_click(screen_pos: Vector2) -> void:
 	var hit: int = _get_system_at(screen_pos)
+	var now: float = Time.get_ticks_msec() / 1000.0
+
 	if hit >= 0:
+		# Double-click detection: same system within 0.4s → open preview
+		if hit == _last_galaxy_click_id and (now - _last_galaxy_click_time) < 0.4:
+			_last_galaxy_click_id = -1
+			_open_system_preview(hit)
+			return
+
+		_last_galaxy_click_id = hit
+		_last_galaxy_click_time = now
 		_selected_system = hit
 		_info_system = galaxy.get_system(hit)
 		_info_visible = true
 		_resolve_system_data(hit)
 	else:
+		_last_galaxy_click_id = -1
 		_selected_system = -1
 		_info_visible = false
 		_resolved_data = null
@@ -738,6 +824,8 @@ func _resolve_system_data(system_id: int) -> void:
 		_resolved_data = null
 		_resolved_system_id = -1
 		return
+	var origin_x: float = sys.get("x", 0.0)
+	var origin_y: float = sys.get("y", 0.0)
 	var connections: Array[Dictionary] = []
 	for conn_id in sys["connections"]:
 		var conn_sys: Dictionary = galaxy.get_system(conn_id)
@@ -745,11 +833,164 @@ func _resolve_system_data(system_id: int) -> void:
 			connections.append({
 				"target_id": conn_id,
 				"target_name": conn_sys["name"],
+				"origin_x": origin_x,
+				"origin_y": origin_y,
+				"target_x": conn_sys.get("x", 0.0),
+				"target_y": conn_sys.get("y", 0.0),
 			})
 	_resolved_data = SystemGenerator.generate(sys["seed"], connections)
 	_resolved_data.system_name = sys["name"]
 	_resolved_data.star_name = sys["name"]
 	_resolved_system_id = system_id
+
+
+func _open_system_preview(system_id: int) -> void:
+	# Resolve data if not already cached
+	_resolve_system_data(system_id)
+	if _resolved_data == null:
+		return
+	var sys: Dictionary = galaxy.get_system(system_id)
+	if sys.is_empty():
+		return
+
+	_preview_system_id = system_id
+	var preview_ents: Dictionary = _build_preview_entities(_resolved_data, sys)
+	var sys_name: String = sys.get("name", "Unknown")
+
+	if stellar_map:
+		stellar_map.set_preview(preview_ents, sys_name)
+
+	# Switch to system view
+	switch_to_view(ViewMode.SYSTEM)
+
+
+func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictionary:
+	var entities: Dictionary = {}
+
+	# Star at origin
+	var star_id := "star_0"
+	entities[star_id] = {
+		"id": star_id,
+		"name": data.star_name,
+		"type": EntityRegistrySystem.EntityType.STAR,
+		"pos_x": 0.0, "pos_y": 0.0, "pos_z": 0.0,
+		"vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+		"node": null,
+		"orbital_radius": 0.0,
+		"orbital_period": 0.0,
+		"orbital_angle": 0.0,
+		"orbital_parent": "",
+		"radius": data.star_radius,
+		"color": data.star_color,
+		"extra": {
+			"spectral_class": data.star_spectral_class,
+			"temperature": data.star_temperature,
+			"luminosity": data.star_luminosity,
+		},
+	}
+
+	# Planets
+	for i in data.planets.size():
+		var pd: PlanetData = data.planets[i]
+		var ent_id := "planet_%d" % i
+		var angle: float = pd.orbital_angle
+		var px: float = cos(angle) * pd.orbital_radius
+		var pz: float = sin(angle) * pd.orbital_radius
+		entities[ent_id] = {
+			"id": ent_id,
+			"name": pd.planet_name,
+			"type": EntityRegistrySystem.EntityType.PLANET,
+			"pos_x": px, "pos_y": 0.0, "pos_z": pz,
+			"vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+			"node": null,
+			"orbital_radius": pd.orbital_radius,
+			"orbital_period": pd.orbital_period,
+			"orbital_angle": angle,
+			"orbital_parent": star_id,
+			"radius": pd.radius,
+			"color": pd.color,
+			"extra": {
+				"planet_type": pd.get_type_string(),
+				"has_rings": pd.has_rings,
+			},
+		}
+
+	# Stations
+	for i in data.stations.size():
+		var sd: StationData = data.stations[i]
+		var ent_id := "station_%d" % i
+		var angle: float = sd.orbital_angle
+		var sx: float = cos(angle) * sd.orbital_radius
+		var sz: float = sin(angle) * sd.orbital_radius
+		entities[ent_id] = {
+			"id": ent_id,
+			"name": sd.station_name,
+			"type": EntityRegistrySystem.EntityType.STATION,
+			"pos_x": sx, "pos_y": 0.0, "pos_z": sz,
+			"vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+			"node": null,
+			"orbital_radius": sd.orbital_radius,
+			"orbital_period": sd.orbital_period,
+			"orbital_angle": angle,
+			"orbital_parent": star_id,
+			"radius": 100.0,
+			"color": MapColors.STATION_TEAL,
+			"extra": {
+				"station_type": sd.get_type_string(),
+			},
+		}
+
+	# Asteroid belts
+	for i in data.asteroid_belts.size():
+		var bd: AsteroidBeltData = data.asteroid_belts[i]
+		var ent_id := "asteroid_belt_%d" % i
+		entities[ent_id] = {
+			"id": ent_id,
+			"name": bd.belt_name,
+			"type": EntityRegistrySystem.EntityType.ASTEROID_BELT,
+			"pos_x": 0.0, "pos_y": 0.0, "pos_z": 0.0,
+			"vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+			"node": null,
+			"orbital_radius": bd.orbital_radius,
+			"orbital_period": 0.0,
+			"orbital_angle": 0.0,
+			"orbital_parent": star_id,
+			"radius": bd.width,
+			"color": MapColors.ASTEROID_BELT,
+			"extra": {
+				"width": bd.width,
+				"dominant_resource": String(bd.dominant_resource),
+				"secondary_resource": String(bd.secondary_resource),
+				"rare_resource": String(bd.rare_resource),
+				"zone": bd.zone,
+				"asteroid_count": bd.asteroid_count,
+			},
+		}
+
+	# Jump gates
+	for i in data.jump_gates.size():
+		var gd: JumpGateData = data.jump_gates[i]
+		var ent_id := "jump_gate_%d" % i
+		entities[ent_id] = {
+			"id": ent_id,
+			"name": gd.gate_name,
+			"type": EntityRegistrySystem.EntityType.JUMP_GATE,
+			"pos_x": gd.pos_x, "pos_y": gd.pos_y, "pos_z": gd.pos_z,
+			"vel_x": 0.0, "vel_y": 0.0, "vel_z": 0.0,
+			"node": null,
+			"orbital_radius": 0.0,
+			"orbital_period": 0.0,
+			"orbital_angle": 0.0,
+			"orbital_parent": "",
+			"radius": 55.0,
+			"color": Color(0.15, 0.6, 1.0, 0.9),
+			"extra": {
+				"target_system_id": gd.target_system_id,
+				"target_system_name": gd.target_system_name,
+			},
+		}
+
+	return entities
 
 
 func _get_system_at(screen_pos: Vector2) -> int:
@@ -766,6 +1007,14 @@ func _get_system_at(screen_pos: Vector2) -> int:
 			best_dist = dist
 			best_id = sys["id"]
 	return best_id
+
+
+func _start_route_to_selected() -> void:
+	if _selected_system < 0:
+		return
+	GameManager.start_galaxy_route(_selected_system)
+	# Close the map
+	close()
 
 
 ## Override _gui_input — galaxy uses _input() instead, system mode uses StellarMap.

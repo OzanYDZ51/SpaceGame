@@ -84,6 +84,20 @@ docs/             # Architecture docs, system design notes
   - [ ] Sound effects
   - [ ] Ship boost/cruise modes polish
 
+## Commit Message Format for Discord Devlog
+Every commit that triggers a build (non-ci: prefix) MUST include a community-friendly
+French summary as the commit message. This message is automatically posted to Discord #devlog.
+
+Rules:
+- Write in French, informal/gaming tone
+- Describe WHAT changed for players, not HOW the code changed
+- NO file names, function names, or technical details
+- NO "fix bug in X.gd" — instead "Correction du systeme de combat"
+- Examples:
+  - "Nouveau systeme de minage: extrayez des minerais des asteroides!"
+  - "Amelioration du combat: les boucliers directionnels sont maintenant fonctionnels"
+  - "Correction d'un bug ou les vaisseaux NPC ne tiraient pas correctement"
+
 ## Phase Roadmap
 - Phase 2: Universe generation (star systems, planets, hyperspace jumps)
 - Phase 3: Combat (weapons, shields, damage, AI enemies)

@@ -187,9 +187,15 @@ static func _generate_jump_gates(rng: RandomNumberGenerator, data: StarSystemDat
 
 	for i in connections.size():
 		var conn: Dictionary = connections[i]
-		var pair_hash: int = hash(data.seed_value + conn["target_id"] * 31)
-		var angle: float = float(pair_hash % 10000) / 10000.0 * TAU
-		angle += float(i) * TAU / float(connections.size()) * 0.1
+		# Directional coherence: gate faces toward target system in galaxy space
+		var ox: float = conn.get("origin_x", 0.0)
+		var oy: float = conn.get("origin_y", 0.0)
+		var tx: float = conn.get("target_x", 0.0)
+		var ty: float = conn.get("target_y", 0.0)
+		var angle: float = atan2(ty - oy, tx - ox)
+		# Small jitter (±5°) so gates at the same angle don't overlap
+		var jitter_hash: int = hash(data.seed_value + conn["target_id"] * 31)
+		angle += (float(jitter_hash % 1000) / 1000.0 - 0.5) * deg_to_rad(10.0)
 
 		var g := JumpGateData.new()
 		g.gate_name = "Gate → " + conn["target_name"]

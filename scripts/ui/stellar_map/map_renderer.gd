@@ -8,13 +8,10 @@ extends Control
 
 var camera: MapCamera = null
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
+var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 var _scan_line_y: float = 0.0
 var _pulse_t: float = 0.0
 var _system_name: String = "SYSTÈME INCONNU"
-var _last_zoom: float = -1.0
-var _last_center_x: float = INF
-var _last_center_z: float = INF
-var _redraw_timer: float = 0.0
 const REDRAW_INTERVAL: float = 0.1  # Check for changes at 10 Hz
 
 # Cache for asteroid belt dot positions (universe coords)
@@ -118,12 +115,16 @@ func _snap_to_nice(value: float) -> float:
 # =============================================================================
 # ORBIT LINES
 # =============================================================================
+func _get_entities() -> Dictionary:
+	return preview_entities if not preview_entities.is_empty() else EntityRegistry.get_all()
+
+
 func _draw_orbit_lines() -> void:
 	# Skip if planets are filtered out
 	if filters.get(EntityRegistrySystem.EntityType.PLANET, false):
 		return
 
-	var entities: Dictionary = EntityRegistry.get_all()
+	var entities: Dictionary = _get_entities()
 	for ent in entities.values():
 		var orbital_r: float = ent["orbital_radius"]
 		if orbital_r <= 0.0:
@@ -170,7 +171,7 @@ func _draw_asteroid_belts() -> void:
 	if filters.get(EntityRegistrySystem.EntityType.ASTEROID_BELT, false):
 		return
 
-	var entities: Dictionary = EntityRegistry.get_all()
+	var entities: Dictionary = _get_entities()
 	for ent in entities.values():
 		if ent["type"] != EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue

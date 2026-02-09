@@ -111,6 +111,9 @@ const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instea
 const NET_PUBLIC_IP: String = "92.184.140.5"  # Host's public IPv4 (dev, friend's machine)
 const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 
+# --- Discord Rich Presence ---
+const DISCORD_RPC_PORT: int = 27150
+
 # --- Mining ---
 const MINING_RANGE: float = 300.0
 const MINING_SCAN_RANGE: float = 500.0

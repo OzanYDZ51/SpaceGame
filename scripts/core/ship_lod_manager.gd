@@ -106,7 +106,7 @@ func _setup_multimesh() -> void:
 func register_ship(id: StringName, data: ShipLODData) -> void:
 	if _ships.has(id):
 		var existing: ShipLODData = _ships[id]
-		if existing._is_promoting:
+		if existing.is_promoting:
 			existing.node_ref = data.node_ref
 			return
 		_grid.remove(id)
@@ -420,7 +420,7 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	if data.is_dead:
 		return
 
-	data._is_promoting = true
+	data.is_promoting = true
 
 	var node: Node3D = null
 	if data.is_remote_player:
@@ -443,7 +443,7 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 			spawn_id, data.behavior_name, data.position, parent, data.faction, true
 		)
 		if node == null:
-			data._is_promoting = false
+			data.is_promoting = false
 			return
 		node.name = String(id)
 
@@ -472,7 +472,7 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	data.node_ref = node
 	data.current_lod = ShipLODData.LODLevel.LOD1
 	_set_lod_set(id, ShipLODData.LODLevel.LOD1)
-	data._is_promoting = false
+	data.is_promoting = false
 
 
 func _promote_to_lod0(id: StringName, data: ShipLODData) -> void:

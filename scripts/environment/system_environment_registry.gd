@@ -31,9 +31,9 @@ static func get_environment(
 
 	var override_path := OVERRIDES_PATH + "env_system_%d.tres" % system_id
 	if ResourceLoader.exists(override_path):
-		var data: SystemEnvironmentData = load(override_path)
-		_override_cache[system_id] = data
-		return data
+		var override_data: SystemEnvironmentData = load(override_path)
+		_override_cache[system_id] = override_data
+		return override_data
 
 	# 2. Generate from spectral preset + seed randomization
 	var cache_key := "%s_%d" % [spectral_class, seed_val]

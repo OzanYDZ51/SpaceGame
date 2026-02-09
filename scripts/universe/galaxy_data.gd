@@ -68,3 +68,36 @@ func find_nearest_repair_system(from_id: int) -> int:
 
 	# Fallback: no reachable station, stay in current system
 	return from_id
+
+
+## BFS pathfinding: returns ordered array of system IDs from from_id to to_id (inclusive).
+## Returns empty array if no path found (shouldn't happen — MST guarantees connectivity).
+func find_path(from_id: int, to_id: int) -> Array[int]:
+	if from_id == to_id:
+		return [from_id]
+
+	var visited: Dictionary = {}
+	var parent: Dictionary = {}  # child_id -> parent_id
+	var queue: Array[int] = [from_id]
+	visited[from_id] = true
+
+	while queue.size() > 0:
+		var sys_id: int = queue.pop_front()
+		for conn_id in get_connections(sys_id):
+			if visited.has(conn_id):
+				continue
+			visited[conn_id] = true
+			parent[conn_id] = sys_id
+			if conn_id == to_id:
+				# Reconstruct path
+				var path: Array[int] = []
+				var current: int = to_id
+				while current != from_id:
+					path.append(current)
+					current = parent[current]
+				path.append(from_id)
+				path.reverse()
+				return path
+			queue.append(conn_id)
+
+	return []

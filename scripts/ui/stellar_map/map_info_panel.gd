@@ -10,6 +10,7 @@ var camera: MapCamera = null
 var _selected_id: String = ""
 var _player_id: String = ""
 var _pulse_t: float = 0.0
+var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 
 const PANEL_WIDTH: float = 260.0
 const PANEL_MARGIN: float = 16.0
@@ -31,7 +32,7 @@ func _draw() -> void:
 	if camera == null or _selected_id == "":
 		return
 
-	var ent: Dictionary = EntityRegistry.get_entity(_selected_id)
+	var ent: Dictionary = preview_entities.get(_selected_id, {}) if not preview_entities.is_empty() else EntityRegistry.get_entity(_selected_id)
 	if ent.is_empty():
 		_selected_id = ""
 		return
@@ -103,8 +104,8 @@ func _draw() -> void:
 	_draw_row(font, x, value_x, y, "POS", pos_text)
 	y += 18
 
-	# Distance from player
-	if _player_id != "" and _selected_id != _player_id:
+	# Distance from player (skip in preview mode — no live player)
+	if _player_id != "" and _selected_id != _player_id and preview_entities.is_empty():
 		var player: Dictionary = EntityRegistry.get_entity(_player_id)
 		if not player.is_empty():
 			var dx: float = ent["pos_x"] - player["pos_x"]

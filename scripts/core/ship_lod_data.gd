@@ -49,7 +49,8 @@ var distance_to_camera: float = 0.0
 var behavior_name: StringName = &"balanced"
 
 # --- Internal flag to prevent duplicate registration during LOD promotion ---
-var _is_promoting: bool = false
+# Used by ShipLODManager to prevent duplicate registration during async promote.
+var is_promoting: bool = false
 
 
 func tick_simple_ai(delta: float) -> void:

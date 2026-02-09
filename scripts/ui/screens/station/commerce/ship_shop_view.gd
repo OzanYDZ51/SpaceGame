@@ -6,7 +6,7 @@ extends Control
 # Left: Ship list, Center: 3D preview, Right: Stats + price + configure button
 # =============================================================================
 
-signal configure_requested(ship_id: StringName)
+signal ship_purchased(ship_id: StringName)
 
 var _commerce_manager: CommerceManager = null
 var _station_type: int = 0
@@ -48,9 +48,9 @@ func _ready() -> void:
 	add_child(_ship_list)
 
 	_configure_btn = UIButton.new()
-	_configure_btn.text = "CONFIGURER & ACHETER"
+	_configure_btn.text = "ACHETER"
 	_configure_btn.visible = false
-	_configure_btn.pressed.connect(_on_configure_pressed)
+	_configure_btn.pressed.connect(_on_buy_pressed)
 	add_child(_configure_btn)
 
 
@@ -104,9 +104,15 @@ func _on_resized() -> void:
 	_layout()
 
 
-func _on_configure_pressed() -> void:
-	if _selected_index >= 0 and _selected_index < _available_ships.size():
-		configure_requested.emit(_available_ships[_selected_index])
+func _on_buy_pressed() -> void:
+	if _selected_index < 0 or _selected_index >= _available_ships.size():
+		return
+	if _commerce_manager == null:
+		return
+	var ship_id: StringName = _available_ships[_selected_index]
+	if _commerce_manager.buy_ship(ship_id):
+		ship_purchased.emit(ship_id)
+		queue_redraw()
 
 
 func _get_selected_ship_data() -> ShipData:
@@ -318,7 +324,6 @@ func _draw() -> void:
 	])
 
 	# Section: SLOTS
-	var hp_count := data.hardpoints.size()
 	var hp_sizes: Dictionary = {}
 	for hp in data.hardpoints:
 		var sz: String = hp.get("size", "S")
@@ -352,9 +357,12 @@ func _draw() -> void:
 	draw_string(font, Vector2(stats_x + 10, y + 20), price_text,
 		HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_HEADER, PlayerEconomy.CREDITS_COLOR)
 
-	# Afford indicator
+	# Afford indicator + button state
 	if _commerce_manager and _commerce_manager.player_economy:
-		if _commerce_manager.player_economy.credits < data.price:
+		var can_buy: bool = _commerce_manager.player_economy.credits >= data.price
+		if _configure_btn:
+			_configure_btn.enabled = can_buy
+		if not can_buy:
 			draw_string(font, Vector2(stats_x + 10, y + 44), "CREDITS INSUFFISANTS",
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 

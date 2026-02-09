@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld("launcher", {
   updateLauncher: (downloadUrl) => ipcRenderer.invoke("update-launcher", downloadUrl),
   updateGame: (downloadUrl, version) => ipcRenderer.invoke("update-game", downloadUrl, version),
 
+  // Changelog
+  getChangelog: () => ipcRenderer.invoke("get-changelog"),
+
   // Launch
   launchGame: () => ipcRenderer.invoke("launch-game"),
   uninstall: () => ipcRenderer.invoke("uninstall"),
@@ -20,6 +23,7 @@ contextBridge.exposeInMainWorld("launcher", {
   // Events from main process
   onProgress: (cb) => ipcRenderer.on("progress", (_, data) => cb(data)),
   onStatus: (cb) => ipcRenderer.on("status", (_, msg) => cb(msg)),
+  onGameExited: (cb) => ipcRenderer.on("game-exited", () => cb()),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send("window-minimize"),

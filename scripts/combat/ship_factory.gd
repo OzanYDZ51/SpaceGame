@@ -30,11 +30,14 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	var scene_result := _load_ship_scene(data)
 	controller.center_offset = scene_result.center_offset
 
-	# Replace the old ShipModel (its _ready() already loaded the default model)
-	var old_model := controller.get_node_or_null("ShipModel")
-	if old_model:
-		controller.remove_child(old_model)
-		old_model.free()
+	# Clean up all components from a previous ship (when switching ships)
+	for node_name in ["ShipModel", "CollisionShape3D", "HardpointRoot", "HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
+		var old := controller.get_node_or_null(node_name)
+		if old:
+			controller.remove_child(old)
+			old.free()
+
+	# Create new ShipModel
 	var ship_model := ShipModel.new()
 	ship_model.name = "ShipModel"
 	ship_model.model_path = data.model_path
@@ -43,11 +46,6 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	ship_model.external_model_instance = scene_result.get("model_node", null)
 	controller.add_child(ship_model)
 
-	# Replace the old CollisionShape3D with convex collision from mesh
-	var old_col := controller.get_node_or_null("CollisionShape3D")
-	if old_col:
-		controller.remove_child(old_col)
-		old_col.free()
 	controller.add_child(scene_result.collision_shape)
 
 	# Health System
@@ -358,6 +356,7 @@ static var _config_cache: Dictionary = {}  # ship_id -> Array[Dictionary]
 static var _rotation_cache: Dictionary = {}  # ship_id -> Vector3
 static var _root_basis_cache: Dictionary = {}  # ship_id -> Basis
 static var _model_scale_cache: Dictionary = {}  # ship_id -> float
+static var _center_offset_cache: Dictionary = {}  # ship_id -> Vector3
 
 static func get_hardpoint_configs(ship_id: StringName) -> Array[Dictionary]:
 	if _config_cache.has(ship_id):
@@ -387,6 +386,13 @@ static func get_scene_model_scale(ship_id: StringName) -> float:
 	return _model_scale_cache.get(ship_id, 1.0)
 
 
+static func get_center_offset(ship_id: StringName) -> Vector3:
+	if _center_offset_cache.has(ship_id):
+		return _center_offset_cache[ship_id]
+	_cache_scene_info(ship_id)
+	return _center_offset_cache.get(ship_id, Vector3.ZERO)
+
+
 static func _cache_scene_info(ship_id: StringName) -> void:
 	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null or data.ship_scene_path == "":
@@ -394,6 +400,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		_rotation_cache[ship_id] = Vector3.ZERO
 		_root_basis_cache[ship_id] = Basis.IDENTITY
 		_model_scale_cache[ship_id] = 1.0
+		_center_offset_cache[ship_id] = Vector3.ZERO
 		return
 	if not _scene_cache.has(data.ship_scene_path):
 		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
@@ -402,6 +409,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 			_rotation_cache[ship_id] = Vector3.ZERO
 			_root_basis_cache[ship_id] = Basis.IDENTITY
 			_model_scale_cache[ship_id] = 1.0
+			_center_offset_cache[ship_id] = Vector3.ZERO
 			return
 		_scene_cache[data.ship_scene_path] = packed
 	var instance: Node3D = _scene_cache[data.ship_scene_path].instantiate() as Node3D
@@ -410,21 +418,27 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	var root_scale: float = instance.scale.x
 	var model_rot: Vector3 = Vector3.ZERO
 	var model_scale: float = 1.0
+	var center_off: Vector3 = Vector3.ZERO
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
+		elif child.name == "ShipCenter":
+			center_off = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
 			model_rot = root_rotation + child.rotation_degrees
 			model_scale = root_scale * child.scale.x
 
 	# Configs stay raw — display screens use root_basis wrapper for correct positioning
 	var root_xform_basis: Basis = instance.transform.basis
+	if not root_xform_basis.is_equal_approx(Basis.IDENTITY):
+		center_off = root_xform_basis * center_off
 
 	instance.queue_free()
 	_config_cache[ship_id] = configs
 	_rotation_cache[ship_id] = model_rot
 	_root_basis_cache[ship_id] = root_xform_basis
 	_model_scale_cache[ship_id] = model_scale
+	_center_offset_cache[ship_id] = center_off
 
 
 ## Loads a ship scene and extracts HardpointSlot configs and model node.

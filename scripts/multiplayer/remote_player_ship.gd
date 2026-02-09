@@ -51,15 +51,15 @@ func _setup_model() -> void:
 func _setup_name_label() -> void:
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"
-	_name_label.text = player_name
-	_name_label.font_size = 48
-	_name_label.pixel_size = 0.05
+	_name_label.text = player_name if player_name != "" else "Pilote"
+	_name_label.font_size = 64
+	_name_label.pixel_size = 0.04
+	_name_label.outline_size = 8
+	_name_label.outline_modulate = Color(0.0, 0.1, 0.2, 0.9)
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_name_label.no_depth_test = true
-	# Position label above ship — scale with model size
-	var label_h := maxf(5.0, ShipFactory.get_scene_model_scale(ship_id) * 1.5)
-	_name_label.position = Vector3(0, label_h, 0)
-	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.8)
+	_name_label.position = Vector3(0, 15, 0)
+	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.9)
 	add_child(_name_label)
 
 
@@ -75,10 +75,8 @@ func change_ship_model(new_ship_id: StringName) -> void:
 		_ship_model = null
 	# Build new model
 	_setup_model()
-	# Reposition label height for new ship size
 	if _name_label:
-		var label_h := maxf(5.0, ShipFactory.get_scene_model_scale(ship_id) * 1.5)
-		_name_label.position = Vector3(0, label_h, 0)
+		_name_label.position = Vector3(0, 15, 0)
 
 
 ## Called when we receive a new state snapshot from the network.

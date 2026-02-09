@@ -13,6 +13,25 @@ var engine_name: StringName = &""
 var modules: Array[StringName] = []     # per slot (empty = &"")
 
 
+static func create_bare(sid: StringName) -> FleetShip:
+	var data := ShipRegistry.get_ship_data(sid)
+	if data == null:
+		push_error("FleetShip.create_bare: unknown ship_id '%s'" % sid)
+		return null
+	var fs := FleetShip.new()
+	fs.ship_id = sid
+	fs.custom_name = String(data.ship_name)
+	fs.weapons.resize(data.hardpoints.size())
+	for i in data.hardpoints.size():
+		fs.weapons[i] = &""
+	fs.shield_name = &""
+	fs.engine_name = &""
+	fs.modules.resize(data.module_slots.size())
+	for i in data.module_slots.size():
+		fs.modules[i] = &""
+	return fs
+
+
 static func from_ship_data(data: ShipData) -> FleetShip:
 	var fs := FleetShip.new()
 	fs.ship_id = data.ship_id

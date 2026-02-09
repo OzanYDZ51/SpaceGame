@@ -17,7 +17,6 @@ var station_name: String = "STATION"
 var _sidebar_buttons: Array[UIButton] = []
 var _active_view: Control = null
 var _ship_shop: ShipShopView = null
-var _ship_configurator: ShipConfiguratorView = null
 var _equipment_shop: EquipmentShopView = null
 var _back_btn: UIButton = null
 var _current_category: int = -1
@@ -57,14 +56,8 @@ func _ready() -> void:
 	# Create views (created once, shown/hidden)
 	_ship_shop = ShipShopView.new()
 	_ship_shop.visible = false
-	_ship_shop.configure_requested.connect(_on_configure_ship)
+	_ship_shop.ship_purchased.connect(_on_ship_purchased)
 	add_child(_ship_shop)
-
-	_ship_configurator = ShipConfiguratorView.new()
-	_ship_configurator.visible = false
-	_ship_configurator.purchase_completed.connect(_on_ship_purchased)
-	_ship_configurator.back_requested.connect(_on_configurator_back)
-	add_child(_ship_configurator)
 
 	_equipment_shop = EquipmentShopView.new()
 	_equipment_shop.visible = false
@@ -78,8 +71,6 @@ func setup(mgr: CommerceManager, stype: int, sname: String) -> void:
 	screen_title = "COMMERCE — " + sname.to_upper()
 	if _ship_shop:
 		_ship_shop.setup(mgr, stype)
-	if _ship_configurator:
-		_ship_configurator.setup(mgr, stype)
 	if _equipment_shop:
 		_equipment_shop.setup(mgr, stype)
 
@@ -110,20 +101,8 @@ func _on_back_pressed() -> void:
 	close()
 
 
-func _on_configure_ship(ship_id: StringName) -> void:
-	_hide_all_views()
-	_ship_configurator.set_ship(ship_id)
-	_ship_configurator.visible = true
-	_active_view = _ship_configurator
-	_layout_content_area()
-
-
-func _on_ship_purchased() -> void:
-	# Return to ship shop after purchase
-	_switch_to_category(0)
-
-
-func _on_configurator_back() -> void:
+func _on_ship_purchased(_ship_id: StringName) -> void:
+	# Refresh ship shop after purchase (credits changed)
 	_switch_to_category(0)
 
 
@@ -155,7 +134,6 @@ func _switch_to_category(idx: int) -> void:
 
 func _hide_all_views() -> void:
 	if _ship_shop: _ship_shop.visible = false
-	if _ship_configurator: _ship_configurator.visible = false
 	if _equipment_shop: _equipment_shop.visible = false
 	_active_view = null
 

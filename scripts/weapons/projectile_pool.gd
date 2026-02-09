@@ -74,7 +74,7 @@ func acquire(scene_path: String) -> BaseProjectile:
 				break
 		_steal_idx[scene_path] = idx
 		# Compact if steal index gets too far
-		if idx > 100 and idx > order.size() / 2:
+		if idx > 100 and idx * 2 > order.size():
 			_compact_order(scene_path)
 		# If steal failed (no valid candidates), create on the fly
 		if bolt == null:

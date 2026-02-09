@@ -31,10 +31,6 @@ var _preview_local_pos: Vector3 = Vector3.ZERO
 var _preview_local_rot: Vector3 = Vector3.ZERO
 var _preview_local_scale: Vector3 = Vector3.ONE
 
-# Equipment data for current player ship (passed from DockInstance)
-var _current_hp_configs: Array[Dictionary] = []
-var _current_weapon_names: Array[StringName] = []
-
 # Ship selection state
 var _ship_ids: Array[StringName] = []
 var _current_index: int = 0

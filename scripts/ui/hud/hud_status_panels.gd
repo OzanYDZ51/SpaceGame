@@ -293,7 +293,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 		var col_w: float = (w - x * 2) / 2.0
 		for i in active_resources.size():
 			var col: int = i % 2
-			var row: int = i / 2
+			var row: int = int(i * 0.5)
 			var rx: float = x + col * col_w
 			var ry: float = y + row * row_h
 

@@ -12,6 +12,7 @@ var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
 var _hover_id: String = ""
 var _pulse_t: float = 0.0
 var _player_id: String = ""
+var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 
 const HIT_RADIUS: float = 16.0  # click detection radius in pixels
 
@@ -34,11 +35,15 @@ func _process(delta: float) -> void:
 	_pulse_t += delta
 
 
+func _get_entities() -> Dictionary:
+	return preview_entities if not preview_entities.is_empty() else EntityRegistry.get_all()
+
+
 func _draw() -> void:
 	if camera == null:
 		return
 
-	var entities: Dictionary = EntityRegistry.get_all()
+	var entities: Dictionary = _get_entities()
 	var font := ThemeDB.fallback_font
 
 	# Draw selection line first (behind everything)
@@ -296,6 +301,19 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var col := Color(0.15, 0.6, 1.0, 0.9)
 	var s: float = 6.0
 
+	# Check if this is the route gate
+	var is_route_gate: bool = false
+	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	if rm and rm.is_route_active() and ent["id"] == rm.next_gate_entity_id:
+		is_route_gate = true
+
+	# Route gate highlight: pulsing gold ring
+	if is_route_gate:
+		var route_pulse: float = sin(_pulse_t * 3.0) * 0.3 + 0.7
+		var route_col := Color(1.0, 0.8, 0.0, route_pulse * 0.6)
+		draw_arc(pos, s + 6.0 + route_pulse * 3.0, 0, TAU, 24, route_col, 2.5, true)
+		draw_arc(pos, s + 2.0, 0, TAU, 20, Color(1.0, 0.8, 0.0, 0.3), 1.5, true)
+
 	# Outer ring
 	draw_arc(pos, s, 0, TAU, 16, col, 2.0, true)
 
@@ -307,7 +325,14 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var target_name: String = ent.get("extra", {}).get("target_system_name", ent["name"])
 	var name_text: String = target_name if target_name.length() < 30 else ent["name"]
 	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
-	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(col.r, col.g, col.b, 0.7))
+	var label_col := Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else Color(col.r, col.g, col.b, 0.7)
+	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, label_col)
+
+	# Route label
+	if is_route_gate:
+		var route_label := "PROCHAIN SAUT"
+		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1.0, 0.8, 0.0, 0.8))
 
 
 # =============================================================================
@@ -546,7 +571,7 @@ func get_entity_at(screen_pos: Vector2) -> String:
 		return ""
 	var best_id: String = ""
 	var best_dist: float = HIT_RADIUS
-	var entities: Dictionary = EntityRegistry.get_all()
+	var entities: Dictionary = _get_entities()
 	for ent in entities.values():
 		if ent["type"] == EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue

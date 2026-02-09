@@ -5,7 +5,6 @@ extends StaticBody3D
 # Asteroid Node - Physical asteroid with mesh, collision, and mining interaction
 # =============================================================================
 
-signal mining_hit(yield_data: Dictionary)
 signal depleted(asteroid_id: StringName)
 
 var data: AsteroidData = null

@@ -20,6 +20,8 @@ const progressFill = document.getElementById("progress-fill");
 const progressText = document.getElementById("progress-text");
 const btnPlay = document.getElementById("btn-play");
 const btnUninstall = document.getElementById("btn-uninstall");
+const changelogSection = document.getElementById("changelog-section");
+const changelogList = document.getElementById("changelog-list");
 
 // --- Helpers ---
 
@@ -53,6 +55,15 @@ function showMain(username) {
   userDisplay.textContent = username.toUpperCase();
 }
 
+function formatDate(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
 // --- Progress listener ---
 
 window.launcher.onProgress(({ phase, received, total }) => {
@@ -66,6 +77,12 @@ window.launcher.onProgress(({ phase, received, total }) => {
 });
 
 window.launcher.onStatus((msg) => setStatus(msg));
+
+// When game exits, re-enable the play button
+window.launcher.onGameExited(() => {
+  btnPlay.disabled = false;
+  btnPlay.textContent = "JOUER";
+});
 
 // =========================================================================
 // AUTH
@@ -157,8 +174,42 @@ document.getElementById("btn-logout").addEventListener("click", async (e) => {
   await window.launcher.logout();
   btnPlay.disabled = true;
   btnUninstall.style.display = "none";
+  changelogSection.style.display = "none";
   showAuth();
 });
+
+// =========================================================================
+// CHANGELOG
+// =========================================================================
+
+async function loadChangelog() {
+  const result = await window.launcher.getChangelog();
+  if (!result.entries || result.entries.length === 0) {
+    changelogSection.style.display = "none";
+    return;
+  }
+
+  changelogList.innerHTML = "";
+  for (const entry of result.entries) {
+    const div = document.createElement("div");
+    div.className = "changelog-entry";
+    div.innerHTML = `
+      <div class="changelog-entry-header">
+        <span class="changelog-version">v${entry.version}</span>
+        <span class="changelog-date">${formatDate(entry.created_at)}</span>
+      </div>
+      <div class="changelog-summary">${escapeHtml(entry.summary)}</div>
+    `;
+    changelogList.appendChild(div);
+  }
+  changelogSection.style.display = "block";
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 // =========================================================================
 // UPDATES & LAUNCH
@@ -166,6 +217,9 @@ document.getElementById("btn-logout").addEventListener("click", async (e) => {
 
 async function checkUpdatesAndPrepare() {
   setStatus("Verification des mises a jour...");
+
+  // Load changelog in parallel
+  loadChangelog();
 
   const info = await window.launcher.checkUpdates();
 
@@ -220,21 +274,22 @@ async function checkUpdatesAndPrepare() {
   btnUninstall.style.display = "block";
 }
 
-// Launch
+// Launch — minimize to tray instead of closing
 btnPlay.addEventListener("click", async () => {
   btnPlay.disabled = true;
+  btnPlay.textContent = "EN COURS...";
   setStatus("Lancement...");
 
   const result = await window.launcher.launchGame();
   if (result.error) {
     setStatus("Erreur: " + result.error);
     btnPlay.disabled = false;
+    btnPlay.textContent = "JOUER";
     return;
   }
 
   setStatus("Jeu en cours");
-  await sleep(1500);
-  window.launcher.windowClose();
+  // Launcher stays open (tray mode) — game exit event will re-enable button
 });
 
 // Uninstall

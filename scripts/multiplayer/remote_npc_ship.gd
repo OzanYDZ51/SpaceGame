@@ -55,7 +55,7 @@ func _setup_model() -> void:
 
 func _setup_name_label() -> void:
 	var data := ShipRegistry.get_ship_data(ship_id)
-	var display_name: String = data.ship_name if data else String(ship_id)
+	var display_name: String = String(data.ship_name) if data else String(ship_id)
 
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"

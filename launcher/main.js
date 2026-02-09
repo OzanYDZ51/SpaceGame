@@ -1,10 +1,11 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const http = require("http");
 const { spawn } = require("child_process");
 const AdmZip = require("adm-zip");
+const discordRpc = require("./discord-rpc");
 
 // --- Config ---
 const BACKEND_URL =
@@ -18,11 +19,14 @@ const VERSION_FILE = path.join(INSTALL_DIR, "version.json");
 const AUTH_FILE = path.join(INSTALL_DIR, "auth.json");
 
 let mainWindow;
+let tray = null;
+let gameProcess = null;
+let isGameRunning = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
-    height: 600,
+    height: 650,
     frame: false,
     resizable: false,
     backgroundColor: "#0a0e14",
@@ -33,13 +37,83 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  // Prevent window close when game is running — minimize to tray instead
+  mainWindow.on("close", (e) => {
+    if (isGameRunning && tray) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+}
+
+function createTray() {
+  // Create a simple tray icon
+  const iconPath = path.join(__dirname, "assets", "icon.ico");
+  let trayIcon;
+  if (fs.existsSync(iconPath)) {
+    trayIcon = nativeImage.createFromPath(iconPath);
+  } else {
+    trayIcon = nativeImage.createEmpty();
+  }
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip("SpaceGame Launcher");
+
+  const updateTrayMenu = () => {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: isGameRunning ? "SpaceGame en cours..." : "SpaceGame Launcher",
+        enabled: false,
+      },
+      { type: "separator" },
+      {
+        label: "Ouvrir le launcher",
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Quitter",
+        click: () => {
+          isGameRunning = false;
+          if (tray) {
+            tray.destroy();
+            tray = null;
+          }
+          app.quit();
+        },
+      },
+    ]);
+    tray.setContextMenu(contextMenu);
+  };
+
+  updateTrayMenu();
+  tray.on("double-click", () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  return updateTrayMenu;
 }
 
 app.whenReady().then(() => {
   ensureDirs();
   createWindow();
+  createTray();
 });
-app.on("window-all-closed", () => app.quit());
+
+app.on("window-all-closed", () => {
+  if (!isGameRunning) {
+    app.quit();
+  }
+});
 
 // --- Helpers ---
 
@@ -308,7 +382,23 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version) => {
 });
 
 // =========================================================================
-// IPC — LAUNCH
+// IPC — CHANGELOG
+// =========================================================================
+
+ipcMain.handle("get-changelog", async () => {
+  try {
+    const res = await httpRequest("GET", `${BACKEND_URL}/api/v1/changelog?limit=10`);
+    if (res.status === 200 && Array.isArray(res.data)) {
+      return { entries: res.data };
+    }
+    return { entries: [] };
+  } catch {
+    return { entries: [] };
+  }
+});
+
+// =========================================================================
+// IPC — LAUNCH (with tray mode + Discord RPC)
 // =========================================================================
 
 ipcMain.handle("launch-game", async () => {
@@ -323,13 +413,38 @@ ipcMain.handle("launch-game", async () => {
   }
 
   try {
-    const child = spawn(exePath, args, {
+    gameProcess = spawn(exePath, args, {
       cwd: GAME_DIR,
-      detached: true,
+      detached: false,
       stdio: "ignore",
       windowsHide: false,
     });
-    child.unref();
+
+    isGameRunning = true;
+
+    // Start Discord Rich Presence bridge
+    discordRpc.start();
+
+    // When game exits, restore launcher
+    gameProcess.on("exit", () => {
+      isGameRunning = false;
+      gameProcess = null;
+      discordRpc.stop();
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.webContents.send("status", "Pret");
+        mainWindow.webContents.send("game-exited");
+      }
+    });
+
+    gameProcess.on("error", () => {
+      isGameRunning = false;
+      gameProcess = null;
+      discordRpc.stop();
+    });
+
     return { success: true };
   } catch (err) {
     return { error: "Impossible de lancer le jeu: " + err.message };
@@ -344,4 +459,10 @@ ipcMain.handle("uninstall", async () => {
 
 // Window controls
 ipcMain.on("window-minimize", () => mainWindow?.minimize());
-ipcMain.on("window-close", () => mainWindow?.close());
+ipcMain.on("window-close", () => {
+  if (isGameRunning && tray) {
+    mainWindow?.hide();
+  } else {
+    mainWindow?.close();
+  }
+});

@@ -21,6 +21,9 @@ var _is_transitioning: bool = false
 # Persistence: per-system state (visited, NPC kills, etc.)
 var _system_states: Dictionary = {}  # system_id -> Dictionary
 
+# Origin tracking: which system we jumped FROM (for gate arrival positioning)
+var _origin_system_id: int = -1
+
 # Reference to the transition overlay
 var _transition_overlay: ColorRect = null
 var _transition_alpha: float = 0.0
@@ -92,6 +95,7 @@ func initiate_gate_jump(target_system_id: int) -> void:
 
 	_is_transitioning = true
 	_pending_target_id = target_system_id
+	_origin_system_id = current_system_id
 
 	# Start fade out
 	_transition_phase = 1
@@ -233,12 +237,19 @@ func _build_connection_list(system_id: int) -> Array[Dictionary]:
 	if sys.is_empty():
 		return connections
 
+	var origin_x: float = sys.get("x", 0.0)
+	var origin_y: float = sys.get("y", 0.0)
+
 	for conn_id in sys["connections"]:
 		var conn_sys: Dictionary = galaxy.get_system(conn_id)
 		if not conn_sys.is_empty():
 			connections.append({
 				"target_id": conn_id,
 				"target_name": conn_sys["name"],
+				"origin_x": origin_x,
+				"origin_y": origin_y,
+				"target_x": conn_sys.get("x", 0.0),
+				"target_y": conn_sys.get("y", 0.0),
 			})
 
 	return connections
@@ -338,15 +349,36 @@ func _position_player() -> void:
 	if ship == null:
 		return
 
-	if current_system_data.stations.size() > 0:
-		var st: StationData = current_system_data.stations[0]
-		var orbit_r: float = st.orbital_radius
-		var angle: float = st.orbital_angle
-		var station_pos := Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
-		var offset := Vector3(0, 100, 500)
-		ship.global_position = station_pos + offset
-	else:
-		ship.global_position = Vector3(0, 0, 500)
+	# Try to spawn near the arrival gate (the gate pointing back to origin system)
+	var spawned_at_gate: bool = false
+	if _origin_system_id >= 0 and current_system_data:
+		for gd in current_system_data.jump_gates:
+			if gd.target_system_id == _origin_system_id:
+				var gate_pos := Vector3(gd.pos_x, gd.pos_y, gd.pos_z)
+				# Spawn 500m behind gate (away from system center)
+				var dir_from_center := gate_pos.normalized()
+				ship.global_position = gate_pos + dir_from_center * 500.0
+				# Orient toward system center
+				var look_target := Vector3.ZERO
+				var forward := (look_target - ship.global_position).normalized()
+				if forward.length_squared() > 0.001:
+					ship.look_at(look_target, Vector3.UP)
+				spawned_at_gate = true
+				break
+
+	_origin_system_id = -1  # Clear after use
+
+	# Fallback: spawn near first station
+	if not spawned_at_gate:
+		if current_system_data.stations.size() > 0:
+			var st: StationData = current_system_data.stations[0]
+			var orbit_r: float = st.orbital_radius
+			var angle: float = st.orbital_angle
+			var station_pos := Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
+			var offset := Vector3(0, 100, 500)
+			ship.global_position = station_pos + offset
+		else:
+			ship.global_position = Vector3(0, 0, 500)
 
 	if ship is RigidBody3D:
 		ship.linear_velocity = Vector3.ZERO
@@ -494,9 +526,12 @@ func get_gate_target_id() -> int:
 	return _active_gate_target_id
 
 
+signal gate_proximity_entered(target_id: int)
+
 func _on_gate_player_nearby(target_id: int, target_name: String) -> void:
 	_active_gate_target_id = target_id
 	_active_gate_target_name = target_name
+	gate_proximity_entered.emit(target_id)
 
 
 func _on_gate_player_left() -> void:

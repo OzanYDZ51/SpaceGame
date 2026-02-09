@@ -17,17 +17,17 @@ func can_afford(amount: int) -> bool:
 	return player_economy.credits >= amount
 
 
-func buy_ship(ship_id: StringName, loadout: FleetShip) -> bool:
+func buy_ship(ship_id: StringName) -> bool:
 	var ship_data := ShipRegistry.get_ship_data(ship_id)
 	if ship_data == null:
 		purchase_failed.emit("Vaisseau inconnu")
 		return false
-	var total: int = ship_data.price + loadout.get_total_equipment_value()
-	if not can_afford(total):
+	if not can_afford(ship_data.price):
 		purchase_failed.emit("Credits insuffisants")
 		return false
-	player_economy.spend_credits(total)
-	player_fleet.add_ship(loadout)
+	player_economy.spend_credits(ship_data.price)
+	var bare_ship := FleetShip.create_bare(ship_id)
+	player_fleet.add_ship(bare_ship)
 	purchase_completed.emit("ship", ship_id)
 	return true
 
@@ -94,7 +94,7 @@ func sell_weapon(weapon_name: StringName) -> bool:
 	var w := WeaponRegistry.get_weapon(weapon_name)
 	if w == null: return false
 	player_inventory.remove_weapon(weapon_name)
-	player_economy.add_credits(w.price / 2)
+	player_economy.add_credits(int(w.price * 0.5))
 	return true
 
 
@@ -104,7 +104,7 @@ func sell_shield(shield_name: StringName) -> bool:
 	var s := ShieldRegistry.get_shield(shield_name)
 	if s == null: return false
 	player_inventory.remove_shield(shield_name)
-	player_economy.add_credits(s.price / 2)
+	player_economy.add_credits(int(s.price * 0.5))
 	return true
 
 
@@ -114,7 +114,7 @@ func sell_engine(engine_name: StringName) -> bool:
 	var e := EngineRegistry.get_engine(engine_name)
 	if e == null: return false
 	player_inventory.remove_engine(engine_name)
-	player_economy.add_credits(e.price / 2)
+	player_economy.add_credits(int(e.price * 0.5))
 	return true
 
 
@@ -124,5 +124,5 @@ func sell_module(module_name: StringName) -> bool:
 	var m := ModuleRegistry.get_module(module_name)
 	if m == null: return false
 	player_inventory.remove_module(module_name)
-	player_economy.add_credits(m.price / 2)
+	player_economy.add_credits(int(m.price * 0.5))
 	return true

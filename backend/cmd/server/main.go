@@ -10,6 +10,7 @@ import (
 
 	"spacegame-backend/internal/config"
 	"spacegame-backend/internal/database"
+	"spacegame-backend/internal/discord"
 	"spacegame-backend/internal/handler"
 	"spacegame-backend/internal/middleware"
 	"spacegame-backend/internal/repository"
@@ -38,6 +39,9 @@ func main() {
 	playerRepo := repository.NewPlayerRepository(db)
 	clanRepo := repository.NewClanRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
+	changelogRepo := repository.NewChangelogRepository(db)
+	eventRepo := repository.NewEventRepository(db)
+	discordRepo := repository.NewDiscordRepository(db)
 
 	// Services
 	authSvc := service.NewAuthService(playerRepo, sessionRepo, cfg.JWTSecret)
@@ -45,12 +49,39 @@ func main() {
 	clanSvc := service.NewClanService(clanRepo, playerRepo)
 	wsHub := service.NewWSHub()
 
+	// Discord webhook service
+	webhookSvc := service.NewDiscordWebhookService(
+		cfg.DiscordWebhookDevlog,
+		cfg.DiscordWebhookStatus,
+		cfg.DiscordWebhookKills,
+		cfg.DiscordWebhookEvents,
+		cfg.DiscordWebhookBugs,
+		cfg.DiscordWebhookClans,
+	)
+
+	// Event service (records + dispatches to Discord)
+	eventSvc := service.NewEventService(eventRepo, webhookSvc)
+
+	// Discord bot (optional — starts only if token is configured)
+	discordBot, err := discord.NewBot(
+		cfg.DiscordBotToken,
+		cfg.DiscordGuildID,
+		playerRepo,
+		clanRepo,
+		discordRepo,
+		wsHub,
+		webhookSvc,
+	)
+	if err != nil {
+		log.Printf("Warning: Discord bot failed to initialize: %v", err)
+	}
+
 	// Fiber app
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		BodyLimit:    1 * 1024 * 1024, // 1MB
+		BodyLimit:    2 * 1024 * 1024, // 2MB (for bug report screenshots)
 	})
 
 	app.Use(recover.New())
@@ -70,6 +101,10 @@ func main() {
 	v1.Get("/updates", updatesH.GetUpdates)
 	v1.Post("/updates/refresh", updatesH.RefreshCache)
 
+	// Changelog (public GET, admin POST)
+	changelogH := handler.NewChangelogHandler(changelogRepo, webhookSvc)
+	v1.Get("/changelog", changelogH.List)
+
 	// Auth (public)
 	authH := handler.NewAuthHandler(authSvc)
 	auth := v1.Group("/auth")
@@ -83,12 +118,16 @@ func main() {
 	serverH := handler.NewServerHandler(authSvc, playerSvc)
 	server.Post("/validate-token", serverH.ValidateToken)
 	server.Post("/save-state", serverH.SaveState)
+	// Game server events
+	eventH := handler.NewEventHandler(eventSvc)
+	server.Post("/event", eventH.RecordEvent)
 
 	// Admin — registered BEFORE protected group
 	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))
 	adminH := handler.NewAdminHandler(playerRepo, clanRepo, wsHub)
 	admin.Get("/stats", adminH.Stats)
 	admin.Post("/announce", adminH.Announce)
+	admin.Post("/changelog", changelogH.Create)
 
 	// JWT-protected routes (catch-all — must be LAST)
 	protected := v1.Group("", middleware.Auth(cfg.JWTSecret))
@@ -98,6 +137,13 @@ func main() {
 	protected.Get("/player/state", playerH.GetState)
 	protected.Put("/player/state", playerH.SaveState)
 	protected.Get("/player/profile/:id", playerH.GetProfile)
+
+	// Player bug reports & Discord linking
+	bugH := handler.NewBugReportHandler(eventSvc)
+	protected.Post("/player/bug-report", bugH.Submit)
+	discordH := handler.NewDiscordHandler(discordRepo)
+	protected.Post("/player/discord-link", discordH.ConfirmLink)
+	protected.Get("/player/discord-status", discordH.GetStatus)
 
 	// Clans
 	clanH := handler.NewClanHandler(clanSvc)
@@ -124,6 +170,13 @@ func main() {
 	// Start hub
 	go wsHub.Run()
 
+	// Start Discord bot
+	if discordBot != nil {
+		if err := discordBot.Start(); err != nil {
+			log.Printf("Warning: Discord bot failed to start: %v", err)
+		}
+	}
+
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -138,6 +191,9 @@ func main() {
 
 	<-quit
 	log.Println("Shutting down...")
+	if discordBot != nil {
+		discordBot.Stop()
+	}
 	_ = app.ShutdownWithTimeout(5 * time.Second)
 	wsHub.Shutdown()
 	log.Println("Server stopped")

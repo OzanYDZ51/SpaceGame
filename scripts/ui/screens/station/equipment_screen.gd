@@ -14,6 +14,13 @@ signal equipment_closed
 var player_inventory: PlayerInventory = null
 var weapon_manager: WeaponManager = null
 var equipment_manager: EquipmentManager = null
+var player_fleet: PlayerFleet = null
+
+# --- Adapter (abstracts LIVE vs DATA mode) ---
+var _adapter: FleetShipEquipAdapter = null
+var _selected_fleet_index: int = 0
+var _fleet_scroll_offset: float = 0.0
+var _fleet_hovered_index: int = -1
 
 # --- 3D Viewer ---
 var _viewport_container: SubViewportContainer = null
@@ -65,7 +72,12 @@ var _back_btn: UIButton = null
 # --- Layout constants ---
 const VIEWER_RATIO := 0.55
 const SIDEBAR_RATIO := 0.45
-const CONTENT_TOP := 65.0
+const CONTENT_TOP := 140.0
+const FLEET_STRIP_TOP := 52.0
+const FLEET_STRIP_H := 88.0
+const FLEET_CARD_W := 156.0
+const FLEET_CARD_H := 66.0
+const FLEET_CARD_GAP := 6.0
 const TAB_H := 30.0
 const HP_STRIP_H := 60.0
 const COMPARE_H := 170.0
@@ -100,7 +112,7 @@ const MODULE_COLORS := {
 
 
 func _ready() -> void:
-	screen_title = "EQUIPEMENT DU VAISSEAU"
+	screen_title = "FLOTTE — EQUIPEMENT"
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -170,6 +182,12 @@ func _on_opened() -> void:
 	if _tab_bar:
 		_tab_bar.current_tab = 0
 
+	# Select active ship by default
+	_selected_fleet_index = player_fleet.active_index if player_fleet else 0
+	_fleet_scroll_offset = 0.0
+	_fleet_hovered_index = -1
+	_create_adapter()
+
 	_setup_3d_viewer()
 	_auto_select_slot()
 	_refresh_arsenal()
@@ -190,6 +208,9 @@ func _on_closed() -> void:
 	_equip_btn.visible = false
 	_remove_btn.visible = false
 	_back_btn.visible = false
+	if _adapter and _adapter.loadout_changed.is_connected(_on_adapter_loadout_changed):
+		_adapter.loadout_changed.disconnect(_on_adapter_loadout_changed)
+	_adapter = null
 	equipment_closed.emit()
 
 
@@ -202,6 +223,7 @@ func _setup_3d_viewer() -> void:
 	_viewport_container = SubViewportContainer.new()
 	_viewport_container.stretch = true
 	_viewport_container.mouse_filter = Control.MOUSE_FILTER_PASS
+	_viewport_container.show_behind_parent = true
 	add_child(_viewport_container)
 
 	_viewport = SubViewport.new()
@@ -254,8 +276,7 @@ func _setup_3d_viewer() -> void:
 	_ship_model.model_rotation_degrees = _ship_model_rotation
 	_ship_model.skip_centering = true
 	_ship_model.engine_light_color = Color(0.3, 0.5, 1.0)
-	# Offset so the ShipCenter marker aligns with the viewport origin
-	_ship_model.position = -_ship_center_offset
+	# Ship stays at origin — camera orbits around center_offset instead
 	_viewport.add_child(_ship_model)
 
 	# Show equipped weapon meshes on the 3D model
@@ -266,22 +287,20 @@ func _setup_3d_viewer() -> void:
 	_update_orbit_camera()
 
 
+
 func _auto_fit_camera() -> void:
-	# Compute bounding sphere radius from world origin (camera look-at point)
-	# to the farthest visible point. With skip_centering, the AABB center can
-	# be offset from ShipModel origin, so we check all 8 AABB corners.
+	# Compute bounding sphere radius from _ship_center_offset (camera look-at point)
+	# to the farthest visible point. Ship stays at origin, camera orbits center_offset.
 	var max_radius: float = 2.0
 
 	if _ship_model:
 		var aabb := _ship_model.get_visual_aabb()
-		# AABB is in ShipModel-local space. ShipModel is at -_ship_center_offset.
-		# Compute distance from world origin to each AABB corner.
 		for i in 8:
-			var corner: Vector3 = aabb.get_endpoint(i) + _ship_model.position
+			var corner: Vector3 = aabb.get_endpoint(i) - _ship_center_offset
 			max_radius = maxf(max_radius, corner.length())
 
 	# Also consider hardpoint positions (they may extend beyond the mesh)
-	if weapon_manager:
+	if weapon_manager and _is_live_mode():
 		for hp in weapon_manager.hardpoints:
 			var pos: Vector3 = _ship_root_basis * hp.position - _ship_center_offset
 			max_radius = maxf(max_radius, pos.length())
@@ -299,15 +318,26 @@ func _auto_fit_camera() -> void:
 
 
 func _refresh_viewer_weapons() -> void:
-	if _ship_model == null or weapon_manager == null:
+	if _ship_model == null:
 		return
-	var hp_configs: Array[Dictionary] = []
-	var weapon_names: Array[StringName] = []
-	for hp in weapon_manager.hardpoints:
-		hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
-		weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
-
-	_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
+	if _is_live_mode() and weapon_manager:
+		var hp_configs: Array[Dictionary] = []
+		var weapon_names: Array[StringName] = []
+		for hp in weapon_manager.hardpoints:
+			hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
+			weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+		_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
+	elif _adapter:
+		var sd := _adapter.get_ship_data()
+		if sd == null:
+			return
+		var hp_configs: Array[Dictionary] = []
+		var weapon_names: Array[StringName] = []
+		for i in sd.hardpoints.size():
+			var cfg: Dictionary = sd.hardpoints[i]
+			hp_configs.append(cfg)
+			weapon_names.append(_adapter.get_mounted_weapon_name(i))
+		_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
 
 
 func _cleanup_3d_viewer() -> void:
@@ -322,15 +352,35 @@ func _cleanup_3d_viewer() -> void:
 
 func _create_hardpoint_markers() -> void:
 	_hp_markers.clear()
-	if weapon_manager == null or _viewport == null:
+	if _viewport == null:
 		return
 
-	for i in weapon_manager.hardpoints.size():
-		var hp := weapon_manager.hardpoints[i]
+	# In LIVE mode use weapon_manager hardpoints; in DATA mode use ShipData configs
+	var hp_count: int = 0
+	var hp_positions: Array[Vector3] = []
+	var hp_turrets: Array[bool] = []
+	if _is_live_mode() and weapon_manager:
+		hp_count = weapon_manager.hardpoints.size()
+		for hp in weapon_manager.hardpoints:
+			hp_positions.append(hp.position)
+			hp_turrets.append(hp.is_turret)
+	elif _adapter:
+		var sd := _adapter.get_ship_data()
+		if sd:
+			hp_count = sd.hardpoints.size()
+			# Use ShipFactory cached configs for positions
+			var configs := ShipFactory.get_hardpoint_configs(_adapter.fleet_ship.ship_id)
+			for j in sd.hardpoints.size():
+				if j < configs.size():
+					hp_positions.append(configs[j].get("position", Vector3.ZERO))
+				else:
+					hp_positions.append(Vector3.ZERO)
+				hp_turrets.append(sd.hardpoints[j].get("is_turret", false))
 
+	for i in hp_count:
+		var is_turret: bool = hp_turrets[i] if i < hp_turrets.size() else false
 		var mesh_inst := MeshInstance3D.new()
-		if hp.is_turret:
-			# Diamond/box shape for turret slots
+		if is_turret:
 			var box := BoxMesh.new()
 			var s := 0.18 * _ship_model_scale
 			box.size = Vector3(s, s, s)
@@ -350,11 +400,12 @@ func _create_hardpoint_markers() -> void:
 		mat.no_depth_test = true
 		mat.render_priority = 10
 		mesh_inst.material_override = mat
-		mesh_inst.position = _ship_root_basis * hp.position - _ship_center_offset
+		var pos: Vector3 = hp_positions[i] if i < hp_positions.size() else Vector3.ZERO
+		mesh_inst.position = _ship_root_basis * pos
 		_viewport.add_child(mesh_inst)
 
 		var body := StaticBody3D.new()
-		body.position = _ship_root_basis * hp.position - _ship_center_offset
+		body.position = _ship_root_basis * pos
 		var col_shape := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
 		shape.radius = 0.3 * _ship_model_scale
@@ -369,47 +420,46 @@ func _create_hardpoint_markers() -> void:
 
 
 func _update_marker_visuals() -> void:
+	if _adapter == null:
+		return
+	var hp_count := _adapter.get_hardpoint_count()
 	for marker in _hp_markers:
 		var idx: int = marker.index
 		var mesh: MeshInstance3D = marker.mesh
 		var mat: StandardMaterial3D = mesh.material_override
 
-		if idx >= weapon_manager.hardpoints.size():
+		if idx >= hp_count:
 			continue
 
-		var hp := weapon_manager.hardpoints[idx]
-		var has_weapon_model: bool = hp.mounted_weapon != null and hp.mounted_weapon.weapon_model_scene != ""
+		var mounted := _adapter.get_mounted_weapon(idx)
+		var has_weapon_model: bool = mounted != null and mounted.weapon_model_scene != ""
 
 		if idx == _selected_hardpoint:
-			# Selected: show marker even with weapon model (pulsing highlight)
 			mesh.visible = true
-			var type_col := _get_hp_marker_color(hp)
+			var type_col := _get_marker_color_for(mounted)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
 			var pulse := 1.0 + sin(_pulse_time * 4.0) * 0.5
 			mat.emission_energy_multiplier = pulse
 		elif has_weapon_model:
-			# Has weapon with 3D model: hide marker (weapon mesh is visible)
 			mesh.visible = false
-		elif hp.mounted_weapon:
-			# Has weapon but no 3D model: show colored marker
+		elif mounted:
 			mesh.visible = true
-			var type_col := _get_hp_marker_color(hp)
+			var type_col := _get_marker_color_for(mounted)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
 			mat.emission_energy_multiplier = 0.5
 		else:
-			# Empty slot: show dim marker
 			mesh.visible = true
 			mat.albedo_color = Color(0.3, 0.3, 0.3)
 			mat.emission_enabled = false
 
 
-func _get_hp_marker_color(hp: Hardpoint) -> Color:
-	if hp.mounted_weapon:
-		return TYPE_COLORS.get(hp.mounted_weapon.weapon_type, UITheme.PRIMARY)
+func _get_marker_color_for(weapon: WeaponResource) -> Color:
+	if weapon:
+		return TYPE_COLORS.get(weapon.weapon_type, UITheme.PRIMARY)
 	return UITheme.PRIMARY
 
 
@@ -421,13 +471,13 @@ func _update_orbit_camera() -> void:
 		return
 	var yaw_rad := deg_to_rad(orbit_yaw)
 	var pitch_rad := deg_to_rad(orbit_pitch)
-	var pos := Vector3(
+	var offset := Vector3(
 		sin(yaw_rad) * cos(pitch_rad),
 		sin(pitch_rad),
 		cos(yaw_rad) * cos(pitch_rad)
 	) * orbit_distance
-	_viewer_camera.position = pos
-	_viewer_camera.look_at(Vector3.ZERO)
+	_viewer_camera.position = _ship_center_offset + offset
+	_viewer_camera.look_at(_ship_center_offset)
 
 
 # =============================================================================
@@ -445,7 +495,7 @@ func _process(delta: float) -> void:
 		orbit_yaw += AUTO_ROTATE_SPEED * delta
 		_update_orbit_camera()
 
-	if _current_tab == 0 and weapon_manager:
+	if _current_tab == 0 and _adapter:
 		_update_marker_visuals()
 
 	# Redraw every frame so projected labels track the orbiting camera
@@ -469,6 +519,40 @@ func _gui_input(event: InputEvent) -> void:
 			close()
 			accept_event()
 			return
+
+	# --- Fleet strip interaction ---
+	var fleet_strip_bottom := FLEET_STRIP_TOP + FLEET_STRIP_H
+	if event is InputEventMouseButton and event.pressed:
+		if event.position.y >= FLEET_STRIP_TOP and event.position.y <= fleet_strip_bottom:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var idx := _get_fleet_card_at(event.position.x)
+				if idx >= 0:
+					_on_fleet_ship_selected(idx)
+				accept_event()
+				return
+			# Scroll in fleet strip
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				var card_step := FLEET_CARD_W + FLEET_CARD_GAP
+				if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+					_fleet_scroll_offset = maxf(0.0, _fleet_scroll_offset - card_step)
+				else:
+					var total_w := card_step * player_fleet.ships.size() - FLEET_CARD_GAP
+					var area_w := size.x - 40 - 16
+					var max_scroll := maxf(0.0, total_w - area_w)
+					_fleet_scroll_offset = minf(max_scroll, _fleet_scroll_offset + card_step)
+				queue_redraw()
+				accept_event()
+				return
+
+	if event is InputEventMouseMotion:
+		if event.position.y >= FLEET_STRIP_TOP and event.position.y <= fleet_strip_bottom:
+			var idx := _get_fleet_card_at(event.position.x)
+			if idx != _fleet_hovered_index:
+				_fleet_hovered_index = idx
+				queue_redraw()
+		elif _fleet_hovered_index >= 0:
+			_fleet_hovered_index = -1
+			queue_redraw()
 
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_top := size.y - HP_STRIP_H - 50
@@ -538,7 +622,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _try_select_marker(mouse_pos: Vector2) -> void:
-	if _viewport == null or _viewer_camera == null or weapon_manager == null:
+	if _viewport == null or _viewer_camera == null or _adapter == null:
 		return
 
 	var viewer_w := size.x * VIEWER_RATIO
@@ -573,7 +657,7 @@ func _try_select_marker(mouse_pos: Vector2) -> void:
 
 
 func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
-	if weapon_manager == null:
+	if _adapter == null:
 		return false
 
 	var viewer_w := size.x * VIEWER_RATIO
@@ -583,7 +667,7 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 	if not strip_rect.has_point(mouse_pos):
 		return false
 
-	var hp_count := weapon_manager.hardpoints.size()
+	var hp_count := _adapter.get_hardpoint_count()
 	if hp_count == 0:
 		return false
 
@@ -598,8 +682,7 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
 			# Check if clicked on [X] remove button (top-right of card)
-			var hp := weapon_manager.hardpoints[i]
-			if hp.mounted_weapon:
+			if _adapter.get_mounted_weapon(i) != null:
 				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
 				if xb_rect.has_point(mouse_pos):
 					_selected_hardpoint = i
@@ -612,7 +695,7 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 
 
 func _try_click_module_strip(mouse_pos: Vector2) -> bool:
-	if equipment_manager == null or equipment_manager.ship_data == null:
+	if _adapter == null:
 		return false
 
 	var viewer_w := size.x * VIEWER_RATIO
@@ -622,7 +705,7 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 	if not strip_rect.has_point(mouse_pos):
 		return false
 
-	var slot_count := equipment_manager.ship_data.module_slots.size()
+	var slot_count := _adapter.get_module_slot_count()
 	if slot_count == 0:
 		return false
 
@@ -637,7 +720,7 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
 			# Check [X] remove button
-			var mod: ModuleResource = equipment_manager.equipped_modules[i] if i < equipment_manager.equipped_modules.size() else null
+			var mod: ModuleResource = _adapter.get_equipped_module(i)
 			if mod:
 				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
 				if xb_rect.has_point(mouse_pos):
@@ -657,7 +740,7 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 
 
 func _try_click_shield_remove(mouse_pos: Vector2) -> bool:
-	if equipment_manager == null or equipment_manager.equipped_shield == null:
+	if _adapter == null or _adapter.get_equipped_shield() == null:
 		return false
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_y := size.y - HP_STRIP_H - 50
@@ -670,7 +753,7 @@ func _try_click_shield_remove(mouse_pos: Vector2) -> bool:
 
 
 func _try_click_engine_remove(mouse_pos: Vector2) -> bool:
-	if equipment_manager == null or equipment_manager.equipped_engine == null:
+	if _adapter == null or _adapter.get_equipped_engine() == null:
 		return false
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_y := size.y - HP_STRIP_H - 50
@@ -695,23 +778,24 @@ func _select_hardpoint(idx: int) -> void:
 
 ## Auto-select the first empty compatible slot for the current tab.
 func _auto_select_slot() -> void:
+	if _adapter == null:
+		return
 	match _current_tab:
 		0:  # Weapons — select first empty hardpoint
-			if weapon_manager and _selected_hardpoint < 0:
-				for i in weapon_manager.hardpoints.size():
-					if weapon_manager.hardpoints[i].mounted_weapon == null:
+			if _selected_hardpoint < 0:
+				for i in _adapter.get_hardpoint_count():
+					if _adapter.get_mounted_weapon(i) == null:
 						_selected_hardpoint = i
 						return
-				# All occupied: select first
-				if weapon_manager.hardpoints.size() > 0:
+				if _adapter.get_hardpoint_count() > 0:
 					_selected_hardpoint = 0
 		1:  # Modules — select first empty module slot
-			if equipment_manager and equipment_manager.ship_data and _selected_module_slot < 0:
-				for i in equipment_manager.ship_data.module_slots.size():
-					if i >= equipment_manager.equipped_modules.size() or equipment_manager.equipped_modules[i] == null:
+			if _selected_module_slot < 0:
+				for i in _adapter.get_module_slot_count():
+					if _adapter.get_equipped_module(i) == null:
 						_selected_module_slot = i
 						return
-				if equipment_manager.ship_data.module_slots.size() > 0:
+				if _adapter.get_module_slot_count() > 0:
 					_selected_module_slot = 0
 
 
@@ -731,15 +815,18 @@ func _layout_controls() -> void:
 		if _viewport:
 			_viewport.size = Vector2i(int(viewer_w), int(s.y - CONTENT_TOP - HP_STRIP_H - 20))
 
-	_tab_bar.position = Vector2(sidebar_x + sidebar_pad, CONTENT_TOP + 4)
+	var tab_y := CONTENT_TOP + 6.0
+	_tab_bar.position = Vector2(sidebar_x + sidebar_pad, tab_y)
 	_tab_bar.size = Vector2(sidebar_w - sidebar_pad * 2, TAB_H)
 
-	var list_top := CONTENT_TOP + TAB_H + 36
-	var list_bottom := s.y - COMPARE_H - 90
+	# Arsenal header sits below tabs with some padding
+	var arsenal_top := tab_y + TAB_H + 28.0
+	var list_top := arsenal_top + 16.0
+	var list_bottom := s.y - COMPARE_H - 100
 	_arsenal_list.position = Vector2(sidebar_x + sidebar_pad + 4, list_top)
 	_arsenal_list.size = Vector2(sidebar_w - sidebar_pad * 2 - 8, list_bottom - list_top)
 
-	var btn_y := s.y - 55
+	var btn_y := s.y - 62
 	var btn_total := BTN_W * 3 + 20
 	var btn_x := sidebar_x + (sidebar_w - btn_total) * 0.5
 	_equip_btn.position = Vector2(btn_x, btn_y)
@@ -770,6 +857,9 @@ func _draw() -> void:
 	var sidebar_w := s.x * SIDEBAR_RATIO
 	var sidebar_pad := 16.0
 
+	# Fleet strip
+	_draw_fleet_strip(font, s)
+
 	# Viewer divider
 	draw_line(Vector2(viewer_w, CONTENT_TOP), Vector2(viewer_w, s.y - 40), UITheme.BORDER, 1.0)
 
@@ -785,25 +875,30 @@ func _draw() -> void:
 		3:
 			_draw_engine_status_panel(font, s)
 
-	# Sidebar background
-	var sb_rect := Rect2(sidebar_x + sidebar_pad - 2, CONTENT_TOP + TAB_H + 32,
-		sidebar_w - sidebar_pad * 2 + 4, s.y - CONTENT_TOP - TAB_H - 32 - 70)
+	# Sidebar — compute Y positions matching _layout_controls
+	var tab_y := CONTENT_TOP + 6.0
+	var arsenal_header_y := tab_y + TAB_H + 8.0
+
+	# Sidebar background (covers arsenal area + comparison)
+	var sb_top := arsenal_header_y - 4.0
+	var sb_bottom := s.y - 72.0
+	var sb_rect := Rect2(sidebar_x + sidebar_pad - 2, sb_top,
+		sidebar_w - sidebar_pad * 2 + 4, sb_bottom - sb_top)
 	draw_panel_bg(sb_rect)
 
 	# Arsenal header
-	var header_y := CONTENT_TOP + TAB_H + 10
 	var header_names := ["ARSENAL", "MODULES DISPO.", "BOUCLIERS DISPO.", "MOTEURS DISPO."]
-	draw_section_header(sidebar_x + sidebar_pad + 4, header_y, sidebar_w - sidebar_pad * 2 - 8, header_names[_current_tab])
+	draw_section_header(sidebar_x + sidebar_pad + 4, arsenal_header_y, sidebar_w - sidebar_pad * 2 - 8, header_names[_current_tab])
 
 	# Stock count
 	if player_inventory:
 		var total := _get_current_stock_count()
 		var inv_str := "%d en stock" % total
-		draw_string(font, Vector2(sidebar_x + sidebar_w - sidebar_pad - 4, header_y + 11),
+		draw_string(font, Vector2(sidebar_x + sidebar_w - sidebar_pad - 4, arsenal_header_y + 11),
 			inv_str, HORIZONTAL_ALIGNMENT_RIGHT, sidebar_w * 0.4, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Comparison panel
-	var compare_y := s.y - COMPARE_H - 65
+	var compare_y := s.y - COMPARE_H - 76
 	var compare_rect := Rect2(sidebar_x + sidebar_pad - 2, compare_y,
 		sidebar_w - sidebar_pad * 2 + 4, COMPARE_H)
 	draw_panel_bg(compare_rect)
@@ -812,7 +907,7 @@ func _draw() -> void:
 	_draw_comparison(font, sidebar_x + sidebar_pad, cmp_header_y, sidebar_w - sidebar_pad * 2)
 
 	# Button separator
-	var btn_sep_y := s.y - 68
+	var btn_sep_y := s.y - 72
 	draw_line(Vector2(sidebar_x + sidebar_pad, btn_sep_y),
 		Vector2(sidebar_x + sidebar_w - sidebar_pad, btn_sep_y), UITheme.BORDER, 1.0)
 
@@ -836,10 +931,177 @@ func _draw() -> void:
 
 
 # =============================================================================
+# FLEET STRIP (top of screen, full width)
+# =============================================================================
+func _draw_fleet_strip(font: Font, s: Vector2) -> void:
+	if player_fleet == null or player_fleet.ships.is_empty():
+		return
+
+	var strip_rect := Rect2(20, FLEET_STRIP_TOP, s.x - 40, FLEET_STRIP_H)
+	draw_panel_bg(strip_rect)
+
+	# Header
+	var ship_count := player_fleet.ships.size()
+	draw_section_header(28, FLEET_STRIP_TOP + 2, 120, "FLOTTE")
+	draw_string(font, Vector2(152, FLEET_STRIP_TOP + 14),
+		"%d vaisseau%s" % [ship_count, "x" if ship_count > 1 else ""],
+		HORIZONTAL_ALIGNMENT_LEFT, 100, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+	# Compute card layout
+	var cards_area_x := strip_rect.position.x + 8.0
+	var cards_area_w := strip_rect.size.x - 16.0
+	var card_step := FLEET_CARD_W + FLEET_CARD_GAP
+	var total_cards_w := card_step * ship_count - FLEET_CARD_GAP
+	var card_y := FLEET_STRIP_TOP + 20.0
+
+	# Center if fits, otherwise allow scroll
+	var base_x: float
+	if total_cards_w <= cards_area_w:
+		base_x = cards_area_x + (cards_area_w - total_cards_w) * 0.5
+	else:
+		base_x = cards_area_x - _fleet_scroll_offset
+
+	# Clip region
+	var clip_left := cards_area_x
+	var clip_right := cards_area_x + cards_area_w
+
+	for i in ship_count:
+		var cx := base_x + i * card_step
+		# Skip if completely outside clip
+		if cx + FLEET_CARD_W < clip_left or cx > clip_right:
+			continue
+		var fs: FleetShip = player_fleet.ships[i]
+		var sd := ShipRegistry.get_ship_data(fs.ship_id)
+		_draw_fleet_card(font, cx, card_y, i, fs, sd)
+
+	# Scroll arrows if content overflows
+	if total_cards_w > cards_area_w:
+		var arrow_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.6)
+		if _fleet_scroll_offset > 0:
+			# Left arrow
+			var ax := cards_area_x + 2
+			var ay := card_y + FLEET_CARD_H * 0.5
+			draw_line(Vector2(ax + 8, ay - 8), Vector2(ax, ay), arrow_col, 2.0)
+			draw_line(Vector2(ax, ay), Vector2(ax + 8, ay + 8), arrow_col, 2.0)
+		var max_scroll := total_cards_w - cards_area_w
+		if _fleet_scroll_offset < max_scroll:
+			# Right arrow
+			var ax := clip_right - 10
+			var ay := card_y + FLEET_CARD_H * 0.5
+			draw_line(Vector2(ax - 8, ay - 8), Vector2(ax, ay), arrow_col, 2.0)
+			draw_line(Vector2(ax, ay), Vector2(ax - 8, ay + 8), arrow_col, 2.0)
+
+
+func _draw_fleet_card(font: Font, cx: float, cy: float, index: int, fs: FleetShip, sd: ShipData) -> void:
+	var card_rect := Rect2(cx, cy, FLEET_CARD_W, FLEET_CARD_H)
+	var is_selected := index == _selected_fleet_index
+	var is_hovered := index == _fleet_hovered_index
+	var is_active := player_fleet != null and index == player_fleet.active_index
+
+	# Background
+	if is_selected:
+		var pulse := UITheme.get_pulse(1.0)
+		var sel_a := lerpf(0.08, 0.2, pulse)
+		draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, sel_a))
+		draw_rect(card_rect, UITheme.BORDER_ACTIVE, false, 1.5)
+		# Left accent bar
+		draw_rect(Rect2(cx, cy, 3, FLEET_CARD_H), UITheme.PRIMARY)
+	elif is_hovered:
+		draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
+		draw_rect(card_rect, UITheme.BORDER, false, 1.0)
+	else:
+		draw_rect(card_rect, Color(0, 0.02, 0.05, 0.3))
+		draw_rect(card_rect, UITheme.BORDER, false, 1.0)
+
+	if sd == null:
+		draw_string(font, Vector2(cx + 6, cy + 14), String(fs.ship_id),
+			HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+		return
+
+	# Ship name (line 1)
+	var display_name: String = fs.custom_name if fs.custom_name != "" else String(sd.ship_name)
+	var name_col := UITheme.TEXT if not is_selected else UITheme.PRIMARY
+	draw_string(font, Vector2(cx + 6, cy + 13), display_name.to_upper(),
+		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 46, UITheme.FONT_SIZE_SMALL, name_col)
+
+	# Ship class (line 2, dim)
+	draw_string(font, Vector2(cx + 6, cy + 25), String(sd.ship_class).to_upper(),
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
+	# Weapon dots (line 2, right side) — filled = equipped, empty = vacant
+	var hp_count := sd.hardpoints.size()
+	var dot_r := 3.0
+	var dot_spacing := 9.0
+	var dots_x := cx + FLEET_CARD_W - 10 - hp_count * dot_spacing
+	for i in hp_count:
+		var dot_cx := dots_x + i * dot_spacing + dot_r
+		var dot_cy := cy + 22.0
+		var weapon_name: StringName = fs.weapons[i] if i < fs.weapons.size() else &""
+		if weapon_name != &"":
+			var w := WeaponRegistry.get_weapon(weapon_name)
+			var wcol: Color = TYPE_COLORS.get(w.weapon_type, UITheme.PRIMARY) if w else UITheme.PRIMARY
+			draw_circle(Vector2(dot_cx, dot_cy), dot_r, wcol)
+		else:
+			draw_arc(Vector2(dot_cx, dot_cy), dot_r, 0, TAU, 8,
+				Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.4), 1.0)
+
+	# Hull bar (line 3) — mini bar showing hull HP relative to largest ship
+	var bar_x := cx + 6
+	var bar_y := cy + 31
+	var bar_w := FLEET_CARD_W - 12
+	var bar_h := 3.0
+	draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.1, 0.15, 0.2, 0.5))
+	var hull_ratio := clampf(sd.hull_hp / 5000.0, 0.05, 1.0)  # normalize to 5000 HP max
+	var hull_col := UITheme.ACCENT
+	draw_rect(Rect2(bar_x, bar_y, bar_w * hull_ratio, bar_h), hull_col)
+
+	# Slot summary (line 4): "2/4W 1S 1E 1/2M"
+	var equipped_w := 0
+	for wn in fs.weapons:
+		if wn != &"":
+			equipped_w += 1
+	var has_shield := 1 if fs.shield_name != &"" else 0
+	var has_engine := 1 if fs.engine_name != &"" else 0
+	var equipped_m := 0
+	for mn in fs.modules:
+		if mn != &"":
+			equipped_m += 1
+	var slot_str := "%d/%dW %dS %dE %d/%dM" % [equipped_w, hp_count, has_shield, has_engine, equipped_m, sd.module_slots.size()]
+	draw_string(font, Vector2(cx + 6, cy + 44), slot_str,
+		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
+	# Equipment fill bar (line 5)
+	var total_slots := hp_count + 1 + 1 + sd.module_slots.size()  # weapons + shield + engine + modules
+	var filled_slots := equipped_w + has_shield + has_engine + equipped_m
+	var fill_x := cx + 6
+	var fill_y := cy + 50
+	var fill_w := FLEET_CARD_W - 12
+	var fill_h := 4.0
+	draw_rect(Rect2(fill_x, fill_y, fill_w, fill_h), Color(0.1, 0.15, 0.2, 0.5))
+	if total_slots > 0:
+		var fill_ratio := float(filled_slots) / float(total_slots)
+		var fill_col := UITheme.PRIMARY if fill_ratio < 1.0 else UITheme.ACCENT
+		draw_rect(Rect2(fill_x, fill_y, fill_w * fill_ratio, fill_h), fill_col)
+
+	# [ACTIF] badge
+	if is_active:
+		var badge_text := "ACTIF"
+		var badge_w := 36.0
+		var badge_h := 13.0
+		var badge_x := cx + FLEET_CARD_W - badge_w - 4
+		var badge_y := cy + FLEET_CARD_H - badge_h - 4
+		var badge_col := UITheme.ACCENT
+		draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
+		draw_string(font, Vector2(badge_x + 2, badge_y + 10), badge_text,
+			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
+
+
+# =============================================================================
 # HARDPOINT STRIP (tab 0 — below 3D viewer)
 # =============================================================================
 func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
-	if weapon_manager == null:
+	if _adapter == null:
 		return
 
 	var viewer_w := s.x * VIEWER_RATIO
@@ -849,7 +1111,7 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "POINTS D'EMPORT")
 
-	var hp_count := weapon_manager.hardpoints.size()
+	var hp_count := _adapter.get_hardpoint_count()
 	if hp_count == 0:
 		return
 
@@ -859,7 +1121,9 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 	var card_y := strip_y + 20
 
 	for i in hp_count:
-		var hp := weapon_manager.hardpoints[i]
+		var slot_size := _adapter.get_hardpoint_slot_size(i)
+		var is_turret := _adapter.is_hardpoint_turret(i)
+		var mounted := _adapter.get_mounted_weapon(i)
 		var card_x := start_x + i * card_w
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 
@@ -872,24 +1136,22 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 			draw_rect(card_rect, Color(0, 0.02, 0.05, 0.3))
 			draw_rect(card_rect, UITheme.BORDER, false, 1.0)
 
-		var badge_col := _slot_size_color(hp.slot_size)
-		var badge_text := "%s%d" % [hp.slot_size, i + 1]
+		var badge_col := _slot_size_color(slot_size)
+		var badge_text := "%s%d" % [slot_size, i + 1]
 		draw_string(font, Vector2(card_x + 6, card_y + 14), badge_text,
 			HORIZONTAL_ALIGNMENT_LEFT, 30, UITheme.FONT_SIZE_BODY, badge_col)
 
-		# Turret indicator
-		if hp.is_turret:
+		if is_turret:
 			var turret_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.8)
 			draw_string(font, Vector2(card_x + 6, card_y + 28), "T",
 				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, turret_col)
 
 		var name_x := card_x + 36
-		if hp.mounted_weapon:
-			var type_col: Color = TYPE_COLORS.get(hp.mounted_weapon.weapon_type, UITheme.PRIMARY)
-			draw_string(font, Vector2(name_x, card_y + 14), str(hp.mounted_weapon.weapon_name),
+		if mounted:
+			var type_col: Color = TYPE_COLORS.get(mounted.weapon_type, UITheme.PRIMARY)
+			draw_string(font, Vector2(name_x, card_y + 14), str(mounted.weapon_name),
 				HORIZONTAL_ALIGNMENT_LEFT, card_w - 60, UITheme.FONT_SIZE_SMALL, type_col)
-			_draw_weapon_icon(Vector2(name_x + 4, card_y + 26), 5.0, hp.mounted_weapon.weapon_type, type_col)
-			# [X] remove button
+			_draw_weapon_icon(Vector2(name_x + 4, card_y + 26), 5.0, mounted.weapon_type, type_col)
 			var xb_x := card_x + card_w - 20
 			var xb_y := card_y + 4
 			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
@@ -898,8 +1160,8 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 			draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
 				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
 		else:
-			var empty_label := "TOURELLE" if hp.is_turret else "VIDE"
-			var empty_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.5) if hp.is_turret else UITheme.TEXT_DIM
+			var empty_label := "TOURELLE" if is_turret else "VIDE"
+			var empty_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.5) if is_turret else UITheme.TEXT_DIM
 			draw_string(font, Vector2(name_x, card_y + 14), empty_label,
 				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, empty_col)
 
@@ -908,7 +1170,7 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 # MODULE SLOT STRIP (tab 1 — below 3D viewer)
 # =============================================================================
 func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
-	if equipment_manager == null or equipment_manager.ship_data == null:
+	if _adapter == null:
 		return
 
 	var viewer_w := s.x * VIEWER_RATIO
@@ -918,7 +1180,7 @@ func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "SLOTS MODULES")
 
-	var slot_count := equipment_manager.ship_data.module_slots.size()
+	var slot_count := _adapter.get_module_slot_count()
 	if slot_count == 0:
 		return
 
@@ -928,8 +1190,8 @@ func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
 	var card_y := strip_y + 20
 
 	for i in slot_count:
-		var slot_size: String = equipment_manager.ship_data.module_slots[i]
-		var mod: ModuleResource = equipment_manager.equipped_modules[i] if i < equipment_manager.equipped_modules.size() else null
+		var slot_size: String = _adapter.get_module_slot_size(i)
+		var mod: ModuleResource = _adapter.get_equipped_module(i)
 		var card_x := start_x + i * card_w
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 
@@ -975,12 +1237,12 @@ func _draw_shield_status_panel(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "BOUCLIER EQUIPE")
 
-	if equipment_manager == null:
+	if _adapter == null:
 		return
 
 	var y := strip_y + 22
-	if equipment_manager.equipped_shield:
-		var sh := equipment_manager.equipped_shield
+	var sh := _adapter.get_equipped_shield()
+	if sh:
 		draw_string(font, Vector2(32, y + 10), str(sh.shield_name),
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.35, UITheme.FONT_SIZE_BODY, SHIELD_COLOR)
 
@@ -1015,12 +1277,12 @@ func _draw_engine_status_panel(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "MOTEUR EQUIPE")
 
-	if equipment_manager == null:
+	if _adapter == null:
 		return
 
 	var y := strip_y + 22
-	if equipment_manager.equipped_engine:
-		var en := equipment_manager.equipped_engine
+	var en := _adapter.get_equipped_engine()
+	if en:
 		draw_string(font, Vector2(32, y + 10), str(en.engine_name),
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.35, UITheme.FONT_SIZE_BODY, ENGINE_COLOR)
 
@@ -1048,14 +1310,19 @@ func _draw_engine_status_panel(font: Font, s: Vector2) -> void:
 # 2D PROJECTED LABELS (tab 0 — overlaid on 3D viewer)
 # =============================================================================
 func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> void:
-	if _viewer_camera == null or weapon_manager == null or _viewport == null:
+	if _viewer_camera == null or _adapter == null or _viewport == null:
 		return
 
+	# In LIVE mode use actual hardpoint Node3D positions; in DATA mode use marker positions
 	var cam_fwd := -_viewer_camera.global_transform.basis.z
+	var hp_count := _adapter.get_hardpoint_count()
 
-	for i in weapon_manager.hardpoints.size():
-		var hp := weapon_manager.hardpoints[i]
-		var world_pos := _ship_root_basis * hp.position - _ship_center_offset
+	for i in hp_count:
+		var world_pos := Vector3.ZERO
+		if _is_live_mode() and weapon_manager and i < weapon_manager.hardpoints.size():
+			world_pos = _ship_root_basis * weapon_manager.hardpoints[i].position
+		elif i < _hp_markers.size():
+			world_pos = _hp_markers[i].mesh.position
 
 		var to_marker := (world_pos - _viewer_camera.global_position).normalized()
 		if cam_fwd.dot(to_marker) < 0.1:
@@ -1072,17 +1339,20 @@ func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> voi
 			label_x = clampf(label_x, 10.0, viewer_w - 80.0)
 			label_y = clampf(label_y, CONTENT_TOP + 10, CONTENT_TOP + viewer_h - 20)
 
-			var label_text := "%s%d" % [hp.slot_size, i + 1]
-			if hp.is_turret:
+			var slot_size := _adapter.get_hardpoint_slot_size(i)
+			var is_turret := _adapter.is_hardpoint_turret(i)
+			var mounted := _adapter.get_mounted_weapon(i)
+			var label_text := "%s%d" % [slot_size, i + 1]
+			if is_turret:
 				label_text += " T"
-			if hp.mounted_weapon:
-				label_text += ": " + str(hp.mounted_weapon.weapon_name)
+			if mounted:
+				label_text += ": " + str(mounted.weapon_name)
 
 			var col := UITheme.TEXT_DIM
 			if i == _selected_hardpoint:
 				col = UITheme.PRIMARY
-			elif hp.mounted_weapon:
-				col = TYPE_COLORS.get(hp.mounted_weapon.weapon_type, UITheme.TEXT_DIM)
+			elif mounted:
+				col = TYPE_COLORS.get(mounted.weapon_type, UITheme.TEXT_DIM)
 
 			var tw := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 			draw_rect(Rect2(label_x + 8, label_y - 10, tw + 8, 14), Color(0, 0, 0, 0.5))
@@ -1115,9 +1385,10 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var count: int = player_inventory.get_weapon_count(weapon_name) if player_inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][weapon.slot_size]
 	var compatible := true
-	if _selected_hardpoint >= 0 and weapon_manager:
-		var hp := weapon_manager.hardpoints[_selected_hardpoint]
-		compatible = player_inventory.is_compatible(weapon_name, hp.slot_size, hp.is_turret) if player_inventory else false
+	if _selected_hardpoint >= 0 and _adapter:
+		var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+		var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+		compatible = player_inventory.is_compatible(weapon_name, hp_sz, hp_turret) if player_inventory else false
 
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var type_col: Color = TYPE_COLORS.get(weapon.weapon_type, UITheme.PRIMARY)
@@ -1136,15 +1407,16 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
 	var name_x := rect.position.x + 48
-	var name_y := rect.position.y + 20
+	var name_max_w := rect.size.x - 48 - 90  # leave room for badges
+	var name_y := rect.position.y + 22
 	ctrl.draw_string(font, Vector2(name_x, name_y), str(weapon_name),
-		HORIZONTAL_ALIGNMENT_LEFT, 160, UITheme.FONT_SIZE_BODY, text_col)
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
-	var stat_y := name_y + 15
+	var stat_y := name_y + 16
 	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
 	var dps := weapon.damage_per_hit * weapon.fire_rate
 	ctrl.draw_string(font, Vector2(name_x, stat_y), "%.0f DPS" % dps,
-		HORIZONTAL_ALIGNMENT_LEFT, 70, UITheme.FONT_SIZE_SMALL, dim_col)
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
 	_draw_qty_and_size_badges(ctrl, font, rect, count, slot_size_str, compatible, alpha_mult)
 
@@ -1158,8 +1430,8 @@ func _draw_shield_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var count: int = player_inventory.get_shield_count(sn) if player_inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][shield.slot_size]
 	var compatible := true
-	if equipment_manager and equipment_manager.ship_data:
-		compatible = player_inventory.is_shield_compatible(sn, equipment_manager.ship_data.shield_slot_size) if player_inventory else false
+	if _adapter:
+		compatible = player_inventory.is_shield_compatible(sn, _adapter.get_shield_slot_size()) if player_inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var col := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, alpha_mult)
 
@@ -1170,13 +1442,14 @@ func _draw_shield_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
 	var name_x := rect.position.x + 48
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 20), str(sn),
-		HORIZONTAL_ALIGNMENT_LEFT, 160, UITheme.FONT_SIZE_BODY, text_col)
+	var name_max_w := rect.size.x - 48 - 90
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(sn),
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
 	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 35),
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38),
 		"%d HP/f, %.0f HP/s" % [int(shield.shield_hp_per_facing), shield.regen_rate],
-		HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, dim_col)
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
 	_draw_qty_and_size_badges(ctrl, font, rect, count, slot_size_str, compatible, alpha_mult)
 
@@ -1190,8 +1463,8 @@ func _draw_engine_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var count: int = player_inventory.get_engine_count(en) if player_inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][engine.slot_size]
 	var compatible := true
-	if equipment_manager and equipment_manager.ship_data:
-		compatible = player_inventory.is_engine_compatible(en, equipment_manager.ship_data.engine_slot_size) if player_inventory else false
+	if _adapter:
+		compatible = player_inventory.is_engine_compatible(en, _adapter.get_engine_slot_size()) if player_inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var col := Color(ENGINE_COLOR.r, ENGINE_COLOR.g, ENGINE_COLOR.b, alpha_mult)
 
@@ -1202,14 +1475,15 @@ func _draw_engine_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
 	var name_x := rect.position.x + 48
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 20), str(en),
-		HORIZONTAL_ALIGNMENT_LEFT, 160, UITheme.FONT_SIZE_BODY, text_col)
+	var name_max_w := rect.size.x - 48 - 90
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(en),
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
 	# Key stat highlight
 	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
 	var best_stat := _get_engine_best_stat(engine)
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 35), best_stat,
-		HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, dim_col)
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38), best_stat,
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
 	_draw_qty_and_size_badges(ctrl, font, rect, count, slot_size_str, compatible, alpha_mult)
 
@@ -1223,8 +1497,8 @@ func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var count: int = player_inventory.get_module_count(mn) if player_inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][module.slot_size]
 	var compatible := true
-	if _selected_module_slot >= 0 and equipment_manager:
-		var slot_sz := equipment_manager.get_module_slot_size(_selected_module_slot)
+	if _selected_module_slot >= 0 and _adapter:
+		var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
 		compatible = player_inventory.is_module_compatible(mn, slot_sz) if player_inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var mod_col: Color = MODULE_COLORS.get(module.module_type, UITheme.PRIMARY)
@@ -1237,14 +1511,15 @@ func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
 	var name_x := rect.position.x + 48
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 20), str(mn),
-		HORIZONTAL_ALIGNMENT_LEFT, 160, UITheme.FONT_SIZE_BODY, text_col)
+	var name_max_w := rect.size.x - 48 - 90
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(mn),
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
 	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
 	var bonuses := module.get_bonuses_text()
 	var bonus_str := bonuses[0] if bonuses.size() > 0 else ""
-	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 35), bonus_str,
-		HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, dim_col)
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38), bonus_str,
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
 	_draw_qty_and_size_badges(ctrl, font, rect, count, slot_size_str, compatible, alpha_mult)
 
@@ -1320,8 +1595,8 @@ func _draw_weapon_comparison(font: Font, px: float, start_y: float, pw: float) -
 		return
 
 	var current_weapon: WeaponResource = null
-	if weapon_manager and _selected_hardpoint < weapon_manager.hardpoints.size():
-		current_weapon = weapon_manager.hardpoints[_selected_hardpoint].mounted_weapon
+	if _adapter:
+		current_weapon = _adapter.get_mounted_weapon(_selected_hardpoint)
 
 	var cur_dmg := current_weapon.damage_per_hit if current_weapon else 0.0
 	var new_dmg := new_weapon.damage_per_hit
@@ -1353,7 +1628,7 @@ func _draw_shield_comparison(font: Font, px: float, start_y: float, pw: float) -
 	if new_shield == null:
 		return
 
-	var cur := equipment_manager.equipped_shield if equipment_manager else null
+	var cur := _adapter.get_equipped_shield() if _adapter else null
 
 	var cur_cap := cur.shield_hp_per_facing if cur else 0.0
 	var new_cap := new_shield.shield_hp_per_facing
@@ -1382,7 +1657,7 @@ func _draw_engine_comparison(font: Font, px: float, start_y: float, pw: float) -
 	if new_engine == null:
 		return
 
-	var cur := equipment_manager.equipped_engine if equipment_manager else null
+	var cur := _adapter.get_equipped_engine() if _adapter else null
 
 	var stats: Array = [
 		["ACCELERATION", cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
@@ -1404,8 +1679,8 @@ func _draw_module_comparison(font: Font, px: float, start_y: float, pw: float) -
 		return
 
 	var cur: ModuleResource = null
-	if equipment_manager and _selected_module_slot < equipment_manager.equipped_modules.size():
-		cur = equipment_manager.equipped_modules[_selected_module_slot]
+	if _adapter:
+		cur = _adapter.get_equipped_module(_selected_module_slot)
 
 	var stats: Array = []
 	# Show all non-zero stats from new module (and current if present)
@@ -1700,23 +1975,9 @@ func _on_back_pressed() -> void:
 # --- Equip/Remove per type ---
 
 func _equip_weapon() -> void:
-	if _selected_hardpoint < 0 or _selected_weapon == &"" or weapon_manager == null or player_inventory == null:
+	if _selected_hardpoint < 0 or _selected_weapon == &"" or _adapter == null:
 		return
-	var hp := weapon_manager.hardpoints[_selected_hardpoint]
-	if not player_inventory.is_compatible(_selected_weapon, hp.slot_size, hp.is_turret):
-		return
-	if not player_inventory.has_weapon(_selected_weapon):
-		return
-	# Verify can_mount before consuming inventory
-	var new_weapon := WeaponRegistry.get_weapon(_selected_weapon)
-	if new_weapon == null or not hp.can_mount(new_weapon):
-		return
-
-	player_inventory.remove_weapon(_selected_weapon)
-	var old_name := weapon_manager.swap_weapon(_selected_hardpoint, _selected_weapon)
-	if old_name != &"":
-		player_inventory.add_weapon(old_name)
-
+	_adapter.equip_weapon(_selected_hardpoint, _selected_weapon)
 	_selected_weapon = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1727,12 +1988,9 @@ func _equip_weapon() -> void:
 
 
 func _remove_weapon() -> void:
-	if _selected_hardpoint < 0 or weapon_manager == null or player_inventory == null:
+	if _selected_hardpoint < 0 or _adapter == null:
 		return
-	var old_name := weapon_manager.remove_weapon(_selected_hardpoint)
-	if old_name != &"":
-		player_inventory.add_weapon(old_name)
-
+	_adapter.remove_weapon(_selected_hardpoint)
 	_selected_weapon = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1743,19 +2001,9 @@ func _remove_weapon() -> void:
 
 
 func _equip_shield() -> void:
-	if _selected_shield == &"" or equipment_manager == null or player_inventory == null:
+	if _selected_shield == &"" or _adapter == null:
 		return
-	if not player_inventory.has_shield(_selected_shield):
-		return
-	if equipment_manager.ship_data and not player_inventory.is_shield_compatible(_selected_shield, equipment_manager.ship_data.shield_slot_size):
-		return
-
-	player_inventory.remove_shield(_selected_shield)
-	var new_shield := ShieldRegistry.get_shield(_selected_shield)
-	var old := equipment_manager.equip_shield(new_shield)
-	if old:
-		player_inventory.add_shield(old.shield_name)
-
+	_adapter.equip_shield(_selected_shield)
 	_selected_shield = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1764,12 +2012,9 @@ func _equip_shield() -> void:
 
 
 func _remove_shield() -> void:
-	if equipment_manager == null or player_inventory == null:
+	if _adapter == null:
 		return
-	var old := equipment_manager.remove_shield()
-	if old:
-		player_inventory.add_shield(old.shield_name)
-
+	_adapter.remove_shield()
 	_selected_shield = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1778,19 +2023,9 @@ func _remove_shield() -> void:
 
 
 func _equip_engine() -> void:
-	if _selected_engine == &"" or equipment_manager == null or player_inventory == null:
+	if _selected_engine == &"" or _adapter == null:
 		return
-	if not player_inventory.has_engine(_selected_engine):
-		return
-	if equipment_manager.ship_data and not player_inventory.is_engine_compatible(_selected_engine, equipment_manager.ship_data.engine_slot_size):
-		return
-
-	player_inventory.remove_engine(_selected_engine)
-	var new_engine := EngineRegistry.get_engine(_selected_engine)
-	var old := equipment_manager.equip_engine(new_engine)
-	if old:
-		player_inventory.add_engine(old.engine_name)
-
+	_adapter.equip_engine(_selected_engine)
 	_selected_engine = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1799,12 +2034,9 @@ func _equip_engine() -> void:
 
 
 func _remove_engine() -> void:
-	if equipment_manager == null or player_inventory == null:
+	if _adapter == null:
 		return
-	var old := equipment_manager.remove_engine()
-	if old:
-		player_inventory.add_engine(old.engine_name)
-
+	_adapter.remove_engine()
 	_selected_engine = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1813,20 +2045,9 @@ func _remove_engine() -> void:
 
 
 func _equip_module() -> void:
-	if _selected_module_slot < 0 or _selected_module == &"" or equipment_manager == null or player_inventory == null:
+	if _selected_module_slot < 0 or _selected_module == &"" or _adapter == null:
 		return
-	if not player_inventory.has_module(_selected_module):
-		return
-	var slot_sz := equipment_manager.get_module_slot_size(_selected_module_slot)
-	if not player_inventory.is_module_compatible(_selected_module, slot_sz):
-		return
-
-	player_inventory.remove_module(_selected_module)
-	var new_mod := ModuleRegistry.get_module(_selected_module)
-	var old := equipment_manager.equip_module(_selected_module_slot, new_mod)
-	if old:
-		player_inventory.add_module(old.module_name)
-
+	_adapter.equip_module(_selected_module_slot, _selected_module)
 	_selected_module = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1835,12 +2056,9 @@ func _equip_module() -> void:
 
 
 func _remove_module() -> void:
-	if _selected_module_slot < 0 or equipment_manager == null or player_inventory == null:
+	if _selected_module_slot < 0 or _adapter == null:
 		return
-	var old := equipment_manager.remove_module(_selected_module_slot)
-	if old:
-		player_inventory.add_module(old.module_name)
-
+	_adapter.remove_module(_selected_module_slot)
 	_selected_module = &""
 	_arsenal_list.selected_index = -1
 	_refresh_arsenal()
@@ -1860,25 +2078,26 @@ func _refresh_arsenal() -> void:
 
 	match _current_tab:
 		0:  # Weapons
-			if _selected_hardpoint >= 0 and weapon_manager:
-				var hp := weapon_manager.hardpoints[_selected_hardpoint]
-				_arsenal_items = player_inventory.get_weapons_for_slot(hp.slot_size, hp.is_turret)
+			if _selected_hardpoint >= 0 and _adapter:
+				var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+				var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+				_arsenal_items = player_inventory.get_weapons_for_slot(hp_sz, hp_turret)
 			else:
 				_arsenal_items = player_inventory.get_all_weapons()
 		1:  # Modules
-			if _selected_module_slot >= 0 and equipment_manager:
-				var slot_sz := equipment_manager.get_module_slot_size(_selected_module_slot)
+			if _selected_module_slot >= 0 and _adapter:
+				var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
 				_arsenal_items = player_inventory.get_modules_for_slot(slot_sz)
 			else:
 				_arsenal_items = player_inventory.get_all_modules()
 		2:  # Shields
-			if equipment_manager and equipment_manager.ship_data:
-				_arsenal_items = player_inventory.get_shields_for_slot(equipment_manager.ship_data.shield_slot_size)
+			if _adapter:
+				_arsenal_items = player_inventory.get_shields_for_slot(_adapter.get_shield_slot_size())
 			else:
 				_arsenal_items = player_inventory.get_all_shields()
 		3:  # Engines
-			if equipment_manager and equipment_manager.ship_data:
-				_arsenal_items = player_inventory.get_engines_for_slot(equipment_manager.ship_data.engine_slot_size)
+			if _adapter:
+				_arsenal_items = player_inventory.get_engines_for_slot(_adapter.get_engine_slot_size())
 			else:
 				_arsenal_items = player_inventory.get_all_engines()
 
@@ -1897,29 +2116,28 @@ func _update_button_states() -> void:
 
 	match _current_tab:
 		0:  # Weapons
-			if _selected_hardpoint >= 0 and _selected_weapon != &"" and weapon_manager and player_inventory:
-				var hp := weapon_manager.hardpoints[_selected_hardpoint]
-				can_equip = player_inventory.is_compatible(_selected_weapon, hp.slot_size, hp.is_turret) and player_inventory.has_weapon(_selected_weapon)
-			if _selected_hardpoint >= 0 and weapon_manager:
-				can_remove = weapon_manager.hardpoints[_selected_hardpoint].mounted_weapon != null
+			if _selected_hardpoint >= 0 and _selected_weapon != &"" and _adapter and player_inventory:
+				var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+				var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+				can_equip = player_inventory.is_compatible(_selected_weapon, hp_sz, hp_turret) and player_inventory.has_weapon(_selected_weapon)
+			if _selected_hardpoint >= 0 and _adapter:
+				can_remove = _adapter.get_mounted_weapon(_selected_hardpoint) != null
 		1:  # Modules
-			if _selected_module_slot >= 0 and _selected_module != &"" and equipment_manager and player_inventory:
-				var slot_sz := equipment_manager.get_module_slot_size(_selected_module_slot)
+			if _selected_module_slot >= 0 and _selected_module != &"" and _adapter and player_inventory:
+				var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
 				can_equip = player_inventory.is_module_compatible(_selected_module, slot_sz) and player_inventory.has_module(_selected_module)
-			if _selected_module_slot >= 0 and equipment_manager and _selected_module_slot < equipment_manager.equipped_modules.size():
-				can_remove = equipment_manager.equipped_modules[_selected_module_slot] != null
+			if _selected_module_slot >= 0 and _adapter:
+				can_remove = _adapter.get_equipped_module(_selected_module_slot) != null
 		2:  # Shields
-			if _selected_shield != &"" and equipment_manager and player_inventory:
-				if equipment_manager.ship_data:
-					can_equip = player_inventory.is_shield_compatible(_selected_shield, equipment_manager.ship_data.shield_slot_size) and player_inventory.has_shield(_selected_shield)
-			if equipment_manager:
-				can_remove = equipment_manager.equipped_shield != null
+			if _selected_shield != &"" and _adapter and player_inventory:
+				can_equip = player_inventory.is_shield_compatible(_selected_shield, _adapter.get_shield_slot_size()) and player_inventory.has_shield(_selected_shield)
+			if _adapter:
+				can_remove = _adapter.get_equipped_shield() != null
 		3:  # Engines
-			if _selected_engine != &"" and equipment_manager and player_inventory:
-				if equipment_manager.ship_data:
-					can_equip = player_inventory.is_engine_compatible(_selected_engine, equipment_manager.ship_data.engine_slot_size) and player_inventory.has_engine(_selected_engine)
-			if equipment_manager:
-				can_remove = equipment_manager.equipped_engine != null
+			if _selected_engine != &"" and _adapter and player_inventory:
+				can_equip = player_inventory.is_engine_compatible(_selected_engine, _adapter.get_engine_slot_size()) and player_inventory.has_engine(_selected_engine)
+			if _adapter:
+				can_remove = _adapter.get_equipped_engine() != null
 
 	_equip_btn.enabled = can_equip
 	_remove_btn.enabled = can_remove
@@ -1971,3 +2189,106 @@ func _slot_size_color(s: String) -> Color:
 		"M": return UITheme.WARNING
 		"L": return Color(1.0, 0.5, 0.15, 0.9)
 	return UITheme.TEXT_DIM
+
+
+# =============================================================================
+# FLEET SHIP SELECTION
+# =============================================================================
+func _is_live_mode() -> bool:
+	return player_fleet != null and _selected_fleet_index == player_fleet.active_index
+
+
+func _get_fleet_card_at(mouse_x: float) -> int:
+	if player_fleet == null or player_fleet.ships.is_empty():
+		return -1
+	var s := size
+	var cards_area_x := 28.0
+	var cards_area_w := s.x - 40 - 16
+	var card_step := FLEET_CARD_W + FLEET_CARD_GAP
+	var total_cards_w := card_step * player_fleet.ships.size() - FLEET_CARD_GAP
+	var card_y := FLEET_STRIP_TOP + 20.0
+
+	var base_x: float
+	if total_cards_w <= cards_area_w:
+		base_x = cards_area_x + (cards_area_w - total_cards_w) * 0.5
+	else:
+		base_x = cards_area_x - _fleet_scroll_offset
+
+	for i in player_fleet.ships.size():
+		var cx := base_x + i * card_step
+		if mouse_x >= cx and mouse_x <= cx + FLEET_CARD_W:
+			return i
+	return -1
+
+
+func _create_adapter() -> void:
+	if player_fleet == null:
+		return
+	var fs: FleetShip = player_fleet.ships[_selected_fleet_index] if _selected_fleet_index < player_fleet.ships.size() else null
+	if fs == null:
+		return
+	if _is_live_mode() and weapon_manager and equipment_manager:
+		_adapter = FleetShipEquipAdapter.create_live(weapon_manager, equipment_manager, fs, player_inventory)
+	else:
+		_adapter = FleetShipEquipAdapter.create_data(fs, player_inventory)
+	_adapter.loadout_changed.connect(_on_adapter_loadout_changed)
+
+
+func _on_adapter_loadout_changed() -> void:
+	_refresh_viewer_weapons()
+	_refresh_arsenal()
+	_update_button_states()
+	queue_redraw()
+
+
+func _on_fleet_ship_selected(idx: int) -> void:
+	if idx == _selected_fleet_index:
+		return
+	_selected_fleet_index = idx
+
+	# Disconnect old adapter signal
+	if _adapter and _adapter.loadout_changed.is_connected(_on_adapter_loadout_changed):
+		_adapter.loadout_changed.disconnect(_on_adapter_loadout_changed)
+
+	_create_adapter()
+
+	# Update title
+	screen_title = "FLOTTE — EQUIPEMENT"
+
+	# Reload 3D viewer for selected ship
+	_reload_ship_viewer_for_fleet_ship()
+
+	# Reset selections
+	_selected_hardpoint = -1
+	_selected_weapon = &""
+	_selected_shield = &""
+	_selected_engine = &""
+	_selected_module = &""
+	_selected_module_slot = -1
+	_current_tab = 0
+	if _tab_bar:
+		_tab_bar.current_tab = 0
+
+	_auto_select_slot()
+	_refresh_arsenal()
+	_update_button_states()
+	queue_redraw()
+
+
+func _reload_ship_viewer_for_fleet_ship() -> void:
+	if player_fleet == null or _selected_fleet_index >= player_fleet.ships.size():
+		return
+	var fs: FleetShip = player_fleet.ships[_selected_fleet_index]
+	var sd := ShipRegistry.get_ship_data(fs.ship_id)
+	if sd == null:
+		return
+
+	_ship_model_path = sd.model_path
+	_ship_model_scale = ShipFactory.get_scene_model_scale(fs.ship_id)
+	_ship_model_rotation = ShipFactory.get_model_rotation(fs.ship_id)
+	_ship_center_offset = ShipFactory.get_center_offset(fs.ship_id)
+	_ship_root_basis = ShipFactory.get_root_basis(fs.ship_id)
+
+	# Recreate the 3D viewer with new model
+	_setup_3d_viewer()
+	_layout_controls()
