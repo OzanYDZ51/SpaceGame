@@ -58,7 +58,7 @@ var autopilot_target_name: String = ""
 var autopilot_is_gate: bool = false  # True when navigating to a jump gate (closer approach)
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
 const AUTOPILOT_ARRIVAL_DIST: float = 10000.0        # 10 km — disengage autopilot (general)
-const AUTOPILOT_GATE_ARRIVAL_DIST: float = 200.0     # 200m — close approach for gate trigger
+const AUTOPILOT_GATE_ARRIVAL_DIST: float = 30.0      # 30m — inside 40m gate trigger sphere
 const AUTOPILOT_DECEL_DIST: float = 30000.0          # 30 km — drop cruise, approach at 3 km/s
 const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
@@ -555,9 +555,14 @@ func _run_autopilot() -> void:
 	_target_yaw_rate = clampf(-local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
 	_target_roll_rate = 0.0
 
-	# Throttle: full forward once reasonably aligned
+	# Throttle: full forward once reasonably aligned, gentle near gate
 	if dot > 0.5:
-		throttle_input = Vector3(0, 0, -1)
+		# When very close to a gate, reduce throttle to avoid overshooting
+		if autopilot_is_gate and dist < 500.0:
+			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
+			throttle_input = Vector3(0, 0, -approach_factor)
+		else:
+			throttle_input = Vector3(0, 0, -1)
 	else:
 		throttle_input = Vector3.ZERO
 

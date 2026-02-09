@@ -34,20 +34,10 @@ static func get_module(module_name: StringName) -> ModuleResource:
 
 static func get_default_modules(ship_class: StringName) -> Array[StringName]:
 	match ship_class:
-		&"Scout":
-			return [&"Blindage Renforce"]
-		&"Interceptor":
-			return [&"Blindage Renforce", &"Dissipateur Thermique"]
 		&"Fighter":
 			return [&"Blindage Renforce", &"Condensateur d'Energie"]
-		&"Bomber":
-			return [&"Blindage Renforce", &"Amplificateur de Bouclier"]
-		&"Corvette":
-			return [&"Blindage Renforce", &"Condensateur d'Energie", &"Amplificateur de Bouclier"]
 		&"Frigate":
 			return [&"Blindage Renforce", &"Generateur Auxiliaire", &"Amplificateur de Bouclier", &"Systeme de Ciblage"]
-		&"Cruiser":
-			return [&"Blindage Renforce", &"Blindage Lourd", &"Generateur Auxiliaire", &"Amplificateur de Bouclier", &"Module de Renfort"]
 	return [&"Blindage Renforce"]
 
 

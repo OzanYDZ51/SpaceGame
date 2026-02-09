@@ -42,31 +42,16 @@ static func roll_drops(ship_class: StringName) -> Array[Dictionary]:
 	var data_chip_chance: float
 
 	match ship_class:
-		&"Scout", &"Interceptor":
-			credit_min = 80; credit_max = 200
-			mat_count_min = 1; mat_count_max = 1
-			weapon_part_chance = 0.0
-			data_chip_chance = 0.0
-		&"Fighter", &"Bomber":
+		&"Fighter":
 			credit_min = 150; credit_max = 400
 			mat_count_min = 1; mat_count_max = 2
 			weapon_part_chance = 0.0
-			data_chip_chance = 0.0
-		&"Corvette":
-			credit_min = 300; credit_max = 700
-			mat_count_min = 2; mat_count_max = 3
-			weapon_part_chance = 0.10
 			data_chip_chance = 0.0
 		&"Frigate":
 			credit_min = 500; credit_max = 1200
 			mat_count_min = 3; mat_count_max = 4
 			weapon_part_chance = 0.25
 			data_chip_chance = 0.0
-		&"Cruiser":
-			credit_min = 1000; credit_max = 2500
-			mat_count_min = 4; mat_count_max = 6
-			weapon_part_chance = 0.50
-			data_chip_chance = 0.15
 		_:
 			credit_min = 100; credit_max = 300
 			mat_count_min = 1; mat_count_max = 1

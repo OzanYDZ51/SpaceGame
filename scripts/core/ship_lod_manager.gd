@@ -553,13 +553,8 @@ func _tick_data_only_ai(delta: float) -> void:
 
 func _tick_combat_bridge() -> void:
 	var class_dps := {
-		&"Scout": 8.0,
-		&"Interceptor": 12.0,
 		&"Fighter": 18.0,
-		&"Bomber": 25.0,
-		&"Corvette": 40.0,
 		&"Frigate": 65.0,
-		&"Cruiser": 100.0,
 	}
 
 	var dead_ids: Array[StringName] = []

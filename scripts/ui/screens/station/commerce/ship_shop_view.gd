@@ -86,8 +86,6 @@ func _layout() -> void:
 		var vw: float = s.x - LIST_W - STATS_W - 10.0
 		_viewport_container.position = Vector2(vx, 0)
 		_viewport_container.size = Vector2(vw, s.y - 50.0)
-		if _viewport:
-			_viewport.size = Vector2i(int(vw), int(s.y - 50.0))
 	# Configure button
 	_configure_btn.position = Vector2(s.x - STATS_W, s.y - 42.0)
 	_configure_btn.size = Vector2(STATS_W - 5.0, 34.0)

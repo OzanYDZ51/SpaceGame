@@ -31,11 +31,9 @@ static func get_engine(engine_name: StringName) -> EngineResource:
 
 static func get_default_engine(ship_class: StringName) -> StringName:
 	match ship_class:
-		&"Scout", &"Interceptor", &"Fighter":
+		&"Fighter":
 			return &"Propulseur Standard Mk1"
-		&"Bomber", &"Corvette":
-			return &"Propulseur de Combat"
-		&"Frigate", &"Cruiser":
+		&"Frigate":
 			return &"Propulseur Militaire"
 	return &"Propulseur Standard Mk1"
 

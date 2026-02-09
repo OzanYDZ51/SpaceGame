@@ -11,20 +11,10 @@ static func get_available_ships(station_type: int) -> Array[StringName]:
 	match station_type:
 		0:  # REPAIR — sells all ships
 			return ShipRegistry.get_all_ship_ids()
-		2:  # MILITARY — fighter+ class
-			var result: Array[StringName] = []
-			for sid in ShipRegistry.get_all_ship_ids():
-				var d := ShipRegistry.get_ship_data(sid)
-				if d and d.ship_class not in [&"Scout", &"Interceptor"]:
-					result.append(sid)
-			return result
-		3:  # MINING — small ships only
-			var result: Array[StringName] = []
-			for sid in ShipRegistry.get_all_ship_ids():
-				var d := ShipRegistry.get_ship_data(sid)
-				if d and d.ship_class in [&"Scout", &"Interceptor"]:
-					result.append(sid)
-			return result
+		2:  # MILITARY — all combat ships
+			return ShipRegistry.get_all_ship_ids()
+		3:  # MINING — fighter only
+			return [&"fighter_mk1"] as Array[StringName]
 	# TRADE (1) — no ships
 	return []
 

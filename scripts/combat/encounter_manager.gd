@@ -43,17 +43,17 @@ func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> 
 
 	match danger_level:
 		0:
-			spawn_patrol(2, &"scout_mk1", base_pos, 400.0, &"hostile")
+			spawn_patrol(1, &"fighter_mk1", base_pos, 400.0, &"hostile")
 		1:
-			spawn_patrol(2, &"scout_mk1", base_pos, 300.0, &"neutral")
+			spawn_patrol(2, &"fighter_mk1", base_pos, 300.0, &"neutral")
 		2:
-			spawn_patrol(2, &"interceptor_mk1", base_pos, 400.0, &"hostile")
+			spawn_patrol(2, &"fighter_mk1", base_pos, 400.0, &"hostile")
 		3:
-			spawn_patrol(2, &"fighter_mk1", base_pos, 500.0, &"hostile")
+			spawn_patrol(3, &"fighter_mk1", base_pos, 500.0, &"hostile")
 		4:
-			spawn_formation(&"corvette_mk1", &"fighter_mk1", 1, base_pos, &"hostile")
+			spawn_formation(&"frigate_mk1", &"fighter_mk1", 1, base_pos, &"hostile")
 		5:
-			spawn_formation(&"frigate_mk1", &"interceptor_mk1", 1, base_pos, &"hostile")
+			spawn_formation(&"frigate_mk1", &"fighter_mk1", 2, base_pos, &"hostile")
 
 
 func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile") -> void:

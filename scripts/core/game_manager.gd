@@ -47,6 +47,8 @@ var _commerce_screen: CommerceScreen = null
 var _commerce_manager: CommerceManager = null
 var player_fleet: PlayerFleet = null
 var _route_manager: RouteManager = null
+var station_services: StationServices = null
+var _docked_station_idx: int = 0
 var _backend_state_loaded: bool = false
 var _discord_rpc: DiscordRPC = null
 var _event_reporter: EventReporter = null
@@ -180,6 +182,7 @@ func _setup_ui_managers() -> void:
 	_station_screen.undock_requested.connect(_on_undock_requested)
 	_station_screen.equipment_requested.connect(_on_equipment_requested)
 	_station_screen.commerce_requested.connect(_on_commerce_requested)
+	_station_screen.repair_requested.connect(_on_repair_requested)
 	_screen_manager.register_screen("station", _station_screen)
 
 	# Register Commerce screen
@@ -356,6 +359,10 @@ func _initialize_game() -> void:
 
 	# Generate galaxy
 	_galaxy = GalaxyGenerator.generate(Constants.galaxy_seed)
+
+	# Station services (unlock state per station)
+	station_services = StationServices.new()
+	station_services.init_center_systems(_galaxy)
 
 	# Create system transition manager
 	_system_transition = SystemTransition.new()
@@ -673,6 +680,10 @@ func _on_server_config_received(config: Dictionary) -> void:
 			var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
 			if map_screen:
 				map_screen.galaxy = _galaxy
+		# Re-init station services for new galaxy
+		if station_services:
+			station_services = StationServices.new()
+			station_services.init_center_systems(_galaxy)
 		print("GameManager: Galaxy regenerated with seed %d from server" % server_seed)
 
 	# Populate wormhole targets from the server's galaxy routing table
@@ -1397,6 +1408,10 @@ func _initiate_wormhole_jump() -> void:
 	if _system_transition:
 		_system_transition.galaxy = _galaxy
 
+	# Re-init station services for new galaxy
+	station_services = StationServices.new()
+	station_services.init_center_systems(_galaxy)
+
 	# Update map
 	if _screen_manager:
 		var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
@@ -1458,7 +1473,16 @@ func _on_docked(station_name: String) -> void:
 	# Force NPCs to drop player as target before freezing world
 	_clear_npc_targets_on_player()
 
-	# Enter isolated solo instance (freezes world, loads hangar, repairs ship)
+	# Resolve station index from EntityRegistry
+	_docked_station_idx = 0
+	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for ent in stations:
+		if ent.get("name", "") == station_name:
+			var extra: Dictionary = ent.get("extra", {})
+			_docked_station_idx = extra.get("station_index", 0)
+			break
+
+	# Enter isolated solo instance (freezes world, loads hangar)
 	_dock_instance.enter(_build_dock_context(station_name))
 
 	# Hide flight HUD
@@ -1502,6 +1526,13 @@ func _on_equipment_closed() -> void:
 		_open_station_terminal()
 
 
+func _on_repair_requested() -> void:
+	if _dock_instance and player_ship:
+		_dock_instance.repair_ship(player_ship)
+		if _toast_manager:
+			_toast_manager.show_toast("VAISSEAU RÉPARÉ", UIToast.ToastType.SUCCESS)
+
+
 func _on_equipment_requested() -> void:
 	if _equipment_screen and _screen_manager:
 		_equipment_screen.player_inventory = player_inventory
@@ -1530,6 +1561,8 @@ func _on_equipment_requested() -> void:
 func _open_station_terminal() -> void:
 	if _station_screen:
 		_station_screen.set_station_name(_dock_instance.station_name if _dock_instance else "")
+		var sys_id: int = _system_transition.current_system_id if _system_transition else 0
+		_station_screen.setup(station_services, sys_id, _docked_station_idx, player_economy)
 	if _screen_manager:
 		_screen_manager.open_screen("station")
 

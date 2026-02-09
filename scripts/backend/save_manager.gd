@@ -198,6 +198,11 @@ func apply_state(state: Dictionary) -> void:
 			if not weapon_names.is_empty():
 				wm.equip_weapons(weapon_names)
 
+	# Station services
+	var svc_data: Array = state.get("station_services", [])
+	if not svc_data.is_empty() and GameManager.station_services:
+		GameManager.station_services.deserialize(svc_data)
+
 	# Kills & deaths
 	# These are tracked on the backend, not locally (read-only here)
 
@@ -265,6 +270,10 @@ func _collect_state() -> Dictionary:
 			for hp in wm.hardpoints:
 				hardpoints.append(str(hp.mounted_weapon.weapon_name) if hp.mounted_weapon else "")
 			state["equipment"] = {"hardpoints": hardpoints}
+
+	# Station services
+	if GameManager.station_services:
+		state["station_services"] = GameManager.station_services.serialize()
 
 	return state
 

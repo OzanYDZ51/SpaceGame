@@ -31,11 +31,9 @@ static func get_shield(shield_name: StringName) -> ShieldResource:
 
 static func get_default_shield(ship_class: StringName) -> StringName:
 	match ship_class:
-		&"Scout", &"Interceptor", &"Fighter":
+		&"Fighter":
 			return &"Bouclier Basique Mk1"
-		&"Bomber", &"Corvette":
-			return &"Bouclier Renforce"
-		&"Frigate", &"Cruiser":
+		&"Frigate":
 			return &"Bouclier Lourd"
 	return &"Bouclier Basique Mk1"
 

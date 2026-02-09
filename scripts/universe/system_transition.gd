@@ -443,6 +443,7 @@ func _register_system_entities() -> void:
 			"color": MapColors.STATION_TEAL,
 			"extra": {
 				"station_type": sd.get_type_string(),
+				"station_index": i,
 			},
 		})
 

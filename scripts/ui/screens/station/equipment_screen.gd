@@ -812,8 +812,6 @@ func _layout_controls() -> void:
 	if _viewport_container:
 		_viewport_container.position = Vector2(0, CONTENT_TOP)
 		_viewport_container.size = Vector2(viewer_w, s.y - CONTENT_TOP - HP_STRIP_H - 20)
-		if _viewport:
-			_viewport.size = Vector2i(int(viewer_w), int(s.y - CONTENT_TOP - HP_STRIP_H - 20))
 
 	var tab_y := CONTENT_TOP + 6.0
 	_tab_bar.position = Vector2(sidebar_x + sidebar_pad, tab_y)
@@ -2206,7 +2204,6 @@ func _get_fleet_card_at(mouse_x: float) -> int:
 	var cards_area_w := s.x - 40 - 16
 	var card_step := FLEET_CARD_W + FLEET_CARD_GAP
 	var total_cards_w := card_step * player_fleet.ships.size() - FLEET_CARD_GAP
-	var card_y := FLEET_STRIP_TOP + 20.0
 
 	var base_x: float
 	if total_cards_w <= cards_area_w:

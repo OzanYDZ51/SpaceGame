@@ -183,11 +183,12 @@ func _update_third_person(delta: float) -> void:
 	if smooth_forward.length_squared() > 0.001:
 		var up_vec := ship_basis.y.lerp(Vector3.UP, 0.05).normalized()
 		# Ensure up is never colinear with forward (cross product near zero = colinear)
-		if smooth_forward.cross(up_vec).length_squared() < 0.01:
+		if smooth_forward.cross(up_vec).length_squared() < 0.05:
 			up_vec = ship_basis.x.normalized()
-			if smooth_forward.cross(up_vec).length_squared() < 0.01:
+			if smooth_forward.cross(up_vec).length_squared() < 0.05:
 				up_vec = Vector3.UP if absf(smooth_forward.y) < 0.9 else Vector3.RIGHT
-		look_at(global_position + smooth_forward, up_vec)
+		if smooth_forward.cross(up_vec).length_squared() >= 0.001:
+			look_at(global_position + smooth_forward, up_vec)
 
 	# =========================================================================
 	# DYNAMIC FOV (phase-aware cruise + spike effects)

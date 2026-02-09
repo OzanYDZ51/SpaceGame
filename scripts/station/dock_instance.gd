@@ -101,9 +101,6 @@ func enter(ctx: Dictionary) -> void:
 	if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
 		hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
 
-	# Repair ship while docked
-	_repair_ship(player_ship)
-
 	entered.emit(station_name)
 
 
@@ -165,7 +162,7 @@ func _on_hangar_ship_selected(ship_id: StringName) -> void:
 	ship_change_requested.emit(ship_id)
 
 
-func _repair_ship(ship: Node3D) -> void:
+func repair_ship(ship: Node3D) -> void:
 	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
 	if health == null:
 		return
