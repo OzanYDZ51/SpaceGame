@@ -94,10 +94,14 @@ func enter(ctx: Dictionary) -> void:
 
 		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
-	# Setup ship selection cycling (A/D keys)
+	# Setup ship selection cycling (A/D keys) — only owned ships
 	var ship_ctrl := player_ship as ShipController
 	var current_ship_id: StringName = ship_ctrl.ship_data.ship_id if ship_ctrl and ship_ctrl.ship_data else &"fighter_mk1"
-	hangar_scene.setup_ship_selection(current_ship_id)
+	var owned_ids: Array[StringName] = []
+	if GameManager.player_fleet:
+		for fs in GameManager.player_fleet.ships:
+			owned_ids.append(fs.ship_id)
+	hangar_scene.setup_ship_selection(current_ship_id, owned_ids)
 	if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
 		hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
 

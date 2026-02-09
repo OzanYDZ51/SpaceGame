@@ -220,9 +220,12 @@ func display_ship(ship_model_path: String, ship_model_scale: float, hp_configs: 
 		_docked_ship.apply_equipment(hp_configs, weapon_names, root_basis)
 
 
-func setup_ship_selection(current_ship_id: StringName) -> void:
+func setup_ship_selection(current_ship_id: StringName, owned_ids: Array[StringName] = []) -> void:
 	_ship_ids.clear()
-	_ship_ids = ShipRegistry.get_all_ship_ids()
+	if owned_ids.is_empty():
+		_ship_ids = ShipRegistry.get_all_ship_ids()
+	else:
+		_ship_ids.assign(owned_ids)
 	# Sort for consistent ordering
 	_ship_ids.sort()
 	_current_index = _ship_ids.find(current_ship_id)
