@@ -121,9 +121,9 @@ func (r *DiscordRepository) GetDiscordID(ctx context.Context, playerID string) (
 func (r *DiscordRepository) GetPlayerByDiscordID(ctx context.Context, discordID string) (*model.Player, error) {
 	var p model.Player
 	err := r.db.QueryRow(ctx,
-		`SELECT id, username, ship_id, kills, deaths, clan_id FROM players WHERE discord_id = $1`,
+		`SELECT id, username, current_ship_id, kills, deaths, clan_id FROM players WHERE discord_id = $1`,
 		discordID,
-	).Scan(&p.ID, &p.Username, &p.ShipID, &p.Kills, &p.Deaths, &p.ClanID)
+	).Scan(&p.ID, &p.Username, &p.CurrentShipID, &p.Kills, &p.Deaths, &p.ClanID)
 	if err != nil {
 		return nil, err
 	}

@@ -105,4 +105,4 @@ jobs:
             -d "{\"version\": \"$VERSION\", \"summary\": $(echo "$MSG" | jq -Rs .)}" || true
         env:
           BACKEND_URL: https://backend-production-05a9.up.railway.app
-          ADMIN_KEY: dev-admin-key
+          ADMIN_KEY: 2f0aa1697a095884517c4eb4b3777b65

@@ -102,7 +102,7 @@ func (h *CommandHandler) cmdPlayer(ctx context.Context, s *discordgo.Session, m 
 		Title: fmt.Sprintf("Profil de %s", player.Username),
 		Color: 0x00C8FF,
 		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Vaisseau", Value: player.ShipID, Inline: true},
+			{Name: "Vaisseau", Value: player.CurrentShipID, Inline: true},
 			{Name: "Clan", Value: clanName, Inline: true},
 			{Name: "Kills", Value: fmt.Sprintf("%d", player.Kills), Inline: true},
 			{Name: "Morts", Value: fmt.Sprintf("%d", player.Deaths), Inline: true},
