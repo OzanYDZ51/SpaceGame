@@ -98,6 +98,20 @@ jobs:
           MSG=$(git log -1 --pretty=%B --skip=1 | grep -v 'Co-Authored-By:' | sed '/^[[:space:]]*$/d' | head -20)
           VERSION="${{ steps.version.outputs.version }}"
 
+          # Skip devlog for technical/non-player-facing commits:
+          # - Contains code identifiers (underscores like _rewire, snake_case)
+          # - Contains file extensions (.gd, .go, .json, .yml, .md, .toml)
+          # - Starts with Merge, Fix build, Fix CI, Revert
+          # - Is empty
+          if [ -z "$MSG" ]; then
+            echo "Empty message, skipping devlog"
+            exit 0
+          fi
+          if echo "$MSG" | head -1 | grep -qiE '(^Merge|^Fix build|^Fix CI|^Revert|_[a-z]|[a-z]_[a-z]|\.(gd|go|json|yml|md|toml|tres|tscn)\b)'; then
+            echo "Technical commit detected, skipping devlog: $MSG"
+            exit 0
+          fi
+
           # Post to backend changelog API (stores in DB + sends Discord webhook)
           curl -s -X POST "$BACKEND_URL/api/v1/admin/changelog" \
             -H "X-Admin-Key: $ADMIN_KEY" \
