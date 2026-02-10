@@ -3,30 +3,47 @@ extends Control
 
 # =============================================================================
 # Map Renderer - Background, adaptive grid, orbit lines, scale bar, scanline
+# + Interactive toolbar (replaces keyboard-only filter legend)
 # All custom-drawn for holographic aesthetic
 # =============================================================================
 
+signal filter_toggled(key: int)
+signal follow_toggled
+
 var camera: MapCamera = null
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
+var follow_enabled: bool = true
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 var _scan_line_y: float = 0.0
 var _pulse_t: float = 0.0
 var _system_name: String = "SYSTÈME INCONNU"
-const REDRAW_INTERVAL: float = 0.1  # Check for changes at 10 Hz
 
 # Cache for asteroid belt dot positions (universe coords)
 # Key: entity id, Value: Array of [ux, uz] pairs
 var _belt_dot_cache: Dictionary = {}
 
+# --- Toolbar ---
+var TOOLBAR_BUTTONS: Array = []  # populated in _ready
+const TOOLBAR_BTN_H: float = 20.0
+const TOOLBAR_BTN_PAD: float = 8.0
+const TOOLBAR_BTN_INNER_PAD: float = 10.0
+var _toolbar_hovered: int = -1  # index into TOOLBAR_BUTTONS
+
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	TOOLBAR_BUTTONS = [
+		{"label": "Orbites", "key": -1},
+		{"label": "Planetes", "key": EntityRegistrySystem.EntityType.PLANET},
+		{"label": "Stations", "key": EntityRegistrySystem.EntityType.STATION},
+		{"label": "PNJ", "key": EntityRegistrySystem.EntityType.SHIP_NPC},
+		{"label": "Suivre", "key": -99},
+	]
 
 
 func _process(delta: float) -> void:
 	_scan_line_y = fmod(_scan_line_y + delta * 60.0, size.y)
 	_pulse_t += delta
-	# Redraw is driven by parent StellarMap every frame
 
 
 func _draw() -> void:
@@ -41,15 +58,103 @@ func _draw() -> void:
 	_draw_asteroid_belts()
 	_draw_scanline()
 	_draw_header()
+	_draw_toolbar()
 	_draw_scale_bar()
-	_draw_corner_decorations()
+
+
+# =============================================================================
+# TOOLBAR — Interactive filter buttons
+# =============================================================================
+func _get_toolbar_rects() -> Array[Rect2]:
+	var font: Font = UITheme.get_font()
+	var rects: Array[Rect2] = []
+	var tx: float = MapLayout.viewport_left()
+	var ty: float = MapLayout.TOOLBAR_Y
+
+	for btn in TOOLBAR_BUTTONS:
+		var tw: float = font.get_string_size(btn["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+		var btn_w: float = tw + TOOLBAR_BTN_INNER_PAD * 2
+		rects.append(Rect2(tx, ty, btn_w, TOOLBAR_BTN_H))
+		tx += btn_w + TOOLBAR_BTN_PAD
+
+	return rects
+
+
+func handle_toolbar_click(pos: Vector2) -> bool:
+	var rects := _get_toolbar_rects()
+	for i in rects.size():
+		if rects[i].has_point(pos):
+			var key: int = TOOLBAR_BUTTONS[i]["key"]
+			if key == -99:
+				follow_toggled.emit()
+			else:
+				filter_toggled.emit(key)
+			return true
+	return false
+
+
+func update_toolbar_hover(pos: Vector2) -> void:
+	var old := _toolbar_hovered
+	_toolbar_hovered = -1
+	var rects := _get_toolbar_rects()
+	for i in rects.size():
+		if rects[i].has_point(pos):
+			_toolbar_hovered = i
+			break
+	if _toolbar_hovered != old:
+		queue_redraw()
+
+
+func _draw_toolbar() -> void:
+	var font: Font = UITheme.get_font()
+	var rects := _get_toolbar_rects()
+
+	for i in rects.size():
+		var r: Rect2 = rects[i]
+		var btn: Dictionary = TOOLBAR_BUTTONS[i]
+		var key: int = btn["key"]
+		var is_active: bool
+		if key == -99:
+			is_active = follow_enabled
+		else:
+			is_active = not filters.get(key, false)
+
+		var is_hovered: bool = i == _toolbar_hovered
+
+		# Background
+		var bg_col: Color
+		if is_active:
+			bg_col = Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.15 if not is_hovered else 0.25)
+		else:
+			bg_col = Color(0.2, 0.2, 0.3, 0.1 if not is_hovered else 0.18)
+		draw_rect(r, bg_col)
+
+		# Border
+		var border_col: Color
+		if is_active:
+			border_col = Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6 if not is_hovered else 0.8)
+		else:
+			border_col = Color(0.4, 0.4, 0.5, 0.3 if not is_hovered else 0.5)
+		draw_rect(r, border_col, false, 1.0)
+
+		# Text
+		var text_col: Color
+		if is_active:
+			text_col = MapColors.PRIMARY if not is_hovered else Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 1.0)
+		else:
+			text_col = MapColors.FILTER_INACTIVE if not is_hovered else Color(0.5, 0.5, 0.6, 0.6)
+
+		draw_string(font, Vector2(r.position.x + TOOLBAR_BTN_INNER_PAD, r.position.y + TOOLBAR_BTN_H - 5), btn["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, text_col)
 
 
 # =============================================================================
 # ADAPTIVE GRID
 # =============================================================================
 func _draw_grid() -> void:
+	var font: Font = UITheme.get_font()
 	var visible_range: float = camera.get_visible_range()
+	var vp_left: float = MapLayout.viewport_left()
+	var vp_right: float = MapLayout.viewport_right(size.x)
 
 	# Find grid spacing: choose a power so lines are ~100-200px apart
 	var target_spacing_meters: float = visible_range / (size.x / 120.0)
@@ -72,12 +177,11 @@ func _draw_grid() -> void:
 		var is_major: bool = (idx % major_every) == 0
 		var col: Color = MapColors.GRID_MAJOR if is_major else MapColors.GRID_MINOR
 		draw_line(Vector2(sx, 0), Vector2(sx, size.y), col, 1.0)
-		# Label on major lines
-		if is_major and sx > 60 and sx < size.x - 60:
+		# Label on major lines — clipped to viewport zone
+		if is_major and sx > vp_left + 10 and sx < vp_right - 10:
 			var label: String = camera.format_distance(absf(x))
 			if x < 0: label = "-" + label
-			var font := ThemeDB.fallback_font
-			draw_string(font, Vector2(sx + 4, 50), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, MapColors.GRID_LABEL)
+			draw_string(font, Vector2(sx + 4, MapLayout.TOOLBAR_Y + MapLayout.TOOLBAR_H + 14), label, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, MapColors.GRID_LABEL)
 		x += grid_spacing
 		count += 1
 
@@ -87,8 +191,8 @@ func _draw_grid() -> void:
 	count = 0
 	while z <= bottom_u and count < 200:
 		var sy: float = camera.universe_to_screen(0.0, z).y
-		var idx: int = roundi(z / grid_spacing)
-		var is_major: bool = (idx % major_every) == 0
+		var idx_z: int = roundi(z / grid_spacing)
+		var is_major: bool = (idx_z % major_every) == 0
 		var col: Color = MapColors.GRID_MAJOR if is_major else MapColors.GRID_MINOR
 		draw_line(Vector2(0, sy), Vector2(size.x, sy), col, 1.0)
 		z += grid_spacing
@@ -96,7 +200,6 @@ func _draw_grid() -> void:
 
 
 func _snap_to_nice(value: float) -> float:
-	# Snap to nice values: 1, 2, 5, 10, 20, 50, 100, ...
 	if value <= 0.0:
 		return 1.0
 	var exp_val: float = floor(log(value) / log(10.0))
@@ -120,8 +223,7 @@ func _get_entities() -> Dictionary:
 
 
 func _draw_orbit_lines() -> void:
-	# Skip if planets are filtered out
-	if filters.get(EntityRegistrySystem.EntityType.PLANET, false):
+	if filters.get(-1, false):
 		return
 
 	var entities: Dictionary = _get_entities()
@@ -130,9 +232,8 @@ func _draw_orbit_lines() -> void:
 		if orbital_r <= 0.0:
 			continue
 		if ent["type"] == EntityRegistrySystem.EntityType.ASTEROID_BELT:
-			continue  # drawn separately
+			continue
 
-		# Find parent position
 		var parent_id: String = ent["orbital_parent"]
 		var px: float = 0.0
 		var pz: float = 0.0
@@ -140,17 +241,15 @@ func _draw_orbit_lines() -> void:
 			px = entities[parent_id]["pos_x"]
 			pz = entities[parent_id]["pos_z"]
 
-		# Check if orbit is visible (rough bounding check)
 		var center_screen: Vector2 = camera.universe_to_screen(px, pz)
 		var radius_px: float = orbital_r * camera.zoom
 		if radius_px < 2.0:
-			continue  # too small to see
+			continue
 		if center_screen.x + radius_px < -50 or center_screen.x - radius_px > size.x + 50:
 			continue
 		if center_screen.y + radius_px < -50 or center_screen.y - radius_px > size.y + 50:
 			continue
 
-		# Draw orbit as segmented circle
 		var col: Color = MapColors.ORBIT_LINE
 		var segments: int = clampi(int(radius_px * 0.3), 32, 256)
 		var points: PackedVector2Array = PackedVector2Array()
@@ -167,10 +266,10 @@ func _draw_orbit_lines() -> void:
 # ASTEROID BELTS
 # =============================================================================
 func _draw_asteroid_belts() -> void:
-	# Skip if asteroid belts are filtered
 	if filters.get(EntityRegistrySystem.EntityType.ASTEROID_BELT, false):
 		return
 
+	var font: Font = UITheme.get_font()
 	var entities: Dictionary = _get_entities()
 	for ent in entities.values():
 		if ent["type"] != EntityRegistrySystem.EntityType.ASTEROID_BELT:
@@ -192,7 +291,6 @@ func _draw_asteroid_belts() -> void:
 		if radius_px < 3.0:
 			continue
 
-		# Draw as a thick faint band
 		var belt_width: float = ent["extra"].get("width", orbital_r * 0.1)
 		var inner_r: float = orbital_r - belt_width * 0.5
 		var outer_r: float = orbital_r + belt_width * 0.5
@@ -228,78 +326,67 @@ func _draw_asteroid_belts() -> void:
 				if sp.x > 0 and sp.x < size.x and sp.y > 0 and sp.y < size.y:
 					draw_circle(sp, 1.5, MapColors.ASTEROID_BELT)
 
-		# Belt label at top of ring (12 o'clock position)
+		# Belt label
 		if radius_px > 20:
 			var label_wx: float = px
-			var label_wz: float = pz - orbital_r  # top of ring
+			var label_wz: float = pz - orbital_r
 			var label_sp: Vector2 = camera.universe_to_screen(label_wx, label_wz)
 			if label_sp.x > 0 and label_sp.x < size.x and label_sp.y > 0 and label_sp.y < size.y:
-				var font := ThemeDB.fallback_font
 				var belt_name: String = ent["name"]
-				var tw: float = font.get_string_size(belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+				var tw: float = font.get_string_size(belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
 				var label_col := Color(MapColors.ASTEROID_BELT.r, MapColors.ASTEROID_BELT.g, MapColors.ASTEROID_BELT.b, 0.8)
-				draw_string(font, Vector2(label_sp.x - tw * 0.5, label_sp.y - 6), belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, label_col)
+				draw_string(font, Vector2(label_sp.x - tw * 0.5, label_sp.y - 6), belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, label_col)
 
 
 # =============================================================================
-# SCANLINE
+# SCANLINE — clipped to viewport zone
 # =============================================================================
 func _draw_scanline() -> void:
+	var vp_left: float = MapLayout.viewport_left()
+	var vp_right: float = MapLayout.viewport_right(size.x)
 	var alpha: float = 0.025 + sin(_pulse_t * 0.5) * 0.01
 	var col := Color(MapColors.SCANLINE.r, MapColors.SCANLINE.g, MapColors.SCANLINE.b, alpha)
-	draw_line(Vector2(0, _scan_line_y), Vector2(size.x, _scan_line_y), col, 1.0)
-	# Faint trailing glow
+	draw_line(Vector2(vp_left, _scan_line_y), Vector2(vp_right, _scan_line_y), col, 1.0)
 	for i in range(1, 4):
 		var ty: float = _scan_line_y - float(i) * 3.0
 		if ty > 0:
-			draw_line(Vector2(0, ty), Vector2(size.x, ty), col * Color(1, 1, 1, 0.3), 1.0)
+			draw_line(Vector2(vp_left, ty), Vector2(vp_right, ty), col * Color(1, 1, 1, 0.3), 1.0)
 
 
 # =============================================================================
-# HEADER
+# HEADER — positioned after fleet panel
 # =============================================================================
 func _draw_header() -> void:
-	var font := ThemeDB.fallback_font
+	var font: Font = UITheme.get_font()
+	var hx: float = MapLayout.viewport_left()
+	var vp_right: float = MapLayout.viewport_right(size.x)
 
 	# System name
-	draw_string(font, Vector2(20, 28), _system_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, MapColors.TEXT_HEADER)
+	draw_string(font, Vector2(hx, MapLayout.HEADER_Y), _system_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_HEADER, MapColors.TEXT_HEADER)
 
 	# Zoom level label
 	var zoom_text: String = "ZOOM : " + camera.get_zoom_label()
-	draw_string(font, Vector2(20, 46), zoom_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.TEXT_DIM)
+	draw_string(font, Vector2(hx, MapLayout.HEADER_Y + 18), zoom_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, MapColors.TEXT_DIM)
 
-	# Active filters display
-	var filter_parts: Array = []
-	if filters.get(EntityRegistrySystem.EntityType.PLANET, false):
-		filter_parts.append("Planètes")
-	if filters.get(EntityRegistrySystem.EntityType.STATION, false):
-		filter_parts.append("Stations")
-	if filters.get(EntityRegistrySystem.EntityType.SHIP_NPC, false):
-		filter_parts.append("PNJ")
-	if filters.get(-1, false):  # -1 = orbits filter key
-		filter_parts.append("Orbites")
-	if not filter_parts.is_empty():
-		var filter_text: String = "MASQUÉ : " + ", ".join(filter_parts)
-		draw_string(font, Vector2(20, 60), filter_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, MapColors.FILTER_INACTIVE)
-
-	# Coordinates at center
+	# Coordinates (right side of viewport)
 	var coord_text: String = "X: %.0f  Z: %.0f" % [camera.center_x, camera.center_z]
-	var coord_w: float = font.get_string_size(coord_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	draw_string(font, Vector2(size.x - coord_w - 20, 28), coord_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.TEXT_DIM)
+	var coord_w: float = font.get_string_size(coord_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+	draw_string(font, Vector2(vp_right - coord_w, MapLayout.HEADER_Y), coord_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, MapColors.TEXT_DIM)
 
 
 # =============================================================================
-# SCALE BAR
+# SCALE BAR — positioned inside viewport zone
 # =============================================================================
 func _draw_scale_bar() -> void:
-	var font := ThemeDB.fallback_font
-	var target_px: float = 120.0  # desired bar width in pixels
+	var font: Font = UITheme.get_font()
+	var target_px: float = 120.0
 	var meters_for_bar: float = target_px / camera.zoom
 	var nice_meters: float = _snap_to_nice(meters_for_bar)
 	var bar_px: float = nice_meters * camera.zoom
 
 	var bar_y: float = size.y - 30.0
-	var bar_x: float = size.x - bar_px - 30.0
+	var bar_right: float = MapLayout.scale_bar_right(size.x)
+	var bar_x: float = bar_right - bar_px
 
 	# Bar line
 	draw_line(Vector2(bar_x, bar_y), Vector2(bar_x + bar_px, bar_y), MapColors.SCALE_BAR, 2.0)
@@ -308,25 +395,5 @@ func _draw_scale_bar() -> void:
 	draw_line(Vector2(bar_x + bar_px, bar_y - 5), Vector2(bar_x + bar_px, bar_y + 5), MapColors.SCALE_BAR, 1.0)
 	# Label
 	var label: String = camera.format_distance(nice_meters)
-	var label_w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	draw_string(font, Vector2(bar_x + bar_px * 0.5 - label_w * 0.5, bar_y - 8), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.SCALE_BAR)
-
-
-# =============================================================================
-# CORNER DECORATIONS
-# =============================================================================
-func _draw_corner_decorations() -> void:
-	var cl: float = 20.0
-	var cc: Color = MapColors.CORNER
-	# Top-left
-	draw_line(Vector2(0, 0), Vector2(cl, 0), cc, 1.5)
-	draw_line(Vector2(0, 0), Vector2(0, cl), cc, 1.5)
-	# Top-right
-	draw_line(Vector2(size.x, 0), Vector2(size.x - cl, 0), cc, 1.5)
-	draw_line(Vector2(size.x, 0), Vector2(size.x, cl), cc, 1.5)
-	# Bottom-left
-	draw_line(Vector2(0, size.y), Vector2(cl, size.y), cc, 1.5)
-	draw_line(Vector2(0, size.y), Vector2(0, size.y - cl), cc, 1.5)
-	# Bottom-right
-	draw_line(Vector2(size.x, size.y), Vector2(size.x - cl, size.y), cc, 1.5)
-	draw_line(Vector2(size.x, size.y), Vector2(size.x, size.y - cl), cc, 1.5)
+	var label_w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+	draw_string(font, Vector2(bar_x + bar_px * 0.5 - label_w * 0.5, bar_y - 8), label, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, MapColors.SCALE_BAR)

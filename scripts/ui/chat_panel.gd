@@ -72,6 +72,7 @@ var _max_messages_per_channel: int = 100
 
 var _bg_redraw_timer: float = 0.0
 var _private_target: String = ""  # Target player name for PRIVATE channel
+var _submit_frame: int = -10  # Frame when last message was submitted (anti key-repeat)
 
 
 func _ready() -> void:
@@ -271,6 +272,10 @@ func _input(event: InputEvent) -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 			get_viewport().set_input_as_handled()
 		elif _is_focused and _input_field.text.is_empty():
+			# Skip if message was just submitted (Enter key repeat would close chat)
+			if Engine.get_process_frames() - _submit_frame <= 2:
+				get_viewport().set_input_as_handled()
+				return
 			_input_field.release_focus()
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			get_viewport().set_input_as_handled()
@@ -317,6 +322,7 @@ func _on_message_submitted(text: String) -> void:
 	if text.strip_edges().is_empty():
 		return
 
+	_submit_frame = Engine.get_process_frames()
 	_input_field.clear()
 
 	# Handle slash commands

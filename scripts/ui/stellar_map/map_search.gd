@@ -123,7 +123,7 @@ func _draw() -> void:
 	if not visible:
 		return
 
-	var font := ThemeDB.fallback_font
+	var font: Font = UITheme.get_font()
 
 	# Position at top center
 	var bx: float = (size.x - BAR_WIDTH) * 0.5

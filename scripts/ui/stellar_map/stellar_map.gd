@@ -14,7 +14,6 @@ var _info_panel: MapInfoPanel = null
 var _fleet_panel: MapFleetPanel = null
 var _station_detail: MapStationDetail = null
 var _search: MapSearch = null
-var _legend: MapLegend = null
 
 var _is_open: bool = false
 var _player_id: String = ""
@@ -84,12 +83,14 @@ func _ready() -> void:
 func _build_children() -> void:
 	_camera = MapCamera.new()
 
-	# Renderer (background, grid, orbits)
+	# Renderer (background, grid, orbits, toolbar)
 	_renderer = MapRenderer.new()
 	_renderer.name = "MapRenderer"
 	_setup_full_rect(_renderer)
 	_renderer.camera = _camera
 	_renderer.filters = _filters
+	_renderer.filter_toggled.connect(_on_toolbar_filter_toggled)
+	_renderer.follow_toggled.connect(_on_toolbar_follow_toggled)
 	add_child(_renderer)
 
 	# Entity layer (icons, labels, selection)
@@ -131,12 +132,6 @@ func _build_children() -> void:
 	_setup_full_rect(_search)
 	_search.entity_selected.connect(_on_search_entity_selected)
 	add_child(_search)
-
-	# Legend overlay
-	_legend = MapLegend.new()
-	_legend.name = "MapLegend"
-	_setup_full_rect(_legend)
-	add_child(_legend)
 
 
 func _setup_full_rect(ctrl: Control) -> void:
@@ -224,10 +219,6 @@ func open() -> void:
 	_camera.zoom = fit_zoom
 	_camera.target_zoom = fit_zoom
 
-	# Show legend on first open (not in preview mode)
-	if _preview_entities.is_empty():
-		_legend.show_legend()
-
 
 func close() -> void:
 	if not _is_open:
@@ -291,6 +282,9 @@ func _process(delta: float) -> void:
 	# Pass hold state to entity layer for visual feedback
 	_entity_layer.hold_entity_id = _hold_entity_id
 	_entity_layer.hold_progress = _hold_progress
+
+	# Sync follow state to renderer toolbar
+	_renderer.follow_enabled = _camera.follow_enabled
 
 	# Always redraw while open so entity positions update in real-time
 	_renderer.queue_redraw()
@@ -390,12 +384,6 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# H = legend
-		if event.physical_keycode == KEY_H:
-			_legend.toggle()
-			get_viewport().set_input_as_handled()
-			return
-
 		# Consume all other key presses
 		get_viewport().set_input_as_handled()
 		return
@@ -437,7 +425,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Left click = route through panels, then select entity
+		# Left click = route through panels, toolbar, then select entity
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				# Fleet panel gets first priority (left side)
@@ -446,6 +434,10 @@ func _input(event: InputEvent) -> void:
 					return
 				# Station detail gets second priority (right side)
 				if _station_detail.is_active() and _station_detail.handle_click(event.position):
+					get_viewport().set_input_as_handled()
+					return
+				# Toolbar buttons
+				if _renderer.handle_toolbar_click(event.position):
 					get_viewport().set_input_as_handled()
 					return
 
@@ -497,6 +489,7 @@ func _input(event: InputEvent) -> void:
 			_camera.pan(event.relative)
 			_dirty = true
 		else:
+			_renderer.update_toolbar_hover(event.position)
 			if _entity_layer.update_hover(event.position):
 				_dirty = true
 		get_viewport().set_input_as_handled()
@@ -576,3 +569,16 @@ func _open_station_detail(station_id: String) -> void:
 
 func _on_search_entity_selected(id: String) -> void:
 	_center_on_entity(id)
+
+
+func _on_toolbar_filter_toggled(key: int) -> void:
+	_toggle_filter(key)
+	# Orbits toggle also controls asteroid belts
+	if key == -1:
+		_filters[EntityRegistrySystem.EntityType.ASTEROID_BELT] = _filters.get(-1, false)
+	_sync_filters()
+
+
+func _on_toolbar_follow_toggled() -> void:
+	_camera.follow_enabled = not _camera.follow_enabled
+	_dirty = true

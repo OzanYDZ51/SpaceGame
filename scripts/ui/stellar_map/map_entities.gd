@@ -49,7 +49,7 @@ func _draw() -> void:
 		return
 
 	var entities: Dictionary = _get_entities()
-	var font := ThemeDB.fallback_font
+	var font: Font = UITheme.get_font()
 
 	# Draw selection line first (behind everything)
 	if selected_id != "" and _player_id != "" and selected_id != _player_id:
@@ -184,7 +184,7 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 		draw_line(p_start, p_end, ray2_col, 1.0)
 
 	# Name label
-	var font := ThemeDB.fallback_font
+	var font: Font = UITheme.get_font()
 	var name_text: String = ent["name"]
 	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	draw_string(font, pos + Vector2(-tw * 0.5, base_radius * 1.8 + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MapColors.STAR_GOLD)

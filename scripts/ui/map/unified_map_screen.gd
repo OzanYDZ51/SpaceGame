@@ -283,21 +283,24 @@ func _draw_galaxy_title(s: Vector2, font: Font) -> void:
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = UITheme.MARGIN_SCREEN + fsize
 	var title_text := "GALAXY MAP"
+	var vp_left: float = MapLayout.viewport_left()
+	var vp_right: float = MapLayout.viewport_right(s.x)
+	var vp_w: float = vp_right - vp_left
+	var vp_cx: float = vp_left + vp_w * 0.5
 
-	draw_string(font, Vector2(0, title_y), title_text, HORIZONTAL_ALIGNMENT_CENTER, s.x, fsize, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(vp_left, title_y), title_text, HORIZONTAL_ALIGNMENT_CENTER, vp_w, fsize, UITheme.TEXT_HEADER)
 
 	# Decorative lines
-	var cx: float = s.x * 0.5
 	var title_w: float = font.get_string_size(title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, fsize).x
 	var line_y: float = title_y - fsize * 0.35
 	var half: float = title_w * 0.5 + 20
 	var line_len: float = 120.0
-	draw_line(Vector2(cx - half - line_len, line_y), Vector2(cx - half, line_y), UITheme.BORDER, 1.0)
-	draw_line(Vector2(cx + half, line_y), Vector2(cx + half + line_len, line_y), UITheme.BORDER, 1.0)
+	draw_line(Vector2(vp_cx - half - line_len, line_y), Vector2(vp_cx - half, line_y), UITheme.BORDER, 1.0)
+	draw_line(Vector2(vp_cx + half, line_y), Vector2(vp_cx + half + line_len, line_y), UITheme.BORDER, 1.0)
 
-	# Separator
+	# Separator — spans viewport zone only
 	var sep_y: float = title_y + 10
-	draw_line(Vector2(UITheme.MARGIN_SCREEN, sep_y), Vector2(s.x - UITheme.MARGIN_SCREEN, sep_y), UITheme.BORDER, 1.0)
+	draw_line(Vector2(vp_left, sep_y), Vector2(vp_right, sep_y), UITheme.BORDER, 1.0)
 
 
 func _draw_view_indicator() -> void:
@@ -500,8 +503,8 @@ func _draw_route_path(cx: float, cy: float) -> void:
 
 func _draw_info_panel(s: Vector2, font: Font) -> void:
 	var current_id: int = system_transition.current_system_id if system_transition else -1
-	var panel_w: float = 280.0
-	var panel_x: float = s.x - panel_w - UITheme.MARGIN_SCREEN
+	var panel_w: float = MapLayout.INFO_PANEL_W
+	var panel_x: float = s.x - panel_w - MapLayout.INFO_PANEL_MARGIN
 	var panel_y: float = UITheme.MARGIN_SCREEN + 50
 	var line_h: float = UITheme.ROW_HEIGHT
 	var kv_w: float = panel_w - 28
@@ -709,14 +712,14 @@ func _resource_short(res_id: String) -> String:
 
 
 func _draw_galaxy_legend(s: Vector2, font: Font) -> void:
-	var x: float = UITheme.MARGIN_SCREEN
+	var vp_left: float = MapLayout.viewport_left()
 	var y: float = s.y - UITheme.MARGIN_SCREEN - 80
 
-	draw_string(font, Vector2(x, y), "Click = Selectionner | Double-clic = Voir systeme | Entrer = Autopilote | Scroll = Zoom | MMB = Deplacer", HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(vp_left, y), "Click = Selectionner | Double-clic = Voir systeme | Entrer = Autopilote | Scroll = Zoom | MMB = Deplacer", HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	y += 14
 
 	# Spectral class legend
-	var legend_x: float = x
+	var legend_x: float = vp_left
 	for spec_class in ["O", "B", "A", "F", "G", "K", "M"]:
 		var col: Color = SPECTRAL_COLORS[spec_class]
 		draw_circle(Vector2(legend_x + 4, y + 4), 3.0, col)
@@ -732,7 +735,7 @@ func _draw_current_label(s: Vector2, font: Font) -> void:
 	if sys.is_empty():
 		return
 	var label: String = "Systeme actuel: " + sys["name"] + " (" + sys["spectral_class"] + "-class)"
-	draw_string(font, Vector2(UITheme.MARGIN_SCREEN, s.y - UITheme.MARGIN_SCREEN - 50), label, HORIZONTAL_ALIGNMENT_LEFT, 500, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+	draw_string(font, Vector2(MapLayout.viewport_left(), s.y - UITheme.MARGIN_SCREEN - 50), label, HORIZONTAL_ALIGNMENT_LEFT, 500, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
 # =============================================================================

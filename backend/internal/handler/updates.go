@@ -59,7 +59,7 @@ func (h *UpdatesHandler) GetUpdates(c *fiber.Ctx) error {
 
 	resp, err := h.fetchReleases()
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to fetch releases"})
+		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	h.cache.mu.Lock()
@@ -94,6 +94,7 @@ func (h *UpdatesHandler) fetchReleases() (*UpdatesResponse, error) {
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "ImperionOnlineBackend/1.0")
+	req.Header.Set("Accept", "application/vnd.github+json")
 	if h.githubToken != "" {
 		req.Header.Set("Authorization", "token "+h.githubToken)
 	}
@@ -101,18 +102,22 @@ func (h *UpdatesHandler) fetchReleases() (*UpdatesResponse, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("github request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading github response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("github API returned %d: %s", resp.StatusCode, string(body[:min(len(body), 200)]))
 	}
 
 	var releases []ghRelease
 	if err := json.Unmarshal(body, &releases); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing github releases: %w", err)
 	}
 
 	result := &UpdatesResponse{}

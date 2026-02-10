@@ -95,10 +95,7 @@ func apply_state(state: Dictionary) -> void:
 	if state.is_empty():
 		return
 
-	# Ship — deferred until after fleet is restored (see below)
-	var ship_id: String = state.get("current_ship_id", "fighter_mk1")
-
-	# Position
+	# Galaxy re-generation (must happen before PlayerData.apply_save_state)
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
 	if gal_seed != Constants.galaxy_seed:
 		Constants.galaxy_seed = gal_seed
@@ -106,193 +103,42 @@ func apply_state(state: Dictionary) -> void:
 		if GameManager._system_transition:
 			GameManager._system_transition.galaxy = GameManager._galaxy
 
-	var sys_id: int = int(state.get("system_id", 0))
-	if GameManager._system_transition and sys_id != GameManager._system_transition.current_system_id:
-		GameManager._system_transition.jump_to_system(sys_id)
+	# Delegate bulk state to PlayerData
+	if GameManager.player_data:
+		GameManager.player_data.apply_save_state(
+			state,
+			GameManager.player_ship as ShipController,
+			GameManager._system_transition,
+			GameManager._galaxy,
+			GameManager._fleet_deployment_mgr,
+			GameManager._commerce_manager,
+		)
 
-	# Credits & resources
-	if GameManager.player_economy:
-		var eco := GameManager.player_economy
-		# Reset and set credits
-		var current_credits: int = eco.credits
-		if current_credits > 0:
-			eco.add_credits(-current_credits)
-		var saved_credits: int = int(state.get("credits", 1500))
-		eco.add_credits(saved_credits)
-
-		# Resources
-		var resources: Array = state.get("resources", [])
-		# Clear existing resources
-		for res_id in eco.resources.keys():
-			var qty: int = eco.resources[res_id]
-			if qty > 0:
-				eco.add_resource(res_id, -qty)
-		# Apply saved resources
-		for res in resources:
-			var res_id := StringName(str(res.get("resource_id", "")))
-			var qty: int = int(res.get("quantity", 0))
-			if res_id != &"" and qty > 0:
-				eco.add_resource(res_id, qty)
-
-	# Inventory
-	if GameManager.player_inventory:
-		var inv := GameManager.player_inventory
-		inv.clear_all()
-		var items: Array = state.get("inventory", [])
-		for item in items:
-			var category: String = item.get("category", "")
-			var item_name := StringName(str(item.get("item_name", "")))
-			var qty: int = int(item.get("quantity", 1))
-			match category:
-				"weapon": inv.add_weapon(item_name, qty)
-				"shield": inv.add_shield(item_name, qty)
-				"engine": inv.add_engine(item_name, qty)
-				"module": inv.add_module(item_name, qty)
-
-	# Cargo
-	if GameManager.player_cargo:
-		var cargo := GameManager.player_cargo
-		cargo.clear()
-		var cargo_items: Array = state.get("cargo", [])
-		var items_to_add: Array[Dictionary] = []
-		for item in cargo_items:
-			items_to_add.append({
-				"name": item.get("item_name", ""),
-				"type": item.get("item_type", ""),
-				"quantity": item.get("quantity", 1),
-				"icon_color": item.get("icon_color", ""),
-			})
-		if not items_to_add.is_empty():
-			cargo.add_items(items_to_add)
-
-	# Equipment
+	# Ship change (must happen after fleet is restored by PlayerData)
+	var ship_id: String = state.get("current_ship_id", "fighter_mk1")
 	var ship := GameManager.player_ship as ShipController
-	var equipment: Dictionary = state.get("equipment", {})
-	if not equipment.is_empty() and ship:
-		var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
-		if em:
-			# Apply shield (lookup resource by name)
-			var shield_name = equipment.get("shield_name", null)
-			if shield_name != null and str(shield_name) != "":
-				var shield_res := ShieldRegistry.get_shield(StringName(str(shield_name)))
-				if shield_res:
-					em.equip_shield(shield_res)
-			# Apply engine (lookup resource by name)
-			var engine_name = equipment.get("engine_name", null)
-			if engine_name != null and str(engine_name) != "":
-				var engine_res := EngineRegistry.get_engine(StringName(str(engine_name)))
-				if engine_res:
-					em.equip_engine(engine_res)
-		# Apply hardpoints (via WeaponManager.equip_weapons)
-		var wm := ship.get_node_or_null("WeaponManager") as WeaponManager
-		if wm:
-			var hardpoints: Array = equipment.get("hardpoints", [])
-			var weapon_names: Array[StringName] = []
-			for wp_name in hardpoints:
-				weapon_names.append(StringName(str(wp_name)) if wp_name != null and str(wp_name) != "" else &"")
-			if not weapon_names.is_empty():
-				wm.equip_weapons(weapon_names)
-
-	# Station services
-	var svc_data: Array = state.get("station_services", [])
-	if not svc_data.is_empty() and GameManager.station_services:
-		GameManager.station_services.deserialize(svc_data)
-
-	# Fleet
-	var fleet_data: Array = state.get("fleet", [])
-	if not fleet_data.is_empty():
-		GameManager.player_fleet = PlayerFleet.deserialize(fleet_data)
-		if GameManager._fleet_deployment_mgr:
-			GameManager._fleet_deployment_mgr.initialize(GameManager.player_fleet)
-		if GameManager._commerce_manager:
-			GameManager._commerce_manager.player_fleet = GameManager.player_fleet
-
-	# Ship change (now that fleet is restored, use active_index)
-	ship = GameManager.player_ship as ShipController
 	if ship and ship_id != "":
 		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else &"fighter_mk1")
 		if current_sid != ship_id and GameManager.player_fleet:
-			# Find fleet index for saved ship_id (prefer active_index)
 			var target_idx: int = GameManager.player_fleet.active_index
 			var active_fs := GameManager.player_fleet.get_active()
 			if active_fs == null or str(active_fs.ship_id) != ship_id:
-				# Active doesn't match, search for it
 				for i in GameManager.player_fleet.ships.size():
 					if str(GameManager.player_fleet.ships[i].ship_id) == ship_id:
 						target_idx = i
 						break
 			GameManager._on_ship_change_requested(target_idx)
 
-	# Kills & deaths
-	# These are tracked on the backend, not locally (read-only here)
-
-	print("SaveManager: State applied — ship=%s, system=%d, credits=%d" % [
-		ship_id, sys_id, int(state.get("credits", 0))
-	])
-
 
 # --- Collect current state ---
 
 func _collect_state() -> Dictionary:
-	var state: Dictionary = {}
-
-	# Ship ID
-	var ship := GameManager.player_ship as ShipController
-	if ship:
-		state["current_ship_id"] = str(ship.ship_data.ship_id if ship.ship_data else &"fighter_mk1")
-
-	# Galaxy + system
-	state["galaxy_seed"] = Constants.galaxy_seed
-	if GameManager._system_transition:
-		state["system_id"] = GameManager._system_transition.current_system_id
-
-	# Position (floating origin absolute — to_universe_pos returns [float64, float64, float64])
-	if GameManager.player_ship:
-		var abs_pos: Array = FloatingOrigin.to_universe_pos(GameManager.player_ship.global_position)
-		state["pos_x"] = abs_pos[0]
-		state["pos_y"] = abs_pos[1]
-		state["pos_z"] = abs_pos[2]
-
-	# Rotation
-	if ship:
-		var rot: Vector3 = ship.rotation
-		state["rotation_x"] = rot.x
-		state["rotation_y"] = rot.y
-		state["rotation_z"] = rot.z
-
-	# Credits & resources
-	if GameManager.player_economy:
-		state["credits"] = GameManager.player_economy.credits
-		var resources: Array = []
-		for res_id in GameManager.player_economy.resources:
-			var qty: int = GameManager.player_economy.resources[res_id]
-			if qty > 0:
-				resources.append({"resource_id": str(res_id), "quantity": qty})
-		state["resources"] = resources
-
-	# Inventory
-	if GameManager.player_inventory:
-		state["inventory"] = GameManager.player_inventory.serialize()
-
-	# Cargo
-	if GameManager.player_cargo:
-		state["cargo"] = GameManager.player_cargo.serialize()
-
-	# Equipment
-	if ship:
-		var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
-		if em:
-			state["equipment"] = em.serialize()
-
-	# Station services
-	if GameManager.station_services:
-		state["station_services"] = GameManager.station_services.serialize()
-
-	# Fleet
-	if GameManager.player_fleet:
-		state["fleet"] = GameManager.player_fleet.serialize()
-
-	return state
+	if GameManager.player_data:
+		return GameManager.player_data.collect_save_state(
+			GameManager.player_ship as ShipController,
+			GameManager._system_transition,
+		)
+	return {}
 
 
 # --- Triggers ---

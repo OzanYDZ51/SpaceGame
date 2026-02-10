@@ -37,7 +37,7 @@ func _draw() -> void:
 		_selected_id = ""
 		return
 
-	var font := ThemeDB.fallback_font
+	var font: Font = UITheme.get_font()
 	var extra: Dictionary = ent.get("extra", {})
 
 	# Count rows for dynamic panel height
