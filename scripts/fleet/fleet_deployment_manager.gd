@@ -37,31 +37,43 @@ func can_deploy(fleet_index: int) -> bool:
 
 func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> bool:
 	if not can_deploy(fleet_index):
+		push_warning("FleetDeploy: can_deploy FAILED for index %d" % fleet_index)
 		return false
 
 	var fs := _fleet.ships[fleet_index]
 	var universe: Node3D = GameManager.universe_node
 	if universe == null:
+		push_warning("FleetDeploy: universe_node is null!")
 		return false
 
 	# Resolve spawn position from station
-	var spawn_pos := Vector3.ZERO
+	var station_local_pos := Vector3.ZERO
 	var station_id: String = fs.docked_station_id
 	if station_id != "":
 		var ent := EntityRegistry.get_entity(station_id)
 		if not ent.is_empty():
-			spawn_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			station_local_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 
-	# Random offset around station
+	# Random offset around station (facing away from station)
 	var angle: float = randf() * TAU
 	var dist: float = randf_range(SPAWN_OFFSET_MIN, SPAWN_OFFSET_MAX)
-	spawn_pos += Vector3(cos(angle) * dist, randf_range(-50.0, 50.0), sin(angle) * dist)
+	var offset := Vector3(cos(angle) * dist, randf_range(-50.0, 50.0), sin(angle) * dist)
+	var spawn_pos := station_local_pos + offset
 
 	# Spawn NPC via ShipFactory
+	print("FleetDeploy: spawning '%s' at %s (station='%s', sys=%d)" % [fs.ship_id, spawn_pos, station_id, fs.docked_system_id])
 	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION)
 	if npc == null:
-		push_error("FleetDeploymentManager: Failed to spawn NPC for fleet index %d" % fleet_index)
+		push_error("FleetDeploy: spawn_npc_ship FAILED for ship_id '%s'" % fs.ship_id)
 		return false
+
+	# Orient ship facing away from station (Godot forward = -Z)
+	if offset.length_squared() > 1.0:
+		var away_dir := offset.normalized()
+		npc.look_at_from_position(spawn_pos, spawn_pos + away_dir, Vector3.UP)
+
+	# Ensure fleet NPC processes even when universe is disabled (player docked)
+	npc.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# Equip weapons from FleetShip loadout
 	var wm := npc.get_node_or_null("WeaponManager") as WeaponManager
@@ -116,17 +128,20 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 		existing_ent["extra"]["fleet_index"] = fleet_index
 		existing_ent["extra"]["owner_name"] = "Player"
 		existing_ent["extra"]["command"] = String(cmd)
+		existing_ent["extra"]["arrived"] = false
 		existing_ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
+		# Manually set initial position — node may be in a disabled tree (docked)
+		# so EntityRegistry._process won't read from node.global_position
+		var upos: Array = FloatingOrigin.to_universe_pos(spawn_pos)
+		existing_ent["pos_x"] = upos[0]
+		existing_ent["pos_y"] = upos[1]
+		existing_ent["pos_z"] = upos[2]
 
 	# Update FleetShip data
 	fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
 	fs.deployed_npc_id = npc_id
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
-
-	# Track arrival state in entity extra
-	if not existing_ent.is_empty():
-		existing_ent["extra"]["arrived"] = false
 
 	_deployed_ships[fleet_index] = npc
 	_fleet.fleet_changed.emit()

@@ -58,6 +58,11 @@ func enter(ctx: Dictionary) -> void:
 	player_ship.collision_mask = 0
 	player_ship.visible = false
 
+	# Hide player ship on the stellar map
+	var player_ent: Dictionary = EntityRegistry.get_entity("player_ship")
+	if not player_ent.is_empty():
+		player_ent["extra"]["hidden"] = true
+
 	# Stop player targeting
 	var targeting := player_ship.get_node_or_null("TargetingSystem") as TargetingSystem
 	if targeting:
@@ -125,6 +130,11 @@ func leave(ctx: Dictionary) -> void:
 	# --- 2. RESTORE SPACE VISUALS ---
 	universe_node.visible = true
 	player_ship.visible = true
+
+	# Show player ship on the stellar map again
+	var player_ent: Dictionary = EntityRegistry.get_entity("player_ship")
+	if not player_ent.is_empty():
+		player_ent["extra"]["hidden"] = false
 	for node_name in ["StarLight", "SystemStar"]:
 		var node := main_scene.get_node_or_null(node_name) as Node3D
 		if node:

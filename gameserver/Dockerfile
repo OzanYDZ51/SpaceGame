@@ -5,6 +5,7 @@ FROM ubuntu:22.04 AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget unzip ca-certificates \
+    libfontconfig1 libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Godot 4.6 headless (Linux x86_64)

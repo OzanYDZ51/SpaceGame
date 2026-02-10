@@ -9,7 +9,7 @@ enum ShieldFacing { FRONT, REAR, LEFT, RIGHT }
 enum Subsystem { ENGINES, WEAPONS, SHIELDS }
 
 signal hull_changed(current: float, max_hp: float)
-signal damage_taken(attacker: Node3D)
+signal damage_taken(attacker: Node3D, amount: float)
 signal shield_changed(facing: int, current: float, max_per_facing: float)
 signal shield_facing_depleted(facing: int)
 signal subsystem_damaged(subsystem: int)
@@ -80,7 +80,7 @@ func apply_damage(amount: float, damage_type: StringName, hit_direction: Vector3
 		return {"shield_absorbed": false, "facing": 0, "shield_ratio": 0.0}
 
 	if attacker:
-		damage_taken.emit(attacker)
+		damage_taken.emit(attacker, amount)
 
 	var facing := _direction_to_facing(hit_direction)
 	var shield_absorbed := false

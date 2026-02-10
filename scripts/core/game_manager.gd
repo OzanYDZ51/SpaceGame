@@ -627,7 +627,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		return
 	var fs := player_fleet.ships[fleet_index]
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
-		# Pre-check if deploy is possible (for user feedback)
+		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
 			if _toast_manager:
 				if fs.docked_system_id != current_system_id_safe():
@@ -635,13 +635,18 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 				else:
 					_toast_manager.show_toast("DEPLOIEMENT IMPOSSIBLE", UIToast.ToastType.WARNING)
 			return
-		# Deploy (routes through multiplayer authority when connected)
-		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
-		if _toast_manager:
-			_toast_manager.show_toast("DEPLOIEMENT: %s" % fs.custom_name, UIToast.ToastType.SUCCESS)
-		# Update route line now that deployed_npc_id should be set
-		if _stellar_map:
-			_stellar_map._set_route_line(fleet_index, params.get("target_x", 0.0), params.get("target_z", 0.0))
+		# Deploy: use direct call to get success/fail feedback
+		var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
+		if success:
+			if _toast_manager:
+				_toast_manager.show_toast("DEPLOIEMENT: %s" % fs.custom_name, UIToast.ToastType.SUCCESS)
+			# Update route line now that deployed_npc_id is set
+			if _stellar_map:
+				_stellar_map._set_route_line(fleet_index, params.get("target_x", 0.0), params.get("target_z", 0.0))
+		else:
+			if _toast_manager:
+				_toast_manager.show_toast("DEPLOIEMENT ECHOUE", UIToast.ToastType.WARNING)
+			push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		# Change command on already deployed ship
 		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)

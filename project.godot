@@ -35,6 +35,10 @@ window/size/viewport_height=1080
 window/size/mode=2
 window/stretch/mode="canvas_items"
 
+[gui]
+
+theme/default_font_generate_mipmaps=true
+
 [input]
 
 move_forward={
@@ -116,17 +120,11 @@ toggle_mouse_capture={
 3d/default_linear_damp=0.0
 3d/default_angular_damp=0.0
 
-[gui]
-
-theme/default_font_antialiasing=1
-theme/default_font_generate_mipmaps=true
-
 [rendering]
 
 textures/canvas_textures/default_texture_filter=2
+lights_and_shadows/directional_shadow/size=8192
 textures/default_filters/anisotropic_filtering_level=4
 anti_aliasing/quality/msaa_3d=2
-anti_aliasing/quality/screen_space_aa=1
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2
-lights_and_shadows/directional_shadow/size=8192
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+anti_aliasing/quality/screen_space_aa=1

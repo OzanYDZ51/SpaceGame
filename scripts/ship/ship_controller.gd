@@ -585,7 +585,7 @@ func mark_combat() -> void:
 		_exit_cruise()
 
 
-func _on_combat_damage(_attacker: Node3D) -> void:
+func _on_combat_damage(_attacker: Node3D, _amount: float = 0.0) -> void:
 	mark_combat()
 
 

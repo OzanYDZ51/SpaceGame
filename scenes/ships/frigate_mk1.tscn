@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bfbeju2ji2ljd"]
 
-[ext_resource type="PackedScene" uid="uid://cj5eyy14di2lx" path="res://assets/models/frigate_mk1.glb" id="1_model"]
-[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="PackedScene" path="res://assets/models/frigate_mk1.glb" id="1_model"]
+[ext_resource type="Script" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 
 [node name="FrigateMk1" type="Node3D" unique_id=2078971498]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)

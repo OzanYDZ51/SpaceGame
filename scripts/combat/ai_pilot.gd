@@ -4,6 +4,7 @@ extends Node
 # =============================================================================
 # AI Pilot - Translates AI commands into ShipController inputs
 # Low-level flight control: fly toward, face target, combat maneuvers, fire
+# Includes 3D raycast-based obstacle avoidance (stations, asteroids)
 # =============================================================================
 
 var _ship: ShipController = null
@@ -18,6 +19,19 @@ var _maneuver_timer: float = 0.0
 var _jink_offset: Vector3 = Vector3.ZERO
 var _jink_timer: float = 0.0
 
+# --- Obstacle Avoidance ---
+# 8-ray cone probe around forward vector, updated every AVOID_TICK_MS.
+# When forward ray hits, the best clear direction is blended into steering.
+const AVOID_RANGE: float = 500.0       # Max look-ahead distance
+const AVOID_MIN_RANGE: float = 80.0    # Min look-ahead (when nearly stopped)
+const AVOID_SPEED_SCALE: float = 1.5   # look = speed * scale, clamped
+const AVOID_TICK_MS: int = 150         # Probe interval (ms)
+const AVOID_SPREAD: float = 0.7        # Probe cone half-angle (~38°)
+const AVOID_COLLISION_MASK: int = 6    # LAYER_STATIONS(2) | LAYER_ASTEROIDS(4)
+
+var _avoid_offset: Vector3 = Vector3.ZERO
+var _avoid_last_tick: int = 0
+
 
 func _ready() -> void:
 	_ship = get_parent() as ShipController
@@ -30,6 +44,9 @@ func _cache_refs() -> void:
 	_cached_targeting = _ship.get_node_or_null("TargetingSystem") as TargetingSystem
 
 
+# =============================================================================
+# NAVIGATION
+# =============================================================================
 func fly_intercept(target: Node3D, arrival_dist: float = 50.0) -> void:
 	if _ship == null or target == null or not is_instance_valid(target):
 		return
@@ -62,11 +79,20 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 		_ship.set_throttle(Vector3.ZERO)
 		return
 
-	face_target(target_pos)
+	# --- Obstacle avoidance ---
+	_update_avoidance()
+	var effective_target := target_pos
+	if _avoid_offset.length_squared() > 1.0:
+		# Blend: offset the aim point laterally while keeping forward intent
+		var look_ahead: float = minf(dist, 500.0)
+		effective_target = _ship.global_position + to_target.normalized() * look_ahead + _avoid_offset
 
-	# Smooth throttle based on alignment with target
+	face_target(effective_target)
+
+	# Smooth throttle based on alignment with effective target
 	var forward_dir: Vector3 = -_ship.global_transform.basis.z
-	var alignment: float = forward_dir.dot(to_target.normalized())
+	var aim_dir: Vector3 = (effective_target - _ship.global_position).normalized()
+	var alignment: float = forward_dir.dot(aim_dir)
 
 	var fwd_throttle: float
 	if alignment > 0.85:
@@ -78,7 +104,14 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 	else:
 		fwd_throttle = 0.0  # Facing away: just turn
 
-	_ship.set_throttle(Vector3(0.0, 0.0, fwd_throttle))
+	# If actively avoiding, add lateral strafe thrust for faster clearance
+	var strafe := Vector3.ZERO
+	if _avoid_offset.length_squared() > 100.0:
+		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * _avoid_offset.normalized()
+		strafe.x = clampf(local_avoid.x * 0.6, -0.6, 0.6)
+		strafe.y = clampf(local_avoid.y * 0.4, -0.4, 0.4)
+
+	_ship.set_throttle(Vector3(strafe.x, strafe.y, fwd_throttle))
 
 
 func face_target(target_pos: Vector3) -> void:
@@ -114,6 +147,95 @@ func face_target(target_pos: Vector3) -> void:
 	_ship.set_rotation_target(pitch_rate, yaw_rate, 0.0)
 
 
+# =============================================================================
+# OBSTACLE AVOIDANCE — 3D Raycast Cone Probing
+# =============================================================================
+# Probes 8 directions in a cone around the ship's forward axis.
+# If the forward ray is blocked, steers toward the clearest lateral direction.
+# Urgency scales with proximity: closer obstacle = stronger avoidance.
+# Look distance scales with speed: faster ship looks further ahead.
+# =============================================================================
+
+func _update_avoidance() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _avoid_last_tick < AVOID_TICK_MS:
+		return
+	_avoid_last_tick = now
+	_avoid_offset = _compute_avoidance()
+
+
+func _compute_avoidance() -> Vector3:
+	if _ship == null:
+		return Vector3.ZERO
+	var world := _ship.get_world_3d()
+	if world == null:
+		return Vector3.ZERO
+	var space := world.direct_space_state
+	if space == null:
+		return Vector3.ZERO
+
+	var origin := _ship.global_position
+	var basis := _ship.global_transform.basis
+	var fwd := -basis.z
+	var up := basis.y
+	var right := basis.x
+
+	# Scale look distance by speed — faster ships need more lead time
+	var speed := _ship.linear_velocity.length()
+	var look := clampf(speed * AVOID_SPEED_SCALE, AVOID_MIN_RANGE, AVOID_RANGE)
+
+	# Forward probe
+	var fwd_dist := _ray_probe(space, origin, fwd, look)
+	if fwd_dist >= look:
+		return Vector3.ZERO  # All clear ahead
+
+	# Forward blocked — probe 8 directions in a cone around forward
+	var s := AVOID_SPREAD
+	var probes: Array[Vector3] = [
+		(fwd + right * s).normalized(),                        # right
+		(fwd - right * s).normalized(),                        # left
+		(fwd + up * s).normalized(),                           # up
+		(fwd - up * s).normalized(),                           # down
+		(fwd + (right + up).normalized() * s).normalized(),    # up-right
+		(fwd + (-right + up).normalized() * s).normalized(),   # up-left
+		(fwd + (right - up).normalized() * s).normalized(),    # down-right
+		(fwd + (-right - up).normalized() * s).normalized(),   # down-left
+	]
+
+	var best_dir := Vector3.ZERO
+	var best_dist: float = 0.0
+	for p in probes:
+		var d := _ray_probe(space, origin, p, look)
+		if d > best_dist:
+			best_dist = d
+			best_dir = p
+
+	if best_dist < 10.0:
+		# Completely boxed in — emergency vertical escape
+		return up * look
+
+	# Urgency: closer the obstacle, stronger the avoidance (quadratic curve)
+	var t := clampf(fwd_dist / look, 0.0, 1.0)
+	var urgency := (1.0 - t) * (1.0 - t)  # Quadratic: ramps hard at close range
+
+	# Avoidance vector: perpendicular component of best direction relative to forward
+	var lateral := (best_dir - fwd * fwd.dot(best_dir)).normalized()
+	return lateral * urgency * look
+
+
+func _ray_probe(space: PhysicsDirectSpaceState3D, origin: Vector3, dir: Vector3, max_dist: float) -> float:
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * max_dist)
+	query.exclude = [_ship.get_rid()]
+	query.collision_mask = AVOID_COLLISION_MASK
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return max_dist
+	return origin.distance_to(hit["position"])
+
+
+# =============================================================================
+# COMBAT
+# =============================================================================
 func update_combat_maneuver(delta: float) -> void:
 	# Maintain a consistent strafe direction for 1-2.5 seconds before changing.
 	# This prevents the jittery random-per-tick movement.

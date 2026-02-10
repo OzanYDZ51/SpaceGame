@@ -48,6 +48,13 @@ var _cached_lod_mgr: ShipLODManager = null
 var _cached_target_health: HealthSystem = null
 var _cached_target_ref: Node3D = null
 
+# Threat table: tracks accumulated damage from each attacker
+# Key = attacker instance_id, Value = { "node": Node3D, "threat": float, "last_hit": float }
+var _threat_table: Dictionary = {}
+const THREAT_DECAY_RATE: float = 5.0  # threat points lost per second
+const THREAT_SWITCH_RATIO: float = 1.5  # new attacker must have 1.5x threat to force switch
+const THREAT_CLEANUP_TIME: float = 10.0  # remove entries older than 10s
+
 
 func setup(behavior_name: StringName) -> void:
 	match behavior_name:
@@ -119,6 +126,9 @@ func _process(delta: float) -> void:
 		_ship.set_throttle(Vector3.ZERO)
 		_ship.set_rotation_target(0.0, 0.0, 0.0)
 		return
+
+	# Decay and cleanup threat table
+	_update_threat_table(tick_rate)
 
 	match current_state:
 		State.IDLE:
