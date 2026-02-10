@@ -266,7 +266,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			if not drops.is_empty():
 				var crate := CargoCrate.new()
 				crate.contents = drops
-				crate.global_position = death_pos
+				crate.position = death_pos
 				ship.get_parent().call_deferred("add_child", crate)
 		else:
 			# Client connected to server — local NPC shouldn't exist, but if it does
@@ -275,7 +275,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			if not drops.is_empty():
 				var crate := CargoCrate.new()
 				crate.contents = drops
-				crate.global_position = death_pos
+				crate.position = death_pos
 				ship.get_parent().call_deferred("add_child", crate)
 
 		EntityRegistry.unregister(ship.name)

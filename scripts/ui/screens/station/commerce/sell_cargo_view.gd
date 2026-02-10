@@ -3,24 +3,35 @@ extends Control
 
 # =============================================================================
 # Sell Cargo View - Sell loot cargo items (metal, electronics, weapon_part…)
+# Ship filter dropdown: TOUS / active ship / other docked ships
 # Left: UIScrollList of cargo items, Right: detail panel + sell buttons
 # =============================================================================
 
 var _commerce_manager: CommerceManager = null
+var _station_id: String = ""
 
+var _ship_dropdown: UIDropdown = null
 var _item_list: UIScrollList = null
 var _sell_one_btn: UIButton = null
 var _sell_all_btn: UIButton = null
-var _cargo_items: Array[Dictionary] = []
+var _cargo_items: Array[Dictionary] = []  # flattened items for display
+var _cargo_item_ship: Array[FleetShip] = []  # which ship owns each item
 var _selected_index: int = -1
+var _docked_ships: Array[FleetShip] = []
+var _filter_ship_index: int = 0  # 0 = TOUS
 
 const DETAIL_W := 240.0
 const ROW_H := 44.0
+const DROPDOWN_H := 32.0
 
 
 func _ready() -> void:
-	clip_contents = true
 	resized.connect(_layout)
+
+	_ship_dropdown = UIDropdown.new()
+	_ship_dropdown.visible = false
+	_ship_dropdown.option_selected.connect(_on_ship_filter_changed)
+	add_child(_ship_dropdown)
 
 	_item_list = UIScrollList.new()
 	_item_list.row_height = ROW_H
@@ -45,23 +56,64 @@ func _ready() -> void:
 	add_child(_sell_all_btn)
 
 
-func setup(mgr: CommerceManager) -> void:
+func setup(mgr: CommerceManager, station_id: String = "") -> void:
 	_commerce_manager = mgr
+	_station_id = station_id
 
 
 func refresh() -> void:
+	_ship_dropdown.visible = true
 	_item_list.visible = true
 	_sell_one_btn.visible = true
 	_sell_all_btn.visible = true
+	_rebuild_docked_ships()
 	_refresh_items()
 	_layout()
+
+
+func _rebuild_docked_ships() -> void:
+	_docked_ships.clear()
+	if _commerce_manager == null or _commerce_manager.player_data == null:
+		return
+	var pd := _commerce_manager.player_data
+	if pd.fleet == null:
+		return
+	var fleet := pd.fleet
+	# Always include active ship first
+	var active := fleet.get_active()
+	if active:
+		_docked_ships.append(active)
+	# Add other ships docked at this station
+	if _station_id != "":
+		var docked_indices := fleet.get_ships_at_station(_station_id)
+		for idx in docked_indices:
+			var fs := fleet.ships[idx]
+			if fs != active:
+				_docked_ships.append(fs)
+	# Build dropdown options
+	var opts: Array[String] = []
+	opts.append("TOUS")
+	for fs in _docked_ships:
+		var suffix: String = " [ACTIF]" if fs == active else ""
+		opts.append(fs.custom_name + suffix)
+	_ship_dropdown.options = opts
+	_ship_dropdown.selected_index = 0
+	_filter_ship_index = 0
+
+
+func _on_ship_filter_changed(_idx: int) -> void:
+	_filter_ship_index = _ship_dropdown.selected_index
+	_refresh_items()
 
 
 func _layout() -> void:
 	var s := size
 	var list_w: float = s.x - DETAIL_W - 10.0
-	_item_list.position = Vector2(0, 0)
-	_item_list.size = Vector2(list_w, s.y)
+	_ship_dropdown.position = Vector2(0, 0)
+	_ship_dropdown.size = Vector2(list_w, DROPDOWN_H)
+	var list_top: float = DROPDOWN_H + 4.0
+	_item_list.position = Vector2(0, list_top)
+	_item_list.size = Vector2(list_w, s.y - list_top)
 	_sell_one_btn.position = Vector2(s.x - DETAIL_W + 10, s.y - 82)
 	_sell_one_btn.size = Vector2(DETAIL_W - 20, 34)
 	_sell_all_btn.position = Vector2(s.x - DETAIL_W + 10, s.y - 42)
@@ -70,8 +122,23 @@ func _layout() -> void:
 
 func _refresh_items() -> void:
 	_cargo_items.clear()
-	if _commerce_manager and _commerce_manager.player_cargo:
-		_cargo_items.assign(_commerce_manager.player_cargo.get_all())
+	_cargo_item_ship.clear()
+	if _commerce_manager == null:
+		_item_list.items = []
+		return
+	var ships_to_show: Array[FleetShip] = []
+	if _filter_ship_index == 0:
+		ships_to_show = _docked_ships
+	elif _filter_ship_index - 1 < _docked_ships.size():
+		ships_to_show = [_docked_ships[_filter_ship_index - 1]]
+
+	for fs in ships_to_show:
+		if fs.cargo == null:
+			continue
+		for item in fs.cargo.get_all():
+			_cargo_items.append(item)
+			_cargo_item_ship.append(fs)
+
 	var list_items: Array = []
 	for item in _cargo_items:
 		list_items.append(item.get("name", ""))
@@ -100,9 +167,10 @@ func _on_sell_all() -> void:
 	if _commerce_manager == null: return
 	if _selected_index < 0 or _selected_index >= _cargo_items.size(): return
 	var item: Dictionary = _cargo_items[_selected_index]
+	var ship: FleetShip = _cargo_item_ship[_selected_index]
 	var item_name: String = item.get("name", "")
 	var qty: int = item.get("quantity", 1)
-	if _commerce_manager.sell_cargo(item_name, qty):
+	if _commerce_manager.sell_cargo_from_ship(item_name, qty, ship):
 		var toast_mgr := _find_toast_manager()
 		if toast_mgr:
 			var total := PriceCatalog.get_cargo_price(item_name) * qty
@@ -115,8 +183,9 @@ func _sell_one() -> void:
 	if _commerce_manager == null: return
 	if _selected_index < 0 or _selected_index >= _cargo_items.size(): return
 	var item: Dictionary = _cargo_items[_selected_index]
+	var ship: FleetShip = _cargo_item_ship[_selected_index]
 	var item_name: String = item.get("name", "")
-	if _commerce_manager.sell_cargo(item_name, 1):
+	if _commerce_manager.sell_cargo_from_ship(item_name, 1, ship):
 		var toast_mgr := _find_toast_manager()
 		if toast_mgr:
 			toast_mgr.show_toast("%s vendu!" % item_name)
@@ -163,6 +232,13 @@ func _draw() -> void:
 	var unit_price := PriceCatalog.get_cargo_price(item_name)
 
 	var y: float = 10.0
+
+	# Ship owner label (when "TOUS" filter)
+	if _filter_ship_index == 0 and _selected_index < _cargo_item_ship.size():
+		var owner_ship := _cargo_item_ship[_selected_index]
+		draw_string(font, Vector2(detail_x + 10, y + 12), owner_ship.custom_name,
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
+		y += 16.0
 
 	# Name
 	draw_string(font, Vector2(detail_x + 10, y + 14), item_name.to_upper(),
@@ -219,8 +295,13 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	# Color badge
 	ci.draw_rect(Rect2(rect.position.x + 6, rect.position.y + 8, 12, 12), icon_col)
 
+	# Ship name prefix (when TOUS filter and multiple ships)
+	var prefix: String = ""
+	if _filter_ship_index == 0 and _docked_ships.size() > 1 and idx < _cargo_item_ship.size():
+		prefix = _cargo_item_ship[idx].custom_name.substr(0, 8) + " | "
+
 	# Name + quantity
-	var label := "%s x%d" % [item_name, qty]
+	var label := "%s%s x%d" % [prefix, item_name, qty]
 	ci.draw_string(font, Vector2(rect.position.x + 24, rect.position.y + 18),
 		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
 		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)

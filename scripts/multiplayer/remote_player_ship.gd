@@ -12,6 +12,7 @@ var player_name: String = ""
 var ship_id: StringName = &"fighter_mk1"
 var ship_class: StringName = &"Fighter"
 var _was_dead: bool = false
+var _remote_beam: MiningLaserBeam = null
 
 # Interpolation buffer (ring buffer of snapshots)
 var _snapshots: Array[Dictionary] = []
@@ -208,6 +209,25 @@ func show_death_explosion() -> void:
 	scene_root.add_child(explosion)
 	explosion.global_position = pos
 	explosion.scale = Vector3.ONE * 3.0
+
+
+## Show a remote mining beam from source to target (universe positions).
+func show_mining_beam(source_pos: Array, target_pos: Array) -> void:
+	var local_src := FloatingOrigin.to_local_pos(source_pos)
+	var local_tgt := FloatingOrigin.to_local_pos(target_pos)
+	if _remote_beam == null:
+		_remote_beam = MiningLaserBeam.new()
+		_remote_beam.name = "RemoteMiningBeam"
+		add_child(_remote_beam)
+	if not _remote_beam._active:
+		_remote_beam.activate(local_src, local_tgt)
+	_remote_beam.update_beam(local_src, local_tgt)
+
+
+## Hide the remote mining beam.
+func hide_mining_beam() -> void:
+	if _remote_beam and _remote_beam._active:
+		_remote_beam.deactivate()
 
 
 ## Update the name label text.

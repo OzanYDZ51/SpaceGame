@@ -238,7 +238,7 @@ func _draw_detail_rows(font: Font, x: float, y: float, rows: Array) -> float:
 	return y + 6.0
 
 
-func _draw_sell_price_box(font: Font, x: float, y: float, price: int) -> float:
+func _draw_sell_price_box(_font: Font, x: float, y: float, price: int) -> float:
 	y += 4.0
 	draw_rect(Rect2(x + 10, y, DETAIL_W - 20, 28),
 		Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.1))

@@ -659,8 +659,8 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 				_toast_manager.show_toast("DEPLOIEMENT ECHOUE", UIToast.ToastType.WARNING)
 			push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-		# Change command on already deployed ship
-		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
+		# Change command on already deployed ship (local NPCs — always execute locally)
+		_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
 	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 		if _toast_manager:
 			_toast_manager.show_toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)
@@ -668,7 +668,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 
 func _on_fleet_recall_from_map(fleet_index: int) -> void:
 	if _fleet_deployment_mgr:
-		_fleet_deployment_mgr.request_retrieve(fleet_index)
+		_fleet_deployment_mgr.retrieve_ship(fleet_index)
 		if _toast_manager and player_fleet and fleet_index < player_fleet.ships.size():
 			_toast_manager.show_toast("RAPPEL: %s" % player_fleet.ships[fleet_index].custom_name)
 

@@ -72,6 +72,8 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.player_died_received.connect(_on_remote_player_died)
 	NetworkManager.player_respawned_received.connect(_on_remote_player_respawned)
 	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
+	NetworkManager.remote_mining_beam_received.connect(_on_remote_mining_beam)
+	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
 
 	# Auto-connect
 	var args := OS.get_cmdline_args()
@@ -346,6 +348,7 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 			if item is Dictionary:
 				typed_loot.append(item)
 		crate.contents = typed_loot
+		crate.owner_peer_id = killer_pid
 		crate.global_position = local_pos
 		if universe_node:
 			universe_node.add_child(crate)
@@ -447,6 +450,39 @@ func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> vo
 		var remote: RemotePlayerShip = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.change_ship_model(new_ship_id)
+
+
+# =============================================================================
+# MINING SYNC
+# =============================================================================
+
+func _on_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array) -> void:
+	if not remote_players.has(peer_id):
+		return
+	var remote: RemotePlayerShip = remote_players[peer_id]
+	if not is_instance_valid(remote):
+		return
+	if is_active:
+		remote.show_mining_beam(source_pos, target_pos)
+	else:
+		remote.hide_mining_beam()
+
+
+func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
+	var gm := GameManager as GameManagerSystem
+	if gm == null or gm._asteroid_field_mgr == null:
+		return
+	var field_mgr: AsteroidFieldManager = gm._asteroid_field_mgr
+	var id := StringName(asteroid_id_str)
+	field_mgr.on_asteroid_depleted(id)
+	# Also deplete the asteroid data if loaded
+	var ast := field_mgr.get_asteroid_data(id)
+	if ast and not ast.is_depleted:
+		ast.is_depleted = true
+		ast.health_current = 0.0
+		# Update visual if node exists
+		if ast.node_ref and is_instance_valid(ast.node_ref) and ast.node_ref is AsteroidNode:
+			(ast.node_ref as AsteroidNode)._on_depleted()
 
 
 # =============================================================================

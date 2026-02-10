@@ -10,6 +10,8 @@ extends Node3D
 signal picked_up(crate: CargoCrate)
 
 var contents: Array[Dictionary] = []   # loot items from LootTable
+var owner_peer_id: int = -1            # peer who killed the NPC (-1 = anyone)
+var _abandon_time: float = 120.0       # seconds until anyone can loot
 var _lifetime: float = 120.0           # despawn timer (seconds)
 var _spin_axis: Vector3 = Vector3.UP
 var _spin_speed: float = 0.0
@@ -62,12 +64,24 @@ func _ready() -> void:
 	})
 
 
+func is_abandoned() -> bool:
+	return _abandon_time <= 0.0
+
+
+func can_be_looted_by(peer_id: int) -> bool:
+	return owner_peer_id == -1 or owner_peer_id == peer_id or is_abandoned()
+
+
 func _process(delta: float) -> void:
 	# Tumble
 	rotate(_spin_axis, _spin_speed * delta)
 
 	# Drift
 	global_position += _drift * delta
+
+	# Abandon timer
+	if _abandon_time > 0.0:
+		_abandon_time -= delta
 
 	# Despawn countdown
 	_lifetime -= delta

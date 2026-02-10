@@ -46,6 +46,10 @@ signal fleet_command_changed(owner_pid: int, fleet_index: int, npc_id: String, c
 # Combat sync signals
 signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
 
+# Mining sync signals
+signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array)
+signal asteroid_depleted_received(asteroid_id: String)
+
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
@@ -781,3 +785,43 @@ func _rpc_fleet_retrieved(owner_pid: int, fleet_idx: int, npc_id_str: String) ->
 @rpc("authority", "reliable")
 func _rpc_fleet_command_changed(owner_pid: int, fleet_idx: int, npc_id_str: String, cmd_str: String, params: Dictionary) -> void:
 	fleet_command_changed.emit(owner_pid, fleet_idx, npc_id_str, cmd_str, params)
+
+
+# =========================================================================
+# MINING SYNC RPCs
+# =========================================================================
+
+## Client -> Server: Mining beam state (10Hz, visual only).
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_mining_beam(is_active: bool, source_pos: Array, target_pos: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		npc_auth.relay_mining_beam(sender_id, is_active, source_pos, target_pos)
+
+
+## Server -> Client: Another player's mining beam state.
+@rpc("authority", "unreliable_ordered")
+func _rpc_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array) -> void:
+	remote_mining_beam_received.emit(peer_id, is_active, source_pos, target_pos)
+
+
+## Client -> Server: An asteroid was depleted by this player.
+@rpc("any_peer", "reliable")
+func _rpc_asteroid_depleted(asteroid_id_str: String) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		var sender_state: NetworkState = peers.get(sender_id)
+		if sender_state:
+			npc_auth.broadcast_asteroid_depleted(asteroid_id_str, sender_state.system_id, sender_id)
+
+
+## Server -> Client: An asteroid was depleted by another player.
+@rpc("authority", "reliable")
+func _rpc_receive_asteroid_depleted(asteroid_id_str: String) -> void:
+	asteroid_depleted_received.emit(asteroid_id_str)

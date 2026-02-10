@@ -84,5 +84,6 @@ type PlayerState struct {
 	Inventory     []InventoryItem  `json:"inventory"`
 	Cargo         []CargoItem      `json:"cargo"`
 	Equipment     *PlayerEquipment `json:"equipment,omitempty"`
-	Fleet         json.RawMessage  `json:"fleet,omitempty"`
+	Fleet           json.RawMessage  `json:"fleet,omitempty"`
+	StationServices json.RawMessage  `json:"station_services,omitempty"`
 }

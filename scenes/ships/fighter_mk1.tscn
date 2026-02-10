@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dwixth8psaw7v"]
 
-[ext_resource type="PackedScene" path="res://assets/models/tie.glb" id="1_model"]
-[ext_resource type="Script" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 
 [node name="FighterMk1" type="Node3D" unique_id=155803000]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)

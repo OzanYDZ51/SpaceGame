@@ -56,6 +56,7 @@ func buy_weapon(weapon_name: StringName) -> bool:
 	player_economy.spend_credits(w.price)
 	player_inventory.add_weapon(weapon_name)
 	purchase_completed.emit("weapon", weapon_name)
+	SaveManager.trigger_save("weapon_purchase")
 	return true
 
 
@@ -70,6 +71,7 @@ func buy_shield(shield_name: StringName) -> bool:
 	player_economy.spend_credits(s.price)
 	player_inventory.add_shield(shield_name)
 	purchase_completed.emit("shield", shield_name)
+	SaveManager.trigger_save("shield_purchase")
 	return true
 
 
@@ -84,6 +86,7 @@ func buy_engine(engine_name: StringName) -> bool:
 	player_economy.spend_credits(e.price)
 	player_inventory.add_engine(engine_name)
 	purchase_completed.emit("engine", engine_name)
+	SaveManager.trigger_save("engine_purchase")
 	return true
 
 
@@ -98,6 +101,7 @@ func buy_module(module_name: StringName) -> bool:
 	player_economy.spend_credits(m.price)
 	player_inventory.add_module(module_name)
 	purchase_completed.emit("module", module_name)
+	SaveManager.trigger_save("module_purchase")
 	return true
 
 
@@ -110,6 +114,7 @@ func sell_weapon(weapon_name: StringName) -> bool:
 	player_inventory.remove_weapon(weapon_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("weapon", weapon_name, price)
+	SaveManager.mark_dirty()
 	return true
 
 
@@ -122,6 +127,7 @@ func sell_shield(shield_name: StringName) -> bool:
 	player_inventory.remove_shield(shield_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("shield", shield_name, price)
+	SaveManager.mark_dirty()
 	return true
 
 
@@ -134,6 +140,7 @@ func sell_engine(engine_name: StringName) -> bool:
 	player_inventory.remove_engine(engine_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("engine", engine_name, price)
+	SaveManager.mark_dirty()
 	return true
 
 
@@ -146,7 +153,40 @@ func sell_module(module_name: StringName) -> bool:
 	player_inventory.remove_module(module_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("module", module_name, price)
+	SaveManager.mark_dirty()
 	return true
+
+
+func sell_ship(fleet_index: int) -> bool:
+	if player_fleet == null:
+		return false
+	if fleet_index == player_fleet.active_index:
+		return false
+	if fleet_index < 0 or fleet_index >= player_fleet.ships.size():
+		return false
+	if player_fleet.ships.size() <= 1:
+		return false
+	var fs := player_fleet.ships[fleet_index]
+	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	if ship_data == null:
+		return false
+	var hull_price := PriceCatalog.get_sell_price(ship_data.price)
+	var equip_price := PriceCatalog.get_sell_price(fs.get_total_equipment_value())
+	var total := hull_price + equip_price
+	player_fleet.remove_ship(fleet_index)
+	player_economy.add_credits(total)
+	sale_completed.emit("ship", fs.ship_id, total)
+	SaveManager.trigger_save("ship_sold")
+	return true
+
+
+func get_ship_sell_price(fs: FleetShip) -> int:
+	if fs == null:
+		return 0
+	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	if ship_data == null:
+		return 0
+	return PriceCatalog.get_sell_price(ship_data.price) + PriceCatalog.get_sell_price(fs.get_total_equipment_value())
 
 
 func sell_cargo(item_name: String, qty: int = 1) -> bool:

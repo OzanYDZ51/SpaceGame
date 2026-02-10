@@ -52,7 +52,7 @@ func _scan_crates() -> void:
 
 	var was_available: bool = can_pickup
 
-	if best_crate and best_dist < pickup_range:
+	if best_crate and best_dist < pickup_range and best_crate.can_be_looted_by(NetworkManager.local_peer_id):
 		can_pickup = true
 		nearest_crate = best_crate
 		if not was_available:

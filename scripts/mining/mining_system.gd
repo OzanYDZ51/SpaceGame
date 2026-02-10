@@ -281,5 +281,21 @@ func _do_mining_tick() -> void:
 		(mining_target.node_ref as AsteroidNode)._update_label_text()
 
 	if mining_target and mining_target.is_depleted:
+		# Broadcast depletion to other players
+		_broadcast_asteroid_depleted(mining_target.id)
 		_stop_extraction()
 		_beam.deactivate()
+
+
+func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
+	if not NetworkManager.is_connected_to_server():
+		return
+	var id_str := String(asteroid_id)
+	if NetworkManager.is_host:
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		if npc_auth:
+			var gm := GameManager as GameManagerSystem
+			var sys_id: int = gm._system_transition.current_system_id if gm and gm._system_transition else -1
+			npc_auth.broadcast_asteroid_depleted(id_str, sys_id, 1)
+	else:
+		NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)

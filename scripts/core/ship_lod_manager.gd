@@ -399,7 +399,12 @@ func _demote_lod1_to_lod2(id: StringName, data: ShipLODData) -> void:
 	var node := data.node_ref
 	if node and is_instance_valid(node):
 		data.capture_from_node(node)
-		EntityRegistry.unregister(String(node.name))
+		# Fleet ships: keep EntityRegistry entry (map needs it), just null the node ref
+		var ent := EntityRegistry.get_entity(String(node.name))
+		if not ent.is_empty() and ent["type"] == EntityRegistrySystem.EntityType.SHIP_FLEET:
+			ent["node"] = null
+		else:
+			EntityRegistry.unregister(String(node.name))
 		node.queue_free()
 	data.node_ref = null
 	data.current_lod = ShipLODData.LODLevel.LOD2
@@ -540,11 +545,26 @@ func _tick_data_only_ai(delta: float) -> void:
 		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
+		_sync_entity_registry_position(id, data)
 	for id: StringName in _lod3_ids:
 		var data: ShipLODData = _ships[id]
 		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
+		_sync_entity_registry_position(id, data)
+
+
+func _sync_entity_registry_position(id: StringName, data: ShipLODData) -> void:
+	var ent := EntityRegistry.get_entity(String(id))
+	if ent.is_empty():
+		return
+	var upos: Array = FloatingOrigin.to_universe_pos(data.position)
+	ent["pos_x"] = upos[0]
+	ent["pos_y"] = upos[1]
+	ent["pos_z"] = upos[2]
+	ent["vel_x"] = float(data.velocity.x)
+	ent["vel_y"] = float(data.velocity.y)
+	ent["vel_z"] = float(data.velocity.z)
 
 
 # =============================================================================

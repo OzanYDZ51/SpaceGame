@@ -107,9 +107,9 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		return nil, err
 	}
 
-	// Fleet (JSONB column on players table)
-	var fleetRaw []byte
-	_ = r.pool.QueryRow(ctx, `SELECT fleet FROM players WHERE id = $1`, playerID).Scan(&fleetRaw)
+	// Fleet + StationServices (JSONB columns on players table)
+	var fleetRaw, stationServicesRaw []byte
+	_ = r.pool.QueryRow(ctx, `SELECT fleet, station_services FROM players WHERE id = $1`, playerID).Scan(&fleetRaw, &stationServicesRaw)
 
 	state := &model.PlayerState{
 		CurrentShipID: p.CurrentShipID,
@@ -124,7 +124,8 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		Credits:       p.Credits,
 		Kills:         p.Kills,
 		Deaths:        p.Deaths,
-		Fleet:         json.RawMessage(fleetRaw),
+		Fleet:           json.RawMessage(fleetRaw),
+		StationServices: json.RawMessage(stationServicesRaw),
 	}
 
 	// Resources
@@ -194,10 +195,14 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 
 	now := time.Now()
 
-	// Default fleet to empty array if nil
+	// Default fleet/station_services to empty array if nil
 	fleetJSON := state.Fleet
 	if fleetJSON == nil {
 		fleetJSON = json.RawMessage(`[]`)
+	}
+	stationServicesJSON := state.StationServices
+	if stationServicesJSON == nil {
+		stationServicesJSON = json.RawMessage(`[]`)
 	}
 
 	// Update player core fields
@@ -207,13 +212,13 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 			pos_x = $5, pos_y = $6, pos_z = $7,
 			rotation_x = $8, rotation_y = $9, rotation_z = $10,
 			credits = $11, kills = $12, deaths = $13,
-			fleet = $14,
-			last_save_at = $15, updated_at = $15
+			fleet = $14, station_services = $15,
+			last_save_at = $16, updated_at = $16
 		WHERE id = $1
 	`, playerID, state.CurrentShipID, state.GalaxySeed, state.SystemID,
 		state.PosX, state.PosY, state.PosZ,
 		state.RotationX, state.RotationY, state.RotationZ,
-		state.Credits, state.Kills, state.Deaths, fleetJSON, now)
+		state.Credits, state.Kills, state.Deaths, fleetJSON, stationServicesJSON, now)
 	if err != nil {
 		return err
 	}

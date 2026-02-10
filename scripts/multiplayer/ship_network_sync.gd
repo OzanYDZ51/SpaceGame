@@ -9,6 +9,8 @@ extends Node
 var _ship: ShipController = null
 var _send_timer: float = 0.0
 var _was_dead: bool = false
+var _mining_send_timer: float = 0.0
+const MINING_BEAM_SEND_RATE: float = 0.1  # 10Hz
 
 
 func _ready() -> void:
@@ -35,6 +37,11 @@ func _physics_process(delta: float) -> void:
 	if _send_timer <= 0.0:
 		_send_timer = 1.0 / Constants.NET_TICK_RATE
 		_send_state()
+
+	_mining_send_timer -= delta
+	if _mining_send_timer <= 0.0:
+		_mining_send_timer = MINING_BEAM_SEND_RATE
+		_send_mining_state()
 
 
 func _send_state() -> void:
@@ -148,3 +155,59 @@ func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
 		NetworkManager._rpc_fire_event.rpc_id(1,
 			String(weapon_name_str), fire_pos,
 			[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
+
+
+## Send mining beam state at 10Hz (visual only, no damage).
+func _send_mining_state() -> void:
+	if _ship == null:
+		return
+	var mining := _ship.get_node_or_null("MiningSystem") as MiningSystem
+	if mining == null:
+		return
+
+	var beam: MiningLaserBeam = mining._beam
+	if beam == null:
+		return
+
+	var is_active: bool = beam._active
+	if not is_active:
+		return  # Only send when beam is active (deactivation sent once below)
+
+	# Get beam endpoints
+	var source_pos: Array = [0.0, 0.0, 0.0]
+	var target_pos: Array = [0.0, 0.0, 0.0]
+	if beam._core_mesh and beam._core_mesh.visible:
+		# Source = source light position, Target = impact light position
+		if beam._source_light:
+			source_pos = FloatingOrigin.to_universe_pos(beam._source_light.global_position)
+		if beam._impact_light:
+			target_pos = FloatingOrigin.to_universe_pos(beam._impact_light.global_position)
+
+	if NetworkManager.is_host:
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		if npc_auth:
+			npc_auth.relay_mining_beam(1, true, source_pos, target_pos)
+	else:
+		NetworkManager._rpc_mining_beam.rpc_id(1, true, source_pos, target_pos)
+
+
+var _was_mining: bool = false
+
+func _process(_delta: float) -> void:
+	if _ship == null or not NetworkManager.is_connected_to_server():
+		return
+	# Detect mining stop → send deactivation once
+	var mining := _ship.get_node_or_null("MiningSystem") as MiningSystem
+	if mining == null:
+		return
+	var beam: MiningLaserBeam = mining._beam
+	var currently_mining: bool = beam != null and beam._active
+	if _was_mining and not currently_mining:
+		var empty: Array = [0.0, 0.0, 0.0]
+		if NetworkManager.is_host:
+			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+			if npc_auth:
+				npc_auth.relay_mining_beam(1, false, empty, empty)
+		else:
+			NetworkManager._rpc_mining_beam.rpc_id(1, false, empty, empty)
+	_was_mining = currently_mining

@@ -3,7 +3,7 @@ extends UIScreen
 
 # =============================================================================
 # Commerce Screen - Hub with category sidebar + content area
-# Left: 6 category buttons (buy + sell) with separator
+# Left: 7 category buttons (buy + sell) with separator
 # Right: Active view (ShipShopView / EquipmentShopView / Sell views)
 # Bottom: Credits display
 # =============================================================================
@@ -13,6 +13,7 @@ signal commerce_closed
 var commerce_manager: CommerceManager = null
 var station_type: int = 0  # StationData.StationType value
 var station_name: String = "STATION"
+var station_id: String = ""
 
 var _sidebar_buttons: Array[UIButton] = []
 var _active_view: Control = null
@@ -21,14 +22,15 @@ var _equipment_shop: EquipmentShopView = null
 var _sell_equipment: SellEquipmentView = null
 var _sell_cargo: SellCargoView = null
 var _sell_resource: SellResourceView = null
+var _sell_ship: SellShipView = null
 var _back_btn: UIButton = null
 var _current_category: int = -1
 
 const SIDEBAR_W := 180.0
 const CONTENT_TOP := 65.0
 const BOTTOM_H := 50.0
-const SEPARATOR_AFTER := 2  # Draw separator after this category index
-const SEPARATOR_H := 14.0
+const BUY_COUNT := 3      # first 3 categories are buy
+const SECTION_HEADER_H := 22.0  # height reserved for section label
 const CATEGORIES: Array[Array] = [
 	["CHANTIER NAVAL", "Acheter des vaisseaux"],
 	["ARMURERIE", "Armes et tourelles"],
@@ -36,6 +38,7 @@ const CATEGORIES: Array[Array] = [
 	["VENDRE EQUIP.", "Vendre equipement"],
 	["VENDRE CARGO", "Vendre cargaison"],
 	["VENDRE MINERAIS", "Vendre minerais"],
+	["VENDRE VAISSEAU", "Vendre un vaisseau"],
 ]
 
 
@@ -83,11 +86,16 @@ func _ready() -> void:
 	_sell_resource.visible = false
 	add_child(_sell_resource)
 
+	_sell_ship = SellShipView.new()
+	_sell_ship.visible = false
+	add_child(_sell_ship)
 
-func setup(mgr: CommerceManager, stype: int, sname: String) -> void:
+
+func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") -> void:
 	commerce_manager = mgr
 	station_type = stype
 	station_name = sname
+	station_id = sid
 	screen_title = "COMMERCE — " + sname.to_upper()
 	if _ship_shop:
 		_ship_shop.setup(mgr, stype)
@@ -96,9 +104,11 @@ func setup(mgr: CommerceManager, stype: int, sname: String) -> void:
 	if _sell_equipment:
 		_sell_equipment.setup(mgr)
 	if _sell_cargo:
-		_sell_cargo.setup(mgr)
+		_sell_cargo.setup(mgr, sid)
 	if _sell_resource:
-		_sell_resource.setup(mgr)
+		_sell_resource.setup(mgr, sid)
+	if _sell_ship:
+		_sell_ship.setup(mgr, sid)
 
 
 func _on_opened() -> void:
@@ -166,6 +176,10 @@ func _switch_to_category(idx: int) -> void:
 			_sell_resource.visible = true
 			_active_view = _sell_resource
 			_sell_resource.refresh()
+		6:  # Sell ship
+			_sell_ship.visible = true
+			_active_view = _sell_ship
+			_sell_ship.refresh()
 	_layout_content_area()
 	queue_redraw()
 
@@ -176,6 +190,7 @@ func _hide_all_views() -> void:
 	if _sell_equipment: _sell_equipment.visible = false
 	if _sell_cargo: _sell_cargo.visible = false
 	if _sell_resource: _sell_resource.visible = false
+	if _sell_ship: _sell_ship.visible = false
 	_active_view = null
 
 
@@ -183,16 +198,26 @@ func _layout_controls() -> void:
 	var s := size
 	var sidebar_x: float = 30.0
 	var btn_w: float = SIDEBAR_W - 20.0
-	var btn_h: float = 30.0
-	var btn_gap: float = 6.0
-	var btn_y: float = CONTENT_TOP + 20.0
+	var btn_h: float = 28.0
+	var btn_gap: float = 4.0
+	var y: float = CONTENT_TOP + 14.0
 
-	var y_offset: float = 0.0
-	for i in _sidebar_buttons.size():
-		if i == SEPARATOR_AFTER + 1:
-			y_offset += SEPARATOR_H
-		_sidebar_buttons[i].position = Vector2(sidebar_x, btn_y + i * (btn_h + btn_gap) + y_offset)
+	# "ACHETER" section header space
+	y += SECTION_HEADER_H
+	for i in BUY_COUNT:
+		_sidebar_buttons[i].position = Vector2(sidebar_x, y)
 		_sidebar_buttons[i].size = Vector2(btn_w, btn_h)
+		y += btn_h + btn_gap
+
+	# Gap between sections
+	y += 10.0
+
+	# "VENDRE" section header space
+	y += SECTION_HEADER_H
+	for i in range(BUY_COUNT, _sidebar_buttons.size()):
+		_sidebar_buttons[i].position = Vector2(sidebar_x, y)
+		_sidebar_buttons[i].size = Vector2(btn_w, btn_h)
+		y += btn_h + btn_gap
 
 	# Back button at bottom of sidebar
 	_back_btn.position = Vector2(sidebar_x, s.y - BOTTOM_H - 35.0)
@@ -228,12 +253,8 @@ func _draw() -> void:
 	draw_rect(Rect2(20, CONTENT_TOP, SIDEBAR_W, s.y - CONTENT_TOP - BOTTOM_H),
 		Color(0.02, 0.04, 0.06, 0.6))
 
-	# Separator line between buy/sell categories
-	if _sidebar_buttons.size() > SEPARATOR_AFTER + 1:
-		var sep_btn := _sidebar_buttons[SEPARATOR_AFTER]
-		var sep_y: float = sep_btn.position.y + sep_btn.size.y + SEPARATOR_H * 0.5
-		draw_line(Vector2(30, sep_y), Vector2(SIDEBAR_W - 2, sep_y),
-			Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.5), 1.0)
+	# Section headers
+	_draw_section_headers(font)
 
 	# Sidebar/content separator
 	draw_line(Vector2(SIDEBAR_W + 5, CONTENT_TOP), Vector2(SIDEBAR_W + 5, s.y - BOTTOM_H),
@@ -267,6 +288,64 @@ func _draw() -> void:
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
 	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
+
+
+func _draw_section_headers(font: Font) -> void:
+	if _sidebar_buttons.is_empty():
+		return
+	var lx: float = 28.0
+	var rx: float = SIDEBAR_W - 2.0
+
+	# --- "ACHETER" header above first buy button ---
+	var buy_btn := _sidebar_buttons[0]
+	var buy_header_y: float = buy_btn.position.y - SECTION_HEADER_H + 2.0
+	# Accent bar
+	draw_rect(Rect2(lx, buy_header_y, 3, 12), UITheme.PRIMARY)
+	# Label
+	draw_string(font, Vector2(lx + 8, buy_header_y + 11), "ACHETER",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
+	# Decorative line extending right
+	var buy_text_w: float = font.get_string_size("ACHETER", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+	draw_line(Vector2(lx + 12 + buy_text_w, buy_header_y + 7),
+		Vector2(rx, buy_header_y + 7),
+		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.25), 1.0)
+	# Subtle glow bg behind buy section
+	var buy_last := _sidebar_buttons[BUY_COUNT - 1]
+	var buy_section_bottom: float = buy_last.position.y + buy_last.size.y + 4
+	draw_rect(Rect2(22, buy_header_y - 2, SIDEBAR_W - 4, buy_section_bottom - buy_header_y + 4),
+		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03))
+
+	# --- "VENDRE" header above first sell button ---
+	if BUY_COUNT < _sidebar_buttons.size():
+		var sell_btn := _sidebar_buttons[BUY_COUNT]
+		var sell_header_y: float = sell_btn.position.y - SECTION_HEADER_H + 2.0
+		# Accent bar (red/danger for sell)
+		var sell_col := UITheme.WARNING
+		draw_rect(Rect2(lx, sell_header_y, 3, 12), sell_col)
+		# Label
+		draw_string(font, Vector2(lx + 8, sell_header_y + 11), "VENDRE",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, sell_col)
+		# Decorative line
+		var sell_text_w: float = font.get_string_size("VENDRE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+		draw_line(Vector2(lx + 12 + sell_text_w, sell_header_y + 7),
+			Vector2(rx, sell_header_y + 7),
+			Color(sell_col.r, sell_col.g, sell_col.b, 0.25), 1.0)
+		# Subtle glow bg behind sell section
+		var sell_last := _sidebar_buttons[_sidebar_buttons.size() - 1]
+		var sell_section_bottom: float = sell_last.position.y + sell_last.size.y + 4
+		draw_rect(Rect2(22, sell_header_y - 2, SIDEBAR_W - 4, sell_section_bottom - sell_header_y + 4),
+			Color(sell_col.r, sell_col.g, sell_col.b, 0.03))
+
+		# Separator line between sections
+		var sep_y: float = (buy_section_bottom + sell_header_y - 4) * 0.5
+		draw_line(Vector2(lx + 10, sep_y), Vector2(rx - 10, sep_y),
+			Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.3), 1.0)
+		# Small diamond decoration at separator center
+		var cx: float = (lx + rx) * 0.5
+		var diamond := PackedVector2Array([
+			Vector2(cx, sep_y - 3), Vector2(cx + 3, sep_y),
+			Vector2(cx, sep_y + 3), Vector2(cx - 3, sep_y)])
+		draw_colored_polygon(diamond, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.4))
 
 
 func _process(_delta: float) -> void:

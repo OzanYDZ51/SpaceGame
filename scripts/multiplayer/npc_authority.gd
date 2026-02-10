@@ -326,7 +326,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			lod_data.shield_ratio = health.get_total_shield_ratio()
 			if health.is_dead():
 				lod_data.is_dead = true
-				_on_npc_killed(npc_id, sender_pid)
+				_on_npc_killed(npc_id, sender_pid, weapon_name)
 	else:
 		# Data-only NPC (LOD2/3) — apply damage to ratios
 		if lod_data.shield_ratio > 0.0:
@@ -335,10 +335,10 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			lod_data.hull_ratio = maxf(lod_data.hull_ratio - claimed_damage * 0.012, 0.0)
 		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
-			_on_npc_killed(npc_id, sender_pid)
+			_on_npc_killed(npc_id, sender_pid, weapon_name)
 
 
-func _on_npc_killed(npc_id: StringName, killer_pid: int) -> void:
+func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "") -> void:
 	if not _npcs.has(npc_id):
 		return
 
@@ -359,6 +359,9 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int) -> void:
 	if ship_data:
 		loot = LootTable.roll_drops(ship_data.ship_class)
 
+	# Report kill to Discord via EventReporter
+	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
+
 	# Broadcast death to all peers in the system
 	broadcast_npc_death(npc_id, killer_pid, death_pos, loot, system_id)
 
@@ -368,6 +371,36 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int) -> void:
 	# Unregister from LOD
 	if lod_mgr:
 		lod_mgr.unregister_ship(npc_id)
+
+
+func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: String, system_id: int) -> void:
+	var reporter := GameManager.get_node_or_null("EventReporter") as EventReporter
+	if reporter == null:
+		return
+
+	# Killer name
+	var killer_name: String = "Pilote"
+	if NetworkManager.peers.has(killer_pid):
+		killer_name = NetworkManager.peers[killer_pid].player_name
+
+	# Victim name
+	var victim_name: String = "NPC"
+	if ship_data:
+		victim_name = ship_data.ship_name
+
+	# Weapon display name
+	var weapon_display: String = weapon_name
+	if weapon_name != "":
+		var w := WeaponRegistry.get_weapon(StringName(weapon_name))
+		if w:
+			weapon_display = String(w.weapon_name) if w.weapon_name != &"" else weapon_name
+
+	# System name
+	var system_name: String = "Unknown"
+	if GameManager._galaxy:
+		system_name = GameManager._galaxy.get_system_name(system_id)
+
+	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, system_id)
 
 
 ## Broadcast NPC death to all peers in the NPC's system.
@@ -564,3 +597,38 @@ func _get_peer_name(pid: int) -> String:
 	if NetworkManager.peers.has(pid):
 		return NetworkManager.peers[pid].player_name
 	return "Pilote #%d" % pid
+
+
+# =========================================================================
+# MINING SYNC
+# =========================================================================
+
+## Relay a mining beam state to all peers in the sender's system.
+func relay_mining_beam(sender_pid: int, is_active: bool, source_pos: Array, target_pos: Array) -> void:
+	if not _active:
+		return
+	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
+	if sender_state == null:
+		return
+	var peers_in_sys := NetworkManager.get_peers_in_system(sender_state.system_id)
+	for pid in peers_in_sys:
+		if pid == sender_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.remote_mining_beam_received.emit(sender_pid, is_active, source_pos, target_pos)
+		else:
+			NetworkManager._rpc_remote_mining_beam.rpc_id(pid, sender_pid, is_active, source_pos, target_pos)
+
+
+## Broadcast asteroid depletion to all peers in the system.
+func broadcast_asteroid_depleted(asteroid_id: String, system_id: int, sender_pid: int) -> void:
+	if not _active:
+		return
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	for pid in peers_in_sys:
+		if pid == sender_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.asteroid_depleted_received.emit(asteroid_id)
+		else:
+			NetworkManager._rpc_receive_asteroid_depleted.rpc_id(pid, asteroid_id)
