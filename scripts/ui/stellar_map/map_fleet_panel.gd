@@ -4,10 +4,13 @@ extends Control
 # =============================================================================
 # Map Fleet Panel - Left-side fleet overview on stellar/galaxy map
 # Groups ships by system > station, scrollable, clickable
+# Left click = select ship for move, Right click on deployed = recall
 # Full custom _draw(), no child Controls
 # =============================================================================
 
 signal ship_selected(fleet_index: int, system_id: int)
+signal ship_move_selected(fleet_index: int)
+signal ship_recall_requested(fleet_index: int)
 
 const PANEL_W: float = 240.0
 const HEADER_H: float = 32.0
@@ -20,13 +23,10 @@ const CORNER_LEN: float = 8.0
 var _fleet: PlayerFleet = null
 var _galaxy: GalaxyData = null
 var _active_index: int = -1
+var _selected_fleet_index: int = -1
 
 # Grouped data rebuilt on fleet_changed
 var _groups: Array[Dictionary] = []
-# { "system_id": int, "system_name": String, "collapsed": bool,
-#   "stations": [{ "station_id": String, "name": String,
-#                   "ships": [{ "fleet_index": int, "ship": FleetShip }] }],
-#   "deployed": [{ "fleet_index": int, "ship": FleetShip }] }
 
 var _scroll_offset: float = 0.0
 var _max_scroll: float = 0.0
@@ -50,6 +50,15 @@ func set_fleet(fleet: PlayerFleet) -> void:
 func set_galaxy(galaxy: GalaxyData) -> void:
 	_galaxy = galaxy
 	_rebuild()
+
+
+func get_selected_fleet_index() -> int:
+	return _selected_fleet_index
+
+
+func clear_selection() -> void:
+	_selected_fleet_index = -1
+	queue_redraw()
 
 
 func _rebuild() -> void:
@@ -122,42 +131,54 @@ func handle_click(pos: Vector2) -> bool:
 	if _fleet == null or _fleet.ships.is_empty():
 		return false
 
+	var hit_index: int = _get_fleet_index_at(pos)
+	if hit_index >= 0:
+		# Toggle selection
+		if _selected_fleet_index == hit_index:
+			_selected_fleet_index = -1
+		else:
+			_selected_fleet_index = hit_index
+			ship_move_selected.emit(hit_index)
+		ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
+		queue_redraw()
+		return true
+
+	# Check group header collapse
 	var y: float = HEADER_H + MARGIN - _scroll_offset
 	for g_idx in _groups.size():
 		var group: Dictionary = _groups[g_idx]
-		# System header
 		if _hit_row(pos.y, y, GROUP_H):
 			group["collapsed"] = not group["collapsed"]
 			queue_redraw()
 			return true
 		y += GROUP_H
-
 		if group["collapsed"]:
 			continue
-
-		# Stations
 		for st in group["stations"]:
-			y += 2  # spacing
-			# Station sub-header (not clickable for now)
-			y += SHIP_H
-			for entry in st["ships"]:
-				if _hit_row(pos.y, y, SHIP_H):
-					ship_selected.emit(entry["fleet_index"], group["system_id"])
-					queue_redraw()
-					return true
+			y += 2
+			y += SHIP_H  # station sub-header
+			for _entry in st["ships"]:
 				y += SHIP_H
-
-		# Deployed
-		for entry in group["deployed"]:
-			if _hit_row(pos.y, y, SHIP_H):
-				ship_selected.emit(entry["fleet_index"], group["system_id"])
-				queue_redraw()
-				return true
+		for _entry in group["deployed"]:
 			y += SHIP_H
-
-		y += 6  # group spacing
+		y += 6
 
 	return true  # consumed (clicked in panel area)
+
+
+func handle_right_click(pos: Vector2) -> bool:
+	if pos.x > PANEL_W or pos.x < 0:
+		return false
+	if _fleet == null or _fleet.ships.is_empty():
+		return false
+
+	var hit_index: int = _get_fleet_index_at(pos)
+	if hit_index >= 0:
+		var fs := _fleet.ships[hit_index]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+			ship_recall_requested.emit(hit_index)
+			return true
+	return false
 
 
 func handle_scroll(pos: Vector2, dir: int) -> bool:
@@ -168,6 +189,39 @@ func handle_scroll(pos: Vector2, dir: int) -> bool:
 	_scroll_offset = clampf(_scroll_offset - dir * SCROLL_SPEED, 0.0, _max_scroll)
 	queue_redraw()
 	return true
+
+
+func _get_fleet_index_at(pos: Vector2) -> int:
+	var y: float = HEADER_H + MARGIN - _scroll_offset
+	for group in _groups:
+		y += GROUP_H  # system header
+		if group["collapsed"]:
+			continue
+		for st in group["stations"]:
+			y += 2
+			y += SHIP_H  # station sub-header
+			for entry in st["ships"]:
+				if _hit_row(pos.y, y, SHIP_H):
+					return entry["fleet_index"]
+				y += SHIP_H
+		for entry in group["deployed"]:
+			if _hit_row(pos.y, y, SHIP_H):
+				return entry["fleet_index"]
+			y += SHIP_H
+		y += 6
+	return -1
+
+
+func _get_system_id_for_fleet_index(fleet_index: int) -> int:
+	for group in _groups:
+		for st in group["stations"]:
+			for entry in st["ships"]:
+				if entry["fleet_index"] == fleet_index:
+					return group["system_id"]
+		for entry in group["deployed"]:
+			if entry["fleet_index"] == fleet_index:
+				return group["system_id"]
+	return -1
 
 
 func _hit_row(mouse_y: float, row_y: float, row_h: float) -> bool:
@@ -218,6 +272,15 @@ func _draw() -> void:
 
 	_max_scroll = maxf(y + _scroll_offset - size.y + 20, 0.0)
 
+	# Selection hint
+	if _selected_fleet_index >= 0:
+		var hint_text := "CLIC DROIT MAP > DEPLACER"
+		var hint_y: float = size.y - 16.0
+		if hint_y > HEADER_H + 20:
+			draw_rect(Rect2(0, hint_y - 14, PANEL_W, 20), Color(0.0, 0.05, 0.1, 0.8))
+			var pulse: float = sin(Time.get_ticks_msec() / 500.0) * 0.2 + 0.8
+			draw_string(font, Vector2(MARGIN, hint_y), hint_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_TINY, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse))
+
 	# Scanline
 	var scan_y: float = fmod(Time.get_ticks_msec() / 40.0, size.y)
 	if scan_y > HEADER_H:
@@ -263,7 +326,13 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 
 func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> void:
 	var is_active: bool = fleet_index == _active_index
+	var is_selected: bool = fleet_index == _selected_fleet_index
 	var x: float = MARGIN + 16
+
+	# Selection highlight (pulsing cyan background)
+	if is_selected:
+		var pulse: float = sin(Time.get_ticks_msec() / 300.0) * 0.08 + 0.12
+		draw_rect(Rect2(2, y, PANEL_W - 4, SHIP_H), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse))
 
 	# Status badge
 	var badge: String = ""
@@ -285,7 +354,7 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 
 	# Ship name
 	var name_text: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
-	var name_col: Color = MapColors.TEXT if is_active else MapColors.TEXT_DIM
+	var name_col: Color = UITheme.PRIMARY if is_selected else (MapColors.TEXT if is_active else MapColors.TEXT_DIM)
 	draw_string(font, Vector2(x + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - 36, UITheme.FONT_SIZE_SMALL, name_col)
 
 	# Ship class (right-aligned, tiny)

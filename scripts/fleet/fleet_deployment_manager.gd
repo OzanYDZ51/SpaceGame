@@ -124,6 +124,10 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
 
+	# Track arrival state in entity extra
+	if not existing_ent.is_empty():
+		existing_ent["extra"]["arrived"] = false
+
 	_deployed_ships[fleet_index] = npc
 	_fleet.ship_deployed.emit(fleet_index)
 	_fleet.fleet_changed.emit()
@@ -226,6 +230,17 @@ func _on_fleet_npc_died(fleet_index: int, npc: ShipController) -> void:
 		toast.show_toast("VAISSEAU PERDU: %s" % fs.custom_name, 1)  # 1 = WARNING
 
 	print("FleetDeploymentManager: Fleet ship '%s' (index %d) destroyed!" % [fs.custom_name, fleet_index])
+
+
+func update_entity_extra(fleet_index: int, key: String, value: Variant) -> void:
+	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		return
+	var fs := _fleet.ships[fleet_index]
+	if fs.deployed_npc_id == &"":
+		return
+	var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+	if not ent.is_empty():
+		ent["extra"][key] = value
 
 
 func get_deployed_npc(fleet_index: int) -> ShipController:

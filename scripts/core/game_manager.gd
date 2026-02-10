@@ -76,7 +76,6 @@ var _route_manager: RouteManager = null
 var _fleet_deployment_mgr: FleetDeploymentManager = null
 var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
-var _fleet_panel: FleetManagementPanel = null
 
 
 func _ready() -> void:
@@ -133,19 +132,9 @@ func _setup_ui_managers() -> void:
 			_stellar_map.set_fleet(player_fleet, _galaxy)
 			map_screen.set_fleet(player_fleet, _galaxy)
 
-		# Connect fleet deploy/retrieve signals from stellar map
-		_stellar_map.fleet_deploy_requested.connect(_on_fleet_deploy_from_map)
-		_stellar_map.fleet_retrieve_requested.connect(_on_fleet_retrieve_from_map)
-		_stellar_map.fleet_command_change_requested.connect(_on_fleet_command_change_from_map)
-
-	# Register Fleet Management Panel (kept for backwards compatibility)
-	_fleet_panel = FleetManagementPanel.new()
-	_fleet_panel.name = "FleetManagementPanel"
-	_screen_manager.register_screen("fleet", _fleet_panel)
-
-	# Connect station long press from stellar map (opens station detail in-map)
-	if _stellar_map:
-		_stellar_map.station_long_pressed.connect(_on_station_long_pressed)
+		# Connect fleet order/recall signals from stellar map
+		_stellar_map.fleet_order_requested.connect(_on_fleet_order_from_map)
+		_stellar_map.fleet_recall_requested.connect(_on_fleet_recall_from_map)
 
 	# Register Clan screen
 	var clan_screen := ClanScreen.new()
@@ -625,26 +614,23 @@ func _on_system_loaded(system_id: int) -> void:
 		_fleet_deployment_mgr.redeploy_saved_ships()
 
 
-func _on_station_long_pressed(station_id: String) -> void:
-	# Open station detail directly in the map (no screen switch)
-	if _stellar_map == null or player_fleet == null:
+func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
+	if _fleet_deployment_mgr == null:
 		return
-	_stellar_map._open_station_detail(station_id)
+	var fs := player_fleet.ships[fleet_index] if player_fleet and fleet_index < player_fleet.ships.size() else null
+	if fs == null:
+		return
+	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+		# Auto-deploy with this order
+		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
+	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+		# Change command on already deployed ship
+		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
 
 
-func _on_fleet_deploy_from_map(fleet_index: int, command: StringName, params: Dictionary) -> void:
-	if _fleet_deployment_mgr:
-		_fleet_deployment_mgr.request_deploy(fleet_index, command, params)
-
-
-func _on_fleet_retrieve_from_map(fleet_index: int) -> void:
+func _on_fleet_recall_from_map(fleet_index: int) -> void:
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.request_retrieve(fleet_index)
-
-
-func _on_fleet_command_change_from_map(fleet_index: int, command: StringName, params: Dictionary) -> void:
-	if _fleet_deployment_mgr:
-		_fleet_deployment_mgr.request_change_command(fleet_index, command, params)
 
 
 func _on_navigate_to_entity(entity_id: String) -> void:

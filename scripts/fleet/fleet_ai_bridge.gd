@@ -15,10 +15,11 @@ var _brain: AIBrain = null
 var _home_position: Vector3 = Vector3.ZERO
 var _station_id: String = ""
 var _returning: bool = false
-var _prev_command: StringName = &""  # For resuming after threat response
 var _threat_timer: float = 0.0
+var _arrived: bool = false
 
 const RETURN_ARRIVE_DIST: float = 500.0
+const MOVE_ARRIVE_DIST: float = 200.0
 const THREAT_TIMEOUT: float = 15.0
 
 
@@ -34,31 +35,26 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	command = cmd
 	command_params = params
 	_returning = false
+	_arrived = false
 	_threat_timer = 0.0
 	if _brain == null:
 		return
 
 	match cmd:
-		&"hold_position":
-			var pos: Vector3 = _ship.global_position if _ship else Vector3.ZERO
-			if params.has("position"):
-				pos = params["position"]
-			_home_position = pos
-			_brain.set_patrol_area(pos, 50.0)
+		&"move_to":
+			var target_x: float = params.get("target_x", 0.0)
+			var target_z: float = params.get("target_z", 0.0)
+			var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			_home_position = target_pos
+			_brain.set_patrol_area(target_pos, 50.0)
 			_brain.current_state = AIBrain.State.PATROL
-		&"follow_player":
-			_brain.formation_leader = GameManager.player_ship
-			var idx: int = params.get("formation_index", fleet_index)
-			# Stagger formation offset based on index
-			var side: float = -1.0 if idx % 2 == 0 else 1.0
-			var row: int = idx / 2
-			_brain.formation_offset = Vector3(side * (80.0 + row * 40.0), 0.0, 60.0 + row * 50.0)
-			_brain.current_state = AIBrain.State.FORMATION
 		&"patrol":
-			var center: Vector3 = params.get("center", _ship.global_position if _ship else Vector3.ZERO)
+			var center_x: float = params.get("center_x", 0.0)
+			var center_z: float = params.get("center_z", 0.0)
 			var radius: float = params.get("radius", 500.0)
-			_home_position = center
-			_brain.set_patrol_area(center, radius)
+			var center_pos := FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
+			_home_position = center_pos
+			_brain.set_patrol_area(center_pos, radius)
 			_brain.current_state = AIBrain.State.PATROL
 		&"return_to_station":
 			_returning = true
@@ -73,7 +69,7 @@ func _process(delta: float) -> void:
 	# Threat response: if attacked while on non-combat command, let brain handle it,
 	# then resume command after threat clears
 	if _brain.current_state in [AIBrain.State.PURSUE, AIBrain.State.ATTACK, AIBrain.State.EVADE]:
-		if command in [&"hold_position", &"patrol", &"follow_player"]:
+		if command in [&"move_to", &"patrol"]:
 			_threat_timer += delta
 			if _threat_timer > THREAT_TIMEOUT or not _brain._is_target_valid():
 				# Threat over, resume command
@@ -97,3 +93,18 @@ func _process(delta: float) -> void:
 				return
 			# Fly toward station
 			_brain.set_patrol_area(station_pos, 50.0)
+
+	# Move-to arrival check
+	if command == &"move_to" and not _arrived:
+		var target_x: float = command_params.get("target_x", 0.0)
+		var target_z: float = command_params.get("target_z", 0.0)
+		var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		var dist: float = _ship.global_position.distance_to(target_pos)
+		if dist < MOVE_ARRIVE_DIST:
+			_arrived = true
+			# Hold position at destination
+			_brain.set_patrol_area(target_pos, 50.0)
+			# Update EntityRegistry extra for map display
+			var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+			if fdm:
+				fdm.update_entity_extra(fleet_index, "arrived", true)

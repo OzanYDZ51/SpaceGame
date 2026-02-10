@@ -13,16 +13,10 @@ static func _ensure_init() -> void:
 	if _initialized:
 		return
 	_initialized = true
-	_register(&"hold_position", {
-		"display_name": "POSITION",
-		"description": "Maintenir la position actuelle",
-		"requires_position": false,
-		"requires_target": false,
-	})
-	_register(&"follow_player", {
-		"display_name": "FORMATION",
-		"description": "Suivre le vaisseau du joueur en formation",
-		"requires_position": false,
+	_register(&"move_to", {
+		"display_name": "EN ROUTE",
+		"description": "Se deplacer vers une position",
+		"requires_position": true,
 		"requires_target": false,
 	})
 	_register(&"patrol", {
