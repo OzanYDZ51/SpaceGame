@@ -116,7 +116,6 @@ func _parse_galaxy_seed_arg() -> void:
 			var seed_val: int = args[i + 1].to_int()
 			if seed_val != 0:
 				Constants.galaxy_seed = seed_val
-				print("NetworkManager: Galaxy seed set to %d from CLI" % seed_val)
 
 
 # =========================================================================
@@ -152,7 +151,6 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[1] = state
 
-	print("NetworkManager: Hosting on port %d as '%s' — share your IP for friends to join!" % [port, local_player_name])
 	connection_succeeded.emit()
 	player_list_updated.emit()
 	return OK
@@ -165,8 +163,6 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	var env_port: String = OS.get_environment("PORT")
 	if env_port != "":
 		port = env_port.to_int()
-		print("NetworkManager: Using PORT from environment: %d" % port)
-
 	_server_port = port
 	_peer = WebSocketMultiplayerPeer.new()
 	var err := _peer.create_server(port)
@@ -180,7 +176,6 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	local_peer_id = 1
 	is_host = true
 	is_dedicated_server = true
-	print("NetworkManager: Dedicated WebSocket server started on port %d" % port)
 	connection_succeeded.emit()
 	return OK
 
@@ -214,7 +209,6 @@ func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) 
 	connection_state = ConnectionState.CONNECTING
 	is_host = false
 	_reconnect_attempts = 0
-	print("NetworkManager: Connecting to %s..." % url)
 	return OK
 
 
@@ -230,7 +224,6 @@ func disconnect_from_server() -> void:
 	is_host = false
 	peers.clear()
 	player_list_updated.emit()
-	print("NetworkManager: Disconnected")
 
 
 ## Returns true if this instance is running the server logic (host or dedicated).
@@ -282,7 +275,6 @@ func is_local_server_running(port: int = Constants.NET_DEFAULT_PORT) -> bool:
 # =========================================================================
 
 func _on_peer_connected(id: int) -> void:
-	print("NetworkManager: Peer connected: %d" % id)
 	if is_server():
 		# Send full peer list to the new peer
 		var peer_data: Array = []
@@ -292,7 +284,6 @@ func _on_peer_connected(id: int) -> void:
 
 
 func _on_peer_disconnected(id: int) -> void:
-	print("NetworkManager: Peer disconnected: %d" % id)
 	var left_name := "Pilote #%d" % id
 	if peers.has(id):
 		left_name = peers[id].player_name
@@ -314,8 +305,6 @@ func _on_connected_to_server() -> void:
 	connection_state = ConnectionState.CONNECTED
 	local_peer_id = multiplayer.get_unique_id()
 	_reconnect_attempts = 0
-	print("NetworkManager: Connected! Peer ID = %d" % local_peer_id)
-
 	# Register with the server
 	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id))
 	connection_succeeded.emit()
@@ -323,7 +312,6 @@ func _on_connected_to_server() -> void:
 
 func _on_connection_failed() -> void:
 	connection_state = ConnectionState.DISCONNECTED
-	print("NetworkManager: Connection failed")
 	if _reconnect_attempts < MAX_RECONNECT_ATTEMPTS:
 		_reconnect_attempts += 1
 		_reconnect_timer = RECONNECT_DELAY
@@ -338,7 +326,6 @@ func _on_server_disconnected() -> void:
 	is_host = false
 	peers.clear()
 	player_list_updated.emit()
-	print("NetworkManager: Server disconnected")
 	_reconnect_attempts = 1
 	_reconnect_timer = RECONNECT_DELAY
 	connection_failed.emit("Serveur déconnecté. Reconnexion...")
@@ -349,7 +336,6 @@ func _attempt_reconnect() -> void:
 		connection_failed.emit("Reconnexion échouée.")
 		_reconnect_attempts = 0
 		return
-	print("NetworkManager: Reconnect attempt %d/%d" % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
 	if _server_url != "":
 		connect_to_server(_server_url)
 	else:
@@ -366,8 +352,6 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	print("NetworkManager: Player '%s' registered (peer %d, ship %s)" % [player_name, sender_id, ship_id_str])
-
 	var state := NetworkState.new()
 	state.peer_id = sender_id
 	state.player_name = player_name
@@ -412,7 +396,6 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> voi
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[pid] = state
 
-	print("NetworkManager: Player '%s' (peer %d) registered" % [pname, pid])
 	peer_connected.emit(pid, pname)
 	player_list_updated.emit()
 
@@ -581,11 +564,6 @@ func _find_peer_by_name(player_name: String) -> int:
 @rpc("authority", "reliable")
 func _rpc_server_config(config: Dictionary) -> void:
 	galaxy_servers = config.get("galaxies", [])
-	print("NetworkManager: Received server config — galaxy_seed=%d, spawn=%d, %d galaxy servers" % [
-		config.get("galaxy_seed", 0),
-		config.get("spawn_system_id", -1),
-		galaxy_servers.size(),
-	])
 	server_config_received.emit(config)
 
 

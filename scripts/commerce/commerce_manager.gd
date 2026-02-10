@@ -12,7 +12,6 @@ signal sale_completed(item_type: String, item_id: StringName, total: int)
 var player_economy: PlayerEconomy
 var player_inventory: PlayerInventory
 var player_fleet: PlayerFleet
-var player_cargo: PlayerCargo
 var player_data: PlayerData
 
 
@@ -190,21 +189,11 @@ func get_ship_sell_price(fs: FleetShip) -> int:
 
 
 func sell_cargo(item_name: String, qty: int = 1) -> bool:
-	# Default: sell from active ship
 	if player_data and player_data.fleet:
 		var active := player_data.fleet.get_active()
 		if active:
 			return sell_cargo_from_ship(item_name, qty, active)
-	# Fallback
-	if player_cargo == null: return false
-	var unit_price := PriceCatalog.get_cargo_price(item_name)
-	if not player_cargo.remove_item(item_name, qty):
-		return false
-	var total := unit_price * qty
-	player_economy.add_credits(total)
-	sale_completed.emit("cargo", StringName(item_name), total)
-	SaveManager.mark_dirty()
-	return true
+	return false
 
 
 func sell_resource(resource_id: StringName, qty: int = 1) -> bool:

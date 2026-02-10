@@ -43,9 +43,12 @@ func add_item(item: Dictionary) -> bool:
 	return true
 
 
-func add_items(new_items: Array[Dictionary]) -> void:
+func add_items(new_items: Array[Dictionary]) -> int:
+	var added: int = 0
 	for item in new_items:
-		add_item(item)
+		if add_item(item):
+			added += 1
+	return added
 
 
 func remove_item(item_name: String, qty: int = 1) -> bool:

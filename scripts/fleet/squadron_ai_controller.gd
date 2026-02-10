@@ -38,6 +38,11 @@ func _process(delta: float) -> void:
 	if _brain == null or squadron == null:
 		return
 
+	# If FleetAIBridge has an active move/patrol/attack command that hasn't arrived,
+	# let the bridge handle navigation — don't override to FORMATION
+	if _bridge and not _bridge._arrived and _bridge.command in [&"move_to", &"patrol", &"attack", &"return_to_station"]:
+		return
+
 	# Validate leader
 	if leader_node == null or not is_instance_valid(leader_node):
 		# Leader lost — fall back to patrol
@@ -168,9 +173,6 @@ func _set_formation(offset: Vector3) -> void:
 	_brain.formation_offset = offset
 	if _brain.current_state != AIBrain.State.FORMATION:
 		_brain.current_state = AIBrain.State.FORMATION
-	# Override FleetAIBridge ignore_threats (it sets true for missions)
-	if _bridge:
-		_bridge._arrived = true  # Prevent bridge from overriding our state
 
 
 func _find_nearest_threat() -> Node3D:

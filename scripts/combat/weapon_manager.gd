@@ -18,6 +18,10 @@ var _weapon_audio: WeaponAudio = null
 var _ship: RigidBody3D = null
 var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 
+# Module multipliers (set by EquipmentManager)
+var weapon_energy_mult: float = 1.0
+var weapon_range_mult: float = 1.0
+
 
 ## Creates hardpoints from config dictionaries (extracted from HardpointSlot nodes in ship scenes).
 ## hardpoint_parent: Node3D to parent hardpoints under (e.g. HardpointRoot). Falls back to ship_node.
@@ -303,6 +307,14 @@ func get_mining_hardpoints_in_group(group_index: int) -> Array[Hardpoint]:
 			if hardpoints[hp_idx].mounted_weapon and hardpoints[hp_idx].mounted_weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER:
 				result.append(hardpoints[hp_idx])
 	return result
+
+
+func apply_module_multipliers(energy_mult: float, range_mult: float) -> void:
+	weapon_energy_mult = energy_mult
+	weapon_range_mult = range_mult
+	for hp in hardpoints:
+		hp.energy_cost_mult = energy_mult
+		hp.range_mult = range_mult
 
 
 func has_combat_weapons_in_group(group_index: int) -> bool:

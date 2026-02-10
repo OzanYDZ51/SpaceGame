@@ -277,7 +277,6 @@ func _initialize_game() -> void:
 	_commerce_manager.player_economy = player_economy
 	_commerce_manager.player_inventory = player_inventory
 	_commerce_manager.player_fleet = player_fleet
-	_commerce_manager.player_cargo = player_cargo
 	_commerce_manager.player_data = player_data
 
 	# Wire economy to HUD (must be after player_data creation)
@@ -359,10 +358,7 @@ func _initialize_game() -> void:
 	proj_pool.name = "ProjectilePool"
 	_lod_manager.add_child(proj_pool)
 	# Pre-warm pools for all projectile types to avoid runtime instantiation
-	proj_pool.warm_pool("res://scenes/weapons/laser_bolt.tscn", 150)
-	proj_pool.warm_pool("res://scenes/weapons/plasma_bolt.tscn", 80)
-	proj_pool.warm_pool("res://scenes/weapons/missile.tscn", 40)
-	proj_pool.warm_pool("res://scenes/weapons/railgun_slug.tscn", 30)
+	proj_pool.warm_pool("res://scenes/weapons/laser_bolt.tscn", 200)
 
 	# Asteroid Field Manager (must exist before system loading)
 	_asteroid_field_mgr = AsteroidFieldManager.new()
@@ -739,6 +735,19 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			if _toast_manager:
 				var disp := SquadronFormation.get_formation_display(formation)
 				_toast_manager.show_toast("FORMATION: %s" % disp)
+		&"rename":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			var new_name: String = data.get("name", "")
+			if new_name != "":
+				_squadron_mgr.rename_squadron(sq_id, new_name)
+				if _toast_manager:
+					_toast_manager.show_toast("ESCADRON RENOMME: %s" % new_name)
+		&"promote_leader":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			var fleet_idx: int = int(data.get("fleet_index", -1))
+			_squadron_mgr.promote_leader(sq_id, fleet_idx)
+			if _toast_manager and player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
+				_toast_manager.show_toast("NOUVEAU CHEF: %s" % player_fleet.ships[fleet_idx].custom_name, UIToast.ToastType.SUCCESS)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:

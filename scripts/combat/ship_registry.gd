@@ -94,7 +94,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.ship_class = &"Frigate"
 	d.model_path = "res://assets/models/frigate_mk1.glb"
 	d.model_scale = 1.0
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Railgun", &"Railgun"]
+	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1"]
 	d.hull_hp = 5000.0; d.shield_hp = 2500.0; d.shield_regen_rate = 30.0; d.shield_regen_delay = 6.0
 	d.shield_damage_bleedthrough = 0.05; d.armor_rating = 20.0
 	d.mass = 300000.0

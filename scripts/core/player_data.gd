@@ -14,8 +14,7 @@ var cargo: PlayerCargo:
 			var active := fleet.get_active()
 			if active and active.cargo:
 				return active.cargo
-		return _fallback_cargo
-var _fallback_cargo: PlayerCargo = null
+		return null
 var fleet: PlayerFleet = null
 var station_services: StationServices = null
 
@@ -25,15 +24,10 @@ func initialize(galaxy: GalaxyData) -> void:
 	economy = PlayerEconomy.new()
 	economy.add_credits(1000000)
 
-	# Fallback cargo (safety net, should not be used in normal flow)
-	_fallback_cargo = PlayerCargo.new()
-
 	# Inventory with starting weapons + equipment
 	inventory = PlayerInventory.new()
 	inventory.add_weapon(&"Laser Mk1", 2)
-	inventory.add_weapon(&"Mine Layer", 2)
-	inventory.add_weapon(&"Laser Mk2", 1)
-	inventory.add_weapon(&"Plasma Cannon", 1)
+	inventory.add_weapon(&"Turret Mk1", 1)
 	inventory.add_weapon(&"Mining Laser Mk1", 1)
 	inventory.add_shield(&"Bouclier Basique Mk2", 1)
 	inventory.add_shield(&"Bouclier Prismatique", 1)
@@ -245,6 +239,15 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 				var engine_res := EngineRegistry.get_engine(StringName(str(engine_name)))
 				if engine_res:
 					em.equip_engine(engine_res)
+			var saved_modules: Array = equipment.get("modules", [])
+			for i in saved_modules.size():
+				if i >= em.equipped_modules.size():
+					break
+				var mod_name: String = str(saved_modules[i])
+				if mod_name != "":
+					var mod_res := ModuleRegistry.get_module(StringName(mod_name))
+					if mod_res:
+						em.equip_module(i, mod_res)
 		var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
 		if wm:
 			var hardpoints: Array = equipment.get("hardpoints", [])
@@ -312,7 +315,3 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 
 	# Sync economy mirror from active ship resources
 	_sync_economy_resources()
-
-	print("SaveManager: State applied — ship=%s, system=%d, credits=%d" % [
-		ship_id, sys_id, int(state.get("credits", 0))
-	])

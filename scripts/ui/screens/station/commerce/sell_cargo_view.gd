@@ -289,8 +289,14 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 
 	var item_name: String = item.get("name", "")
 	var qty: int = item.get("quantity", 1)
-	var icon_color_str: String = item.get("icon_color", "")
-	var icon_col: Color = Color.from_string(icon_color_str, UITheme.TEXT_DIM) if icon_color_str != "" else UITheme.TEXT_DIM
+	var icon_color_raw = item.get("icon_color", "")
+	var icon_col: Color
+	if icon_color_raw is Color:
+		icon_col = icon_color_raw
+	elif icon_color_raw is String and icon_color_raw != "":
+		icon_col = Color.from_string(icon_color_raw, UITheme.TEXT_DIM)
+	else:
+		icon_col = UITheme.TEXT_DIM
 
 	# Color badge
 	ci.draw_rect(Rect2(rect.position.x + 6, rect.position.y + 8, 12, 12), icon_col)

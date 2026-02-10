@@ -266,23 +266,49 @@ func _input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed):
 		return
 
-	if event.physical_keycode == KEY_ENTER or event.physical_keycode == KEY_KP_ENTER:
+	var key: int = event.physical_keycode
+
+	if key == KEY_ENTER or key == KEY_KP_ENTER:
+		# Ignore key-repeat (echo) — only react to fresh presses
+		if event.echo:
+			if _is_focused:
+				get_viewport().set_input_as_handled()
+			return
 		if not _is_focused and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+			# Open chat
 			_input_field.grab_focus()
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 			get_viewport().set_input_as_handled()
-		elif _is_focused and _input_field.text.is_empty():
-			# Skip if message was just submitted (Enter key repeat would close chat)
-			if Engine.get_process_frames() - _submit_frame <= 2:
+		elif _is_focused and _input_field.text.strip_edges().is_empty():
+			# Empty field + Enter → close chat (but not right after a submit)
+			if Engine.get_process_frames() - _submit_frame <= 10:
 				get_viewport().set_input_as_handled()
 				return
+			_input_field.clear()
 			_input_field.release_focus()
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			get_viewport().set_input_as_handled()
 		elif _is_focused:
-			# Enter with text: DON'T consume — let LineEdit receive it for text_submitted
-			pass
-	elif event.physical_keycode == KEY_ESCAPE and _is_focused:
+			# Enter with text: consume event and submit directly
+			# (if we let it propagate, other _input handlers may eat it)
+			_on_message_submitted(_input_field.text)
+			get_viewport().set_input_as_handled()
+
+	elif key == KEY_TAB and _is_focused:
+		# Tab cycles channels forward, Shift+Tab cycles backward
+		if event.echo:
+			get_viewport().set_input_as_handled()
+			return
+		var count: int = Channel.size()
+		var direction: int = -1 if event.shift_pressed else 1
+		var next_ch: int = (_current_channel + direction + count) % count
+		_on_tab_pressed(next_ch)
+		get_viewport().set_input_as_handled()
+
+	elif key == KEY_ESCAPE and _is_focused:
+		if event.echo:
+			get_viewport().set_input_as_handled()
+			return
 		_input_field.clear()
 		_input_field.release_focus()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)

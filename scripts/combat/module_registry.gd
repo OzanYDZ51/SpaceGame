@@ -111,7 +111,8 @@ static func _build_scanner() -> ModuleResource:
 	m.module_name = &"Scanner Ameliore"
 	m.slot_size = 1  # M
 	m.module_type = ModuleResource.ModuleType.SCANNER
-	# Placeholder — future scanner range bonus
+	m.weapon_range_mult = 1.1  # +10% weapon range (better targeting data)
+	m.energy_regen_bonus = 3.0  # Sensors optimize power routing
 	m.price = 5000
 	return m
 

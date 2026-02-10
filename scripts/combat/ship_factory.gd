@@ -236,6 +236,11 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	pilot.name = "AIPilot"
 	ship.add_child(pilot)
 
+	# Obstacle Sensor (omnidirectional proximity + velocity avoidance)
+	var sensor := ObstacleSensor.new()
+	sensor.name = "ObstacleSensor"
+	ship.add_child(sensor)
+
 	# Connect destruction
 	# Safety net: unregister on tree exit
 	ship.tree_exiting.connect(func(): EntityRegistry.unregister(ship.name))

@@ -142,6 +142,53 @@ func get_squadron_for_ship(fleet_index: int) -> Squadron:
 	return _fleet.get_ship_squadron(fleet_index)
 
 
+func rename_squadron(squadron_id: int, new_name: String) -> void:
+	if _fleet == null:
+		return
+	var sq := _fleet.get_squadron(squadron_id)
+	if sq == null:
+		return
+	sq.squadron_name = new_name
+	squadron_changed.emit()
+
+
+func promote_leader(squadron_id: int, new_leader_fleet_index: int) -> void:
+	if _fleet == null:
+		return
+	var sq := _fleet.get_squadron(squadron_id)
+	if sq == null:
+		return
+	# New leader must be a member, not already the leader
+	if sq.is_leader(new_leader_fleet_index) or not sq.is_member(new_leader_fleet_index):
+		return
+
+	var old_leader_idx: int = sq.leader_fleet_index
+	var _old_role: StringName = sq.get_role(new_leader_fleet_index)
+
+	# Demote old leader → member with follow role
+	sq.remove_member(new_leader_fleet_index)
+	sq.leader_fleet_index = new_leader_fleet_index
+	if old_leader_idx >= 0 and old_leader_idx < _fleet.ships.size():
+		sq.add_member(old_leader_idx, &"follow")
+		_fleet.ships[old_leader_idx].squadron_role = &"follow"
+
+	# Update FleetShip refs
+	if new_leader_fleet_index >= 0 and new_leader_fleet_index < _fleet.ships.size():
+		_fleet.ships[new_leader_fleet_index].squadron_role = &""
+
+	# Refresh AI controllers: old leader becomes member (attach), new leader detaches
+	_detach_squadron_controller(new_leader_fleet_index)
+	if old_leader_idx >= 0 and _fleet_deployment_mgr:
+		var npc := _fleet_deployment_mgr.get_deployed_npc(old_leader_idx)
+		if npc:
+			setup_squadron_controller(old_leader_idx, npc)
+	# Refresh all members (leader_node changed)
+	for idx in sq.member_fleet_indices:
+		_refresh_controller(idx, sq)
+
+	squadron_changed.emit()
+
+
 # =========================================================================
 # Order propagation — leader issues an order, members follow
 # =========================================================================

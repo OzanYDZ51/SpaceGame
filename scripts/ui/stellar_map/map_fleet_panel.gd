@@ -11,8 +11,10 @@ extends Control
 
 signal ship_selected(fleet_index: int, system_id: int)
 signal ship_move_selected(fleet_index: int)
-signal ship_recall_requested(fleet_index: int)
 signal selection_changed(fleet_indices: Array)
+signal squadron_header_clicked(squadron_id: int)
+signal squadron_rename_requested(squadron_id: int, screen_pos: Vector2)
+signal ship_context_menu_requested(fleet_index: int, screen_pos: Vector2)
 
 const PANEL_W: float = 240.0
 const HEADER_H: float = 32.0
@@ -32,6 +34,10 @@ var _groups: Array[Dictionary] = []
 
 var _scroll_offset: float = 0.0
 var _max_scroll: float = 0.0
+
+# Double-click header tracking
+var _last_header_click_sq: int = -1
+var _last_header_click_time: float = 0.0
 
 
 func _ready() -> void:
@@ -145,6 +151,27 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 	if _fleet == null or _fleet.ships.is_empty():
 		return false
 
+	# Check squadron header click first
+	var hit_sq_id: int = _get_squadron_header_at(pos)
+	if hit_sq_id >= 0:
+		var sq := _fleet.get_squadron(hit_sq_id)
+		if sq:
+			# Double-click detection for rename
+			var now: float = Time.get_ticks_msec() / 1000.0
+			if hit_sq_id == _last_header_click_sq and (now - _last_header_click_time) < 0.4:
+				squadron_rename_requested.emit(hit_sq_id, pos)
+				_last_header_click_sq = -1
+			else:
+				_last_header_click_sq = hit_sq_id
+				_last_header_click_time = now
+				# Select all ships in the squadron
+				var all_indices: Array[int] = sq.get_all_indices()
+				_selected_fleet_indices = all_indices
+				selection_changed.emit(_selected_fleet_indices.duplicate())
+				squadron_header_clicked.emit(hit_sq_id)
+			queue_redraw()
+			return true
+
 	var hit_index: int = _get_fleet_index_at(pos)
 	if hit_index >= 0:
 		# Always emit ship_selected for zoom/center on entity
@@ -214,10 +241,8 @@ func handle_right_click(pos: Vector2) -> bool:
 
 	var hit_index: int = _get_fleet_index_at(pos)
 	if hit_index >= 0:
-		var fs := _fleet.ships[hit_index]
-		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-			ship_recall_requested.emit(hit_index)
-			return true
+		ship_context_menu_requested.emit(hit_index, pos)
+		return true
 	return false
 
 
@@ -229,6 +254,40 @@ func handle_scroll(pos: Vector2, dir: int) -> bool:
 	_scroll_offset = clampf(_scroll_offset - dir * SCROLL_SPEED, 0.0, _max_scroll)
 	queue_redraw()
 	return true
+
+
+func _get_squadron_header_at(pos: Vector2) -> int:
+	var y: float = HEADER_H + MARGIN - _scroll_offset
+	for group in _groups:
+		y += GROUP_H  # system header
+		if group["collapsed"]:
+			continue
+		for st in group["stations"]:
+			y += 2
+			y += SHIP_H  # station sub-header
+			for _entry in st["ships"]:
+				y += SHIP_H
+		# Deployed ships — check squadron headers
+		var squadroned: Dictionary = {}
+		var unsquadroned: Array = []
+		for entry in group["deployed"]:
+			var fs: FleetShip = entry["ship"]
+			if fs.squadron_id >= 0:
+				if not squadroned.has(fs.squadron_id):
+					squadroned[fs.squadron_id] = []
+				squadroned[fs.squadron_id].append(entry)
+			else:
+				unsquadroned.append(entry)
+		for sq_id in squadroned:
+			if _hit_row(pos.y, y, SHIP_H):
+				return sq_id
+			y += SHIP_H  # squadron header
+			for _entry in squadroned[sq_id]:
+				y += SHIP_H
+		for _entry in unsquadroned:
+			y += SHIP_H
+		y += 6
+	return -1
 
 
 func _get_fleet_index_at(pos: Vector2) -> int:

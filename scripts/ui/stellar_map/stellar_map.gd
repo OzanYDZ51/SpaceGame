@@ -59,6 +59,10 @@ const RIGHT_HOLD_MAX_MOVE: float = 20.0
 var _context_menu: FleetContextMenu = null
 var _squadron_mgr: SquadronManager = null
 
+# Inline rename
+var _rename_edit: LineEdit = null
+var _rename_sq_id: int = -1
+
 
 # Filters: EntityType (int) -> bool (true = hidden)
 # Special key -1 = orbit lines
@@ -124,7 +128,9 @@ func _build_children() -> void:
 	_setup_full_rect(_fleet_panel)
 	_fleet_panel.ship_selected.connect(_on_fleet_ship_selected)
 	_fleet_panel.selection_changed.connect(_on_fleet_selection_changed)
-	_fleet_panel.ship_recall_requested.connect(_on_fleet_recall_requested)
+	_fleet_panel.ship_context_menu_requested.connect(_on_sidebar_context_menu)
+	_fleet_panel.squadron_header_clicked.connect(_on_squadron_header_clicked)
+	_fleet_panel.squadron_rename_requested.connect(_on_squadron_rename_requested)
 	add_child(_fleet_panel)
 
 	# Search bar
@@ -165,11 +171,7 @@ func set_preview(entities: Dictionary, system_name: String) -> void:
 	_renderer.preview_entities = _preview_entities
 	_renderer._belt_dot_cache.clear()
 	_info_panel.preview_entities = _preview_entities
-	_renderer._system_name = "APERCU : " + system_name
-	_entity_layer.selected_id = ""
-	_entity_layer.selected_ids.clear()
-	_info_panel.set_selected("")
-	_trails.clear()
+	_renderer._system_name = system_name
 
 
 func clear_preview() -> void:
@@ -182,10 +184,6 @@ func clear_preview() -> void:
 	if not _saved_system_name.is_empty():
 		_renderer._system_name = _saved_system_name
 		_saved_system_name = ""
-	_entity_layer.selected_id = ""
-	_entity_layer.selected_ids.clear()
-	_info_panel.set_selected("")
-	_trails.clear()
 
 
 func toggle() -> void:
@@ -246,6 +244,7 @@ func close() -> void:
 	_fleet_selected_indices.clear()
 	_fleet_panel.clear_selection()
 	_close_context_menu()
+	_cancel_rename()
 	_clear_route_line()
 	_entity_layer.show_hint = false
 	_search.close()
@@ -554,6 +553,48 @@ func _input(event: InputEvent) -> void:
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 						_entity_layer.route_target_entity_id = target_id
+					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET and _fleet_panel._fleet:
+						# Right-click on fleet ship with squadron → join squadron
+						var target_extra: Dictionary = target_ent.get("extra", {})
+						var target_fi: int = target_extra.get("fleet_index", -1)
+						if target_fi >= 0:
+							var target_sq := _fleet_panel._fleet.get_ship_squadron(target_fi)
+							if target_sq:
+								var joined: int = 0
+								for idx in effective_indices:
+									if _fleet_panel._fleet.get_ship_squadron(idx) == null:
+										squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": idx})
+										joined += 1
+								if joined > 0:
+									# Toast handled by GameManager; no waypoint needed
+									pass
+							else:
+								# Target has no squadron — treat as move
+								var universe_x: float = _camera.screen_to_universe_x(event.position.x)
+								var universe_z: float = _camera.screen_to_universe_z(event.position.y)
+								var params := {"target_x": universe_x, "target_z": universe_z}
+								for idx in effective_indices:
+									fleet_order_requested.emit(idx, &"move_to", params)
+								_show_waypoint(universe_x, universe_z)
+								_set_route_lines(effective_indices, universe_x, universe_z)
+						else:
+							# No fleet_index on target — move to position
+							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
+							var universe_z: float = _camera.screen_to_universe_z(event.position.y)
+							var params := {"target_x": universe_x, "target_z": universe_z}
+							for idx in effective_indices:
+								fleet_order_requested.emit(idx, &"move_to", params)
+							_show_waypoint(universe_x, universe_z)
+							_set_route_lines(effective_indices, universe_x, universe_z)
+					elif not target_ent.is_empty():
+						# Right-click on a known entity (gate, station, planet...) → select + move to it
+						_select_entity(target_id)
+						_sync_fleet_selection_from_entity(target_id)
+						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"]}
+						for idx in effective_indices:
+							fleet_order_requested.emit(idx, &"move_to", params)
+						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
+						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 					else:
 						# Move to empty space
 						var universe_x: float = _camera.screen_to_universe_x(event.position.x)
@@ -743,8 +784,100 @@ func _on_fleet_selection_changed(fleet_indices: Array) -> void:
 	_dirty = true
 
 
-func _on_fleet_recall_requested(fleet_index: int) -> void:
-	fleet_recall_requested.emit(fleet_index)
+func _on_sidebar_context_menu(fleet_index: int, screen_pos: Vector2) -> void:
+	if _fleet_panel._fleet == null or fleet_index < 0 or fleet_index >= _fleet_panel._fleet.ships.size():
+		return
+	# Select the ship if not already selected
+	if fleet_index not in _fleet_selected_indices:
+		_fleet_selected_indices = [fleet_index]
+		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
+
+	var fs := _fleet_panel._fleet.ships[fleet_index]
+	var context := {
+		"fleet_index": fleet_index,
+		"fleet_ship": fs,
+		"is_deployed": fs.deployment_state == FleetShip.DeploymentState.DEPLOYED,
+		"universe_x": 0.0,
+		"universe_z": 0.0,
+		"target_entity_id": "",
+	}
+
+	var orders := FleetOrderRegistry.get_available_orders(context)
+
+	# Inject squadron orders
+	var sq_orders := _build_squadron_context_orders(fleet_index)
+	orders.append_array(sq_orders)
+
+	# Add promote leader for squadron members
+	var sq := _fleet_panel._fleet.get_ship_squadron(fleet_index)
+	if sq and sq.is_member(fleet_index):
+		orders.append({"id": &"sq_promote", "display_name": "PROMOUVOIR CHEF"})
+
+	if orders.is_empty():
+		return
+
+	_close_context_menu()
+	_context_menu = FleetContextMenu.new()
+	_context_menu.name = "FleetContextMenu"
+	add_child(_context_menu)
+	_context_menu.order_selected.connect(_on_context_menu_order)
+	_context_menu.cancelled.connect(_close_context_menu)
+	# Convert panel-local pos to map-global pos
+	var global_pos := _fleet_panel.global_position + screen_pos
+	_context_menu.show_menu(global_pos, orders, context)
+
+
+func _on_squadron_header_clicked(_squadron_id: int) -> void:
+	# Fleet panel already handles multi-selection of squadron members
+	# Just mark dirty for redraw
+	_dirty = true
+
+
+func _on_squadron_rename_requested(squadron_id: int, screen_pos: Vector2) -> void:
+	_start_squadron_rename(squadron_id, _fleet_panel.global_position + screen_pos)
+
+
+func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:
+	_cancel_rename()
+	if _fleet_panel._fleet == null:
+		return
+	var sq := _fleet_panel._fleet.get_squadron(squadron_id)
+	if sq == null:
+		return
+
+	_rename_sq_id = squadron_id
+	_rename_edit = LineEdit.new()
+	_rename_edit.text = sq.squadron_name
+	_rename_edit.position = Vector2(screen_pos.x, screen_pos.y - 10)
+	_rename_edit.custom_minimum_size = Vector2(180, 24)
+	_rename_edit.select_all_on_focus = true
+	_rename_edit.add_theme_font_size_override("font_size", 13)
+	_rename_edit.add_theme_color_override("font_color", UITheme.PRIMARY)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.0, 0.05, 0.1, 0.95)
+	sb.border_color = UITheme.PRIMARY
+	sb.set_border_width_all(1)
+	sb.set_content_margin_all(4)
+	_rename_edit.add_theme_stylebox_override("normal", sb)
+	_rename_edit.add_theme_stylebox_override("focus", sb)
+	add_child(_rename_edit)
+	_rename_edit.grab_focus()
+	_rename_edit.select_all()
+	_rename_edit.text_submitted.connect(_on_rename_submitted)
+	_rename_edit.focus_exited.connect(_cancel_rename)
+
+
+func _on_rename_submitted(new_name: String) -> void:
+	if _rename_sq_id >= 0 and new_name.strip_edges() != "":
+		squadron_action_requested.emit(&"rename", {"squadron_id": _rename_sq_id, "name": new_name.strip_edges()})
+	_cancel_rename()
+
+
+func _cancel_rename() -> void:
+	if _rename_edit:
+		_rename_edit.queue_free()
+		_rename_edit = null
+	_rename_sq_id = -1
 
 
 func _on_search_entity_selected(id: String) -> void:
@@ -910,6 +1043,12 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		var idx := _get_effective_fleet_index()
 		if idx >= 0:
 			squadron_action_requested.emit(&"set_role", {"fleet_index": idx, "role": String(role)})
+	elif order_id == &"sq_promote":
+		var idx := _get_effective_fleet_index()
+		if idx >= 0 and _fleet_panel._fleet:
+			var sq := _fleet_panel._fleet.get_ship_squadron(idx)
+			if sq:
+				squadron_action_requested.emit(&"promote_leader", {"squadron_id": sq.squadron_id, "fleet_index": idx})
 	elif order_str.begins_with("sq_join_"):
 		var sq_id := int(order_str.substr(8))
 		var idx := _get_effective_fleet_index()

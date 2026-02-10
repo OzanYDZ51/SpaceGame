@@ -18,7 +18,7 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
 @export var cam_rotation_speed: float = 18.0   ## Rotation follow speed
 @export var cam_look_ahead_y: float = 0.0      ## Vertical offset for look target
-@export var cam_speed_pull: float = 0.02       ## Extra distance per m/s
+@export var cam_speed_pull: float = 0.008      ## Extra distance per m/s
 @export var cam_zoom_step: float = 10.0        ## Distance per scroll tick
 
 @export_group("Combat")
@@ -139,7 +139,7 @@ func _update_third_person(delta: float) -> void:
 	# =========================================================================
 	# DYNAMIC DISTANCE (speed pull-back only)
 	# =========================================================================
-	var speed_pull: float = minf(_ship.current_speed * cam_speed_pull, 30.0)  # Cap pull-back at cruise speeds
+	var speed_pull: float = minf(_ship.current_speed * cam_speed_pull, 10.0)
 	var effective_distance: float = target_distance + speed_pull
 	current_distance = lerpf(current_distance, effective_distance, 3.0 * delta)
 

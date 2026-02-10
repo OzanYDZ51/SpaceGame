@@ -103,10 +103,11 @@ static func get_available_modules(station_type: int) -> Array[StringName]:
 
 
 static func _get_all_weapon_names() -> Array[StringName]:
+	# Only weapons with real 3D models are sold in shops.
+	# Placeholder weapons (BoxMesh/CylinderMesh) are hidden until proper models are added.
 	var result: Array[StringName] = [
-		&"Laser Mk1", &"Laser Mk2", &"Plasma Cannon", &"Heavy Plasma",
-		&"Missile Pod", &"Torpedo", &"Railgun", &"Mine Layer",
-		&"Turret Mk1", &"Auto Cannon", &"Point Defense",
+		&"Laser Mk1",
+		&"Turret Mk1",
 		&"Mining Laser Mk1", &"Mining Laser Mk2",
 	]
 	return result

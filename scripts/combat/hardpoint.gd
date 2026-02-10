@@ -43,6 +43,10 @@ var _cached_energy_sys: EnergySystem = null
 var _cached_pool: ProjectilePool = null
 var _refs_cached: bool = false
 
+# Module multipliers (set by WeaponManager from EquipmentManager)
+var energy_cost_mult: float = 1.0
+var range_mult: float = 1.0
+
 
 func _ready() -> void:
 	if is_turret:
@@ -222,10 +226,10 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	if is_turret and not _can_fire:
 		return null
 
-	# Check energy
+	# Check energy (apply module multiplier)
 	var energy_sys := _get_energy_system()
 	if energy_sys and mounted_weapon.ammo_type == WeaponResource.AmmoType.ENERGY:
-		if not energy_sys.consume_energy(mounted_weapon.energy_cost_per_shot):
+		if not energy_sys.consume_energy(mounted_weapon.energy_cost_per_shot * energy_cost_mult):
 			return null
 
 	_cooldown_timer = 1.0 / mounted_weapon.fire_rate
@@ -248,7 +252,7 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	var ship_node := _get_ship_node()
 	bolt.damage = mounted_weapon.damage_per_hit
 	bolt.damage_type = mounted_weapon.damage_type
-	bolt.max_lifetime = mounted_weapon.projectile_lifetime
+	bolt.max_lifetime = mounted_weapon.projectile_lifetime * range_mult
 	bolt.owner_ship = ship_node
 	bolt.weapon_name = mounted_weapon.weapon_name
 

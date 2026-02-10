@@ -64,7 +64,6 @@ func _do_init() -> void:
 
 
 func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
-	print("FleetAIBridge[%d]: apply_command '%s' params=%s brain=%s" % [fleet_index, cmd, params, _brain != null])
 	command = cmd
 	command_params = params
 	_returning = false

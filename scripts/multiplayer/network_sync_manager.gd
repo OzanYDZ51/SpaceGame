@@ -88,14 +88,11 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 		NetworkManager.start_dedicated_server(port)
 	else:
 		if Constants.NET_GAME_SERVER_URL != "":
-			print("GameManager: Production → connecting to %s" % Constants.NET_GAME_SERVER_URL)
 			NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
 		else:
 			if NetworkManager.is_local_server_running(port):
-				print("GameManager: Local server detected → connecting to localhost")
 				NetworkManager.connect_to_server("ws://127.0.0.1:%d" % port)
 			else:
-				print("GameManager: No local server → connecting to %s" % Constants.NET_PUBLIC_IP)
 				NetworkManager.connect_to_server("ws://%s:%d" % [Constants.NET_PUBLIC_IP, port])
 
 
@@ -137,8 +134,6 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		"radius": 12.0,
 	})
 
-	print("GameManager: Spawned remote player '%s' (peer %d)" % [player_name, peer_id])
-
 	if NetworkManager.is_server() and npc_authority and system_transition:
 		npc_authority.send_all_npcs_to_peer(peer_id, system_transition.current_system_id)
 
@@ -156,7 +151,6 @@ func remove_remote_player(peer_id: int) -> void:
 		if is_instance_valid(remote):
 			remote.queue_free()
 		remote_players.erase(peer_id)
-		print("GameManager: Removed remote player (peer %d)" % peer_id)
 
 
 func _on_state_received(peer_id: int, state: NetworkState) -> void:
@@ -211,7 +205,6 @@ func _on_server_config_received(config: Dictionary) -> void:
 		if player_data:
 			player_data.station_services = StationServices.new()
 			player_data.station_services.init_center_systems(galaxy)
-		print("GameManager: Galaxy regenerated with seed %d from server" % server_seed)
 		server_galaxy_changed.emit(galaxy)
 
 	_populate_wormhole_targets()
@@ -219,7 +212,6 @@ func _on_server_config_received(config: Dictionary) -> void:
 	if spawn_system >= 0 and galaxy and spawn_system < galaxy.systems.size():
 		if system_transition and system_transition.current_system_id != spawn_system:
 			system_transition.jump_to_system(spawn_system)
-			print("GameManager: Jumped to server-assigned system %d" % spawn_system)
 
 
 func _populate_wormhole_targets() -> void:

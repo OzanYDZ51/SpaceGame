@@ -337,9 +337,9 @@ func _draw_view_indicator() -> void:
 	# Tab hint
 	draw_string(font, Vector2(cx - 135, text_y), "[TAB]", HORIZONTAL_ALIGNMENT_LEFT, 50, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
-	# SYSTEM label (show APERÇU when in preview mode)
-	var sys_label: String = "APERÇU" if (_preview_system_id >= 0 and current_view == ViewMode.SYSTEM) else "SYSTEM"
-	var sys_col: Color = UITheme.ACCENT if (_preview_system_id >= 0 and current_view == ViewMode.SYSTEM) else (UITheme.PRIMARY if current_view == ViewMode.SYSTEM else UITheme.TEXT_DIM)
+	# SYSTEM label
+	var sys_label: String = "SYSTEM"
+	var sys_col: Color = UITheme.PRIMARY if current_view == ViewMode.SYSTEM else UITheme.TEXT_DIM
 	draw_string(font, Vector2(cx - 75, text_y), sys_label, HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, sys_col)
 	# Underline active
 	if current_view == ViewMode.SYSTEM:
@@ -802,9 +802,18 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Right-click recenter on current system
+		# Right-click on system → start galaxy route (autopilot gate-to-gate)
 		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			_center_galaxy_on_current()
+			var hit_sys: int = _get_system_at(event.position)
+			if hit_sys >= 0:
+				_selected_system = hit_sys
+				_info_system = galaxy.get_system(hit_sys)
+				_info_visible = true
+				_resolve_system_data(hit_sys)
+				_galaxy_dirty = true
+				_start_route_to_selected()
+			else:
+				_center_galaxy_on_current()
 			get_viewport().set_input_as_handled()
 			return
 

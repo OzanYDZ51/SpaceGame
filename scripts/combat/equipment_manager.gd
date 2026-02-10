@@ -164,6 +164,8 @@ func _apply_module_stats() -> void:
 	var armor_bonus := 0.0
 	var energy_cap_bonus := 0.0
 	var energy_regen_bonus := 0.0
+	var w_energy_mult := 1.0
+	var w_range_mult := 1.0
 
 	for mod in equipped_modules:
 		if mod is ModuleResource:
@@ -171,6 +173,8 @@ func _apply_module_stats() -> void:
 			armor_bonus += mod.armor_bonus
 			energy_cap_bonus += mod.energy_cap_bonus
 			energy_regen_bonus += mod.energy_regen_bonus
+			w_energy_mult *= mod.weapon_energy_mult
+			w_range_mult *= mod.weapon_range_mult
 
 	# Apply to HealthSystem
 	if _health_sys:
@@ -185,6 +189,11 @@ func _apply_module_stats() -> void:
 		_energy_sys.energy_current = minf(_energy_sys.energy_current, _energy_sys.energy_max)
 		_energy_sys.energy_regen_base = ship_data.energy_regen_rate + energy_regen_bonus
 		_energy_sys.energy_changed.emit(_energy_sys.energy_current, _energy_sys.energy_max)
+
+	# Apply weapon multipliers to WeaponManager
+	var wm := get_parent().get_node_or_null("WeaponManager") as WeaponManager
+	if wm:
+		wm.apply_module_multipliers(w_energy_mult, w_range_mult)
 
 
 # =============================================================================

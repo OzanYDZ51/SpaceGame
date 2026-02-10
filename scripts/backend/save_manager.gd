@@ -63,12 +63,11 @@ func save_player_state(force: bool = false) -> bool:
 	if result.get("ok", false) or result.get("_status_code", 0) == 200:
 		_is_dirty = false
 		save_completed.emit()
-		print("SaveManager: State saved successfully")
 		return true
 	else:
 		var error: String = result.get("error", "save failed")
 		save_failed.emit(error)
-		print("SaveManager: Save failed — %s" % error)
+		push_warning("SaveManager: Save failed — %s" % error)
 		return false
 
 
@@ -150,8 +149,6 @@ func _on_auto_save() -> void:
 
 
 func trigger_save(reason: String = "") -> void:
-	if reason != "":
-		print("SaveManager: Save triggered — %s" % reason)
 	mark_dirty()
 	save_player_state(true)
 
@@ -160,5 +157,4 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		# Synchronous-ish save on quit
 		if AuthManager.is_authenticated and _is_dirty:
-			print("SaveManager: Saving before quit...")
 			save_player_state(true)

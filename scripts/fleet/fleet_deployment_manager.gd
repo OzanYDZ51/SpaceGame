@@ -61,7 +61,6 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	var spawn_pos := station_local_pos + offset
 
 	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
-	print("FleetDeploy: spawning '%s' at %s (station='%s', sys=%d)" % [fs.ship_id, spawn_pos, station_id, fs.docked_system_id])
 	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION, false, true)
 	if npc == null:
 		push_error("FleetDeploy: spawn_npc_ship FAILED for ship_id '%s'" % fs.ship_id)
@@ -143,7 +142,6 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	if sq_mgr:
 		sq_mgr.on_ship_deployed(fleet_index, npc)
 
-	print("FleetDeploymentManager: Deployed '%s' (index %d) with command '%s'" % [fs.custom_name, fleet_index, cmd])
 	return true
 
 
@@ -161,8 +159,9 @@ func retrieve_ship(fleet_index: int) -> bool:
 
 	# Despawn NPC
 	if _deployed_ships.has(fleet_index):
-		var npc: ShipController = _deployed_ships[fleet_index]
-		if is_instance_valid(npc):
+		var npc_ref = _deployed_ships[fleet_index]
+		if is_instance_valid(npc_ref):
+			var npc: ShipController = npc_ref
 			EntityRegistry.unregister(npc.name)
 			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 			if lod_mgr:
@@ -177,7 +176,6 @@ func retrieve_ship(fleet_index: int) -> bool:
 	fs.deployed_command_params = {}
 
 	_fleet.fleet_changed.emit()
-	print("FleetDeploymentManager: Retrieved '%s' (index %d)" % [fs.custom_name, fleet_index])
 	return true
 
 
@@ -190,9 +188,11 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 	if not _deployed_ships.has(fleet_index):
 		return false
 
-	var npc: ShipController = _deployed_ships[fleet_index]
-	if not is_instance_valid(npc):
+	var npc_ref = _deployed_ships[fleet_index]
+	if not is_instance_valid(npc_ref):
+		_deployed_ships.erase(fleet_index)
 		return false
+	var npc: ShipController = npc_ref
 
 	var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
 	if bridge:
@@ -254,7 +254,6 @@ func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 	if toast:
 		toast.show_toast("VAISSEAU PERDU: %s" % fs.custom_name, UIToast.ToastType.WARNING)
 
-	print("FleetDeploymentManager: Fleet ship '%s' (index %d) destroyed!" % [fs.custom_name, fleet_index])
 
 
 func update_entity_extra(fleet_index: int, key: String, value: Variant) -> void:
@@ -270,9 +269,10 @@ func update_entity_extra(fleet_index: int, key: String, value: Variant) -> void:
 
 func get_deployed_npc(fleet_index: int) -> ShipController:
 	if _deployed_ships.has(fleet_index):
-		var npc: ShipController = _deployed_ships[fleet_index]
-		if is_instance_valid(npc):
-			return npc
+		var npc_ref = _deployed_ships[fleet_index]
+		if is_instance_valid(npc_ref):
+			return npc_ref as ShipController
+		_deployed_ships.erase(fleet_index)
 	return null
 
 

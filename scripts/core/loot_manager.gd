@@ -44,7 +44,10 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 		else:
 			cargo_items.append(item)
 	if cargo and not cargo_items.is_empty():
-		cargo.add_items(cargo_items)
+		var added := cargo.add_items(cargo_items)
+		var rejected := cargo_items.size() - added
+		if rejected > 0 and toast_manager:
+			toast_manager.show_toast("SOUTE PLEINE — %d objet(s) perdu(s)" % rejected, UIToast.ToastType.WARNING)
 	if crate and is_instance_valid(crate):
 		crate._destroy()
 	SaveManager.mark_dirty()
