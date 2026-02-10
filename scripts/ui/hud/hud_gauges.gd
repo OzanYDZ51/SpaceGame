@@ -8,6 +8,7 @@ extends Control
 var ship: ShipController = null
 var health_system: HealthSystem = null
 var targeting_system: TargetingSystem = null
+var system_transition: SystemTransition = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
 var warning_flash: float = 0.0
@@ -35,11 +36,11 @@ func _ready() -> void:
 	_speed_arc.draw.connect(_draw_speed_arc.bind(_speed_arc))
 	add_child(_speed_arc)
 
-	_top_bar = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -200, 10, 200, 50)
+	_top_bar = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -320, 8, 320, 58)
 	_top_bar.draw.connect(_draw_top_bar.bind(_top_bar))
 	add_child(_top_bar)
 
-	_compass = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -120, 52, 120, 72)
+	_compass = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -120, 60, 120, 80)
 	_compass.draw.connect(_draw_compass.bind(_compass))
 	add_child(_compass)
 
@@ -151,36 +152,76 @@ func _draw_speed_arc(ctrl: Control) -> void:
 # =============================================================================
 func _draw_top_bar(ctrl: Control) -> void:
 	var font := UITheme.get_font_medium()
-	var cx := ctrl.size.x / 2.0
-	ctrl.draw_line(Vector2(0, ctrl.size.y - 1), Vector2(ctrl.size.x, ctrl.size.y - 1), UITheme.BORDER, 1.0)
-	var cl := 8.0
+	var w := ctrl.size.x
+	var h := ctrl.size.y
+	var cx := w / 2.0
+
+	# Bottom edge
+	ctrl.draw_line(Vector2(0, h - 1), Vector2(w, h - 1), UITheme.BORDER, 1.0)
+	# Corner accents
+	var cl := 10.0
 	ctrl.draw_line(Vector2(0, 0), Vector2(cl, 0), UITheme.PRIMARY_DIM, 1.0)
 	ctrl.draw_line(Vector2(0, 0), Vector2(0, cl), UITheme.PRIMARY_DIM, 1.0)
-	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x - cl, 0), UITheme.PRIMARY_DIM, 1.0)
-	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x, cl), UITheme.PRIMARY_DIM, 1.0)
+	ctrl.draw_line(Vector2(w, 0), Vector2(w - cl, 0), UITheme.PRIMARY_DIM, 1.0)
+	ctrl.draw_line(Vector2(w, 0), Vector2(w, cl), UITheme.PRIMARY_DIM, 1.0)
 
 	if ship == null:
 		return
+
+	# === ROW 1: System name — Flight mode — Speed ===
+	var row1_y := 18.0
+
+	# System name (left)
+	var sys_name := "---"
+	if system_transition and system_transition.current_system_data:
+		sys_name = system_transition.current_system_data.system_name.to_upper()
+	ctrl.draw_string(font, Vector2(12, row1_y), sys_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.PRIMARY)
+
+	# Flight mode (center)
 	var mt := HudDrawHelpers.get_mode_text(ship)
 	var mc := HudDrawHelpers.get_mode_color(ship)
-	var mw := font.get_string_size(mt, HORIZONTAL_ALIGNMENT_CENTER, -1, 17).x
-	ctrl.draw_string(font, Vector2(cx - mw / 2.0, 24), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, mc)
-	ctrl.draw_line(Vector2(cx - mw / 2.0 - 18, 18), Vector2(cx - mw / 2.0 - 4, 18), mc * Color(1, 1, 1, 0.5), 1.0)
-	ctrl.draw_line(Vector2(cx + mw / 2.0 + 4, 18), Vector2(cx + mw / 2.0 + 18, 18), mc * Color(1, 1, 1, 0.5), 1.0)
+	var mw := font.get_string_size(mt, HORIZONTAL_ALIGNMENT_CENTER, -1, 16).x
+	ctrl.draw_string(font, Vector2(cx - mw / 2.0, row1_y), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, mc)
+	ctrl.draw_line(Vector2(cx - mw / 2.0 - 20, row1_y - 6), Vector2(cx - mw / 2.0 - 4, row1_y - 6), mc * Color(1, 1, 1, 0.5), 1.0)
+	ctrl.draw_line(Vector2(cx + mw / 2.0 + 4, row1_y - 6), Vector2(cx + mw / 2.0 + 20, row1_y - 6), mc * Color(1, 1, 1, 0.5), 1.0)
 
-	var fa := "AV" if ship.flight_assist else "AV DÉSACT"
-	ctrl.draw_string(font, Vector2(10, 24), fa, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.ACCENT if ship.flight_assist else UITheme.DANGER)
-
-	var fps_str := "%d FPS" % Engine.get_frames_per_second()
-	ctrl.draw_string(font, Vector2(10, 38), fps_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-
+	# Speed (right)
 	var st: String
 	if ship.current_speed >= 1000.0:
 		st = "%.1f km/s" % (ship.current_speed / 1000.0)
 	else:
 		st = "%.0f m/s" % ship.current_speed
 	var s_w := font.get_string_size(st, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
-	ctrl.draw_string(font, Vector2(ctrl.size.x - s_w - 10, 24), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
+	ctrl.draw_string(font, Vector2(w - s_w - 12, row1_y), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
+
+	# === Separator ===
+	ctrl.draw_line(Vector2(12, 25), Vector2(w - 12, 25), UITheme.PRIMARY_FAINT, 1.0)
+
+	# === ROW 2: AV — CAP — INCL — POS ===
+	var row2_y := 40.0
+
+	# AV status (dot + label)
+	var fa_on := ship.flight_assist
+	var fa_col := UITheme.ACCENT if fa_on else UITheme.DANGER
+	ctrl.draw_circle(Vector2(16, row2_y - 4), 3.0, fa_col)
+	ctrl.draw_string(font, Vector2(24, row2_y), "AV" if fa_on else "OFF", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, fa_col)
+
+	# CAP heading
+	var fwd := -ship.global_transform.basis.z
+	var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
+	if heading < 0: heading += 360.0
+	ctrl.draw_string(font, Vector2(58, row2_y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(86, row2_y), "%06.2f\u00B0" % heading, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.TEXT)
+
+	# INCL pitch
+	var pitch: float = rad_to_deg(asin(clamp(fwd.y, -1.0, 1.0)))
+	ctrl.draw_string(font, Vector2(170, row2_y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(200, row2_y), "%+.1f\u00B0" % pitch, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.TEXT)
+
+	# POS (right-aligned)
+	var pos_str := FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"
+	var pos_w := font.get_string_size(pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	ctrl.draw_string(font, Vector2(w - pos_w - 12, row2_y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
 
 
 # =============================================================================

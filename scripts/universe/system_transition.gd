@@ -217,6 +217,11 @@ func _cleanup_current_system() -> void:
 	if encounter_mgr:
 		encounter_mgr.clear_all_npcs()
 
+	# Clear structure authority
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	if struct_auth:
+		struct_auth.clear_all()
+
 	# Clear entity registry
 	EntityRegistry.clear_all()
 
@@ -266,6 +271,7 @@ func _populate_system() -> void:
 		var station := SpaceStation.new()
 		station.name = "Station_%d" % i
 		station.station_name = sd.station_name
+		station.station_type = sd.station_type  # Configures health preset
 
 		var orbit_r: float = sd.orbital_radius
 		var angle: float = sd.orbital_angle
@@ -428,6 +434,7 @@ func _register_system_entities() -> void:
 
 	# Stations
 	var universe := GameManager.universe_node
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
 		var node: Node3D = universe.get_node_or_null("Station_%d" % i) if universe else null
@@ -446,6 +453,9 @@ func _register_system_entities() -> void:
 				"station_index": i,
 			},
 		})
+		# Register with StructureAuthority for multiplayer sync
+		if struct_auth and node:
+			struct_auth.register_structure("Station_%d" % i, current_system_id, sd.station_type, node)
 
 	# Jump gates
 	for i in current_system_data.jump_gates.size():

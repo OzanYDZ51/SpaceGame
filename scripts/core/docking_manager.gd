@@ -15,7 +15,6 @@ var main_scene: Node3D = null
 var docking_system: DockingSystem = null
 var dock_instance: DockInstance = null
 var screen_manager: UIScreenManager = null
-var toast_manager: UIToastManager = null
 var player_data: PlayerData = null
 var commerce_manager: CommerceManager = null
 var commerce_screen: CommerceScreen = null
@@ -28,6 +27,7 @@ var lod_manager: ShipLODManager = null
 var encounter_manager: EncounterManager = null
 var ship_net_sync: ShipNetworkSync = null
 var discord_rpc: DiscordRPC = null
+var notif: NotificationService = null
 var get_game_state: Callable
 
 var docked_station_idx: int = 0
@@ -151,8 +151,8 @@ func handle_equipment_closed() -> void:
 func handle_repair_requested() -> void:
 	if dock_instance and player_ship:
 		dock_instance.repair_ship(player_ship)
-		if toast_manager:
-			toast_manager.show_toast("VAISSEAU RÉPARÉ", UIToast.ToastType.SUCCESS)
+		if notif:
+			notif.general.repair()
 
 
 func handle_equipment_requested() -> void:

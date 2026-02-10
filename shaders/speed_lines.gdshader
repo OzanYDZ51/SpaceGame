@@ -9,6 +9,7 @@ uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
 uniform float speed_ratio : hint_range(0.0, 1.0) = 0.0;
 uniform float boost_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float damage_flash : hint_range(0.0, 1.0) = 0.0;
+uniform float cruise_warp : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
 	vec2 uv = SCREEN_UV;
@@ -87,10 +88,38 @@ void fragment() {
 	// === COLOR GRADE (subtle blue shift at high speed) ===
 	vec3 grade = mix(vec3(1.0), vec3(0.92, 0.95, 1.08), sq * 0.4);
 
+	// === CRUISE WARP TUNNEL (phase 2 — intense radial streaks + blur) ===
+	float warp_streaks = 0.0;
+	if (cruise_warp > 0.01) {
+		// Intensified radial lines converging to center
+		float warp_lines = 120.0;
+		float wl_id = floor(angle * warp_lines / TAU);
+		float wl_frac = fract(angle * warp_lines / TAU);
+		float ws = fract(sin(wl_id * 91.3 + 7.7) * 43758.5453);
+		float wa = fract(TIME * (1.0 + ws * 0.6) + ws * 6.28);
+		float wp = smoothstep(0.0, 0.1, wa) * smoothstep(1.0, 0.3, wa);
+		float wl = smoothstep(0.0, 0.015, wl_frac) * smoothstep(0.05, 0.015, wl_frac);
+		float wr = smoothstep(0.05, 0.6, dist);
+		warp_streaks = wl * wr * wp * cruise_warp * 1.2;
+	}
+	vec3 warp_col = mix(vec3(0.5, 0.7, 1.0), vec3(0.2, 0.4, 1.0), dist * 2.0) * warp_streaks;
+
+	// Extra warp vignette (tight tunnel)
+	float warp_vig = smoothstep(0.15, 0.75, dist) * cruise_warp * 0.4;
+
+	// Extra radial blur for warp
+	if (cruise_warp > 0.01) {
+		float warp_blur = cruise_warp * 0.03;
+		vec2 wb_dir = center * warp_blur;
+		col = col * 0.5
+			+ texture(screen_texture, uv - wb_dir * 0.5).rgb * 0.25
+			+ texture(screen_texture, uv - wb_dir * 1.0).rgb * 0.25;
+	}
+
 	// === COMBINE ===
 	vec3 result = col * grade;
-	result += streak_col + streak2;
-	result *= 1.0 - vig;
+	result += streak_col + streak2 + warp_col;
+	result *= 1.0 - vig - warp_vig;
 	result += vec3(flash);
 	result += dmg_col;
 

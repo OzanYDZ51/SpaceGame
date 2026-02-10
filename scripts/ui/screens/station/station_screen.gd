@@ -121,26 +121,14 @@ func _try_unlock(svc: int) -> void:
 
 	var price: int = StationServices.SERVICE_PRICES[svc]
 	if _economy.credits < price:
-		_show_toast("CRÉDITS INSUFFISANTS — %s CR requis" % PlayerEconomy.format_credits(price))
+		if GameManager._notif:
+			GameManager._notif.general.insufficient_credits(PlayerEconomy.format_credits(price))
 		return
 
 	if _services.unlock(_system_id, _station_idx, svc, _economy):
 		_refresh_buttons()
-		_show_toast("%s DÉBLOQUÉ" % StationServices.SERVICE_LABELS[svc], true)
-
-
-func _show_toast(msg: String, success: bool = false) -> void:
-	var toast_mgr := _find_toast_manager()
-	if toast_mgr:
-		var ttype: int = UIToast.ToastType.SUCCESS if success else UIToast.ToastType.WARNING
-		toast_mgr.show_toast(msg, ttype)
-
-
-func _find_toast_manager() -> UIToastManager:
-	var ui_layer := get_tree().current_scene.get_node_or_null("UI")
-	if ui_layer:
-		return ui_layer.get_node_or_null("UIToastManager") as UIToastManager
-	return null
+		if GameManager._notif:
+			GameManager._notif.general.service_unlocked(StationServices.SERVICE_LABELS[svc])
 
 
 func _on_opened() -> void:

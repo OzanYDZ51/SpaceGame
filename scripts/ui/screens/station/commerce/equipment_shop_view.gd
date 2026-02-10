@@ -126,16 +126,9 @@ func _do_buy() -> void:
 		2: success = _commerce_manager.buy_engine(item_name)
 		3: success = _commerce_manager.buy_module(item_name)
 	if success:
-		# Show toast
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
-			toast_mgr.show_toast("%s acheté!" % String(item_name))
+		if GameManager._notif:
+			GameManager._notif.commerce.bought(String(item_name))
 	queue_redraw()
-
-
-func _find_toast_manager() -> UIToastManager:
-	var node := get_tree().root.find_child("UIToastManager", true, false)
-	return node as UIToastManager if node else null
 
 
 func _process(_delta: float) -> void:

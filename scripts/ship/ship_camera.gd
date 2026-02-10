@@ -49,6 +49,15 @@ var _shake_offset: Vector3 = Vector3.ZERO
 var _fov_spike: float = 0.0  # Temporary FOV burst (decays) — cruise punch/exit effects
 const FOV_SPIKE_DECAY: float = 3.5
 
+## Micro-vibration: subtle camera oscillation for immersive flight feel
+var vibration_enabled: bool = false
+var _vibration_time: float = 0.0
+const VIBRATION_AMP_IDLE: float = 0.003    # Very subtle at idle
+const VIBRATION_AMP_SPEED: float = 0.015   # Stronger at high speed
+const VIBRATION_FREQ_X: float = 7.3
+const VIBRATION_FREQ_Y: float = 5.1
+const VIBRATION_FREQ_Z: float = 9.7
+
 
 func _ready() -> void:
 	_ship = get_parent() as ShipController
@@ -160,6 +169,18 @@ func _update_third_person(delta: float) -> void:
 		_shake_intensity *= maxf(0.0, 1.0 - cam_shake_decay * delta)
 	else:
 		_shake_intensity = 0.0
+
+	# Micro-vibration (subtle engine hum feel)
+	if vibration_enabled:
+		_vibration_time += delta
+		var speed_ratio: float = clampf(_ship.current_speed / Constants.MAX_SPEED_CRUISE, 0.0, 1.0)
+		var amp: float = lerpf(VIBRATION_AMP_IDLE, VIBRATION_AMP_SPEED, speed_ratio)
+		var vib := Vector3(
+			sin(_vibration_time * VIBRATION_FREQ_X * TAU) * amp,
+			sin(_vibration_time * VIBRATION_FREQ_Y * TAU) * amp * 0.7,
+			sin(_vibration_time * VIBRATION_FREQ_Z * TAU) * amp * 0.3
+		)
+		desired_pos += ship_basis * vib
 
 	# Smooth position follow
 	var follow: float = cam_follow_speed * delta

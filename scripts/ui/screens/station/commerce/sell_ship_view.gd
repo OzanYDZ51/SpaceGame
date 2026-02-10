@@ -140,17 +140,11 @@ func _do_sell() -> void:
 	var fs := _fleet_ships[_selected_index]
 	var sell_price := _commerce_manager.get_ship_sell_price(fs)
 	if _commerce_manager.sell_ship(fleet_idx):
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
-			toast_mgr.show_toast("%s vendu! +%s CR" % [fs.custom_name, PlayerEconomy.format_credits(sell_price)])
+		if GameManager._notif:
+			GameManager._notif.commerce.sold(fs.custom_name, sell_price)
 		_selected_index = -1
 		_refresh_items()
 	queue_redraw()
-
-
-func _find_toast_manager() -> UIToastManager:
-	var node := get_tree().root.find_child("UIToastManager", true, false)
-	return node as UIToastManager if node else null
 
 
 func _process(_delta: float) -> void:

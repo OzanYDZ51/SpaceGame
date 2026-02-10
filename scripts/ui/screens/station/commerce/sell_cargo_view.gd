@@ -171,10 +171,9 @@ func _on_sell_all() -> void:
 	var item_name: String = item.get("name", "")
 	var qty: int = item.get("quantity", 1)
 	if _commerce_manager.sell_cargo_from_ship(item_name, qty, ship):
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
+		if GameManager._notif:
 			var total := PriceCatalog.get_cargo_price(item_name) * qty
-			toast_mgr.show_toast("%s x%d vendu! +%s CR" % [item_name, qty, PlayerEconomy.format_credits(total)])
+			GameManager._notif.commerce.sold_qty(item_name, qty, total)
 		_refresh_items()
 	queue_redraw()
 
@@ -186,16 +185,10 @@ func _sell_one() -> void:
 	var ship: FleetShip = _cargo_item_ship[_selected_index]
 	var item_name: String = item.get("name", "")
 	if _commerce_manager.sell_cargo_from_ship(item_name, 1, ship):
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
-			toast_mgr.show_toast("%s vendu!" % item_name)
+		if GameManager._notif:
+			GameManager._notif.commerce.sold(item_name)
 		_refresh_items()
 	queue_redraw()
-
-
-func _find_toast_manager() -> UIToastManager:
-	var node := get_tree().root.find_child("UIToastManager", true, false)
-	return node as UIToastManager if node else null
 
 
 func _process(_delta: float) -> void:

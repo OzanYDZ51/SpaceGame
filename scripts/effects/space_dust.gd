@@ -9,6 +9,10 @@ extends GPUParticles3D
 # =============================================================================
 
 var _camera: Camera3D = null
+var _ship: ShipController = null
+var _base_amount_ratio: float = 1.0
+var _base_speed_scale: float = 1.0
+var _mat: ParticleProcessMaterial = null
 
 
 func _ready() -> void:
@@ -41,6 +45,7 @@ func _ready() -> void:
 	grad_tex.gradient = grad
 	mat.color_ramp = grad_tex
 
+	_mat = mat
 	process_material = mat
 	amount = 120
 	lifetime = 4.0
@@ -71,9 +76,23 @@ func set_camera(cam: Camera3D) -> void:
 	_camera = cam
 
 
+func set_ship(ship: ShipController) -> void:
+	_ship = ship
+
+
 func _process(_delta: float) -> void:
 	if _camera:
 		global_position = _camera.global_position
+
+	# Speed-reactive dust: more particles + faster + stretched box at high speed
+	if _ship and _mat:
+		# Use boost max as reference (cruise is warp territory, dust irrelevant)
+		var speed_ratio: float = clampf(_ship.current_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
+		amount_ratio = 0.3 + speed_ratio * 0.7
+		speed_scale = 0.5 + speed_ratio * 2.5
+		# Stretch emission box along Z at speed (particles stream past)
+		var z_extent: float = 100.0 + speed_ratio * 200.0
+		_mat.emission_box_extents.z = z_extent
 
 
 func _create_soft_circle(tex_size: int = 24) -> GradientTexture2D:

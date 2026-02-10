@@ -10,7 +10,7 @@ extends Node
 var player_data: PlayerData = null
 var screen_manager: UIScreenManager = null
 var loot_screen: LootScreen = null
-var toast_manager: UIToastManager = null
+var notif: NotificationService = null
 var get_game_state: Callable  # () -> GameState
 
 
@@ -46,8 +46,8 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 	if cargo and not cargo_items.is_empty():
 		var added := cargo.add_items(cargo_items)
 		var rejected := cargo_items.size() - added
-		if rejected > 0 and toast_manager:
-			toast_manager.show_toast("SOUTE PLEINE — %d objet(s) perdu(s)" % rejected, UIToast.ToastType.WARNING)
+		if rejected > 0 and notif:
+			notif.general.cargo_full(rejected)
 	if crate and is_instance_valid(crate):
 		crate._destroy()
 	SaveManager.mark_dirty()

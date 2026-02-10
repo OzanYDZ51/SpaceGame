@@ -8,11 +8,27 @@ extends StaticBody3D
 # =============================================================================
 
 @export var station_name: String = "Alpha Station"
+@export var station_type: int = 0  # StationData.StationType value
+
+var structure_health: StructureHealth = null
 
 
 func _ready() -> void:
 	collision_layer = Constants.LAYER_STATIONS
 	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_PROJECTILES
+	add_to_group("structures")
+
+	# Health system
+	structure_health = StructureHealth.new()
+	structure_health.name = "StructureHealth"
+	structure_health.apply_preset(station_type)
+	add_child(structure_health)
+
+	# Death handler
+	var death_handler := StructureDeathHandler.new()
+	death_handler.name = "StructureDeathHandler"
+	add_child(death_handler)
+
 	_load_model()
 
 

@@ -55,6 +55,8 @@ var _selected_shield: StringName = &""
 var _selected_engine: StringName = &""
 var _selected_module: StringName = &""
 var _selected_module_slot: int = -1
+var _hp_hovered_index: int = -1
+var _module_hovered_index: int = -1
 var _pulse_time: float = 0.0
 
 # --- Category Tabs ---
@@ -79,7 +81,7 @@ const FLEET_CARD_W := 156.0
 const FLEET_CARD_H := 66.0
 const FLEET_CARD_GAP := 6.0
 const TAB_H := 30.0
-const HP_STRIP_H := 60.0
+const HP_STRIP_H := 94.0
 const COMPARE_H := 170.0
 const BTN_W := 140.0
 const BTN_H := 38.0
@@ -186,6 +188,8 @@ func _on_opened() -> void:
 	_selected_fleet_index = player_fleet.active_index if player_fleet else 0
 	_fleet_scroll_offset = 0.0
 	_fleet_hovered_index = -1
+	_hp_hovered_index = -1
+	_module_hovered_index = -1
 	_create_adapter()
 
 	_setup_3d_viewer()
@@ -368,7 +372,6 @@ func _create_hardpoint_markers() -> void:
 		var sd := _adapter.get_ship_data()
 		if sd:
 			hp_count = sd.hardpoints.size()
-			# Use ShipFactory cached configs for positions
 			var configs := ShipFactory.get_hardpoint_configs(_adapter.fleet_ship.ship_id)
 			for j in sd.hardpoints.size():
 				if j < configs.size():
@@ -553,6 +556,26 @@ func _gui_input(event: InputEvent) -> void:
 			_fleet_hovered_index = -1
 			queue_redraw()
 
+	# Bottom strip hover tracking
+	if event is InputEventMouseMotion:
+		var hover_strip_y := size.y - HP_STRIP_H - 50
+		var hover_viewer_w := size.x * VIEWER_RATIO
+		if event.position.x < hover_viewer_w and event.position.y >= hover_strip_y and event.position.y <= hover_strip_y + HP_STRIP_H:
+			var new_hover := _get_strip_card_at(event.position)
+			if _current_tab == 0:
+				if new_hover != _hp_hovered_index:
+					_hp_hovered_index = new_hover
+					queue_redraw()
+			elif _current_tab == 1:
+				if new_hover != _module_hovered_index:
+					_module_hovered_index = new_hover
+					queue_redraw()
+		else:
+			if _hp_hovered_index >= 0 or _module_hovered_index >= 0:
+				_hp_hovered_index = -1
+				_module_hovered_index = -1
+				queue_redraw()
+
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_top := size.y - HP_STRIP_H - 50
 
@@ -670,7 +693,7 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 	if hp_count == 0:
 		return false
 
-	var card_w := minf(120.0, (strip_rect.size.x - 16) / hp_count)
+	var card_w := minf(140.0, (strip_rect.size.x - 16) / hp_count)
 	var total_w := card_w * hp_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 
@@ -680,9 +703,10 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 		var card_x := start_x + i * card_w
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
-			# Check if clicked on [X] remove button (top-right of card)
+			# Check if clicked on [X] remove button (bigger target, 18x18)
 			if _adapter.get_mounted_weapon(i) != null:
-				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
+				var xb_sz := 18.0
+				var xb_rect := Rect2(card_x + card_w - 4 - xb_sz - 4, card_y + 4, xb_sz, xb_sz)
 				if xb_rect.has_point(mouse_pos):
 					_selected_hardpoint = i
 					_remove_weapon()
@@ -708,7 +732,7 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 	if slot_count == 0:
 		return false
 
-	var card_w := minf(140.0, (strip_rect.size.x - 16) / slot_count)
+	var card_w := minf(160.0, (strip_rect.size.x - 16) / slot_count)
 	var total_w := card_w * slot_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 
@@ -718,10 +742,11 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 		var card_x := start_x + i * card_w
 		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
 		if card_rect.has_point(mouse_pos):
-			# Check [X] remove button
+			# Check [X] remove button (18x18)
 			var mod: ModuleResource = _adapter.get_equipped_module(i)
 			if mod:
-				var xb_rect := Rect2(card_x + card_w - 20, card_y + 4, 14, 14)
+				var xb_sz := 18.0
+				var xb_rect := Rect2(card_x + card_w - 4 - xb_sz - 4, card_y + 4, xb_sz, xb_sz)
 				if xb_rect.has_point(mouse_pos):
 					_selected_module_slot = i
 					_remove_module()
@@ -743,8 +768,8 @@ func _try_click_shield_remove(mouse_pos: Vector2) -> bool:
 		return false
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_y := size.y - HP_STRIP_H - 50
-	var y := strip_y + 22
-	var xb_rect := Rect2(viewer_w - 52, y + 1, 14, 14)
+	var y := strip_y + 24
+	var xb_rect := Rect2(viewer_w - 52, y + 1, 18, 18)
 	if xb_rect.has_point(mouse_pos):
 		_remove_shield()
 		return true
@@ -756,8 +781,8 @@ func _try_click_engine_remove(mouse_pos: Vector2) -> bool:
 		return false
 	var viewer_w := size.x * VIEWER_RATIO
 	var strip_y := size.y - HP_STRIP_H - 50
-	var y := strip_y + 22
-	var xb_rect := Rect2(viewer_w - 52, y + 1, 14, 14)
+	var y := strip_y + 24
+	var xb_rect := Rect2(viewer_w - 52, y + 1, 18, 18)
 	if xb_rect.has_point(mouse_pos):
 		_remove_engine()
 		return true
@@ -1112,55 +1137,82 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 	if hp_count == 0:
 		return
 
-	var card_w := minf(120.0, (strip_rect.size.x - 16) / hp_count)
+	var card_w := minf(140.0, (strip_rect.size.x - 16) / hp_count)
 	var total_w := card_w * hp_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 	var card_y := strip_y + 20
+	var card_h: float = HP_STRIP_H - 24
 
 	for i in hp_count:
 		var slot_size := _adapter.get_hardpoint_slot_size(i)
 		var is_turret := _adapter.is_hardpoint_turret(i)
 		var mounted := _adapter.get_mounted_weapon(i)
 		var card_x := start_x + i * card_w
-		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
+		var card_rect := Rect2(card_x, card_y, card_w - 4, card_h)
+		var is_selected := i == _selected_hardpoint
+		var is_hovered := i == _hp_hovered_index
 
-		if i == _selected_hardpoint:
+		# Card background with hover/selection states
+		if is_selected:
 			var pulse := UITheme.get_pulse(1.0)
-			var sel_a := lerpf(0.08, 0.18, pulse)
+			var sel_a := lerpf(0.08, 0.2, pulse)
 			draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, sel_a))
 			draw_rect(card_rect, UITheme.BORDER_ACTIVE, false, 1.5)
+			draw_rect(Rect2(card_x, card_y, 3, card_h), UITheme.PRIMARY)
+		elif is_hovered:
+			draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
+			draw_rect(card_rect, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.7), false, 1.0)
 		else:
 			draw_rect(card_rect, Color(0, 0.02, 0.05, 0.3))
 			draw_rect(card_rect, UITheme.BORDER, false, 1.0)
 
+		# Row 1: Slot badge [S1] + turret indicator + [X] remove
 		var badge_col := _slot_size_color(slot_size)
 		var badge_text := "%s%d" % [slot_size, i + 1]
-		draw_string(font, Vector2(card_x + 6, card_y + 14), badge_text,
-			HORIZONTAL_ALIGNMENT_LEFT, 30, UITheme.FONT_SIZE_BODY, badge_col)
+		var bdg_x := card_x + 6
+		var bdg_y := card_y + 5
+		var bdg_w := 28.0
+		var bdg_h := 16.0
+		draw_rect(Rect2(bdg_x, bdg_y, bdg_w, bdg_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		draw_rect(Rect2(bdg_x, bdg_y, bdg_w, bdg_h), badge_col, false, 1.0)
+		draw_string(font, Vector2(bdg_x + 3, bdg_y + 12), badge_text,
+			HORIZONTAL_ALIGNMENT_LEFT, bdg_w - 4, UITheme.FONT_SIZE_SMALL, badge_col)
 
 		if is_turret:
-			var turret_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.8)
-			draw_string(font, Vector2(card_x + 6, card_y + 28), "T",
-				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, turret_col)
+			var turret_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.7)
+			draw_string(font, Vector2(bdg_x + bdg_w + 4, bdg_y + 12), "TUR",
+				HORIZONTAL_ALIGNMENT_LEFT, 30, UITheme.FONT_SIZE_TINY, turret_col)
 
-		var name_x := card_x + 36
+		# [X] Remove button (bigger, easier to click)
+		if mounted:
+			var xb_sz := 18.0
+			var xb_x := card_x + card_w - 4 - xb_sz - 4
+			var xb_y := card_y + 4
+			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.6)
+			draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), Color(0, 0, 0, 0.3))
+			draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), xb_col, false, 1.0)
+			draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
+				HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
+
+		# Row 2: Weapon name
 		if mounted:
 			var type_col: Color = TYPE_COLORS.get(mounted.weapon_type, UITheme.PRIMARY)
-			draw_string(font, Vector2(name_x, card_y + 14), str(mounted.weapon_name),
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 60, UITheme.FONT_SIZE_SMALL, type_col)
-			_draw_weapon_icon(Vector2(name_x + 4, card_y + 26), 5.0, mounted.weapon_type, type_col)
-			var xb_x := card_x + card_w - 20
-			var xb_y := card_y + 4
-			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-			draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
-			draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
-			draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
-				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
+			draw_string(font, Vector2(card_x + 8, card_y + 38), str(mounted.weapon_name),
+				HORIZONTAL_ALIGNMENT_LEFT, card_w - 20, UITheme.FONT_SIZE_BODY, type_col)
+
+			# Row 3: Type icon + type name + DPS
+			var stats_y := card_y + 54
+			_draw_weapon_icon(Vector2(card_x + 14, stats_y - 2), 5.0, mounted.weapon_type, type_col)
+			var type_name: String = TYPE_NAMES[mounted.weapon_type] if mounted.weapon_type < TYPE_NAMES.size() else ""
+			var dps := mounted.damage_per_hit * mounted.fire_rate
+			draw_string(font, Vector2(card_x + 24, stats_y), "%s  %.0f DPS" % [type_name, dps],
+				HORIZONTAL_ALIGNMENT_LEFT, card_w - 32, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		else:
+			# Empty slot — clear visual indicator
 			var empty_label := "TOURELLE" if is_turret else "VIDE"
-			var empty_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.5) if is_turret else UITheme.TEXT_DIM
-			draw_string(font, Vector2(name_x, card_y + 14), empty_label,
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, empty_col)
+			var empty_col := Color(TYPE_COLORS[5].r, TYPE_COLORS[5].g, TYPE_COLORS[5].b, 0.4) if is_turret else UITheme.TEXT_DIM
+			draw_string(font, Vector2(card_x, card_y + card_h * 0.5 + 6), empty_label,
+				HORIZONTAL_ALIGNMENT_CENTER, card_w - 4, UITheme.FONT_SIZE_BODY, empty_col)
 
 
 # =============================================================================
@@ -1181,46 +1233,70 @@ func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
 	if slot_count == 0:
 		return
 
-	var card_w := minf(140.0, (strip_rect.size.x - 16) / slot_count)
+	var card_w := minf(160.0, (strip_rect.size.x - 16) / slot_count)
 	var total_w := card_w * slot_count
 	var start_x := strip_rect.position.x + (strip_rect.size.x - total_w) * 0.5
 	var card_y := strip_y + 20
+	var card_h: float = HP_STRIP_H - 24
 
 	for i in slot_count:
 		var slot_size: String = _adapter.get_module_slot_size(i)
 		var mod: ModuleResource = _adapter.get_equipped_module(i)
 		var card_x := start_x + i * card_w
-		var card_rect := Rect2(card_x, card_y, card_w - 4, HP_STRIP_H - 24)
+		var card_rect := Rect2(card_x, card_y, card_w - 4, card_h)
+		var is_selected := i == _selected_module_slot
+		var is_hovered := i == _module_hovered_index
 
-		if i == _selected_module_slot:
+		# Card background with hover/selection
+		if is_selected:
 			var pulse := UITheme.get_pulse(1.0)
-			var sel_a := lerpf(0.08, 0.18, pulse)
+			var sel_a := lerpf(0.08, 0.2, pulse)
 			draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, sel_a))
 			draw_rect(card_rect, UITheme.BORDER_ACTIVE, false, 1.5)
+			draw_rect(Rect2(card_x, card_y, 3, card_h), UITheme.PRIMARY)
+		elif is_hovered:
+			draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
+			draw_rect(card_rect, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.7), false, 1.0)
 		else:
 			draw_rect(card_rect, Color(0, 0.02, 0.05, 0.3))
 			draw_rect(card_rect, UITheme.BORDER, false, 1.0)
 
+		# Row 1: Slot badge [S1/M1]
 		var badge_col := _slot_size_color(slot_size)
-		draw_string(font, Vector2(card_x + 6, card_y + 14), "%s%d" % [slot_size, i + 1],
-			HORIZONTAL_ALIGNMENT_LEFT, 30, UITheme.FONT_SIZE_BODY, badge_col)
+		var bdg_x := card_x + 6
+		var bdg_y := card_y + 5
+		var bdg_w := 28.0
+		var bdg_h := 16.0
+		draw_rect(Rect2(bdg_x, bdg_y, bdg_w, bdg_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		draw_rect(Rect2(bdg_x, bdg_y, bdg_w, bdg_h), badge_col, false, 1.0)
+		draw_string(font, Vector2(bdg_x + 3, bdg_y + 12), "%s%d" % [slot_size, i + 1],
+			HORIZONTAL_ALIGNMENT_LEFT, bdg_w - 4, UITheme.FONT_SIZE_SMALL, badge_col)
 
-		var name_x := card_x + 36
 		if mod:
 			var mod_col: Color = MODULE_COLORS.get(mod.module_type, UITheme.PRIMARY)
-			draw_string(font, Vector2(name_x, card_y + 14), str(mod.module_name),
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 60, UITheme.FONT_SIZE_SMALL, mod_col)
-			# [X] remove button
-			var xb_x := card_x + card_w - 20
+
+			# [X] remove button (18x18)
+			var xb_sz := 18.0
+			var xb_x := card_x + card_w - 4 - xb_sz - 4
 			var xb_y := card_y + 4
-			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-			draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
-			draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
-			draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
-				HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
+			var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.6)
+			draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), Color(0, 0, 0, 0.3))
+			draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), xb_col, false, 1.0)
+			draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
+				HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
+
+			# Row 2: Module name
+			draw_string(font, Vector2(card_x + 8, card_y + 38), str(mod.module_name),
+				HORIZONTAL_ALIGNMENT_LEFT, card_w - 20, UITheme.FONT_SIZE_BODY, mod_col)
+
+			# Row 3: First bonus
+			var bonuses := mod.get_bonuses_text()
+			if bonuses.size() > 0:
+				draw_string(font, Vector2(card_x + 8, card_y + 54), bonuses[0],
+					HORIZONTAL_ALIGNMENT_LEFT, card_w - 16, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		else:
-			draw_string(font, Vector2(name_x, card_y + 14), "VIDE",
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 44, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			draw_string(font, Vector2(card_x, card_y + card_h * 0.5 + 6), "VIDE",
+				HORIZONTAL_ALIGNMENT_CENTER, card_w - 4, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -1237,30 +1313,40 @@ func _draw_shield_status_panel(font: Font, s: Vector2) -> void:
 	if _adapter == null:
 		return
 
-	var y := strip_y + 22
+	var y := strip_y + 24
 	var sh := _adapter.get_equipped_shield()
 	if sh:
+		# Row 1: Shield name + size badge
 		draw_string(font, Vector2(32, y + 10), str(sh.shield_name),
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.35, UITheme.FONT_SIZE_BODY, SHIELD_COLOR)
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.5, UITheme.FONT_SIZE_BODY, SHIELD_COLOR)
 
-		var stats_x := viewer_w * 0.4
 		var slot_str: String = ["S", "M", "L"][sh.slot_size]
-		draw_string(font, Vector2(stats_x, y + 10),
-			"Taille: %s  |  %d HP/f  |  %.0f HP/s  |  %.1fs delai  |  %.0f%% infiltration" % [
-				slot_str, int(sh.shield_hp_per_facing), sh.regen_rate, sh.regen_delay, sh.bleedthrough * 100],
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.45, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		var bdg_col := _slot_size_color(slot_str)
+		var bdg_x := 32.0 + font.get_string_size(str(sh.shield_name), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY).x + 8
+		bdg_x = minf(bdg_x, viewer_w * 0.45)
+		draw_rect(Rect2(bdg_x, y + 1, 22, 14), Color(bdg_col.r, bdg_col.g, bdg_col.b, 0.15))
+		draw_rect(Rect2(bdg_x, y + 1, 22, 14), bdg_col, false, 1.0)
+		draw_string(font, Vector2(bdg_x + 5, y + 12), slot_str,
+			HORIZONTAL_ALIGNMENT_LEFT, 16, UITheme.FONT_SIZE_SMALL, bdg_col)
 
-		# [X] remove button
+		# Row 2: Stats on second line
+		draw_string(font, Vector2(32, y + 30),
+			"%d HP/face  |  %.0f HP/s regen  |  %.1fs delai  |  %.0f%% infiltration" % [
+				int(sh.shield_hp_per_facing), sh.regen_rate, sh.regen_delay, sh.bleedthrough * 100],
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 100, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+		# [X] remove button (bigger)
+		var xb_sz := 18.0
 		var xb_x := viewer_w - 52
 		var xb_y := y + 1
-		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-		draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
-		draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
-		draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
-			HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
+		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.6)
+		draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), xb_col, false, 1.0)
+		draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
+			HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
 	else:
-		draw_string(font, Vector2(32, y + 10), "Aucun bouclier equipe",
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(32, y + 20), "Aucun bouclier equipe",
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -1277,30 +1363,40 @@ func _draw_engine_status_panel(font: Font, s: Vector2) -> void:
 	if _adapter == null:
 		return
 
-	var y := strip_y + 22
+	var y := strip_y + 24
 	var en := _adapter.get_equipped_engine()
 	if en:
+		# Row 1: Engine name + size badge
 		draw_string(font, Vector2(32, y + 10), str(en.engine_name),
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.35, UITheme.FONT_SIZE_BODY, ENGINE_COLOR)
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.5, UITheme.FONT_SIZE_BODY, ENGINE_COLOR)
 
-		var stats_x := viewer_w * 0.4
 		var slot_str: String = ["S", "M", "L"][en.slot_size]
-		draw_string(font, Vector2(stats_x, y + 10),
-			"Taille: %s  |  Accel x%.2f  |  Vit x%.2f  |  Rot x%.2f  |  Cruise x%.2f" % [
-				slot_str, en.accel_mult, en.speed_mult, en.rotation_mult, en.cruise_mult],
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w * 0.45, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		var bdg_col := _slot_size_color(slot_str)
+		var bdg_x := 32.0 + font.get_string_size(str(en.engine_name), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY).x + 8
+		bdg_x = minf(bdg_x, viewer_w * 0.45)
+		draw_rect(Rect2(bdg_x, y + 1, 22, 14), Color(bdg_col.r, bdg_col.g, bdg_col.b, 0.15))
+		draw_rect(Rect2(bdg_x, y + 1, 22, 14), bdg_col, false, 1.0)
+		draw_string(font, Vector2(bdg_x + 5, y + 12), slot_str,
+			HORIZONTAL_ALIGNMENT_LEFT, 16, UITheme.FONT_SIZE_SMALL, bdg_col)
 
-		# [X] remove button
+		# Row 2: Stats on second line
+		draw_string(font, Vector2(32, y + 30),
+			"Accel x%.2f  |  Vitesse x%.2f  |  Rotation x%.2f  |  Cruise x%.2f" % [
+				en.accel_mult, en.speed_mult, en.rotation_mult, en.cruise_mult],
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 100, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+		# [X] remove button (bigger)
+		var xb_sz := 18.0
 		var xb_x := viewer_w - 52
 		var xb_y := y + 1
-		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-		draw_rect(Rect2(xb_x, xb_y, 14, 14), Color(0, 0, 0, 0.3))
-		draw_rect(Rect2(xb_x, xb_y, 14, 14), xb_col, false, 1.0)
-		draw_string(font, Vector2(xb_x + 2, xb_y + 11), "X",
-			HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, xb_col)
+		var xb_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.6)
+		draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(xb_x, xb_y, xb_sz, xb_sz), xb_col, false, 1.0)
+		draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
+			HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
 	else:
-		draw_string(font, Vector2(32, y + 10), "Aucun moteur equipe",
-			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(32, y + 20), "Aucun moteur equipe",
+			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -1911,6 +2007,8 @@ func _on_tab_changed(index: int) -> void:
 	_selected_engine = &""
 	_selected_module = &""
 	_selected_module_slot = -1
+	_hp_hovered_index = -1
+	_module_hovered_index = -1
 	_arsenal_list.visible = true
 	if _arsenal_list:
 		_arsenal_list.selected_index = -1
@@ -2180,6 +2278,33 @@ func _get_engine_best_stat(engine: EngineResource) -> String:
 	return best
 
 
+func _get_strip_card_at(mouse_pos: Vector2) -> int:
+	if _adapter == null:
+		return -1
+	var viewer_w := size.x * VIEWER_RATIO
+	var strip_y := size.y - HP_STRIP_H - 50
+	var strip_w := viewer_w - 40
+	var count: int = 0
+	var max_cw: float = 140.0
+	if _current_tab == 0:
+		count = _adapter.get_hardpoint_count()
+	elif _current_tab == 1:
+		count = _adapter.get_module_slot_count()
+		max_cw = 160.0
+	if count == 0:
+		return -1
+	var card_w := minf(max_cw, (strip_w - 16) / count)
+	var total_w := card_w * count
+	var start_x := 20.0 + (strip_w - total_w) * 0.5
+	var card_y := strip_y + 20
+	var card_h: float = HP_STRIP_H - 24
+	for i in count:
+		var cx := start_x + i * card_w
+		if Rect2(cx, card_y, card_w - 4, card_h).has_point(mouse_pos):
+			return i
+	return -1
+
+
 func _slot_size_color(s: String) -> Color:
 	match s:
 		"S": return UITheme.PRIMARY
@@ -2261,6 +2386,8 @@ func _on_fleet_ship_selected(idx: int) -> void:
 	_selected_engine = &""
 	_selected_module = &""
 	_selected_module_slot = -1
+	_hp_hovered_index = -1
+	_module_hovered_index = -1
 	_current_tab = 0
 	if _tab_bar:
 		_tab_bar.current_tab = 0

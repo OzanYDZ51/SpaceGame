@@ -2,8 +2,8 @@ class_name HudStatusPanels
 extends Control
 
 # =============================================================================
-# HUD Status Panels — Left panel (systems/shields/energy), right panel (nav),
-# economy panel (top-left)
+# HUD Status Panels — Left panel (systems/shields/energy), economy panel (top-left)
+# Navigation info moved to top bar (HudGauges)
 # =============================================================================
 
 var ship: ShipController = null
@@ -15,7 +15,6 @@ var scan_line_y: float = 0.0
 var warning_flash: float = 0.0
 
 var _left_panel: Control = null
-var _right_panel: Control = null
 var _economy_panel: Control = null
 
 
@@ -26,10 +25,6 @@ func _ready() -> void:
 	_left_panel.draw.connect(_draw_left_panel.bind(_left_panel))
 	add_child(_left_panel)
 
-	_right_panel = HudDrawHelpers.make_ctrl(1.0, 0.5, 1.0, 0.5, -242, -120, -16, 120)
-	_right_panel.draw.connect(_draw_right_panel.bind(_right_panel))
-	add_child(_right_panel)
-
 	_economy_panel = HudDrawHelpers.make_ctrl(0.0, 0.0, 0.0, 0.0, 16, 12, 230, 180)
 	_economy_panel.draw.connect(_draw_economy_panel.bind(_economy_panel))
 	add_child(_economy_panel)
@@ -37,13 +32,11 @@ func _ready() -> void:
 
 func set_cockpit_mode(is_cockpit: bool) -> void:
 	_left_panel.visible = not is_cockpit
-	_right_panel.visible = not is_cockpit
 	_economy_panel.visible = not is_cockpit
 
 
 func redraw_slow() -> void:
 	_left_panel.queue_redraw()
-	_right_panel.queue_redraw()
 	_economy_panel.queue_redraw()
 
 
@@ -185,48 +178,6 @@ func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 				ctrl.draw_rect(Rect2(sx, py, seg_w * (val - seg_start) * float(num_seg), bar_h), pips[i].color)
 		var pct := "%d%%" % int(val * 100)
 		ctrl.draw_string(font, Vector2(bar_x + total_w + 6, py + bar_h - 1), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-
-
-# =============================================================================
-# RIGHT PANEL
-# =============================================================================
-func _draw_right_panel(ctrl: Control) -> void:
-	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
-	var font := UITheme.get_font_medium()
-	var x := 12.0
-	var w := ctrl.size.x - 24.0
-	var y := 22.0
-
-	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "NAVIGATION")
-	y += 2
-
-	ctrl.draw_string(font, Vector2(x, y), "POS", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	y += 14
-	var pos_str := FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"
-	ctrl.draw_string(font, Vector2(x, y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, int(w), 13, UITheme.TEXT)
-	y += 22
-
-	if ship:
-		var fwd := -ship.global_transform.basis.z
-		var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
-		if heading < 0: heading += 360.0
-		ctrl.draw_string(font, Vector2(x, y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-		var hv := "%06.2f\u00B0" % heading
-		var hvw := font.get_string_size(hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-		ctrl.draw_string(font, Vector2(x + w - hvw, y), hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.PRIMARY)
-		y += 22
-
-		var pitch: float = rad_to_deg(asin(clamp(fwd.y, -1.0, 1.0)))
-		ctrl.draw_string(font, Vector2(x, y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-		var pv := "%+.1f\u00B0" % pitch
-		var pvw := font.get_string_size(pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-		ctrl.draw_string(font, Vector2(x + w - pvw, y), pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.PRIMARY)
-		y += 22
-
-	ctrl.draw_string(font, Vector2(x, y), "SECTEUR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var sv := "ALPHA-0"
-	var svw := font.get_string_size(sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	ctrl.draw_string(font, Vector2(x + w - svw, y), sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
 
 
 # =============================================================================

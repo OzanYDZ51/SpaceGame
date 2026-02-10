@@ -150,6 +150,7 @@ func set_loot_pickup_system(lps: LootPickupSystem) -> void:
 
 func set_system_transition(st: SystemTransition) -> void:
 	_prompts.system_transition = st
+	_gauges.system_transition = st
 
 
 func set_mining_system(ms: MiningSystem) -> void:

@@ -153,21 +153,21 @@ func _update_context_info() -> void:
 
 func _on_submit() -> void:
 	if not AuthManager.is_authenticated:
-		if GameManager._toast_manager:
-			GameManager._toast_manager.show_toast("Connexion requise pour envoyer un rapport", UIToast.ToastType.ERROR)
+		if GameManager._notif:
+			GameManager._notif.general.bug_report_validation("Connexion requise pour envoyer un rapport")
 		return
 
 	var title_text: String = _title_input.get_text().strip_edges()
 	var desc_text: String = _desc_input.get_text().strip_edges()
 
 	if title_text.is_empty():
-		if GameManager._toast_manager:
-			GameManager._toast_manager.show_toast("Le titre est requis", UIToast.ToastType.ERROR)
+		if GameManager._notif:
+			GameManager._notif.general.bug_report_validation("Le titre est requis")
 		return
 
 	if desc_text.is_empty():
-		if GameManager._toast_manager:
-			GameManager._toast_manager.show_toast("La description est requise", UIToast.ToastType.ERROR)
+		if GameManager._notif:
+			GameManager._notif.general.bug_report_validation("La description est requise")
 		return
 
 	if _sending:
@@ -224,12 +224,12 @@ func _on_submit() -> void:
 		_submit_btn.enabled = true
 
 		if code >= 200 and code < 300:
-			if GameManager._toast_manager:
-				GameManager._toast_manager.show_toast("Bug report envoye!", UIToast.ToastType.SUCCESS)
+			if GameManager._notif:
+				GameManager._notif.general.bug_report_sent()
 			_on_close()
 		else:
-			if GameManager._toast_manager:
-				GameManager._toast_manager.show_toast("Erreur d'envoi (code %d)" % code, UIToast.ToastType.ERROR)
+			if GameManager._notif:
+				GameManager._notif.general.bug_report_error(code)
 	)
 
 	http.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))

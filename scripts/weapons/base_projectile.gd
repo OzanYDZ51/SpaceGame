@@ -86,6 +86,15 @@ func _on_body_hit(body: Node3D) -> void:
 					_spawn_hit_effect(body, {"shield_absorbed": false})
 					_return_to_pool()
 					return
+		# Structure hit claim (station)
+		if body.is_in_group("structures"):
+			var hit_dir := (body.global_position - global_position).normalized()
+			NetworkManager._rpc_structure_hit_claim.rpc_id(1,
+				body.name, String(weapon_name), damage,
+				[hit_dir.x, hit_dir.y, hit_dir.z])
+			_spawn_hit_effect(body, {"shield_absorbed": false})
+			_return_to_pool()
+			return
 
 	var hit_info := _apply_damage_to(body)
 	_spawn_hit_effect(body, hit_info)
@@ -102,11 +111,17 @@ func _on_area_hit(_area: Area3D) -> void:
 
 func _apply_damage_to(body: Node3D) -> Dictionary:
 	var health := body.get_node_or_null("HealthSystem") as HealthSystem
-	if health == null:
-		return {"shield_absorbed": false}
-	var hit_dir: Vector3 = (body.global_position - global_position).normalized()
-	var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
-	return health.apply_damage(damage, damage_type, hit_dir, attacker)
+	if health:
+		var hit_dir: Vector3 = (body.global_position - global_position).normalized()
+		var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
+		return health.apply_damage(damage, damage_type, hit_dir, attacker)
+	# Structure health (stations)
+	var struct_health := body.get_node_or_null("StructureHealth") as StructureHealth
+	if struct_health:
+		var hit_dir: Vector3 = (body.global_position - global_position).normalized()
+		var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
+		return struct_health.apply_damage(damage, damage_type, hit_dir, attacker)
+	return {"shield_absorbed": false}
 
 
 func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
@@ -141,6 +156,10 @@ func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
 	var health := body.get_node_or_null("HealthSystem") as HealthSystem
 	if health and health.is_dead():
 		killed = true
+	else:
+		var struct_health := body.get_node_or_null("StructureHealth") as StructureHealth
+		if struct_health and struct_health.is_dead():
+			killed = true
 	wm._on_projectile_hit(hit_info, damage, killed)
 
 

@@ -50,6 +50,11 @@ signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, 
 signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array)
 signal asteroid_depleted_received(asteroid_id: String)
 
+# Structure (station) sync signals
+signal structure_hit_claimed(sender_pid: int, target_id: String, weapon: String, damage: float, hit_dir: Array)
+signal structure_batch_received(batch: Array)
+signal structure_destroyed_received(struct_id: String, killer_pid: int, pos: Array, loot: Array)
+
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
@@ -803,3 +808,33 @@ func _rpc_asteroid_depleted(asteroid_id_str: String) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_asteroid_depleted(asteroid_id_str: String) -> void:
 	asteroid_depleted_received.emit(asteroid_id_str)
+
+
+# =============================================================================
+# STRUCTURE (STATION) SYNC
+# =============================================================================
+
+## Client -> Server: A projectile hit a station.
+@rpc("any_peer", "reliable")
+func _rpc_structure_hit_claim(target_id: String, weapon: String, damage: float, hit_dir: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	structure_hit_claimed.emit(sender_id, target_id, weapon, damage, hit_dir)
+
+
+## Server -> Client: Batch sync of structure health ratios.
+@rpc("authority", "unreliable_ordered")
+func _rpc_structure_batch(batch: Array) -> void:
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	if struct_auth:
+		struct_auth.apply_batch(batch)
+
+
+## Server -> Client: A structure was destroyed.
+@rpc("authority", "reliable")
+func _rpc_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	if struct_auth:
+		struct_auth.apply_structure_destroyed(struct_id, killer_pid, pos, loot)
+	structure_destroyed_received.emit(struct_id, killer_pid, pos, loot)

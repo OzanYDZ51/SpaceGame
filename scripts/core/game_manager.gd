@@ -38,7 +38,7 @@ var _wormhole_mgr: WormholeManager = null
 var _net_sync_mgr: NetworkSyncManager = null
 var _discord_rpc: DiscordRPC:
 	get: return _net_sync_mgr.discord_rpc if _net_sync_mgr else null
-var _space_dust: SpaceDust = null
+var _vfx_manager: VFXManager = null
 var player_data: PlayerData = null
 var player_inventory: PlayerInventory:
 	get: return player_data.inventory if player_data else null
@@ -70,6 +70,8 @@ var _squadron_mgr: SquadronManager = null
 var _player_autopilot_wp: String = ""
 var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
+var _notif: NotificationService = null
+var _structure_auth: StructureAuthority = null
 
 
 func _ready() -> void:
@@ -177,6 +179,12 @@ func _setup_ui_managers() -> void:
 	_toast_manager = UIToastManager.new()
 	_toast_manager.name = "UIToastManager"
 	ui_layer.add_child(_toast_manager)
+
+	# Notification service (centralized toast dispatch)
+	_notif = NotificationService.new()
+	_notif.name = "NotificationService"
+	add_child(_notif)
+	_notif.initialize(_toast_manager)
 
 	# Transition overlay (on top of everything)
 	if _system_transition:
@@ -497,6 +505,11 @@ func _initialize_game() -> void:
 		_ship_change_mgr.ship_net_sync = _net_sync_mgr.ship_net_sync
 		_ship_change_mgr.lod_manager = _lod_manager
 
+	# Structure Authority (server-authoritative station damage sync)
+	_structure_auth = StructureAuthority.new()
+	_structure_auth.name = "StructureAuthority"
+	add_child(_structure_auth)
+
 	# Docking Manager (needs screen_manager, station_screen, etc. from _setup_ui_managers)
 	_docking_mgr = DockingManager.new()
 	_docking_mgr.name = "DockingManager"
@@ -505,7 +518,7 @@ func _initialize_game() -> void:
 	_docking_mgr.docking_system = _docking_system
 	_docking_mgr.dock_instance = _dock_instance
 	_docking_mgr.screen_manager = _screen_manager
-	_docking_mgr.toast_manager = _toast_manager
+	_docking_mgr.notif = _notif
 	_docking_mgr.player_data = player_data
 	_docking_mgr.commerce_manager = _commerce_manager
 	_docking_mgr.commerce_screen = _commerce_screen
@@ -553,7 +566,7 @@ func _initialize_game() -> void:
 	_loot_mgr.player_data = player_data
 	_loot_mgr.screen_manager = _screen_manager
 	_loot_mgr.loot_screen = _loot_screen
-	_loot_mgr.toast_manager = _toast_manager
+	_loot_mgr.notif = _notif
 	_loot_mgr.get_game_state = func() -> GameState: return current_state
 	add_child(_loot_mgr)
 
@@ -589,13 +602,12 @@ func _notification(what: int) -> void:
 
 
 func _setup_visual_effects() -> void:
-	# Space dust (ambient particles in Universe, follows camera)
-	var camera := player_ship.get_node_or_null("ShipCamera") as Camera3D
-	if camera and universe_node:
-		_space_dust = SpaceDust.new()
-		_space_dust.name = "SpaceDust"
-		_space_dust.set_camera(camera)
-		universe_node.add_child(_space_dust)
+	_vfx_manager = VFXManager.new()
+	_vfx_manager.name = "VFXManager"
+	add_child(_vfx_manager)
+	var camera := player_ship.get_node_or_null("ShipCamera") as ShipCamera
+	_vfx_manager.initialize(player_ship as ShipController, camera, universe_node, main_scene)
+	player_ship_rebuilt.connect(_vfx_manager.on_ship_rebuilt)
 
 
 func _on_system_unloading(system_id: int) -> void:
@@ -657,23 +669,20 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
-			if _toast_manager:
-				if fs.docked_system_id != current_system_id_safe():
-					_toast_manager.show_toast("VAISSEAU DANS UN AUTRE SYSTEME", UIToast.ToastType.WARNING)
-				else:
-					_toast_manager.show_toast("DEPLOIEMENT IMPOSSIBLE", UIToast.ToastType.WARNING)
+			if fs.docked_system_id != current_system_id_safe():
+				_notif.fleet.deploy_failed("VAISSEAU DANS UN AUTRE SYSTEME")
+			else:
+				_notif.fleet.deploy_failed("DEPLOIEMENT IMPOSSIBLE")
 			return
 		# Deploy: use direct call to get success/fail feedback
 		var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
 		if success:
-			if _toast_manager:
-				_toast_manager.show_toast("DEPLOIEMENT: %s" % fs.custom_name, UIToast.ToastType.SUCCESS)
+			_notif.fleet.deployed(fs.custom_name)
 			# Update route line now that deployed_npc_id is set
 			if _stellar_map:
 				_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
 		else:
-			if _toast_manager:
-				_toast_manager.show_toast("DEPLOIEMENT ECHOUE", UIToast.ToastType.WARNING)
+			_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
 			push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		# Change command on already deployed ship (local NPCs — always execute locally)
@@ -686,15 +695,14 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 			_squadron_mgr.propagate_leader_order(sq.squadron_id, order_id, params)
 
 	if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
-		if _toast_manager:
-			_toast_manager.show_toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)
+		_notif.fleet.destroyed()
 
 
 func _on_fleet_recall_from_map(fleet_index: int) -> void:
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.retrieve_ship(fleet_index)
-		if _toast_manager and player_fleet and fleet_index < player_fleet.ships.size():
-			_toast_manager.show_toast("RAPPEL: %s" % player_fleet.ships[fleet_index].custom_name)
+		if player_fleet and fleet_index < player_fleet.ships.size():
+			_notif.fleet.recalled(player_fleet.ships[fleet_index].custom_name)
 
 
 func _on_squadron_action(action: StringName, data: Dictionary) -> void:
@@ -709,13 +717,11 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			if sq:
 				for m in members:
 					_squadron_mgr.add_to_squadron(sq.squadron_id, int(m))
-				if _toast_manager:
-					_toast_manager.show_toast("ESCADRON CREE: %s" % sq.squadron_name, UIToast.ToastType.SUCCESS)
+				_notif.squadron.created(sq.squadron_name)
 		&"disband":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			_squadron_mgr.disband_squadron(sq_id)
-			if _toast_manager:
-				_toast_manager.show_toast("ESCADRON DISSOUS")
+			_notif.squadron.disbanded()
 		&"add_member":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var fleet_idx: int = int(data.get("fleet_index", -1))
@@ -732,22 +738,19 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var formation: StringName = StringName(data.get("formation", "echelon"))
 			_squadron_mgr.set_formation(sq_id, formation)
-			if _toast_manager:
-				var disp := SquadronFormation.get_formation_display(formation)
-				_toast_manager.show_toast("FORMATION: %s" % disp)
+			_notif.squadron.formation(SquadronFormation.get_formation_display(formation))
 		&"rename":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var new_name: String = data.get("name", "")
 			if new_name != "":
 				_squadron_mgr.rename_squadron(sq_id, new_name)
-				if _toast_manager:
-					_toast_manager.show_toast("ESCADRON RENOMME: %s" % new_name)
+				_notif.squadron.renamed(new_name)
 		&"promote_leader":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var fleet_idx: int = int(data.get("fleet_index", -1))
 			_squadron_mgr.promote_leader(sq_id, fleet_idx)
-			if _toast_manager and player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
-				_toast_manager.show_toast("NOUVEAU CHEF: %s" % player_fleet.ships[fleet_idx].custom_name, UIToast.ToastType.SUCCESS)
+			if player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
+				_notif.squadron.new_leader(player_fleet.ships[fleet_idx].custom_name)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:
@@ -794,25 +797,21 @@ func start_galaxy_route(target_sys_id: int) -> void:
 
 	var current_sys: int = _system_transition.current_system_id
 	if current_sys == target_sys_id:
-		if _toast_manager:
-			_toast_manager.show_toast("DEJA SUR PLACE")
+		_notif.nav.already_here()
 		return
 
 	var success: bool = _route_manager.start_route(current_sys, target_sys_id)
 	if not success:
-		if _toast_manager:
-			_toast_manager.show_toast("AUCUNE ROUTE TROUVEE")
+		_notif.nav.route_not_found()
 		return
 
 	var sys_name: String = _galaxy.get_system_name(target_sys_id)
 	var jumps: int = _route_manager.get_jumps_total()
-	if _toast_manager:
-		_toast_manager.show_toast("ROUTE VERS %s — %d saut%s" % [sys_name, jumps, "s" if jumps > 1 else ""])
+	_notif.nav.route_started(sys_name, jumps)
 
 
 func _on_route_completed() -> void:
-	if _toast_manager:
-		_toast_manager.show_toast("DESTINATION ATTEINTE")
+	_notif.nav.route_completed()
 
 
 func _on_route_cancelled() -> void:
@@ -822,8 +821,7 @@ func _on_route_cancelled() -> void:
 func _on_autopilot_cancelled_by_player() -> void:
 	if _route_manager and _route_manager.is_route_active():
 		_route_manager.cancel_route()
-		if _toast_manager:
-			_toast_manager.show_toast("ROUTE ANNULEE")
+		_notif.nav.route_cancelled()
 
 
 func _handle_map_toggle(view: int) -> void:

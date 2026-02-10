@@ -368,6 +368,7 @@ static var _rotation_cache: Dictionary = {}  # ship_id -> Vector3
 static var _root_basis_cache: Dictionary = {}  # ship_id -> Basis
 static var _model_scale_cache: Dictionary = {}  # ship_id -> float
 static var _center_offset_cache: Dictionary = {}  # ship_id -> Vector3
+static var _vfx_points_cache: Dictionary = {}  # ship_id -> Array[Dictionary]
 
 static func get_hardpoint_configs(ship_id: StringName) -> Array[Dictionary]:
 	if _config_cache.has(ship_id):
@@ -404,6 +405,14 @@ static func get_center_offset(ship_id: StringName) -> Vector3:
 	return _center_offset_cache.get(ship_id, Vector3.ZERO)
 
 
+## Returns VFX attach points for a ship, transformed by root_basis (ready for ShipModel space).
+static func get_vfx_points(ship_id: StringName) -> Array[Dictionary]:
+	if _vfx_points_cache.has(ship_id):
+		return _vfx_points_cache[ship_id]
+	_cache_scene_info(ship_id)
+	return _vfx_points_cache.get(ship_id, [] as Array[Dictionary])
+
+
 static func _cache_scene_info(ship_id: StringName) -> void:
 	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null or data.ship_scene_path == "":
@@ -412,6 +421,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		_root_basis_cache[ship_id] = Basis.IDENTITY
 		_model_scale_cache[ship_id] = 1.0
 		_center_offset_cache[ship_id] = Vector3.ZERO
+		_vfx_points_cache[ship_id] = [] as Array[Dictionary]
 		return
 	if not _scene_cache.has(data.ship_scene_path):
 		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
@@ -421,10 +431,12 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 			_root_basis_cache[ship_id] = Basis.IDENTITY
 			_model_scale_cache[ship_id] = 1.0
 			_center_offset_cache[ship_id] = Vector3.ZERO
+			_vfx_points_cache[ship_id] = [] as Array[Dictionary]
 			return
 		_scene_cache[data.ship_scene_path] = packed
 	var instance: Node3D = _scene_cache[data.ship_scene_path].instantiate() as Node3D
 	var configs: Array[Dictionary] = []
+	var vfx_points: Array[Dictionary] = []
 	var root_rotation: Vector3 = instance.rotation_degrees
 	var root_scale: float = instance.scale.x
 	var model_rot: Vector3 = Vector3.ZERO
@@ -433,6 +445,8 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
+		elif child is VFXAttachPoint:
+			vfx_points.append(child.get_config())
 		elif child.name == "ShipCenter":
 			center_off = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
@@ -443,6 +457,10 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	var root_xform_basis: Basis = instance.transform.basis
 	if not root_xform_basis.is_equal_approx(Basis.IDENTITY):
 		center_off = root_xform_basis * center_off
+		# Transform VFX points from scene-local to ShipController/ShipModel space
+		for vp in vfx_points:
+			vp["position"] = root_xform_basis * vp["position"]
+			vp["direction"] = root_xform_basis * vp["direction"]
 
 	instance.queue_free()
 	_config_cache[ship_id] = configs
@@ -450,6 +468,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	_root_basis_cache[ship_id] = root_xform_basis
 	_model_scale_cache[ship_id] = model_scale
 	_center_offset_cache[ship_id] = center_off
+	_vfx_points_cache[ship_id] = vfx_points
 
 
 ## Loads a ship scene and extracts HardpointSlot configs and model node.
@@ -466,8 +485,9 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 	var packed_scene: PackedScene = _scene_cache[data.ship_scene_path]
 	var instance: Node3D = packed_scene.instantiate() as Node3D
 
-	# Extract HardpointSlot configs, model node, model scale, and center offset from scene
+	# Extract HardpointSlot configs, VFX points, model node, model scale, center offset
 	var configs: Array[Dictionary] = []
+	var vfx_points: Array[Dictionary] = []
 	var model_node: Node3D = null
 	var scene_model_scale: float = 1.0
 	var scene_model_rotation: Vector3 = Vector3.ZERO
@@ -480,6 +500,8 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
+		elif child is VFXAttachPoint:
+			vfx_points.append(child.get_config())
 		elif child.name == "ShipCenter":
 			center_offset = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
@@ -506,9 +528,12 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 	# automatically via Godot's scene tree, guaranteeing WYSIWYG with the editor.
 	var root_xform_basis: Basis = instance.transform.basis
 
-	# Only center_offset needs manual transform (standalone vector for camera positioning)
+	# Only center_offset and VFX points need manual transform (standalone vectors)
 	if not root_xform_basis.is_equal_approx(Basis.IDENTITY):
 		center_offset = root_xform_basis * center_offset
+		for vp in vfx_points:
+			vp["position"] = root_xform_basis * vp["position"]
+			vp["direction"] = root_xform_basis * vp["direction"]
 
 	# Clean up the temporary instance
 	instance.queue_free()
@@ -529,6 +554,7 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 
 	return {
 		"configs": configs,
+		"vfx_points": vfx_points,
 		"model_node": model_node,
 		"model_scale": scene_model_scale,
 		"model_rotation": scene_model_rotation,

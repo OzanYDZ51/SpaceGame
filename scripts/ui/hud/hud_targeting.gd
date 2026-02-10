@@ -17,6 +17,8 @@ var _prev_target_shields: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _prev_target_hull: float = 0.0
 var _last_tracked_target: Node3D = null
 
+var _connected_struct_health: StructureHealth = null
+
 var _target_overlay: Control = null
 var _target_panel: Control = null
 
@@ -28,7 +30,7 @@ func _ready() -> void:
 	_target_overlay.draw.connect(_draw_target_overlay.bind(_target_overlay))
 	add_child(_target_overlay)
 
-	_target_panel = HudDrawHelpers.make_ctrl(1.0, 1.0, 1.0, 1.0, -244, -270, -16, -16)
+	_target_panel = HudDrawHelpers.make_ctrl(1.0, 1.0, 1.0, 1.0, -276, -296, -16, -16)
 	_target_panel.draw.connect(_draw_target_info_panel.bind(_target_panel))
 	_target_panel.visible = false
 	add_child(_target_panel)
@@ -105,9 +107,6 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	var cx := ctrl.size.x / 2.0
 	var y := 22.0
 
-	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "CIBLE")
-	y += 4
-
 	if targeting_system == null or targeting_system.current_target == null:
 		return
 	if not is_instance_valid(targeting_system.current_target):
@@ -115,56 +114,100 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 
 	var target := targeting_system.current_target
 	var t_health := target.get_node_or_null("HealthSystem") as HealthSystem
+	var t_struct := target.get_node_or_null("StructureHealth") as StructureHealth
 
-	ctrl.draw_string(font, Vector2(x, y), target.name as String, HORIZONTAL_ALIGNMENT_LEFT, int(w), 15, UITheme.TARGET)
-	y += 18
+	# Determine hostility
+	var is_hostile := false
+	if target is ShipController:
+		var sc := target as ShipController
+		is_hostile = sc.faction != &"player_fleet" and sc.faction != &"neutral" and sc.faction != &"friendly"
 
+	# Hostile: red top accent line
+	if is_hostile:
+		var lock_pulse := sin(pulse_t * 3.0) * 0.2 + 0.5
+		ctrl.draw_line(Vector2(0, 0), Vector2(ctrl.size.x, 0), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, lock_pulse), 2.0)
+
+	# Header
+	if is_hostile:
+		var hdr_pulse := sin(pulse_t * 3.0) * 0.3 + 0.7
+		var hdr_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, hdr_pulse)
+		ctrl.draw_rect(Rect2(x, y - 11, 3, 14), hdr_col)
+		ctrl.draw_string(font, Vector2(x + 9, y), "CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, hdr_col)
+		var tw := font.get_string_size("CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var lx := x + 9 + tw + 8
+		if lx < x + w:
+			ctrl.draw_line(Vector2(lx, y - 4), Vector2(x + w, y - 4), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.3), 1.0)
+		y += 18
+	else:
+		y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "CIBLE")
+	y += 4
+
+	# Target name (prominent)
+	var display_name: String = target.name
+	if "station_name" in target and target.station_name != "":
+		display_name = target.station_name
+	var name_col := UITheme.DANGER if is_hostile else UITheme.TARGET
+	ctrl.draw_string(font, Vector2(x, y), display_name, HORIZONTAL_ALIGNMENT_LEFT, int(w), 16, name_col)
+	y += 20
+
+	# Class / type + distance
 	var class_text := ""
 	if target is ShipController and (target as ShipController).ship_data:
 		class_text = str((target as ShipController).ship_data.ship_class)
+	elif t_struct:
+		class_text = "STATION"
 	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 	var dist := targeting_system.get_target_distance()
 	if dist >= 0.0:
-		var dt: String = "%.0fm" % dist if dist < 1000.0 else "%.1fkm" % (dist / 1000.0)
+		var dt: String = HudDrawHelpers.format_nav_distance(dist)
 		var dtw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
 		ctrl.draw_string(font, Vector2(x + w - dtw, y), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
-	y += 24
+	y += 22
 
-	var diagram_center := Vector2(cx, y + 52)
-	_draw_target_ship_shields(ctrl, diagram_center, t_health)
-	y += 114
+	# Separator
+	ctrl.draw_line(Vector2(x, y - 8), Vector2(x + w, y - 8), UITheme.PRIMARY_FAINT, 1.0)
 
-	if t_health:
-		var f_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.FRONT)
-		var r_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.REAR)
-		var l_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
-		var d_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
-		var col_x2 := cx + 10
-		ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
-		ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
-		y += 14
-		ctrl.draw_string(font, Vector2(x, y), "G: %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(l_r))
-		ctrl.draw_string(font, Vector2(col_x2, y), "D: %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(d_r))
-		y += 18
+	if t_struct:
+		_draw_structure_health(ctrl, font, x, y, w, t_struct)
 	else:
-		y += 32
+		var diagram_center := Vector2(cx, y + 50)
+		_draw_target_ship_shields(ctrl, diagram_center, t_health, is_hostile)
+		y += 110
 
-	var hull_r := t_health.get_hull_ratio() if t_health else 0.0
-	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var hp := "%d%%" % int(hull_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
-	y += 8
-	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
+		if t_health:
+			var f_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.FRONT)
+			var r_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.REAR)
+			var l_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
+			var d_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
+			var col_x2 := cx + 10
+			ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
+			ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
+			y += 14
+			ctrl.draw_string(font, Vector2(x, y), "G: %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(l_r))
+			ctrl.draw_string(font, Vector2(col_x2, y), "D: %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(d_r))
+			y += 20
+		else:
+			y += 34
 
-	if _target_hull_flash > 0.01:
-		var bar_fw: float = w * clampf(hull_r, 0.0, 1.0)
-		if bar_fw > 0:
-			ctrl.draw_rect(Rect2(x, y, bar_fw, 8.0), Color(1, 1, 1, _target_hull_flash * 0.5))
+		# Separator before hull
+		ctrl.draw_line(Vector2(x, y - 6), Vector2(x + w, y - 6), UITheme.PRIMARY_FAINT, 1.0)
+
+		var hull_r := t_health.get_hull_ratio() if t_health else 0.0
+		var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+		ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		var hp := "%d%%" % int(hull_r * 100)
+		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
+		y += 8
+		HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
+
+		if _target_hull_flash > 0.01:
+			var bar_fw: float = w * clampf(hull_r, 0.0, 1.0)
+			if bar_fw > 0:
+				ctrl.draw_rect(Rect2(x, y, bar_fw, 8.0), Color(1, 1, 1, _target_hull_flash * 0.5))
 
 
-func _draw_target_ship_shields(ctrl: Control, center: Vector2, health: HealthSystem) -> void:
+func _draw_target_ship_shields(ctrl: Control, center: Vector2, health: HealthSystem, is_hostile: bool = false) -> void:
 	var radius := 40.0
 	var arc_half := deg_to_rad(40.0)
 	var arc_width := 5.0
@@ -194,14 +237,48 @@ func _draw_target_ship_shields(ctrl: Control, center: Vector2, health: HealthSys
 	var tri := PackedVector2Array([
 		center + Vector2(0, -tri_h), center + Vector2(tri_w, tri_h * 0.5), center + Vector2(-tri_w, tri_h * 0.5),
 	])
-	ctrl.draw_colored_polygon(tri, UITheme.PRIMARY_DIM)
-	ctrl.draw_polyline(PackedVector2Array([tri[0], tri[1], tri[2], tri[0]]), UITheme.PRIMARY, 1.0)
+	var tri_fill := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5) if is_hostile else UITheme.PRIMARY_DIM
+	var tri_outline := UITheme.DANGER if is_hostile else UITheme.PRIMARY
+	ctrl.draw_colored_polygon(tri, tri_fill)
+	ctrl.draw_polyline(PackedVector2Array([tri[0], tri[1], tri[2], tri[0]]), tri_outline, 1.0)
 
 	var font := UITheme.get_font_medium()
 	ctrl.draw_string(font, center + Vector2(-5, -radius - 8), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, center + Vector2(-5, radius + 16), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, center + Vector2(-radius - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, center + Vector2(radius + 6, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+
+
+func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: float, sh: StructureHealth) -> void:
+	# Shield bar
+	var shd_r := sh.get_shield_ratio()
+	var shd_c := _shield_ratio_color(shd_r)
+	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	var sp := "%d%%" % int(shd_r * 100)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, shd_c)
+	y += 8
+	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, shd_r, shd_c)
+
+	if _target_shield_flash[0] > 0.01:
+		var bar_fw: float = w * clampf(shd_r, 0.0, 1.0)
+		if bar_fw > 0:
+			ctrl.draw_rect(Rect2(x, y, bar_fw, 8.0), Color(1, 1, 1, _target_shield_flash[0] * 0.5))
+
+	y += 20
+
+	# Hull bar
+	var hull_r := sh.get_hull_ratio()
+	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	var hp := "%d%%" % int(hull_r * 100)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
+	y += 8
+	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
+
+	if _target_hull_flash > 0.01:
+		var bar_fw: float = w * clampf(hull_r, 0.0, 1.0)
+		if bar_fw > 0:
+			ctrl.draw_rect(Rect2(x, y, bar_fw, 8.0), Color(1, 1, 1, _target_hull_flash * 0.5))
 
 
 func _shield_ratio_color(ratio: float) -> Color:
@@ -227,14 +304,22 @@ func _track_target(new_target: Node3D) -> void:
 
 func _connect_target_signals(target: Node3D) -> void:
 	var health := target.get_node_or_null("HealthSystem") as HealthSystem
-	if health == null:
+	if health:
+		_connected_target_health = health
+		health.shield_changed.connect(_on_target_shield_hit)
+		health.hull_changed.connect(_on_target_hull_hit)
+		for i in 4:
+			_prev_target_shields[i] = health.shield_current[i]
+		_prev_target_hull = health.hull_current
 		return
-	_connected_target_health = health
-	health.shield_changed.connect(_on_target_shield_hit)
-	health.hull_changed.connect(_on_target_hull_hit)
-	for i in 4:
-		_prev_target_shields[i] = health.shield_current[i]
-	_prev_target_hull = health.hull_current
+	# Structure health (stations)
+	var struct_health := target.get_node_or_null("StructureHealth") as StructureHealth
+	if struct_health:
+		_connected_struct_health = struct_health
+		struct_health.shield_changed.connect(_on_struct_shield_hit)
+		struct_health.hull_changed.connect(_on_target_hull_hit)
+		_prev_target_shields[0] = struct_health.shield_current
+		_prev_target_hull = struct_health.hull_current
 
 
 func _disconnect_target_signals() -> void:
@@ -244,6 +329,12 @@ func _disconnect_target_signals() -> void:
 		if _connected_target_health.hull_changed.is_connected(_on_target_hull_hit):
 			_connected_target_health.hull_changed.disconnect(_on_target_hull_hit)
 	_connected_target_health = null
+	if _connected_struct_health and is_instance_valid(_connected_struct_health):
+		if _connected_struct_health.shield_changed.is_connected(_on_struct_shield_hit):
+			_connected_struct_health.shield_changed.disconnect(_on_struct_shield_hit)
+		if _connected_struct_health.hull_changed.is_connected(_on_target_hull_hit):
+			_connected_struct_health.hull_changed.disconnect(_on_target_hull_hit)
+	_connected_struct_health = null
 
 
 func _on_target_shield_hit(facing: int, current: float, _max_val: float) -> void:
@@ -251,6 +342,12 @@ func _on_target_shield_hit(facing: int, current: float, _max_val: float) -> void
 		_target_shield_flash[facing] = 1.0
 	if facing >= 0 and facing < 4:
 		_prev_target_shields[facing] = current
+
+
+func _on_struct_shield_hit(current: float, _max_val: float) -> void:
+	if current < _prev_target_shields[0]:
+		_target_shield_flash[0] = 1.0
+	_prev_target_shields[0] = current
 
 
 func _on_target_hull_hit(current: float, _max_val: float) -> void:

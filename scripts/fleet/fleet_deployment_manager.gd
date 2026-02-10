@@ -250,9 +250,8 @@ func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 		sq_mgr.on_member_destroyed(fleet_index)
 
 	# Toast notification
-	var toast := GameManager._toast_manager
-	if toast:
-		toast.show_toast("VAISSEAU PERDU: %s" % fs.custom_name, UIToast.ToastType.WARNING)
+	if GameManager._notif:
+		GameManager._notif.fleet.lost(fs.custom_name)
 
 
 

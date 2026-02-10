@@ -196,19 +196,13 @@ func _do_sell(qty: int) -> void:
 	qty = mini(qty, available)
 	if qty <= 0: return
 	if _commerce_manager.sell_resource_from_ship(res_id, qty, ship):
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
+		if GameManager._notif:
 			var total := PriceCatalog.get_resource_price(res_id) * qty
 			var res_data := MiningRegistry.get_resource(res_id)
 			var rname := res_data.display_name if res_data else String(res_id)
-			toast_mgr.show_toast("%s x%d vendu! +%s CR" % [rname, qty, PlayerEconomy.format_credits(total)])
+			GameManager._notif.commerce.sold_qty(rname, qty, total)
 		_refresh_items()
 	queue_redraw()
-
-
-func _find_toast_manager() -> UIToastManager:
-	var node := get_tree().root.find_child("UIToastManager", true, false)
-	return node as UIToastManager if node else null
 
 
 func _process(_delta: float) -> void:

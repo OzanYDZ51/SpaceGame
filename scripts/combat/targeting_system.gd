@@ -37,6 +37,12 @@ func _process(delta: float) -> void:
 		if _cached_target_health and _cached_target_health.is_dead():
 			clear_target()
 			return
+		# Also check StructureHealth (stations)
+		if _cached_target_health == null:
+			var sh := current_target.get_node_or_null("StructureHealth") as StructureHealth
+			if sh and sh.is_dead():
+				clear_target()
+				return
 		# Check range
 		var ship := get_parent() as Node3D
 		if ship and ship.global_position.distance_to(current_target.global_position) > target_lock_range * 1.5:
@@ -219,6 +225,10 @@ func _gather_targetable_ships() -> void:
 					if health and health.is_dead():
 						continue
 					_targetable_ships.append(node as Node3D)
+
+	# Also gather targetable structures (stations)
+	var structures := StructureTargetProvider.gather_targetable(ship.global_position, target_lock_range)
+	_targetable_ships.append_array(structures)
 
 	# Sort by distance
 	_targetable_ships.sort_custom(func(a: Node3D, b: Node3D) -> bool:

@@ -14,6 +14,7 @@ var _ship: ShipController = null
 
 var _boost_flash: float = 0.0
 var _damage_flash: float = 0.0
+var _cruise_warp: float = 0.0
 var _prev_speed_mode: int = 0
 
 
@@ -41,7 +42,7 @@ func set_ship(ship: ShipController) -> void:
 	_prev_speed_mode = ship.speed_mode
 
 
-func trigger_damage_flash() -> void:
+func trigger_damage_flash(_attacker: Node3D = null, _amount: float = 0.0) -> void:
 	_damage_flash = 0.7
 
 
@@ -59,12 +60,16 @@ func _process(delta: float) -> void:
 			_boost_flash = 1.0
 		_prev_speed_mode = _ship.speed_mode
 
+	# Cruise warp tunnel (phase 2)
+	var target_warp: float = 1.0 if _ship.cruise_warp_active else 0.0
+	_cruise_warp = lerpf(_cruise_warp, target_warp, delta * (3.0 if target_warp > _cruise_warp else 5.0))
+
 	# Decay flashes
 	_boost_flash = maxf(0.0, _boost_flash - delta * 3.0)
 	_damage_flash = maxf(0.0, _damage_flash - delta * 2.0)
 
 	# Hide when no effect active (zero GPU cost)
-	var any_effect: bool = ratio > 0.01 or _boost_flash > 0.01 or _damage_flash > 0.01
+	var any_effect: bool = ratio > 0.01 or _boost_flash > 0.01 or _damage_flash > 0.01 or _cruise_warp > 0.01
 	_rect.visible = any_effect
 	if not any_effect:
 		return
@@ -72,3 +77,4 @@ func _process(delta: float) -> void:
 	_shader_mat.set_shader_parameter("speed_ratio", ratio)
 	_shader_mat.set_shader_parameter("boost_flash", _boost_flash)
 	_shader_mat.set_shader_parameter("damage_flash", _damage_flash)
+	_shader_mat.set_shader_parameter("cruise_warp", _cruise_warp)

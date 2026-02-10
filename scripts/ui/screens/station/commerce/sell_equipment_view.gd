@@ -124,16 +124,10 @@ func _do_sell() -> void:
 		2: success = _commerce_manager.sell_engine(item_name)
 		3: success = _commerce_manager.sell_module(item_name)
 	if success:
-		var toast_mgr := _find_toast_manager()
-		if toast_mgr:
-			toast_mgr.show_toast("%s vendu!" % String(item_name))
+		if GameManager._notif:
+			GameManager._notif.commerce.sold(String(item_name))
 		_refresh_items()
 	queue_redraw()
-
-
-func _find_toast_manager() -> UIToastManager:
-	var node := get_tree().root.find_child("UIToastManager", true, false)
-	return node as UIToastManager if node else null
 
 
 func _process(_delta: float) -> void:

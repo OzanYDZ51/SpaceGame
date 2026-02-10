@@ -137,6 +137,9 @@ func can_mount(weapon: WeaponResource) -> bool:
 	# TURRET weapons can only mount on turret slots
 	if weapon.weapon_type == WeaponResource.WeaponType.TURRET and not is_turret:
 		return false
+	# MINING LASERS can only mount on forward (non-turret) slots
+	if weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER and is_turret:
+		return false
 	var size_order := {"S": 0, "M": 1, "L": 2}
 	var weapon_size_str: String = ["S", "M", "L"][weapon.slot_size]
 	return size_order.get(weapon_size_str, 0) <= size_order.get(slot_size, 0)

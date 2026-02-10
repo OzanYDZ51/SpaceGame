@@ -59,6 +59,10 @@ func _scan_stations() -> void:
 		if node_ref == null or not is_instance_valid(node_ref):
 			continue
 		var node: Node3D = node_ref
+		# Can't dock at a destroyed station
+		var sh := node.get_node_or_null("StructureHealth") as StructureHealth
+		if sh and sh.is_dead():
+			continue
 		var dist: float = _ship.global_position.distance_to(node.global_position)
 		if dist < best_dist:
 			best_dist = dist
