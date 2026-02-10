@@ -23,6 +23,7 @@ var flee_threshold: float = 0.2
 var accuracy: float = 0.7
 var formation_discipline: float = 0.8
 var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
+var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 
 # Detection
 const DETECTION_RANGE: float = 3000.0
@@ -175,16 +176,19 @@ func _tick_patrol() -> void:
 
 func _tick_pursue() -> void:
 	if not _is_target_valid():
-		current_state = State.PATROL
-		target = null
+		# Try to pick next highest threat before going back to patrol
+		target = _get_highest_threat()
+		if target == null:
+			current_state = State.PATROL
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
 
 	# Disengage if too far
 	if dist > DISENGAGE_RANGE:
-		current_state = State.PATROL
-		target = null
+		target = _get_highest_threat()
+		if target == null:
+			current_state = State.PATROL
 		return
 
 	# Engage when in range
@@ -201,8 +205,12 @@ func _tick_pursue() -> void:
 
 func _tick_attack(_delta: float) -> void:
 	if not _is_target_valid():
-		current_state = State.PATROL
-		target = null
+		# Try to pick next highest threat before going back to patrol
+		target = _get_highest_threat()
+		if target == null:
+			current_state = State.PATROL
+		else:
+			current_state = State.PURSUE
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
@@ -220,8 +228,11 @@ func _tick_attack(_delta: float) -> void:
 
 	# Disengage if too far
 	if dist > DISENGAGE_RANGE:
-		current_state = State.PATROL
-		target = null
+		target = _get_highest_threat()
+		if target == null:
+			current_state = State.PATROL
+		else:
+			current_state = State.PURSUE
 		return
 
 	# Update persistent maneuver direction (changes every 1-2.5s, not every tick)
@@ -296,7 +307,7 @@ func _tick_formation() -> void:
 
 
 func _detect_threats() -> void:
-	if _ship == null:
+	if _ship == null or ignore_threats:
 		return
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
@@ -390,11 +401,90 @@ func set_patrol_area(center: Vector3, radius: float) -> void:
 	_generate_patrol_waypoints()
 
 
-func _on_damage_taken(attacker: Node3D) -> void:
-	if current_state == State.DEAD:
+func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
+	if current_state == State.DEAD or ignore_threats:
 		return
-	# If idle or patrolling, immediately engage the attacker
+	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
+		return
+
+	# Accumulate threat from this attacker
+	var aid: int = attacker.get_instance_id()
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _threat_table.has(aid):
+		_threat_table[aid]["threat"] += amount
+		_threat_table[aid]["last_hit"] = now
+		_threat_table[aid]["node"] = attacker
+	else:
+		_threat_table[aid] = { "node": attacker, "threat": amount, "last_hit": now }
+
+	# If idle or patrolling, immediately engage
 	if current_state == State.IDLE or current_state == State.PATROL:
-		if attacker and is_instance_valid(attacker) and attacker != _ship:
-			target = attacker
+		target = attacker
+		current_state = State.PURSUE
+		return
+
+	# If already in combat, check if we should switch to a higher-threat attacker
+	if current_state in [State.PURSUE, State.ATTACK, State.EVADE]:
+		_maybe_switch_target()
+
+
+func _update_threat_table(dt: float) -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var to_remove: Array[int] = []
+	for aid: int in _threat_table:
+		var entry: Dictionary = _threat_table[aid]
+		# Decay threat over time
+		entry["threat"] -= THREAT_DECAY_RATE * dt
+		# Remove stale or dead entries
+		var node: Node3D = entry["node"] as Node3D
+		if entry["threat"] <= 0.0 or (now - entry["last_hit"]) > THREAT_CLEANUP_TIME:
+			to_remove.append(aid)
+		elif node == null or not is_instance_valid(node) or not node.is_inside_tree():
+			to_remove.append(aid)
+	for aid: int in to_remove:
+		_threat_table.erase(aid)
+
+
+func _maybe_switch_target() -> void:
+	if target == null or not is_instance_valid(target):
+		# Current target lost — pick highest threat
+		var best := _get_highest_threat()
+		if best:
+			target = best
+		return
+
+	# Get current target's threat level
+	var current_tid: int = target.get_instance_id()
+	var current_threat: float = 0.0
+	if _threat_table.has(current_tid):
+		current_threat = _threat_table[current_tid]["threat"]
+
+	# Find highest threat attacker
+	var best_node: Node3D = null
+	var best_threat: float = 0.0
+	for aid: int in _threat_table:
+		var entry: Dictionary = _threat_table[aid]
+		if entry["threat"] > best_threat:
+			var node: Node3D = entry["node"] as Node3D
+			if node and is_instance_valid(node) and node.is_inside_tree():
+				best_threat = entry["threat"]
+				best_node = node
+
+	# Switch if new attacker has significantly more threat than current target
+	if best_node and best_node != target and best_threat > current_threat * THREAT_SWITCH_RATIO:
+		target = best_node
+		if current_state == State.EVADE:
 			current_state = State.PURSUE
+
+
+func _get_highest_threat() -> Node3D:
+	var best_node: Node3D = null
+	var best_threat: float = 0.0
+	for aid: int in _threat_table:
+		var entry: Dictionary = _threat_table[aid]
+		if entry["threat"] > best_threat:
+			var node: Node3D = entry["node"] as Node3D
+			if node and is_instance_valid(node) and node.is_inside_tree():
+				best_threat = entry["threat"]
+				best_node = node
+	return best_node

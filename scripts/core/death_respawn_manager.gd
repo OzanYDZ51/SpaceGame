@@ -44,12 +44,9 @@ func handle_player_destroyed() -> void:
 		ship.is_player_controlled = false
 		ship.throttle_input = Vector3.ZERO
 		ship.set_rotation_target(0, 0, 0)
-		ship.freeze = true
-		var model := ship.get_node_or_null("ShipModel") as Node3D
-		if model:
-			model.visible = false
-		ship.collision_layer = 0
-		ship.collision_mask = 0
+		var act_ctrl := ship.get_node_or_null("ShipActivationController") as ShipActivationController
+		if act_ctrl:
+			act_ctrl.deactivate(ShipActivationController.DeactivationMode.FULL, true)
 
 	# Hide flight HUD
 	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
@@ -173,16 +170,14 @@ func _repair_ship() -> void:
 	if ship == null:
 		return
 
-	ship.freeze = false
+	# Restore ship via activation controller (collision, visibility, group, map, targeting)
+	var act_ctrl := ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	if act_ctrl:
+		act_ctrl.activate()
+
 	ship.is_player_controlled = true
 	ship.linear_velocity = Vector3.ZERO
 	ship.angular_velocity = Vector3.ZERO
-	ship.collision_layer = Constants.LAYER_SHIPS
-	ship.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_PROJECTILES
-
-	var model := ship.get_node_or_null("ShipModel") as Node3D
-	if model:
-		model.visible = true
 
 	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
 	if health:

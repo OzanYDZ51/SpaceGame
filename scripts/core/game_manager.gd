@@ -239,6 +239,11 @@ func _initialize_game() -> void:
 	player_ship.add_child(_docking_system)
 	_docking_system.docked.connect(_on_docked)
 
+	# Ship activation controller (centralized deactivate/activate for dock, death, cruise warp)
+	var _activation_ctrl := ShipActivationController.new()
+	_activation_ctrl.name = "ShipActivationController"
+	player_ship.add_child(_activation_ctrl)
+
 	# Dock instance (isolated solo context manager)
 	_dock_instance = DockInstance.new()
 	_dock_instance.name = "DockInstance"

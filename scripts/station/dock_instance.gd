@@ -15,10 +15,6 @@ var is_active: bool = false
 var station_name: String = ""
 var hangar_scene: HangarScene = null
 
-# Saved state for clean restore
-var _saved_collision_layer: int = 0
-var _saved_collision_mask: int = 0
-
 
 func enter(ctx: Dictionary) -> void:
 	if is_active:
@@ -49,25 +45,10 @@ func enter(ctx: Dictionary) -> void:
 	if net_sync:
 		net_sync.process_mode = Node.PROCESS_MODE_DISABLED
 
-	# --- 2. REMOVE PLAYER FROM COMBAT ---
-	if player_ship.is_in_group("ships"):
-		player_ship.remove_from_group("ships")
-	_saved_collision_layer = player_ship.collision_layer
-	_saved_collision_mask = player_ship.collision_mask
-	player_ship.collision_layer = 0
-	player_ship.collision_mask = 0
-	player_ship.visible = false
-
-	# Hide player ship on the stellar map
-	var player_ent: Dictionary = EntityRegistry.get_entity("player_ship")
-	if not player_ent.is_empty():
-		player_ent["extra"]["hidden"] = true
-
-	# Stop player targeting
-	var targeting := player_ship.get_node_or_null("TargetingSystem") as TargetingSystem
-	if targeting:
-		targeting.clear_target()
-		targeting.process_mode = Node.PROCESS_MODE_DISABLED
+	# --- 2. DEACTIVATE PLAYER SHIP ---
+	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	if act_ctrl:
+		act_ctrl.deactivate(ShipActivationController.DeactivationMode.FULL)
 
 	# --- 3. HIDE SPACE LIGHTING ---
 	for node_name in ["StarLight", "SystemStar"]:
@@ -129,12 +110,6 @@ func leave(ctx: Dictionary) -> void:
 
 	# --- 2. RESTORE SPACE VISUALS ---
 	universe_node.visible = true
-	player_ship.visible = true
-
-	# Show player ship on the stellar map again
-	var player_ent: Dictionary = EntityRegistry.get_entity("player_ship")
-	if not player_ent.is_empty():
-		player_ent["extra"]["hidden"] = false
 	for node_name in ["StarLight", "SystemStar"]:
 		var node := main_scene.get_node_or_null(node_name) as Node3D
 		if node:
@@ -152,15 +127,10 @@ func leave(ctx: Dictionary) -> void:
 	if net_sync:
 		net_sync.process_mode = Node.PROCESS_MODE_INHERIT
 
-	# --- 4. RESTORE PLAYER COMBAT ---
-	if not player_ship.is_in_group("ships"):
-		player_ship.add_to_group("ships")
-	player_ship.collision_layer = _saved_collision_layer
-	player_ship.collision_mask = _saved_collision_mask
-
-	var targeting := player_ship.get_node_or_null("TargetingSystem") as TargetingSystem
-	if targeting:
-		targeting.process_mode = Node.PROCESS_MODE_INHERIT
+	# --- 4. RESTORE PLAYER SHIP ---
+	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	if act_ctrl:
+		act_ctrl.activate()
 
 	# --- 5. RESTORE CAMERA ---
 	var ship_cam := player_ship.get_node_or_null("ShipCamera") as Camera3D

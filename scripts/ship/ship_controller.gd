@@ -42,8 +42,6 @@ var combat_locked: bool = false  ## Read by HUD for warning display
 
 # --- Cruise warp (phase 2 punch: no collision, invisible to others) ---
 var cruise_warp_active: bool = false
-var _pre_warp_collision_layer: int = 0
-var _pre_warp_collision_mask: int = 0
 
 # --- Cruise two-phase system ---
 const CRUISE_SPOOL_DURATION: float = 10.0  ## Phase 1: slow spool-up
@@ -479,18 +477,18 @@ func _exit_cruise() -> void:
 func _enter_cruise_warp() -> void:
 	if cruise_warp_active:
 		return
-	_pre_warp_collision_layer = collision_layer
-	_pre_warp_collision_mask = collision_mask
-	collision_layer = 0
-	collision_mask = 0
+	var act_ctrl := get_node_or_null("ShipActivationController") as ShipActivationController
+	if act_ctrl:
+		act_ctrl.deactivate(ShipActivationController.DeactivationMode.INTANGIBLE)
 	cruise_warp_active = true
 
 
 func _exit_cruise_warp() -> void:
 	if not cruise_warp_active:
 		return
-	collision_layer = _pre_warp_collision_layer
-	collision_mask = _pre_warp_collision_mask
+	var act_ctrl := get_node_or_null("ShipActivationController") as ShipActivationController
+	if act_ctrl:
+		act_ctrl.activate()
 	cruise_warp_active = false
 
 
