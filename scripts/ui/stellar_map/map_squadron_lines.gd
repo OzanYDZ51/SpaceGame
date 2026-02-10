@@ -69,11 +69,11 @@ static func _get_ship_screen_pos(fleet_index: int, fleet: PlayerFleet, entities:
 	if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
 		var npc_id := String(fs.deployed_npc_id)
 		if entities.has(npc_id):
-			var ent: Dictionary = entities[npc_id]
-			return camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
-		var ent := EntityRegistry.get_entity(npc_id)
-		if not ent.is_empty():
-			return camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
+			var npc_ent: Dictionary = entities[npc_id]
+			return camera.universe_to_screen(npc_ent["pos_x"], npc_ent["pos_z"])
+		var reg_ent := EntityRegistry.get_entity(npc_id)
+		if not reg_ent.is_empty():
+			return camera.universe_to_screen(reg_ent["pos_x"], reg_ent["pos_z"])
 
 	return Vector2(-9999, -9999)
 

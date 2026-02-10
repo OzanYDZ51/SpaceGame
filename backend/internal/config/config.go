@@ -54,7 +54,7 @@ func Load() *Config {
 		AdminKey:    getEnv("ADMIN_KEY", "dev-admin-key"),
 		GithubToken: getEnv("GITHUB_TOKEN", ""),
 		GithubOwner: getEnv("GITHUB_OWNER", "OzanYDZ51"),
-		GithubRepo:  getEnv("GITHUB_REPO", "ImperionOnline"),
+		GithubRepo:  getEnv("GITHUB_REPO", "SpaceGame"),
 		// Discord — file first, env var override
 		DiscordBotToken:      getEnvOr("DISCORD_BOT_TOKEN", dc.BotToken),
 		DiscordGuildID:       getEnvOr("DISCORD_GUILD_ID", dc.GuildID),

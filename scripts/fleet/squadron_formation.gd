@@ -56,18 +56,16 @@ static func _echelon(idx: int, spacing: float) -> Vector3:
 # V shape: two arms diverging behind leader
 static func _vee(idx: int, spacing: float) -> Vector3:
 	var side: float = -1.0 if (idx % 2 == 0) else 1.0
-	var depth: int = (idx / 2) + 1
+	var depth: int = (idx >> 1) + 1
 	var lateral: float = side * depth * spacing
 	var back: float = depth * spacing * 0.8
 	return Vector3(lateral, 0.0, back)
 
 
 # Lateral line (wing-to-wing), centered on leader
-static func _line(idx: int, count: int, spacing: float) -> Vector3:
-	var half: float = count / 2.0
-	var pos: float = (idx + 1)
+static func _line(idx: int, _count: int, spacing: float) -> Vector3:
 	var side: float = -1.0 if (idx % 2 == 0) else 1.0
-	var slot: int = (idx / 2) + 1
+	var slot: int = (idx >> 1) + 1
 	return Vector3(side * slot * spacing, 0.0, 0.0)
 
 

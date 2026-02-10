@@ -7,9 +7,6 @@ extends Control
 # This panel can be expanded for a dedicated squadron management UI.
 # =============================================================================
 
-signal squadron_action(action: StringName, data: Dictionary)
-
-var _visible_mode: StringName = &""  # "create", "manage", "assign_role", "set_formation"
 
 
 func _ready() -> void:

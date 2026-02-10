@@ -58,7 +58,6 @@ const RIGHT_HOLD_MAX_MOVE: float = 20.0
 # Context menu
 var _context_menu: FleetContextMenu = null
 var _squadron_mgr: SquadronManager = null
-var _squadron_panel: SquadronPanel = null
 
 
 # Filters: EntityType (int) -> bool (true = hidden)
