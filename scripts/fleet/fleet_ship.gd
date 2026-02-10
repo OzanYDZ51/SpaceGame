@@ -26,6 +26,10 @@ var deployed_npc_id: StringName = &""    # Transient: ShipLODManager NPC ref
 var deployed_command: StringName = &""   # Current command ID
 var deployed_command_params: Dictionary = {}
 
+# Squadron membership
+var squadron_id: int = -1
+var squadron_role: StringName = &""
+
 
 static func create_bare(sid: StringName) -> FleetShip:
 	var data := ShipRegistry.get_ship_data(sid)
@@ -129,6 +133,8 @@ func serialize() -> Dictionary:
 		"docked_system_id": docked_system_id,
 		"deployed_command": String(deployed_command),
 		"deployed_command_params": deployed_command_params,
+		"squadron_id": squadron_id,
+		"squadron_role": String(squadron_role),
 	}
 	# Per-ship cargo
 	if cargo:
@@ -159,6 +165,8 @@ static func deserialize(data: Dictionary) -> FleetShip:
 	fs.docked_system_id = int(data.get("docked_system_id", -1))
 	fs.deployed_command = StringName(data.get("deployed_command", ""))
 	fs.deployed_command_params = data.get("deployed_command_params", {})
+	fs.squadron_id = int(data.get("squadron_id", -1))
+	fs.squadron_role = StringName(data.get("squadron_role", ""))
 	# Per-ship cargo + resources
 	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
 	var cap: int = ship_data.cargo_capacity if ship_data else 50

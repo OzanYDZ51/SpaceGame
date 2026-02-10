@@ -10,6 +10,8 @@ signal active_ship_changed(ship: FleetShip)
 
 var ships: Array[FleetShip] = []
 var active_index: int = 0
+var squadrons: Array[Squadron] = []
+var _next_squadron_id: int = 1
 
 
 func add_ship(ship: FleetShip) -> int:
@@ -68,6 +70,26 @@ static func deserialize(data: Array) -> PlayerFleet:
 		if data[i].get("active", false):
 			fleet.active_index = i
 	return fleet
+
+
+func get_squadron(squadron_id: int) -> Squadron:
+	for sq in squadrons:
+		if sq.squadron_id == squadron_id:
+			return sq
+	return null
+
+
+func get_ship_squadron(fleet_index: int) -> Squadron:
+	for sq in squadrons:
+		if sq.is_leader(fleet_index) or sq.is_member(fleet_index):
+			return sq
+	return null
+
+
+func next_squadron_id() -> int:
+	var id := _next_squadron_id
+	_next_squadron_id += 1
+	return id
 
 
 func get_ships_at_station(station_id: String) -> Array[int]:
