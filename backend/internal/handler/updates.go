@@ -90,7 +90,7 @@ func (h *UpdatesHandler) RefreshCache(c *fiber.Ctx) error {
 }
 
 func (h *UpdatesHandler) fetchReleases() (*UpdatesResponse, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=30", h.owner, h.repo)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?per_page=100", h.owner, h.repo)
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "ImperionOnlineBackend/1.0")
