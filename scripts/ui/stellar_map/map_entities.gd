@@ -17,6 +17,10 @@ var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistr
 var trails: MapTrails = null
 var marquee: MarqueeSelect = null
 
+# Squadron refs (set by StellarMap)
+var _squadron_fleet: PlayerFleet = null
+var _squadron_list: Array = []  # Array[Squadron]
+
 # Route lines (ships → destination, set by StellarMap)
 var route_ship_ids: Array[String] = []
 var route_dest_ux: float = 0.0
@@ -94,6 +98,10 @@ func _draw() -> void:
 		var rect := marquee.get_rect()
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.08), true)
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6), false, 1.0)
+
+	# Squadron formation lines (member → leader)
+	if not _squadron_list.is_empty() and _squadron_fleet:
+		MapSquadronLines.draw_squadron_lines(self, camera, entities, _squadron_list, _squadron_fleet, _player_id)
 
 	# Route line (dashed) from ship to destination
 	_draw_route_line(entities)

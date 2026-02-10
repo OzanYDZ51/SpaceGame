@@ -45,6 +45,15 @@ const NPC_NEUTRAL := Color(0.7, 0.55, 1.0, 0.8)
 const NPC_SHIP := Color(0.6, 0.6, 0.7, 0.7)  # fallback
 const FLEET_SHIP := Color(0.4, 0.65, 1.0, 0.95)  # Blue for player fleet
 
+# --- Squadron ---
+const SQUADRON_LINE := Color(0.5, 0.7, 1.0, 0.35)
+const SQUADRON_HEADER := Color(0.6, 0.8, 1.0, 0.85)
+const SQUADRON_BADGE_FOLLOW := Color(0.4, 0.65, 1.0, 0.9)
+const SQUADRON_BADGE_ATTACK := Color(1.0, 0.4, 0.3, 0.9)
+const SQUADRON_BADGE_DEFEND := Color(0.3, 1.0, 0.5, 0.9)
+const SQUADRON_BADGE_INTERCEPT := Color(1.0, 0.7, 0.2, 0.9)
+const SQUADRON_BADGE_MIMIC := Color(0.7, 0.55, 1.0, 0.9)
+
 # --- Fleet panel (left side) ---
 const FLEET_PANEL_BG := Color(0.0, 0.02, 0.05, 0.9)
 const FLEET_STATUS_ACTIVE := Color(0.2, 1.0, 0.5, 0.9)

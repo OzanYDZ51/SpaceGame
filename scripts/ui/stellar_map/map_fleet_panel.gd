@@ -184,7 +184,22 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 			y += SHIP_H  # station sub-header
 			for _entry in st["ships"]:
 				y += SHIP_H
-		for _entry in group["deployed"]:
+		# Deployed ships — account for squadron headers
+		var sqd: Dictionary = {}
+		var unsqd: Array = []
+		for entry in group["deployed"]:
+			var fs: FleetShip = entry["ship"]
+			if fs.squadron_id >= 0:
+				if not sqd.has(fs.squadron_id):
+					sqd[fs.squadron_id] = []
+				sqd[fs.squadron_id].append(entry)
+			else:
+				unsqd.append(entry)
+		for sq_id in sqd:
+			y += SHIP_H  # squadron header
+			for _entry in sqd[sq_id]:
+				y += SHIP_H
+		for _entry in unsqd:
 			y += SHIP_H
 		y += 6
 
@@ -229,7 +244,24 @@ func _get_fleet_index_at(pos: Vector2) -> int:
 				if _hit_row(pos.y, y, SHIP_H):
 					return entry["fleet_index"]
 				y += SHIP_H
+		# Deployed ships (mirroring _draw_group layout with squadron groups)
+		var squadroned: Dictionary = {}
+		var unsquadroned: Array = []
 		for entry in group["deployed"]:
+			var fs: FleetShip = entry["ship"]
+			if fs.squadron_id >= 0:
+				if not squadroned.has(fs.squadron_id):
+					squadroned[fs.squadron_id] = []
+				squadroned[fs.squadron_id].append(entry)
+			else:
+				unsquadroned.append(entry)
+		for sq_id in squadroned:
+			y += SHIP_H  # squadron header
+			for entry in squadroned[sq_id]:
+				if _hit_row(pos.y, y, SHIP_H):
+					return entry["fleet_index"]
+				y += SHIP_H
+		for entry in unsquadroned:
 			if _hit_row(pos.y, y, SHIP_H):
 				return entry["fleet_index"]
 			y += SHIP_H
@@ -344,8 +376,37 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 				_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
 			y += SHIP_H
 
-	# Deployed ships
+	# Deployed ships — group by squadron
+	var squadroned: Dictionary = {}  # squadron_id -> Array[entry]
+	var unsquadroned: Array = []
 	for entry in group["deployed"]:
+		var fs: FleetShip = entry["ship"]
+		if fs.squadron_id >= 0:
+			if not squadroned.has(fs.squadron_id):
+				squadroned[fs.squadron_id] = []
+			squadroned[fs.squadron_id].append(entry)
+		else:
+			unsquadroned.append(entry)
+
+	# Draw squadron groups first
+	for sq_id in squadroned:
+		var sq_entries: Array = squadroned[sq_id]
+		var sq_name := "ESCADRON"
+		if _fleet:
+			var sq := _fleet.get_squadron(sq_id)
+			if sq:
+				sq_name = sq.squadron_name
+		if _in_clip(y, SHIP_H, clip):
+			draw_rect(Rect2(MARGIN + 4, y + 2, PANEL_W - MARGIN * 2 - 4, SHIP_H - 2), Color(MapColors.SQUADRON_HEADER.r, MapColors.SQUADRON_HEADER.g, MapColors.SQUADRON_HEADER.b, 0.06))
+			draw_string(font, Vector2(MARGIN + 10, y + SHIP_H - 4), sq_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 10, UITheme.FONT_SIZE_TINY, MapColors.SQUADRON_HEADER)
+		y += SHIP_H
+		for entry in sq_entries:
+			if _in_clip(y, SHIP_H, clip):
+				_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
+			y += SHIP_H
+
+	# Unsquadroned deployed ships
+	for entry in unsquadroned:
 		if _in_clip(y, SHIP_H, clip):
 			_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
 		y += SHIP_H
@@ -364,6 +425,20 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 		var pulse: float = sin(Time.get_ticks_msec() / 300.0) * 0.08 + 0.12
 		draw_rect(Rect2(2, y, PANEL_W - 4, SHIP_H), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse))
 
+	# Squadron role badge (before status badge)
+	var role_offset: float = 0.0
+	if fs.squadron_id >= 0 and fs.squadron_role != &"":
+		var role_short := SquadronRoleRegistry.get_role_short(fs.squadron_role)
+		var role_col := SquadronRoleRegistry.get_role_color(fs.squadron_role)
+		draw_string(font, Vector2(x, y + SHIP_H - 4), "[%s]" % role_short, HORIZONTAL_ALIGNMENT_LEFT, 20, UITheme.FONT_SIZE_TINY, role_col)
+		role_offset = 20.0
+	elif fs.squadron_id >= 0 and _fleet:
+		# Leader gets a star
+		var sq := _fleet.get_squadron(fs.squadron_id)
+		if sq and sq.is_leader(fleet_index):
+			draw_string(font, Vector2(x, y + SHIP_H - 4), "*", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, MapColors.SQUADRON_HEADER)
+			role_offset = 12.0
+
 	# Status badge
 	var badge: String = ""
 	var badge_col: Color = MapColors.FLEET_STATUS_DOCKED
@@ -380,12 +455,12 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 		badge = "[X]"
 		badge_col = MapColors.FLEET_STATUS_DESTROYED
 
-	draw_string(font, Vector2(x, y + SHIP_H - 4), badge, HORIZONTAL_ALIGNMENT_LEFT, 28, UITheme.FONT_SIZE_TINY, badge_col)
+	draw_string(font, Vector2(x + role_offset, y + SHIP_H - 4), badge, HORIZONTAL_ALIGNMENT_LEFT, 28, UITheme.FONT_SIZE_TINY, badge_col)
 
 	# Ship name
 	var name_text: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
 	var name_col: Color = UITheme.PRIMARY if is_selected else (MapColors.TEXT if is_active else MapColors.TEXT_DIM)
-	draw_string(font, Vector2(x + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - 36, UITheme.FONT_SIZE_SMALL, name_col)
+	draw_string(font, Vector2(x + role_offset + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - role_offset - 36, UITheme.FONT_SIZE_SMALL, name_col)
 
 	# Ship class (right-aligned, tiny)
 	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)

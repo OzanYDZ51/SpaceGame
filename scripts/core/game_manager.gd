@@ -66,6 +66,7 @@ var _commerce_screen: CommerceScreen = null
 var _commerce_manager: CommerceManager = null
 var _route_manager: RouteManager = null
 var _fleet_deployment_mgr: FleetDeploymentManager = null
+var _squadron_mgr: SquadronManager = null
 var _player_autopilot_wp: String = ""
 var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
@@ -127,6 +128,11 @@ func _setup_ui_managers() -> void:
 		# Connect fleet order/recall signals from stellar map
 		_stellar_map.fleet_order_requested.connect(_on_fleet_order_from_map)
 		_stellar_map.fleet_recall_requested.connect(_on_fleet_recall_from_map)
+
+		# Pass squadron data to map
+		if _squadron_mgr:
+			_stellar_map.set_squadron_manager(_squadron_mgr)
+			_stellar_map.squadron_action_requested.connect(_on_squadron_action)
 
 	# Register Clan screen
 	var clan_screen := ClanScreen.new()
@@ -260,6 +266,12 @@ func _initialize_game() -> void:
 	_fleet_deployment_mgr.name = "FleetDeploymentManager"
 	add_child(_fleet_deployment_mgr)
 	_fleet_deployment_mgr.initialize(player_fleet)
+
+	# Squadron Manager
+	_squadron_mgr = SquadronManager.new()
+	_squadron_mgr.name = "SquadronManager"
+	add_child(_squadron_mgr)
+	_squadron_mgr.initialize(player_fleet, _fleet_deployment_mgr)
 
 	# Commerce manager
 	_commerce_manager = CommerceManager.new()
@@ -632,6 +644,11 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	# Active ship = engage player autopilot to destination
 	if fleet_index == player_fleet.active_index:
 		_autopilot_player_to(params)
+		# Propagate to squadron members if player is a squadron leader
+		if _squadron_mgr:
+			var sq := player_fleet.get_ship_squadron(fleet_index)
+			if sq and (sq.is_leader(fleet_index) or sq.leader_fleet_index < 0):
+				_squadron_mgr.propagate_leader_order(sq.squadron_id, order_id, params)
 		return
 
 	if _fleet_deployment_mgr == null:
@@ -661,7 +678,14 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		# Change command on already deployed ship (local NPCs — always execute locally)
 		_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
-	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+
+	# Propagate to squadron members if this ship is a leader
+	if _squadron_mgr and fs.squadron_id >= 0:
+		var sq := player_fleet.get_squadron(fs.squadron_id)
+		if sq and sq.is_leader(fleet_index):
+			_squadron_mgr.propagate_leader_order(sq.squadron_id, order_id, params)
+
+	if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 		if _toast_manager:
 			_toast_manager.show_toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)
 
@@ -671,6 +695,46 @@ func _on_fleet_recall_from_map(fleet_index: int) -> void:
 		_fleet_deployment_mgr.retrieve_ship(fleet_index)
 		if _toast_manager and player_fleet and fleet_index < player_fleet.ships.size():
 			_toast_manager.show_toast("RAPPEL: %s" % player_fleet.ships[fleet_index].custom_name)
+
+
+func _on_squadron_action(action: StringName, data: Dictionary) -> void:
+	if _squadron_mgr == null or player_fleet == null:
+		return
+	match action:
+		&"create":
+			var leader_idx: int = int(data.get("leader", -1))
+			var members: Array = data.get("members", [])
+			var sq_name: String = data.get("name", "")
+			var sq := _squadron_mgr.create_squadron(leader_idx, sq_name)
+			if sq:
+				for m in members:
+					_squadron_mgr.add_to_squadron(sq.squadron_id, int(m))
+				if _toast_manager:
+					_toast_manager.show_toast("ESCADRON CREE: %s" % sq.squadron_name, UIToast.ToastType.SUCCESS)
+		&"disband":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			_squadron_mgr.disband_squadron(sq_id)
+			if _toast_manager:
+				_toast_manager.show_toast("ESCADRON DISSOUS")
+		&"add_member":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			var fleet_idx: int = int(data.get("fleet_index", -1))
+			var role: StringName = StringName(data.get("role", "follow"))
+			_squadron_mgr.add_to_squadron(sq_id, fleet_idx, role)
+		&"remove_member":
+			var fleet_idx: int = int(data.get("fleet_index", -1))
+			_squadron_mgr.remove_from_squadron(fleet_idx)
+		&"set_role":
+			var fleet_idx: int = int(data.get("fleet_index", -1))
+			var role: StringName = StringName(data.get("role", "follow"))
+			_squadron_mgr.set_member_role(fleet_idx, role)
+		&"set_formation":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			var formation: StringName = StringName(data.get("formation", "echelon"))
+			_squadron_mgr.set_formation(sq_id, formation)
+			if _toast_manager:
+				var disp := SquadronFormation.get_formation_display(formation)
+				_toast_manager.show_toast("FORMATION: %s" % disp)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:

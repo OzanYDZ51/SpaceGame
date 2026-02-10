@@ -112,6 +112,7 @@ func apply_state(state: Dictionary) -> void:
 			GameManager._galaxy,
 			GameManager._fleet_deployment_mgr,
 			GameManager._commerce_manager,
+			GameManager._squadron_mgr,
 		)
 
 	# Ship change (must happen after fleet is restored by PlayerData)

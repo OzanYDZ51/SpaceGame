@@ -24,6 +24,7 @@ var managed_externally: bool = false
 signal view_switch_requested
 signal fleet_order_requested(fleet_index: int, order_id: StringName, params: Dictionary)
 signal fleet_recall_requested(fleet_index: int)
+signal squadron_action_requested(action: StringName, data: Dictionary)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
 var _preview_entities: Dictionary = {}
@@ -56,6 +57,8 @@ const RIGHT_HOLD_MAX_MOVE: float = 20.0
 
 # Context menu
 var _context_menu: FleetContextMenu = null
+var _squadron_mgr: SquadronManager = null
+var _squadron_panel: SquadronPanel = null
 
 
 # Filters: EntityType (int) -> bool (true = hidden)
@@ -663,9 +666,31 @@ func _sync_filters() -> void:
 	_dirty = true
 
 
+func set_squadron_manager(mgr: SquadronManager) -> void:
+	_squadron_mgr = mgr
+	if _squadron_mgr:
+		_squadron_mgr.squadron_changed.connect(_on_squadron_changed)
+	_sync_squadron_data()
+
+
+func _on_squadron_changed() -> void:
+	_sync_squadron_data()
+	_fleet_panel.queue_redraw()
+
+
+func _sync_squadron_data() -> void:
+	if _fleet_panel._fleet:
+		_entity_layer._squadron_fleet = _fleet_panel._fleet
+		_entity_layer._squadron_list = _fleet_panel._fleet.squadrons
+	else:
+		_entity_layer._squadron_list = []
+		_entity_layer._squadron_fleet = null
+
+
 func set_fleet(fleet: PlayerFleet, galaxy: GalaxyData) -> void:
 	_fleet_panel.set_fleet(fleet)
 	_fleet_panel.set_galaxy(galaxy)
+	_sync_squadron_data()
 
 
 func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
@@ -744,6 +769,11 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 	}
 
 	var orders := FleetOrderRegistry.get_available_orders(context)
+
+	# Inject squadron orders
+	var sq_orders := _build_squadron_context_orders(effective_idx)
+	orders.append_array(sq_orders)
+
 	if orders.is_empty():
 		return
 
@@ -763,6 +793,12 @@ func _close_context_menu() -> void:
 
 
 func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
+	# Squadron actions (prefixed with sq_)
+	if String(order_id).begins_with("sq_"):
+		_handle_squadron_context_order(order_id, params)
+		_close_context_menu()
+		return
+
 	var effective_indices := _get_effective_fleet_indices()
 	if not effective_indices.is_empty():
 		for idx in effective_indices:
@@ -773,6 +809,91 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 			_show_waypoint(ux, uz)
 			_set_route_lines(effective_indices, ux, uz)
 	_close_context_menu()
+
+
+# =============================================================================
+# SQUADRON CONTEXT ORDERS
+# =============================================================================
+func _build_squadron_context_orders(fleet_index: int) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if _fleet_panel._fleet == null:
+		return result
+
+	var fleet := _fleet_panel._fleet
+	var sq := fleet.get_ship_squadron(fleet_index)
+
+	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
+	var effective := _get_effective_fleet_indices()
+	if effective.size() >= 2:
+		var any_in_sq: bool = false
+		for idx in effective:
+			if fleet.get_ship_squadron(idx) != null:
+				any_in_sq = true
+				break
+		if not any_in_sq:
+			result.append({"id": &"sq_create", "display_name": "CREER ESCADRON"})
+
+	if sq:
+		# Ship is in a squadron
+		if sq.is_leader(fleet_index) or (sq.leader_fleet_index == -1 and fleet_index == fleet.active_index):
+			# Leader options
+			result.append({"id": &"sq_disband", "display_name": "DISSOUDRE ESCADRON"})
+			# Formation submenu (cycle through)
+			var formations := SquadronFormation.get_available_formations()
+			for f in formations:
+				if f["id"] != sq.formation_type:
+					result.append({"id": StringName("sq_formation_" + String(f["id"])), "display_name": "FORMATION: %s" % f["display"]})
+		elif sq.is_member(fleet_index):
+			# Member options: role change + leave
+			result.append({"id": &"sq_leave", "display_name": "QUITTER ESCADRON"})
+			for r in SquadronRoleRegistry.get_all_roles():
+				if r["id"] != sq.get_role(fleet_index):
+					result.append({"id": StringName("sq_role_" + String(r["id"])), "display_name": "ROLE: %s" % r["display"]})
+	else:
+		# Not in squadron — can join existing squadrons
+		for s in fleet.squadrons:
+			result.append({"id": StringName("sq_join_%d" % s.squadron_id), "display_name": "REJOINDRE: %s" % s.squadron_name})
+
+	return result
+
+
+func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -> void:
+	var effective := _get_effective_fleet_indices()
+	var order_str := String(order_id)
+
+	if order_id == &"sq_create" and effective.size() >= 2:
+		# First selected = leader, rest = members
+		squadron_action_requested.emit(&"create", {
+			"leader": effective[0],
+			"members": effective.slice(1),
+		})
+	elif order_id == &"sq_disband":
+		var idx := _get_effective_fleet_index()
+		if idx >= 0 and _fleet_panel._fleet:
+			var sq := _fleet_panel._fleet.get_ship_squadron(idx)
+			if sq:
+				squadron_action_requested.emit(&"disband", {"squadron_id": sq.squadron_id})
+	elif order_id == &"sq_leave":
+		var idx := _get_effective_fleet_index()
+		if idx >= 0:
+			squadron_action_requested.emit(&"remove_member", {"fleet_index": idx})
+	elif order_str.begins_with("sq_formation_"):
+		var formation := StringName(order_str.substr(13))
+		var idx := _get_effective_fleet_index()
+		if idx >= 0 and _fleet_panel._fleet:
+			var sq := _fleet_panel._fleet.get_ship_squadron(idx)
+			if sq:
+				squadron_action_requested.emit(&"set_formation", {"squadron_id": sq.squadron_id, "formation": String(formation)})
+	elif order_str.begins_with("sq_role_"):
+		var role := StringName(order_str.substr(8))
+		var idx := _get_effective_fleet_index()
+		if idx >= 0:
+			squadron_action_requested.emit(&"set_role", {"fleet_index": idx, "role": String(role)})
+	elif order_str.begins_with("sq_join_"):
+		var sq_id := int(order_str.substr(8))
+		var idx := _get_effective_fleet_index()
+		if idx >= 0:
+			squadron_action_requested.emit(&"add_member", {"squadron_id": sq_id, "fleet_index": idx})
 
 
 # =============================================================================

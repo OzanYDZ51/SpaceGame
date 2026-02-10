@@ -145,6 +145,12 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 
 	_deployed_ships[fleet_index] = npc
 	_fleet.fleet_changed.emit()
+
+	# Notify squadron manager
+	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	if sq_mgr:
+		sq_mgr.on_ship_deployed(fleet_index, npc)
+
 	print("FleetDeploymentManager: Deployed '%s' (index %d) with command '%s'" % [fs.custom_name, fleet_index, cmd])
 	return true
 
@@ -166,6 +172,11 @@ func retrieve_ship(fleet_index: int) -> bool:
 				lod_mgr.unregister_ship(StringName(npc.name))
 			npc.queue_free()
 		_deployed_ships.erase(fleet_index)
+
+	# Notify squadron manager before cleanup
+	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	if sq_mgr:
+		sq_mgr.on_ship_retrieved(fleet_index)
 
 	# Update FleetShip data
 	fs.deployment_state = FleetShip.DeploymentState.DOCKED
@@ -240,6 +251,11 @@ func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 	_deployed_ships.erase(fleet_index)
 
 	_fleet.fleet_changed.emit()
+
+	# Notify squadron manager
+	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	if sq_mgr:
+		sq_mgr.on_member_destroyed(fleet_index)
 
 	# Toast notification
 	var toast := GameManager._toast_manager

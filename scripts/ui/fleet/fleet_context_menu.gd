@@ -100,7 +100,10 @@ func _gui_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if _hovered_index >= 0 and _hovered_index < _orders.size():
 				var order: Dictionary = _orders[_hovered_index]
-				var params: Dictionary = FleetOrderRegistry.build_default_params(order["id"], _context)
+				var params: Dictionary = {}
+				# Squadron orders (sq_ prefix) don't use FleetOrderRegistry params
+				if not String(order["id"]).begins_with("sq_"):
+					params = FleetOrderRegistry.build_default_params(order["id"], _context)
 				order_selected.emit(order["id"], params)
 			else:
 				cancelled.emit()

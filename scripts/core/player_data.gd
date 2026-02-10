@@ -177,10 +177,18 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 	if fleet:
 		state["fleet"] = fleet.serialize()
 
+	# Squadrons
+	if fleet and not fleet.squadrons.is_empty():
+		var sq_arr: Array = []
+		for sq in fleet.squadrons:
+			sq_arr.append(sq.serialize())
+		state["squadrons"] = sq_arr
+		state["next_squadron_id"] = fleet._next_squadron_id
+
 	return state
 
 
-func apply_save_state(state: Dictionary, player_ship: ShipController, system_transition: SystemTransition, _galaxy: GalaxyData, fleet_deployment_mgr: FleetDeploymentManager, commerce_manager: CommerceManager) -> void:
+func apply_save_state(state: Dictionary, player_ship: ShipController, system_transition: SystemTransition, _galaxy: GalaxyData, fleet_deployment_mgr: FleetDeploymentManager, commerce_manager: CommerceManager, squadron_mgr: Variant = null) -> void:
 	if state.is_empty():
 		return
 
@@ -260,6 +268,18 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 			fleet_deployment_mgr.initialize(fleet)
 		if commerce_manager:
 			commerce_manager.player_fleet = fleet
+
+	# Squadrons
+	var sq_data: Array = state.get("squadrons", [])
+	if not sq_data.is_empty() and fleet:
+		fleet.squadrons.clear()
+		for sq_dict in sq_data:
+			fleet.squadrons.append(Squadron.deserialize(sq_dict))
+		fleet._next_squadron_id = int(state.get("next_squadron_id", fleet.squadrons.size() + 1))
+
+	# Re-initialize squadron manager if fleet was replaced
+	if squadron_mgr and fleet:
+		squadron_mgr.initialize(fleet, fleet_deployment_mgr)
 
 	# Migration: old saves stored cargo/resources at top-level — migrate to active ship
 	var old_cargo: Array = state.get("cargo", [])
