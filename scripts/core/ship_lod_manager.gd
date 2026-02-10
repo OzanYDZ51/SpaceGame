@@ -113,6 +113,7 @@ func register_ship(id: StringName, data: ShipLODData) -> void:
 	_ships[id] = data
 	_grid.insert(id, data.position, data)
 	_set_lod_set(id, data.current_lod)
+	_ensure_entity_registered(id, data)
 
 
 func unregister_ship(id: StringName) -> void:
@@ -125,6 +126,8 @@ func unregister_ship(id: StringName) -> void:
 	_grid.remove(id)
 	_remove_from_lod_sets(id)
 	_ships.erase(id)
+	# Clean up EntityRegistry entry (safe to call even if not registered)
+	EntityRegistry.unregister(String(id))
 
 
 func set_player_id(id: StringName) -> void:
@@ -230,6 +233,35 @@ func _remove_from_lod_sets(id: StringName) -> void:
 	_lod2_ids.erase(id)
 	_lod3_ids.erase(id)
 	_node_ids.erase(id)
+
+
+func _ensure_entity_registered(id: StringName, data: ShipLODData) -> void:
+	if id == _player_id:
+		return
+	var sid := String(id)
+	if not EntityRegistry.get_entity(sid).is_empty():
+		return
+	var ent_type: int = EntityRegistrySystem.EntityType.SHIP_NPC
+	if data.is_remote_player:
+		ent_type = EntityRegistrySystem.EntityType.SHIP_PLAYER
+	var upos: Array = FloatingOrigin.to_universe_pos(data.position)
+	EntityRegistry.register(sid, {
+		"name": data.display_name,
+		"type": ent_type,
+		"node": data.node_ref,
+		"pos_x": upos[0],
+		"pos_y": upos[1],
+		"pos_z": upos[2],
+		"vel_x": float(data.velocity.x),
+		"vel_y": float(data.velocity.y),
+		"vel_z": float(data.velocity.z),
+		"radius": 10.0,
+		"color": ShipFactory._get_faction_map_color(data.faction),
+		"extra": {
+			"faction": String(data.faction),
+			"ship_class": String(data.ship_class),
+		},
+	})
 
 
 # =============================================================================
@@ -399,12 +431,10 @@ func _demote_lod1_to_lod2(id: StringName, data: ShipLODData) -> void:
 	var node := data.node_ref
 	if node and is_instance_valid(node):
 		data.capture_from_node(node)
-		# Fleet ships: keep EntityRegistry entry (map needs it), just null the node ref
+		# Keep EntityRegistry entry (map needs it for all ship types), just null the node ref
 		var ent := EntityRegistry.get_entity(String(node.name))
-		if not ent.is_empty() and ent["type"] == EntityRegistrySystem.EntityType.SHIP_FLEET:
+		if not ent.is_empty():
 			ent["node"] = null
-		else:
-			EntityRegistry.unregister(String(node.name))
 		node.queue_free()
 	data.node_ref = null
 	data.current_lod = ShipLODData.LODLevel.LOD2
@@ -478,6 +508,11 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	data.current_lod = ShipLODData.LODLevel.LOD1
 	_set_lod_set(id, ShipLODData.LODLevel.LOD1)
 	data.is_promoting = false
+
+	# Restore EntityRegistry node ref (entity was kept during demotion)
+	var ent := EntityRegistry.get_entity(String(id))
+	if not ent.is_empty():
+		ent["node"] = node
 
 
 func _promote_to_lod0(id: StringName, data: ShipLODData) -> void:

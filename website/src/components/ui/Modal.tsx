@@ -51,7 +51,7 @@ export function Modal({ isOpen, onClose, className, children }: ModalProps) {
           {/* Content */}
           <motion.div
             className={cn(
-              "relative z-10 w-full max-w-md rounded border border-border-subtle bg-bg-secondary p-6 shadow-2xl box-glow-cyan",
+              "relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded border border-border-subtle bg-bg-secondary p-5 sm:p-6 shadow-2xl box-glow-cyan",
               className
             )}
             initial={{ scale: 0.95, opacity: 0, y: 10 }}
@@ -61,7 +61,7 @@ export function Modal({ isOpen, onClose, className, children }: ModalProps) {
           >
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 text-text-secondary hover:text-cyan transition-colors cursor-pointer"
+              className="absolute right-3 top-3 sm:right-4 sm:top-4 text-text-secondary hover:text-cyan transition-colors cursor-pointer"
               aria-label="Fermer"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

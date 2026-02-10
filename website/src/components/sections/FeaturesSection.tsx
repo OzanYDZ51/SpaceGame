@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { FEATURES } from "@/lib/constants";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
@@ -56,7 +57,7 @@ const icons: Record<string, React.ReactNode> = {
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="relative py-24 sm:py-32">
+    <section id="features" className="relative py-20 sm:py-24 md:py-32">
       <Container>
         <ScrollReveal>
           <SectionHeading
@@ -65,20 +66,22 @@ export function FeaturesSection() {
           />
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {FEATURES.map((feature, i) => (
             <ScrollReveal key={feature.title} delay={i * 0.1}>
-              <Card className="h-full group">
-                <div className="text-cyan mb-4 transition-transform duration-200 group-hover:scale-110">
-                  {icons[feature.icon]}
-                </div>
-                <h3 className="text-lg font-bold uppercase tracking-wider text-text-primary mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  {feature.description}
-                </p>
-              </Card>
+              <motion.div whileHover={{ y: -4, transition: { duration: 0.2 } }}>
+                <Card className="h-full group">
+                  <div className="text-cyan mb-4 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(0,200,255,0.5)]">
+                    {icons[feature.icon]}
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold uppercase tracking-wider text-text-primary mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                    {feature.description}
+                  </p>
+                </Card>
+              </motion.div>
             </ScrollReveal>
           ))}
         </div>

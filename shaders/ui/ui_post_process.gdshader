@@ -5,7 +5,7 @@ shader_type canvas_item;
 
 render_mode unshaded;
 
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
+uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
 uniform float scanline_alpha : hint_range(0.0, 0.1) = 0.015;
 uniform float scanline_density : hint_range(100.0, 600.0) = 300.0;
 uniform float vignette_strength : hint_range(0.0, 1.0) = 0.2;

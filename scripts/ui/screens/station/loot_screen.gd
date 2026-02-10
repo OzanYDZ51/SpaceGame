@@ -127,7 +127,7 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	var s := size
 	var cx := s.x * 0.5
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 
 	# Background
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.6))
@@ -148,7 +148,7 @@ func _draw() -> void:
 	for item in _crate_contents:
 		total += item.get("quantity", 1)
 	draw_string(font, Vector2(0, 58), "%d objet%s" % [total, "s" if total > 1 else ""],
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 11, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)
 
 	# Panel background
 	var panel_x := cx - PANEL_W * 0.5
@@ -185,15 +185,15 @@ func _draw() -> void:
 		# Item name
 		var name_col := UITheme.TEXT if selected else UITheme.TEXT_DIM
 		draw_string(font, Vector2(panel_x + 62, ry + 26), item.get("name", "???"),
-			HORIZONTAL_ALIGNMENT_LEFT, 200, 13, name_col)
+			HORIZONTAL_ALIGNMENT_LEFT, 200, 14, name_col)
 
 		# Type
 		draw_string(font, Vector2(panel_x + 270, ry + 26), item.get("type", "").to_upper(),
-			HORIZONTAL_ALIGNMENT_LEFT, 80, 10, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, 12, UITheme.TEXT_DIM)
 
 		# Quantity
 		draw_string(font, Vector2(panel_x + PANEL_W - 60, ry + 26), "x%d" % item.get("quantity", 1),
-			HORIZONTAL_ALIGNMENT_RIGHT, 50, 13, icon_col)
+			HORIZONTAL_ALIGNMENT_RIGHT, 50, 14, icon_col)
 
 		# Separator line
 		draw_line(Vector2(panel_x + 8, ry + ROW_H - 2), Vector2(panel_x + PANEL_W - 8, ry + ROW_H - 2),
@@ -203,7 +203,7 @@ func _draw() -> void:
 	if _crate_contents.size() > MAX_VISIBLE_ROWS:
 		var scroll_text := "%d/%d" % [_scroll_offset + 1, _crate_contents.size()]
 		draw_string(font, Vector2(panel_x, CONTENT_TOP + panel_h + 6), scroll_text,
-			HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, 9, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, 12, UITheme.TEXT_DIM)
 
 	# Corner accents
 	var accent := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)

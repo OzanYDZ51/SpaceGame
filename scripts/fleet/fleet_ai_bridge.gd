@@ -20,6 +20,7 @@ var _brain: AIBrain = null
 var _station_id: String = ""
 var _returning: bool = false
 var _arrived: bool = false
+var _attack_target_id: String = ""
 
 const RETURN_ARRIVE_DIST: float = 500.0
 const MOVE_ARRIVE_DIST: float = 200.0
@@ -68,8 +69,11 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	command_params = params
 	_returning = false
 	_arrived = false
+	_attack_target_id = ""
 	if _brain == null:
-		push_warning("FleetAIBridge[%d]: _brain is null, command ignored!" % fleet_index)
+		if _initialized:
+			push_warning("FleetAIBridge[%d]: _brain is null, command ignored!" % fleet_index)
+		# Not yet initialized — command stored, will be applied in _do_init()
 		return
 
 	# All mission commands: ignore threats, focus on destination
@@ -94,6 +98,19 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			var center_pos := FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
 			_brain.set_patrol_area(center_pos, radius)
 			_brain.current_state = AIBrain.State.PATROL
+		&"attack":
+			_attack_target_id = params.get("target_entity_id", "")
+			if _attack_target_id != "":
+				var ent := EntityRegistry.get_entity(_attack_target_id)
+				if not ent.is_empty():
+					var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					_brain.set_patrol_area(target_pos, 50.0)
+					var target_node: Node3D = ent.get("node", null) as Node3D if ent.get("node") else null
+					if target_node and is_instance_valid(target_node):
+						_brain.target = target_node
+						_brain.current_state = AIBrain.State.PURSUE
+					else:
+						_brain.current_state = AIBrain.State.PATROL
 		&"return_to_station":
 			_returning = true
 			# Preserve existing _station_id (set during deployment) if params don't include one
@@ -150,6 +167,22 @@ func _process(_delta: float) -> void:
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
 
+	# Monitor attack target
+	if command == &"attack" and _attack_target_id != "":
+		var ent := EntityRegistry.get_entity(_attack_target_id)
+		if ent.is_empty():
+			# Target destroyed — stay in patrol zone, keep fighting nearby enemies
+			_attack_target_id = ""
+		else:
+			# Update patrol area to track moving target
+			var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			_brain.set_patrol_area(target_pos, 50.0)
+			# If target has a node and brain lost its target, re-acquire
+			var target_node: Node3D = ent.get("node", null) as Node3D if ent.get("node") else null
+			if target_node and is_instance_valid(target_node) and _brain.target == null:
+				_brain.target = target_node
+				_brain.current_state = AIBrain.State.PURSUE
+
 
 func _mark_arrived(target_pos: Vector3) -> void:
 	_arrived = true
@@ -175,6 +208,11 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 			var cz: float = command_params.get("center_z", 0.0)
 			var radius: float = command_params.get("radius", 500.0)
 			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
+		&"attack":
+			if _attack_target_id != "":
+				var ent := EntityRegistry.get_entity(_attack_target_id)
+				if not ent.is_empty():
+					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
 		&"return_to_station":
 			if _station_id != "":
 				var ent := EntityRegistry.get_entity(_station_id)

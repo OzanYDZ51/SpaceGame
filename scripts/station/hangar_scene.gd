@@ -81,14 +81,14 @@ func _draw_prompt() -> void:
 		return
 
 	var s := _prompt_ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var pulse := sin(_cam_t * 2.5) * 0.15 + 0.85
 
 	# "HANGAR" title at top center — thin, understated
 	_prompt_ctrl.draw_string(font, Vector2(0, 32), "HANGAR",
-		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 11, Color(0.2, 0.7, 0.85, 0.35))
+		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, Color(0.2, 0.7, 0.85, 0.35))
 	# Thin underline accent
-	var title_w: float = font.get_string_size("HANGAR", HORIZONTAL_ALIGNMENT_CENTER, -1, 11).x
+	var title_w: float = font.get_string_size("HANGAR", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
 	var line_x: float = (s.x - title_w) * 0.5
 	_prompt_ctrl.draw_line(Vector2(line_x, 36), Vector2(line_x + title_w, 36),
 		Color(0.15, 0.6, 0.8, 0.2 * pulse), 1.0)
@@ -104,7 +104,7 @@ func _draw_prompt() -> void:
 		var sel_col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
 		_prompt_ctrl.draw_string(font, Vector2(0, sel_cy + 4),
 			"\u25C0  [A]   CHANGER DE VAISSEAU   [D]  \u25B6",
-			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 9, sel_col)
+			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, sel_col)
 
 	# Main prompt pill
 	var cy := s.y - 52.0
@@ -118,7 +118,7 @@ func _draw_prompt() -> void:
 	var col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
 	_prompt_ctrl.draw_string(font, Vector2(0, cy + 4),
 		"TERMINAL  [F]        DÉCOLLER  [Échap]",
-		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, col)
+		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, col)
 
 
 func _process(delta: float) -> void:

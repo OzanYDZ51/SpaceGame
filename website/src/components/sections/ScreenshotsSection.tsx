@@ -14,7 +14,7 @@ const SCREENSHOTS = [
 
 export function ScreenshotsSection() {
   return (
-    <section id="screenshots" className="py-24 sm:py-32">
+    <section id="screenshots" className="py-20 sm:py-24 md:py-32">
       <Container>
         <ScrollReveal>
           <SectionHeading
@@ -22,18 +22,14 @@ export function ScreenshotsSection() {
             subtitle="Quelques captures de l'univers d'Imperion Online."
           />
         </ScrollReveal>
-      </Container>
 
-      {/* Horizontal scrollable gallery */}
-      <div className="overflow-x-auto pb-4 scrollbar-thin">
-        <div className="flex gap-4 px-4 sm:px-8 min-w-max">
+        {/* Grid on mobile, horizontal scroll on desktop */}
+        {/* Mobile: vertical grid */}
+        <div className="grid grid-cols-1 sm:hidden gap-4">
           {SCREENSHOTS.map((shot, i) => (
-            <ScrollReveal key={i} delay={i * 0.1} direction="right">
-              <div className="relative w-80 h-48 sm:w-96 sm:h-56 rounded border border-border-subtle overflow-hidden border-glow-hover flex-shrink-0">
-                {/* Placeholder gradient — replace with actual screenshots */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${shot.gradient}`}
-                />
+            <ScrollReveal key={i} delay={i * 0.08}>
+              <div className="relative w-full aspect-video rounded border border-border-subtle overflow-hidden border-glow-hover">
+                <div className={`absolute inset-0 bg-gradient-to-br ${shot.gradient}`} />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-xs font-mono uppercase tracking-[0.2em] text-text-muted">
                     {shot.alt}
@@ -43,7 +39,25 @@ export function ScreenshotsSection() {
             </ScrollReveal>
           ))}
         </div>
-      </div>
+
+        {/* Desktop: horizontal scrollable gallery */}
+        <div className="hidden sm:block overflow-x-auto pb-4 scrollbar-thin -mx-4 sm:-mx-6 lg:-mx-8">
+          <div className="flex gap-4 px-4 sm:px-6 lg:px-8" style={{ width: "max-content" }}>
+            {SCREENSHOTS.map((shot, i) => (
+              <ScrollReveal key={i} delay={i * 0.1} direction="right">
+                <div className="relative w-80 md:w-96 lg:w-[28rem] aspect-video rounded border border-border-subtle overflow-hidden border-glow-hover flex-shrink-0">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${shot.gradient}`} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-mono uppercase tracking-[0.2em] text-text-muted">
+                      {shot.alt}
+                    </span>
+                  </div>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </Container>
     </section>
   );
 }

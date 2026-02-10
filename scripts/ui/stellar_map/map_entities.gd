@@ -513,6 +513,8 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 				status_tag = "[EN POSITION]" if arrived else "[EN ROUTE]"
 			"patrol":
 				status_tag = "[PATROUILLE]"
+			"attack":
+				status_tag = "[ATTAQUE]"
 			"return_to_station":
 				status_tag = "[RAPPEL]"
 		if status_tag != "":
@@ -673,6 +675,7 @@ func _type_label(type: int) -> String:
 		EntityRegistrySystem.EntityType.STATION: return "Station"
 		EntityRegistrySystem.EntityType.SHIP_PLAYER: return "Vaisseau joueur"
 		EntityRegistrySystem.EntityType.SHIP_NPC: return "Vaisseau PNJ"
+		EntityRegistrySystem.EntityType.SHIP_FLEET: return "Vaisseau flotte"
 		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "Ceinture"
 		EntityRegistrySystem.EntityType.JUMP_GATE: return "Portail"
 	return "Inconnu"

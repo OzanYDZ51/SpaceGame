@@ -22,7 +22,7 @@ export function ChangelogSection() {
   }, []);
 
   return (
-    <section id="changelog" className="py-24 sm:py-32 bg-bg-secondary/30">
+    <section id="changelog" className="py-20 sm:py-24 md:py-32 bg-bg-secondary/30">
       <Container>
         <ScrollReveal>
           <SectionHeading
@@ -42,14 +42,14 @@ export function ChangelogSection() {
         ) : (
           <div className="max-w-2xl mx-auto">
             {/* Timeline */}
-            <div className="relative border-l border-border-subtle pl-8 space-y-8">
+            <div className="relative border-l border-border-subtle pl-6 sm:pl-8 space-y-6 sm:space-y-8">
               {entries.map((entry, i) => (
                 <ScrollReveal key={entry.id} delay={i * 0.1}>
                   <div className="relative">
                     {/* Timeline dot */}
-                    <div className="absolute -left-[2.35rem] top-1 w-2.5 h-2.5 rounded-full bg-cyan/60 ring-4 ring-bg-primary" />
+                    <div className="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan/60 ring-4 ring-bg-primary" />
 
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                       <Badge
                         className={
                           entry.is_major
@@ -64,7 +64,7 @@ export function ChangelogSection() {
                       </span>
                     </div>
 
-                    <p className="text-sm text-text-secondary leading-relaxed">
+                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
                       {entry.summary}
                     </p>
                   </div>

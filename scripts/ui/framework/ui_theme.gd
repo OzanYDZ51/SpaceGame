@@ -75,13 +75,15 @@ var _font_bold: Font = null
 
 
 func _ready() -> void:
-	# Load Rajdhani fonts, fallback to Godot default
-	var regular = load("res://assets/fonts/Rajdhani-Regular.ttf")
-	var medium = load("res://assets/fonts/Rajdhani-Medium.ttf")
-	var bold = load("res://assets/fonts/Rajdhani-Bold.ttf")
-	_font_regular = regular if regular else ThemeDB.fallback_font
-	_font_medium = medium if medium else _font_regular
-	_font_bold = bold if bold else _font_regular
+	_font_regular = load("res://assets/fonts/Rajdhani-Regular.ttf")
+	_font_medium = load("res://assets/fonts/Rajdhani-Medium.ttf")
+	_font_bold = load("res://assets/fonts/Rajdhani-Bold.ttf")
+	if _font_regular == null:
+		push_error("UITheme: Rajdhani-Regular.ttf not found! UI text will crash.")
+	if _font_medium == null:
+		_font_medium = _font_regular
+	if _font_bold == null:
+		_font_bold = _font_regular
 
 
 func _process(delta: float) -> void:

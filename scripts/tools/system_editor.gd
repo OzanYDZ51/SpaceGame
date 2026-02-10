@@ -72,6 +72,7 @@ var _pan_mouse := Vector2.ZERO
 var _pan_offset := Vector2.ZERO
 var _dirty := false
 var _save_flash: float = 0.0      # Brief green flash after save
+var _editor_font: Font = null
 
 
 # =============================================================================
@@ -82,6 +83,7 @@ func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
 	clip_contents = true
 	focus_mode = FOCUS_ALL
+	_editor_font = load("res://assets/fonts/Rajdhani-Medium.ttf")
 	if not Engine.is_editor_hint():
 		_scan_systems()
 		if _system_count > 0:
@@ -193,11 +195,10 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), C_BG)
 
 	if _data == null:
-		var f := ThemeDB.fallback_font
-		draw_string(f, Vector2(size.x * 0.5 - 100, size.y * 0.5), "No system data loaded", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_DIM)
+		draw_string(_editor_font, Vector2(size.x * 0.5 - 100, size.y * 0.5), "No system data loaded", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, C_DIM)
 		return
 
-	var f := ThemeDB.fallback_font
+	var f := _editor_font
 	var sc := _w2s(0, 0)
 
 	_draw_grid(f, sc)

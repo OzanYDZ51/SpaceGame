@@ -537,16 +537,31 @@ func _input(event: InputEvent) -> void:
 				_right_hold_pos = event.position
 				_right_hold_triggered = false
 			else:
-				# Right click released — quick release = move_to for all selected
+				# Right click released — quick release = move_to or attack
 				var effective_indices := _get_effective_fleet_indices()
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
-					var universe_x: float = _camera.screen_to_universe_x(event.position.x)
-					var universe_z: float = _camera.screen_to_universe_z(event.position.y)
-					var params := {"target_x": universe_x, "target_z": universe_z}
-					for idx in effective_indices:
-						fleet_order_requested.emit(idx, &"move_to", params)
-					_show_waypoint(universe_x, universe_z)
-					_set_route_lines(effective_indices, universe_x, universe_z)
+					var target_id := _entity_layer.get_entity_at(event.position)
+					var target_ent := EntityRegistry.get_entity(target_id) if target_id != "" else {}
+					if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC:
+						# Attack enemy NPC
+						var params := {
+							"target_entity_id": target_id,
+							"target_x": target_ent["pos_x"],
+							"target_z": target_ent["pos_z"],
+						}
+						for idx in effective_indices:
+							fleet_order_requested.emit(idx, &"attack", params)
+						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
+						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+					else:
+						# Move to empty space
+						var universe_x: float = _camera.screen_to_universe_x(event.position.x)
+						var universe_z: float = _camera.screen_to_universe_z(event.position.y)
+						var params := {"target_x": universe_x, "target_z": universe_z}
+						for idx in effective_indices:
+							fleet_order_requested.emit(idx, &"move_to", params)
+						_show_waypoint(universe_x, universe_z)
+						_set_route_lines(effective_indices, universe_x, universe_z)
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()

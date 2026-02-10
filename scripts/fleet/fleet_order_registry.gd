@@ -17,6 +17,7 @@ static func _ensure_init() -> void:
 	_initialized = true
 	_register(&"move_to", "DEPLACER", "Se deplacer vers cette position")
 	_register(&"patrol", "PATROUILLER", "Patrouiller dans cette zone")
+	_register(&"attack", "ATTAQUER", "Attaquer la cible ennemie")
 	_register(&"return_to_station", "RAPPELER", "Retourner a la station")
 
 
@@ -44,6 +45,12 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 			return true
 		&"patrol":
 			return true
+		&"attack":
+			var target_id: String = context.get("target_entity_id", "")
+			if target_id == "":
+				return false
+			var ent := EntityRegistry.get_entity(target_id)
+			return ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC
 		&"return_to_station":
 			return is_deployed
 	return false
@@ -61,6 +68,14 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 				"center_x": context.get("universe_x", 0.0),
 				"center_z": context.get("universe_z", 0.0),
 				"radius": 500.0,
+			}
+		&"attack":
+			var target_id: String = context.get("target_entity_id", "")
+			var ent := EntityRegistry.get_entity(target_id)
+			return {
+				"target_entity_id": target_id,
+				"target_x": ent.get("pos_x", context.get("universe_x", 0.0)),
+				"target_z": ent.get("pos_z", context.get("universe_z", 0.0)),
 			}
 		&"return_to_station":
 			return {}

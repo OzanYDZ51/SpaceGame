@@ -18,33 +18,67 @@ export function HeroSection() {
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/30 via-transparent to-bg-primary pointer-events-none" />
 
-      <Container className="relative z-10 text-center py-20">
+      {/* Animated radial pulse behind title */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 1.5 }}
+      >
+        <motion.div
+          className="w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full bg-cyan/[0.04] blur-[80px] sm:blur-[120px]"
+          animate={{
+            scale: [1, 1.15, 1],
+            opacity: [0.5, 0.8, 0.5],
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </motion.div>
+
+      <Container className="relative z-10 text-center py-20 px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <Badge className="mb-8">Alpha 0.1 — Accès anticipé</Badge>
+          <Badge className="mb-6 sm:mb-8">Alpha 0.1 — Accès anticipé</Badge>
         </motion.div>
 
         <motion.h1
-          className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold uppercase tracking-wider leading-none"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold uppercase tracking-wider leading-none"
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
         >
-          <span className="text-cyan text-glow-cyan">Imperion</span>
+          <motion.span
+            className="text-cyan text-glow-cyan inline-block"
+            animate={{
+              textShadow: [
+                "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
+                "0 0 15px rgba(0,200,255,0.8), 0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(0,200,255,0.25)",
+                "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
+              ],
+            }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            Imperion
+          </motion.span>
           <br />
-          <span className="text-text-primary text-4xl sm:text-5xl md:text-6xl tracking-[0.4em]">
+          <motion.span
+            className="text-text-primary text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-[0.3em] sm:tracking-[0.4em]"
+            initial={{ opacity: 0, letterSpacing: "0.1em" }}
+            animate={{ opacity: 1, letterSpacing: undefined }}
+            transition={{ duration: 1.2, delay: 0.7 }}
+          >
             Online
-          </span>
+          </motion.span>
         </motion.h1>
 
         <motion.p
-          className="mt-6 text-lg sm:text-xl text-text-secondary max-w-xl mx-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.7 }}
+          className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-text-secondary max-w-md sm:max-w-xl mx-auto"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.9 }}
         >
           Explorez. Commercez. Conquérez.
           <br />
@@ -52,15 +86,15 @@ export function HeroSection() {
         </motion.p>
 
         <motion.div
-          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
+          transition={{ duration: 0.6, delay: 1.2 }}
         >
-          <Button href="#download" className="text-base px-8 py-3">
+          <Button href="#download" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
             Télécharger le launcher
           </Button>
-          <Button variant="outline" href="#features" className="text-base px-8 py-3">
+          <Button variant="outline" href="#features" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
             Découvrir le jeu
           </Button>
         </motion.div>
@@ -68,10 +102,10 @@ export function HeroSection() {
 
       {/* Scroll indicator */}
       <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
+        transition={{ delay: 1.8 }}
       >
         <motion.div
           animate={{ y: [0, 8, 0] }}
