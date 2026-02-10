@@ -4,13 +4,15 @@ extends Control
 # =============================================================================
 # Map Fleet Panel - Left-side fleet overview on stellar/galaxy map
 # Groups ships by system > station, scrollable, clickable
-# Left click = select ship for move, Right click on deployed = recall
+# Supports multi-select: click = single, Ctrl+click = add/remove
+# Left click = select ships for move, Right click on deployed = recall
 # Full custom _draw(), no child Controls
 # =============================================================================
 
 signal ship_selected(fleet_index: int, system_id: int)
 signal ship_move_selected(fleet_index: int)
 signal ship_recall_requested(fleet_index: int)
+signal selection_changed(fleet_indices: Array)
 
 const PANEL_W: float = 240.0
 const HEADER_H: float = 32.0
@@ -23,7 +25,7 @@ const CORNER_LEN: float = 8.0
 var _fleet: PlayerFleet = null
 var _galaxy: GalaxyData = null
 var _active_index: int = -1
-var _selected_fleet_index: int = -1
+var _selected_fleet_indices: Array[int] = []
 
 # Grouped data rebuilt on fleet_changed
 var _groups: Array[Dictionary] = []
@@ -59,12 +61,17 @@ func set_galaxy(galaxy: GalaxyData) -> void:
 	_rebuild()
 
 
-func get_selected_fleet_index() -> int:
-	return _selected_fleet_index
+func get_selected_fleet_indices() -> Array[int]:
+	return _selected_fleet_indices
 
 
 func clear_selection() -> void:
-	_selected_fleet_index = -1
+	_selected_fleet_indices.clear()
+	queue_redraw()
+
+
+func set_selected_fleet_indices(indices: Array[int]) -> void:
+	_selected_fleet_indices = indices.duplicate()
 	queue_redraw()
 
 
@@ -132,7 +139,7 @@ func get_panel_rect() -> Rect2:
 	return Rect2(0, 0, PANEL_W, size.y)
 
 
-func handle_click(pos: Vector2) -> bool:
+func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 	if pos.x > PANEL_W or pos.x < 0:
 		return false
 	if _fleet == null or _fleet.ships.is_empty():
@@ -142,12 +149,22 @@ func handle_click(pos: Vector2) -> bool:
 	if hit_index >= 0:
 		# Always emit ship_selected for zoom/center on entity
 		ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
-		# Toggle selection (active ship = autopilot, others = fleet orders)
-		if _selected_fleet_index == hit_index:
-			_selected_fleet_index = -1
+		if ctrl_pressed:
+			# Ctrl+click = toggle in multi-select
+			var idx: int = _selected_fleet_indices.find(hit_index)
+			if idx >= 0:
+				_selected_fleet_indices.remove_at(idx)
+			else:
+				_selected_fleet_indices.append(hit_index)
 		else:
-			_selected_fleet_index = hit_index
-			ship_move_selected.emit(hit_index)
+			# Normal click = toggle single selection
+			if _selected_fleet_indices.size() == 1 and _selected_fleet_indices[0] == hit_index:
+				_selected_fleet_indices.clear()
+			else:
+				_selected_fleet_indices = [hit_index]
+		selection_changed.emit(_selected_fleet_indices.duplicate())
+		if _selected_fleet_indices.size() == 1:
+			ship_move_selected.emit(_selected_fleet_indices[0])
 		queue_redraw()
 		return true
 
@@ -281,8 +298,13 @@ func _draw() -> void:
 	_max_scroll = maxf(y + _scroll_offset - size.y + 20, 0.0)
 
 	# Selection hint
-	if _selected_fleet_index >= 0:
-		var hint_text := "CLIC DROIT MAP > AUTOPILOT" if _selected_fleet_index == _active_index else "CLIC DROIT MAP > DEPLACER"
+	var sel_count: int = _selected_fleet_indices.size()
+	if sel_count > 0:
+		var hint_text: String
+		if sel_count == 1:
+			hint_text = "CLIC DROIT MAP > AUTOPILOT" if _selected_fleet_indices[0] == _active_index else "CLIC DROIT MAP > DEPLACER"
+		else:
+			hint_text = "CLIC DROIT MAP > DEPLACER %d" % sel_count
 		var hint_y: float = size.y - 16.0
 		if hint_y > HEADER_H + 20:
 			draw_rect(Rect2(0, hint_y - 14, PANEL_W, 20), Color(0.0, 0.05, 0.1, 0.8))
@@ -334,7 +356,7 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 
 func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> void:
 	var is_active: bool = fleet_index == _active_index
-	var is_selected: bool = fleet_index == _selected_fleet_index
+	var is_selected: bool = fleet_index in _selected_fleet_indices
 	var x: float = MARGIN + 16
 
 	# Selection highlight (pulsing cyan background)

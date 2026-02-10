@@ -209,6 +209,12 @@ func auto_retrieve_all() -> void:
 		retrieve_ship(idx)
 
 
+func ensure_deployed_visible() -> void:
+	for npc in _deployed_ships.values():
+		if is_instance_valid(npc):
+			npc.visible = true
+
+
 func redeploy_saved_ships() -> void:
 	if _fleet == null:
 		return

@@ -44,8 +44,8 @@ var _trails: MapTrails = MapTrails.new()
 var _last_click_time: float = 0.0
 var _last_click_id: String = ""
 
-# Fleet move mode
-var _fleet_selected_index: int = -1
+# Fleet move mode (multi-select)
+var _fleet_selected_indices: Array[int] = []
 
 # Right-click hold detection for context menu
 var _right_hold_start: float = 0.0
@@ -121,7 +121,7 @@ func _build_children() -> void:
 	_fleet_panel.name = "MapFleetPanel"
 	_setup_full_rect(_fleet_panel)
 	_fleet_panel.ship_selected.connect(_on_fleet_ship_selected)
-	_fleet_panel.ship_move_selected.connect(_on_fleet_move_selected)
+	_fleet_panel.selection_changed.connect(_on_fleet_selection_changed)
 	_fleet_panel.ship_recall_requested.connect(_on_fleet_recall_requested)
 	add_child(_fleet_panel)
 
@@ -236,7 +236,7 @@ func close() -> void:
 	_is_open = false
 	visible = false
 	_is_panning = false
-	_fleet_selected_index = -1
+	_fleet_selected_indices.clear()
 	_fleet_panel.clear_selection()
 	_close_context_menu()
 	_clear_route_line()
@@ -326,8 +326,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		if event.physical_keycode == KEY_ESCAPE:
 			# If fleet ship is selected, deselect first
-			if _fleet_selected_index >= 0:
-				_fleet_selected_index = -1
+			if not _fleet_selected_indices.is_empty():
+				_fleet_selected_indices.clear()
 				_fleet_panel.clear_selection()
 				get_viewport().set_input_as_handled()
 				return
@@ -432,7 +432,7 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				# Fleet panel gets first priority (left side)
-				if _fleet_panel.handle_click(event.position):
+				if _fleet_panel.handle_click(event.position, event.ctrl_pressed):
 					get_viewport().set_input_as_handled()
 					return
 				# Toolbar buttons
@@ -443,8 +443,8 @@ func _input(event: InputEvent) -> void:
 				var hit_id: String = _entity_layer.get_entity_at(event.position)
 
 				# Click on empty space with fleet selected -> deselect
-				if hit_id == "" and _fleet_selected_index >= 0:
-					_fleet_selected_index = -1
+				if hit_id == "" and not _fleet_selected_indices.is_empty():
+					_fleet_selected_indices.clear()
 					_fleet_panel.clear_selection()
 					get_viewport().set_input_as_handled()
 					return
@@ -456,19 +456,21 @@ func _input(event: InputEvent) -> void:
 					else:
 						var now: float = Time.get_ticks_msec() / 1000.0
 						if hit_id == _last_click_id and (now - _last_click_time) < 0.4:
-							# Double-click = move selected ship to this entity
-							var effective_idx := _get_effective_fleet_index()
+							# Double-click = move selected ships to this entity
+							var effective_indices := _get_effective_fleet_indices()
 							var ent := EntityRegistry.get_entity(hit_id)
-							if effective_idx >= 0 and not ent.is_empty():
+							if not effective_indices.is_empty() and not ent.is_empty():
 								var ux: float = ent["pos_x"]
 								var uz: float = ent["pos_z"]
 								var params := {"target_x": ux, "target_z": uz}
-								fleet_order_requested.emit(effective_idx, &"move_to", params)
+								for idx in effective_indices:
+									fleet_order_requested.emit(idx, &"move_to", params)
 								_show_waypoint(ux, uz)
-								_set_route_line(effective_idx, ux, uz)
+								_set_route_line(effective_indices[0], ux, uz)
 							_last_click_id = ""
 						else:
 							_select_entity(hit_id)
+							_sync_fleet_selection_from_entity(hit_id)
 							_last_click_id = hit_id
 							_last_click_time = now
 				else:
@@ -485,6 +487,20 @@ func _input(event: InputEvent) -> void:
 							_entity_layer.selected_id = ids[0]
 							_info_panel.set_selected(ids[0])
 							_dirty = true
+							# Extract fleet indices from marquee-selected entities
+							var fleet_ids: Array[int] = []
+							for eid in ids:
+								if eid == _player_id and _fleet_panel._fleet:
+									fleet_ids.append(_fleet_panel._fleet.active_index)
+								else:
+									var ent := EntityRegistry.get_entity(eid)
+									if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
+										var extra: Dictionary = ent.get("extra", {})
+										if extra.has("fleet_index"):
+											fleet_ids.append(extra["fleet_index"])
+							if not fleet_ids.is_empty():
+								_fleet_selected_indices = fleet_ids
+								_fleet_panel.set_selected_fleet_indices(fleet_ids)
 						else:
 							_select_entity("")
 					else:
@@ -509,15 +525,16 @@ func _input(event: InputEvent) -> void:
 				_right_hold_pos = event.position
 				_right_hold_triggered = false
 			else:
-				# Right click released — quick release = move_to
-				var effective_idx := _get_effective_fleet_index()
-				if effective_idx >= 0 and _right_hold_start > 0.0 and not _right_hold_triggered:
+				# Right click released — quick release = move_to for all selected
+				var effective_indices := _get_effective_fleet_indices()
+				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
 					var universe_x: float = _camera.screen_to_universe_x(event.position.x)
 					var universe_z: float = _camera.screen_to_universe_z(event.position.y)
 					var params := {"target_x": universe_x, "target_z": universe_z}
-					fleet_order_requested.emit(effective_idx, &"move_to", params)
+					for idx in effective_indices:
+						fleet_order_requested.emit(idx, &"move_to", params)
 					_show_waypoint(universe_x, universe_z)
-					_set_route_line(effective_idx, universe_x, universe_z)
+					_set_route_line(effective_indices[0], universe_x, universe_z)
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()
@@ -543,27 +560,33 @@ func _input(event: InputEvent) -> void:
 		return
 
 
-## Resolves the fleet index from sidebar, entity selection, or defaults to active ship.
-func _get_effective_fleet_index() -> int:
-	# 1. Fleet panel sidebar selection takes priority
-	if _fleet_selected_index >= 0:
-		return _fleet_selected_index
+## Resolves all effective fleet indices from sidebar, entity selection, or defaults to active ship.
+func _get_effective_fleet_indices() -> Array[int]:
+	# 1. Fleet panel sidebar multi-selection takes priority
+	if not _fleet_selected_indices.is_empty():
+		return _fleet_selected_indices
 	# 2. Check entity selected on the map
 	var sel_id := _entity_layer.selected_id
 	if sel_id != "":
 		# Player ship → active fleet index
 		if sel_id == _player_id and _fleet_panel._fleet:
-			return _fleet_panel._fleet.active_index
+			return [_fleet_panel._fleet.active_index]
 		# Fleet NPC → fleet_index from entity extra
 		var ent := EntityRegistry.get_entity(sel_id)
 		if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.has("fleet_index"):
-				return extra["fleet_index"]
+				return [extra["fleet_index"]]
 	# 3. Default to active (piloted) ship
 	if _fleet_panel._fleet:
-		return _fleet_panel._fleet.active_index
-	return -1
+		return [_fleet_panel._fleet.active_index]
+	return []
+
+
+## Convenience: returns first effective fleet index or -1.
+func _get_effective_fleet_index() -> int:
+	var indices := _get_effective_fleet_indices()
+	return indices[0] if not indices.is_empty() else -1
 
 
 func _select_entity(id: String) -> void:
@@ -574,6 +597,32 @@ func _select_entity(id: String) -> void:
 		_entity_layer.selected_ids.clear()
 	_info_panel.set_selected(id)
 	_dirty = true
+
+
+## Updates fleet panel highlight when a fleet-related entity is selected on the map.
+func _sync_fleet_selection_from_entity(id: String) -> void:
+	if _fleet_panel._fleet == null:
+		return
+	if id == "":
+		return  # Don't clear fleet selection on empty — handled separately
+	# Player ship → active index
+	if id == _player_id:
+		var idx: int = _fleet_panel._fleet.active_index
+		_fleet_selected_indices = [idx]
+		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
+		return
+	# Fleet NPC → fleet_index from entity extra
+	var ent := EntityRegistry.get_entity(id)
+	if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
+		var extra: Dictionary = ent.get("extra", {})
+		if extra.has("fleet_index"):
+			var idx: int = extra["fleet_index"]
+			_fleet_selected_indices = [idx]
+			_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
+			return
+	# Non-fleet entity: clear fleet selection
+	_fleet_selected_indices.clear()
+	_fleet_panel.clear_selection()
 
 
 func _toggle_multi_select(id: String) -> void:
@@ -639,8 +688,11 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 			return
 
 
-func _on_fleet_move_selected(fleet_index: int) -> void:
-	_fleet_selected_index = fleet_index
+func _on_fleet_selection_changed(fleet_indices: Array) -> void:
+	_fleet_selected_indices.clear()
+	for idx in fleet_indices:
+		_fleet_selected_indices.append(idx)
+	_dirty = true
 
 
 func _on_fleet_recall_requested(fleet_index: int) -> void:
@@ -707,14 +759,15 @@ func _close_context_menu() -> void:
 
 
 func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
-	var effective_idx := _get_effective_fleet_index()
-	if effective_idx >= 0:
-		fleet_order_requested.emit(effective_idx, order_id, params)
+	var effective_indices := _get_effective_fleet_indices()
+	if not effective_indices.is_empty():
+		for idx in effective_indices:
+			fleet_order_requested.emit(idx, order_id, params)
 		if order_id != &"return_to_station":
 			var ux: float = params.get("target_x", params.get("center_x", 0.0))
 			var uz: float = params.get("target_z", params.get("center_z", 0.0))
 			_show_waypoint(ux, uz)
-			_set_route_line(effective_idx, ux, uz)
+			_set_route_line(effective_indices[0], ux, uz)
 	_close_context_menu()
 
 
