@@ -96,7 +96,10 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			_brain.current_state = AIBrain.State.PATROL
 		&"return_to_station":
 			_returning = true
-			_station_id = params.get("station_id", "")
+			# Preserve existing _station_id (set during deployment) if params don't include one
+			var new_station: String = params.get("station_id", "")
+			if new_station != "":
+				_station_id = new_station
 			if _station_id != "":
 				var ent := EntityRegistry.get_entity(_station_id)
 				if not ent.is_empty():

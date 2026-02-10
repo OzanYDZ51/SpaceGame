@@ -162,6 +162,11 @@ func retrieve_ship(fleet_index: int) -> bool:
 	if fs.deployment_state != FleetShip.DeploymentState.DEPLOYED:
 		return false
 
+	# Notify squadron manager while NPC still valid
+	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	if sq_mgr:
+		sq_mgr.on_ship_retrieved(fleet_index)
+
 	# Despawn NPC
 	if _deployed_ships.has(fleet_index):
 		var npc: ShipController = _deployed_ships[fleet_index]
@@ -172,11 +177,6 @@ func retrieve_ship(fleet_index: int) -> bool:
 				lod_mgr.unregister_ship(StringName(npc.name))
 			npc.queue_free()
 		_deployed_ships.erase(fleet_index)
-
-	# Notify squadron manager before cleanup
-	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
-	if sq_mgr:
-		sq_mgr.on_ship_retrieved(fleet_index)
 
 	# Update FleetShip data
 	fs.deployment_state = FleetShip.DeploymentState.DOCKED
@@ -223,6 +223,32 @@ func auto_retrieve_all() -> void:
 func ensure_deployed_visible() -> void:
 	for npc in _deployed_ships.values():
 		if is_instance_valid(npc):
+			npc.visible = true
+
+
+func freeze_deployed_ships() -> void:
+	## Freeze fleet NPCs before docking. Prevents physics drift while universe is disabled.
+	for npc in _deployed_ships.values():
+		if is_instance_valid(npc):
+			npc.set_meta("_pre_dock_pos", npc.global_position)
+			npc.set_meta("_pre_dock_vel", npc.linear_velocity)
+			npc.freeze = true
+			npc.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+func unfreeze_deployed_ships() -> void:
+	## Unfreeze fleet NPCs after undocking. Restores physics, position and visibility.
+	for npc in _deployed_ships.values():
+		if is_instance_valid(npc):
+			npc.process_mode = Node.PROCESS_MODE_ALWAYS
+			npc.freeze = false
+			# Restore position/velocity saved before dock
+			if npc.has_meta("_pre_dock_pos"):
+				npc.global_position = npc.get_meta("_pre_dock_pos")
+				npc.remove_meta("_pre_dock_pos")
+			if npc.has_meta("_pre_dock_vel"):
+				npc.linear_velocity = npc.get_meta("_pre_dock_vel")
+				npc.remove_meta("_pre_dock_vel")
 			npc.visible = true
 
 

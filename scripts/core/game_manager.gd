@@ -542,9 +542,9 @@ func _initialize_game() -> void:
 		current_state = GameState.PLAYING
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
-		# Ensure fleet NPCs deployed while docked are visible after undock
+		# Unfreeze fleet NPCs (restores position, physics, visibility)
 		if _fleet_deployment_mgr:
-			_fleet_deployment_mgr.ensure_deployed_visible()
+			_fleet_deployment_mgr.unfreeze_deployed_ships()
 		SaveManager.trigger_save("undocked")
 	)
 

@@ -231,6 +231,11 @@ func open() -> void:
 		_camera.zoom = 0.001
 		_camera.target_zoom = 0.001
 
+	# Auto-select player's active ship so right-click move works immediately
+	if _player_id != "" and _preview_entities.is_empty():
+		_select_entity(_player_id)
+		_sync_fleet_selection_from_entity(_player_id)
+
 
 func close() -> void:
 	if not _is_open:
@@ -448,10 +453,11 @@ func _input(event: InputEvent) -> void:
 
 				var hit_id: String = _entity_layer.get_entity_at(event.position)
 
-				# Click on empty space with fleet selected -> deselect
+				# Click on empty space with fleet selected -> deselect everything
 				if hit_id == "" and not _fleet_selected_indices.is_empty():
 					_fleet_selected_indices.clear()
 					_fleet_panel.clear_selection()
+					_select_entity("")
 					get_viewport().set_input_as_handled()
 					return
 
@@ -583,9 +589,7 @@ func _get_effective_fleet_indices() -> Array[int]:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.has("fleet_index"):
 				return [extra["fleet_index"]]
-	# 3. Default to active (piloted) ship
-	if _fleet_panel._fleet:
-		return [_fleet_panel._fleet.active_index]
+	# 3. Nothing selected — no implicit default (user must select a ship first)
 	return []
 
 
