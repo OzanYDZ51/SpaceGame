@@ -37,12 +37,20 @@ func _ready() -> void:
 
 
 func set_fleet(fleet: PlayerFleet) -> void:
-	if _fleet and _fleet.fleet_changed.is_connected(_rebuild):
-		_fleet.fleet_changed.disconnect(_rebuild)
+	if _fleet:
+		if _fleet.fleet_changed.is_connected(_rebuild):
+			_fleet.fleet_changed.disconnect(_rebuild)
+		if _fleet.active_ship_changed.is_connected(_on_active_changed):
+			_fleet.active_ship_changed.disconnect(_on_active_changed)
 	_fleet = fleet
 	if _fleet:
 		_fleet.fleet_changed.connect(_rebuild)
+		_fleet.active_ship_changed.connect(_on_active_changed)
 		_active_index = _fleet.active_index
+	_rebuild()
+
+
+func _on_active_changed(_ship: FleetShip) -> void:
 	_rebuild()
 
 

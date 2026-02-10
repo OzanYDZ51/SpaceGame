@@ -139,6 +139,19 @@ func handle_ship_change(fleet_index: int) -> void:
 		for i in health.shield_current.size():
 			health.shield_current[i] = health.shield_max_per_facing
 
+	# Mark old ship as docked at the current station before switching
+	var old_fs := fleet.get_active()
+	if old_fs:
+		old_fs.docked_system_id = GameManager.current_system_id_safe()
+		# Resolve station ID from DockInstance
+		var dock_inst := GameManager.get_node_or_null("DockInstance") as DockInstance
+		if dock_inst and dock_inst.station_name != "":
+			var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+			for ent in stations:
+				if ent.get("name", "") == dock_inst.station_name:
+					old_fs.docked_station_id = ent.get("id", "")
+					break
+
 	# Update fleet active index
 	fleet.set_active(fleet_index)
 

@@ -602,6 +602,13 @@ func _on_system_loaded(system_id: int) -> void:
 	if _route_manager:
 		_route_manager.on_system_loaded(system_id)
 
+	# Ensure the active fleet ship has a valid docked_system_id
+	# (starting ship is created before system loads, so fix up here)
+	if player_fleet:
+		var active_fs := player_fleet.get_active()
+		if active_fs and active_fs.docked_system_id < 0:
+			active_fs.docked_system_id = system_id
+
 	# Redeploy fleet ships that were deployed in this system (from save)
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.redeploy_saved_ships()
@@ -620,16 +627,34 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		return
 	var fs := player_fleet.ships[fleet_index]
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
-		# Auto-deploy with this order
+		# Pre-check if deploy is possible (for user feedback)
+		if not _fleet_deployment_mgr.can_deploy(fleet_index):
+			if _toast_manager:
+				if fs.docked_system_id != current_system_id_safe():
+					_toast_manager.show_toast("VAISSEAU DANS UN AUTRE SYSTEME", UIToast.ToastType.WARNING)
+				else:
+					_toast_manager.show_toast("DEPLOIEMENT IMPOSSIBLE", UIToast.ToastType.WARNING)
+			return
+		# Deploy (routes through multiplayer authority when connected)
 		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
+		if _toast_manager:
+			_toast_manager.show_toast("DEPLOIEMENT: %s" % fs.custom_name, UIToast.ToastType.SUCCESS)
+		# Update route line now that deployed_npc_id should be set
+		if _stellar_map:
+			_stellar_map._set_route_line(fleet_index, params.get("target_x", 0.0), params.get("target_z", 0.0))
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		# Change command on already deployed ship
 		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
+	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+		if _toast_manager:
+			_toast_manager.show_toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)
 
 
 func _on_fleet_recall_from_map(fleet_index: int) -> void:
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.request_retrieve(fleet_index)
+		if _toast_manager and player_fleet and fleet_index < player_fleet.ships.size():
+			_toast_manager.show_toast("RAPPEL: %s" % player_fleet.ships[fleet_index].custom_name)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:

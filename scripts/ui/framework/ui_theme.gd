@@ -45,19 +45,19 @@ const TEXT_HEADER := Color(1.0, 0.7, 0.3, 0.8)
 const LABEL_KEY := Color(0.6, 0.4, 0.2, 0.7)
 const LABEL_VALUE := Color(1.0, 0.75, 0.4, 0.9)
 
-# --- Typography (Rajdhani sizes — +2px vs old for smaller x-height) ---
+# --- Typography (Rajdhani — bumped for readability, x-height is small) ---
 const FONT_SIZE_TITLE := 28
-const FONT_SIZE_HEADER := 18
-const FONT_SIZE_BODY := 13
-const FONT_SIZE_LABEL := 12
-const FONT_SIZE_SMALL := 11
-const FONT_SIZE_TINY := 10
+const FONT_SIZE_HEADER := 20
+const FONT_SIZE_BODY := 15
+const FONT_SIZE_LABEL := 14
+const FONT_SIZE_SMALL := 13
+const FONT_SIZE_TINY := 12
 
 # --- Spacing ---
 const MARGIN_SCREEN := 16.0
 const MARGIN_PANEL := 14.0
 const MARGIN_SECTION := 8.0
-const ROW_HEIGHT := 18.0
+const ROW_HEIGHT := 22.0
 const CORNER_LENGTH := 12.0
 
 # --- Animation ---

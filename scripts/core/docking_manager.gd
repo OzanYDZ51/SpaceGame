@@ -52,12 +52,22 @@ func handle_docked(station_name: String) -> void:
 
 	# Resolve station index from EntityRegistry
 	docked_station_idx = 0
+	var resolved_station_id: String = ""
 	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == station_name:
 			var extra: Dictionary = ent.get("extra", {})
 			docked_station_idx = extra.get("station_index", 0)
+			resolved_station_id = ent.get("id", "")
 			break
+
+	# Update active fleet ship's docking info
+	var fleet: PlayerFleet = player_data.fleet if player_data else null
+	if fleet:
+		var active_fs := fleet.get_active()
+		if active_fs:
+			active_fs.docked_station_id = resolved_station_id
+			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
 	# Enter isolated solo instance (freezes world, loads hangar)
 	dock_instance.enter(_build_dock_context(station_name))

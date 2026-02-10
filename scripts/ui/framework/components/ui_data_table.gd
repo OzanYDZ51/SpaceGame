@@ -18,7 +18,7 @@ var sort_ascending: bool = true
 
 var _scroll_offset: float = 0.0
 var _hovered_row: int = -1
-var _header_height: float = 24.0
+var _header_height: float = 28.0
 var _row_height: float = UITheme.ROW_HEIGHT
 
 
