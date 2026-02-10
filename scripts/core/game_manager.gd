@@ -542,9 +542,9 @@ func _initialize_game() -> void:
 		current_state = GameState.PLAYING
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
-		# Unfreeze fleet NPCs (restores position, physics, visibility)
+		# Safety: ensure fleet NPCs are visible after undock
 		if _fleet_deployment_mgr:
-			_fleet_deployment_mgr.unfreeze_deployed_ships()
+			_fleet_deployment_mgr.ensure_deployed_visible()
 		SaveManager.trigger_save("undocked")
 	)
 
@@ -643,6 +643,11 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 
 	# Active ship = engage player autopilot to destination
 	if fleet_index == player_fleet.active_index:
+		# If docked, undock first then autopilot after a frame
+		if current_state == GameState.DOCKED and _docking_mgr:
+			_docking_mgr.handle_undock()
+			# Wait one frame for undock to finish (state → PLAYING)
+			await get_tree().process_frame
 		_autopilot_player_to(params)
 		# Propagate to squadron members if player is a squadron leader
 		if _squadron_mgr:

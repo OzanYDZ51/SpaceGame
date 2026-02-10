@@ -69,10 +69,6 @@ func handle_docked(station_name: String) -> void:
 			active_fs.docked_station_id = resolved_station_id
 			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
-	# Freeze fleet NPCs BEFORE disabling universe (prevents physics drift)
-	if fleet_deployment_mgr:
-		fleet_deployment_mgr.freeze_deployed_ships()
-
 	# Enter isolated solo instance (freezes world, loads hangar)
 	dock_instance.enter(_build_dock_context(station_name))
 

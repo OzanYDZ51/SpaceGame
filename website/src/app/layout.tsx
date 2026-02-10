@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://imperion-online.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://imperiononline.fr"),
   title: `${SITE_NAME} — MMORPG Spatial`,
   description: SITE_DESCRIPTION,
   icons: { icon: "/favicon.svg" },

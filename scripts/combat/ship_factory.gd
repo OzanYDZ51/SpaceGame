@@ -118,7 +118,7 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 			em.equip_module(i, mod)
 
 
-static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false) -> ShipController:
+static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false, skip_default_loadout: bool = false) -> ShipController:
 	# Create RigidBody3D ship
 	var ship := ShipController.new()
 	ship.name = "NPC_%s_%d" % [ship_id, randi() % 10000]
@@ -212,12 +212,13 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	ship.add_child(wm)
 
 	wm.setup_hardpoints_from_configs(scene_result.configs, ship, hp_root)
-	wm.equip_weapons(data.default_loadout)
-	# All weapons in group 0 for NPCs
-	var all_indices: Array = []
-	for i in wm.hardpoints.size():
-		all_indices.append(i)
-	wm.set_weapon_group(0, all_indices)
+	if not skip_default_loadout:
+		wm.equip_weapons(data.default_loadout)
+		# All weapons in group 0 for NPCs
+		var all_indices: Array = []
+		for i in wm.hardpoints.size():
+			all_indices.append(i)
+		wm.set_weapon_group(0, all_indices)
 
 	# Targeting System
 	var targeting := TargetingSystem.new()

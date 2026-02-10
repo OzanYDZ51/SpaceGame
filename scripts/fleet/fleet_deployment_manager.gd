@@ -60,9 +60,9 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	var offset := Vector3(cos(angle) * dist, randf_range(-50.0, 50.0), sin(angle) * dist)
 	var spawn_pos := station_local_pos + offset
 
-	# Spawn NPC via ShipFactory
+	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
 	print("FleetDeploy: spawning '%s' at %s (station='%s', sys=%d)" % [fs.ship_id, spawn_pos, station_id, fs.docked_system_id])
-	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION)
+	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION, false, true)
 	if npc == null:
 		push_error("FleetDeploy: spawn_npc_ship FAILED for ship_id '%s'" % fs.ship_id)
 		return false
@@ -72,18 +72,10 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 		var away_dir := offset.normalized()
 		npc.look_at_from_position(spawn_pos, spawn_pos + away_dir, Vector3.UP)
 
-	# Ensure fleet NPC processes even when universe is disabled (player docked)
-	npc.process_mode = Node.PROCESS_MODE_ALWAYS
-
-	# Equip weapons from FleetShip loadout
+	# Equip weapons from FleetShip loadout (hardpoints are bare thanks to skip_default_loadout)
 	var wm := npc.get_node_or_null("WeaponManager") as WeaponManager
 	if wm:
 		wm.equip_weapons(fs.weapons)
-		# All weapons in group 0
-		var all_indices: Array = []
-		for i in wm.hardpoints.size():
-			all_indices.append(i)
-		wm.set_weapon_group(0, all_indices)
 
 	# Equip shield/engine/modules from FleetShip loadout
 	var em := npc.get_node_or_null("EquipmentManager") as EquipmentManager
@@ -223,32 +215,6 @@ func auto_retrieve_all() -> void:
 func ensure_deployed_visible() -> void:
 	for npc in _deployed_ships.values():
 		if is_instance_valid(npc):
-			npc.visible = true
-
-
-func freeze_deployed_ships() -> void:
-	## Freeze fleet NPCs before docking. Prevents physics drift while universe is disabled.
-	for npc in _deployed_ships.values():
-		if is_instance_valid(npc):
-			npc.set_meta("_pre_dock_pos", npc.global_position)
-			npc.set_meta("_pre_dock_vel", npc.linear_velocity)
-			npc.freeze = true
-			npc.process_mode = Node.PROCESS_MODE_DISABLED
-
-
-func unfreeze_deployed_ships() -> void:
-	## Unfreeze fleet NPCs after undocking. Restores physics, position and visibility.
-	for npc in _deployed_ships.values():
-		if is_instance_valid(npc):
-			npc.process_mode = Node.PROCESS_MODE_ALWAYS
-			npc.freeze = false
-			# Restore position/velocity saved before dock
-			if npc.has_meta("_pre_dock_pos"):
-				npc.global_position = npc.get_meta("_pre_dock_pos")
-				npc.remove_meta("_pre_dock_pos")
-			if npc.has_meta("_pre_dock_vel"):
-				npc.linear_velocity = npc.get_meta("_pre_dock_vel")
-				npc.remove_meta("_pre_dock_vel")
 			npc.visible = true
 
 

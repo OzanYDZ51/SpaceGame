@@ -4,29 +4,15 @@ extends Node
 # =============================================================================
 # Event Reporter
 # Sends notable game events to the backend API for Discord integration.
-# Only active on the game server (headless) — clients don't send events directly.
-# Uses ApiClient to POST to /api/v1/server/event.
+# Active on the game server (headless) or host (player acting as server).
+# Checks server status lazily on each send — no timing issues with init order.
+# Uses X-Server-Key auth (server-to-server), not player JWT.
 # =============================================================================
-
-var _enabled: bool = false
-
-
-func _ready() -> void:
-	# Only enable on the server (headless mode)
-	_enabled = NetworkManager.is_server() if NetworkManager else false
-	if not _enabled:
-		set_process(false)
-
-
-func enable_for_server() -> void:
-	_enabled = true
 
 
 # --- Kill Events ---
 
 func report_kill(killer_name: String, victim_name: String, weapon: String, system_name: String, system_id: int) -> void:
-	if not _enabled:
-		return
 	_send_event({
 		"type": "kill",
 		"killer": killer_name,
@@ -40,8 +26,6 @@ func report_kill(killer_name: String, victim_name: String, weapon: String, syste
 # --- Discovery Events ---
 
 func report_discovery(player_name: String, what: String, system_name: String, system_id: int) -> void:
-	if not _enabled:
-		return
 	_send_event({
 		"type": "discovery",
 		"actor_name": player_name,
@@ -54,8 +38,6 @@ func report_discovery(player_name: String, what: String, system_name: String, sy
 # --- Clan Events ---
 
 func report_clan_event(event_type: String, clan_name: String, details: String) -> void:
-	if not _enabled:
-		return
 	_send_event({
 		"type": event_type,
 		"actor_name": clan_name,
@@ -66,16 +48,18 @@ func report_clan_event(event_type: String, clan_name: String, details: String) -
 # --- Internal ---
 
 func _send_event(data: Dictionary) -> void:
-	if not AuthManager or not AuthManager.is_authenticated:
+	# Only send events from the server (host or dedicated)
+	if not NetworkManager or not NetworkManager.is_server():
 		return
-	# Use ApiClient to POST to server event endpoint
-	# ApiClient uses the server key, not JWT, for server-to-server calls
+	var server_key := _get_server_key()
+	if server_key == "":
+		return
 	var url: String = Constants.BACKEND_URL_PROD if Constants.GAME_VERSION != "dev" else Constants.BACKEND_URL_DEV
 	url += "/api/v1/server/event"
 
 	var headers := PackedStringArray([
 		"Content-Type: application/json",
-		"X-Server-Key: " + _get_server_key(),
+		"X-Server-Key: " + server_key,
 	])
 
 	var json_str := JSON.stringify(data)
@@ -88,7 +72,11 @@ func _send_event(data: Dictionary) -> void:
 
 
 func _get_server_key() -> String:
-	# Server key is passed as env var or CLI arg on the headless server
+	# Check environment variable first (Railway deployment)
+	var env_key: String = OS.get_environment("SERVER_KEY")
+	if env_key != "":
+		return env_key
+	# Then check CLI arg (local dev: --server-key <key>)
 	var args := OS.get_cmdline_args()
 	for i in args.size():
 		if args[i] == "--server-key" and i + 1 < args.size():

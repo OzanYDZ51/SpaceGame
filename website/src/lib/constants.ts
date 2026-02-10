@@ -1,7 +1,7 @@
 export const SITE_NAME = "Imperion Online";
 export const SITE_DESCRIPTION =
   "Explorez. Commercez. Conquérez. Un univers persistant vous attend.";
-export const SITE_URL = "https://imperion-online.com";
+export const SITE_URL = "https://imperiononline.fr";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://backend-production-05a9.up.railway.app";
