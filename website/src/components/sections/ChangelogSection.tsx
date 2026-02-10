@@ -15,7 +15,7 @@ export function ChangelogSection() {
 
   useEffect(() => {
     api
-      .get<ChangelogEntry[]>("/api/v1/changelog/list?limit=5")
+      .get<ChangelogEntry[]>("/api/v1/changelog?limit=5")
       .then(setEntries)
       .catch(() => {})
       .finally(() => setLoading(false));

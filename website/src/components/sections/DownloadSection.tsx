@@ -13,7 +13,7 @@ export function DownloadSection() {
 
   useEffect(() => {
     api
-      .get<UpdatesResponse>("/api/v1/updates/check")
+      .get<UpdatesResponse>("/api/v1/updates")
       .then(setUpdates)
       .catch(() => {});
   }, []);
