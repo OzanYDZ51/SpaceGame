@@ -48,7 +48,7 @@ static func get_offset(formation_type: StringName, member_index: int, member_cou
 static func _echelon(idx: int, spacing: float) -> Vector3:
 	var row: int = idx + 1
 	var side: float = -1.0 if (idx % 2 == 0) else 1.0
-	var lateral: float = side * ((row + 1) / 2) * spacing
+	var lateral: float = side * ((row + 1) / 2.0) * spacing
 	var back: float = row * spacing * 0.7  # +Z = behind leader
 	return Vector3(lateral, 0.0, back)
 

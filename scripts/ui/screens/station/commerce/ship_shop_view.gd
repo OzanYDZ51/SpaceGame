@@ -299,7 +299,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 22.0
 	draw_string(font, Vector2(stats_x + 10, y + 10), "Classe: " + String(data.ship_class),
-		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	y += 24.0
 
 	# Section: COQUE
@@ -374,9 +374,9 @@ func _draw_stat_section(font: Font, x: float, y: float, title: String, rows: Arr
 	# Rows
 	for row in rows:
 		draw_string(font, Vector2(x + 16, y + 10), row[0],
-			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(x + 100, y + 10), row[1],
-			HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 110, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+			HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 110, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 		y += 16.0
 	y += 6.0
 	return y
@@ -396,10 +396,10 @@ func _draw_ship_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	# Ship name
 	ci.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + 16),
 		String(data.ship_name), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 16,
-		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_BODY, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
 
 	# Class + price
 	var info := String(data.ship_class) + " — " + PriceCatalog.format_price(data.price)
 	ci.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + 30),
 		info, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 16,
-		UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)

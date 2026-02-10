@@ -25,7 +25,7 @@ var _jink_timer: float = 0.0
 const AVOID_RANGE: float = 500.0       # Max look-ahead distance
 const AVOID_MIN_RANGE: float = 80.0    # Min look-ahead (when nearly stopped)
 const AVOID_SPEED_SCALE: float = 1.5   # look = speed * scale, clamped
-const AVOID_TICK_MS: int = 150         # Probe interval (ms)
+const AVOID_TICK_MS: int = 80          # Probe interval (ms)
 const AVOID_SPREAD: float = 0.7        # Probe cone half-angle (~38°)
 const AVOID_COLLISION_MASK: int = 6    # LAYER_STATIONS(2) | LAYER_ASTEROIDS(4)
 
@@ -253,6 +253,8 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 	if _ship == null:
 		return
 
+	_update_avoidance()
+
 	var throttle: Vector3
 
 	if dist_to_target > preferred_range * 1.3:
@@ -267,6 +269,13 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 	else:
 		# Sweet spot: slow approach with strafing
 		throttle = Vector3(_maneuver_dir.x * 0.5, _maneuver_dir.y * 0.3, -0.25)
+
+	# Override strafe with avoidance if an obstacle is nearby
+	if _avoid_offset.length_squared() > 100.0:
+		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * _avoid_offset.normalized()
+		throttle.x = clampf(local_avoid.x, -1.0, 1.0)
+		throttle.y = clampf(local_avoid.y, -0.6, 0.6)
+		throttle.z = maxf(throttle.z, 0.3)
 
 	_ship.set_throttle(throttle)
 
@@ -299,12 +308,25 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	var forward: Vector3 = -_ship.global_transform.basis.z
 	var dot: float = forward.dot(to_target)
 	if dot > 0.75:
+		# Line of sight check: don't fire through stations or asteroids
+		var space := _ship.get_world_3d().direct_space_state
+		if space:
+			var los_query := PhysicsRayQueryParameters3D.create(
+				_ship.global_position, target.global_position)
+			los_query.collision_mask = AVOID_COLLISION_MASK
+			los_query.collide_with_areas = false
+			los_query.exclude = [_ship.get_rid()]
+			var los_hit := space.intersect_ray(los_query)
+			if not los_hit.is_empty():
+				return
 		_cached_wm.fire_group(0, true, target_pos)
 
 
 func evade_random(delta: float, amplitude: float = 30.0, frequency: float = 2.0) -> void:
 	if _ship == null:
 		return
+
+	_update_avoidance()
 
 	_jink_timer -= delta
 	if _jink_timer <= 0.0:
@@ -315,7 +337,12 @@ func evade_random(delta: float, amplitude: float = 30.0, frequency: float = 2.0)
 			randf_range(-0.3, 0.3)
 		).normalized() * amplitude
 
-	_ship.set_throttle(Vector3(signf(_jink_offset.x), signf(_jink_offset.y), -1.0))
+	var throttle := Vector3(signf(_jink_offset.x), signf(_jink_offset.y), -1.0)
+	if _avoid_offset.length_squared() > 100.0:
+		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * _avoid_offset.normalized()
+		throttle.x = clampf(local_avoid.x, -1.0, 1.0)
+		throttle.y = clampf(local_avoid.y, -0.6, 0.6)
+	_ship.set_throttle(throttle)
 
 
 func get_distance_to(pos: Vector3) -> float:

@@ -134,14 +134,14 @@ func _draw() -> void:
 	draw_rect(Rect2(bx, by, BAR_WIDTH, BAR_HEIGHT), MapColors.PANEL_BORDER, false, 1.0)
 
 	# Search icon / label
-	draw_string(font, Vector2(bx + 8, by + 19), "/", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MapColors.TEXT_DIM)
+	draw_string(font, Vector2(bx + 8, by + 19), "/", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
 
 	# Search text + blinking cursor
 	var display_text: String = _search_text
 	var cursor_visible: bool = fmod(_cursor_blink, 1.0) < 0.6
 	if cursor_visible:
 		display_text += "_"
-	draw_string(font, Vector2(bx + 22, by + 19), display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MapColors.TEXT)
+	draw_string(font, Vector2(bx + 22, by + 19), display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT)
 
 	# Results dropdown
 	if _results.size() > 0:
@@ -160,13 +160,13 @@ func _draw() -> void:
 			var type_prefix: String = _type_prefix(r["type"])
 			var label: String = type_prefix + " " + r["name"]
 			var col: Color = MapColors.TEXT if i == _selected_index else MapColors.TEXT_DIM
-			draw_string(font, Vector2(bx + 10, ry + 15), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+			draw_string(font, Vector2(bx + 10, ry + 15), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 	elif not _search_text.is_empty():
 		# No results message
 		var dy: float = by + BAR_HEIGHT
 		draw_rect(Rect2(bx, dy, BAR_WIDTH, ROW_HEIGHT + 4), MapColors.BG_PANEL)
-		draw_string(font, Vector2(bx + 10, dy + 17), "Aucun résultat", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.TEXT_DIM)
+		draw_string(font, Vector2(bx + 10, dy + 17), "Aucun résultat", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
 
 
 func _type_prefix(type: int) -> String:

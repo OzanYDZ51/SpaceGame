@@ -51,6 +51,7 @@ func _create_trimesh_collision(mesh_instance: MeshInstance3D) -> void:
 		transformed_faces[i] = rel_transform * faces[i]
 
 	var shape := ConcavePolygonShape3D.new()
+	shape.backface_collision = true
 	shape.set_faces(transformed_faces)
 
 	var col := CollisionShape3D.new()

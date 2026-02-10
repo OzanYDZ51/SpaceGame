@@ -261,29 +261,29 @@ func _draw() -> void:
 	# Description
 	if res_data.description != "":
 		draw_string(font, Vector2(detail_x + 10, y + 10), res_data.description,
-			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 		y += 18.0
 
 	# Rarity
 	var rarity_str: String = ["Commun", "Peu commun", "Rare", "Tres rare", "Legendaire"][res_data.rarity]
 	draw_string(font, Vector2(detail_x + 10, y + 12), "Rarete",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), rarity_str,
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Quantity
 	draw_string(font, Vector2(detail_x + 10, y + 12), "En stock",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), str(qty),
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Unit price
 	draw_string(font, Vector2(detail_x + 10, y + 12), "Prix/u",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), PriceCatalog.format_price(unit_price),
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
 	y += 24.0
 
 	# Total value box
@@ -323,9 +323,9 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	var label := "%s%s x%d" % [prefix, res_data.display_name, qty]
 	ci.draw_string(font, Vector2(rect.position.x + 24, rect.position.y + 18),
 		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
 
 	# Price (right-aligned)
 	ci.draw_string(font, Vector2(rect.position.x + rect.size.x * 0.6, rect.position.y + 18),
 		"+" + PriceCatalog.format_price(res_data.base_value) + "/u", HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x * 0.35,
-		UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+		UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

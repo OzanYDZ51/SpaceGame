@@ -89,7 +89,7 @@ func _draw() -> void:
 
 	# Header: entity name
 	var name_text: String = ent.get("name", "INCONNU")
-	draw_string(font, Vector2(x, y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, MapColors.PANEL_HEADER)
+	draw_string(font, Vector2(x, y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, MapColors.PANEL_HEADER)
 	y += 6
 	draw_line(Vector2(x, y), Vector2(panel_x + PANEL_WIDTH - 14, y), MapColors.PANEL_BORDER, 1.0)
 	y += 16
@@ -173,8 +173,8 @@ func _draw() -> void:
 
 
 func _draw_row(font: Font, x: float, vx: float, y: float, key: String, value: String) -> void:
-	draw_string(font, Vector2(x, y), key, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.LABEL_KEY)
-	draw_string(font, Vector2(vx, y), value, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MapColors.LABEL_VALUE)
+	draw_string(font, Vector2(x, y), key, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, MapColors.LABEL_KEY)
+	draw_string(font, Vector2(vx, y), value, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, MapColors.LABEL_VALUE)
 
 
 func _type_to_string(type: int) -> String:

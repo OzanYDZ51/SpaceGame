@@ -46,7 +46,7 @@ func _draw_cockpit_hud(ctrl: Control) -> void:
 	var cx := s.x * 0.5
 	var cy := s.y * 0.5
 	var center := Vector2(cx, cy)
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var fwd := -ship.global_transform.basis.z
 
 	_draw_cockpit_reticle(ctrl, center, font)
@@ -59,8 +59,8 @@ func _draw_cockpit_hud(ctrl: Control) -> void:
 	if not ship.flight_assist:
 		var flash := absf(sin(warning_flash)) * 0.5 + 0.5
 		var wt := "AV DÉSACTIVÉ"
-		var ww := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		ctrl.draw_string(font, Vector2(cx - ww * 0.5, cy + 140), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.DANGER * Color(1, 1, 1, flash))
+		var ww := font.get_string_size(wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		ctrl.draw_string(font, Vector2(cx - ww * 0.5, cy + 140), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.DANGER * Color(1, 1, 1, flash))
 
 	_draw_cockpit_frame(ctrl)
 
@@ -104,8 +104,8 @@ func _draw_cockpit_reticle(ctrl: Control, center: Vector2, font: Font) -> void:
 	var scan_a := fmod(pulse_t * 0.7, TAU)
 	ctrl.draw_arc(center, r_outer + 4, scan_a, scan_a + 0.5, 8, UITheme.PRIMARY * Color(1, 1, 1, 0.12), 1.5, true)
 
-	ctrl.draw_string(font, center + Vector2(r_inner + 3, -3), "1", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, UITheme.TEXT_DIM * Color(1, 1, 1, 0.4))
-	ctrl.draw_string(font, center + Vector2(r_outer + 3, -3), "2", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, UITheme.TEXT_DIM * Color(1, 1, 1, 0.4))
+	ctrl.draw_string(font, center + Vector2(r_inner + 3, -3), "1", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM * Color(1, 1, 1, 0.4))
+	ctrl.draw_string(font, center + Vector2(r_outer + 3, -3), "2", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM * Color(1, 1, 1, 0.4))
 
 	if damage_feedback:
 		damage_feedback.draw_hit_markers(ctrl, center)
@@ -144,7 +144,7 @@ func _draw_cockpit_pitch_ladder(ctrl: Control, center: Vector2, fwd: Vector3, fo
 				x += dash * 2
 		var lbl := "%+d" % deg
 		var lbl_a := alpha / 0.22
-		ctrl.draw_string(font, Vector2(center.x + half_w + 4, py + 3), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UITheme.TEXT_DIM * Color(1, 1, 1, lbl_a * 0.6))
+		ctrl.draw_string(font, Vector2(center.x + half_w + 4, py + 3), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM * Color(1, 1, 1, lbl_a * 0.6))
 
 	var horizon_y := center.y + pitch * ppd
 	if absf(horizon_y - center.y) < clip_r:
@@ -165,14 +165,14 @@ func _draw_cockpit_heading(ctrl: Control, font: Font, cx: float, cy: float, fwd:
 
 	var hy := cy - 112
 	var heading_str := "CAP %06.1f\u00B0" % heading
-	var hw := font.get_string_size(heading_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var hw := font.get_string_size(heading_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	ctrl.draw_rect(Rect2(cx - hw * 0.5 - 8, hy - 13, hw + 16, 18), Color(0.0, 0.02, 0.06, 0.55))
 	ctrl.draw_rect(Rect2(cx - hw * 0.5 - 8, hy - 13, hw + 16, 18), UITheme.PRIMARY * Color(1, 1, 1, 0.15), false, 1.0)
-	ctrl.draw_string(font, Vector2(cx - hw * 0.5, hy), heading_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.PRIMARY)
+	ctrl.draw_string(font, Vector2(cx - hw * 0.5, hy), heading_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.PRIMARY)
 
 	var pitch_str := "INCL %+.1f\u00B0" % pitch
-	var pw := font.get_string_size(pitch_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	ctrl.draw_string(font, Vector2(cx - pw * 0.5, hy + 16), pitch_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.TEXT_DIM)
+	var pw := font.get_string_size(pitch_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	ctrl.draw_string(font, Vector2(cx - pw * 0.5, hy + 16), pitch_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -187,12 +187,12 @@ func _draw_cockpit_speed(ctrl: Control, font: Font, cx: float, cy: float) -> voi
 	ctrl.draw_rect(Rect2(cx - sw * 0.5 - 10, sy - 18, sw + 20, 24), UITheme.PRIMARY * Color(1, 1, 1, 0.15), false, 1.0)
 	ctrl.draw_string(font, Vector2(cx - sw * 0.5, sy), speed_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, UITheme.TEXT)
 
-	ctrl.draw_string(font, Vector2(cx - 10, sy + 14), "M/S", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(cx - 10, sy + 14), "M/S", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 	var mt := HudDrawHelpers.get_mode_text(ship)
 	var mc := HudDrawHelpers.get_mode_color(ship)
-	var mw := font.get_string_size(mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	ctrl.draw_string(font, Vector2(cx - mw * 0.5, sy + 30), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, mc)
+	var mw := font.get_string_size(mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	ctrl.draw_string(font, Vector2(cx - mw * 0.5, sy + 30), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, mc)
 	ctrl.draw_line(Vector2(cx - mw * 0.5 - 16, sy + 24), Vector2(cx - mw * 0.5 - 4, sy + 24), mc * Color(1, 1, 1, 0.4), 1.0)
 	ctrl.draw_line(Vector2(cx + mw * 0.5 + 4, sy + 24), Vector2(cx + mw * 0.5 + 16, sy + 24), mc * Color(1, 1, 1, 0.4), 1.0)
 
@@ -209,23 +209,23 @@ func _draw_cockpit_bars(ctrl: Control, font: Font, cx: float, cy: float) -> void
 	var ly := cy - 22
 
 	var shd_r := health_system.get_total_shield_ratio() if health_system else 0.85
-	ctrl.draw_string(font, Vector2(lx, ly), "BCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(lx, ly), "BCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	_draw_cockpit_bar(ctrl, Vector2(lx + 26, ly - 5), bar_w, bar_h, shd_r, UITheme.SHIELD)
-	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(shd_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.SHIELD)
+	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(shd_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
 
 	ly += spacing
 	var hull_r := health_system.get_hull_ratio() if health_system else 1.0
 	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(lx, ly), "COQ", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(lx, ly), "COQ", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	_draw_cockpit_bar(ctrl, Vector2(lx + 26, ly - 5), bar_w, bar_h, hull_r, hull_c)
-	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(hull_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, hull_c)
+	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(hull_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 
 	ly += spacing
 	var nrg_r := energy_system.get_energy_ratio() if energy_system else 0.7
 	var nrg_c := Color(0.2, 0.6, 1.0, 0.9)
-	ctrl.draw_string(font, Vector2(lx, ly), "NRG", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(lx, ly), "NRG", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	_draw_cockpit_bar(ctrl, Vector2(lx + 26, ly - 5), bar_w, bar_h, nrg_r, nrg_c)
-	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(nrg_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, nrg_c)
+	ctrl.draw_string(font, Vector2(lx + 26 + bar_w + 4, ly), "%d%%" % int(nrg_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, nrg_c)
 
 	if weapon_manager == null:
 		return
@@ -248,7 +248,7 @@ func _draw_cockpit_bars(ctrl: Control, font: Font, cx: float, cy: float) -> void
 			label += "---"
 
 		var slot_col := UITheme.PRIMARY if is_on else UITheme.DANGER * Color(1, 1, 1, 0.4)
-		ctrl.draw_string(font, Vector2(rx, ry), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, slot_col)
+		ctrl.draw_string(font, Vector2(rx, ry), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, slot_col)
 		_draw_cockpit_bar(ctrl, Vector2(rx + 32, ry - 5), 30.0, bar_h, 1.0 - cd if is_on else 0.0, UITheme.PRIMARY if cd < 0.1 else UITheme.WARNING)
 		ry += spacing
 
@@ -280,20 +280,20 @@ func _draw_cockpit_target_info(ctrl: Control, font: Font, cx: float, cy: float) 
 		dist_str = " | %.0fm" % dist if dist < 1000.0 else " | %.1fkm" % (dist / 1000.0)
 
 	var full_str := "CIBLE: " + name_str + dist_str
-	var tw := font.get_string_size(full_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var tw := font.get_string_size(full_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 
 	ctrl.draw_rect(Rect2(cx - tw * 0.5 - 8, ty - 12, tw + 16, 16), Color(0.0, 0.02, 0.06, 0.55))
 	ctrl.draw_rect(Rect2(cx - tw * 0.5 - 8, ty - 12, tw + 16, 16), UITheme.TARGET * Color(1, 1, 1, 0.2), false, 1.0)
-	ctrl.draw_string(font, Vector2(cx - tw * 0.5, ty), full_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.TARGET)
+	ctrl.draw_string(font, Vector2(cx - tw * 0.5, ty), full_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TARGET)
 
 	var t_health := target.get_node_or_null("HealthSystem") as HealthSystem
 	if t_health:
 		var t_shd := t_health.get_total_shield_ratio()
 		var t_hull := t_health.get_hull_ratio()
 		var by := ty + 8
-		ctrl.draw_string(font, Vector2(cx - 60, by), "S", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UITheme.SHIELD)
+		ctrl.draw_string(font, Vector2(cx - 60, by), "S", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
 		_draw_cockpit_bar(ctrl, Vector2(cx - 52, by - 5), 45.0, 4.0, t_shd, UITheme.SHIELD)
-		ctrl.draw_string(font, Vector2(cx + 4, by), "H", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UITheme.ACCENT if t_hull > 0.5 else UITheme.DANGER)
+		ctrl.draw_string(font, Vector2(cx + 4, by), "H", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.ACCENT if t_hull > 0.5 else UITheme.DANGER)
 		_draw_cockpit_bar(ctrl, Vector2(cx + 12, by - 5), 45.0, 4.0, t_hull, UITheme.ACCENT if t_hull > 0.5 else UITheme.DANGER)
 
 
@@ -318,5 +318,5 @@ func _draw_cockpit_frame(ctrl: Control) -> void:
 	var sly := fmod(scan_line_y, s.y)
 	ctrl.draw_line(Vector2(0, sly), Vector2(s.x, sly), UITheme.SCANLINE, 1.0)
 
-	var font := ThemeDB.fallback_font
-	ctrl.draw_string(font, Vector2(m + 4, m + 14), "MODE VISÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.HEADER * Color(1, 1, 1, 0.5))
+	var font := UITheme.get_font_medium()
+	ctrl.draw_string(font, Vector2(m + 4, m + 14), "MODE VISÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADER * Color(1, 1, 1, 0.5))

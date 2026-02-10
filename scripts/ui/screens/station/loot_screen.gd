@@ -189,7 +189,7 @@ func _draw() -> void:
 
 		# Type
 		draw_string(font, Vector2(panel_x + 270, ry + 26), item.get("type", "").to_upper(),
-			HORIZONTAL_ALIGNMENT_LEFT, 80, 12, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, 13, UITheme.TEXT_DIM)
 
 		# Quantity
 		draw_string(font, Vector2(panel_x + PANEL_W - 60, ry + 26), "x%d" % item.get("quantity", 1),
@@ -203,7 +203,7 @@ func _draw() -> void:
 	if _crate_contents.size() > MAX_VISIBLE_ROWS:
 		var scroll_text := "%d/%d" % [_scroll_offset + 1, _crate_contents.size()]
 		draw_string(font, Vector2(panel_x, CONTENT_TOP + panel_h + 6), scroll_text,
-			HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, 12, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, 13, UITheme.TEXT_DIM)
 
 	# Corner accents
 	var accent := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)

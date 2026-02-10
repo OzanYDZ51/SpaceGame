@@ -368,7 +368,7 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 		y += 2
 		# Station sub-header
 		if _in_clip(y, SHIP_H, clip):
-			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), st["name"], HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 8, UITheme.FONT_SIZE_SMALL, MapColors.STATION_TEAL)
+			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), st["name"], HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 8, UITheme.FONT_SIZE_LABEL, MapColors.STATION_TEAL)
 		y += SHIP_H
 
 		for entry in st["ships"]:
@@ -398,7 +398,7 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 				sq_name = sq.squadron_name
 		if _in_clip(y, SHIP_H, clip):
 			draw_rect(Rect2(MARGIN + 4, y + 2, PANEL_W - MARGIN * 2 - 4, SHIP_H - 2), Color(MapColors.SQUADRON_HEADER.r, MapColors.SQUADRON_HEADER.g, MapColors.SQUADRON_HEADER.b, 0.06))
-			draw_string(font, Vector2(MARGIN + 10, y + SHIP_H - 4), sq_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 10, UITheme.FONT_SIZE_TINY, MapColors.SQUADRON_HEADER)
+			draw_string(font, Vector2(MARGIN + 10, y + SHIP_H - 4), sq_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 10, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
 		y += SHIP_H
 		for entry in sq_entries:
 			if _in_clip(y, SHIP_H, clip):
@@ -430,13 +430,13 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 	if fs.squadron_id >= 0 and fs.squadron_role != &"":
 		var role_short := SquadronRoleRegistry.get_role_short(fs.squadron_role)
 		var role_col := SquadronRoleRegistry.get_role_color(fs.squadron_role)
-		draw_string(font, Vector2(x, y + SHIP_H - 4), "[%s]" % role_short, HORIZONTAL_ALIGNMENT_LEFT, 20, UITheme.FONT_SIZE_TINY, role_col)
+		draw_string(font, Vector2(x, y + SHIP_H - 4), "[%s]" % role_short, HORIZONTAL_ALIGNMENT_LEFT, 20, UITheme.FONT_SIZE_SMALL, role_col)
 		role_offset = 20.0
 	elif fs.squadron_id >= 0 and _fleet:
 		# Leader gets a star
 		var sq := _fleet.get_squadron(fs.squadron_id)
 		if sq and sq.is_leader(fleet_index):
-			draw_string(font, Vector2(x, y + SHIP_H - 4), "*", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, MapColors.SQUADRON_HEADER)
+			draw_string(font, Vector2(x, y + SHIP_H - 4), "*", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
 			role_offset = 12.0
 
 	# Status badge
@@ -460,7 +460,7 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 	# Ship name
 	var name_text: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
 	var name_col: Color = UITheme.PRIMARY if is_selected else (MapColors.TEXT if is_active else MapColors.TEXT_DIM)
-	draw_string(font, Vector2(x + role_offset + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - role_offset - 36, UITheme.FONT_SIZE_SMALL, name_col)
+	draw_string(font, Vector2(x + role_offset + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - role_offset - 36, UITheme.FONT_SIZE_LABEL, name_col)
 
 	# Ship class (right-aligned, tiny)
 	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)

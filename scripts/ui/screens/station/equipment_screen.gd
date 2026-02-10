@@ -1012,18 +1012,18 @@ func _draw_fleet_card(font: Font, cx: float, cy: float, index: int, fs: FleetShi
 
 	if sd == null:
 		draw_string(font, Vector2(cx + 6, cy + 14), String(fs.ship_id),
-			HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+			HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 		return
 
 	# Ship name (line 1)
 	var display_name: String = fs.custom_name if fs.custom_name != "" else String(sd.ship_name)
 	var name_col := UITheme.TEXT if not is_selected else UITheme.PRIMARY
 	draw_string(font, Vector2(cx + 6, cy + 13), display_name.to_upper(),
-		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 46, UITheme.FONT_SIZE_SMALL, name_col)
+		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 46, UITheme.FONT_SIZE_BODY, name_col)
 
 	# Ship class (line 2, dim)
 	draw_string(font, Vector2(cx + 6, cy + 25), String(sd.ship_class).to_upper(),
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Weapon dots (line 2, right side) — filled = equipped, empty = vacant
 	var hp_count := sd.hardpoints.size()
@@ -1065,7 +1065,7 @@ func _draw_fleet_card(font: Font, cx: float, cy: float, index: int, fs: FleetShi
 			equipped_m += 1
 	var slot_str := "%d/%dW %dS %dE %d/%dM" % [equipped_w, hp_count, has_shield, has_engine, equipped_m, sd.module_slots.size()]
 	draw_string(font, Vector2(cx + 6, cy + 44), slot_str,
-		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_LEFT, FLEET_CARD_W - 12, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Equipment fill bar (line 5)
 	var total_slots := hp_count + 1 + 1 + sd.module_slots.size()  # weapons + shield + engine + modules
@@ -1729,15 +1729,15 @@ func _draw_stat_rows(font: Font, px: float, start_y: float, pw: float, stats: Ar
 		var is_worse: bool = (delta > 0.01 and not higher_better) or (delta < -0.01 and higher_better)
 
 		draw_string(font, Vector2(label_x, ry + 10), label,
-			HORIZONTAL_ALIGNMENT_LEFT, 90, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, 90, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 
 		draw_string(font, Vector2(val_x, ry + 10), _format_stat(cur_val, label),
-			HORIZONTAL_ALIGNMENT_LEFT, 60, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+			HORIZONTAL_ALIGNMENT_LEFT, 60, UITheme.FONT_SIZE_LABEL, UITheme.TEXT)
 
 		if absf(delta) > 0.01:
 			var arr_col: Color = UITheme.ACCENT if is_better else UITheme.DANGER
 			draw_string(font, Vector2(new_val_x - 12, ry + 10), ">",
-				HORIZONTAL_ALIGNMENT_LEFT, 10, UITheme.FONT_SIZE_SMALL, arr_col)
+				HORIZONTAL_ALIGNMENT_LEFT, 10, UITheme.FONT_SIZE_LABEL, arr_col)
 
 		var new_text_col := UITheme.TEXT
 		if is_better:
@@ -1745,13 +1745,13 @@ func _draw_stat_rows(font: Font, px: float, start_y: float, pw: float, stats: Ar
 		elif is_worse:
 			new_text_col = UITheme.DANGER
 		draw_string(font, Vector2(new_val_x, ry + 10), _format_stat(new_val, label),
-			HORIZONTAL_ALIGNMENT_LEFT, 60, UITheme.FONT_SIZE_SMALL, new_text_col)
+			HORIZONTAL_ALIGNMENT_LEFT, 60, UITheme.FONT_SIZE_LABEL, new_text_col)
 
 		if absf(delta) > 0.01:
 			var delta_col: Color = UITheme.ACCENT if is_better else UITheme.DANGER
 			var sign_str := "+" if delta > 0.0 else ""
 			draw_string(font, Vector2(delta_x - 60, ry + 10), sign_str + _format_stat(delta, label),
-				HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_SMALL, delta_col)
+				HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_LABEL, delta_col)
 
 
 func _format_stat(val: float, label: String) -> String:

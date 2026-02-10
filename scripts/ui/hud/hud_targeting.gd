@@ -99,7 +99,7 @@ func _draw_lead_indicator(ctrl: Control, sp: Vector2) -> void:
 # =============================================================================
 func _draw_target_info_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var x := 12.0
 	var w := ctrl.size.x - 24.0
 	var cx := ctrl.size.x / 2.0
@@ -116,19 +116,19 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	var target := targeting_system.current_target
 	var t_health := target.get_node_or_null("HealthSystem") as HealthSystem
 
-	ctrl.draw_string(font, Vector2(x, y), target.name as String, HORIZONTAL_ALIGNMENT_LEFT, int(w), 14, UITheme.TARGET)
+	ctrl.draw_string(font, Vector2(x, y), target.name as String, HORIZONTAL_ALIGNMENT_LEFT, int(w), 15, UITheme.TARGET)
 	y += 18
 
 	var class_text := ""
 	if target is ShipController and (target as ShipController).ship_data:
 		class_text = str((target as ShipController).ship_data.ship_class)
-	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 	var dist := targeting_system.get_target_distance()
 	if dist >= 0.0:
 		var dt: String = "%.0fm" % dist if dist < 1000.0 else "%.1fkm" % (dist / 1000.0)
-		var dtw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_RIGHT, -1, 13).x
-		ctrl.draw_string(font, Vector2(x + w - dtw, y), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT)
+		var dtw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
+		ctrl.draw_string(font, Vector2(x + w - dtw, y), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
 	y += 24
 
 	var diagram_center := Vector2(cx, y + 52)
@@ -141,20 +141,20 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 		var l_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
 		var d_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
 		var col_x2 := cx + 10
-		ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, _shield_ratio_color(f_r))
-		ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, _shield_ratio_color(r_r))
+		ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
+		ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
 		y += 14
-		ctrl.draw_string(font, Vector2(x, y), "G: %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, _shield_ratio_color(l_r))
-		ctrl.draw_string(font, Vector2(col_x2, y), "D: %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, _shield_ratio_color(d_r))
+		ctrl.draw_string(font, Vector2(x, y), "G: %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(l_r))
+		ctrl.draw_string(font, Vector2(col_x2, y), "D: %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(d_r))
 		y += 18
 	else:
 		y += 32
 
 	var hull_r := t_health.get_hull_ratio() if t_health else 0.0
 	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var hp := "%d%%" % int(hull_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, hull_c)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
 
@@ -197,11 +197,11 @@ func _draw_target_ship_shields(ctrl: Control, center: Vector2, health: HealthSys
 	ctrl.draw_colored_polygon(tri, UITheme.PRIMARY_DIM)
 	ctrl.draw_polyline(PackedVector2Array([tri[0], tri[1], tri[2], tri[0]]), UITheme.PRIMARY, 1.0)
 
-	var font := ThemeDB.fallback_font
-	ctrl.draw_string(font, center + Vector2(-5, -radius - 8), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-5, radius + 16), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-radius - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(radius + 6, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	var font := UITheme.get_font_medium()
+	ctrl.draw_string(font, center + Vector2(-5, -radius - 8), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(-5, radius + 16), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(-radius - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(radius + 6, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 
 func _shield_ratio_color(ratio: float) -> Color:

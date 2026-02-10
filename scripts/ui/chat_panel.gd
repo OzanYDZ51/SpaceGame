@@ -130,7 +130,7 @@ func _build_chat() -> void:
 		btn.toggle_mode = true
 		btn.button_pressed = (ch == _current_channel)
 		btn.custom_minimum_size = Vector2(58, 22)
-		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_font_size_override("font_size", 12)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
 		# Style the button
@@ -217,7 +217,7 @@ func _build_chat() -> void:
 	_input_field.offset_left = 4
 	_input_field.offset_right = -4
 	_input_field.placeholder_text = "Écrire un message... (Entrée pour envoyer)"
-	_input_field.add_theme_font_size_override("font_size", 11)
+	_input_field.add_theme_font_size_override("font_size", 13)
 	_input_field.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0))
 	_input_field.add_theme_color_override("font_placeholder_color", COL_TEXT_DIM)
 	_input_field.add_theme_color_override("caret_color", Color(0.2, 0.8, 1.0))
@@ -403,7 +403,7 @@ func _create_message_label(msg: Dictionary) -> RichTextLabel:
 	rtl.scroll_active = false
 	rtl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rtl.add_theme_font_size_override("normal_font_size", 11)
+	rtl.add_theme_font_size_override("normal_font_size", 13)
 
 	var time_hex := COL_TIMESTAMP.to_html(false)
 	var chan_col: Color = CHANNEL_COLORS.get(msg["channel"], Color.WHITE)

@@ -244,16 +244,16 @@ func _draw() -> void:
 
 	# Ship class
 	draw_string(font, Vector2(detail_x + 10, y + 12), "Classe",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), String(ship_data.ship_class),
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Hull HP
 	draw_string(font, Vector2(detail_x + 10, y + 12), "Coque",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), "%.0f PV" % ship_data.hull_hp,
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Hardpoints
@@ -262,18 +262,18 @@ func _draw() -> void:
 		if wn != &"":
 			weapon_count += 1
 	draw_string(font, Vector2(detail_x + 10, y + 12), "Armes",
-		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), "%d/%d" % [weapon_count, fs.weapons.size()],
-		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Equipment value
 	var equip_val := fs.get_total_equipment_value()
 	if equip_val > 0:
 		draw_string(font, Vector2(detail_x + 10, y + 12), "Equip.",
-			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(detail_x + 95, y + 12), PriceCatalog.format_price(equip_val),
-			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 		y += 18.0
 
 	# Cargo
@@ -281,9 +281,9 @@ func _draw() -> void:
 		var cargo_count := fs.cargo.get_total_count()
 		if cargo_count > 0:
 			draw_string(font, Vector2(detail_x + 10, y + 12), "Cargo",
-				HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+				HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 			draw_string(font, Vector2(detail_x + 95, y + 12), "%d items" % cargo_count,
-				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.WARNING)
+				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.WARNING)
 			y += 18.0
 
 	y += 8.0
@@ -301,16 +301,16 @@ func _draw() -> void:
 		y += 18.0
 
 		draw_string(font, Vector2(detail_x + 10, y + 12), "Coque",
-			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(detail_x + 95, y + 12), "+" + PriceCatalog.format_price(hull_price),
-			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
 		y += 16.0
 
 		if equip_price > 0:
 			draw_string(font, Vector2(detail_x + 10, y + 12), "Equip.",
-				HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+				HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 			draw_string(font, Vector2(detail_x + 95, y + 12), "+" + PriceCatalog.format_price(equip_price),
-				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
 			y += 16.0
 
 		y += 4.0
@@ -370,7 +370,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	var name_col := UITheme.TEXT if (is_sel and can_sell) else Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, alpha)
 	ci.draw_string(font, Vector2(rect.position.x + 14, rect.position.y + 18),
 		fs.custom_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_SMALL, name_col)
+		UITheme.FONT_SIZE_BODY, name_col)
 
 	# Status tag (right side, top)
 	ci.draw_string(font, Vector2(rect.position.x + rect.size.x - 8, rect.position.y + 16),
@@ -380,7 +380,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	# Class + sell price (bottom line)
 	ci.draw_string(font, Vector2(rect.position.x + 14, rect.position.y + 36),
 		String(ship_data.ship_class), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.4,
-		UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, alpha))
+		UITheme.FONT_SIZE_SMALL, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, alpha))
 
 	if can_sell:
 		var sell_price := _commerce_manager.get_ship_sell_price(fs) if _commerce_manager else 0

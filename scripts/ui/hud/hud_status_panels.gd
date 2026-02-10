@@ -52,7 +52,7 @@ func redraw_slow() -> void:
 # =============================================================================
 func _draw_left_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var x := 12.0
 	var w := ctrl.size.x - 24.0
 	var y := 22.0
@@ -63,18 +63,18 @@ func _draw_left_panel(ctrl: Control) -> void:
 	# Hull
 	var hull_r := health_system.get_hull_ratio() if health_system else 1.0
 	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var hp := "%d%%" % int(hull_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, hull_c)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
 	y += 20
 
 	# Shield
 	var shd_r := health_system.get_total_shield_ratio() if health_system else 0.85
-	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var sp := "%d%%" % int(shd_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.SHIELD)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, shd_r, UITheme.SHIELD)
 	y += 20
@@ -82,9 +82,9 @@ func _draw_left_panel(ctrl: Control) -> void:
 	# Energy
 	var nrg_r := energy_system.get_energy_ratio() if energy_system else 0.7
 	var nrg_c := Color(0.2, 0.6, 1.0, 0.9)
-	ctrl.draw_string(font, Vector2(x, y), "ÉNERGIE", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "ÉNERGIE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var np := "%d%%" % int(nrg_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(np, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, y), np, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, nrg_c)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, nrg_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, nrg_r, nrg_c)
 	y += 24
@@ -101,12 +101,12 @@ func _draw_left_panel(ctrl: Control) -> void:
 	if ship:
 		if ship.flight_assist:
 			ctrl.draw_circle(Vector2(x + 4, y - 3), 3.5, UITheme.ACCENT)
-			ctrl.draw_string(font, Vector2(x + 13, y), "AV ACTIF", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.ACCENT)
+			ctrl.draw_string(font, Vector2(x + 13, y), "AV ACTIF", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.ACCENT)
 		else:
 			var flash: float = abs(sin(warning_flash)) * 0.5 + 0.5
 			var fc := UITheme.DANGER * Color(1, 1, 1, flash)
 			ctrl.draw_circle(Vector2(x + 4, y - 3), 3.5, fc)
-			ctrl.draw_string(font, Vector2(x + 13, y), "AV DÉSACTIVÉ", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, fc)
+			ctrl.draw_string(font, Vector2(x + 13, y), "AV DÉSACTIVÉ", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, fc)
 
 
 # =============================================================================
@@ -143,11 +143,11 @@ func _draw_shield_diamond(ctrl: Control, center: Vector2) -> void:
 		center + Vector2(0, -ts), center + Vector2(ts * 0.6, ts * 0.5), center + Vector2(-ts * 0.6, ts * 0.5),
 	]), UITheme.PRIMARY_DIM)
 
-	var font := ThemeDB.fallback_font
-	ctrl.draw_string(font, center + Vector2(-6, -sz - 6), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(sz + 5, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-6, sz + 14), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-sz - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+	var font := UITheme.get_font_medium()
+	ctrl.draw_string(font, center + Vector2(-6, -sz - 6), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(sz + 5, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(-6, sz + 14), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, center + Vector2(-sz - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -156,7 +156,7 @@ func _draw_shield_diamond(ctrl: Control, center: Vector2) -> void:
 func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 	if energy_system == null:
 		return
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var num_seg := 4
 	var seg_w := 22.0
 	var seg_gap := 3.0
@@ -172,7 +172,7 @@ func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 	]
 	for i in pips.size():
 		var py := pos.y + i * spacing
-		ctrl.draw_string(font, Vector2(pos.x, py + bar_h - 1), pips[i].name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(pos.x, py + bar_h - 1), pips[i].name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 		var val: float = clamp(pips[i].value, 0.0, 1.0)
 		for s in num_seg:
 			var sx := bar_x + s * (seg_w + seg_gap)
@@ -184,7 +184,7 @@ func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 			elif val > seg_start:
 				ctrl.draw_rect(Rect2(sx, py, seg_w * (val - seg_start) * float(num_seg), bar_h), pips[i].color)
 		var pct := "%d%%" % int(val * 100)
-		ctrl.draw_string(font, Vector2(bar_x + total_w + 6, py + bar_h - 1), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(bar_x + total_w + 6, py + bar_h - 1), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -192,7 +192,7 @@ func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
 # =============================================================================
 func _draw_right_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var x := 12.0
 	var w := ctrl.size.x - 24.0
 	var y := 22.0
@@ -200,33 +200,33 @@ func _draw_right_panel(ctrl: Control) -> void:
 	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "NAVIGATION")
 	y += 2
 
-	ctrl.draw_string(font, Vector2(x, y), "POS", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "POS", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	y += 14
 	var pos_str := FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"
-	ctrl.draw_string(font, Vector2(x, y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, int(w), 11, UITheme.TEXT)
+	ctrl.draw_string(font, Vector2(x, y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, int(w), 13, UITheme.TEXT)
 	y += 22
 
 	if ship:
 		var fwd := -ship.global_transform.basis.z
 		var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
 		if heading < 0: heading += 360.0
-		ctrl.draw_string(font, Vector2(x, y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x, y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 		var hv := "%06.2f\u00B0" % heading
-		var hvw := font.get_string_size(hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		ctrl.draw_string(font, Vector2(x + w - hvw, y), hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.PRIMARY)
+		var hvw := font.get_string_size(hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+		ctrl.draw_string(font, Vector2(x + w - hvw, y), hv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.PRIMARY)
 		y += 22
 
 		var pitch: float = rad_to_deg(asin(clamp(fwd.y, -1.0, 1.0)))
-		ctrl.draw_string(font, Vector2(x, y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x, y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 		var pv := "%+.1f\u00B0" % pitch
-		var pvw := font.get_string_size(pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		ctrl.draw_string(font, Vector2(x + w - pvw, y), pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.PRIMARY)
+		var pvw := font.get_string_size(pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+		ctrl.draw_string(font, Vector2(x + w - pvw, y), pv, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UITheme.PRIMARY)
 		y += 22
 
-	ctrl.draw_string(font, Vector2(x, y), "SECTEUR", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), "SECTEUR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var sv := "ALPHA-0"
-	var svw := font.get_string_size(sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	ctrl.draw_string(font, Vector2(x + w - svw, y), sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT)
+	var svw := font.get_string_size(sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	ctrl.draw_string(font, Vector2(x + w - svw, y), sv, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
 
 
 # =============================================================================
@@ -235,7 +235,7 @@ func _draw_right_panel(ctrl: Control) -> void:
 func _draw_economy_panel(ctrl: Control) -> void:
 	if player_economy == null:
 		return
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var w := ctrl.size.x
 
 	# Collect resources with qty > 0
@@ -275,10 +275,10 @@ func _draw_economy_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(x + 5, y - 3), 5.0, cr_col)
 	# Amount
 	var cr_amount := PlayerEconomy.format_credits(player_economy.credits)
-	ctrl.draw_string(font, Vector2(x + 16, y), cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, cr_col)
+	ctrl.draw_string(font, Vector2(x + 16, y), cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, cr_col)
 	# "CR" label dimmer, to the right
-	var amt_w := font.get_string_size(cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-	ctrl.draw_string(font, Vector2(x + 18 + amt_w, y), "CR", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(cr_col.r, cr_col.g, cr_col.b, 0.5))
+	var amt_w := font.get_string_size(cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+	ctrl.draw_string(font, Vector2(x + 18 + amt_w, y), "CR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(cr_col.r, cr_col.g, cr_col.b, 0.5))
 
 	y += 14.0
 
@@ -288,7 +288,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 	# --- Resources (2-column grid, only qty > 0) ---
 	if active_resources.is_empty():
-		ctrl.draw_string(font, Vector2(x + 2, y + 10), "AUCUNE RESSOURCE", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x + 2, y + 10), "AUCUNE RESSOURCE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	else:
 		var col_w: float = (w - x * 2) / 2.0
 		for i in active_resources.size():
@@ -306,11 +306,11 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 			# Quantity (bright)
 			var qty_str := str(res["qty"])
-			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(rc.r, rc.g, rc.b, 0.95))
+			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.95))
 
 			# Name (dimmer, after quantity)
-			var qty_w := font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(rc.r, rc.g, rc.b, 0.45))
+			var qty_w := font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.45))
 
 	# Scanline
 	var sy: float = fmod(scan_line_y, panel_h)

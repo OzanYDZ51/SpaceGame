@@ -71,7 +71,7 @@ func update_visibility() -> void:
 # --- Dock ---
 func _draw_dock_prompt(ctrl: Control) -> void:
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
@@ -81,13 +81,13 @@ func _draw_dock_prompt(ctrl: Control) -> void:
 
 	if docking_system:
 		ctrl.draw_string(font, Vector2(0, 13), docking_system.nearest_station_name.to_upper(),
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
 	var dock_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "DOCKER  [F]",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, dock_col)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, dock_col)
 
-	var tw: float = font.get_string_size("DOCKER  [F]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var tw: float = font.get_string_size("DOCKER  [F]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, dock_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, dock_col)
@@ -96,7 +96,7 @@ func _draw_dock_prompt(ctrl: Control) -> void:
 # --- Loot ---
 func _draw_loot_prompt(ctrl: Control) -> void:
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
@@ -108,13 +108,13 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 	if loot_pickup and loot_pickup.nearest_crate:
 		var summary: String = loot_pickup.nearest_crate.get_contents_summary()
 		ctrl.draw_string(font, Vector2(0, 13), summary.to_upper(),
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
 	var text_col := Color(loot_col.r, loot_col.g, loot_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "SOUTE  [X]",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
-	var tw: float = font.get_string_size("SOUTE  [X]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var tw: float = font.get_string_size("SOUTE  [X]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
@@ -123,7 +123,7 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 # --- Gate ---
 func _draw_gate_prompt(ctrl: Control) -> void:
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
@@ -135,13 +135,13 @@ func _draw_gate_prompt(ctrl: Control) -> void:
 	if system_transition:
 		var target_name: String = system_transition.get_gate_target_name().to_upper()
 		ctrl.draw_string(font, Vector2(0, 13), target_name,
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
 	var text_col := Color(gate_col.r, gate_col.g, gate_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "SAUT  [J]",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
-	var tw: float = font.get_string_size("SAUT  [J]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var tw: float = font.get_string_size("SAUT  [J]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
@@ -150,7 +150,7 @@ func _draw_gate_prompt(ctrl: Control) -> void:
 # --- Wormhole ---
 func _draw_wormhole_prompt(ctrl: Control) -> void:
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
@@ -162,13 +162,13 @@ func _draw_wormhole_prompt(ctrl: Control) -> void:
 	if system_transition:
 		var target_name: String = system_transition.get_wormhole_target_name().to_upper()
 		ctrl.draw_string(font, Vector2(0, 13), target_name,
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
 	var text_col := Color(wh_col.r, wh_col.g, wh_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "WORMHOLE  [W]",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 12, text_col)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
-	var tw: float = font.get_string_size("WORMHOLE  [W]", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var tw: float = font.get_string_size("WORMHOLE  [W]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)

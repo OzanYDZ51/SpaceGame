@@ -40,7 +40,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	var screen_size := ctrl.size
 	var cam_fwd: Vector3 = -cam.global_transform.basis.z
 	var cam_pos: Vector3 = cam.global_position
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 
 	# Stations + Star + Jump Gates + Asteroid Belts
 	for ent in EntityRegistry.get_all().values():
@@ -147,15 +147,15 @@ func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3
 func _draw_nav_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name: String, dist_str: String, col: Color) -> void:
 	HudDrawHelpers.draw_diamond(ctrl, sp, 5.0, col)
 
-	var name_w := font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var name_w := font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var name_pos := Vector2(sp.x - name_w * 0.5, sp.y - 18)
 	ctrl.draw_rect(Rect2(name_pos.x - 4, name_pos.y - 10, name_w + 8, 14), Color(0.0, 0.02, 0.06, 0.5))
-	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
-	var dist_w := font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var dist_w := font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dist_pos := Vector2(sp.x - dist_w * 0.5, sp.y + 18)
 	ctrl.draw_rect(Rect2(dist_pos.x - 4, dist_pos.y - 11, dist_w + 8, 15), Color(0.0, 0.02, 0.06, 0.5))
-	ctrl.draw_string(font, dist_pos, dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col)
+	ctrl.draw_string(font, dist_pos, dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 
 
 func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: Camera3D, cam_pos: Vector3, world_pos: Vector3, ent_name: String, dist_str: String, col: Color) -> void:
@@ -192,8 +192,8 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 120.0)
 	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
 
-	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, text_pos + Vector2(0, 13), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, col)
+	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, text_pos + Vector2(0, 13), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 func _get_npc_nav_color(node: Node) -> Color:

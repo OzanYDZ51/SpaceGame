@@ -28,7 +28,33 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	global_position += velocity * delta
+	if not visible:
+		return
+
+	var move := velocity * delta
+
+	# Sweep raycast to prevent tunneling through thin geometry (stations, asteroids)
+	if move.length_squared() > 1.0:
+		var space := get_world_3d().direct_space_state
+		if space:
+			var query := PhysicsRayQueryParameters3D.create(global_position, global_position + move)
+			query.collision_mask = collision_mask
+			query.collide_with_areas = false
+			query.collide_with_bodies = true
+			if owner_ship and is_instance_valid(owner_ship):
+				query.exclude = [owner_ship.get_rid()]
+			var hit := space.intersect_ray(query)
+			if not hit.is_empty():
+				global_position = hit["position"]
+				var body := hit["collider"] as Node3D
+				if body and body != owner_ship:
+					_on_body_hit(body)
+					return
+				_spawn_hit_effect()
+				_return_to_pool()
+				return
+
+	global_position += move
 	_lifetime += delta
 	if _lifetime >= max_lifetime:
 		_spawn_dissipate_effect()
@@ -39,6 +65,8 @@ var weapon_name: StringName = &""  # Set by WeaponManager on fire
 
 
 func _on_body_hit(body: Node3D) -> void:
+	if not visible:
+		return
 	if owner_ship != null and not is_instance_valid(owner_ship):
 		owner_ship = null
 	if body == owner_ship:
@@ -66,6 +94,8 @@ func _on_body_hit(body: Node3D) -> void:
 
 
 func _on_area_hit(_area: Area3D) -> void:
+	if not visible:
+		return
 	_spawn_hit_effect()
 	_return_to_pool()
 

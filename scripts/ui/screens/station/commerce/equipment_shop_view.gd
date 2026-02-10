@@ -273,9 +273,9 @@ func _draw_module_detail(font: Font, x: float, y: float, mn: StringName) -> floa
 func _draw_detail_rows(font: Font, x: float, y: float, rows: Array) -> float:
 	for row in rows:
 		draw_string(font, Vector2(x + 10, y + 12), row[0],
-			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(x + 95, y + 12), row[1],
-			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 		y += 18.0
 	y += 6.0
 	return y
@@ -349,14 +349,14 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	# Name
 	ci.draw_string(font, Vector2(rect.position.x + 34, rect.position.y + 16),
 		name_str, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
 
 	# Stats
 	ci.draw_string(font, Vector2(rect.position.x + 34, rect.position.y + 32),
 		stat_str, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.45,
-		UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Price (right-aligned)
 	ci.draw_string(font, Vector2(rect.position.x + rect.size.x * 0.65, rect.position.y + 32),
 		PriceCatalog.format_price(price), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x * 0.3,
-		UITheme.FONT_SIZE_TINY, PlayerEconomy.CREDITS_COLOR)
+		UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

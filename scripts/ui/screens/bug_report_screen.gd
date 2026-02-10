@@ -55,7 +55,7 @@ func _build_ui() -> void:
 	var title_row := HBoxContainer.new()
 	var title_lbl := Label.new()
 	title_lbl.text = "TITRE"
-	title_lbl.add_theme_font_size_override("font_size", 12)
+	title_lbl.add_theme_font_size_override("font_size", 14)
 	title_lbl.add_theme_color_override("font_color", Color(0, 0.78, 1.0, 0.5))
 	title_lbl.custom_minimum_size.x = 70
 	title_row.add_child(title_lbl)
@@ -69,7 +69,7 @@ func _build_ui() -> void:
 	# Description input (multiline)
 	var desc_lbl := Label.new()
 	desc_lbl.text = "DESCRIPTION"
-	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_font_size_override("font_size", 14)
 	desc_lbl.add_theme_color_override("font_color", Color(0, 0.78, 1.0, 0.5))
 	vbox.add_child(desc_lbl)
 
@@ -86,18 +86,18 @@ func _build_ui() -> void:
 	info_panel.add_child(info_vbox)
 
 	_system_label = Label.new()
-	_system_label.add_theme_font_size_override("font_size", 11)
+	_system_label.add_theme_font_size_override("font_size", 13)
 	_system_label.add_theme_color_override("font_color", Color(0.69, 0.83, 0.91, 0.6))
 	info_vbox.add_child(_system_label)
 
 	_position_label = Label.new()
-	_position_label.add_theme_font_size_override("font_size", 11)
+	_position_label.add_theme_font_size_override("font_size", 13)
 	_position_label.add_theme_color_override("font_color", Color(0.69, 0.83, 0.91, 0.6))
 	info_vbox.add_child(_position_label)
 
 	var version_label := Label.new()
 	version_label.text = "Version: " + Constants.GAME_VERSION
-	version_label.add_theme_font_size_override("font_size", 11)
+	version_label.add_theme_font_size_override("font_size", 13)
 	version_label.add_theme_color_override("font_color", Color(0.69, 0.83, 0.91, 0.6))
 	info_vbox.add_child(version_label)
 

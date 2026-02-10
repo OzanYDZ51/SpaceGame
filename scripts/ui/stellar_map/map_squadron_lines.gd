@@ -41,8 +41,8 @@ static func draw_squadron_lines(canvas: CanvasItem, camera: MapCamera, entities:
 
 			# Role badge on member
 			var badge_text := "[%s]" % SquadronRoleRegistry.get_role_short(role)
-			var tw: float = font.get_string_size(badge_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-			canvas.draw_string(font, member_sp + Vector2(-tw * 0.5, -12), badge_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, role_col)
+			var tw: float = font.get_string_size(badge_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			canvas.draw_string(font, member_sp + Vector2(-tw * 0.5, -12), badge_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, role_col)
 
 
 static func _get_ship_screen_pos(fleet_index: int, fleet: PlayerFleet, entities: Dictionary, camera: MapCamera, player_id: String) -> Vector2:
@@ -83,8 +83,8 @@ static func _draw_leader_badge(canvas: CanvasItem, pos: Vector2, sq: Squadron) -
 	var font: Font = UITheme.get_font()
 	var formation_text := SquadronFormation.get_formation_display(sq.formation_type)
 	var label := "* %s [%s]" % [sq.squadron_name, formation_text]
-	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	canvas.draw_string(font, pos + Vector2(-tw * 0.5, -16), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, MapColors.SQUADRON_HEADER)
+	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	canvas.draw_string(font, pos + Vector2(-tw * 0.5, -16), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.SQUADRON_HEADER)
 
 
 static func _draw_dashed(canvas: CanvasItem, from: Vector2, to: Vector2, col: Color, width: float, dash: float, gap: float) -> void:

@@ -92,7 +92,6 @@ func _read_auth_token_from_cli() -> void:
 		if args[i] == "--auth-token" and i + 1 < args.size():
 			var token: String = args[i + 1]
 			AuthManager.set_token_from_launcher(token)
-			print("GameManager: Auth token received from launcher")
 			return
 	# No token — try restoring from saved session (auto-refresh)
 	# AuthManager._try_restore_session() is already called in its _ready()
@@ -525,6 +524,10 @@ func _initialize_game() -> void:
 	_docking_mgr.discord_rpc = _net_sync_mgr.discord_rpc if _net_sync_mgr else null
 	_docking_mgr.get_game_state = func() -> GameState: return current_state
 	add_child(_docking_mgr)
+	# Inject docking refs into death/respawn manager for auto-dock on respawn
+	if _death_respawn_mgr:
+		_death_respawn_mgr.docking_mgr = _docking_mgr
+		_death_respawn_mgr.docking_system = _docking_system
 	# Connect station/commerce/equipment screen signals directly to DockingManager
 	_station_screen.undock_requested.connect(_docking_mgr.handle_undock)
 	_station_screen.equipment_requested.connect(_docking_mgr.handle_equipment_requested)
@@ -578,9 +581,6 @@ func _load_backend_state() -> void:
 	if not state.is_empty() and not state.has("error"):
 		SaveManager.apply_state(state)
 		_backend_state_loaded = true
-		print("GameManager: Backend state loaded and applied")
-	else:
-		print("GameManager: No backend state (new player)")
 
 
 func _notification(what: int) -> void:
@@ -637,7 +637,6 @@ func _on_system_loaded(system_id: int) -> void:
 
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
-	print("GameManager: fleet_order idx=%d order='%s' params=%s" % [fleet_index, order_id, params])
 	if player_fleet == null or fleet_index < 0 or fleet_index >= player_fleet.ships.size():
 		return
 

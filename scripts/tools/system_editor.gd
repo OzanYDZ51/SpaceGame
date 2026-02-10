@@ -228,7 +228,7 @@ func _draw_grid(f: Font, sc: Vector2) -> void:
 	while r_w * _ppu * _zoom < max_r_px:
 		var r_px := r_w * _ppu * _zoom
 		draw_arc(sc, r_px, 0, TAU, 48, C_GRID, 1.0)
-		draw_string(f, sc + Vector2(r_px + 3, -3), _fmt_dist(r_w), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, C_DIM)
+		draw_string(f, sc + Vector2(r_px + 3, -3), _fmt_dist(r_w), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_DIM)
 		r_w += spacing
 
 
@@ -241,7 +241,7 @@ func _draw_belts(f: Font, sc: Vector2) -> void:
 		var col := C_SEL if is_sel else C_BELT
 		draw_arc(sc, r_px, 0, TAU, 64, col, w_px)
 		var lp := sc + Vector2(0, -(r_px + w_px * 0.5 + 6))
-		draw_string(f, lp + Vector2(-40, 0), _short(b.belt_name), HORIZONTAL_ALIGNMENT_CENTER, 80, 9, col.lightened(0.4))
+		draw_string(f, lp + Vector2(-40, 0), _short(b.belt_name), HORIZONTAL_ALIGNMENT_CENTER, 80, 13, col.lightened(0.4))
 
 
 func _draw_orbit_rings(sc: Vector2) -> void:
@@ -256,8 +256,8 @@ func _draw_star(f: Font, sc: Vector2) -> void:
 	if is_sel:
 		draw_circle(sc, 17.0, C_SEL)
 	draw_circle(sc, 12.0, C_STAR)
-	draw_string(f, sc + Vector2(-50, -20), _data.star_name, HORIZONTAL_ALIGNMENT_CENTER, 100, 10, C_STAR)
-	draw_string(f, sc + Vector2(-15, 24), _data.star_spectral_class, HORIZONTAL_ALIGNMENT_CENTER, 30, 9, C_DIM)
+	draw_string(f, sc + Vector2(-50, -20), _data.star_name, HORIZONTAL_ALIGNMENT_CENTER, 100, 13, C_STAR)
+	draw_string(f, sc + Vector2(-15, 24), _data.star_spectral_class, HORIZONTAL_ALIGNMENT_CENTER, 30, 13, C_DIM)
 
 
 func _draw_planets(f: Font) -> void:
@@ -272,7 +272,7 @@ func _draw_planets(f: Font) -> void:
 		draw_circle(pos, r, col)
 		if p.has_rings:
 			draw_arc(pos, r + 4.0, -0.3, PI + 0.3, 12, col.lightened(0.3), 1.5)
-		draw_string(f, pos + Vector2(-20, r + 14), _short(p.planet_name), HORIZONTAL_ALIGNMENT_CENTER, 40, 9, C_TEXT)
+		draw_string(f, pos + Vector2(-20, r + 14), _short(p.planet_name), HORIZONTAL_ALIGNMENT_CENTER, 40, 13, C_TEXT)
 
 
 func _draw_stations(f: Font) -> void:
@@ -283,7 +283,7 @@ func _draw_stations(f: Font) -> void:
 		if is_sel:
 			draw_rect(Rect2(pos - Vector2(9, 9), Vector2(18, 18)), C_SEL, false, 2.0)
 		draw_rect(Rect2(pos - Vector2(5, 5), Vector2(10, 10)), C_STATION)
-		draw_string(f, pos + Vector2(-40, 19), s.station_name, HORIZONTAL_ALIGNMENT_CENTER, 80, 9, C_STATION)
+		draw_string(f, pos + Vector2(-40, 19), s.station_name, HORIZONTAL_ALIGNMENT_CENTER, 80, 13, C_STATION)
 
 
 func _draw_gates(f: Font) -> void:
@@ -303,7 +303,7 @@ func _draw_gates(f: Font) -> void:
 			])
 			draw_colored_polygon(big, C_SEL)
 		draw_colored_polygon(pts, C_GATE)
-		draw_string(f, pos + Vector2(-40, r + 14), g.gate_name.replace("Gate ", ""), HORIZONTAL_ALIGNMENT_CENTER, 80, 8, C_GATE)
+		draw_string(f, pos + Vector2(-40, r + 14), g.gate_name.replace("Gate ", ""), HORIZONTAL_ALIGNMENT_CENTER, 80, 13, C_GATE)
 
 
 func _draw_top_bar(f: Font) -> void:
@@ -321,7 +321,7 @@ func _draw_top_bar(f: Font) -> void:
 	# Save indicator
 	if _save_flash > 0.0:
 		var alpha := minf(_save_flash, 1.0)
-		draw_string(f, Vector2(size.x * 0.5 - 15, TOP_BAR_H - 3), "SAVED", HORIZONTAL_ALIGNMENT_CENTER, 30, 9, Color(C_SAVE_OK, alpha))
+		draw_string(f, Vector2(size.x * 0.5 - 15, TOP_BAR_H - 3), "SAVED", HORIZONTAL_ALIGNMENT_CENTER, 50, 13, Color(C_SAVE_OK, alpha))
 	elif _dirty:
 		draw_circle(Vector2(size.x * 0.5 + 145, 22), 4, C_SAVE_DIRTY)
 
@@ -375,15 +375,15 @@ func _draw_info_panel(f: Font) -> void:
 
 	var y := py + 20.0
 	for row in lines:
-		draw_string(f, Vector2(px + 10, y), row[0], HORIZONTAL_ALIGNMENT_LEFT, 80, 10, C_DIM)
-		draw_string(f, Vector2(px + 85, y), row[1], HORIZONTAL_ALIGNMENT_LEFT, int(INFO_W - 95), 10, C_TEXT)
+		draw_string(f, Vector2(px + 10, y), row[0], HORIZONTAL_ALIGNMENT_LEFT, 80, 13, C_DIM)
+		draw_string(f, Vector2(px + 85, y), row[1], HORIZONTAL_ALIGNMENT_LEFT, int(INFO_W - 95), 13, C_TEXT)
 		y += 18.0
 
 
 func _draw_help(f: Font) -> void:
 	var y := size.y - 50.0
-	draw_string(f, Vector2(12, y), "Clic: selection   Drag: deplacer   Molette: zoom   Clic droit: pan", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, C_DIM)
-	draw_string(f, Vector2(12, y + 14), "A/D: systeme precedent/suivant   S: sauvegarder   F: recentrer   Echap: deselection", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, C_DIM)
+	draw_string(f, Vector2(12, y), "Clic: selection   Drag: deplacer   Molette: zoom   Clic droit: pan", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_DIM)
+	draw_string(f, Vector2(12, y + 14), "A/D: systeme precedent/suivant   S: sauvegarder   F: recentrer   Echap: deselection", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, C_DIM)
 
 
 # =============================================================================

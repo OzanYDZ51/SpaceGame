@@ -39,7 +39,9 @@ func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> 
 		var st: StationData = system_data.stations[0]
 		var orbit_r: float = st.orbital_radius
 		var angle: float = st.orbital_angle
-		base_pos = Vector3(cos(angle) * orbit_r + 500, 100, sin(angle) * orbit_r - 1500)
+		var station_pos := Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
+		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
+		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 
 	match danger_level:
 		0:

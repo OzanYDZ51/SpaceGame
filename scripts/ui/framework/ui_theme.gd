@@ -45,13 +45,13 @@ const TEXT_HEADER := Color(1.0, 0.7, 0.3, 0.8)
 const LABEL_KEY := Color(0.6, 0.4, 0.2, 0.7)
 const LABEL_VALUE := Color(1.0, 0.75, 0.4, 0.9)
 
-# --- Typography (Rajdhani — bumped for readability, x-height is small) ---
+# --- Typography (Rajdhani Medium — harmonized hierarchy) ---
 const FONT_SIZE_TITLE := 28
 const FONT_SIZE_HEADER := 20
-const FONT_SIZE_BODY := 15
-const FONT_SIZE_LABEL := 14
-const FONT_SIZE_SMALL := 13
-const FONT_SIZE_TINY := 12
+const FONT_SIZE_BODY := 16
+const FONT_SIZE_LABEL := 15
+const FONT_SIZE_SMALL := 14
+const FONT_SIZE_TINY := 13
 
 # --- Spacing ---
 const MARGIN_SCREEN := 16.0
@@ -85,6 +85,13 @@ func _ready() -> void:
 	if _font_bold == null:
 		_font_bold = _font_regular
 
+	# Apply Rajdhani MSDF as the global default font for ALL Controls
+	# (Label, Button, LineEdit, etc.) so nothing falls back to Godot's bitmap font
+	var global_theme := Theme.new()
+	global_theme.default_font = _font_medium
+	global_theme.default_font_size = FONT_SIZE_BODY
+	get_tree().root.theme = global_theme
+
 
 func _process(delta: float) -> void:
 	pulse_t += delta
@@ -106,9 +113,9 @@ func ratio_color(ratio: float) -> Color:
 	return WARNING.lerp(DANGER, 1.0 - ratio * 2.0)
 
 
-## Returns the default UI font (Regular weight — backward compatible).
+## Returns the default UI font (Medium weight — readable at all sizes).
 func get_font() -> Font:
-	return _font_regular
+	return _font_medium
 
 
 ## Returns the medium weight font.

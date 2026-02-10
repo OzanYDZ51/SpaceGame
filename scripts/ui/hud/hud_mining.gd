@@ -44,7 +44,7 @@ func _draw_mining_heat(ctrl: Control) -> void:
 	if mining_system == null:
 		return
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var heat_ratio: float = mining_system.heat
 	var overheated: bool = mining_system.is_overheated
 
@@ -64,7 +64,7 @@ func _draw_mining_heat(ctrl: Control) -> void:
 
 	var label: String = "SURCHAUFFE" if overheated else "CHALEUR"
 	ctrl.draw_string(font, Vector2(0, 11), label,
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse))
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse))
 
 	var bar_x: float = 12.0
 	var bar_y: float = 16.0
@@ -81,14 +81,14 @@ func _draw_mining_heat(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(thresh_x, bar_y), Vector2(thresh_x, bar_y + bar_h), Color(1, 1, 1, 0.2), 1.0)
 
 	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 10), "%d%%" % int(heat_ratio * 100.0),
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 8, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)
 
 
 func _draw_mining_progress(ctrl: Control) -> void:
 	if mining_system == null or mining_system.mining_target == null:
 		return
 	var s := ctrl.size
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var target := mining_system.mining_target
 	var pulse: float = 0.8 + sin(pulse_t * 5.0) * 0.2
 
@@ -101,7 +101,7 @@ func _draw_mining_progress(ctrl: Control) -> void:
 	var res := MiningRegistry.get_resource(target.primary_resource)
 	var res_name: String = res.display_name if res else "?"
 	ctrl.draw_string(font, Vector2(0, 13), ("EXTRACTION: %s" % res_name).to_upper(),
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 10, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
 
 	var bar_x: float = 20.0
 	var bar_y: float = 18.0
@@ -117,4 +117,4 @@ func _draw_mining_progress(ctrl: Control) -> void:
 
 	var hp_text := "%d%%" % int(hp_ratio * 100.0)
 	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 2), hp_text,
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 9, UITheme.TEXT_DIM)
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)

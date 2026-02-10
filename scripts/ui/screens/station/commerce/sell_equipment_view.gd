@@ -231,9 +231,9 @@ func _draw_detail_header(font: Font, x: float, y: float, item_name: StringName) 
 func _draw_detail_rows(font: Font, x: float, y: float, rows: Array) -> float:
 	for row in rows:
 		draw_string(font, Vector2(x + 10, y + 12), row[0],
-			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
+			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(x + 95, y + 12), row[1],
-			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 		y += 18.0
 	return y + 6.0
 
@@ -302,9 +302,9 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 		label += " x%d" % count
 	ci.draw_string(font, Vector2(rect.position.x + 34, rect.position.y + 16),
 		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
 
 	# Sell price (right-aligned)
 	ci.draw_string(font, Vector2(rect.position.x + rect.size.x * 0.6, rect.position.y + 16),
 		"+" + PriceCatalog.format_price(sell_price), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x * 0.35,
-		UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+		UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

@@ -553,6 +553,7 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"attack", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+						_entity_layer.route_target_entity_id = target_id
 					else:
 						# Move to empty space
 						var universe_x: float = _camera.screen_to_universe_x(event.position.x)
@@ -826,6 +827,8 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 			var uz: float = params.get("target_z", params.get("center_z", 0.0))
 			_show_waypoint(ux, uz)
 			_set_route_lines(effective_indices, ux, uz)
+			if order_id == &"attack":
+				_entity_layer.route_target_entity_id = params.get("target_entity_id", "")
 	_close_context_menu()
 
 
@@ -927,6 +930,7 @@ func _show_waypoint(ux: float, uz: float) -> void:
 func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float) -> void:
 	_entity_layer.route_dest_ux = dest_ux
 	_entity_layer.route_dest_uz = dest_uz
+	_entity_layer.route_target_entity_id = ""  # Reset; caller sets for attack
 	_entity_layer.route_ship_ids.clear()
 	if _fleet_panel._fleet == null:
 		return
@@ -944,4 +948,5 @@ func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float)
 
 func _clear_route_line() -> void:
 	_entity_layer.route_ship_ids.clear()
+	_entity_layer.route_target_entity_id = ""
 	_dirty = true

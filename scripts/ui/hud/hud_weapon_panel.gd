@@ -184,7 +184,7 @@ func _get_weapon_type_abbr(wtype: int) -> String:
 # DRAW WEAPON PANEL
 # =============================================================================
 func _draw_weapon_panel(ctrl: Control) -> void:
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var s := ctrl.size
 
 	ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.06, 0.45))
@@ -195,12 +195,12 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(0, sly), Vector2(s.x, sly), UITheme.SCANLINE, 1.0)
 
 	if weapon_manager == null or ship == null or ship.ship_data == null:
-		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "---", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 11, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "---", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 		return
 
 	var hp_count := weapon_manager.get_hardpoint_count()
 	if hp_count == 0:
-		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "AUCUNE ARME", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "AUCUNE ARME", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 		return
 
 	if ship != _silhouette_ship:
@@ -210,14 +210,14 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		_rebuild_weapon_panel_cache(s)
 
 	# Header
-	ctrl.draw_string(font, Vector2(8, 13), "ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, UITheme.HEADER)
-	var hdr_w := font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	ctrl.draw_string(font, Vector2(8, 13), "ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADER)
+	var hdr_w := font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	ctrl.draw_line(Vector2(8 + hdr_w + 6, 7), Vector2(s.x - 8, 7), UITheme.PRIMARY_DIM, 1.0)
 	var class_str: String = ship.ship_data.ship_class
 	if class_str == "":
 		class_str = "---"
-	var csw := font.get_string_size(class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	ctrl.draw_string(font, Vector2(s.x - csw - 8, 13), class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UITheme.TEXT_DIM)
+	var csw := font.get_string_size(class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	ctrl.draw_string(font, Vector2(s.x - csw - 8, 13), class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 	var sil_area_w := 140.0
 	var list_x := sil_area_w + 4.0
@@ -339,10 +339,10 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 
 	var num_col: Color = type_col if (is_on and armed) else (UITheme.PRIMARY if is_on else Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4))
 	var num_str := str(index + 1)
-	var num_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var num_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var label_offset := label_dir * (r + 6.0)
 	var num_pos := pos + label_offset + Vector2(-num_w * 0.5, 3.0)
-	ctrl.draw_string(font, num_pos, num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, num_col)
+	ctrl.draw_string(font, num_pos, num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, num_col)
 
 
 # =============================================================================
@@ -371,10 +371,10 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			num_col = UITheme.TEXT_DIM
 		else:
 			num_col = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-		ctrl.draw_string(font, Vector2(x, ly + 10), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, num_col)
+		ctrl.draw_string(font, Vector2(x, ly + 10), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, num_col)
 
 		if not armed:
-			ctrl.draw_string(font, Vector2(x + 12, ly + 10), "---", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
+			ctrl.draw_string(font, Vector2(x + 12, ly + 10), "---", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
 			continue
 
 		var abbr := _get_weapon_type_abbr(wtype)
@@ -383,10 +383,10 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			name_col = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4)
 		else:
 			name_col = Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, 0.8)
-		ctrl.draw_string(font, Vector2(x + 12, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, name_col)
+		ctrl.draw_string(font, Vector2(x + 12, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, name_col)
 
 		var short_name := wname.get_slice(" ", 0).left(4)
-		ctrl.draw_string(font, Vector2(x + 44, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6 if is_on else 0.3))
+		ctrl.draw_string(font, Vector2(x + 44, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6 if is_on else 0.3))
 
 		if not is_on:
 			var strike_y := ly + 6.0
@@ -427,8 +427,8 @@ func _draw_weapon_footer(ctrl: Control, font: Font, s: Vector2, footer_h: float)
 			continue
 		var label := "G" + str(g + 1)
 		var gc: Color = grp_colors[g] if g < grp_colors.size() else UITheme.TEXT_DIM
-		ctrl.draw_string(font, Vector2(gx, fy + 14), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, gc)
-		gx += font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x + 2
+		ctrl.draw_string(font, Vector2(gx, fy + 14), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, gc)
+		gx += font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 2
 		for hp_idx in weapon_manager.weapon_groups[g]:
 			var st := weapon_manager.get_hardpoint_status(hp_idx)
 			var dot_c: Color = gc if st.get("enabled", false) else Color(gc.r, gc.g, gc.b, 0.2)
@@ -442,10 +442,10 @@ func _draw_weapon_footer(ctrl: Control, font: Font, s: Vector2, footer_h: float)
 		var bar_w := 58.0
 		var bar_h := 6.0
 		var ratio := energy_system.get_energy_ratio()
-		ctrl.draw_string(font, Vector2(bar_x - 26, fy + 14), "WEP", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(bar_x - 26, fy + 14), "WEP", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 		ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.15))
 		var fill_w := ratio * bar_w
 		var bar_col := UITheme.PRIMARY if ratio > 0.25 else UITheme.WARNING
 		ctrl.draw_rect(Rect2(bar_x, bar_y, fill_w, bar_h), Color(bar_col.r, bar_col.g, bar_col.b, 0.7))
 		var pct_str := str(int(ratio * 100.0)) + "%"
-		ctrl.draw_string(font, Vector2(bar_x + bar_w + 4, fy + 14), pct_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(bar_x + bar_w + 4, fy + 14), pct_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)

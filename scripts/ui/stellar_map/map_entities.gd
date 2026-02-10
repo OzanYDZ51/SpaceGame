@@ -25,6 +25,7 @@ var _squadron_list: Array = []  # Array[Squadron]
 var route_ship_ids: Array[String] = []
 var route_dest_ux: float = 0.0
 var route_dest_uz: float = 0.0
+var route_target_entity_id: String = ""  # If set, route tracks this entity's position
 
 # Waypoint flash (universe coords, set by StellarMap)
 var waypoint_ux: float = 0.0
@@ -212,8 +213,8 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 	# Name label
 	var font: Font = UITheme.get_font()
 	var name_text: String = ent["name"]
-	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	draw_string(font, pos + Vector2(-tw * 0.5, base_radius * 1.8 + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MapColors.STAR_GOLD)
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string(font, pos + Vector2(-tw * 0.5, base_radius * 1.8 + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.STAR_GOLD)
 
 
 # =============================================================================
@@ -288,11 +289,11 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 	var show_label: bool = is_selected or camera.zoom > 1e-5 or base_radius > 6.0
 	if show_label:
 		var name_text: String = ent["name"]
-		var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		var label_y: float = base_radius + 14.0
 		if ent["extra"].get("has_rings", false):
 			label_y = base_radius * 2.2 + 8.0
-		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.TEXT_DIM)
+		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
 
 
 # =============================================================================
@@ -342,8 +343,8 @@ func _draw_station(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font
 
 	# Label always visible for stations
 	var name_text: String = ent["name"]
-	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	draw_string(font, pos + Vector2(-tw * 0.5, s + 16), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.STATION_TEAL)
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string(font, pos + Vector2(-tw * 0.5, s + 16), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.STATION_TEAL)
 
 
 # =============================================================================
@@ -376,15 +377,15 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	# Label with target system name
 	var target_name: String = ent.get("extra", {}).get("target_system_name", ent["name"])
 	var name_text: String = target_name if target_name.length() < 30 else ent["name"]
-	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var label_col := Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else Color(col.r, col.g, col.b, 0.7)
-	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, label_col)
+	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
 	# Route label
 	if is_route_gate:
 		var route_label := "PROCHAIN SAUT"
-		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1.0, 0.8, 0.0, 0.8))
+		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.8, 0.0, 0.8))
 
 
 # =============================================================================
@@ -428,8 +429,8 @@ func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font)
 
 	# Label
 	var name_text: String = ent["name"]
-	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	draw_string(font, pos + Vector2(-tw * 0.5, 20), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string(font, pos + Vector2(-tw * 0.5, 20), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 # =============================================================================
@@ -456,8 +457,8 @@ func _draw_npc_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font
 	var show_label: bool = is_selected or camera.zoom > 0.005
 	if show_label:
 		var label_text: String = ent["name"]
-		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
-		draw_string(font, pos + Vector2(-tw * 0.5, s + 12), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, col)
+		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, pos + Vector2(-tw * 0.5, s + 12), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 # =============================================================================
@@ -519,8 +520,8 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 				status_tag = "[RAPPEL]"
 		if status_tag != "":
 			label_text += " " + status_tag
-		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
-		draw_string(font, pos + Vector2(-tw * 0.5, s + 14), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, col)
+		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, pos + Vector2(-tw * 0.5, s + 14), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 # =============================================================================
@@ -561,10 +562,10 @@ func _draw_selection_line(entities: Dictionary, font: Font) -> void:
 	var dist: float = sqrt(dx * dx + dz * dz)
 	var mid: Vector2 = (p1 + p2) * 0.5
 	var dist_text: String = camera.format_distance(dist)
-	var tw: float = font.get_string_size(dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var tw: float = font.get_string_size(dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	# Background behind text
 	draw_rect(Rect2(mid.x - tw * 0.5 - 4, mid.y - 12, tw + 8, 16), MapColors.BG, true)
-	draw_string(font, Vector2(mid.x - tw * 0.5, mid.y), dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MapColors.SELECTION_LINE * Color(1, 1, 1, 2.5))
+	draw_string(font, Vector2(mid.x - tw * 0.5, mid.y), dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.SELECTION_LINE * Color(1, 1, 1, 2.5))
 
 
 # =============================================================================
@@ -611,7 +612,7 @@ func _draw_offscreen_indicator(entities: Dictionary, font: Font) -> void:
 		var label_pos: Vector2 = clamped + label_offset
 		label_pos.x = clampf(label_pos.x, 5.0, size.x - 80.0)
 		label_pos.y = clampf(label_pos.y, 12.0, size.y - 5.0)
-		draw_string(font, label_pos, dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, col)
+		draw_string(font, label_pos, dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 # =============================================================================
@@ -625,8 +626,8 @@ func _draw_hover_tooltip(entities: Dictionary, font: Font) -> void:
 
 	var name_text: String = ent.get("name", "???")
 	var type_text: String = _type_label(ent["type"])
-	var line1_w: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	var line2_w: float = font.get_string_size(type_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+	var line1_w: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var line2_w: float = font.get_string_size(type_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 
 	# Distance from player
 	var dist_text: String = ""
@@ -639,7 +640,7 @@ func _draw_hover_tooltip(entities: Dictionary, font: Font) -> void:
 
 	var line3_w: float = 0.0
 	if dist_text != "":
-		line3_w = font.get_string_size(dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
+		line3_w = font.get_string_size(dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 
 	var box_w: float = maxf(maxf(line1_w, line2_w), line3_w) + 16.0
 	var box_h: float = 40.0 if dist_text == "" else 54.0
@@ -660,12 +661,12 @@ func _draw_hover_tooltip(entities: Dictionary, font: Font) -> void:
 	# Text
 	var tx: float = box_pos.x + 8.0
 	var ty: float = box_pos.y + 14.0
-	draw_string(font, Vector2(tx, ty), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MapColors.TEXT)
+	draw_string(font, Vector2(tx, ty), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, MapColors.TEXT)
 	ty += 14.0
-	draw_string(font, Vector2(tx, ty), type_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, MapColors.TEXT_DIM)
+	draw_string(font, Vector2(tx, ty), type_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
 	if dist_text != "":
 		ty += 14.0
-		draw_string(font, Vector2(tx, ty), dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, MapColors.LABEL_VALUE)
+		draw_string(font, Vector2(tx, ty), dist_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.LABEL_VALUE)
 
 
 func _type_label(type: int) -> String:
@@ -777,8 +778,23 @@ func _draw_trails(entities: Dictionary) -> void:
 func _draw_route_line(entities: Dictionary) -> void:
 	if route_ship_ids.is_empty() or camera == null:
 		return
-	var to_sp := camera.universe_to_screen(route_dest_ux, route_dest_uz)
-	var col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5)
+	# Track moving target if attack order
+	var dest_ux: float = route_dest_ux
+	var dest_uz: float = route_dest_uz
+	if route_target_entity_id != "":
+		var target_ent := EntityRegistry.get_entity(route_target_entity_id)
+		if not target_ent.is_empty():
+			dest_ux = target_ent["pos_x"]
+			dest_uz = target_ent["pos_z"]
+		else:
+			# Target dead — clear route
+			route_ship_ids.clear()
+			route_target_entity_id = ""
+			return
+	var to_sp := camera.universe_to_screen(dest_ux, dest_uz)
+	var is_attack: bool = route_target_entity_id != ""
+	var base_col: Color = Color(1.0, 0.2, 0.15) if is_attack else UITheme.PRIMARY
+	var col := Color(base_col.r, base_col.g, base_col.b, 0.5)
 	for ship_id in route_ship_ids:
 		var ship_ent: Dictionary = {}
 		if entities.has(ship_id):
@@ -795,7 +811,7 @@ func _draw_route_line(entities: Dictionary) -> void:
 		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),
 		to_sp + Vector2(0, ds), to_sp + Vector2(-ds, 0),
 	])
-	draw_colored_polygon(diamond, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.6))
+	draw_colored_polygon(diamond, Color(base_col.r, base_col.g, base_col.b, 0.6))
 
 
 func _draw_waypoint_flash() -> void:

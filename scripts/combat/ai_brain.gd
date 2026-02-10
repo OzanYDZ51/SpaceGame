@@ -298,8 +298,8 @@ func _tick_formation() -> void:
 	var target_pos: Vector3 = formation_leader.global_position + leader_basis * formation_offset
 	_pilot.fly_toward(target_pos, 20.0)
 
-	# If leader is attacking, we attack too
-	if formation_leader.has_node("AIBrain"):
+	# If leader is attacking, we attack too (only if we have weapons)
+	if weapons_enabled and formation_leader.has_node("AIBrain"):
 		var leader_brain := formation_leader.get_node("AIBrain") as AIBrain
 		if leader_brain and leader_brain.current_state == State.ATTACK and leader_brain.target:
 			target = leader_brain.target
@@ -307,7 +307,7 @@ func _tick_formation() -> void:
 
 
 func _detect_threats() -> void:
-	if _ship == null or ignore_threats:
+	if _ship == null or ignore_threats or not weapons_enabled:
 		return
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
@@ -403,7 +403,7 @@ func set_patrol_area(center: Vector3, radius: float) -> void:
 
 
 func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
-	if current_state == State.DEAD or ignore_threats:
+	if current_state == State.DEAD or ignore_threats or not weapons_enabled:
 		return
 	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
 		return
@@ -437,10 +437,10 @@ func _update_threat_table(dt: float) -> void:
 		# Decay threat over time
 		entry["threat"] -= THREAT_DECAY_RATE * dt
 		# Remove stale or dead entries
-		var node: Node3D = entry["node"] as Node3D
+		var raw_node = entry["node"]
 		if entry["threat"] <= 0.0 or (now - entry["last_hit"]) > THREAT_CLEANUP_TIME:
 			to_remove.append(aid)
-		elif node == null or not is_instance_valid(node) or not node.is_inside_tree():
+		elif raw_node == null or not is_instance_valid(raw_node) or not raw_node.is_inside_tree():
 			to_remove.append(aid)
 	for aid: int in to_remove:
 		_threat_table.erase(aid)

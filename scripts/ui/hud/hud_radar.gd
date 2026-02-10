@@ -63,7 +63,7 @@ func _draw_radar(ctrl: Control) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var font := ThemeDB.fallback_font
+	var font := UITheme.get_font_medium()
 	var s := ctrl.size
 	var center := Vector2(s.x * 0.5, s.y * 0.5 + 10)
 	var radar_r: float = minf(s.x, s.y) * 0.5 - 20.0
@@ -194,7 +194,7 @@ func _draw_radar(ctrl: Control) -> void:
 	]), UITheme.PRIMARY)
 
 	# Header
-	ctrl.draw_string(font, Vector2(0, 12), "RADAR", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 10, UITheme.HEADER)
+	ctrl.draw_string(font, Vector2(0, 12), "RADAR", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.HEADER)
 
 	# Belt status
 	if asteroid_mgr:
@@ -202,10 +202,10 @@ func _draw_radar(ctrl: Control) -> void:
 		var uni_z: float = ship.global_position.z + FloatingOrigin.origin_offset_z
 		var belt_name: String = asteroid_mgr.get_belt_at_position(uni_x, uni_z)
 		if belt_name != "":
-			ctrl.draw_string(font, Vector2(0, s.y - 16), belt_name, HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 8, NAV_COL_BELT)
+			ctrl.draw_string(font, Vector2(0, s.y - 16), belt_name, HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, NAV_COL_BELT)
 
 	# Range label
-	ctrl.draw_string(font, Vector2(0, s.y - 4), HudDrawHelpers.format_nav_distance(RADAR_RANGE), HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 9, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(0, s.y - 4), HudDrawHelpers.format_nav_distance(RADAR_RANGE), HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 
 	# Scanline
 	var sly: float = fmod(scan_line_y, s.y)

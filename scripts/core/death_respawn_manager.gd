@@ -21,6 +21,8 @@ var route_manager: RouteManager = null
 var fleet_deployment_mgr: FleetDeploymentManager = null
 var discord_rpc: DiscordRPC = null
 var toast_manager: UIToastManager = null
+var docking_mgr: DockingManager = null
+var docking_system: DockingSystem = null
 
 
 func _process(delta: float) -> void:
@@ -80,14 +82,46 @@ func handle_respawn() -> void:
 	elif system_transition:
 		system_transition._position_player()
 
-	# Restore HUD
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
-	if hud:
-		hud.visible = true
-
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-
 	player_respawned.emit()
+
+	# Auto-dock at nearest repair station
+	_auto_dock_at_repair_station()
+
+
+func _auto_dock_at_repair_station() -> void:
+	if docking_mgr == null or docking_system == null:
+		# Fallback: show HUD and capture mouse if docking not available
+		var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+		if hud:
+			hud.visible = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		return
+
+	# Find repair station in current system
+	var station_name: String = ""
+	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for ent in stations:
+		var extra: Dictionary = ent.get("extra", {})
+		if extra.get("station_type", "") == "repair":
+			station_name = ent.get("name", "")
+			break
+	# Fallback: any station
+	if station_name == "" and stations.size() > 0:
+		station_name = stations[0].get("name", "Station")
+
+	if station_name == "":
+		# No station found — fall back to space respawn
+		var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+		if hud:
+			hud.visible = true
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		return
+
+	# Set docking system state
+	docking_system.is_docked = true
+
+	# Trigger full docking flow (freezes world, loads hangar, hides HUD)
+	docking_mgr.handle_docked(station_name)
 
 
 func _spawn_death_explosion() -> void:
