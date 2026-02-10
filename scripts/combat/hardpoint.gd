@@ -375,13 +375,20 @@ func _cache_refs_if_needed() -> void:
 	if _refs_cached:
 		return
 	_refs_cached = true
-	# Walk up to find the ship (RigidBody3D parent)
+	# Walk up to find the ship (RigidBody3D) or station (StaticBody3D)
 	var node := get_parent()
 	while node:
 		if node is RigidBody3D:
 			_cached_ship = node as Node3D
 			break
 		node = node.get_parent()
+	if _cached_ship == null:
+		node = get_parent()
+		while node:
+			if node is StaticBody3D:
+				_cached_ship = node as Node3D
+				break
+			node = node.get_parent()
 	if _cached_ship:
 		_cached_energy_sys = _cached_ship.get_node_or_null("EnergySystem") as EnergySystem
 	var mgr := GameManager.get_node_or_null("ShipLODManager")

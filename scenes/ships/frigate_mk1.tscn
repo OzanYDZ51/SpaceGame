@@ -1,7 +1,8 @@
 [gd_scene format=3 uid="uid://bfbeju2ji2ljd"]
 
-[ext_resource type="PackedScene" path="res://assets/models/frigate_mk1.glb" id="1_model"]
-[ext_resource type="Script" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="PackedScene" uid="uid://cj5eyy14di2lx" path="res://assets/models/frigate_mk1.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
 
 [node name="FrigateMk1" type="Node3D" unique_id=2078971498]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
@@ -82,3 +83,39 @@ transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.57
 script = ExtResource("2_hpslot")
 slot_id = 7
 slot_size = "L"
+
+[node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=2005946952]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 4.5, 5)
+script = ExtResource("3_vfx")
+
+[node name="VFX_Engine_R" type="Marker3D" parent="." unique_id=1650570366]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 4.5, 5)
+script = ExtResource("3_vfx")
+
+[node name="VFX_Engine_C" type="Marker3D" parent="." unique_id=784570869]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 5, 6)
+script = ExtResource("3_vfx")
+
+[node name="VFX_RCS_Right" type="Marker3D" parent="." unique_id=738168157]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 5, 4.5, -5)
+script = ExtResource("3_vfx")
+point_type = 1
+
+[node name="VFX_RCS_Left" type="Marker3D" parent="." unique_id=123692522]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -5, 4.5, -5)
+script = ExtResource("3_vfx")
+point_type = 1
+
+[node name="VFX_RCS_Top" type="Marker3D" parent="." unique_id=507176261]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 6.5, -5)
+script = ExtResource("3_vfx")
+point_type = 1
+
+[node name="VFX_RCS_Bottom" type="Marker3D" parent="." unique_id=1319269135]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 3, -5)
+script = ExtResource("3_vfx")
+point_type = 1
+
+[node name="EquipmentCamera" type="Camera3D" parent="." unique_id=1432655218]
+transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 27.471779, -26.787548)
+fov = 45.0

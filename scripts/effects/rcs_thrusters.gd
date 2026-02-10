@@ -28,15 +28,34 @@ const THRUSTER_CONFIG := [
 const FIRE_THRESHOLD: float = 0.15
 
 
-func setup(p_model_scale: float) -> void:
+func setup(p_model_scale: float, vfx_points: Array[Dictionary] = []) -> void:
 	_model_scale = p_model_scale
 	var soft_tex := _create_soft_circle(16)
 
-	for config in THRUSTER_CONFIG:
+	# Collect RCS configs from VFX attach points or use hardcoded defaults
+	var rcs_configs: Array[Dictionary] = []
+	for pt in vfx_points:
+		if pt.get("type") == &"RCS":
+			# Activation direction = opposite of emission (force direction)
+			rcs_configs.append({
+				"pos": pt["position"],
+				"activation": -pt["direction"],
+				"prescaled": true,
+			})
+
+	if rcs_configs.is_empty():
+		for cfg in THRUSTER_CONFIG:
+			rcs_configs.append({
+				"pos": cfg["pos"],
+				"activation": cfg["dir"],
+				"prescaled": false,
+			})
+
+	for cfg in rcs_configs:
 		var p := _create_emitter(soft_tex, p_model_scale)
-		p.position = config["pos"] * p_model_scale
+		p.position = cfg["pos"] if cfg["prescaled"] else cfg["pos"] * p_model_scale
 		add_child(p)
-		_thruster_data.append({"direction": config["dir"], "node": p})
+		_thruster_data.append({"direction": cfg["activation"], "node": p})
 
 
 func _process(_delta: float) -> void:
@@ -47,19 +66,16 @@ func _process(_delta: float) -> void:
 	var throttle: Vector3 = ship.throttle_input
 	var ang_vel: Vector3 = ship.angular_velocity
 
-	for i in _thruster_data.size():
-		var dir: Vector3 = _thruster_data[i]["direction"]
-		var p: GPUParticles3D = _thruster_data[i]["node"]
+	for td in _thruster_data:
+		var dir: Vector3 = td["direction"]
+		var p: GPUParticles3D = td["node"]
 
-		# Check if this thruster should fire based on input
-		var activation: float = 0.0
-		# Translation: dot with throttle input
-		activation += maxf(0.0, dir.dot(throttle))
-		# Rotation: yaw from angular_velocity.y
-		if i >= 4:  # Rotation thrusters
-			activation += absf(ang_vel.y) * 0.5
+		# Translation activation
+		var activation: float = maxf(0.0, dir.dot(throttle))
+		# Rotation: lateral thrusters respond to yaw, vertical to pitch
+		activation = maxf(activation, absf(ang_vel.y) * absf(dir.x) * 0.5)
+		activation = maxf(activation, absf(ang_vel.x) * absf(dir.y) * 0.5)
 
-		# Toggle continuous emission based on activation
 		p.emitting = activation > FIRE_THRESHOLD
 
 

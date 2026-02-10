@@ -15,7 +15,7 @@ var hardpoints: Array[Hardpoint] = []
 # 3 weapon groups, each is an array of hardpoint indices
 var weapon_groups: Array[Array] = [[], [], []]
 var _weapon_audio: WeaponAudio = null
-var _ship: RigidBody3D = null
+var _ship: Node3D = null
 var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 
 # Module multipliers (set by EquipmentManager)
@@ -25,7 +25,7 @@ var weapon_range_mult: float = 1.0
 
 ## Creates hardpoints from config dictionaries (extracted from HardpointSlot nodes in ship scenes).
 ## hardpoint_parent: Node3D to parent hardpoints under (e.g. HardpointRoot). Falls back to ship_node.
-func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: RigidBody3D, hardpoint_parent: Node3D = null) -> void:
+func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: Node3D, hardpoint_parent: Node3D = null) -> void:
 	_ship = ship_node
 
 	# Create weapon audio
@@ -115,7 +115,7 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 	if group.is_empty():
 		return
 
-	var ship_vel: Vector3 = _ship.linear_velocity if _ship else Vector3.ZERO
+	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
 
 	if sequential:
 		# Fire one hardpoint at a time, cycling through (skip disabled, mining lasers, turrets)
@@ -173,7 +173,7 @@ func update_turrets(target_node: Node3D) -> void:
 	var target_vel := Vector3.ZERO
 	if target_node is RigidBody3D:
 		target_vel = (target_node as RigidBody3D).linear_velocity
-	var ship_vel: Vector3 = _ship.linear_velocity if _ship else Vector3.ZERO
+	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
 
 	for hp in hardpoints:
 		if not hp.is_turret or not hp.enabled or hp.mounted_weapon == null:

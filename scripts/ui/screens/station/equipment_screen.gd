@@ -16,8 +16,11 @@ var weapon_manager: WeaponManager = null
 var equipment_manager: EquipmentManager = null
 var player_fleet: PlayerFleet = null
 
-# --- Adapter (abstracts LIVE vs DATA mode) ---
-var _adapter: FleetShipEquipAdapter = null
+# --- Station mode (set externally before opening) ---
+var station_equip_adapter: StationEquipAdapter = null
+
+# --- Adapter (abstracts LIVE vs DATA mode, or StationEquipAdapter) ---
+var _adapter: RefCounted = null
 var _selected_fleet_index: int = 0
 var _fleet_scroll_offset: float = 0.0
 var _fleet_hovered_index: int = -1
@@ -63,6 +66,7 @@ var _pulse_time: float = 0.0
 var _tab_bar: UITabBar = null
 var _current_tab: int = 0
 const TAB_NAMES: Array[String] = ["ARMEMENT", "MODULES", "BOUCLIERS", "MOTEURS"]
+const TAB_NAMES_STATION: Array[String] = ["ARMEMENT", "MODULES", "BOUCLIERS"]
 
 # --- UI Controls ---
 var _arsenal_list: UIScrollList = null
@@ -182,10 +186,18 @@ func _on_opened() -> void:
 	orbit_pitch = -15.0
 
 	if _tab_bar:
+		_tab_bar.tabs = TAB_NAMES_STATION if _is_station_mode() else TAB_NAMES
 		_tab_bar.current_tab = 0
 
-	# Select active ship by default
-	_selected_fleet_index = player_fleet.active_index if player_fleet else 0
+	if _is_station_mode():
+		screen_title = "STATION — EQUIPEMENT"
+		# Station mode: use station model
+		setup_ship_viewer("res://assets/models/space_station.glb", 0.08, Vector3.ZERO, Vector3.ZERO, Basis.IDENTITY)
+	else:
+		screen_title = "FLOTTE — EQUIPEMENT"
+
+	# Select active ship by default (skip in station mode)
+	_selected_fleet_index = player_fleet.active_index if player_fleet and not _is_station_mode() else 0
 	_fleet_scroll_offset = 0.0
 	_fleet_hovered_index = -1
 	_hp_hovered_index = -1
@@ -215,6 +227,7 @@ func _on_closed() -> void:
 	if _adapter and _adapter.loadout_changed.is_connected(_on_adapter_loadout_changed):
 		_adapter.loadout_changed.disconnect(_on_adapter_loadout_changed)
 	_adapter = null
+	station_equip_adapter = null
 	equipment_closed.emit()
 
 
@@ -331,8 +344,17 @@ func _refresh_viewer_weapons() -> void:
 			hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
 			weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
 		_ship_model.apply_equipment(hp_configs, weapon_names, _ship_root_basis)
+	elif _is_station_mode() and _adapter:
+		# Station mode: use station hardpoint configs
+		var sta: StationEquipAdapter = _adapter as StationEquipAdapter
+		if sta:
+			var hp_configs: Array[Dictionary] = sta._hp_configs
+			var weapon_names: Array[StringName] = []
+			for i in hp_configs.size():
+				weapon_names.append(sta.get_mounted_weapon_name(i))
+			_ship_model.apply_equipment(hp_configs, weapon_names, Basis.IDENTITY)
 	elif _adapter:
-		var sd := _adapter.get_ship_data()
+		var sd: ShipData = _adapter.get_ship_data()
 		if sd == null:
 			return
 		var hp_configs: Array[Dictionary] = []
@@ -368,8 +390,19 @@ func _create_hardpoint_markers() -> void:
 		for hp in weapon_manager.hardpoints:
 			hp_positions.append(hp.position)
 			hp_turrets.append(hp.is_turret)
+	elif _is_station_mode() and _adapter:
+		# Station mode: use StationHardpointConfig for marker positions
+		var sta: StationEquipAdapter = _adapter as StationEquipAdapter
+		if sta:
+			hp_count = sta.get_hardpoint_count()
+			for j in hp_count:
+				if j < sta._hp_configs.size():
+					hp_positions.append(sta._hp_configs[j].get("position", Vector3.ZERO))
+				else:
+					hp_positions.append(Vector3.ZERO)
+				hp_turrets.append(sta.is_hardpoint_turret(j))
 	elif _adapter:
-		var sd := _adapter.get_ship_data()
+		var sd: ShipData = _adapter.get_ship_data()
 		if sd:
 			hp_count = sd.hardpoints.size()
 			var configs := ShipFactory.get_hardpoint_configs(_adapter.fleet_ship.ship_id)
@@ -425,7 +458,7 @@ func _create_hardpoint_markers() -> void:
 func _update_marker_visuals() -> void:
 	if _adapter == null:
 		return
-	var hp_count := _adapter.get_hardpoint_count()
+	var hp_count: int = _adapter.get_hardpoint_count()
 	for marker in _hp_markers:
 		var idx: int = marker.index
 		var mesh: MeshInstance3D = marker.mesh
@@ -434,7 +467,7 @@ func _update_marker_visuals() -> void:
 		if idx >= hp_count:
 			continue
 
-		var mounted := _adapter.get_mounted_weapon(idx)
+		var mounted: WeaponResource = _adapter.get_mounted_weapon(idx)
 		var has_weapon_model: bool = mounted != null and mounted.weapon_model_scene != ""
 
 		if idx == _selected_hardpoint:
@@ -522,9 +555,9 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 
-	# --- Fleet strip interaction ---
+	# --- Fleet strip interaction (disabled in station mode) ---
 	var fleet_strip_bottom := FLEET_STRIP_TOP + FLEET_STRIP_H
-	if event is InputEventMouseButton and event.pressed:
+	if not _is_station_mode() and event is InputEventMouseButton and event.pressed:
 		if event.position.y >= FLEET_STRIP_TOP and event.position.y <= fleet_strip_bottom:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				var idx := _get_fleet_card_at(event.position.x)
@@ -546,7 +579,7 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 				return
 
-	if event is InputEventMouseMotion:
+	if not _is_station_mode() and event is InputEventMouseMotion:
 		if event.position.y >= FLEET_STRIP_TOP and event.position.y <= fleet_strip_bottom:
 			var idx := _get_fleet_card_at(event.position.x)
 			if idx != _fleet_hovered_index:
@@ -689,7 +722,7 @@ func _try_click_hp_strip(mouse_pos: Vector2) -> bool:
 	if not strip_rect.has_point(mouse_pos):
 		return false
 
-	var hp_count := _adapter.get_hardpoint_count()
+	var hp_count: int = _adapter.get_hardpoint_count()
 	if hp_count == 0:
 		return false
 
@@ -728,7 +761,7 @@ func _try_click_module_strip(mouse_pos: Vector2) -> bool:
 	if not strip_rect.has_point(mouse_pos):
 		return false
 
-	var slot_count := _adapter.get_module_slot_count()
+	var slot_count: int = _adapter.get_module_slot_count()
 	if slot_count == 0:
 		return false
 
@@ -879,8 +912,9 @@ func _draw() -> void:
 	var sidebar_w := s.x * SIDEBAR_RATIO
 	var sidebar_pad := 16.0
 
-	# Fleet strip
-	_draw_fleet_strip(font, s)
+	# Fleet strip (hidden in station mode)
+	if not _is_station_mode():
+		_draw_fleet_strip(font, s)
 
 	# Viewer divider
 	draw_line(Vector2(viewer_w, CONTENT_TOP), Vector2(viewer_w, s.y - 40), UITheme.BORDER, 1.0)
@@ -1133,7 +1167,7 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "POINTS D'EMPORT")
 
-	var hp_count := _adapter.get_hardpoint_count()
+	var hp_count: int = _adapter.get_hardpoint_count()
 	if hp_count == 0:
 		return
 
@@ -1144,9 +1178,9 @@ func _draw_hardpoint_strip(font: Font, s: Vector2) -> void:
 	var card_h: float = HP_STRIP_H - 24
 
 	for i in hp_count:
-		var slot_size := _adapter.get_hardpoint_slot_size(i)
-		var is_turret := _adapter.is_hardpoint_turret(i)
-		var mounted := _adapter.get_mounted_weapon(i)
+		var slot_size: String = _adapter.get_hardpoint_slot_size(i)
+		var is_turret: bool = _adapter.is_hardpoint_turret(i)
+		var mounted: WeaponResource = _adapter.get_mounted_weapon(i)
 		var card_x := start_x + i * card_w
 		var card_rect := Rect2(card_x, card_y, card_w - 4, card_h)
 		var is_selected := i == _selected_hardpoint
@@ -1229,7 +1263,7 @@ func _draw_module_slot_strip(font: Font, s: Vector2) -> void:
 	draw_panel_bg(strip_rect)
 	draw_section_header(28, strip_y + 2, viewer_w - 56, "SLOTS MODULES")
 
-	var slot_count := _adapter.get_module_slot_count()
+	var slot_count: int = _adapter.get_module_slot_count()
 	if slot_count == 0:
 		return
 
@@ -1314,7 +1348,7 @@ func _draw_shield_status_panel(font: Font, s: Vector2) -> void:
 		return
 
 	var y := strip_y + 24
-	var sh := _adapter.get_equipped_shield()
+	var sh: ShieldResource = _adapter.get_equipped_shield()
 	if sh:
 		# Row 1: Shield name + size badge
 		draw_string(font, Vector2(32, y + 10), str(sh.shield_name),
@@ -1364,7 +1398,7 @@ func _draw_engine_status_panel(font: Font, s: Vector2) -> void:
 		return
 
 	var y := strip_y + 24
-	var en := _adapter.get_equipped_engine()
+	var en: EngineResource = _adapter.get_equipped_engine()
 	if en:
 		# Row 1: Engine name + size badge
 		draw_string(font, Vector2(32, y + 10), str(en.engine_name),
@@ -1408,7 +1442,7 @@ func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> voi
 
 	# In LIVE mode use actual hardpoint Node3D positions; in DATA mode use marker positions
 	var cam_fwd := -_viewer_camera.global_transform.basis.z
-	var hp_count := _adapter.get_hardpoint_count()
+	var hp_count: int = _adapter.get_hardpoint_count()
 
 	for i in hp_count:
 		var world_pos := Vector3.ZERO
@@ -1432,9 +1466,9 @@ func _draw_projected_labels(font: Font, viewer_w: float, viewer_h: float) -> voi
 			label_x = clampf(label_x, 10.0, viewer_w - 80.0)
 			label_y = clampf(label_y, CONTENT_TOP + 10, CONTENT_TOP + viewer_h - 20)
 
-			var slot_size := _adapter.get_hardpoint_slot_size(i)
-			var is_turret := _adapter.is_hardpoint_turret(i)
-			var mounted := _adapter.get_mounted_weapon(i)
+			var slot_size: String = _adapter.get_hardpoint_slot_size(i)
+			var is_turret: bool = _adapter.is_hardpoint_turret(i)
+			var mounted: WeaponResource = _adapter.get_mounted_weapon(i)
 			var label_text := "%s%d" % [slot_size, i + 1]
 			if is_turret:
 				label_text += " T"
@@ -1479,8 +1513,8 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var slot_size_str: String = ["S", "M", "L"][weapon.slot_size]
 	var compatible := true
 	if _selected_hardpoint >= 0 and _adapter:
-		var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
-		var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+		var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+		var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
 		compatible = player_inventory.is_compatible(weapon_name, hp_sz, hp_turret) if player_inventory else false
 
 	var alpha_mult: float = 1.0 if compatible else 0.3
@@ -1591,7 +1625,7 @@ func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var slot_size_str: String = ["S", "M", "L"][module.slot_size]
 	var compatible := true
 	if _selected_module_slot >= 0 and _adapter:
-		var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
+		var slot_sz: String = _adapter.get_module_slot_size(_selected_module_slot)
 		compatible = player_inventory.is_module_compatible(mn, slot_sz) if player_inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var mod_col: Color = MODULE_COLORS.get(module.module_type, UITheme.PRIMARY)
@@ -1721,7 +1755,7 @@ func _draw_shield_comparison(font: Font, px: float, start_y: float, pw: float) -
 	if new_shield == null:
 		return
 
-	var cur := _adapter.get_equipped_shield() if _adapter else null
+	var cur: ShieldResource = _adapter.get_equipped_shield() if _adapter else null
 
 	var cur_cap := cur.shield_hp_per_facing if cur else 0.0
 	var new_cap := new_shield.shield_hp_per_facing
@@ -1750,7 +1784,7 @@ func _draw_engine_comparison(font: Font, px: float, start_y: float, pw: float) -
 	if new_engine == null:
 		return
 
-	var cur := _adapter.get_equipped_engine() if _adapter else null
+	var cur: EngineResource = _adapter.get_equipped_engine() if _adapter else null
 
 	var stats: Array = [
 		["ACCELERATION", cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
@@ -2174,14 +2208,14 @@ func _refresh_arsenal() -> void:
 	match _current_tab:
 		0:  # Weapons
 			if _selected_hardpoint >= 0 and _adapter:
-				var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
-				var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+				var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+				var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
 				_arsenal_items = player_inventory.get_weapons_for_slot(hp_sz, hp_turret)
 			else:
 				_arsenal_items = player_inventory.get_all_weapons()
 		1:  # Modules
 			if _selected_module_slot >= 0 and _adapter:
-				var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
+				var slot_sz: String = _adapter.get_module_slot_size(_selected_module_slot)
 				_arsenal_items = player_inventory.get_modules_for_slot(slot_sz)
 			else:
 				_arsenal_items = player_inventory.get_all_modules()
@@ -2212,14 +2246,14 @@ func _update_button_states() -> void:
 	match _current_tab:
 		0:  # Weapons
 			if _selected_hardpoint >= 0 and _selected_weapon != &"" and _adapter and player_inventory:
-				var hp_sz := _adapter.get_hardpoint_slot_size(_selected_hardpoint)
-				var hp_turret := _adapter.is_hardpoint_turret(_selected_hardpoint)
+				var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+				var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
 				can_equip = player_inventory.is_compatible(_selected_weapon, hp_sz, hp_turret) and player_inventory.has_weapon(_selected_weapon)
 			if _selected_hardpoint >= 0 and _adapter:
 				can_remove = _adapter.get_mounted_weapon(_selected_hardpoint) != null
 		1:  # Modules
 			if _selected_module_slot >= 0 and _selected_module != &"" and _adapter and player_inventory:
-				var slot_sz := _adapter.get_module_slot_size(_selected_module_slot)
+				var slot_sz: String = _adapter.get_module_slot_size(_selected_module_slot)
 				can_equip = player_inventory.is_module_compatible(_selected_module, slot_sz) and player_inventory.has_module(_selected_module)
 			if _selected_module_slot >= 0 and _adapter:
 				can_remove = _adapter.get_equipped_module(_selected_module_slot) != null
@@ -2320,6 +2354,10 @@ func _is_live_mode() -> bool:
 	return player_fleet != null and _selected_fleet_index == player_fleet.active_index
 
 
+func _is_station_mode() -> bool:
+	return station_equip_adapter != null
+
+
 func _get_fleet_card_at(mouse_x: float) -> int:
 	if player_fleet == null or player_fleet.ships.is_empty():
 		return -1
@@ -2343,6 +2381,12 @@ func _get_fleet_card_at(mouse_x: float) -> int:
 
 
 func _create_adapter() -> void:
+	# Station mode: use station adapter directly
+	if _is_station_mode() and station_equip_adapter:
+		_adapter = station_equip_adapter
+		_adapter.loadout_changed.connect(_on_adapter_loadout_changed)
+		return
+
 	if player_fleet == null:
 		return
 	var fs: FleetShip = player_fleet.ships[_selected_fleet_index] if _selected_fleet_index < player_fleet.ships.size() else null

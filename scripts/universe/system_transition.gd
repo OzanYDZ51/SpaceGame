@@ -273,6 +273,14 @@ func _populate_system() -> void:
 		station.station_name = sd.station_name
 		station.station_type = sd.station_type  # Configures health preset
 
+		# Load or create station equipment (persistent across system changes)
+		var eq_key := "system_%d_station_%d" % [current_system_id, i]
+		if GameManager._station_equipments.has(eq_key):
+			station.station_equipment = GameManager._station_equipments[eq_key]
+		else:
+			station.station_equipment = StationEquipment.create_empty(eq_key, sd.station_type)
+			GameManager._station_equipments[eq_key] = station.station_equipment
+
 		var orbit_r: float = sd.orbital_radius
 		var angle: float = sd.orbital_angle
 		station.transform = Transform3D.IDENTITY

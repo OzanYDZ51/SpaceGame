@@ -178,6 +178,39 @@ func handle_equipment_requested() -> void:
 	screen_manager.open_screen("equipment")
 
 
+func handle_station_equipment_requested() -> void:
+	if equipment_screen == null or screen_manager == null:
+		return
+	# Resolve docked station's StationEquipment
+	var station_eq: StationEquipment = _get_docked_station_equipment()
+	if station_eq == null:
+		return
+	var adapter := StationEquipAdapter.create(station_eq, player_data.inventory if player_data else null)
+	equipment_screen.station_equip_adapter = adapter
+	equipment_screen.player_inventory = player_data.inventory if player_data else null
+	equipment_screen.player_fleet = player_data.fleet if player_data else null
+	screen_manager.close_screen("station")
+	await get_tree().process_frame
+	screen_manager.open_screen("equipment")
+
+
+func _get_docked_station_equipment() -> StationEquipment:
+	# Find station node via EntityRegistry
+	var station_name: String = dock_instance.station_name if dock_instance else ""
+	var universe := main_scene.get_node_or_null("Universe") if main_scene else null
+	if universe == null:
+		return null
+	var station_node: SpaceStation = universe.get_node_or_null("Station_%d" % docked_station_idx) as SpaceStation
+	if station_node and station_node.station_equipment:
+		return station_node.station_equipment
+	# Fallback: create from GameManager cache
+	var sys_id: int = system_transition.current_system_id if system_transition else 0
+	var key := "system_%d_station_%d" % [sys_id, docked_station_idx]
+	if GameManager._station_equipments.has(key):
+		return GameManager._station_equipments[key]
+	return null
+
+
 func open_station_terminal() -> void:
 	if station_screen:
 		station_screen.set_station_name(dock_instance.station_name if dock_instance else "")

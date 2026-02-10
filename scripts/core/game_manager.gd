@@ -72,6 +72,7 @@ var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
 var _notif: NotificationService = null
 var _structure_auth: StructureAuthority = null
+var _station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
 func _ready() -> void:
@@ -542,6 +543,7 @@ func _initialize_game() -> void:
 	_station_screen.equipment_requested.connect(_docking_mgr.handle_equipment_requested)
 	_station_screen.commerce_requested.connect(_docking_mgr.handle_commerce_requested)
 	_station_screen.repair_requested.connect(_docking_mgr.handle_repair_requested)
+	_station_screen.station_equipment_requested.connect(_docking_mgr.handle_station_equipment_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
 	_docking_mgr.docked.connect(func(_sn: String):

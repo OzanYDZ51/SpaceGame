@@ -11,6 +11,9 @@ extends StaticBody3D
 @export var station_type: int = 0  # StationData.StationType value
 
 var structure_health: StructureHealth = null
+var weapon_manager: WeaponManager = null
+var station_equipment: StationEquipment = null
+var _defense_ai: StationDefenseAI = null
 
 
 func _ready() -> void:
@@ -29,7 +32,12 @@ func _ready() -> void:
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
 
-	_load_model()
+	await _load_model()
+
+	# Setup hardpoints, weapons, defense AI after model is loaded
+	if station_equipment == null:
+		station_equipment = StationEquipment.create_empty(name, station_type)
+	StationFactory.setup_station(self, station_equipment)
 
 
 func _load_model() -> void:

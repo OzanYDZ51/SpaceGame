@@ -14,9 +14,22 @@ const ENGINE_OFFSET := Vector3(0.0, 0.0, 7.0)  # Behind engines (+Z)
 const QUAD_SIZE := Vector2(4.0, 3.0)
 
 
-func setup(p_model_scale: float) -> void:
-	# Position behind engines
-	position = ENGINE_OFFSET * p_model_scale
+func setup(p_model_scale: float, vfx_points: Array[Dictionary] = []) -> void:
+	# Compute position from ENGINE VFX points or use default
+	var engine_positions: Array[Vector3] = []
+	for pt in vfx_points:
+		if pt.get("type") == &"ENGINE":
+			engine_positions.append(pt["position"])
+
+	if engine_positions.is_empty():
+		position = ENGINE_OFFSET * p_model_scale
+	else:
+		var centroid := Vector3.ZERO
+		for ep in engine_positions:
+			centroid += ep
+		centroid /= engine_positions.size()
+		# Offset slightly behind engines (+Z in ShipModel space = backward)
+		position = centroid + Vector3(0, 0, 1.0) * p_model_scale
 
 	# Create quad mesh
 	var quad := QuadMesh.new()

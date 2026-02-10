@@ -11,6 +11,7 @@ signal undock_requested
 signal equipment_requested
 signal commerce_requested
 signal repair_requested
+signal station_equipment_requested
 
 @export_group("Layout")
 @export var button_width: float = 280.0
@@ -20,6 +21,7 @@ signal repair_requested
 
 var _station_name: String = "STATION"
 var _service_buttons: Array[UIButton] = []
+var _station_equip_button: UIButton = null
 var _undock_button: UIButton = null
 var _emblem_pulse: float = 0.0
 
@@ -74,6 +76,13 @@ func _create_buttons() -> void:
 		add_child(btn)
 		_service_buttons.append(btn)
 		btn.pressed.connect(_on_service_pressed.bind(i))
+
+	_station_equip_button = UIButton.new()
+	_station_equip_button.text = "EQUIPEMENT STATION"
+	_station_equip_button.accent_color = Color(0.4, 0.7, 1.0)
+	_station_equip_button.visible = false
+	_station_equip_button.pressed.connect(_on_station_equip_pressed)
+	add_child(_station_equip_button)
 
 	_undock_button = UIButton.new()
 	_undock_button.text = "QUITTER LE DOCK"
@@ -136,17 +145,23 @@ func _on_opened() -> void:
 	_layout_buttons()
 	for btn in _service_buttons:
 		btn.visible = true
+	_station_equip_button.visible = true
 	_undock_button.visible = true
 
 
 func _on_closed() -> void:
 	for btn in _service_buttons:
 		btn.visible = false
+	_station_equip_button.visible = false
 	_undock_button.visible = false
 
 
 func _on_undock_pressed() -> void:
 	undock_requested.emit()
+
+
+func _on_station_equip_pressed() -> void:
+	station_equipment_requested.emit()
 
 
 func _layout_buttons() -> void:
@@ -157,6 +172,11 @@ func _layout_buttons() -> void:
 		var btn: UIButton = _service_buttons[i]
 		btn.position = Vector2(cx - button_width * 0.5, services_start_y + i * (button_height + button_gap))
 		btn.size = Vector2(button_width, button_height)
+
+	# Station equipment button — after service buttons
+	var station_equip_y: float = services_start_y + _service_buttons.size() * (button_height + button_gap) + 12
+	_station_equip_button.position = Vector2(cx - button_width * 0.5, station_equip_y)
+	_station_equip_button.size = Vector2(button_width, button_height)
 
 	_undock_button.position = Vector2(cx - button_width * 0.5, s.y - 72)
 	_undock_button.size = Vector2(button_width, button_height)

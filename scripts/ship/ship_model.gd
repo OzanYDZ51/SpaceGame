@@ -29,6 +29,9 @@ var engine_light_color: Color = Color(0.3, 0.5, 1.0)
 ## Used when a ship scene provides the model directly.
 var external_model_instance: Node3D = null
 
+## Engine positions from VFX attach points (already in ShipModel space). If empty, uses defaults.
+var vfx_engine_positions: Array[Vector3] = []
+
 var _engine_lights: Array[OmniLight3D] = []
 var _engine_glow_intensity: float = 0.0
 var _model_instance: Node3D = null
@@ -164,13 +167,18 @@ func _transform_aabb(aabb: AABB, xform: Transform3D) -> AABB:
 
 
 func _add_engine_lights() -> void:
-	for side in [-1.0, 1.0]:
+	var positions: Array[Vector3] = vfx_engine_positions.duplicate()
+	if positions.is_empty():
+		for side in [-1.0, 1.0]:
+			positions.append(Vector3(1.5 * side, 0.0, 5.0) * model_scale)
+
+	for i in positions.size():
 		var light := OmniLight3D.new()
 		light.light_color = engine_light_color
 		light.light_energy = 2.0
 		light.omni_range = 8.0 * model_scale
-		light.position = Vector3(1.5 * side, 0.0, 5.0) * model_scale
-		light.name = "EngineLight_" + ("L" if side < 0 else "R")
+		light.position = positions[i]
+		light.name = "EngineLight_%d" % i
 		add_child(light)
 		_engine_lights.append(light)
 

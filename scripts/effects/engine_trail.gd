@@ -18,13 +18,24 @@ const _ENGINE_OFFSETS := [
 ]
 
 
-func setup(p_model_scale: float, color: Color) -> void:
+func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = []) -> void:
 	var soft_tex := _create_soft_circle(32)
 
-	for offset in _ENGINE_OFFSETS:
+	# Collect engine positions from VFX attach points (already in ShipModel space)
+	var positions: Array[Vector3] = []
+	for pt in vfx_points:
+		if pt.get("type") == &"ENGINE":
+			positions.append(pt["position"])
+
+	# Fallback to hardcoded defaults (need scaling by model_scale)
+	if positions.is_empty():
+		for off in _ENGINE_OFFSETS:
+			positions.append(off * p_model_scale)
+
+	for pos in positions:
 		# ─── CORE LAYER (hot, bright, small) ─────────────────────────────
 		var core := _create_emitter(
-			p_model_scale, offset,
+			p_model_scale, pos,
 			16,                    # amount
 			0.25,                  # lifetime
 			Vector2(0.12, 0.12),   # quad size factor
@@ -41,7 +52,7 @@ func setup(p_model_scale: float, color: Color) -> void:
 
 		# ─── GLOW LAYER (colored, diffuse, larger) ───────────────────────
 		var glow := _create_emitter(
-			p_model_scale, offset,
+			p_model_scale, pos,
 			20,                    # amount
 			0.5,                   # lifetime
 			Vector2(0.35, 0.35),   # quad size factor
@@ -98,7 +109,7 @@ func _create_emitter(
 	p.amount = amount
 	p.lifetime = lifetime
 	p.local_coords = true
-	p.position = offset * ms
+	p.position = offset
 	p.emitting = true
 
 	# Soft particle mesh (billboard quad with radial gradient)
