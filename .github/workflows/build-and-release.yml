@@ -108,49 +108,51 @@ jobs:
           # === Gemini AI: rewrite commit into player-friendly devlog ===
           AI_MSG=""
           if [ -n "$GEMINI_API_KEY" ]; then
-            # Build the prompt as a separate variable for readability
-            SYSTEM_PROMPT="Tu rediges les notes de patch d'Imperion Online, un MMO spatial.
-Tu recois un commit technique et tu le transformes en devlog lisible par des joueurs.
+            SYSTEM_PROMPT=$(cat <<'PROMPT_EOF'
+          Tu rediges les notes de patch d'Imperion Online, un MMO spatial.
+          Tu recois un commit technique et tu le transformes en devlog lisible par des joueurs.
 
-FORMAT OBLIGATOIRE (toujours cette structure):
-- Chaque changement = une ligne
-- Chaque ligne commence par UN emoji puis un tiret puis la description
-- Separe en categories si 3+ changements: NOUVEAU, AMELIORATION, CORRECTION (en gras **)
-- Si 1-2 changements, pas besoin de categories, juste les lignes
+          FORMAT OBLIGATOIRE (toujours cette structure):
+          - Chaque changement = une ligne
+          - Chaque ligne commence par UN emoji puis un tiret puis la description
+          - Separe en categories si 3+ changements: NOUVEAU, AMELIORATION, CORRECTION (en gras **)
+          - Si 1-2 changements, pas besoin de categories, juste les lignes
 
-TON ET STYLE:
-- Francais naturel, comme un vrai dev qui parle a sa communaute
-- Factuel et concret: dis ce qui a change, pas pourquoi c est genial
-- Court. Une ligne = une info. Pas de bla-bla.
-- Vocabulaire in-game: vaisseaux, systemes, stations spatiales, carte stellaire, escadron, armement, boucliers...
+          TON ET STYLE:
+          - Francais naturel, comme un vrai dev qui parle a sa communaute
+          - Factuel et concret: dis ce qui a change, pas pourquoi c est genial
+          - Court. Une ligne = une info. Pas de bla-bla.
+          - Vocabulaire in-game: vaisseaux, systemes, stations spatiales, carte stellaire, escadron, armement, boucliers...
 
-INTERDIT (ca fait IA tout de suite):
-- \"Pilotes !\", \"Commandants !\", \"Bon vol !\", \"N hesitez pas\", \"Restez connectes\"
-- Hashtags, questions rhetoriques, points de suspension...
-- Superlatifs vides: \"incroyable\", \"revolutionnaire\", \"tant attendu\"
-- Commencer par \"Mise a jour\" (c est deja dans le titre Discord)
-- Expliquer des details techniques (fichiers, code, refactoring, optimisation interne)
-- Plus de 5 lignes
+          INTERDIT (ca fait IA tout de suite):
+          - "Pilotes !", "Commandants !", "Bon vol !", "N hesitez pas", "Restez connectes"
+          - Hashtags, questions rhetoriques, points de suspension...
+          - Superlatifs vides: "incroyable", "revolutionnaire", "tant attendu"
+          - Commencer par "Mise a jour" (c est deja dans le titre Discord)
+          - Expliquer des details techniques (fichiers, code, refactoring, optimisation interne)
+          - Plus de 5 lignes
 
-EXEMPLES DE BON DEVLOG:
+          EXEMPLES DE BON DEVLOG:
 
-Exemple 1 (gros patch):
-**NOUVEAU**
-🎯 Systeme d ordres de flotte — assignez des missions a vos vaisseaux depuis la carte stellaire
-📡 Menu contextuel sur la carte pour interagir avec vos escadrons deployes
+          Exemple 1 (gros patch):
+          **NOUVEAU**
+          Systeme d ordres de flotte — assignez des missions a vos vaisseaux depuis la carte stellaire
+          Menu contextuel sur la carte pour interagir avec vos escadrons deployes
 
-**AMELIORATION**
-🗺️ Carte stellaire plus lisible avec un nouveau layout
+          **AMELIORATION**
+          Carte stellaire plus lisible avec un nouveau layout
 
-**CORRECTION**
-🔧 Le chat ne se fermait plus apres envoi d un message
+          **CORRECTION**
+          Le chat ne se fermait plus apres envoi d un message
 
-Exemple 2 (petit patch):
-🔧 Correction d un probleme d affichage sur la carte galactique
-⚔️ Les tourelles de station repondent maintenant correctement aux agressions
+          Exemple 2 (petit patch):
+          Correction d un probleme d affichage sur la carte galactique
+          Les tourelles de station repondent maintenant correctement aux agressions
 
-Exemple 3 (une seule correction):
-🔧 Les boucliers directionnels se rechargent maintenant au bon rythme"
+          Exemple 3 (une seule correction):
+          Les boucliers directionnels se rechargent maintenant au bon rythme
+          PROMPT_EOF
+          )
 
             GEMINI_BODY=$(jq -n \
               --arg prompt "$SYSTEM_PROMPT" \
