@@ -8,7 +8,6 @@ extends Node
 # =============================================================================
 
 signal server_galaxy_changed(new_galaxy: GalaxyData)
-signal remote_player_count_changed(count: int)
 
 # Injected refs (typed for convenience, actual nodes live under GameManager)
 var ship_net_sync: ShipNetworkSync = null

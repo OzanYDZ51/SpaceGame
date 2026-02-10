@@ -3,20 +3,20 @@ extends Node
 
 # =============================================================================
 # UI Theme - Unified design system autoload
-# Holographic cyan AAA aesthetic (Star Citizen / Elite Dangerous style)
+# Orange/amber Elite Dangerous aesthetic with holographic shaders
 # Single source of truth for colors, typography, spacing, animations.
 # =============================================================================
 
-# --- Primary holographic ---
-const PRIMARY := Color(0.15, 0.85, 1.0, 0.9)
-const PRIMARY_DIM := Color(0.1, 0.5, 0.7, 0.4)
-const PRIMARY_FAINT := Color(0.1, 0.4, 0.6, 0.15)
-const HEADER := Color(0.3, 0.88, 1.0, 0.92)
+# --- Primary holographic (orange/amber Elite Dangerous) ---
+const PRIMARY := Color(1.0, 0.55, 0.0, 0.9)
+const PRIMARY_DIM := Color(0.7, 0.35, 0.0, 0.4)
+const PRIMARY_FAINT := Color(0.6, 0.3, 0.0, 0.15)
+const HEADER := Color(1.0, 0.65, 0.1, 0.92)
 
 # --- Semantic ---
 const ACCENT := Color(0.0, 1.0, 0.6, 0.9)
-const WARNING := Color(1.0, 0.7, 0.1, 0.9)
-const DANGER := Color(1.0, 0.2, 0.15, 0.9)
+const WARNING := Color(1.0, 0.85, 0.0, 0.9)
+const DANGER := Color(1.0, 0.15, 0.1, 0.9)
 
 # --- Specialized ---
 const SHIELD := Color(0.2, 0.6, 1.0, 0.9)
@@ -25,33 +25,33 @@ const BOOST := Color(1.0, 0.55, 0.1, 0.9)
 const CRUISE := Color(0.2, 1.0, 0.5, 0.9)
 const LEAD := Color(1.0, 1.0, 0.3, 0.9)
 
-# --- Backgrounds ---
-const BG := Color(0.0, 0.02, 0.06, 0.45)
-const BG_DARK := Color(0.0, 0.01, 0.03, 0.85)
-const BG_PANEL := Color(0.0, 0.02, 0.05, 0.85)
-const BG_MODAL := Color(0.0, 0.01, 0.02, 0.92)
+# --- Backgrounds (deep warm tint) ---
+const BG := Color(0.03, 0.02, 0.01, 0.55)
+const BG_DARK := Color(0.02, 0.01, 0.005, 0.88)
+const BG_PANEL := Color(0.04, 0.025, 0.01, 0.88)
+const BG_MODAL := Color(0.02, 0.012, 0.005, 0.94)
 
-# --- Borders / decoration ---
-const BORDER := Color(0.08, 0.35, 0.55, 0.4)
-const BORDER_ACTIVE := Color(0.1, 0.6, 0.9, 0.7)
-const BORDER_HOVER := Color(0.12, 0.7, 1.0, 0.5)
-const CORNER := Color(0.1, 0.5, 0.7, 0.6)
-const SCANLINE := Color(0.1, 0.6, 0.8, 0.025)
+# --- Borders / decoration (amber) ---
+const BORDER := Color(0.55, 0.3, 0.05, 0.4)
+const BORDER_ACTIVE := Color(0.9, 0.5, 0.05, 0.7)
+const BORDER_HOVER := Color(1.0, 0.6, 0.1, 0.5)
+const CORNER := Color(0.7, 0.4, 0.05, 0.6)
+const SCANLINE := Color(0.8, 0.5, 0.1, 0.025)
 
-# --- Text ---
-const TEXT := Color(0.78, 0.95, 1.0, 0.95)
-const TEXT_DIM := Color(0.45, 0.65, 0.78, 0.7)
-const TEXT_HEADER := Color(0.5, 0.85, 1.0, 0.8)
-const LABEL_KEY := Color(0.3, 0.55, 0.7, 0.7)
-const LABEL_VALUE := Color(0.6, 0.9, 1.0, 0.9)
+# --- Text (warm white/amber) ---
+const TEXT := Color(1.0, 0.88, 0.7, 0.95)
+const TEXT_DIM := Color(0.7, 0.5, 0.3, 0.7)
+const TEXT_HEADER := Color(1.0, 0.7, 0.3, 0.8)
+const LABEL_KEY := Color(0.6, 0.4, 0.2, 0.7)
+const LABEL_VALUE := Color(1.0, 0.75, 0.4, 0.9)
 
-# --- Typography ---
-const FONT_SIZE_TITLE := 24
-const FONT_SIZE_HEADER := 16
-const FONT_SIZE_BODY := 12
-const FONT_SIZE_LABEL := 11
-const FONT_SIZE_SMALL := 10
-const FONT_SIZE_TINY := 9
+# --- Typography (Rajdhani sizes — +2px vs old for smaller x-height) ---
+const FONT_SIZE_TITLE := 28
+const FONT_SIZE_HEADER := 18
+const FONT_SIZE_BODY := 13
+const FONT_SIZE_LABEL := 12
+const FONT_SIZE_SMALL := 11
+const FONT_SIZE_TINY := 10
 
 # --- Spacing ---
 const MARGIN_SCREEN := 16.0
@@ -69,11 +69,19 @@ const TRANSITION_SPEED := 0.3
 # --- Shared animation state (updated every frame) ---
 var pulse_t: float = 0.0
 var scanline_y: float = 0.0
-var _default_font: Font = null
+var _font_regular: Font = null
+var _font_medium: Font = null
+var _font_bold: Font = null
 
 
 func _ready() -> void:
-	_default_font = ThemeDB.fallback_font
+	# Load Rajdhani fonts, fallback to Godot default
+	var regular = load("res://assets/fonts/Rajdhani-Regular.ttf")
+	var medium = load("res://assets/fonts/Rajdhani-Medium.ttf")
+	var bold = load("res://assets/fonts/Rajdhani-Bold.ttf")
+	_font_regular = regular if regular else ThemeDB.fallback_font
+	_font_medium = medium if medium else _font_regular
+	_font_bold = bold if bold else _font_regular
 
 
 func _process(delta: float) -> void:
@@ -96,6 +104,16 @@ func ratio_color(ratio: float) -> Color:
 	return WARNING.lerp(DANGER, 1.0 - ratio * 2.0)
 
 
-## Returns the default UI font.
+## Returns the default UI font (Regular weight — backward compatible).
 func get_font() -> Font:
-	return _default_font
+	return _font_regular
+
+
+## Returns the medium weight font.
+func get_font_medium() -> Font:
+	return _font_medium
+
+
+## Returns the bold weight font.
+func get_font_bold() -> Font:
+	return _font_bold

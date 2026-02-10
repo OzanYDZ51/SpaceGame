@@ -7,9 +7,6 @@ extends RefCounted
 
 signal fleet_changed
 signal active_ship_changed(ship: FleetShip)
-signal ship_deployed(fleet_index: int)
-signal ship_retrieved(fleet_index: int)
-signal ship_lost(fleet_index: int)
 
 var ships: Array[FleetShip] = []
 var active_index: int = 0

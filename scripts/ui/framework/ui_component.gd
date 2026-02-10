@@ -8,9 +8,15 @@ extends Control
 
 var enabled: bool = true
 
+## Set to true to enable the hologram panel shader on this component.
+## Best suited for large panel backgrounds. Small widgets (buttons, bars) should leave this off.
+var use_panel_shader: bool = false
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
+	if use_panel_shader:
+		material = UIShaderCache.get_panel_material()
 
 
 ## Draw a panel background with border, top glow, corners, and scanline.

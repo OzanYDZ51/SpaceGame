@@ -6,9 +6,7 @@ extends Node
 # Child Node of GameManager.
 # =============================================================================
 
-signal dock_requested
 signal loot_pickup_requested(crate: CargoCrate)
-signal gate_jump_requested
 signal wormhole_jump_requested
 signal respawn_requested
 signal map_toggled(view: int)

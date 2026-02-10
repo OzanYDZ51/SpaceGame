@@ -60,8 +60,7 @@ func _on_tab_changed(index: int) -> void:
 		_tabs[index].call("refresh", _clan_manager)
 
 
-func _process(delta: float) -> void:
-	super._process(delta)
+func _process(_delta: float) -> void:
 	if not visible:
 		return
 

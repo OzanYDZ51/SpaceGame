@@ -66,10 +66,7 @@ func _draw_target_overlay(ctrl: Control) -> void:
 	var target := targeting_system.current_target
 	var cf: Vector3 = -cam.global_transform.basis.z
 
-	# Use ShipCenter offset for visual center if target is a ship
-	var target_pos: Vector3 = target.global_position
-	if target is ShipController and (target as ShipController).center_offset != Vector3.ZERO:
-		target_pos += target.global_transform.basis * (target as ShipController).center_offset
+	var target_pos: Vector3 = TargetingSystem.get_ship_center(target)
 
 	var to_t: Vector3 = (target_pos - cam.global_position).normalized()
 	if cf.dot(to_t) > 0.1:

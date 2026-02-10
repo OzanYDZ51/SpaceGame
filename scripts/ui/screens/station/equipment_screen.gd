@@ -484,7 +484,6 @@ func _update_orbit_camera() -> void:
 # PROCESS
 # =============================================================================
 func _process(delta: float) -> void:
-	super._process(delta)
 	_pulse_time += delta
 	_last_input_time += delta
 

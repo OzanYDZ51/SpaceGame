@@ -145,6 +145,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 
 	# Load ship scene (source of truth for model, hardpoints, collision)
 	var scene_result := _load_ship_scene(data)
+	ship.center_offset = scene_result.center_offset
 	ship.add_child(scene_result.collision_shape)
 
 	# Add ship model from ShipData (path + scale), tinted by faction

@@ -24,23 +24,33 @@ shader_parameter/dust_intensity = 0.5
 [sub_resource type="Sky" id="Sky_space"]
 sky_material = SubResource("ShaderMat_sky")
 process_mode = 0
-radiance_size = 2
+radiance_size = 3
 
 [sub_resource type="Environment" id="Env_space"]
 background_mode = 2
 sky = SubResource("Sky_space")
 ambient_light_source = 2
 ambient_light_color = Color(0.04, 0.04, 0.07, 1)
-ambient_light_energy = 0.2
+ambient_light_energy = 0.25
 tonemap_mode = 3
 tonemap_white = 6.0
+ssao_enabled = true
+ssao_radius = 2.0
+ssao_intensity = 1.5
+ssao_power = 2.0
+ssao_detail = 0.5
+ssao_light_affect = 0.3
+ssil_enabled = true
+ssil_radius = 3.0
+ssil_intensity = 0.6
 glow_enabled = true
-glow_intensity = 0.5
-glow_strength = 0.85
-glow_bloom = 0.035
+glow_intensity = 0.6
+glow_strength = 0.9
+glow_bloom = 0.05
 glow_blend_mode = 0
-glow_hdr_threshold = 1.2
+glow_hdr_threshold = 0.9
 glow_hdr_scale = 2.0
+glow_hdr_luminance_cap = 12.0
 
 [node name="Main" type="Node3D" unique_id=2132800667]
 script = ExtResource("1_env")

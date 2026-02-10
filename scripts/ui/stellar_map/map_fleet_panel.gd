@@ -30,7 +30,6 @@ var _groups: Array[Dictionary] = []
 
 var _scroll_offset: float = 0.0
 var _max_scroll: float = 0.0
-var _hovered_row: int = -1
 
 
 func _ready() -> void:
@@ -133,13 +132,14 @@ func handle_click(pos: Vector2) -> bool:
 
 	var hit_index: int = _get_fleet_index_at(pos)
 	if hit_index >= 0:
-		# Toggle selection
+		# Always emit ship_selected for zoom/center on entity
+		ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
+		# Toggle selection (active ship = autopilot, others = fleet orders)
 		if _selected_fleet_index == hit_index:
 			_selected_fleet_index = -1
 		else:
 			_selected_fleet_index = hit_index
 			ship_move_selected.emit(hit_index)
-		ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
 		queue_redraw()
 		return true
 
@@ -274,7 +274,7 @@ func _draw() -> void:
 
 	# Selection hint
 	if _selected_fleet_index >= 0:
-		var hint_text := "CLIC DROIT MAP > DEPLACER"
+		var hint_text := "CLIC DROIT MAP > AUTOPILOT" if _selected_fleet_index == _active_index else "CLIC DROIT MAP > DEPLACER"
 		var hint_y: float = size.y - 16.0
 		if hint_y > HEADER_H + 20:
 			draw_rect(Rect2(0, hint_y - 14, PANEL_W, 20), Color(0.0, 0.05, 0.1, 0.8))

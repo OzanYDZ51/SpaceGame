@@ -47,8 +47,7 @@ func _on_opened() -> void:
 	_refresh_player_list()
 
 
-func _process(delta: float) -> void:
-	super._process(delta)
+func _process(_delta: float) -> void:
 	if not visible:
 		return
 	_layout_ui()

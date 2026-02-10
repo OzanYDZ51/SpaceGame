@@ -22,7 +22,6 @@ var _was_mouse_captured: bool = false
 ## When true, this map is managed by UnifiedMapScreen.
 var managed_externally: bool = false
 signal view_switch_requested
-signal navigate_to_requested(entity_id: String)
 signal fleet_order_requested(fleet_index: int, order_id: StringName, params: Dictionary)
 signal fleet_recall_requested(fleet_index: int)
 
@@ -34,6 +33,12 @@ var _saved_system_name: String = ""
 # Pan state
 var _is_panning: bool = false
 var _pan_start: Vector2 = Vector2.ZERO
+
+# Marquee selection
+var _marquee: MarqueeSelect = MarqueeSelect.new()
+
+# Trails
+var _trails: MapTrails = MapTrails.new()
 
 # Double-click detection
 var _last_click_time: float = 0.0
@@ -52,10 +57,6 @@ const RIGHT_HOLD_MAX_MOVE: float = 20.0
 # Context menu
 var _context_menu: FleetContextMenu = null
 
-# Waypoint flash
-var _waypoint_pos: Vector2 = Vector2.ZERO
-var _waypoint_timer: float = 0.0
-const WAYPOINT_DURATION: float = 2.0
 
 # Filters: EntityType (int) -> bool (true = hidden)
 # Special key -1 = orbit lines
@@ -104,6 +105,8 @@ func _build_children() -> void:
 	_setup_full_rect(_entity_layer)
 	_entity_layer.camera = _camera
 	_entity_layer.filters = _filters
+	_entity_layer.trails = _trails
+	_entity_layer.marquee = _marquee
 	add_child(_entity_layer)
 
 	# Info panel
@@ -162,7 +165,9 @@ func set_preview(entities: Dictionary, system_name: String) -> void:
 	_info_panel.preview_entities = _preview_entities
 	_renderer._system_name = "APERCU : " + system_name
 	_entity_layer.selected_id = ""
+	_entity_layer.selected_ids.clear()
 	_info_panel.set_selected("")
+	_trails.clear()
 
 
 func clear_preview() -> void:
@@ -176,7 +181,9 @@ func clear_preview() -> void:
 		_renderer._system_name = _saved_system_name
 		_saved_system_name = ""
 	_entity_layer.selected_id = ""
+	_entity_layer.selected_ids.clear()
 	_info_panel.set_selected("")
+	_trails.clear()
 
 
 func toggle() -> void:
@@ -197,22 +204,30 @@ func open() -> void:
 	_was_mouse_captured = Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
-	# Center on star (origin) for system overview
 	_camera.screen_size = size
-
-	# Compute system radius for pan limits + zoom calculation
 	_update_system_radius()
 
-	# Compute zoom to show the full system with some padding
-	var fit_zoom: float = (size.x * 0.4) / _camera.system_radius
-	fit_zoom = clampf(fit_zoom, MapCamera.ZOOM_MIN, MapCamera.PRESET_REGIONAL)
-
-	# Start zoomed out showing full system, centered on star
-	_camera.center_x = 0.0
-	_camera.center_z = 0.0
-	_camera.follow_enabled = false
-	_camera.zoom = fit_zoom
-	_camera.target_zoom = fit_zoom
+	if not _preview_entities.is_empty():
+		# Preview mode: fit-all centered on star
+		var fit_zoom: float = (size.x * 0.4) / _camera.system_radius
+		fit_zoom = clampf(fit_zoom, MapCamera.ZOOM_MIN, MapCamera.PRESET_REGIONAL)
+		_camera.center_x = 0.0
+		_camera.center_z = 0.0
+		_camera.follow_enabled = false
+		_camera.zoom = fit_zoom
+		_camera.target_zoom = fit_zoom
+	else:
+		# Normal mode: center on player, comfortable zoom (~1920km visible)
+		var player_ent: Dictionary = EntityRegistry.get_entity(_player_id)
+		if not player_ent.is_empty():
+			_camera.center_x = player_ent["pos_x"]
+			_camera.center_z = player_ent["pos_z"]
+		else:
+			_camera.center_x = 0.0
+			_camera.center_z = 0.0
+		_camera.follow_enabled = false
+		_camera.zoom = 0.001
+		_camera.target_zoom = 0.001
 
 
 func close() -> void:
@@ -224,6 +239,8 @@ func close() -> void:
 	_fleet_selected_index = -1
 	_fleet_panel.clear_selection()
 	_close_context_menu()
+	_clear_route_line()
+	_entity_layer.show_hint = false
 	_search.close()
 
 	# Restore mouse capture (skip when managed — UIScreenManager handles it)
@@ -265,9 +282,16 @@ func _process(delta: float) -> void:
 			_right_hold_triggered = true
 			_open_fleet_context_menu(_right_hold_pos)
 
-	# Waypoint flash countdown
-	if _waypoint_timer > 0.0:
-		_waypoint_timer -= delta
+	# Waypoint flash countdown (on entity layer)
+	if _entity_layer.waypoint_timer > 0.0:
+		_entity_layer.waypoint_timer -= delta
+
+	# Keep hint text visible
+	_entity_layer.show_hint = true
+
+	# Update trails
+	var trail_entities: Dictionary = _preview_entities if not _preview_entities.is_empty() else EntityRegistry.get_all()
+	_trails.update(trail_entities, Time.get_ticks_msec() / 1000.0)
 
 	# Sync follow state to renderer toolbar
 	_renderer.follow_enabled = _camera.follow_enabled
@@ -276,8 +300,8 @@ func _process(delta: float) -> void:
 	_renderer.queue_redraw()
 	_entity_layer.queue_redraw()
 	_fleet_panel.queue_redraw()
-	# Redraw self for waypoint flash + fleet hint overlay
-	if _waypoint_timer > 0.0 or _fleet_selected_index >= 0:
+	# Redraw self for marquee only
+	if _marquee.active:
 		queue_redraw()
 	if _dirty:
 		_info_panel.queue_redraw()
@@ -404,7 +428,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-		# Left click = route through panels, toolbar, then select entity
+		# Left click = route through panels, toolbar, then select entity / marquee
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				# Fleet panel gets first priority (left side)
@@ -416,58 +440,84 @@ func _input(event: InputEvent) -> void:
 					get_viewport().set_input_as_handled()
 					return
 
-				# Click on empty space with fleet selected -> deselect
 				var hit_id: String = _entity_layer.get_entity_at(event.position)
+
+				# Click on empty space with fleet selected -> deselect
 				if hit_id == "" and _fleet_selected_index >= 0:
 					_fleet_selected_index = -1
 					_fleet_panel.clear_selection()
 					get_viewport().set_input_as_handled()
 					return
 
-				var now: float = Time.get_ticks_msec() / 1000.0
-
-				# Double-click on entity -> navigate
-				if hit_id != "" and hit_id == _last_click_id and (now - _last_click_time) < 0.4:
-					navigate_to_requested.emit(hit_id)
-					_last_click_id = ""
+				if hit_id != "":
+					# Ctrl+click = toggle in multi-select
+					if event.ctrl_pressed:
+						_toggle_multi_select(hit_id)
+					else:
+						var now: float = Time.get_ticks_msec() / 1000.0
+						if hit_id == _last_click_id and (now - _last_click_time) < 0.4:
+							# Double-click = move selected ship to this entity
+							var effective_idx := _get_effective_fleet_index()
+							var ent := EntityRegistry.get_entity(hit_id)
+							if effective_idx >= 0 and not ent.is_empty():
+								var ux: float = ent["pos_x"]
+								var uz: float = ent["pos_z"]
+								var params := {"target_x": ux, "target_z": uz}
+								fleet_order_requested.emit(effective_idx, &"move_to", params)
+								_show_waypoint(ux, uz)
+								_set_route_line(effective_idx, ux, uz)
+							_last_click_id = ""
+						else:
+							_select_entity(hit_id)
+							_last_click_id = hit_id
+							_last_click_time = now
 				else:
-					_select_entity(hit_id)
-					_last_click_id = hit_id
-					_last_click_time = now
+					# Click on empty space: start marquee drag
+					_marquee.begin(event.position)
+			else:
+				# Left button released
+				if _marquee.active:
+					if _marquee.is_drag():
+						var rect := _marquee.get_rect()
+						var ids := _entity_layer.get_entities_in_rect(rect)
+						_entity_layer.selected_ids.assign(ids)
+						if ids.size() > 0:
+							_entity_layer.selected_id = ids[0]
+							_info_panel.set_selected(ids[0])
+							_dirty = true
+						else:
+							_select_entity("")
+					else:
+						# Tap on empty = clear selection
+						_select_entity("")
+						_entity_layer.selected_ids.clear()
+					_marquee.end()
 
 			get_viewport().set_input_as_handled()
 			return
 
-		# Right click
+		# Right click = move ship to destination
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
-				# Fleet panel right-click (recall)
+				# Fleet panel right-click (recall deployed ship)
 				if _fleet_panel.handle_right_click(event.position):
 					get_viewport().set_input_as_handled()
 					return
 
-				# If fleet ship is selected, start right-hold detection
-				if _fleet_selected_index >= 0:
-					_right_hold_start = Time.get_ticks_msec() / 1000.0
-					_right_hold_pos = event.position
-					_right_hold_triggered = false
-					get_viewport().set_input_as_handled()
-					return
-
-				# No fleet selection: recenter on player
-				_camera.recenter_on_player()
-				_dirty = true
+				# Start right-hold detection (always — defaults to active ship)
+				_right_hold_start = Time.get_ticks_msec() / 1000.0
+				_right_hold_pos = event.position
+				_right_hold_triggered = false
 			else:
-				# Right click released
-				if _fleet_selected_index >= 0 and _right_hold_start > 0.0 and not _right_hold_triggered:
-					# Quick right-click: default move_to
+				# Right click released — quick release = move_to
+				var effective_idx := _get_effective_fleet_index()
+				if effective_idx >= 0 and _right_hold_start > 0.0 and not _right_hold_triggered:
 					var universe_x: float = _camera.screen_to_universe_x(event.position.x)
 					var universe_z: float = _camera.screen_to_universe_z(event.position.y)
 					var params := {"target_x": universe_x, "target_z": universe_z}
-					fleet_order_requested.emit(_fleet_selected_index, &"move_to", params)
-					_show_waypoint(event.position)
-					_fleet_selected_index = -1
-					_fleet_panel.clear_selection()
+					fleet_order_requested.emit(effective_idx, &"move_to", params)
+					_show_waypoint(universe_x, universe_z)
+					_set_route_line(effective_idx, universe_x, universe_z)
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()
@@ -479,7 +529,10 @@ func _input(event: InputEvent) -> void:
 		if _right_hold_start > 0.0 and not _right_hold_triggered:
 			if event.position.distance_to(_right_hold_pos) > RIGHT_HOLD_MAX_MOVE:
 				_right_hold_start = 0.0
-		if _is_panning:
+		if _marquee.active:
+			_marquee.update_pos(event.position)
+			queue_redraw()
+		elif _is_panning:
 			_camera.pan(event.relative)
 			_dirty = true
 		else:
@@ -490,9 +543,48 @@ func _input(event: InputEvent) -> void:
 		return
 
 
+## Resolves the fleet index from sidebar, entity selection, or defaults to active ship.
+func _get_effective_fleet_index() -> int:
+	# 1. Fleet panel sidebar selection takes priority
+	if _fleet_selected_index >= 0:
+		return _fleet_selected_index
+	# 2. Check entity selected on the map
+	var sel_id := _entity_layer.selected_id
+	if sel_id != "":
+		# Player ship → active fleet index
+		if sel_id == _player_id and _fleet_panel._fleet:
+			return _fleet_panel._fleet.active_index
+		# Fleet NPC → fleet_index from entity extra
+		var ent := EntityRegistry.get_entity(sel_id)
+		if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
+			var extra: Dictionary = ent.get("extra", {})
+			if extra.has("fleet_index"):
+				return extra["fleet_index"]
+	# 3. Default to active (piloted) ship
+	if _fleet_panel._fleet:
+		return _fleet_panel._fleet.active_index
+	return -1
+
+
 func _select_entity(id: String) -> void:
 	_entity_layer.selected_id = id
+	if id != "":
+		_entity_layer.selected_ids.assign([id])
+	else:
+		_entity_layer.selected_ids.clear()
 	_info_panel.set_selected(id)
+	_dirty = true
+
+
+func _toggle_multi_select(id: String) -> void:
+	var idx: int = _entity_layer.selected_ids.find(id)
+	if idx >= 0:
+		_entity_layer.selected_ids.remove_at(idx)
+	else:
+		_entity_layer.selected_ids.append(id)
+	var ids := _entity_layer.selected_ids
+	_entity_layer.selected_id = ids[-1] if ids.size() > 0 else ""
+	_info_panel.set_selected(_entity_layer.selected_id)
 	_dirty = true
 
 
@@ -503,7 +595,7 @@ func _center_on_entity(id: String) -> void:
 	_camera.center_x = ent["pos_x"]
 	_camera.center_z = ent["pos_z"]
 	_camera.follow_enabled = false
-	_camera.target_zoom = clampf(_camera.zoom * 3.0, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
 	_select_entity(id)
 
 
@@ -524,21 +616,26 @@ func set_fleet(fleet: PlayerFleet, galaxy: GalaxyData) -> void:
 
 
 func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
-	# Center map on the entity if in current system
+	# Center map on the ship entity and select it
 	if _fleet_panel._fleet == null:
 		return
 	var fs := _fleet_panel._fleet.ships[fleet_index]
-	# If ship is docked at a station, try to center on that station
+
+	# Active ship = select the player entity on the map
+	if fleet_index == _fleet_panel._fleet.active_index and _player_id != "":
+		_center_on_entity(_player_id)
+		return
+	# Deployed ship = select the NPC entity
+	if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
+		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+		if not ent.is_empty():
+			_center_on_entity(String(fs.deployed_npc_id))
+			return
+	# Docked ship = center on its station
 	if fs.docked_station_id != "":
 		var ent := EntityRegistry.get_entity(fs.docked_station_id)
 		if not ent.is_empty():
 			_center_on_entity(fs.docked_station_id)
-			return
-	# For deployed ships, try to find their NPC in EntityRegistry
-	if fs.deployed_npc_id != &"":
-		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
-		if not ent.is_empty():
-			_center_on_entity(String(fs.deployed_npc_id))
 			return
 
 
@@ -570,18 +667,19 @@ func _on_toolbar_follow_toggled() -> void:
 # FLEET CONTEXT MENU
 # =============================================================================
 func _open_fleet_context_menu(screen_pos: Vector2) -> void:
-	if _fleet_selected_index < 0 or _fleet_panel._fleet == null:
+	var effective_idx := _get_effective_fleet_index()
+	if effective_idx < 0 or _fleet_panel._fleet == null:
 		return
-	if _fleet_selected_index >= _fleet_panel._fleet.ships.size():
+	if effective_idx >= _fleet_panel._fleet.ships.size():
 		return
 
-	var fs := _fleet_panel._fleet.ships[_fleet_selected_index]
+	var fs := _fleet_panel._fleet.ships[effective_idx]
 	var universe_x: float = _camera.screen_to_universe_x(screen_pos.x)
 	var universe_z: float = _camera.screen_to_universe_z(screen_pos.y)
 
 	# Build context
 	var context := {
-		"fleet_index": _fleet_selected_index,
+		"fleet_index": effective_idx,
 		"fleet_ship": fs,
 		"is_deployed": fs.deployment_state == FleetShip.DeploymentState.DEPLOYED,
 		"universe_x": universe_x,
@@ -609,42 +707,43 @@ func _close_context_menu() -> void:
 
 
 func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
-	if _fleet_selected_index >= 0:
-		fleet_order_requested.emit(_fleet_selected_index, order_id, params)
+	var effective_idx := _get_effective_fleet_index()
+	if effective_idx >= 0:
+		fleet_order_requested.emit(effective_idx, order_id, params)
 		if order_id != &"return_to_station":
-			_show_waypoint(_right_hold_pos)
-	_fleet_selected_index = -1
-	_fleet_panel.clear_selection()
+			var ux: float = params.get("target_x", params.get("center_x", 0.0))
+			var uz: float = params.get("target_z", params.get("center_z", 0.0))
+			_show_waypoint(ux, uz)
+			_set_route_line(effective_idx, ux, uz)
 	_close_context_menu()
 
 
 # =============================================================================
 # WAYPOINT FLASH
 # =============================================================================
-func _show_waypoint(screen_pos: Vector2) -> void:
-	_waypoint_pos = screen_pos
-	_waypoint_timer = WAYPOINT_DURATION
+func _show_waypoint(ux: float, uz: float) -> void:
+	_entity_layer.waypoint_ux = ux
+	_entity_layer.waypoint_uz = uz
+	_entity_layer.waypoint_timer = MapEntities.WAYPOINT_DURATION
 	_dirty = true
 
 
-func _draw() -> void:
-	# Waypoint flash
-	if _waypoint_timer > 0.0:
-		var alpha: float = _waypoint_timer / WAYPOINT_DURATION
-		var pulse: float = sin(Time.get_ticks_msec() / 200.0) * 0.3 + 0.7
-		var radius: float = 8.0 + (1.0 - alpha) * 20.0
-		var col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, alpha * pulse * 0.6)
-		draw_arc(_waypoint_pos, radius, 0, TAU, 24, col, 2.0, true)
-		# Inner dot
-		draw_circle(_waypoint_pos, 3.0, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, alpha * 0.8))
+func _set_route_line(fleet_index: int, dest_ux: float, dest_uz: float) -> void:
+	_entity_layer.route_dest_ux = dest_ux
+	_entity_layer.route_dest_uz = dest_uz
+	_entity_layer.route_ship_id = ""
+	if _fleet_panel._fleet == null or fleet_index < 0:
+		return
+	# Resolve ship entity ID for the route line
+	if fleet_index == _fleet_panel._fleet.active_index:
+		_entity_layer.route_ship_id = _player_id
+	else:
+		var fs := _fleet_panel._fleet.ships[fleet_index]
+		if fs.deployed_npc_id != &"":
+			_entity_layer.route_ship_id = String(fs.deployed_npc_id)
+	_dirty = true
 
-	# Hint text when fleet ship is selected
-	if _fleet_selected_index >= 0:
-		var font: Font = UITheme.get_font()
-		var hint := "Clic droit = Deplacer | Maintenir = Ordres | Echap = Annuler"
-		var hint_y: float = size.y - 60.0
-		var hint_x: float = size.x * 0.5
-		var tw: float = font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
-		draw_rect(Rect2(hint_x - tw * 0.5 - 8, hint_y - 14, tw + 16, 20), Color(0.0, 0.02, 0.05, 0.8))
-		var pulse: float = sin(Time.get_ticks_msec() / 400.0) * 0.15 + 0.85
-		draw_string(font, Vector2(hint_x - tw * 0.5, hint_y), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse))
+
+func _clear_route_line() -> void:
+	_entity_layer.route_ship_id = ""
+	_dirty = true

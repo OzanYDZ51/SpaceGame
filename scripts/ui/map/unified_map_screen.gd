@@ -1077,7 +1077,7 @@ func set_fleet(fleet: PlayerFleet, gal: GalaxyData) -> void:
 		_galaxy_fleet_panel.set_galaxy(gal)
 
 
-func _on_galaxy_fleet_ship_selected(fleet_index: int, system_id: int) -> void:
+func _on_galaxy_fleet_ship_selected(_fleet_index: int, system_id: int) -> void:
 	# Center galaxy camera on the ship's system
 	if galaxy == null or system_id < 0:
 		return

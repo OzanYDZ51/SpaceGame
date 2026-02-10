@@ -3,7 +3,8 @@ extends UIComponent
 
 # =============================================================================
 # UI Screen - Base class for game screens (fullscreen overlays, panels)
-# Handles open/close transitions, title drawing, close button.
+# Handles open/close transitions, title drawing, close button, particles.
+# Blur background is managed by UIScreenManager (shared, behind all screens).
 # =============================================================================
 
 enum ScreenMode { FULLSCREEN, OVERLAY }
@@ -11,9 +12,11 @@ enum ScreenMode { FULLSCREEN, OVERLAY }
 @export var screen_title: String = "SCREEN"
 @export var screen_mode: ScreenMode = ScreenMode.FULLSCREEN
 
-var _transition_alpha: float = 0.0
 var _is_open: bool = false
 var _closing: bool = false
+var _open_tween: Tween = null
+var _close_tween: Tween = null
+var _particles: UIParticles = null
 
 signal opened
 signal closed
@@ -30,6 +33,10 @@ func _ready() -> void:
 	anchor_bottom = 1.0
 	set_offsets_preset(Control.PRESET_FULL_RECT)
 
+	# Create ambient particles (transparent overlay, doesn't hide _draw content)
+	_particles = UIParticles.new()
+	add_child(_particles)
+
 
 ## Called by UIScreenManager to open this screen.
 func open() -> void:
@@ -37,17 +44,50 @@ func open() -> void:
 		return
 	_is_open = true
 	_closing = false
-	_transition_alpha = 0.0
 	visible = true
+
+	# Kill any existing tweens
+	if _open_tween and _open_tween.is_valid():
+		_open_tween.kill()
+	if _close_tween and _close_tween.is_valid():
+		_close_tween.kill()
+
+	# Particles
+	_particles.activate()
+
+	# Fade-in transition
+	_open_tween = UITransition.fade_in(self, UITheme.TRANSITION_SPEED)
+
 	_on_opened()
 	opened.emit()
 
 
 ## Called by UIScreenManager to close this screen.
 func close() -> void:
-	if not _is_open:
+	if not _is_open or _closing:
 		return
 	_closing = true
+
+	# Kill any existing tweens
+	if _open_tween and _open_tween.is_valid():
+		_open_tween.kill()
+	if _close_tween and _close_tween.is_valid():
+		_close_tween.kill()
+
+	# Transition out (alpha fade — same as original behavior)
+	_close_tween = UITransition.fade_out(self, UITheme.TRANSITION_SPEED)
+
+	_close_tween.finished.connect(_on_close_transition_done, CONNECT_ONE_SHOT)
+
+
+func _on_close_transition_done() -> void:
+	_closing = false
+	_is_open = false
+	visible = false
+	_particles.deactivate()
+	modulate = Color.WHITE
+	_on_closed()
+	closed.emit()
 
 
 ## Override in subclasses for setup when screen opens.
@@ -58,28 +98,6 @@ func _on_opened() -> void:
 ## Override in subclasses for cleanup when screen closes.
 func _on_closed() -> void:
 	pass
-
-
-func _process(delta: float) -> void:
-	if not visible:
-		return
-
-	if _closing:
-		_transition_alpha = maxf(0.0, _transition_alpha - delta / UITheme.TRANSITION_SPEED)
-		if _transition_alpha <= 0.0:
-			_closing = false
-			_is_open = false
-			visible = false
-			_on_closed()
-			closed.emit()
-			return
-	else:
-		_transition_alpha = minf(1.0, _transition_alpha + delta / UITheme.TRANSITION_SPEED)
-
-	modulate.a = _transition_alpha
-	# Only redraw during transitions (alpha changing), not when fully open
-	if _transition_alpha < 1.0 or _closing:
-		queue_redraw()
 
 
 func _draw() -> void:
@@ -96,7 +114,7 @@ func _draw() -> void:
 
 
 func _draw_title(s: Vector2) -> void:
-	var font: Font = UITheme.get_font()
+	var font: Font = UITheme.get_font_bold()
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = UITheme.MARGIN_SCREEN + fsize
 	var cx: float = s.x * 0.5

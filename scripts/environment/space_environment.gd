@@ -62,6 +62,10 @@ func apply_environment(env_data: SystemEnvironmentData) -> void:
 	env.glow_intensity = env_data.glow_intensity
 	env.glow_bloom = env_data.glow_bloom
 
+	# --- SSAO/SSIL (always on, subtle depth) ---
+	env.ssao_enabled = true
+	env.ssil_enabled = true
+
 	# --- Skybox shader parameters ---
 	if env.sky == null or env.sky.sky_material == null:
 		return

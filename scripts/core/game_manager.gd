@@ -38,14 +38,6 @@ var _wormhole_mgr: WormholeManager = null
 var _net_sync_mgr: NetworkSyncManager = null
 var _discord_rpc: DiscordRPC:
 	get: return _net_sync_mgr.discord_rpc if _net_sync_mgr else null
-var _npc_authority: NpcAuthority:
-	get: return _net_sync_mgr.npc_authority if _net_sync_mgr else null
-var _ship_net_sync: ShipNetworkSync:
-	get: return _net_sync_mgr.ship_net_sync if _net_sync_mgr else null
-var _remote_players: Dictionary:
-	get: return _net_sync_mgr.remote_players if _net_sync_mgr else {}
-var _remote_npcs: Dictionary:
-	get: return _net_sync_mgr.remote_npcs if _net_sync_mgr else {}
 var _space_dust: SpaceDust = null
 var player_data: PlayerData = null
 var player_inventory: PlayerInventory:
@@ -74,6 +66,7 @@ var _commerce_screen: CommerceScreen = null
 var _commerce_manager: CommerceManager = null
 var _route_manager: RouteManager = null
 var _fleet_deployment_mgr: FleetDeploymentManager = null
+var _player_autopilot_wp: String = ""
 var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
 
@@ -124,7 +117,6 @@ func _setup_ui_managers() -> void:
 		map_screen.galaxy = _galaxy
 		map_screen.system_transition = _system_transition
 		_stellar_map.view_switch_requested.connect(func(): map_screen.switch_to_view(UnifiedMapScreen.ViewMode.GALAXY))
-		_stellar_map.navigate_to_requested.connect(_on_navigate_to_entity)
 		_screen_manager.register_screen("map", map_screen)
 
 		# Pass fleet data to both map panels
@@ -589,6 +581,7 @@ func _setup_visual_effects() -> void:
 
 
 func _on_system_unloading(system_id: int) -> void:
+	_cleanup_player_autopilot_wp()
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.auto_retrieve_all()
 	SaveManager.trigger_save("system_jump")
@@ -615,11 +608,17 @@ func _on_system_loaded(system_id: int) -> void:
 
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
+	if player_fleet == null or fleet_index < 0 or fleet_index >= player_fleet.ships.size():
+		return
+
+	# Active ship = engage player autopilot to destination
+	if fleet_index == player_fleet.active_index:
+		_autopilot_player_to(params)
+		return
+
 	if _fleet_deployment_mgr == null:
 		return
-	var fs := player_fleet.ships[fleet_index] if player_fleet and fleet_index < player_fleet.ships.size() else null
-	if fs == null:
-		return
+	var fs := player_fleet.ships[fleet_index]
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Auto-deploy with this order
 		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
@@ -633,24 +632,39 @@ func _on_fleet_recall_from_map(fleet_index: int) -> void:
 		_fleet_deployment_mgr.request_retrieve(fleet_index)
 
 
-func _on_navigate_to_entity(entity_id: String) -> void:
-	var ent: Dictionary = EntityRegistry.get_entity(entity_id)
-	if ent.is_empty():
-		return
+func _autopilot_player_to(params: Dictionary) -> void:
 	var ship := player_ship as ShipController
 	if ship == null or current_state != GameState.PLAYING:
 		return
-
-	# Manual navigation cancels any active route
+	var target_x: float = params.get("target_x", 0.0)
+	var target_z: float = params.get("target_z", 0.0)
+	# Clean up previous temp waypoint
+	_cleanup_player_autopilot_wp()
+	# Register a temporary waypoint entity for autopilot
+	_player_autopilot_wp = "player_wp_%d" % Time.get_ticks_msec()
+	EntityRegistry.register(_player_autopilot_wp, {
+		"name": "Destination",
+		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
+		"pos_x": target_x,
+		"pos_y": 0.0,
+		"pos_z": target_z,
+		"node": null,
+		"radius": 0.0,
+		"color": Color.TRANSPARENT,
+		"extra": {"hidden": true},
+	})
+	# Cancel any active route
 	if _route_manager and _route_manager.is_route_active():
 		_route_manager.cancel_route()
+	# is_gate=true → 30m arrival (not 10km), smooth approach
+	ship.engage_autopilot(_player_autopilot_wp, "Destination", true)
 
-	# Engage autopilot
-	ship.engage_autopilot(entity_id, ent["name"])
 
-	# Close the map
-	if _screen_manager:
-		_screen_manager.close_top()
+func _cleanup_player_autopilot_wp() -> void:
+	if _player_autopilot_wp != "":
+		EntityRegistry.unregister(_player_autopilot_wp)
+		_player_autopilot_wp = ""
+
 
 
 # =============================================================================

@@ -164,12 +164,7 @@ func update_turrets(target_node: Node3D) -> void:
 				hp.clear_target_direction()
 		return
 
-	# Get target center (use ShipCenter offset if available)
-	var target_pos: Vector3
-	if target_node is ShipController and (target_node as ShipController).center_offset != Vector3.ZERO:
-		target_pos = target_node.global_position + target_node.global_transform.basis * (target_node as ShipController).center_offset
-	else:
-		target_pos = target_node.global_position
+	var target_pos: Vector3 = TargetingSystem.get_ship_center(target_node)
 
 	var target_vel := Vector3.ZERO
 	if target_node is RigidBody3D:

@@ -94,21 +94,101 @@ jobs:
       - name: Post devlog to Discord
         if: success()
         run: |
-          # Extract commit message (community-friendly summary, strip Co-Authored-By trailers)
-          MSG=$(git log -1 --pretty=%B --skip=1 | grep -v 'Co-Authored-By:' | sed '/^[[:space:]]*$/d' | head -20)
           VERSION="${{ steps.version.outputs.version }}"
 
-          # If commit message is technical (code identifiers, file extensions, English-only),
-          # replace with a clean French fallback so Discord always gets a proper announcement.
-          if [ -z "$MSG" ] || echo "$MSG" | head -1 | grep -qiE '(^Merge|^Fix build|^Fix CI|^Revert|_[a-z]|[a-z]_[a-z]|\.(gd|go|json|yml|md|toml|tres|tscn)\b)'; then
-            MSG="Corrections et ameliorations diverses"
+          # Collect raw commit message (strip CI trailers)
+          RAW_MSG=$(git log -1 --pretty=%B --skip=1 | grep -v 'Co-Authored-By:' | sed '/^[[:space:]]*$/d' | head -20)
+          if [ -z "$RAW_MSG" ]; then
+            RAW_MSG="Misc changes"
+          fi
+
+          # Collect diff stat for context (what files/systems changed)
+          DIFF_STAT=$(git diff --stat HEAD~1 HEAD 2>/dev/null | tail -30)
+
+          # === Gemini AI: rewrite commit into player-friendly devlog ===
+          AI_MSG=""
+          if [ -n "$GEMINI_API_KEY" ]; then
+            # Build the prompt as a separate variable for readability
+            SYSTEM_PROMPT="Tu rediges les notes de patch d'Imperion Online, un MMO spatial.
+Tu recois un commit technique et tu le transformes en devlog lisible par des joueurs.
+
+FORMAT OBLIGATOIRE (toujours cette structure):
+- Chaque changement = une ligne
+- Chaque ligne commence par UN emoji puis un tiret puis la description
+- Separe en categories si 3+ changements: NOUVEAU, AMELIORATION, CORRECTION (en gras **)
+- Si 1-2 changements, pas besoin de categories, juste les lignes
+
+TON ET STYLE:
+- Francais naturel, comme un vrai dev qui parle a sa communaute
+- Factuel et concret: dis ce qui a change, pas pourquoi c est genial
+- Court. Une ligne = une info. Pas de bla-bla.
+- Vocabulaire in-game: vaisseaux, systemes, stations spatiales, carte stellaire, escadron, armement, boucliers...
+
+INTERDIT (ca fait IA tout de suite):
+- \"Pilotes !\", \"Commandants !\", \"Bon vol !\", \"N hesitez pas\", \"Restez connectes\"
+- Hashtags, questions rhetoriques, points de suspension...
+- Superlatifs vides: \"incroyable\", \"revolutionnaire\", \"tant attendu\"
+- Commencer par \"Mise a jour\" (c est deja dans le titre Discord)
+- Expliquer des details techniques (fichiers, code, refactoring, optimisation interne)
+- Plus de 5 lignes
+
+EXEMPLES DE BON DEVLOG:
+
+Exemple 1 (gros patch):
+**NOUVEAU**
+🎯 Systeme d ordres de flotte — assignez des missions a vos vaisseaux depuis la carte stellaire
+📡 Menu contextuel sur la carte pour interagir avec vos escadrons deployes
+
+**AMELIORATION**
+🗺️ Carte stellaire plus lisible avec un nouveau layout
+
+**CORRECTION**
+🔧 Le chat ne se fermait plus apres envoi d un message
+
+Exemple 2 (petit patch):
+🔧 Correction d un probleme d affichage sur la carte galactique
+⚔️ Les tourelles de station repondent maintenant correctement aux agressions
+
+Exemple 3 (une seule correction):
+🔧 Les boucliers directionnels se rechargent maintenant au bon rythme"
+
+            GEMINI_BODY=$(jq -n \
+              --arg prompt "$SYSTEM_PROMPT" \
+              --arg msg "$RAW_MSG" \
+              --arg diff "$DIFF_STAT" \
+              '{
+                "contents": [{
+                  "parts": [{"text": ($prompt + "\n\n--- COMMIT ---\n" + $msg + "\n\n--- FICHIERS MODIFIES ---\n" + $diff)}]
+                }],
+                "generationConfig": {
+                  "temperature": 0.5,
+                  "maxOutputTokens": 400
+                }
+              }')
+
+            GEMINI_RESPONSE=$(curl -s --max-time 15 -X POST \
+              "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$GEMINI_BODY" 2>/dev/null)
+
+            AI_MSG=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty' 2>/dev/null)
+          fi
+
+          # === Fallback if Gemini unavailable or failed ===
+          if [ -z "$AI_MSG" ]; then
+            if echo "$RAW_MSG" | head -1 | grep -qiE '(^Merge|^Fix build|^Fix CI|^Revert|_[a-z]|[a-z]_[a-z]|\.(gd|go|json|yml|md|toml|tres|tscn)\b)'; then
+              AI_MSG="🔧 Corrections et ameliorations diverses"
+            else
+              AI_MSG="$RAW_MSG"
+            fi
           fi
 
           # Post to backend changelog API (stores in DB + sends Discord webhook)
           curl -s -X POST "$BACKEND_URL/api/v1/admin/changelog" \
             -H "X-Admin-Key: $ADMIN_KEY" \
             -H "Content-Type: application/json" \
-            -d "{\"version\": \"$VERSION\", \"summary\": $(echo "$MSG" | jq -Rs .)}" || true
+            -d "{\"version\": \"$VERSION\", \"summary\": $(echo "$AI_MSG" | jq -Rs .)}" || true
         env:
           BACKEND_URL: https://backend-production-05a9.up.railway.app
           ADMIN_KEY: 2f0aa1697a095884517c4eb4b3777b65
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

@@ -8,11 +8,28 @@ extends Control
 
 var camera: MapCamera = null
 var selected_id: String = ""
+var selected_ids: Array[String] = []
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
 var _hover_id: String = ""
 var _pulse_t: float = 0.0
 var _player_id: String = ""
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
+var trails: MapTrails = null
+var marquee: MarqueeSelect = null
+
+# Route line (ship → destination, set by StellarMap)
+var route_ship_id: String = ""
+var route_dest_ux: float = 0.0
+var route_dest_uz: float = 0.0
+
+# Waypoint flash (universe coords, set by StellarMap)
+var waypoint_ux: float = 0.0
+var waypoint_uz: float = 0.0
+var waypoint_timer: float = 0.0
+const WAYPOINT_DURATION: float = 2.0
+
+# Hint text
+var show_hint: bool = false
 
 const HIT_RADIUS: float = 16.0  # click detection radius in pixels
 
@@ -47,8 +64,11 @@ func _draw() -> void:
 	var entities: Dictionary = _get_entities()
 	var font: Font = UITheme.get_font()
 
-	# Draw selection line first (behind everything)
-	if selected_id != "" and _player_id != "" and selected_id != _player_id:
+	# Draw trails behind everything
+	_draw_trails(entities)
+
+	# Draw selection line first (behind everything) — skip if route line is active
+	if selected_id != "" and _player_id != "" and selected_id != _player_id and route_ship_id == "":
 		_draw_selection_line(entities, font)
 
 	# Draw entities in type order (player always on top)
@@ -69,8 +89,28 @@ func _draw() -> void:
 	if _hover_id != "" and _hover_id != selected_id:
 		_draw_hover_tooltip(entities, font)
 
+	# Marquee rectangle (on top of everything)
+	if marquee and marquee.active and marquee.is_drag():
+		var rect := marquee.get_rect()
+		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.08), true)
+		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6), false, 1.0)
+
+	# Route line (dashed) from ship to destination
+	_draw_route_line(entities)
+
+	# Waypoint flash
+	_draw_waypoint_flash()
+
+	# Hint text
+	if show_hint:
+		_draw_hint_text(font)
+
 
 func _draw_entity(ent: Dictionary, font: Font) -> void:
+	# Skip hidden entities (e.g. fleet autopilot waypoints)
+	if ent.get("extra", {}).get("hidden", false):
+		return
+
 	var screen_pos: Vector2 = camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
 
 	# Cull off-screen (with margin for labels)
@@ -80,8 +120,9 @@ func _draw_entity(ent: Dictionary, font: Font) -> void:
 		return
 
 	var ent_type: int = ent["type"]
-	var is_selected: bool = ent["id"] == selected_id
-	var is_hovered: bool = ent["id"] == _hover_id
+	var ent_id: String = ent["id"]
+	var is_selected: bool = ent_id == selected_id or ent_id in selected_ids
+	var is_hovered: bool = ent_id == _hover_id
 
 	match ent_type:
 		EntityRegistrySystem.EntityType.STAR:
@@ -649,9 +690,130 @@ func get_entity_at(screen_pos: Vector2) -> String:
 	return best_id
 
 
+func get_entities_in_rect(screen_rect: Rect2) -> Array[String]:
+	var result: Array[String] = []
+	if camera == null:
+		return result
+	var entities: Dictionary = _get_entities()
+	for ent in entities.values():
+		if ent["type"] == EntityRegistrySystem.EntityType.ASTEROID_BELT:
+			continue
+		if filters.get(ent["type"], false):
+			continue
+		var sp: Vector2 = camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
+		if screen_rect.has_point(sp):
+			result.append(ent["id"])
+	return result
+
+
 func update_hover(screen_pos: Vector2) -> bool:
 	var new_id := get_entity_at(screen_pos)
 	if new_id == _hover_id:
 		return false
 	_hover_id = new_id
 	return true
+
+
+# =============================================================================
+# TRAILS
+# =============================================================================
+func _draw_trails(entities: Dictionary) -> void:
+	if trails == null:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	for id in trails._trails:
+		var arr: PackedFloat64Array = trails._trails[id]
+		if arr.size() < 6:
+			continue
+		# Determine trail color from entity type
+		var trail_col: Color = MapColors.NPC_SHIP
+		if entities.has(id):
+			var ent: Dictionary = entities[id]
+			if ent["type"] == EntityRegistrySystem.EntityType.SHIP_PLAYER:
+				trail_col = MapColors.PLAYER
+			elif ent["type"] == EntityRegistrySystem.EntityType.SHIP_FLEET:
+				trail_col = MapColors.FLEET_SHIP
+			else:
+				trail_col = ent.get("color", MapColors.NPC_SHIP)
+
+		var point_count: int = int(arr.size() / 3.0)
+		for i in range(point_count - 1):
+			var x1: float = arr[i * 3]
+			var z1: float = arr[i * 3 + 1]
+			var t1: float = arr[i * 3 + 2]
+			var x2: float = arr[(i + 1) * 3]
+			var z2: float = arr[(i + 1) * 3 + 1]
+
+			var p1: Vector2 = camera.universe_to_screen(x1, z1)
+			var p2: Vector2 = camera.universe_to_screen(x2, z2)
+
+			# Skip if both points off screen
+			if (p1.x < -50 and p2.x < -50) or (p1.x > size.x + 50 and p2.x > size.x + 50):
+				continue
+			if (p1.y < -50 and p2.y < -50) or (p1.y > size.y + 50 and p2.y > size.y + 50):
+				continue
+
+			var age: float = now - t1
+			var alpha: float = clampf(1.0 - age / MapTrails.MAX_TRAIL_TIME, 0.05, 0.45)
+			draw_line(p1, p2, Color(trail_col.r, trail_col.g, trail_col.b, alpha), 1.0)
+
+
+# =============================================================================
+# ROUTE LINE + WAYPOINT + HINT (overlay drawn on top of entities)
+# =============================================================================
+func _draw_route_line(entities: Dictionary) -> void:
+	if route_ship_id == "" or camera == null:
+		return
+	var ship_ent: Dictionary = {}
+	if entities.has(route_ship_id):
+		ship_ent = entities[route_ship_id]
+	else:
+		ship_ent = EntityRegistry.get_entity(route_ship_id)
+	if ship_ent.is_empty():
+		return
+	var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
+	var to_sp := camera.universe_to_screen(route_dest_ux, route_dest_uz)
+	var col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5)
+	_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
+	# Destination marker (small diamond)
+	var ds: float = 5.0
+	var diamond := PackedVector2Array([
+		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),
+		to_sp + Vector2(0, ds), to_sp + Vector2(-ds, 0),
+	])
+	draw_colored_polygon(diamond, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.6))
+
+
+func _draw_waypoint_flash() -> void:
+	if waypoint_timer <= 0.0 or camera == null:
+		return
+	var sp := camera.universe_to_screen(waypoint_ux, waypoint_uz)
+	var wf_alpha: float = waypoint_timer / WAYPOINT_DURATION
+	var wf_pulse: float = sin(Time.get_ticks_msec() / 200.0) * 0.3 + 0.7
+	var wf_radius: float = 8.0 + (1.0 - wf_alpha) * 20.0
+	var wf_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, wf_alpha * wf_pulse * 0.6)
+	draw_arc(sp, wf_radius, 0, TAU, 24, wf_col, 2.0, true)
+	draw_circle(sp, 3.0, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, wf_alpha * 0.8))
+
+
+func _draw_hint_text(font: Font) -> void:
+	var hint := "Clic droit = Deplacer | Maintenir = Ordres"
+	var hint_y: float = size.y - 60.0
+	var hint_x: float = size.x * 0.5
+	var tw: float = font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+	draw_rect(Rect2(hint_x - tw * 0.5 - 8, hint_y - 14, tw + 16, 20), Color(0.0, 0.02, 0.05, 0.8))
+	var h_pulse: float = sin(Time.get_ticks_msec() / 400.0) * 0.15 + 0.85
+	draw_string(font, Vector2(hint_x - tw * 0.5, hint_y), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, h_pulse))
+
+
+func _draw_dashed_line(from: Vector2, to: Vector2, col: Color, width: float, dash_len: float, gap_len: float) -> void:
+	var dir := (to - from)
+	var total_len: float = dir.length()
+	if total_len < 1.0:
+		return
+	var unit := dir / total_len
+	var pos: float = 0.0
+	while pos < total_len:
+		var seg_end: float = minf(pos + dash_len, total_len)
+		draw_line(from + unit * pos, from + unit * seg_end, col, width)
+		pos = seg_end + gap_len

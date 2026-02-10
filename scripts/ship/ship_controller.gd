@@ -251,6 +251,10 @@ func _handle_player_weapon_input() -> void:
 	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 		return
 
+	# Skip weapon input during autopilot grace period (prevents firing from UI click)
+	if autopilot_active and _autopilot_grace_frames > 0:
+		return
+
 	# Aim where the crosshair points: raycast throttled to 20Hz
 	if _aim_timer <= 0.0:
 		_aim_point = _get_crosshair_aim_point()

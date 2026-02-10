@@ -116,7 +116,7 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 	return state
 
 
-func apply_save_state(state: Dictionary, player_ship: ShipController, system_transition: SystemTransition, galaxy: GalaxyData, fleet_deployment_mgr: FleetDeploymentManager, commerce_manager: CommerceManager) -> void:
+func apply_save_state(state: Dictionary, player_ship: ShipController, system_transition: SystemTransition, _galaxy: GalaxyData, fleet_deployment_mgr: FleetDeploymentManager, commerce_manager: CommerceManager) -> void:
 	if state.is_empty():
 		return
 

@@ -129,7 +129,6 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 		existing_ent["extra"]["arrived"] = false
 
 	_deployed_ships[fleet_index] = npc
-	_fleet.ship_deployed.emit(fleet_index)
 	_fleet.fleet_changed.emit()
 	print("FleetDeploymentManager: Deployed '%s' (index %d) with command '%s'" % [fs.custom_name, fleet_index, cmd])
 	return true
@@ -159,7 +158,6 @@ func retrieve_ship(fleet_index: int) -> bool:
 	fs.deployed_command = &""
 	fs.deployed_command_params = {}
 
-	_fleet.ship_retrieved.emit(fleet_index)
 	_fleet.fleet_changed.emit()
 	print("FleetDeploymentManager: Retrieved '%s' (index %d)" % [fs.custom_name, fleet_index])
 	return true
@@ -210,7 +208,7 @@ func redeploy_saved_ships() -> void:
 			deploy_ship(i, fs.deployed_command, fs.deployed_command_params)
 
 
-func _on_fleet_npc_died(fleet_index: int, npc: ShipController) -> void:
+func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return
 	var fs := _fleet.ships[fleet_index]
@@ -220,14 +218,12 @@ func _on_fleet_npc_died(fleet_index: int, npc: ShipController) -> void:
 	fs.deployed_command_params = {}
 	_deployed_ships.erase(fleet_index)
 
-	_fleet.ship_lost.emit(fleet_index)
 	_fleet.fleet_changed.emit()
 
 	# Toast notification
-	var toast_mgr := GameManager.get_node_or_null("UIScreenManager")
 	var toast := GameManager._toast_manager
 	if toast:
-		toast.show_toast("VAISSEAU PERDU: %s" % fs.custom_name, 1)  # 1 = WARNING
+		toast.show_toast("VAISSEAU PERDU: %s" % fs.custom_name, UIToast.ToastType.WARNING)
 
 	print("FleetDeploymentManager: Fleet ship '%s' (index %d) destroyed!" % [fs.custom_name, fleet_index])
 

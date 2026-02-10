@@ -218,7 +218,6 @@ func _draw() -> void:
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
 
 
-func _process(delta: float) -> void:
-	super._process(delta)
+func _process(_delta: float) -> void:
 	if _is_open:
 		queue_redraw()

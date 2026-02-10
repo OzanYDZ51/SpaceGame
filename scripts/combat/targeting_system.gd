@@ -168,9 +168,19 @@ func get_target_distance() -> float:
 
 ## Returns the visual center of the current target (using ShipCenter offset if available)
 func _get_target_center() -> Vector3:
-	if current_target is ShipController and (current_target as ShipController).center_offset != Vector3.ZERO:
-		return current_target.global_position + current_target.global_transform.basis * (current_target as ShipController).center_offset
-	return current_target.global_position
+	return get_ship_center(current_target)
+
+
+## Returns the visual center of any ship node (ShipController, RemoteNPCShip, RemotePlayerShip)
+static func get_ship_center(node: Node3D) -> Vector3:
+	var offset := Vector3.ZERO
+	if node is ShipController:
+		offset = (node as ShipController).center_offset
+	elif &"ship_id" in node:
+		offset = ShipFactory.get_center_offset(node.ship_id)
+	if offset != Vector3.ZERO:
+		return node.global_position + node.global_transform.basis * offset
+	return node.global_position
 
 
 func _set_target(new_target: Node3D) -> void:
