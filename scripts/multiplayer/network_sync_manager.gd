@@ -126,6 +126,15 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		rdata.current_lod = ShipLODData.LODLevel.LOD0
 		lod_manager.register_ship(StringName(remote.name), rdata)
 
+	# Register on system map
+	EntityRegistry.register("remote_player_%d" % peer_id, {
+		"name": player_name,
+		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
+		"node": remote,
+		"color": MapColors.REMOTE_PLAYER,
+		"radius": 12.0,
+	})
+
 	print("GameManager: Spawned remote player '%s' (peer %d)" % [player_name, peer_id])
 
 	if NetworkManager.is_server() and npc_authority and system_transition:
@@ -141,6 +150,7 @@ func remove_remote_player(peer_id: int) -> void:
 		var remote: RemotePlayerShip = remote_players[peer_id]
 		if lod_manager:
 			lod_manager.unregister_ship(StringName("RemotePlayer_%d" % peer_id))
+		EntityRegistry.unregister("remote_player_%d" % peer_id)
 		if is_instance_valid(remote):
 			remote.queue_free()
 		remote_players.erase(peer_id)
@@ -164,6 +174,14 @@ func _on_state_received(peer_id: int, state: NetworkState) -> void:
 		if rdata:
 			rdata.position = FloatingOrigin.to_local_pos([state.pos_x, state.pos_y, state.pos_z])
 			rdata.velocity = state.velocity
+
+	# Update map entity velocity + visibility
+	var map_ent_id := "remote_player_%d" % peer_id
+	var map_ent := EntityRegistry.get_entity(map_ent_id)
+	if not map_ent.is_empty():
+		map_ent["vel_x"] = state.velocity.x
+		map_ent["vel_z"] = state.velocity.z
+		map_ent["extra"]["hidden"] = state.is_docked or state.is_dead
 
 	if remote_players.has(peer_id):
 		var remote: RemotePlayerShip = remote_players[peer_id]

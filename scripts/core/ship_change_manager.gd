@@ -155,6 +155,10 @@ func handle_ship_change(fleet_index: int) -> void:
 	# Update fleet active index
 	fleet.set_active(fleet_index)
 
+	# Resync economy resources mirror for new active ship
+	if player_data:
+		player_data._sync_economy_resources()
+
 	# Rewire all ship-dependent systems
 	rewire_ship_systems()
 

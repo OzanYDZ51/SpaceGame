@@ -267,6 +267,7 @@ func _initialize_game() -> void:
 	_commerce_manager.player_inventory = player_inventory
 	_commerce_manager.player_fleet = player_fleet
 	_commerce_manager.player_cargo = player_cargo
+	_commerce_manager.player_data = player_data
 
 	# Wire economy to HUD (must be after player_data creation)
 	if hud:

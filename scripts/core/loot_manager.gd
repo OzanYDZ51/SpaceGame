@@ -35,10 +35,10 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 		var qty: int = item.get("quantity", 1)
 		if item_type == "credits" and economy:
 			economy.add_credits(qty)
-		elif economy:
+		elif player_data:
 			var res_id: StringName = _loot_type_to_resource(item_type)
 			if res_id != &"" and PlayerEconomy.RESOURCE_DEFS.has(res_id):
-				economy.add_resource(res_id, qty)
+				player_data.add_active_ship_resource(res_id, qty)
 			else:
 				cargo_items.append(item)
 		else:

@@ -273,8 +273,8 @@ func _do_mining_tick() -> void:
 		var resource_id: StringName = yield_data["resource_id"]
 		var qty: int = yield_data["quantity"]
 		var mining_res := MiningRegistry.get_resource(resource_id)
-		if mining_res and GameManager.player_economy:
-			GameManager.player_economy.add_resource(resource_id, qty)
+		if mining_res and GameManager.player_data:
+			GameManager.player_data.add_active_ship_resource(resource_id, qty)
 			mining_progress.emit(mining_res.display_name, qty)
 
 	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):

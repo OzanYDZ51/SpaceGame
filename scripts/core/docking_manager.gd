@@ -115,9 +115,11 @@ func handle_commerce_requested() -> void:
 		return
 	var stype: int = 0
 	var sname: String = dock_instance.station_name if dock_instance else "STATION"
+	var resolved_station_id: String = ""
 	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == sname:
+			resolved_station_id = ent.get("id", "")
 			var extra: Dictionary = ent.get("extra", {})
 			var type_str: String = extra.get("station_type", "repair")
 			match type_str:
@@ -126,7 +128,7 @@ func handle_commerce_requested() -> void:
 				"military": stype = 2
 				"mining": stype = 3
 			break
-	commerce_screen.setup(commerce_manager, stype, sname)
+	commerce_screen.setup(commerce_manager, stype, sname, resolved_station_id)
 	screen_manager.close_screen("station")
 	await get_tree().process_frame
 	screen_manager.open_screen("commerce")

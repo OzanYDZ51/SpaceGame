@@ -13,6 +13,7 @@ var player_economy: PlayerEconomy
 var player_inventory: PlayerInventory
 var player_fleet: PlayerFleet
 var player_cargo: PlayerCargo
+var player_data: PlayerData
 
 
 func can_afford(amount: int) -> bool:
@@ -149,6 +150,12 @@ func sell_module(module_name: StringName) -> bool:
 
 
 func sell_cargo(item_name: String, qty: int = 1) -> bool:
+	# Default: sell from active ship
+	if player_data and player_data.fleet:
+		var active := player_data.fleet.get_active()
+		if active:
+			return sell_cargo_from_ship(item_name, qty, active)
+	# Fallback
 	if player_cargo == null: return false
 	var unit_price := PriceCatalog.get_cargo_price(item_name)
 	if not player_cargo.remove_item(item_name, qty):
@@ -161,12 +168,50 @@ func sell_cargo(item_name: String, qty: int = 1) -> bool:
 
 
 func sell_resource(resource_id: StringName, qty: int = 1) -> bool:
+	# Default: sell from active ship via player_data
+	if player_data:
+		var active := player_data.fleet.get_active() if player_data.fleet else null
+		if active:
+			return sell_resource_from_ship(resource_id, qty, active)
+	# Fallback for old path
 	var unit_price := PriceCatalog.get_resource_price(resource_id)
 	if unit_price <= 0: return false
 	if not player_economy.spend_resource(resource_id, qty):
 		return false
 	var total := unit_price * qty
 	player_economy.add_credits(total)
+	sale_completed.emit("resource", resource_id, total)
+	SaveManager.mark_dirty()
+	return true
+
+
+func sell_cargo_from_ship(item_name: String, qty: int, ship: FleetShip) -> bool:
+	if ship == null or ship.cargo == null:
+		return false
+	var unit_price := PriceCatalog.get_cargo_price(item_name)
+	if not ship.cargo.remove_item(item_name, qty):
+		return false
+	var total := unit_price * qty
+	player_economy.add_credits(total)
+	sale_completed.emit("cargo", StringName(item_name), total)
+	# If this is the active ship, the cargo getter already points here
+	SaveManager.mark_dirty()
+	return true
+
+
+func sell_resource_from_ship(resource_id: StringName, qty: int, ship: FleetShip) -> bool:
+	if ship == null:
+		return false
+	var unit_price := PriceCatalog.get_resource_price(resource_id)
+	if unit_price <= 0:
+		return false
+	if not ship.spend_resource(resource_id, qty):
+		return false
+	var total := unit_price * qty
+	player_economy.add_credits(total)
+	# Sync economy mirror if this is the active ship
+	if player_data:
+		player_data._sync_economy_resources()
 	sale_completed.emit("resource", resource_id, total)
 	SaveManager.mark_dirty()
 	return true
