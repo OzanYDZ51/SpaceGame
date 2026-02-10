@@ -367,12 +367,18 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	state.ship_id = StringName(ship_id_str)
 	var sdata := ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
-	peers[sender_id] = state
 
 	# Send server config to the new client (galaxy seed, spawn system, routing)
+	# For new players, default to the host's current system (not -1)
+	var default_sys: int = GameManager.current_system_id_safe() if GameManager else 0
+	var spawn_sys: int = _player_last_system.get(sender_id, default_sys)
+	# Set the client's system_id NOW so NPC batch filtering includes them immediately
+	state.system_id = spawn_sys
+	peers[sender_id] = state
+
 	var config := {
 		"galaxy_seed": Constants.galaxy_seed,
-		"spawn_system_id": _player_last_system.get(sender_id, -1),
+		"spawn_system_id": spawn_sys,
 		"galaxies": galaxy_servers,
 	}
 	_rpc_server_config.rpc_id(sender_id, config)

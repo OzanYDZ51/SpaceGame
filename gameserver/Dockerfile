@@ -5,7 +5,9 @@ FROM ubuntu:22.04 AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget unzip ca-certificates \
-    libfontconfig1 libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
+    fontconfig libfontconfig1 libfreetype6 \
+    libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
+    && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Godot 4.6 headless (Linux x86_64)
@@ -28,7 +30,9 @@ COPY data/ data/
 COPY assets/ assets/
 
 # Pre-import resources so first startup is fast
-RUN godot --headless --import || true
+# --import may return non-zero on warnings (missing editor features in headless),
+# so we allow failure but log output for debugging.
+RUN godot --headless --import 2>&1 || echo "Import step returned non-zero (expected in headless mode)"
 
 # Railway sets PORT env var dynamically; our NetworkManager reads it
 EXPOSE 7777

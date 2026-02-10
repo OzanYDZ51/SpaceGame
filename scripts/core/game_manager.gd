@@ -558,6 +558,9 @@ func _initialize_game() -> void:
 		# Safety: ensure fleet NPCs are visible after undock
 		if _fleet_deployment_mgr:
 			_fleet_deployment_mgr.ensure_deployed_visible()
+		# Force immediate network sync so remote peers see us move right away
+		if _net_sync_mgr and _net_sync_mgr.ship_net_sync:
+			_net_sync_mgr.ship_net_sync.force_send_now()
 		SaveManager.trigger_save("undocked")
 	)
 

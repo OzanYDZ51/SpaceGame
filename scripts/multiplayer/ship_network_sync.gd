@@ -29,6 +29,13 @@ func _ready() -> void:
 	GameManager.player_ship_rebuilt.connect(func(_ship_ref: ShipController): reconnect_weapon_signal())
 
 
+## Force an immediate state send (called after undock, respawn, etc.)
+func force_send_now() -> void:
+	if _ship and NetworkManager.is_connected_to_server():
+		_send_state()
+		_send_timer = 1.0 / Constants.NET_TICK_RATE
+
+
 func _physics_process(delta: float) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return

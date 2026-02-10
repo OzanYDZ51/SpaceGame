@@ -40,9 +40,13 @@ func enter(ctx: Dictionary) -> void:
 	if encounter_manager:
 		encounter_manager.process_mode = Node.PROCESS_MODE_DISABLED
 
-	# Stop broadcasting player position to server
+	# Send a final "docked" state so remote puppets hide immediately, then stop sync
 	var net_sync: Node = ctx.get("net_sync")
-	if net_sync:
+	if not is_instance_valid(net_sync):
+		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
+	if net_sync and is_instance_valid(net_sync):
+		if net_sync is ShipNetworkSync:
+			(net_sync as ShipNetworkSync).force_send_now()
 		net_sync.process_mode = Node.PROCESS_MODE_DISABLED
 
 	# --- 2. DEACTIVATE PLAYER SHIP ---
@@ -123,8 +127,11 @@ func leave(ctx: Dictionary) -> void:
 	var encounter_manager: Node = ctx.get("encounter_manager")
 	if encounter_manager:
 		encounter_manager.process_mode = Node.PROCESS_MODE_INHERIT
+	# Resume network sync + force an immediate state send
 	var net_sync: Node = ctx.get("net_sync")
-	if net_sync:
+	if not is_instance_valid(net_sync):
+		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
+	if net_sync and is_instance_valid(net_sync):
 		net_sync.process_mode = Node.PROCESS_MODE_INHERIT
 
 	# --- 4. RESTORE PLAYER SHIP ---

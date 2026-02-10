@@ -179,15 +179,14 @@ func _get_target_center() -> Vector3:
 
 ## Returns the visual center of any ship node (ShipController, RemoteNPCShip, RemotePlayerShip)
 static func get_ship_center(node: Node3D) -> Vector3:
-	var offset := Vector3.ZERO
+	# Only ShipController uses center_offset: its model is scene-based (skip_centering)
+	# so the visual center differs from the node origin.
+	# Remote ships (RemotePlayerShip, RemoteNPCShip) load from .glb and auto-center
+	# the AABB at origin, so their visual center is already at global_position.
 	if node is ShipController:
-		offset = (node as ShipController).center_offset
-	elif node is RemotePlayerShip or node is RemoteNPCShip:
-		offset = ShipFactory.get_center_offset(node.ship_id)
-	elif &"ship_id" in node:
-		offset = ShipFactory.get_center_offset(node.get(&"ship_id"))
-	if offset != Vector3.ZERO:
-		return node.global_position + node.global_transform.basis * offset
+		var offset: Vector3 = (node as ShipController).center_offset
+		if offset != Vector3.ZERO:
+			return node.global_position + node.global_transform.basis * offset
 	return node.global_position
 
 

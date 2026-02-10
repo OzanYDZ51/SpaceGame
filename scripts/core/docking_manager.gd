@@ -69,16 +69,19 @@ func handle_docked(station_name: String) -> void:
 			active_fs.docked_station_id = resolved_station_id
 			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
-	# Enter isolated solo instance (freezes world, loads hangar)
-	dock_instance.enter(_build_dock_context(station_name))
-
 	# Hide flight HUD
 	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = false
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+	# Emit docked BEFORE entering dock instance, so GameManager sets current_state = DOCKED
+	# before force_send_now() fires — ensuring remote peers receive is_docked=true
 	docked.emit(station_name)
+
+	# Enter isolated solo instance (freezes world, sends final docked state, loads hangar)
+	dock_instance.enter(_build_dock_context(station_name))
 
 
 func handle_undock() -> void:

@@ -136,8 +136,12 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		"radius": 12.0,
 	})
 
+	# Send all NPCs to the new peer after a short delay.
+	# The client needs time to receive server_config, jump to the correct system,
+	# and finish loading before it can process NPC spawn data.
+	# Without this delay, NPCs arrive before the jump → get wiped by on_system_unloading.
 	if NetworkManager.is_server() and npc_authority and system_transition:
-		npc_authority.send_all_npcs_to_peer(peer_id, system_transition.current_system_id)
+		_deferred_send_npcs_to_peer(peer_id, system_transition.current_system_id)
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
@@ -572,3 +576,15 @@ func on_system_unloading(_system_id: int) -> void:
 	# Clear server NPC authority registry
 	if npc_authority and NetworkManager.is_server():
 		npc_authority.clear_system_npcs(_system_id)
+
+
+## Sends all NPCs to a peer after a short delay so the client has time to finish
+## its system jump before receiving NPC data. Uses a SceneTreeTimer (1 second).
+func _deferred_send_npcs_to_peer(peer_id: int, system_id: int) -> void:
+	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree():
+		return
+	if not NetworkManager.peers.has(peer_id):
+		return  # Peer disconnected during the delay
+	if npc_authority:
+		npc_authority.send_all_npcs_to_peer(peer_id, system_id)
