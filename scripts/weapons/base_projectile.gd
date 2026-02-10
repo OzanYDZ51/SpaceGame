@@ -71,21 +71,39 @@ func _on_body_hit(body: Node3D) -> void:
 		owner_ship = null
 	if body == owner_ship:
 		return
+	# Prevent friendly fire (player <-> fleet, fleet <-> fleet)
+	if _is_friendly(body):
+		return
 
-	# Multiplayer client: send hit claim to server for server-managed NPCs only
-	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
-		if body.is_in_group("ships"):
-			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
-			if lod_mgr:
-				var lod_data: ShipLODData = lod_mgr.get_ship_data(StringName(body.name))
-				if lod_data and lod_data.is_server_npc:
-					var hit_dir := (body.global_position - global_position).normalized()
-					NetworkManager._rpc_hit_claim.rpc_id(1,
-						body.name, String(weapon_name), damage,
-						[hit_dir.x, hit_dir.y, hit_dir.z])
-					_spawn_hit_effect(body, {"shield_absorbed": false})
-					_return_to_pool()
-					return
+	# Multiplayer: send hit claims to server for validation
+	if NetworkManager.is_connected_to_server():
+		# Remote player hit: body is HitBody child of RemotePlayerShip
+		var remote_player := _get_remote_player_parent(body)
+		if remote_player:
+			# Don't hit ourselves
+			if remote_player == owner_ship:
+				return
+			var hit_dir := (body.global_position - global_position).normalized()
+			NetworkManager._rpc_player_hit_claim.rpc_id(1,
+				remote_player.peer_id, String(weapon_name), damage,
+				[hit_dir.x, hit_dir.y, hit_dir.z])
+			_spawn_hit_effect(body, {"shield_absorbed": false})
+			_return_to_pool()
+			return
+
+		if not NetworkManager.is_server():
+			if body.is_in_group("ships"):
+				var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+				if lod_mgr:
+					var lod_data: ShipLODData = lod_mgr.get_ship_data(StringName(body.name))
+					if lod_data and lod_data.is_server_npc:
+						var hit_dir := (body.global_position - global_position).normalized()
+						NetworkManager._rpc_hit_claim.rpc_id(1,
+							body.name, String(weapon_name), damage,
+							[hit_dir.x, hit_dir.y, hit_dir.z])
+						_spawn_hit_effect(body, {"shield_absorbed": false})
+						_return_to_pool()
+						return
 		# Structure hit claim (station)
 		if body.is_in_group("structures"):
 			var hit_dir := (body.global_position - global_position).normalized()
@@ -163,6 +181,14 @@ func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
 	wm._on_projectile_hit(hit_info, damage, killed)
 
 
+## Check if body is a child of a RemotePlayerShip (e.g. the HitBody StaticBody3D).
+func _get_remote_player_parent(body: Node3D) -> RemotePlayerShip:
+	var parent := body.get_parent()
+	if parent is RemotePlayerShip:
+		return parent as RemotePlayerShip
+	return null
+
+
 func _return_to_pool() -> void:
 	if _pool:
 		_pool.release(self)
@@ -186,3 +212,16 @@ func _spawn_dissipate_effect() -> void:
 	elif damage_type == &"explosive":
 		color = Color(1.0, 0.5, 0.2)
 	effect.setup(dir, color)
+
+
+## Returns true if the target body is allied with the projectile's owner (no friendly fire).
+func _is_friendly(body: Node3D) -> bool:
+	if owner_ship == null or not is_instance_valid(owner_ship):
+		return false
+	var owner_faction: StringName = owner_ship.faction if "faction" in owner_ship else &""
+	if owner_faction == &"":
+		return false
+	var body_faction: StringName = body.faction if "faction" in body else &""
+	if body_faction == &"":
+		return false
+	return TargetingSystem._is_allied(owner_faction, body_faction)

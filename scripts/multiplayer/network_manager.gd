@@ -45,6 +45,7 @@ signal fleet_command_changed(owner_pid: int, fleet_index: int, npc_id: String, c
 
 # Combat sync signals
 signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
+signal player_damage_received(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array)
 
 # Mining sync signals
 signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array)
@@ -627,6 +628,56 @@ func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, 
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 	if npc_auth:
 		npc_auth.validate_hit_claim(sender_id, target_npc, weapon_name, damage_val, hit_dir)
+
+
+## Any peer -> Server: Player claims a hit on another player.
+@rpc("any_peer", "reliable")
+func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
+	if not is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	# Validate basic bounds
+	if damage_val < 0.0 or damage_val > 500.0:
+		return
+	if not peers.has(target_pid) or not peers.has(sender_id):
+		return
+	# Check same system
+	var sender_state: NetworkState = peers[sender_id]
+	var target_state: NetworkState = peers[target_pid]
+	if sender_state.system_id != target_state.system_id:
+		return
+	# Distance validation
+	var sender_pos := Vector3(sender_state.pos_x, sender_state.pos_y, sender_state.pos_z)
+	var target_pos := Vector3(target_state.pos_x, target_state.pos_y, target_state.pos_z)
+	if sender_pos.distance_to(target_pos) > 3000.0:
+		return
+	# Weapon damage bounds
+	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	if weapon and damage_val > weapon.damage_per_hit * 1.5:
+		return
+	# Relay damage to target player
+	if target_pid == 1 and not is_dedicated_server:
+		player_damage_received.emit(sender_id, weapon_name, damage_val, hit_dir)
+	else:
+		_rpc_receive_player_damage.rpc_id(target_pid, sender_id, weapon_name, damage_val, hit_dir)
+
+
+## Server -> Target client: You've been hit by another player.
+@rpc("authority", "reliable")
+func _rpc_receive_player_damage(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
+	player_damage_received.emit(attacker_pid, weapon_name, damage_val, hit_dir)
+
+
+# =========================================================================
+# NPC FIRE RELAY RPCs
+# =========================================================================
+
+signal npc_fire_received(npc_id: String, weapon_name: String, fire_pos: Array, fire_dir: Array)
+
+## Server -> Client: An NPC fired a weapon (visual only).
+@rpc("authority", "unreliable_ordered")
+func _rpc_npc_fire(npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	npc_fire_received.emit(npc_id_str, weapon_name, fire_pos, fire_dir)
 
 
 # =========================================================================

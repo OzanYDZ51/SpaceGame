@@ -250,10 +250,23 @@ func _setup_target_holo(target: Node3D) -> void:
 	_cleanup_target_holo()
 	if target == null or not is_instance_valid(target):
 		return
-	if not (target is ShipController):
-		return
-	var sc := target as ShipController
-	if sc.ship_data == null:
+
+	# Resolve ship_id and ship_data for any target type
+	var target_ship_id: StringName = &""
+	var target_ship_data: ShipData = null
+	if target is ShipController:
+		var sc := target as ShipController
+		if sc.ship_data == null:
+			return
+		target_ship_id = sc.ship_data.ship_id
+		target_ship_data = sc.ship_data
+	elif target is RemotePlayerShip:
+		target_ship_id = (target as RemotePlayerShip).ship_id
+		target_ship_data = ShipRegistry.get_ship_data(target_ship_id)
+	elif target is RemoteNPCShip:
+		target_ship_id = (target as RemoteNPCShip).ship_id
+		target_ship_data = ShipRegistry.get_ship_data(target_ship_id)
+	if target_ship_data == null:
 		return
 
 	# SubViewportContainer — renders behind 2D draw layer
@@ -302,7 +315,7 @@ func _setup_target_holo(target: Node3D) -> void:
 
 	# Camera — from EquipmentCamera data or fallback
 	_target_holo_camera = Camera3D.new()
-	var cam_data := ShipFactory.get_equipment_camera_data(sc.ship_data.ship_id)
+	var cam_data := ShipFactory.get_equipment_camera_data(target_ship_id)
 	if not cam_data.is_empty():
 		_target_holo_camera.position = cam_data["position"]
 		_target_holo_camera.transform.basis = cam_data["basis"]
@@ -325,9 +338,9 @@ func _setup_target_holo(target: Node3D) -> void:
 
 	# Ship model — holographic blue
 	_target_holo_model = ShipModel.new()
-	_target_holo_model.model_path = sc.ship_data.model_path
-	_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(sc.ship_data.ship_id)
-	_target_holo_model.model_rotation_degrees = ShipFactory.get_model_rotation(sc.ship_data.ship_id)
+	_target_holo_model.model_path = target_ship_data.model_path
+	_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(target_ship_id)
+	_target_holo_model.model_rotation_degrees = ShipFactory.get_model_rotation(target_ship_id)
 	_target_holo_pivot.add_child(_target_holo_model)
 
 	_apply_target_holo_material(_target_holo_model)

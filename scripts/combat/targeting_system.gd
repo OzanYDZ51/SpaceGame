@@ -182,8 +182,10 @@ static func get_ship_center(node: Node3D) -> Vector3:
 	var offset := Vector3.ZERO
 	if node is ShipController:
 		offset = (node as ShipController).center_offset
-	elif &"ship_id" in node:
+	elif node is RemotePlayerShip or node is RemoteNPCShip:
 		offset = ShipFactory.get_center_offset(node.ship_id)
+	elif &"ship_id" in node:
+		offset = ShipFactory.get_center_offset(node.get(&"ship_id"))
 	if offset != Vector3.ZERO:
 		return node.global_position + node.global_transform.basis * offset
 	return node.global_position
@@ -200,6 +202,9 @@ func _gather_targetable_ships() -> void:
 	if ship == null:
 		return
 
+	# Determine own faction for friendly-fire prevention
+	var own_faction: StringName = ship.faction if "faction" in ship else &"neutral"
+
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 	if lod_mgr:
@@ -208,6 +213,9 @@ func _gather_targetable_ships() -> void:
 		for entry in results:
 			var data := lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
+				continue
+			# Skip allied fleet ships (player can't target own fleet)
+			if _is_allied(own_faction, data.faction):
 				continue
 			# Only target ships with a scene node (LOD0/LOD1), never self
 			if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref != ship:
@@ -219,6 +227,10 @@ func _gather_targetable_ships() -> void:
 			if node == ship:
 				continue
 			if node is Node3D:
+				# Skip allied fleet ships
+				var node_faction: StringName = node.faction if "faction" in node else &"neutral"
+				if _is_allied(own_faction, node_faction):
+					continue
 				var dist: float = ship.global_position.distance_to((node as Node3D).global_position)
 				if dist <= target_lock_range:
 					var health := node.get_node_or_null("HealthSystem") as HealthSystem
@@ -238,3 +250,24 @@ func _gather_targetable_ships() -> void:
 	# If current target no longer in list, clear
 	if current_target and current_target not in _targetable_ships:
 		clear_target()
+
+
+## Returns true if two factions are allied (should not attack each other).
+static func _is_allied(faction_a: StringName, faction_b: StringName) -> bool:
+	# Player and player_fleet are allies
+	if faction_a == &"neutral" and faction_b == &"player_fleet":
+		return true
+	if faction_a == &"player_fleet" and faction_b == &"neutral":
+		return true
+	if faction_a == &"player_fleet" and faction_b == &"player_fleet":
+		return true
+	# Friendly NPCs are allied with player
+	if faction_a == &"neutral" and faction_b == &"friendly":
+		return true
+	if faction_a == &"friendly" and faction_b == &"neutral":
+		return true
+	if faction_a == &"player_fleet" and faction_b == &"friendly":
+		return true
+	if faction_a == &"friendly" and faction_b == &"player_fleet":
+		return true
+	return false

@@ -95,7 +95,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 					brain.set_patrol_area(center, radius)
 				_active_npc_ids.append(StringName(ship.name))
 				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
-				_register_npc_on_server(StringName(ship.name), ship_id, faction)
+				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
 
 	encounter_started.emit(eid)
 
@@ -171,7 +171,7 @@ func spawn_ambush(ship_ids: Array[StringName], range_dist: float, faction: Strin
 		if ship:
 			_active_npc_ids.append(StringName(ship.name))
 			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
-			_register_npc_on_server(StringName(ship.name), ship_id, faction)
+			_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
 
 	encounter_started.emit(_encounter_counter)
 
@@ -189,7 +189,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 		return
 	_active_npc_ids.append(StringName(leader.name))
 	leader.tree_exiting.connect(_on_npc_removed.bind(StringName(leader.name)))
-	_register_npc_on_server(StringName(leader.name), leader_id, faction)
+	_register_npc_on_server(StringName(leader.name), leader_id, faction, leader)
 
 	# Spawn wingmen in formation
 	for i in wingman_count:
@@ -208,7 +208,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 				brain.current_state = AIBrain.State.FORMATION
 			_active_npc_ids.append(StringName(wingman.name))
 			wingman.tree_exiting.connect(_on_npc_removed.bind(StringName(wingman.name)))
-			_register_npc_on_server(StringName(wingman.name), wingman_id, faction)
+			_register_npc_on_server(StringName(wingman.name), wingman_id, faction, wingman)
 
 	encounter_started.emit(_encounter_counter)
 
@@ -232,7 +232,7 @@ func _get_lod_manager() -> ShipLODManager:
 
 
 ## Register NPC with NpcAuthority (server only) and notify connected clients.
-func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringName) -> void:
+func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringName, ship_node: Node3D = null) -> void:
 	if not NetworkManager.is_server():
 		return
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
@@ -242,3 +242,6 @@ func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringNam
 	var system_id: int = gm._system_transition.current_system_id if gm and gm._system_transition else 0
 	npc_auth.register_npc(npc_id, system_id, sid, fac)
 	npc_auth.notify_spawn_to_peers(npc_id, system_id)
+	# Connect weapon fire relay for remote clients to see NPC shots
+	if ship_node:
+		npc_auth.connect_npc_fire_relay(npc_id, ship_node)

@@ -69,6 +69,8 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.npc_died.connect(_on_npc_died)
 	NetworkManager.fleet_ship_retrieved.connect(_on_remote_fleet_retrieved)
 	NetworkManager.remote_fire_received.connect(_on_remote_fire_received)
+	NetworkManager.player_damage_received.connect(_on_player_damage_received)
+	NetworkManager.npc_fire_received.connect(_on_npc_fire_received)
 	NetworkManager.player_died_received.connect(_on_remote_player_died)
 	NetworkManager.player_respawned_received.connect(_on_remote_player_respawned)
 	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
@@ -416,6 +418,81 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 		spawn_pos = remote.global_position + dir * 5.0
 	else:
 		spawn_pos = FloatingOrigin.to_local_pos(fire_pos)
+	bolt.global_position = spawn_pos
+	bolt.velocity = dir * weapon.projectile_speed + ship_vel
+	if dir.length_squared() > 0.001:
+		bolt.look_at(spawn_pos + dir, Vector3.UP)
+
+
+# =============================================================================
+# PVP DAMAGE — Server validated, applied on target client
+# =============================================================================
+
+func _on_player_damage_received(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
+	var player_ship := GameManager.player_ship as ShipController
+	if player_ship == null:
+		return
+	var health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
+	if health == null or health.is_dead():
+		return
+	var dir_vec := Vector3(
+		hit_dir[0] if hit_dir.size() > 0 else 0.0,
+		hit_dir[1] if hit_dir.size() > 1 else 0.0,
+		hit_dir[2] if hit_dir.size() > 2 else 0.0)
+	# Find attacker node for damage attribution
+	var attacker: Node3D = remote_players.get(attacker_pid)
+	health.apply_damage(damage_val, &"thermal", dir_vec, attacker)
+
+
+# =============================================================================
+# NPC FIRE RELAY — Visual projectiles from server NPCs on remote clients
+# =============================================================================
+
+func _on_npc_fire_received(npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	if weapon == null:
+		return
+
+	var proj_scene_path: String = weapon.projectile_scene_path
+	if proj_scene_path.is_empty():
+		return
+
+	var pool: ProjectilePool = null
+	if lod_manager:
+		pool = lod_manager.get_node_or_null("ProjectilePool") as ProjectilePool
+
+	var bolt: BaseProjectile = null
+	if pool:
+		bolt = pool.acquire(proj_scene_path)
+		if bolt:
+			bolt._pool = pool
+	if bolt == null:
+		var scene: PackedScene = load(proj_scene_path)
+		if scene == null:
+			return
+		bolt = scene.instantiate() as BaseProjectile
+		if bolt == null:
+			return
+		get_tree().current_scene.add_child(bolt)
+
+	# Visual-only projectile (no collision, no damage)
+	bolt.collision_layer = 0
+	bolt.collision_mask = 0
+	bolt.monitoring = false
+	bolt.owner_ship = null
+	bolt.damage = 0.0
+	bolt.max_lifetime = weapon.projectile_lifetime
+
+	var dir := Vector3(
+		fire_dir[0] if fire_dir.size() > 0 else 0.0,
+		fire_dir[1] if fire_dir.size() > 1 else 0.0,
+		fire_dir[2] if fire_dir.size() > 2 else 0.0)
+	var ship_vel := Vector3(
+		fire_dir[3] if fire_dir.size() > 3 else 0.0,
+		fire_dir[4] if fire_dir.size() > 4 else 0.0,
+		fire_dir[5] if fire_dir.size() > 5 else 0.0)
+
+	var spawn_pos := FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
 	if dir.length_squared() > 0.001:

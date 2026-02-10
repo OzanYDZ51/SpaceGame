@@ -509,6 +509,12 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	_set_lod_set(id, ShipLODData.LODLevel.LOD1)
 	data.is_promoting = false
 
+	# Connect NPC fire relay on server when promoted to full node
+	if not data.is_remote_player and not data.is_server_npc and NetworkManager.is_server():
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		if npc_auth:
+			npc_auth.connect_npc_fire_relay(id, node)
+
 	# Restore EntityRegistry node ref (entity was kept during demotion)
 	var ent := EntityRegistry.get_entity(String(id))
 	if not ent.is_empty():

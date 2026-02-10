@@ -26,6 +26,7 @@ var _name_label: Label3D = null
 func _ready() -> void:
 	_setup_model()
 	_setup_name_label()
+	_setup_collision()
 	# Add to ships group for radar/targeting
 	add_to_group("ships")
 	# Set faction for HUD color coding (remote players = friendly)
@@ -62,6 +63,20 @@ func _setup_name_label() -> void:
 	_name_label.position = Vector3(0, 15, 0)
 	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.9)
 	add_child(_name_label)
+
+
+func _setup_collision() -> void:
+	var body := StaticBody3D.new()
+	body.name = "HitBody"
+	body.collision_layer = Constants.LAYER_SHIPS
+	body.collision_mask = 0  # Doesn't detect anything, only gets hit
+	add_child(body)
+	var shape := CollisionShape3D.new()
+	shape.name = "HitShape"
+	var sphere := SphereShape3D.new()
+	sphere.radius = 8.0  # Generous hitbox for ship
+	shape.shape = sphere
+	body.add_child(shape)
 
 
 ## Rebuild ship model when the remote player changes ship.

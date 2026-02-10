@@ -101,6 +101,43 @@ func clear_system_npcs(system_id: int) -> void:
 	_npcs_by_system.erase(system_id)
 
 
+## Connect NPC weapon_fired signal to relay fire events to remote clients.
+func connect_npc_fire_relay(npc_id: StringName, ship_node: Node3D) -> void:
+	if not _active or ship_node == null:
+		return
+	var wm := ship_node.get_node_or_null("WeaponManager") as WeaponManager
+	if wm == null:
+		return
+	if not _npcs.has(npc_id):
+		return
+	var info: Dictionary = _npcs[npc_id]
+	var sys_id: int = info.get("system_id", -1)
+	wm.weapon_fired.connect(func(hardpoint_id: int, weapon_name_str: StringName) -> void:
+		_relay_npc_fire(npc_id, sys_id, ship_node, hardpoint_id, weapon_name_str))
+
+
+func _relay_npc_fire(npc_id: StringName, system_id: int, ship_node: Node3D, hardpoint_id: int, weapon_name_str: StringName) -> void:
+	if not _active or ship_node == null or not is_instance_valid(ship_node):
+		return
+	var wm := ship_node.get_node_or_null("WeaponManager") as WeaponManager
+	if wm == null or hardpoint_id >= wm.hardpoints.size():
+		return
+	var hp: Hardpoint = wm.hardpoints[hardpoint_id]
+	var muzzle := hp.get_muzzle_transform()
+	var fire_pos := FloatingOrigin.to_universe_pos(muzzle.origin)
+	var fire_dir := (-muzzle.basis.z).normalized()
+	var ship_vel := Vector3.ZERO
+	if ship_node is RigidBody3D:
+		ship_vel = (ship_node as RigidBody3D).linear_velocity
+
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var dir_arr: Array = [fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z]
+	for pid in peers_in_sys:
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			continue  # Host already sees NPC fire locally
+		NetworkManager._rpc_npc_fire.rpc_id(pid, String(npc_id), String(weapon_name_str), fire_pos, dir_arr)
+
+
 ## Notify all peers in a system that an NPC has spawned.
 func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 	if not _npcs.has(npc_id):

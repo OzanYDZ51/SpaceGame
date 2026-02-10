@@ -51,6 +51,12 @@ func _process(delta: float) -> void:
 func _on_damage_taken(attacker: Node3D, amount: float) -> void:
 	if attacker == null or not is_instance_valid(attacker):
 		return
+	# Never add player or fleet ships to threat table
+	if attacker == GameManager.player_ship:
+		return
+	var atk_faction: StringName = attacker.faction if "faction" in attacker else &""
+	if atk_faction == &"player_fleet" or atk_faction == &"friendly":
+		return
 	var aid: int = attacker.get_instance_id()
 	if _threat_table.has(aid):
 		_threat_table[aid]["last_hit_time"] = Time.get_ticks_msec() * 0.001
@@ -105,8 +111,11 @@ func _find_best_target() -> Node3D:
 	for ship in get_tree().get_nodes_in_group("ships"):
 		if ship == null or not is_instance_valid(ship) or ship.is_queued_for_deletion():
 			continue
-		# Skip player
+		# Skip player and allied fleet ships
 		if ship == GameManager.player_ship:
+			continue
+		var ship_faction: StringName = ship.faction if "faction" in ship else &"neutral"
+		if ship_faction == &"player_fleet" or ship_faction == &"friendly":
 			continue
 		# Only target hostile NPCs (faction check via AIBrain)
 		var brain := ship.get_node_or_null("AIBrain") as AIBrain
