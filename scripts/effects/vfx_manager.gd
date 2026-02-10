@@ -13,8 +13,6 @@ var speed_effects_enabled := true
 var space_dust_reactive_enabled := true
 var camera_vibration_enabled := true
 var gforce_enabled := true
-var rcs_thrusters_enabled := true
-var heat_haze_enabled := true
 var motion_blur_enabled := true
 
 # --- Internal refs ---
@@ -27,8 +25,6 @@ var _engine_trail: EngineTrail = null
 var _speed_effects: SpeedEffects = null
 var _space_dust: SpaceDust = null
 var _gforce: GForceEffects = null
-var _rcs: RCSThrusters = null
-var _heat_haze: EngineHeatHaze = null
 var _motion_blur: MotionBlur = null
 
 
@@ -61,12 +57,6 @@ func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main
 	_gforce.name = "GForceEffects"
 	main_scene.add_child(_gforce)
 	_gforce.set_ship(ship)
-
-	# --- RCS Thrusters (child of ShipModel) ---
-	_create_rcs_thrusters()
-
-	# --- Heat Haze (child of ShipModel) ---
-	_create_heat_haze()
 
 	# --- Motion Blur (child of Camera) ---
 	_create_motion_blur()
@@ -108,17 +98,9 @@ func _recreate_ship_model_effects() -> void:
 	if _engine_trail and is_instance_valid(_engine_trail):
 		_engine_trail.queue_free()
 		_engine_trail = null
-	if _rcs and is_instance_valid(_rcs):
-		_rcs.queue_free()
-		_rcs = null
-	if _heat_haze and is_instance_valid(_heat_haze):
-		_heat_haze.queue_free()
-		_heat_haze = null
 
 	# Recreate on new ShipModel
 	_create_engine_trail()
-	_create_rcs_thrusters()
-	_create_heat_haze()
 
 
 func _create_engine_trail() -> void:
@@ -132,32 +114,6 @@ func _create_engine_trail() -> void:
 	_engine_trail.name = "EngineTrail"
 	model.add_child(_engine_trail)
 	_engine_trail.setup(model.model_scale, model.engine_light_color, vfx_pts)
-
-
-func _create_rcs_thrusters() -> void:
-	if _ship == null or not rcs_thrusters_enabled:
-		return
-	var model := _ship.get_node_or_null("ShipModel") as ShipModel
-	if model == null:
-		return
-	var vfx_pts := _get_vfx_points()
-	_rcs = RCSThrusters.new()
-	_rcs.name = "RCSThrusters"
-	model.add_child(_rcs)
-	_rcs.setup(model.model_scale, vfx_pts)
-
-
-func _create_heat_haze() -> void:
-	if _ship == null or not heat_haze_enabled:
-		return
-	var model := _ship.get_node_or_null("ShipModel") as ShipModel
-	if model == null:
-		return
-	var vfx_pts := _get_vfx_points()
-	_heat_haze = EngineHeatHaze.new()
-	_heat_haze.name = "EngineHeatHaze"
-	model.add_child(_heat_haze)
-	_heat_haze.setup(model.model_scale, vfx_pts)
 
 
 func _create_motion_blur() -> void:
@@ -181,8 +137,6 @@ func set_all_enabled(enabled: bool) -> void:
 	space_dust_reactive_enabled = enabled
 	camera_vibration_enabled = enabled
 	gforce_enabled = enabled
-	rcs_thrusters_enabled = enabled
-	heat_haze_enabled = enabled
 	motion_blur_enabled = enabled
 
 	if _motion_blur and is_instance_valid(_motion_blur):
@@ -199,12 +153,6 @@ func set_all_enabled(enabled: bool) -> void:
 		if _engine_trail and is_instance_valid(_engine_trail):
 			_engine_trail.queue_free()
 			_engine_trail = null
-		if _rcs and is_instance_valid(_rcs):
-			_rcs.queue_free()
-			_rcs = null
-		if _heat_haze and is_instance_valid(_heat_haze):
-			_heat_haze.queue_free()
-			_heat_haze = null
 	else:
 		_recreate_ship_model_effects()
 
@@ -224,10 +172,6 @@ func _process(_delta: float) -> void:
 	# Update engine trail intensity from ship throttle
 	if _engine_trail and is_instance_valid(_engine_trail):
 		_engine_trail.update_intensity(throttle)
-
-	# Update heat haze intensity from ship throttle
-	if _heat_haze and is_instance_valid(_heat_haze):
-		_heat_haze.update_intensity(throttle)
 
 	# Update motion blur intensity based on ship speed
 	if _motion_blur and is_instance_valid(_motion_blur):

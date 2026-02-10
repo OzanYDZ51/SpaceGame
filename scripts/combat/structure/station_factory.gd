@@ -41,7 +41,7 @@ static func setup_station(station: SpaceStation, equipment: StationEquipment) ->
 	defense_ai.name = "StationDefenseAI"
 	station.add_child(defense_ai)
 	defense_ai.initialize(station, wm)
-	station._defense_ai = defense_ai
+	station.defense_ai = defense_ai
 
 	# Build visual service modules
 	ServiceModuleBuilder.build_modules(station, station.station_type)

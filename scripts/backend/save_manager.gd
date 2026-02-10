@@ -149,6 +149,8 @@ func _on_auto_save() -> void:
 
 
 func trigger_save(reason: String = "") -> void:
+	if reason != "":
+		print("[SaveManager] trigger_save: ", reason)
 	mark_dirty()
 	save_player_state(true)
 

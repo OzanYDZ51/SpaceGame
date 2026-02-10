@@ -13,7 +13,7 @@ extends StaticBody3D
 var structure_health: StructureHealth = null
 var weapon_manager: WeaponManager = null
 var station_equipment: StationEquipment = null
-var _defense_ai: StationDefenseAI = null
+var defense_ai: StationDefenseAI = null
 
 
 func _ready() -> void:

@@ -72,7 +72,7 @@ var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
 var _notif: NotificationService = null
 var _structure_auth: StructureAuthority = null
-var _station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
+var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
 func _ready() -> void:
@@ -127,9 +127,8 @@ func _setup_ui_managers() -> void:
 			_stellar_map.set_fleet(player_fleet, _galaxy)
 			map_screen.set_fleet(player_fleet, _galaxy)
 
-		# Connect fleet order/recall signals from stellar map
+		# Connect fleet order signal from stellar map
 		_stellar_map.fleet_order_requested.connect(_on_fleet_order_from_map)
-		_stellar_map.fleet_recall_requested.connect(_on_fleet_recall_from_map)
 
 		# Pass squadron data to map
 		if _squadron_mgr:
@@ -698,13 +697,6 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 
 	if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 		_notif.fleet.destroyed()
-
-
-func _on_fleet_recall_from_map(fleet_index: int) -> void:
-	if _fleet_deployment_mgr:
-		_fleet_deployment_mgr.retrieve_ship(fleet_index)
-		if player_fleet and fleet_index < player_fleet.ships.size():
-			_notif.fleet.recalled(player_fleet.ships[fleet_index].custom_name)
 
 
 func _on_squadron_action(action: StringName, data: Dictionary) -> void:

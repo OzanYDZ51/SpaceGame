@@ -92,30 +92,6 @@ script = ExtResource("3_vfx")
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 4.5, 5)
 script = ExtResource("3_vfx")
 
-[node name="VFX_Engine_C" type="Marker3D" parent="." unique_id=784570869]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 5, 6)
-script = ExtResource("3_vfx")
-
-[node name="VFX_RCS_Right" type="Marker3D" parent="." unique_id=738168157]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 5, 4.5, -5)
-script = ExtResource("3_vfx")
-point_type = 1
-
-[node name="VFX_RCS_Left" type="Marker3D" parent="." unique_id=123692522]
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -5, 4.5, -5)
-script = ExtResource("3_vfx")
-point_type = 1
-
-[node name="VFX_RCS_Top" type="Marker3D" parent="." unique_id=507176261]
-transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 6.5, -5)
-script = ExtResource("3_vfx")
-point_type = 1
-
-[node name="VFX_RCS_Bottom" type="Marker3D" parent="." unique_id=1319269135]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 3, -5)
-script = ExtResource("3_vfx")
-point_type = 1
-
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=1432655218]
 transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 27.471779, -26.787548)
 fov = 45.0

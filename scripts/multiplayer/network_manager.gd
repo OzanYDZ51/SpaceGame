@@ -52,7 +52,6 @@ signal asteroid_depleted_received(asteroid_id: String)
 
 # Structure (station) sync signals
 signal structure_hit_claimed(sender_pid: int, target_id: String, weapon: String, damage: float, hit_dir: Array)
-signal structure_batch_received(batch: Array)
 signal structure_destroyed_received(struct_id: String, killer_pid: int, pos: Array, loot: Array)
 
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }

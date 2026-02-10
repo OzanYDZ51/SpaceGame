@@ -10,8 +10,6 @@ extends GPUParticles3D
 
 var _camera: Camera3D = null
 var _ship: ShipController = null
-var _base_amount_ratio: float = 1.0
-var _base_speed_scale: float = 1.0
 var _mat: ParticleProcessMaterial = null
 
 

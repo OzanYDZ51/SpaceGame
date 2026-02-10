@@ -103,6 +103,7 @@ func _build_components() -> void:
 func set_ship(s: ShipController) -> void:
 	_gauges.ship = s
 	_status_panels.ship = s
+	_status_panels.invalidate_cache()
 	_weapon_panel.ship = s
 	_weapon_panel.invalidate_cache()
 	_targeting.ship = s
@@ -114,6 +115,7 @@ func set_ship(s: ShipController) -> void:
 func set_health_system(h: HealthSystem) -> void:
 	_gauges.health_system = h
 	_status_panels.health_system = h
+	_status_panels.invalidate_cache()
 	_cockpit.health_system = h
 
 

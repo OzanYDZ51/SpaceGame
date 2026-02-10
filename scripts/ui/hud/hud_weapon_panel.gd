@@ -59,7 +59,7 @@ func _setup_holo_viewer() -> void:
 
 	# SubViewportContainer — renders behind 2D markers
 	_vp_container = SubViewportContainer.new()
-	_vp_container.stretch = true
+	_vp_container.stretch = false
 	_vp_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_vp_container.show_behind_parent = true
 	_weapon_panel.add_child(_vp_container)

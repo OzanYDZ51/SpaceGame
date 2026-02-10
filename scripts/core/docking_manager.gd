@@ -195,8 +195,6 @@ func handle_station_equipment_requested() -> void:
 
 
 func _get_docked_station_equipment() -> StationEquipment:
-	# Find station node via EntityRegistry
-	var station_name: String = dock_instance.station_name if dock_instance else ""
 	var universe := main_scene.get_node_or_null("Universe") if main_scene else null
 	if universe == null:
 		return null
@@ -206,8 +204,8 @@ func _get_docked_station_equipment() -> StationEquipment:
 	# Fallback: create from GameManager cache
 	var sys_id: int = system_transition.current_system_id if system_transition else 0
 	var key := "system_%d_station_%d" % [sys_id, docked_station_idx]
-	if GameManager._station_equipments.has(key):
-		return GameManager._station_equipments[key]
+	if GameManager.station_equipments.has(key):
+		return GameManager.station_equipments[key]
 	return null
 
 

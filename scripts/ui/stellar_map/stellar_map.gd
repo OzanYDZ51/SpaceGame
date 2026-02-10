@@ -23,7 +23,6 @@ var _was_mouse_captured: bool = false
 var managed_externally: bool = false
 signal view_switch_requested
 signal fleet_order_requested(fleet_index: int, order_id: StringName, params: Dictionary)
-signal fleet_recall_requested(fleet_index: int)
 signal squadron_action_requested(action: StringName, data: Dictionary)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry

@@ -3,7 +3,7 @@ extends Control
 
 # =============================================================================
 # HUD Status Panels — Left panel (systems/shields/energy), economy panel (top-left)
-# Navigation info moved to top bar (HudGauges)
+# Shield diamond replaced by 3D holographic ship model with directional shields.
 # =============================================================================
 
 var ship: ShipController = null
@@ -16,6 +16,22 @@ var warning_flash: float = 0.0
 
 var _left_panel: Control = null
 var _economy_panel: Control = null
+
+# 3D shield hologram
+var _vp_container: SubViewportContainer = null
+var _vp: SubViewport = null
+var _holo_camera: Camera3D = null
+var _holo_model: ShipModel = null
+var _holo_pivot: Node3D = null
+var _shield_mesh: MeshInstance3D = null
+var _shield_mat: ShaderMaterial = null
+var _hit_flash_light: OmniLight3D = null
+var _holo_ship_ref: Node3D = null
+var _hit_facing: int = -1
+var _hit_timer: float = 1.0
+var _prev_shields: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var _shield_half_extents: Vector3 = Vector3.ONE * 10.0
+var _shield_center: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -30,6 +46,47 @@ func _ready() -> void:
 	add_child(_economy_panel)
 
 
+func _process(delta: float) -> void:
+	if not _left_panel or not _left_panel.visible:
+		return
+
+	# Sync hologram rotation with player ship orientation
+	if _holo_pivot and ship:
+		_holo_pivot.transform.basis = ship.global_transform.basis
+
+	# Hit timer always advances for flash light fade
+	_hit_timer += delta
+
+	# Update shield shader uniforms every frame
+	if _shield_mat and health_system:
+		_shield_mat.set_shader_parameter("shield_ratios", Vector4(
+			health_system.get_shield_ratio(HealthSystem.ShieldFacing.FRONT),
+			health_system.get_shield_ratio(HealthSystem.ShieldFacing.REAR),
+			health_system.get_shield_ratio(HealthSystem.ShieldFacing.LEFT),
+			health_system.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT),
+		))
+		_shield_mat.set_shader_parameter("pulse_time", pulse_t)
+
+		# Detect shield hits by comparing current vs previous values
+		for i in 4:
+			var cur: float = health_system.shield_current[i]
+			if cur < _prev_shields[i] - 0.5:
+				_hit_facing = i
+				_hit_timer = 0.0
+				_trigger_hit_flash(i)
+			_prev_shields[i] = cur
+
+		_shield_mat.set_shader_parameter("hit_facing", _hit_facing)
+		_shield_mat.set_shader_parameter("hit_time", _hit_timer)
+
+	# Fade hit flash light
+	if _hit_flash_light:
+		if _hit_timer < 0.5:
+			_hit_flash_light.light_energy = 3.0 * maxf(0.0, 1.0 - _hit_timer * 4.0)
+		else:
+			_hit_flash_light.light_energy = 0.0
+
+
 func set_cockpit_mode(is_cockpit: bool) -> void:
 	_left_panel.visible = not is_cockpit
 	_economy_panel.visible = not is_cockpit
@@ -38,6 +95,11 @@ func set_cockpit_mode(is_cockpit: bool) -> void:
 func redraw_slow() -> void:
 	_left_panel.queue_redraw()
 	_economy_panel.queue_redraw()
+
+
+func invalidate_cache() -> void:
+	_cleanup_shield_holo()
+	_holo_ship_ref = null
 
 
 # =============================================================================
@@ -82,8 +144,9 @@ func _draw_left_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, nrg_r, nrg_c)
 	y += 24
 
-	# Shield Diamond
-	_draw_shield_diamond(ctrl, Vector2(x + w / 2.0, y + 38.0))
+	# 3D Shield Hologram area (SubViewport renders behind this _draw layer)
+	if ship != _holo_ship_ref:
+		_setup_shield_holo()
 	y += 86
 
 	# Energy Pips
@@ -103,44 +166,183 @@ func _draw_left_panel(ctrl: Control) -> void:
 
 
 # =============================================================================
-# SHIELD DIAMOND
+# 3D SHIELD HOLOGRAM
 # =============================================================================
-func _draw_shield_diamond(ctrl: Control, center: Vector2) -> void:
-	if health_system == null:
+func _setup_shield_holo() -> void:
+	_cleanup_shield_holo()
+	_holo_ship_ref = ship
+	if ship == null or ship.ship_data == null:
 		return
-	var sz := 32.0
 
-	var glow_a := sin(pulse_t * 1.2) * 0.08 + 0.12
-	ctrl.draw_arc(center, sz + 6, 0, TAU, 32, UITheme.SHIELD * Color(1, 1, 1, glow_a), 1.5, true)
-	var scan_a := fmod(pulse_t * 1.5, TAU)
-	ctrl.draw_arc(center, sz + 6, scan_a, scan_a + 0.7, 10, UITheme.PRIMARY_DIM, 1.5, true)
+	# SubViewportContainer — renders behind 2D draw layer
+	_vp_container = SubViewportContainer.new()
+	_vp_container.stretch = true
+	_vp_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vp_container.show_behind_parent = true
+	_vp_container.position = Vector2(4, 128)
+	_vp_container.size = Vector2(218, 90)
+	_left_panel.add_child(_vp_container)
 
-	var pts := [
-		center + Vector2(0, -sz), center + Vector2(sz, 0),
-		center + Vector2(0, sz), center + Vector2(-sz, 0),
-	]
-	var facings := [
-		HealthSystem.ShieldFacing.FRONT, HealthSystem.ShieldFacing.RIGHT,
-		HealthSystem.ShieldFacing.REAR, HealthSystem.ShieldFacing.LEFT,
-	]
-	for i in 4:
-		var ratio := health_system.get_shield_ratio(facings[i])
-		var p1: Vector2 = pts[i]
-		var p2: Vector2 = pts[(i + 1) % 4]
-		ctrl.draw_line(p1, p2, UITheme.PRIMARY_FAINT, 3.0)
-		if ratio > 0.01:
-			ctrl.draw_line(p1, p1.lerp(p2, ratio), UITheme.SHIELD if ratio > 0.3 else UITheme.WARNING, 3.0)
+	# SubViewport with isolated world
+	_vp = SubViewport.new()
+	_vp.own_world_3d = true
+	_vp.transparent_bg = true
+	_vp.msaa_3d = Viewport.MSAA_2X
+	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_vp.size = Vector2i(218, 90)
+	_vp_container.add_child(_vp)
 
-	var ts := 9.0
-	ctrl.draw_colored_polygon(PackedVector2Array([
-		center + Vector2(0, -ts), center + Vector2(ts * 0.6, ts * 0.5), center + Vector2(-ts * 0.6, ts * 0.5),
-	]), UITheme.PRIMARY_DIM)
+	# Environment — transparent bg with subtle blue ambient
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0, 0, 0, 0)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.1, 0.3, 0.5)
+	env.ambient_light_energy = 0.3
+	var world_env := WorldEnvironment.new()
+	world_env.environment = env
+	_vp.add_child(world_env)
 
-	var font := UITheme.get_font_medium()
-	ctrl.draw_string(font, center + Vector2(-6, -sz - 6), "AV", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(sz + 5, 4), "D", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-6, sz + 14), "AR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, center + Vector2(-sz - 14, 4), "G", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	# Key light — blue-cyan from above-left
+	var dir_light := DirectionalLight3D.new()
+	dir_light.light_color = Color(0.3, 0.6, 0.9)
+	dir_light.light_energy = 1.5
+	dir_light.rotation_degrees = Vector3(-45, 30, 0)
+	_vp.add_child(dir_light)
+
+	# Rim light — warm amber from behind-right
+	var rim_light := OmniLight3D.new()
+	rim_light.light_color = Color(0.9, 0.6, 0.2)
+	rim_light.light_energy = 1.0
+	rim_light.omni_range = 50.0
+	rim_light.position = Vector3(5, 3, -8)
+	_vp.add_child(rim_light)
+
+	# Camera — from EquipmentCamera data or fallback top-down
+	_holo_camera = Camera3D.new()
+	var cam_data := ShipFactory.get_equipment_camera_data(ship.ship_data.ship_id)
+	if not cam_data.is_empty():
+		_holo_camera.position = cam_data["position"]
+		_holo_camera.transform.basis = cam_data["basis"]
+		_holo_camera.fov = cam_data["fov"]
+		if cam_data.has("projection"):
+			_holo_camera.projection = cam_data["projection"]
+		if cam_data.has("size"):
+			_holo_camera.size = cam_data["size"]
+	else:
+		_holo_camera.position = Vector3(0, 30, 12)
+		_holo_camera.rotation_degrees = Vector3(-60, 0, 0)
+		_holo_camera.fov = 45.0
+	_holo_camera.current = true
+	_vp.add_child(_holo_camera)
+
+	# Rotating pivot — tracks player ship orientation
+	_holo_pivot = Node3D.new()
+	_holo_pivot.name = "ShipPivot"
+	_vp.add_child(_holo_pivot)
+
+	# Ship model — holographic blue
+	_holo_model = ShipModel.new()
+	_holo_model.model_path = ship.ship_data.model_path
+	_holo_model.model_scale = ShipFactory.get_scene_model_scale(ship.ship_data.ship_id)
+	_holo_model.model_rotation_degrees = ShipFactory.get_model_rotation(ship.ship_data.ship_id)
+	_holo_pivot.add_child(_holo_model)
+
+	_apply_holo_material(_holo_model)
+	_create_shield_mesh()
+
+	# Flash light for shield impacts
+	_hit_flash_light = OmniLight3D.new()
+	_hit_flash_light.light_color = Color(0.12, 0.35, 1.0)
+	_hit_flash_light.light_energy = 0.0
+	_hit_flash_light.omni_range = 30.0
+	_hit_flash_light.shadow_enabled = false
+	_holo_pivot.add_child(_hit_flash_light)
+
+	# Initialize shield tracking
+	_prev_shields = [0.0, 0.0, 0.0, 0.0]
+	_hit_facing = -1
+	_hit_timer = 1.0
+	if health_system:
+		for i in 4:
+			_prev_shields[i] = health_system.shield_current[i]
+
+
+func _cleanup_shield_holo() -> void:
+	if _vp_container and is_instance_valid(_vp_container):
+		_vp_container.queue_free()
+	_vp_container = null
+	_vp = null
+	_holo_camera = null
+	_holo_model = null
+	_holo_pivot = null
+	_shield_mesh = null
+	_shield_mat = null
+	_hit_flash_light = null
+
+
+func _apply_holo_material(model: ShipModel) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.15, 0.45, 0.9, 0.15)
+	mat.emission_enabled = true
+	mat.emission = Color(0.05, 0.25, 0.6)
+	mat.emission_energy_multiplier = 0.4
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_override = mat
+
+
+func _create_shield_mesh() -> void:
+	if _holo_model == null or _holo_pivot == null:
+		return
+
+	var aabb := _holo_model.get_visual_aabb()
+	_shield_half_extents = aabb.size * 0.5 * 1.3
+	_shield_center = aabb.get_center()
+	_shield_half_extents = _shield_half_extents.clamp(Vector3.ONE * 2.0, Vector3.ONE * 200.0)
+
+	var shader := load("res://shaders/hud_shield_holo.gdshader") as Shader
+	if shader == null:
+		push_warning("HudStatusPanels: shield hologram shader not found")
+		return
+
+	_shield_mat = ShaderMaterial.new()
+	_shield_mat.shader = shader
+	_shield_mat.set_shader_parameter("shield_scale", _shield_half_extents)
+	_shield_mat.set_shader_parameter("shield_ratios", Vector4(1, 1, 1, 1))
+	_shield_mat.set_shader_parameter("hit_facing", -1)
+	_shield_mat.set_shader_parameter("hit_time", 1.0)
+
+	_shield_mesh = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	sphere.radial_segments = 32
+	sphere.rings = 16
+	_shield_mesh.mesh = sphere
+	_shield_mesh.scale = _shield_half_extents
+	_shield_mesh.position = _shield_center
+	_shield_mesh.material_override = _shield_mat
+	_shield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_holo_pivot.add_child(_shield_mesh)
+
+
+func _trigger_hit_flash(facing: int) -> void:
+	if _hit_flash_light == null:
+		return
+	var dir: Vector3
+	match facing:
+		0: dir = Vector3(0, 0, -_shield_half_extents.z)
+		1: dir = Vector3(0, 0, _shield_half_extents.z)
+		2: dir = Vector3(-_shield_half_extents.x, 0, 0)
+		3: dir = Vector3(_shield_half_extents.x, 0, 0)
+		_: dir = Vector3.ZERO
+	_hit_flash_light.position = _shield_center + dir
+	var ratio := health_system.get_shield_ratio(facing) if health_system else 1.0
+	_hit_flash_light.light_color = Color(0.12, 0.35, 1.0) if ratio > 0.3 else Color(1.0, 0.3, 0.08)
+	_hit_flash_light.light_energy = 3.0
 
 
 # =============================================================================

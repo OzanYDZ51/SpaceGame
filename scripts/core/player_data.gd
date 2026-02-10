@@ -186,8 +186,6 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 	if state.is_empty():
 		return
 
-	var ship_id: String = state.get("current_ship_id", "fighter_mk1")
-
 	# Position — galaxy + system
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
 	if gal_seed != Constants.galaxy_seed:
