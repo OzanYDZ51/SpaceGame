@@ -9,19 +9,38 @@ extends RefCounted
 signal cargo_changed()
 
 var items: Array[Dictionary] = []    # { "name", "type", "quantity", "icon_color" }
-var max_capacity: int = 50           # future use
+var capacity: int = 50
 
 
-func add_item(item: Dictionary) -> void:
+func get_total_count() -> int:
+	var total: int = 0
+	for item in items:
+		total += item.get("quantity", 1)
+	return total
+
+
+func get_remaining_capacity() -> int:
+	return maxi(capacity - get_total_count(), 0)
+
+
+func can_add(qty: int = 1) -> bool:
+	return get_total_count() + qty <= capacity
+
+
+func add_item(item: Dictionary) -> bool:
+	var qty: int = item.get("quantity", 1)
+	if not can_add(qty):
+		return false
 	# Stack with existing same-name item
 	for existing in items:
 		if existing["name"] == item["name"]:
-			existing["quantity"] += item.get("quantity", 1)
+			existing["quantity"] += qty
 			cargo_changed.emit()
-			return
+			return true
 	# New item
 	items.append(item.duplicate())
 	cargo_changed.emit()
+	return true
 
 
 func add_items(new_items: Array[Dictionary]) -> void:
@@ -42,13 +61,6 @@ func remove_item(item_name: String, qty: int = 1) -> bool:
 
 func get_all() -> Array[Dictionary]:
 	return items
-
-
-func get_total_count() -> int:
-	var total: int = 0
-	for item in items:
-		total += item.get("quantity", 1)
-	return total
 
 
 func clear() -> void:

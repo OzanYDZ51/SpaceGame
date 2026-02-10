@@ -17,8 +17,8 @@ var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistr
 var trails: MapTrails = null
 var marquee: MarqueeSelect = null
 
-# Route line (ship → destination, set by StellarMap)
-var route_ship_id: String = ""
+# Route lines (ships → destination, set by StellarMap)
+var route_ship_ids: Array[String] = []
 var route_dest_ux: float = 0.0
 var route_dest_uz: float = 0.0
 
@@ -68,7 +68,7 @@ func _draw() -> void:
 	_draw_trails(entities)
 
 	# Draw selection line first (behind everything) — skip if route line is active
-	if selected_id != "" and _player_id != "" and selected_id != _player_id and route_ship_id == "":
+	if selected_id != "" and _player_id != "" and selected_id != _player_id and route_ship_ids.is_empty():
 		_draw_selection_line(entities, font)
 
 	# Draw entities in type order (player always on top)
@@ -383,7 +383,8 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 # PLAYER (triangle pointing in heading direction)
 # =============================================================================
 func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font) -> void:
-	var col: Color = MapColors.PLAYER
+	var col: Color = ent.get("color", MapColors.PLAYER)
+	var is_local: bool = ent["id"] == _player_id
 
 	# Get heading from velocity or default to up
 	var heading_angle: float = -PI / 2.0  # default: pointing up
@@ -394,16 +395,17 @@ func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font)
 		heading_angle = atan2(vel_z, vel_x)
 
 	# Triangle
-	var s: float = 8.0
+	var s: float = 8.0 if is_local else 6.0
 	var p1: Vector2 = pos + Vector2(cos(heading_angle), sin(heading_angle)) * s * 1.5
 	var p2: Vector2 = pos + Vector2(cos(heading_angle + 2.4), sin(heading_angle + 2.4)) * s
 	var p3: Vector2 = pos + Vector2(cos(heading_angle - 2.4), sin(heading_angle - 2.4)) * s
 	draw_colored_polygon(PackedVector2Array([p1, p2, p3]), col)
 
-	# Pulsing ring
-	var pulse: float = sin(_pulse_t * 2.0) * 0.3 + 0.7
-	var ring_col := Color(col.r, col.g, col.b, pulse * 0.4)
-	draw_arc(pos, 14.0, 0, TAU, 24, ring_col, 1.0, true)
+	# Pulsing ring (local player only)
+	if is_local:
+		var pulse: float = sin(_pulse_t * 2.0) * 0.3 + 0.7
+		var ring_col := Color(col.r, col.g, col.b, pulse * 0.4)
+		draw_arc(pos, 14.0, 0, TAU, 24, ring_col, 1.0, true)
 
 	# Velocity vector
 	if speed > 5.0:
@@ -762,20 +764,21 @@ func _draw_trails(entities: Dictionary) -> void:
 # ROUTE LINE + WAYPOINT + HINT (overlay drawn on top of entities)
 # =============================================================================
 func _draw_route_line(entities: Dictionary) -> void:
-	if route_ship_id == "" or camera == null:
+	if route_ship_ids.is_empty() or camera == null:
 		return
-	var ship_ent: Dictionary = {}
-	if entities.has(route_ship_id):
-		ship_ent = entities[route_ship_id]
-	else:
-		ship_ent = EntityRegistry.get_entity(route_ship_id)
-	if ship_ent.is_empty():
-		return
-	var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
 	var to_sp := camera.universe_to_screen(route_dest_ux, route_dest_uz)
 	var col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5)
-	_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
-	# Destination marker (small diamond)
+	for ship_id in route_ship_ids:
+		var ship_ent: Dictionary = {}
+		if entities.has(ship_id):
+			ship_ent = entities[ship_id]
+		else:
+			ship_ent = EntityRegistry.get_entity(ship_id)
+		if ship_ent.is_empty():
+			continue
+		var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
+		_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
+	# Destination marker (small diamond) — drawn once
 	var ds: float = 5.0
 	var diamond := PackedVector2Array([
 		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),

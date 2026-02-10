@@ -63,5 +63,8 @@ extends Resource
 # --- Price ---
 @export var price: int = 0
 
+# --- Cargo ---
+@export var cargo_capacity: int = 50
+
 # --- Utility ---
 @export var utility_slot_count: int = 0

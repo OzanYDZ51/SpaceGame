@@ -31,5 +31,21 @@ static func get_module_price(module_name: StringName) -> int:
 	return m.price if m else 0
 
 
+static func get_cargo_price(item_name: String) -> int:
+	const CARGO_PRICES := {
+		"metal": 15, "electronics": 30, "weapon_part": 80, "data_chip": 50,
+	}
+	return CARGO_PRICES.get(item_name, 10)
+
+
+static func get_resource_price(resource_id: StringName) -> int:
+	var r := MiningRegistry.get_resource(resource_id)
+	return r.base_value if r else 0
+
+
+static func get_sell_price(buy_price: int) -> int:
+	return int(buy_price * 0.5)
+
+
 static func format_price(amount: int) -> String:
 	return PlayerEconomy.format_credits(amount) + " CR"

@@ -3,8 +3,8 @@ extends UIScreen
 
 # =============================================================================
 # Commerce Screen - Hub with category sidebar + content area
-# Left: 3 category buttons (CHANTIER NAVAL / ARMURERIE / EQUIPEMENTS)
-# Right: Active view (ShipShopView / EquipmentShopView)
+# Left: 6 category buttons (buy + sell) with separator
+# Right: Active view (ShipShopView / EquipmentShopView / Sell views)
 # Bottom: Credits display
 # =============================================================================
 
@@ -18,16 +18,24 @@ var _sidebar_buttons: Array[UIButton] = []
 var _active_view: Control = null
 var _ship_shop: ShipShopView = null
 var _equipment_shop: EquipmentShopView = null
+var _sell_equipment: SellEquipmentView = null
+var _sell_cargo: SellCargoView = null
+var _sell_resource: SellResourceView = null
 var _back_btn: UIButton = null
 var _current_category: int = -1
 
 const SIDEBAR_W := 180.0
 const CONTENT_TOP := 65.0
 const BOTTOM_H := 50.0
+const SEPARATOR_AFTER := 2  # Draw separator after this category index
+const SEPARATOR_H := 14.0
 const CATEGORIES: Array[Array] = [
 	["CHANTIER NAVAL", "Acheter des vaisseaux"],
 	["ARMURERIE", "Armes et tourelles"],
 	["EQUIPEMENTS", "Boucliers, moteurs, modules"],
+	["VENDRE EQUIP.", "Vendre equipement"],
+	["VENDRE CARGO", "Vendre cargaison"],
+	["VENDRE MINERAIS", "Vendre minerais"],
 ]
 
 
@@ -63,6 +71,18 @@ func _ready() -> void:
 	_equipment_shop.visible = false
 	add_child(_equipment_shop)
 
+	_sell_equipment = SellEquipmentView.new()
+	_sell_equipment.visible = false
+	add_child(_sell_equipment)
+
+	_sell_cargo = SellCargoView.new()
+	_sell_cargo.visible = false
+	add_child(_sell_cargo)
+
+	_sell_resource = SellResourceView.new()
+	_sell_resource.visible = false
+	add_child(_sell_resource)
+
 
 func setup(mgr: CommerceManager, stype: int, sname: String) -> void:
 	commerce_manager = mgr
@@ -73,6 +93,12 @@ func setup(mgr: CommerceManager, stype: int, sname: String) -> void:
 		_ship_shop.setup(mgr, stype)
 	if _equipment_shop:
 		_equipment_shop.setup(mgr, stype)
+	if _sell_equipment:
+		_sell_equipment.setup(mgr)
+	if _sell_cargo:
+		_sell_cargo.setup(mgr)
+	if _sell_resource:
+		_sell_resource.setup(mgr)
 
 
 func _on_opened() -> void:
@@ -128,6 +154,18 @@ func _switch_to_category(idx: int) -> void:
 			_equipment_shop.visible = true
 			_active_view = _equipment_shop
 			_equipment_shop.refresh()
+		3:  # Sell equipment
+			_sell_equipment.visible = true
+			_active_view = _sell_equipment
+			_sell_equipment.refresh()
+		4:  # Sell cargo
+			_sell_cargo.visible = true
+			_active_view = _sell_cargo
+			_sell_cargo.refresh()
+		5:  # Sell resources
+			_sell_resource.visible = true
+			_active_view = _sell_resource
+			_sell_resource.refresh()
 	_layout_content_area()
 	queue_redraw()
 
@@ -135,6 +173,9 @@ func _switch_to_category(idx: int) -> void:
 func _hide_all_views() -> void:
 	if _ship_shop: _ship_shop.visible = false
 	if _equipment_shop: _equipment_shop.visible = false
+	if _sell_equipment: _sell_equipment.visible = false
+	if _sell_cargo: _sell_cargo.visible = false
+	if _sell_resource: _sell_resource.visible = false
 	_active_view = null
 
 
@@ -146,8 +187,11 @@ func _layout_controls() -> void:
 	var btn_gap: float = 6.0
 	var btn_y: float = CONTENT_TOP + 20.0
 
+	var y_offset: float = 0.0
 	for i in _sidebar_buttons.size():
-		_sidebar_buttons[i].position = Vector2(sidebar_x, btn_y + i * (btn_h + btn_gap))
+		if i == SEPARATOR_AFTER + 1:
+			y_offset += SEPARATOR_H
+		_sidebar_buttons[i].position = Vector2(sidebar_x, btn_y + i * (btn_h + btn_gap) + y_offset)
 		_sidebar_buttons[i].size = Vector2(btn_w, btn_h)
 
 	# Back button at bottom of sidebar
@@ -183,6 +227,13 @@ func _draw() -> void:
 	# Sidebar background
 	draw_rect(Rect2(20, CONTENT_TOP, SIDEBAR_W, s.y - CONTENT_TOP - BOTTOM_H),
 		Color(0.02, 0.04, 0.06, 0.6))
+
+	# Separator line between buy/sell categories
+	if _sidebar_buttons.size() > SEPARATOR_AFTER + 1:
+		var sep_btn := _sidebar_buttons[SEPARATOR_AFTER]
+		var sep_y: float = sep_btn.position.y + sep_btn.size.y + SEPARATOR_H * 0.5
+		draw_line(Vector2(30, sep_y), Vector2(SIDEBAR_W - 2, sep_y),
+			Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.5), 1.0)
 
 	# Sidebar/content separator
 	draw_line(Vector2(SIDEBAR_W + 5, CONTENT_TOP), Vector2(SIDEBAR_W + 5, s.y - BOTTOM_H),

@@ -14,6 +14,10 @@ var shield_name: StringName = &""
 var engine_name: StringName = &""
 var modules: Array[StringName] = []     # per slot (empty = &"")
 
+# Per-ship cargo and resources
+var cargo: PlayerCargo = null
+var ship_resources: Dictionary = {}  # StringName -> int
+
 # Deployment tracking
 var deployment_state: DeploymentState = DeploymentState.DOCKED
 var docked_station_id: String = ""       # EntityRegistry station ID
@@ -39,6 +43,7 @@ static func create_bare(sid: StringName) -> FleetShip:
 	fs.modules.resize(data.module_slots.size())
 	for i in data.module_slots.size():
 		fs.modules[i] = &""
+	fs._init_cargo(data.cargo_capacity)
 	return fs
 
 
@@ -63,7 +68,33 @@ static func from_ship_data(data: ShipData) -> FleetShip:
 			fs.modules[i] = default_mods[i]
 		else:
 			fs.modules[i] = &""
+	fs._init_cargo(data.cargo_capacity)
 	return fs
+
+
+func _init_cargo(cap: int) -> void:
+	cargo = PlayerCargo.new()
+	cargo.capacity = cap
+	ship_resources = {}
+	for res_id in PlayerEconomy.RESOURCE_DEFS:
+		ship_resources[res_id] = 0
+
+
+func add_resource(resource_id: StringName, amount: int) -> void:
+	if resource_id not in ship_resources:
+		ship_resources[resource_id] = 0
+	ship_resources[resource_id] += amount
+
+
+func spend_resource(resource_id: StringName, amount: int) -> bool:
+	if ship_resources.get(resource_id, 0) < amount:
+		return false
+	ship_resources[resource_id] -= amount
+	return true
+
+
+func get_resource(resource_id: StringName) -> int:
+	return ship_resources.get(resource_id, 0)
 
 
 func get_total_equipment_value() -> int:
@@ -99,6 +130,17 @@ func serialize() -> Dictionary:
 		"deployed_command": String(deployed_command),
 		"deployed_command_params": deployed_command_params,
 	}
+	# Per-ship cargo
+	if cargo:
+		d["cargo"] = cargo.serialize()
+	# Per-ship resources
+	var res_out: Dictionary = {}
+	for res_id in ship_resources:
+		var qty: int = ship_resources[res_id]
+		if qty > 0:
+			res_out[String(res_id)] = qty
+	if not res_out.is_empty():
+		d["ship_resources"] = res_out
 	return d
 
 
@@ -117,4 +159,22 @@ static func deserialize(data: Dictionary) -> FleetShip:
 	fs.docked_system_id = int(data.get("docked_system_id", -1))
 	fs.deployed_command = StringName(data.get("deployed_command", ""))
 	fs.deployed_command_params = data.get("deployed_command_params", {})
+	# Per-ship cargo + resources
+	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	var cap: int = ship_data.cargo_capacity if ship_data else 50
+	fs._init_cargo(cap)
+	var cargo_items: Array = data.get("cargo", [])
+	for item in cargo_items:
+		fs.cargo.add_item({
+			"name": item.get("item_name", ""),
+			"type": item.get("item_type", ""),
+			"quantity": item.get("quantity", 1),
+			"icon_color": item.get("icon_color", ""),
+		})
+	var saved_res: Dictionary = data.get("ship_resources", {})
+	for res_key in saved_res:
+		var res_id := StringName(str(res_key))
+		var qty: int = int(saved_res[res_key])
+		if qty > 0:
+			fs.ship_resources[res_id] = qty
 	return fs

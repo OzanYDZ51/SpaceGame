@@ -83,6 +83,7 @@ static func _build_fighter_mk1() -> ShipData:
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
 	d.module_slots = ["S", "S"] as Array[String]
 	d.price = 30000
+	d.cargo_capacity = 30
 	return d
 
 
@@ -107,6 +108,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.shield_slot_size = "L"; d.engine_slot_size = "L"
 	d.module_slots = ["S", "M", "M", "L"] as Array[String]
 	d.price = 350000
+	d.cargo_capacity = 100
 	return d
 
 

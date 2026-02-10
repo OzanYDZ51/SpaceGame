@@ -107,6 +107,10 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		return nil, err
 	}
 
+	// Fleet (JSONB column on players table)
+	var fleetRaw []byte
+	_ = r.pool.QueryRow(ctx, `SELECT fleet FROM players WHERE id = $1`, playerID).Scan(&fleetRaw)
+
 	state := &model.PlayerState{
 		CurrentShipID: p.CurrentShipID,
 		GalaxySeed:    p.GalaxySeed,
@@ -120,6 +124,7 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		Credits:       p.Credits,
 		Kills:         p.Kills,
 		Deaths:        p.Deaths,
+		Fleet:         json.RawMessage(fleetRaw),
 	}
 
 	// Resources
@@ -189,6 +194,12 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 
 	now := time.Now()
 
+	// Default fleet to empty array if nil
+	fleetJSON := state.Fleet
+	if fleetJSON == nil {
+		fleetJSON = json.RawMessage(`[]`)
+	}
+
 	// Update player core fields
 	_, err = tx.Exec(ctx, `
 		UPDATE players SET
@@ -196,12 +207,13 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 			pos_x = $5, pos_y = $6, pos_z = $7,
 			rotation_x = $8, rotation_y = $9, rotation_z = $10,
 			credits = $11, kills = $12, deaths = $13,
-			last_save_at = $14, updated_at = $14
+			fleet = $14,
+			last_save_at = $15, updated_at = $15
 		WHERE id = $1
 	`, playerID, state.CurrentShipID, state.GalaxySeed, state.SystemID,
 		state.PosX, state.PosY, state.PosZ,
 		state.RotationX, state.RotationY, state.RotationZ,
-		state.Credits, state.Kills, state.Deaths, now)
+		state.Credits, state.Kills, state.Deaths, fleetJSON, now)
 	if err != nil {
 		return err
 	}

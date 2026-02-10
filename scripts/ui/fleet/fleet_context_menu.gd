@@ -123,4 +123,6 @@ func _input(event: InputEvent) -> void:
 		var local_pos: Vector2 = event.position - global_position
 		if local_pos.x < 0 or local_pos.x > MENU_W or local_pos.y < 0 or local_pos.y > size.y:
 			cancelled.emit()
-			get_viewport().set_input_as_handled()
+			# Right-click outside: let event propagate to StellarMap for new order
+			if event.button_index != MOUSE_BUTTON_RIGHT:
+				get_viewport().set_input_as_handled()

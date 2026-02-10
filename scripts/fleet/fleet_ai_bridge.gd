@@ -36,6 +36,11 @@ func _ready() -> void:
 	_do_init()
 
 
+func _exit_tree() -> void:
+	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
+		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
+
+
 func _do_init() -> void:
 	if _initialized:
 		return
@@ -52,13 +57,19 @@ func _do_init() -> void:
 			_brain.weapons_enabled = false
 		apply_command(command, command_params)
 
+	# Correct waypoints when floating origin shifts (local coords become stale)
+	if not FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
+		FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
+
 
 func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
+	print("FleetAIBridge[%d]: apply_command '%s' params=%s brain=%s" % [fleet_index, cmd, params, _brain != null])
 	command = cmd
 	command_params = params
 	_returning = false
 	_arrived = false
 	if _brain == null:
+		push_warning("FleetAIBridge[%d]: _brain is null, command ignored!" % fleet_index)
 		return
 
 	# All mission commands: ignore threats, focus on destination
@@ -144,3 +155,25 @@ func _mark_arrived(target_pos: Vector3) -> void:
 	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
+
+
+func _on_origin_shifted(_delta: Vector3) -> void:
+	# Floating origin shifted — local waypoints in AIBrain are now stale.
+	# Refresh patrol area using universe coords from command_params.
+	if _brain == null or command == &"":
+		return
+	match command:
+		&"move_to":
+			var tx: float = command_params.get("target_x", 0.0)
+			var tz: float = command_params.get("target_z", 0.0)
+			_brain.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 50.0)
+		&"patrol":
+			var cx: float = command_params.get("center_x", 0.0)
+			var cz: float = command_params.get("center_z", 0.0)
+			var radius: float = command_params.get("radius", 500.0)
+			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
+		&"return_to_station":
+			if _station_id != "":
+				var ent := EntityRegistry.get_entity(_station_id)
+				if not ent.is_empty():
+					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)

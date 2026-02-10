@@ -266,6 +266,7 @@ func _initialize_game() -> void:
 	_commerce_manager.player_economy = player_economy
 	_commerce_manager.player_inventory = player_inventory
 	_commerce_manager.player_fleet = player_fleet
+	_commerce_manager.player_cargo = player_cargo
 
 	# Wire economy to HUD (must be after player_data creation)
 	if hud:
@@ -623,6 +624,7 @@ func _on_system_loaded(system_id: int) -> void:
 
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
+	print("GameManager: fleet_order idx=%d order='%s' params=%s" % [fleet_index, order_id, params])
 	if player_fleet == null or fleet_index < 0 or fleet_index >= player_fleet.ships.size():
 		return
 
@@ -650,7 +652,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 				_toast_manager.show_toast("DEPLOIEMENT: %s" % fs.custom_name, UIToast.ToastType.SUCCESS)
 			# Update route line now that deployed_npc_id is set
 			if _stellar_map:
-				_stellar_map._set_route_line(fleet_index, params.get("target_x", 0.0), params.get("target_z", 0.0))
+				_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
 		else:
 			if _toast_manager:
 				_toast_manager.show_toast("DEPLOIEMENT ECHOUE", UIToast.ToastType.WARNING)

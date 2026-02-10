@@ -37,6 +37,7 @@ const PLANET_LAVA := Color(1.0, 0.35, 0.15, 0.9)
 
 const STATION_TEAL := Color(0.1, 0.9, 0.6, 0.9)
 const PLAYER := Color(0.15, 0.85, 1.0, 1.0)
+const REMOTE_PLAYER := Color(0.3, 1.0, 0.85, 0.9)  # Cyan-green for other players
 # NPC factions
 const NPC_HOSTILE := Color(1.0, 0.3, 0.3, 0.9)
 const NPC_FRIENDLY := Color(0.3, 1.0, 0.45, 0.9)

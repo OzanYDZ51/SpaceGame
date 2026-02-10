@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #050810;
+  --color-bg-secondary: #0a0e14;
+  --color-bg-card: rgba(0, 20, 30, 0.6);
+  --color-bg-card-solid: #00141e;
+
+  --color-cyan: #00c8ff;
+  --color-cyan-dim: rgba(0, 200, 255, 0.5);
+  --color-cyan-glow: rgba(0, 200, 255, 0.3);
+  --color-cyan-subtle: rgba(0, 200, 255, 0.1);
+  --color-cyan-faint: rgba(0, 200, 255, 0.06);
+
+  --color-accent: #00ff88;
+  --color-danger: #ff5555;
+  --color-warning: #ffaa00;
+
+  --color-text-primary: #b0d4e8;
+  --color-text-secondary: rgba(176, 212, 232, 0.6);
+  --color-text-muted: rgba(176, 212, 232, 0.35);
+
+  --color-border-subtle: rgba(0, 200, 255, 0.12);
+  --color-border-hover: rgba(0, 200, 255, 0.4);
+
+  --font-heading: "Rajdhani", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
+}
+
+/* ── Base ────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-heading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(0, 200, 255, 0.3);
+  color: #ffffff;
+}
+
+/* ── Scrollbar ───────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 200, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 200, 255, 0.4);
+}
+
+/* ── Glow utilities ──────────────────────────────── */
+
+.text-glow-cyan {
+  text-shadow:
+    0 0 10px rgba(0, 200, 255, 0.6),
+    0 0 30px rgba(0, 200, 255, 0.3),
+    0 0 60px rgba(0, 200, 255, 0.15);
+}
+
+.text-glow-cyan-sm {
+  text-shadow:
+    0 0 6px rgba(0, 200, 255, 0.5),
+    0 0 15px rgba(0, 200, 255, 0.2);
+}
+
+.box-glow-cyan {
+  box-shadow:
+    0 0 10px rgba(0, 200, 255, 0.15),
+    0 0 30px rgba(0, 200, 255, 0.08),
+    inset 0 0 10px rgba(0, 200, 255, 0.05);
+}
+
+.border-glow-hover {
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.border-glow-hover:hover {
+  border-color: rgba(0, 200, 255, 0.4);
+  box-shadow:
+    0 0 15px rgba(0, 200, 255, 0.15),
+    0 0 40px rgba(0, 200, 255, 0.08);
+}

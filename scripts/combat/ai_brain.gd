@@ -398,6 +398,7 @@ func _generate_patrol_waypoints() -> void:
 func set_patrol_area(center: Vector3, radius: float) -> void:
 	_patrol_center = center
 	_patrol_radius = radius
+	_current_waypoint = 0
 	_generate_patrol_waypoints()
 
 

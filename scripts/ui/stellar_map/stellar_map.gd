@@ -51,7 +51,7 @@ var _fleet_selected_indices: Array[int] = []
 var _right_hold_start: float = 0.0
 var _right_hold_pos: Vector2 = Vector2.ZERO
 var _right_hold_triggered: bool = false
-const RIGHT_HOLD_DURATION: float = 0.4
+const RIGHT_HOLD_DURATION: float = 0.8
 const RIGHT_HOLD_MAX_MOVE: float = 20.0
 
 # Context menu
@@ -312,9 +312,13 @@ func _input(event: InputEvent) -> void:
 	if not _is_open:
 		return
 
-	# If context menu is open, let it handle input
+	# If context menu is open, right-click closes it and continues processing
 	if _context_menu and _context_menu.visible:
-		return
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			_close_context_menu()
+			# Fall through — process this right-click press normally (start hold timer)
+		else:
+			return
 
 	# If search bar is open, let it handle input first
 	if _search.visible:
@@ -466,7 +470,7 @@ func _input(event: InputEvent) -> void:
 								for idx in effective_indices:
 									fleet_order_requested.emit(idx, &"move_to", params)
 								_show_waypoint(ux, uz)
-								_set_route_line(effective_indices[0], ux, uz)
+								_set_route_lines(effective_indices, ux, uz)
 							_last_click_id = ""
 						else:
 							_select_entity(hit_id)
@@ -534,7 +538,7 @@ func _input(event: InputEvent) -> void:
 					for idx in effective_indices:
 						fleet_order_requested.emit(idx, &"move_to", params)
 					_show_waypoint(universe_x, universe_z)
-					_set_route_line(effective_indices[0], universe_x, universe_z)
+					_set_route_lines(effective_indices, universe_x, universe_z)
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()
@@ -767,7 +771,7 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 			var ux: float = params.get("target_x", params.get("center_x", 0.0))
 			var uz: float = params.get("target_z", params.get("center_z", 0.0))
 			_show_waypoint(ux, uz)
-			_set_route_line(effective_indices[0], ux, uz)
+			_set_route_lines(effective_indices, ux, uz)
 	_close_context_menu()
 
 
@@ -781,22 +785,24 @@ func _show_waypoint(ux: float, uz: float) -> void:
 	_dirty = true
 
 
-func _set_route_line(fleet_index: int, dest_ux: float, dest_uz: float) -> void:
+func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float) -> void:
 	_entity_layer.route_dest_ux = dest_ux
 	_entity_layer.route_dest_uz = dest_uz
-	_entity_layer.route_ship_id = ""
-	if _fleet_panel._fleet == null or fleet_index < 0:
+	_entity_layer.route_ship_ids.clear()
+	if _fleet_panel._fleet == null:
 		return
-	# Resolve ship entity ID for the route line
-	if fleet_index == _fleet_panel._fleet.active_index:
-		_entity_layer.route_ship_id = _player_id
-	else:
-		var fs := _fleet_panel._fleet.ships[fleet_index]
-		if fs.deployed_npc_id != &"":
-			_entity_layer.route_ship_id = String(fs.deployed_npc_id)
+	for fleet_index in fleet_indices:
+		if fleet_index < 0 or fleet_index >= _fleet_panel._fleet.ships.size():
+			continue
+		if fleet_index == _fleet_panel._fleet.active_index:
+			_entity_layer.route_ship_ids.append(_player_id)
+		else:
+			var fs := _fleet_panel._fleet.ships[fleet_index]
+			if fs.deployed_npc_id != &"":
+				_entity_layer.route_ship_ids.append(String(fs.deployed_npc_id))
 	_dirty = true
 
 
 func _clear_route_line() -> void:
-	_entity_layer.route_ship_id = ""
+	_entity_layer.route_ship_ids.clear()
 	_dirty = true

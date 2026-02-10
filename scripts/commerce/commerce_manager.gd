@@ -7,10 +7,12 @@ extends RefCounted
 
 signal purchase_completed(item_type: String, item_id: StringName)
 signal purchase_failed(reason: String)
+signal sale_completed(item_type: String, item_id: StringName, total: int)
 
 var player_economy: PlayerEconomy
 var player_inventory: PlayerInventory
 var player_fleet: PlayerFleet
+var player_cargo: PlayerCargo
 
 
 func can_afford(amount: int) -> bool:
@@ -38,6 +40,7 @@ func buy_ship(ship_id: StringName) -> bool:
 				break
 	player_fleet.add_ship(bare_ship)
 	purchase_completed.emit("ship", ship_id)
+	SaveManager.trigger_save("ship_purchase")
 	return true
 
 
@@ -102,8 +105,10 @@ func sell_weapon(weapon_name: StringName) -> bool:
 		return false
 	var w := WeaponRegistry.get_weapon(weapon_name)
 	if w == null: return false
+	var price := PriceCatalog.get_sell_price(w.price)
 	player_inventory.remove_weapon(weapon_name)
-	player_economy.add_credits(int(w.price * 0.5))
+	player_economy.add_credits(price)
+	sale_completed.emit("weapon", weapon_name, price)
 	return true
 
 
@@ -112,8 +117,10 @@ func sell_shield(shield_name: StringName) -> bool:
 		return false
 	var s := ShieldRegistry.get_shield(shield_name)
 	if s == null: return false
+	var price := PriceCatalog.get_sell_price(s.price)
 	player_inventory.remove_shield(shield_name)
-	player_economy.add_credits(int(s.price * 0.5))
+	player_economy.add_credits(price)
+	sale_completed.emit("shield", shield_name, price)
 	return true
 
 
@@ -122,8 +129,10 @@ func sell_engine(engine_name: StringName) -> bool:
 		return false
 	var e := EngineRegistry.get_engine(engine_name)
 	if e == null: return false
+	var price := PriceCatalog.get_sell_price(e.price)
 	player_inventory.remove_engine(engine_name)
-	player_economy.add_credits(int(e.price * 0.5))
+	player_economy.add_credits(price)
+	sale_completed.emit("engine", engine_name, price)
 	return true
 
 
@@ -132,6 +141,32 @@ func sell_module(module_name: StringName) -> bool:
 		return false
 	var m := ModuleRegistry.get_module(module_name)
 	if m == null: return false
+	var price := PriceCatalog.get_sell_price(m.price)
 	player_inventory.remove_module(module_name)
-	player_economy.add_credits(int(m.price * 0.5))
+	player_economy.add_credits(price)
+	sale_completed.emit("module", module_name, price)
+	return true
+
+
+func sell_cargo(item_name: String, qty: int = 1) -> bool:
+	if player_cargo == null: return false
+	var unit_price := PriceCatalog.get_cargo_price(item_name)
+	if not player_cargo.remove_item(item_name, qty):
+		return false
+	var total := unit_price * qty
+	player_economy.add_credits(total)
+	sale_completed.emit("cargo", StringName(item_name), total)
+	SaveManager.mark_dirty()
+	return true
+
+
+func sell_resource(resource_id: StringName, qty: int = 1) -> bool:
+	var unit_price := PriceCatalog.get_resource_price(resource_id)
+	if unit_price <= 0: return false
+	if not player_economy.spend_resource(resource_id, qty):
+		return false
+	var total := unit_price * qty
+	player_economy.add_credits(total)
+	sale_completed.emit("resource", resource_id, total)
+	SaveManager.mark_dirty()
 	return true
