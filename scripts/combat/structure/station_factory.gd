@@ -18,9 +18,10 @@ static func setup_station(station: SpaceStation, equipment: StationEquipment) ->
 	hp_root.name = "HardpointRoot"
 	station.add_child(hp_root)
 
-	# Create weapon manager
+	# Create weapon manager (all weapons auto-track on stations)
 	var wm := WeaponManager.new()
 	wm.name = "WeaponManager"
+	wm.all_weapons_are_turrets = true
 	station.add_child(wm)
 	wm.setup_hardpoints_from_configs(configs, station, hp_root)
 

@@ -18,6 +18,9 @@ var _weapon_audio: WeaponAudio = null
 var _ship: Node3D = null
 var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 
+# Stations: all mounted weapons auto-track as turrets (set by StationFactory)
+var all_weapons_are_turrets: bool = false
+
 # Module multipliers (set by EquipmentManager)
 var weapon_energy_mult: float = 1.0
 var weapon_range_mult: float = 1.0
@@ -180,7 +183,8 @@ func update_turrets(target_node: Variant = null) -> void:
 	for hp in hardpoints:
 		if not hp.is_turret or not hp.enabled or hp.mounted_weapon == null:
 			continue
-		if hp.mounted_weapon.weapon_type != WeaponResource.WeaponType.TURRET:
+		# Stations: all weapons auto-track. Ships: only TURRET-type weapons.
+		if not all_weapons_are_turrets and hp.mounted_weapon.weapon_type != WeaponResource.WeaponType.TURRET:
 			continue
 
 		# Quadratic lead prediction per turret (same as TargetingSystem)
