@@ -142,9 +142,9 @@ func _draw_speed_arc(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(cx + mw / 2.0 + 4, cy - 26), Vector2(cx + mw / 2.0 + 18, cy - 26), mc * Color(1, 1, 1, 0.5), 1.0)
 
 	var mx := "%.0f" % max_spd
-	var mxw := font.get_string_size(mx, HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
+	var mxw := font.get_string_size(mx, HORIZONTAL_ALIGNMENT_CENTER, -1, UITheme.FONT_SIZE_TINY).x
 	var mp := Vector2(cx + cos(a1) * (r + 14), cy + sin(a1) * (r + 14))
-	ctrl.draw_string(font, mp - Vector2(mxw / 2.0, 0), mx, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, mp - Vector2(mxw / 2.0, 0), mx, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -204,24 +204,24 @@ func _draw_top_bar(ctrl: Control) -> void:
 	var fa_on := ship.flight_assist
 	var fa_col := UITheme.ACCENT if fa_on else UITheme.DANGER
 	ctrl.draw_circle(Vector2(16, row2_y - 4), 3.0, fa_col)
-	ctrl.draw_string(font, Vector2(24, row2_y), "AV" if fa_on else "OFF", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, fa_col)
+	ctrl.draw_string(font, Vector2(24, row2_y), "AV" if fa_on else "OFF", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, fa_col)
 
 	# CAP heading
 	var fwd := -ship.global_transform.basis.z
 	var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
 	if heading < 0: heading += 360.0
-	ctrl.draw_string(font, Vector2(58, row2_y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, Vector2(86, row2_y), "%06.2f\u00B0" % heading, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.TEXT)
+	ctrl.draw_string(font, Vector2(58, row2_y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(86, row2_y), "%06.2f\u00B0" % heading, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 
 	# INCL pitch
 	var pitch: float = rad_to_deg(asin(clamp(fwd.y, -1.0, 1.0)))
-	ctrl.draw_string(font, Vector2(170, row2_y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, Vector2(200, row2_y), "%+.1f\u00B0" % pitch, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UITheme.TEXT)
+	ctrl.draw_string(font, Vector2(170, row2_y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(204, row2_y), "%+.1f\u00B0" % pitch, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 
 	# POS (right-aligned)
 	var pos_str := FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"
-	var pos_w := font.get_string_size(pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	ctrl.draw_string(font, Vector2(w - pos_w - 12, row2_y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.TEXT_DIM)
+	var pos_w := font.get_string_size(pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+	ctrl.draw_string(font, Vector2(w - pos_w - 12, row2_y), pos_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 
 # =============================================================================
@@ -253,8 +253,8 @@ func _draw_compass(ctrl: Control) -> void:
 			ctrl.draw_line(Vector2(sx, h - (4.0 if rd % 30 == 0 else 2.0) - 2), Vector2(sx, h - 2), UITheme.PRIMARY_DIM, 1.0)
 		if rd in labels and abs(d) < 48:
 			var lbl: String = labels[rd]
-			var lw := font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
-			ctrl.draw_string(font, Vector2(sx - lw / 2.0, 12), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.PRIMARY)
+			var lw := font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, UITheme.FONT_SIZE_TINY).x
+			ctrl.draw_string(font, Vector2(sx - lw / 2.0, 12), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
 	ctrl.draw_line(Vector2(cx, 0), Vector2(cx, 4), UITheme.TEXT, 1.5)
 
 

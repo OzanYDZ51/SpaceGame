@@ -160,8 +160,10 @@ func update_cooldowns(_delta: float) -> void:
 
 ## Call every frame to keep turrets tracking + auto-firing at the current target.
 ## When target is null, turrets smoothly return to their rest (forward) orientation.
-func update_turrets(target_node: Node3D) -> void:
-	if target_node == null or not is_instance_valid(target_node):
+func update_turrets(target_node: Variant = null) -> void:
+	if target_node != null and not is_instance_valid(target_node):
+		target_node = null
+	if target_node == null:
 		# No target: return all turrets to forward rest position
 		for hp in hardpoints:
 			if hp.is_turret and hp.enabled and hp.mounted_weapon != null:

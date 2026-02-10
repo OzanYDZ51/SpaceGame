@@ -191,8 +191,9 @@ func _on_opened() -> void:
 
 	if _is_station_mode():
 		screen_title = "STATION — EQUIPEMENT"
-		# Station mode: use station model
-		setup_ship_viewer("res://assets/models/space_station.glb", 0.08, Vector3.ZERO, Vector3.ZERO, Basis.IDENTITY)
+		# Station mode: use station model at scale 1.0 (hardpoint positions are in world units)
+		var station_center := StationHardpointConfig.get_station_center()
+		setup_ship_viewer("res://assets/models/space_station.glb", 1.0, station_center, Vector3.ZERO, Basis.IDENTITY)
 	else:
 		screen_title = "FLOTTE — EQUIPEMENT"
 
@@ -266,7 +267,10 @@ func _setup_3d_viewer() -> void:
 	_viewport.add_child(key_light)
 
 	# Scale light positions and range to model size so all ships are well-lit
+	# Station model is at scale 1.0 but extends ~40m, so boost light range
 	var light_scale := maxf(1.0, _ship_model_scale)
+	if _is_station_mode():
+		light_scale = 5.0
 	var fill_light := OmniLight3D.new()
 	fill_light.light_color = Color(0.8, 0.85, 0.9)
 	fill_light.light_energy = 0.6
@@ -282,7 +286,12 @@ func _setup_3d_viewer() -> void:
 	_viewport.add_child(rim_light)
 
 	_viewer_camera = Camera3D.new()
-	_viewer_camera.fov = 40.0
+	# Station equipment camera data from scene (if available), else default
+	if _is_station_mode():
+		var cam_data := StationHardpointConfig.get_equipment_camera_data()
+		_viewer_camera.fov = cam_data.get("fov", 45.0)
+	else:
+		_viewer_camera.fov = 40.0
 	_viewer_camera.near = 0.1
 	_viewer_camera.far = 500.0
 	_viewport.add_child(_viewer_camera)
@@ -321,6 +330,12 @@ func _auto_fit_camera() -> void:
 		for hp in weapon_manager.hardpoints:
 			var pos: Vector3 = _ship_root_basis * hp.position - _ship_center_offset
 			max_radius = maxf(max_radius, pos.length())
+	elif _is_station_mode() and _adapter:
+		var sta: StationEquipAdapter = _adapter as StationEquipAdapter
+		if sta:
+			for cfg in sta._hp_configs:
+				var pos: Vector3 = cfg.get("position", Vector3.ZERO) - _ship_center_offset
+				max_radius = maxf(max_radius, pos.length())
 
 	# Distance = radius / tan(half_fov), with padding for readability
 	var half_fov := deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
@@ -413,19 +428,23 @@ func _create_hardpoint_markers() -> void:
 					hp_positions.append(Vector3.ZERO)
 				hp_turrets.append(sd.hardpoints[j].get("is_turret", false))
 
+	# Marker size: for ships use model_scale, for stations use larger markers (world-scale positions)
+	var marker_sz: float = 0.18 * _ship_model_scale
+	if _is_station_mode():
+		marker_sz = 2.0  # Station hardpoints are at 20-40m positions, need visible markers
+
 	for i in hp_count:
 		var is_turret: bool = hp_turrets[i] if i < hp_turrets.size() else false
 		var mesh_inst := MeshInstance3D.new()
 		if is_turret:
 			var box := BoxMesh.new()
-			var s := 0.18 * _ship_model_scale
-			box.size = Vector3(s, s, s)
+			box.size = Vector3(marker_sz, marker_sz, marker_sz)
 			mesh_inst.mesh = box
 			mesh_inst.rotation_degrees = Vector3(0, 45, 0)
 		else:
 			var sphere := SphereMesh.new()
-			sphere.radius = 0.15 * _ship_model_scale
-			sphere.height = 0.3 * _ship_model_scale
+			sphere.radius = marker_sz * 0.83
+			sphere.height = marker_sz * 1.67
 			sphere.radial_segments = 12
 			sphere.rings = 6
 			mesh_inst.mesh = sphere
@@ -444,7 +463,7 @@ func _create_hardpoint_markers() -> void:
 		body.position = _ship_root_basis * pos
 		var col_shape := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
-		shape.radius = 0.3 * _ship_model_scale
+		shape.radius = marker_sz * 1.67
 		col_shape.shape = shape
 		body.add_child(col_shape)
 		body.set_meta("hp_index", i)

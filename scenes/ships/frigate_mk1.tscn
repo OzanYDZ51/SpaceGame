@@ -85,11 +85,11 @@ slot_id = 7
 slot_size = "L"
 
 [node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=2005946952]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.5, 4.5, 5)
+transform = Transform3D(-10, 0, -8.7422785e-07, 0, 10, 0, 8.7422785e-07, 0, -10, -1.5, 2.9626188, 3.2316847)
 script = ExtResource("3_vfx")
 
 [node name="VFX_Engine_R" type="Marker3D" parent="." unique_id=1650570366]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.5, 4.5, 5)
+transform = Transform3D(-10, 0, -8.7422785e-07, 0, 10, 0, 8.7422785e-07, 0, -10, 1.5, 2.9626188, 3.2316847)
 script = ExtResource("3_vfx")
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=1432655218]

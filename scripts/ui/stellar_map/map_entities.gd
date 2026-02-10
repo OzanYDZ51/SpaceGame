@@ -104,7 +104,10 @@ func _draw() -> void:
 	if not _squadron_list.is_empty() and _squadron_fleet:
 		MapSquadronLines.draw_squadron_lines(self, camera, entities, _squadron_list, _squadron_fleet, _player_id)
 
-	# Route line (dashed) from ship to destination
+	# Galaxy autopilot route line (player → next gate)
+	_draw_galaxy_route_line(entities)
+
+	# Fleet route line (dashed) from ship to destination
 	_draw_route_line(entities)
 
 	# Waypoint flash
@@ -773,7 +776,49 @@ func _draw_trails(entities: Dictionary) -> void:
 
 
 # =============================================================================
-# ROUTE LINE + WAYPOINT + HINT (overlay drawn on top of entities)
+# GALAXY AUTOPILOT ROUTE LINE (player → next gate on system map)
+# =============================================================================
+func _draw_galaxy_route_line(entities: Dictionary) -> void:
+	if camera == null or _player_id == "":
+		return
+	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	if rm == null or not rm.is_route_active() or rm.next_gate_entity_id == "":
+		return
+
+	# Get player screen position
+	var player_ent: Dictionary = entities.get(_player_id, {})
+	if player_ent.is_empty():
+		player_ent = EntityRegistry.get_entity(_player_id)
+	if player_ent.is_empty():
+		return
+	var from_sp := camera.universe_to_screen(player_ent["pos_x"], player_ent["pos_z"])
+
+	# Get gate screen position
+	var gate_ent: Dictionary = entities.get(rm.next_gate_entity_id, {})
+	if gate_ent.is_empty():
+		gate_ent = EntityRegistry.get_entity(rm.next_gate_entity_id)
+	if gate_ent.is_empty():
+		return
+	var to_sp := camera.universe_to_screen(gate_ent["pos_x"], gate_ent["pos_z"])
+
+	# Dashed cyan line
+	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
+	var col := Color(0.0, 0.9, 1.0, 0.4 * pulse)
+	_draw_dashed_line(from_sp, to_sp, col, 2.0, 10.0, 6.0)
+
+	# Destination label near the gate
+	var font: Font = UITheme.get_font()
+	var dest_name: String = rm.target_system_name
+	if dest_name.length() > 20:
+		dest_name = dest_name.substr(0, 18) + ".."
+	var label := "→ " + dest_name
+	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var label_pos := to_sp + Vector2(-tw * 0.5, -22)
+	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))
+
+
+# =============================================================================
+# FLEET ROUTE LINE + WAYPOINT + HINT (overlay drawn on top of entities)
 # =============================================================================
 func _draw_route_line(entities: Dictionary) -> void:
 	if route_ship_ids.is_empty() or camera == null:

@@ -228,6 +228,10 @@ func open() -> void:
 		_camera.zoom = 0.001
 		_camera.target_zoom = 0.001
 
+		# Reset filters so all entity types are visible on fresh open
+		_filters.clear()
+		_sync_filters()
+
 	# Auto-select player's active ship so right-click move works immediately
 	if _player_id != "" and _preview_entities.is_empty():
 		_select_entity(_player_id)
@@ -586,9 +590,9 @@ func _input(event: InputEvent) -> void:
 							_show_waypoint(universe_x, universe_z)
 							_set_route_lines(effective_indices, universe_x, universe_z)
 					elif not target_ent.is_empty():
-						# Right-click on a known entity (gate, station, planet...) → select + move to it
+						# Right-click on a known entity (gate, station, planet...) → move to it
+						# Don't sync fleet selection from target — right-click is a command, not a selection change
 						_select_entity(target_id)
-						_sync_fleet_selection_from_entity(target_id)
 						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"]}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)

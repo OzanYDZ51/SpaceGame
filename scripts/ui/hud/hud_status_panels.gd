@@ -12,7 +12,6 @@ var energy_system: EnergySystem = null
 var player_economy: PlayerEconomy = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
-var warning_flash: float = 0.0
 
 var _left_panel: Control = null
 var _economy_panel: Control = null
@@ -37,7 +36,7 @@ var _shield_center: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_left_panel = HudDrawHelpers.make_ctrl(0.0, 0.5, 0.0, 0.5, 16, -195, 242, 195)
+	_left_panel = HudDrawHelpers.make_ctrl(0.0, 0.5, 0.0, 0.5, 16, -195, 242, 113)
 	_left_panel.draw.connect(_draw_left_panel.bind(_left_panel))
 	add_child(_left_panel)
 
@@ -149,20 +148,6 @@ func _draw_left_panel(ctrl: Control) -> void:
 		_setup_shield_holo()
 	y += 86
 
-	# Energy Pips
-	_draw_energy_pips(ctrl, Vector2(x, y))
-	y += 62
-
-	# Flight Assist
-	if ship:
-		if ship.flight_assist:
-			ctrl.draw_circle(Vector2(x + 4, y - 3), 3.5, UITheme.ACCENT)
-			ctrl.draw_string(font, Vector2(x + 13, y), "AV ACTIF", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.ACCENT)
-		else:
-			var flash: float = abs(sin(warning_flash)) * 0.5 + 0.5
-			var fc := UITheme.DANGER * Color(1, 1, 1, flash)
-			ctrl.draw_circle(Vector2(x + 4, y - 3), 3.5, fc)
-			ctrl.draw_string(font, Vector2(x + 13, y), "AV DÉSACTIVÉ", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, fc)
 
 
 # =============================================================================
@@ -345,41 +330,6 @@ func _trigger_hit_flash(facing: int) -> void:
 	_hit_flash_light.light_energy = 3.0
 
 
-# =============================================================================
-# ENERGY PIPS
-# =============================================================================
-func _draw_energy_pips(ctrl: Control, pos: Vector2) -> void:
-	if energy_system == null:
-		return
-	var font := UITheme.get_font_medium()
-	var num_seg := 4
-	var seg_w := 22.0
-	var seg_gap := 3.0
-	var bar_h := 9.0
-	var total_w := num_seg * seg_w + (num_seg - 1) * seg_gap
-	var spacing := 20.0
-	var bar_x := pos.x + 34.0
-
-	var pips := [
-		{name = "ARM", value = energy_system.pip_weapons, color = UITheme.DANGER},
-		{name = "BCL", value = energy_system.pip_shields, color = UITheme.SHIELD},
-		{name = "MOT", value = energy_system.pip_engines, color = UITheme.ACCENT},
-	]
-	for i in pips.size():
-		var py := pos.y + i * spacing
-		ctrl.draw_string(font, Vector2(pos.x, py + bar_h - 1), pips[i].name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-		var val: float = clamp(pips[i].value, 0.0, 1.0)
-		for s in num_seg:
-			var sx := bar_x + s * (seg_w + seg_gap)
-			ctrl.draw_rect(Rect2(sx, py, seg_w, bar_h), UITheme.BG_DARK)
-			var seg_start := float(s) / float(num_seg)
-			var seg_end := float(s + 1) / float(num_seg)
-			if val >= seg_end - 0.01:
-				ctrl.draw_rect(Rect2(sx, py, seg_w, bar_h), pips[i].color)
-			elif val > seg_start:
-				ctrl.draw_rect(Rect2(sx, py, seg_w * (val - seg_start) * float(num_seg), bar_h), pips[i].color)
-		var pct := "%d%%" % int(val * 100)
-		ctrl.draw_string(font, Vector2(bar_x + total_w + 6, py + bar_h - 1), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 
 # =============================================================================

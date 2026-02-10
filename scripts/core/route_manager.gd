@@ -19,6 +19,8 @@ var route_index: int = 0              # Current position in route
 var target_system_id: int = -1        # Final destination
 var target_system_name: String = ""   # Final destination name
 var next_gate_entity_id: String = ""  # EntityRegistry ID of the gate to next system
+var _jump_retry_count: int = 0
+const MAX_JUMP_RETRIES: int = 8
 
 # External references (set by GameManager)
 var system_transition: SystemTransition = null
@@ -120,6 +122,11 @@ func _advance_to_next_step() -> void:
 		# Already at destination
 		state = State.IDLE
 		route_completed.emit()
+		route.clear()
+		route_index = 0
+		target_system_id = -1
+		target_system_name = ""
+		next_gate_entity_id = ""
 		return
 
 	var current_sys: int = route[route_index]
@@ -167,6 +174,7 @@ func on_gate_proximity(target_id: int) -> void:
 	# Verify this is the gate we're heading to
 	if route_index + 1 < route.size() and route[route_index + 1] == target_id:
 		state = State.WAITING_AT_GATE
+		_jump_retry_count = 0
 		# Auto-jump after a short delay
 		get_tree().create_timer(1.0).timeout.connect(_auto_jump)
 
@@ -176,9 +184,23 @@ func _auto_jump() -> void:
 		return
 
 	if system_transition == null or not system_transition.can_gate_jump():
-		# Gate not ready, try again
-		if state == State.WAITING_AT_GATE:
-			get_tree().create_timer(0.5).timeout.connect(_auto_jump)
+		_jump_retry_count += 1
+		if _jump_retry_count > MAX_JUMP_RETRIES:
+			# Too many retries — cancel route
+			push_warning("RouteManager: Auto-jump failed after %d retries, cancelling" % _jump_retry_count)
+			cancel_route()
+			return
+		# Re-engage autopilot to fly back to the gate if we drifted out
+		if _jump_retry_count >= 3 and next_gate_entity_id != "":
+			var ship := GameManager.player_ship as ShipController
+			if ship and not ship.autopilot_active:
+				var ent: Dictionary = EntityRegistry.get_entity(next_gate_entity_id)
+				if not ent.is_empty():
+					ship.engage_autopilot(next_gate_entity_id, ent["name"], true)
+					state = State.FLYING_TO_GATE
+					return
+		# Retry
+		get_tree().create_timer(0.5).timeout.connect(_auto_jump)
 		return
 
 	state = State.JUMPING

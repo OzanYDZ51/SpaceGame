@@ -28,7 +28,7 @@ slot_id = 1
 preview_weapon_scene = "uid://bc351fksvydyb"
 
 [node name="VFX_Engine_C" type="Marker3D" parent="." unique_id=1887269768]
-transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 15.64441, -3)
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -0.17226934, 14.701163, -3)
 script = ExtResource("3_vfx")
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=702473366]

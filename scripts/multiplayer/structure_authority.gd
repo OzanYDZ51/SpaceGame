@@ -14,7 +14,12 @@ const BATCH_INTERVAL: float = 0.2  # 5Hz (stations don't move)
 
 
 func _ready() -> void:
-	if NetworkManager.is_connected_to_server():
+	NetworkManager.connection_succeeded.connect(_check_activation)
+	_check_activation()
+
+
+func _check_activation() -> void:
+	if not NetworkManager.structure_hit_claimed.is_connected(_on_hit_claimed):
 		NetworkManager.structure_hit_claimed.connect(_on_hit_claimed)
 
 
@@ -81,7 +86,7 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	# Distance check
 	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
 	if sender_state:
-		var sender_pos := Vector3(sender_state.position[0], sender_state.position[1], sender_state.position[2])
+		var sender_pos := FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
 		if sender_pos.distance_to(node.global_position) > 5000.0:
 			return
 
@@ -134,14 +139,27 @@ func _broadcast_batch() -> void:
 			continue
 		var sys_id: int = ps.system_id
 		if by_system.has(sys_id) and not by_system[sys_id].is_empty():
-			NetworkManager._rpc_structure_batch.rpc_id(peer_id, by_system[sys_id])
+			if peer_id == 1 and not NetworkManager.is_dedicated_server:
+				# Host — deliver locally
+				apply_batch(by_system[sys_id])
+			else:
+				NetworkManager._rpc_structure_batch.rpc_id(peer_id, by_system[sys_id])
 
 
 func _broadcast_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
-	# Send to all connected peers
-	for peer_id in NetworkManager.peers:
+	# Get the system this structure belongs to
+	var sys_id: int = -1
+	if _structures.has(struct_id):
+		sys_id = _structures[struct_id].get("system_id", -1)
+
+	# Send to peers in the same system only
+	var target_peers := NetworkManager.get_peers_in_system(sys_id) if sys_id >= 0 else NetworkManager.peers.keys()
+	for peer_id in target_peers:
 		var loot_for_peer: Array = loot if peer_id == killer_pid else []
-		NetworkManager._rpc_structure_destroyed.rpc_id(peer_id, struct_id, killer_pid, pos, loot_for_peer)
+		if peer_id == 1 and not NetworkManager.is_dedicated_server:
+			apply_structure_destroyed(struct_id, killer_pid, pos, loot_for_peer)
+		else:
+			NetworkManager._rpc_structure_destroyed.rpc_id(peer_id, struct_id, killer_pid, pos, loot_for_peer)
 
 
 # =============================================================================

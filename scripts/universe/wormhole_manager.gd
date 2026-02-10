@@ -52,6 +52,7 @@ func initiate_wormhole_jump() -> void:
 	await SaveManager.save_player_state(true)
 
 	# 3. Disconnect from current server
+	var original_seed: int = Constants.galaxy_seed
 	NetworkManager.disconnect_from_server()
 
 	# 4. Switch galaxy
@@ -89,6 +90,17 @@ func initiate_wormhole_jump() -> void:
 	while not (state[0] and state[1]) and timeout > 0:
 		await get_tree().create_timer(0.1).timeout
 		timeout -= 0.1
+
+	# Check if connection succeeded
+	if not (state[0] and state[1]):
+		push_error("WormholeManager: Connection to target galaxy timed out!")
+		# Revert galaxy seed to original
+		Constants.galaxy_seed = original_seed
+		# Fade in to show error state, don't jump to invalid system
+		system_transition._is_transitioning = false
+		system_transition._transition_phase = 3
+		system_transition._transition_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return
 
 	# 7. Jump to spawn system in new galaxy
 	var spawn_sys: int = new_galaxy.player_home_system

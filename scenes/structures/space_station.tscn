@@ -1,0 +1,82 @@
+[gd_scene format=3 uid="uid://c6eno4tl70tuq"]
+
+[ext_resource type="PackedScene" uid="uid://dnamub7gwhi7u" path="res://assets/models/space_station.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+
+[node name="SpaceStation" type="Node3D" unique_id=1514895574]
+
+[node name="ModelPivot" type="Node3D" parent="." unique_id=1113447410]
+
+[node name="StationModel" parent="ModelPivot" unique_id=1003984436 instance=ExtResource("1_model")]
+
+[node name="StationCenter" type="Marker3D" parent="." unique_id=694083180]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.49623775, 0)
+
+[node name="Hardpoint_0" type="Node3D" parent="." unique_id=2089283514]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.035017014, 6.001024)
+script = ExtResource("2_hpslot")
+slot_size = "L"
+is_turret = true
+turret_arc_degrees = 360.0
+turret_speed_deg_s = 45.0
+turret_pitch_min = -10.0
+turret_pitch_max = 85.0
+
+[node name="Hardpoint_1" type="Node3D" parent="." unique_id=115775459]
+transform = Transform3D(1, 0, 0, 0, -1, 0, 0, 0, -1, 6.0925865, 0.9222989, 0)
+script = ExtResource("2_hpslot")
+slot_id = 1
+slot_size = "L"
+is_turret = true
+turret_arc_degrees = 360.0
+turret_speed_deg_s = 45.0
+turret_pitch_min = -10.0
+turret_pitch_max = 85.0
+
+[node name="Hardpoint_2" type="Node3D" parent="." unique_id=925283951]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -6.512473, -0.80075455, 0)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 270.0
+turret_speed_deg_s = 55.0
+turret_pitch_min = -30.0
+turret_pitch_max = 60.0
+
+[node name="Hardpoint_3" type="Node3D" parent="." unique_id=1871144809]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -3.997509, 0.12781811, -4.7185917)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 270.0
+turret_speed_deg_s = 55.0
+turret_pitch_min = -30.0
+turret_pitch_max = 60.0
+
+[node name="Hardpoint_4" type="Node3D" parent="." unique_id=421128076]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.729885, 1.3581307, -3.7523885)
+script = ExtResource("2_hpslot")
+slot_id = 4
+slot_size = "S"
+is_turret = true
+turret_arc_degrees = 180.0
+turret_speed_deg_s = 70.0
+turret_pitch_min = -30.0
+turret_pitch_max = 60.0
+
+[node name="Hardpoint_5" type="Node3D" parent="." unique_id=1382282721]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21399224, 1.2773483, -6.333413)
+script = ExtResource("2_hpslot")
+slot_id = 5
+slot_size = "S"
+is_turret = true
+turret_arc_degrees = 180.0
+turret_speed_deg_s = 70.0
+turret_pitch_min = -30.0
+turret_pitch_max = 60.0
+
+[node name="EquipmentCamera" type="Camera3D" parent="." unique_id=709300778]
+transform = Transform3D(1, 0, 0, 0, 0.8192, -0.5736, 0, 0.5736, 0.8192, 0, 70, 100)
+fov = 45.0

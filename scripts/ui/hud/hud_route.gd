@@ -60,7 +60,7 @@ func _draw_route_panel(ctrl: Control) -> void:
 	# Jump progress
 	var current_jump: int = rm.get_current_jump()
 	var total_jumps: int = rm.get_jumps_total()
-	var jump_text := "SAUT %d/%d" % [current_jump, total_jumps]
+	var jump_text := "SAUT %d/%d" % [current_jump + 1, total_jumps]
 	ctrl.draw_string(font, Vector2(8, 30), jump_text, HORIZONTAL_ALIGNMENT_LEFT, 100, 13, Color(0.6, 0.8, 0.9, 0.8))
 
 	# Progress dots

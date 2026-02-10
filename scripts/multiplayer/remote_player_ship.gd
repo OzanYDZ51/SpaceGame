@@ -184,10 +184,14 @@ func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
 	else:
 		global_position = global_position.lerp(local_pos, 0.65)
 
-	# Slerp rotation
+	# Rotation interpolation with angle wrapping
 	var rot_from: Vector3 = from["rot"]
 	var rot_to: Vector3 = to["rot"]
-	rotation_degrees = rot_from.lerp(rot_to, t)
+	rotation_degrees = Vector3(
+		lerp_angle(deg_to_rad(rot_from.x), deg_to_rad(rot_to.x), t),
+		lerp_angle(deg_to_rad(rot_from.y), deg_to_rad(rot_to.y), t),
+		lerp_angle(deg_to_rad(rot_from.z), deg_to_rad(rot_to.z), t),
+	) * (180.0 / PI)
 
 	# Throttle
 	var thr := lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t)

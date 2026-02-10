@@ -339,8 +339,8 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 	# Number label just above marker
 	var num_col: Color = type_col if (is_on and armed) else (UITheme.PRIMARY if is_on else Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4))
 	var num_str := str(index + 1)
-	var num_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	ctrl.draw_string(font, pos + Vector2(-num_w * 0.5, -r - 2.0), num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, num_col)
+	var num_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+	ctrl.draw_string(font, pos + Vector2(-num_w * 0.5, -r - 2.0), num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, num_col)
 
 
 # =============================================================================
@@ -369,10 +369,10 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			num_col = UITheme.TEXT_DIM
 		else:
 			num_col = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5)
-		ctrl.draw_string(font, Vector2(x, ly + 10), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, num_col)
+		ctrl.draw_string(font, Vector2(x, ly + 10), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, num_col)
 
 		if not armed:
-			ctrl.draw_string(font, Vector2(x + 10, ly + 10), "Vide", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
+			ctrl.draw_string(font, Vector2(x + 12, ly + 10), "Vide", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
 			continue
 
 		var abbr := _get_weapon_type_abbr(wtype)
@@ -381,10 +381,10 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			name_col = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4)
 		else:
 			name_col = Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, 0.8)
-		ctrl.draw_string(font, Vector2(x + 10, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, name_col)
+		ctrl.draw_string(font, Vector2(x + 12, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, name_col)
 
 		var short_name := wname.get_slice(" ", 0).left(5)
-		ctrl.draw_string(font, Vector2(x + 40, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6 if is_on else 0.3))
+		ctrl.draw_string(font, Vector2(x + 42, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6 if is_on else 0.3))
 
 		if not is_on:
 			var strike_y := ly + 6.0

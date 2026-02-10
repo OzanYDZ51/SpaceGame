@@ -465,8 +465,12 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	if fleet_mgr == null:
 		return
 
-	# For the host (pid=1), deploy directly
-	# For remote clients, we trust the server fleet state
+	# Only the host (pid=1) has fleet data on this server instance.
+	# Remote client fleet deploy requires per-player fleet storage (future).
+	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
+		push_warning("NpcAuthority: Fleet deploy from remote client pid=%d rejected — server lacks per-player fleet data" % sender_pid)
+		return
+
 	var success := fleet_mgr.deploy_ship(fleet_index, cmd, params)
 	if not success:
 		return
@@ -513,6 +517,10 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 	if not _active:
 		return
 
+	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
+		push_warning("NpcAuthority: Fleet retrieve from remote client pid=%d rejected" % sender_pid)
+		return
+
 	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
 	if fleet_mgr == null:
 		return
@@ -539,6 +547,10 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 ## Server handles command change request from a client (or host).
 func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
 	if not _active:
+		return
+
+	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
+		push_warning("NpcAuthority: Fleet command from remote client pid=%d rejected" % sender_pid)
 		return
 
 	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager

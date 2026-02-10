@@ -43,7 +43,7 @@ func set_ship(ship: ShipController) -> void:
 
 
 func trigger_damage_flash(_attacker: Node3D = null, _amount: float = 0.0) -> void:
-	_damage_flash = 0.7
+	_damage_flash = 1.0
 
 
 func _process(delta: float) -> void:
@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
 
 	# Decay flashes
 	_boost_flash = maxf(0.0, _boost_flash - delta * 3.0)
-	_damage_flash = maxf(0.0, _damage_flash - delta * 2.0)
+	_damage_flash = maxf(0.0, _damage_flash - delta * 3.5)
 
 	# Hide when no effect active (zero GPU cost)
 	var any_effect: bool = ratio > 0.01 or _boost_flash > 0.01 or _damage_flash > 0.01 or _cruise_warp > 0.01

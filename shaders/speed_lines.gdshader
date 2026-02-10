@@ -12,11 +12,15 @@ uniform float damage_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float cruise_warp : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
-	vec2 uv = SCREEN_UV;
-	vec2 center = uv - 0.5;
+	vec2 orig_uv = SCREEN_UV;
+	vec2 center = orig_uv - 0.5;
 	float dist = length(center);
 	float angle = atan(center.y, center.x);
 	float sq = speed_ratio * speed_ratio;
+
+	// === DAMAGE ZOOM DISTORTION (zoom-in pulse toward center) ===
+	float dmg = damage_flash * damage_flash;
+	vec2 uv = orig_uv + center * dmg * 0.06;
 
 	// === RADIAL MOTION BLUR (5-tap, edges only) ===
 	float blur_str = sq * 0.018;
@@ -81,9 +85,15 @@ void fragment() {
 	// === BOOST FLASH (intense white burst) ===
 	float flash = boost_flash * boost_flash * max(0.0, 1.0 - dist * 1.6);
 
-	// === DAMAGE FLASH (red pulse) ===
-	float dmg_pulse = damage_flash * (0.85 + 0.15 * sin(TIME * 15.0));
-	vec3 dmg_col = vec3(0.35, 0.03, 0.02) * dmg_pulse;
+	// === DAMAGE CHROMATIC ABERRATION + RED VIGNETTE ===
+	if (dmg > 0.01) {
+		float dmg_ab = dmg * 0.012 * (0.5 + dist);
+		vec2 dmg_ab_dir = normalize(center + vec2(0.001)) * dmg_ab;
+		col.r = texture(screen_texture, uv + dmg_ab_dir).r;
+		col.b = texture(screen_texture, uv - dmg_ab_dir).b;
+	}
+	float dmg_vig = smoothstep(0.15, 0.65, dist) * dmg * 0.45;
+	vec3 dmg_col = vec3(0.5, 0.02, 0.01) * dmg_vig;
 
 	// === COLOR GRADE (subtle blue shift at high speed) ===
 	vec3 grade = mix(vec3(1.0), vec3(0.92, 0.95, 1.08), sq * 0.4);

@@ -196,7 +196,6 @@ func _process(delta: float) -> void:
 	_gauges.warning_flash = _warning_flash
 	_status_panels.pulse_t = _pulse_t
 	_status_panels.scan_line_y = _scan_line_y
-	_status_panels.warning_flash = _warning_flash
 	_weapon_panel.pulse_t = _pulse_t
 	_weapon_panel.scan_line_y = _scan_line_y
 	_targeting.pulse_t = _pulse_t

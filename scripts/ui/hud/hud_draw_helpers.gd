@@ -16,8 +16,8 @@ static func draw_diamond(ctrl: Control, pos: Vector2, sz: float, col: Color) -> 
 
 static func draw_section_header(ctrl: Control, font: Font, x: float, y: float, w: float, text: String) -> float:
 	ctrl.draw_rect(Rect2(x, y - 11, 3, 14), UITheme.PRIMARY)
-	ctrl.draw_string(font, Vector2(x + 9, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.HEADER)
-	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	ctrl.draw_string(font, Vector2(x + 9, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.HEADER)
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 	var lx := x + 9 + tw + 8
 	if lx < x + w:
 		ctrl.draw_line(Vector2(lx, y - 4), Vector2(x + w, y - 4), UITheme.PRIMARY_DIM, 1.0)

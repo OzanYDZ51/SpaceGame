@@ -328,7 +328,11 @@ func _on_server_disconnected() -> void:
 	connection_state = ConnectionState.DISCONNECTED
 	local_peer_id = -1
 	is_host = false
+	# Emit peer_disconnected for each peer so NetworkSyncManager can clean up puppets
+	var peer_ids := peers.keys()
 	peers.clear()
+	for pid in peer_ids:
+		peer_disconnected.emit(pid)
 	player_list_updated.emit()
 	_reconnect_attempts = 1
 	_reconnect_timer = RECONNECT_DELAY

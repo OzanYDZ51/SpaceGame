@@ -112,6 +112,10 @@ func jump_to_system(target_id: int, _from_system_id: int = -1) -> void:
 		push_error("SystemTransition: No galaxy data!")
 		return
 
+	# Emit system_unloading so NetworkSyncManager can clean up remote players/NPCs
+	if current_system_id >= 0:
+		system_unloading.emit(current_system_id)
+
 	_pending_target_id = target_id
 	_execute_transition()
 

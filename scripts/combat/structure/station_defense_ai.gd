@@ -88,7 +88,7 @@ func _find_best_target() -> Node3D:
 	for aid in _threat_table:
 		var entry: Dictionary = _threat_table[aid]
 		var node: Node3D = entry["node_ref"]
-		if not is_instance_valid(node):
+		if not is_instance_valid(node) or node.is_queued_for_deletion():
 			continue
 		var dist: float = station_pos.distance_to(node.global_position)
 		if dist > DETECTION_RANGE:
@@ -103,7 +103,7 @@ func _find_best_target() -> Node3D:
 
 	# Priority 2: Any hostile ship in range from "ships" group
 	for ship in get_tree().get_nodes_in_group("ships"):
-		if ship == null or not is_instance_valid(ship):
+		if ship == null or not is_instance_valid(ship) or ship.is_queued_for_deletion():
 			continue
 		# Skip player
 		if ship == GameManager.player_ship:
