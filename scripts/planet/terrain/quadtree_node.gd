@@ -6,8 +6,8 @@ extends RefCounted
 # Manages split/merge decisions and creates TerrainChunk leaves.
 # =============================================================================
 
-const SPLIT_THRESHOLD: float = 0.8    # screen_error above which we split (lower = more detail)
-const MERGE_THRESHOLD: float = 0.3    # screen_error below which we merge children
+const SPLIT_THRESHOLD: float = 0.5    # screen_error above which we split (lower = more detail)
+const MERGE_THRESHOLD: float = 0.25   # SPLIT/2 — ensures children start at morph_factor=0 after split
 const MAX_DEPTH: int = 14             # ~5-20m tiles for 60km radius planet
 
 var face: int = 0
@@ -44,9 +44,19 @@ func compute_screen_error(cam_pos: Vector3, planet_center: Vector3, planet_radiu
 	var dist: float = cam_pos.distance_to(world_center)
 	if dist < 1.0:
 		dist = 1.0
-	# node_size is in UV space [0, 2] — convert to approximate world size
-	var world_size: float = node_size * planet_radius * 0.5  # ~half circumference fraction
+	# node_size is in UV space [0, 2] — convert to world size via tangent-warp angular span
+	# With tan(u*π/4) remapping, angular span per UV unit ≈ π/4 radians
+	var world_size: float = node_size * planet_radius * 0.785  # PI/4 ≈ 0.785
 	return world_size / dist
+
+
+## Compute geo-morph factor for this node.
+## Returns 0.0 (coarse/parent appearance) to 1.0 (full detail).
+func compute_morph_factor(cam_pos: Vector3, planet_center: Vector3, planet_radius: float) -> float:
+	if depth == 0:
+		return 1.0  # Root nodes have no parent to morph toward
+	var error: float = compute_screen_error(cam_pos, planet_center, planet_radius)
+	return clampf((error - MERGE_THRESHOLD) / (SPLIT_THRESHOLD - MERGE_THRESHOLD), 0.0, 1.0)
 
 
 ## Update the quadtree: split or merge based on camera distance.
@@ -115,10 +125,9 @@ func _split() -> void:
 		QuadtreeNode.new(face, d, Vector2(mid_u, mid_v), uv_max),
 	]
 
-	# Free our chunk if we had one (children will create their own)
-	if chunk and is_instance_valid(chunk):
-		chunk.queue_free()
-		chunk = null
+	# Keep parent chunk alive — QuadtreeFace will free it once all
+	# descendant leaves have their chunks built (seamless transition).
+	# If camera pulls back and node merges, the lingering chunk is reused.
 
 
 func _merge() -> void:

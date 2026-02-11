@@ -132,8 +132,9 @@ vec3 star_color_temp(float t) {
 // =============================================================================
 
 float star_point(vec3 dir, float scale, float threshold, float halo_strength, out float temperature) {
-	vec3 cell = floor(dir * scale);
-	vec3 local = fract(dir * scale) - 0.5;
+	vec3 scaled = dir * scale;
+	vec3 cell = floor(scaled);
+	vec3 local = fract(scaled) - 0.5;
 
 	float h = _hash31(cell);
 	temperature = _hash31(cell + vec3(42.0, 17.0, 91.0));
@@ -156,7 +157,12 @@ float star_point(vec3 dir, float scale, float threshold, float halo_strength, ou
 	float core = smoothstep(size, size * 0.05, dist);
 	float halo = smoothstep(size * 5.0, size * 0.3, dist) * halo_strength * norm;
 
-	return core + halo;
+	// Anti-alias: fade out stars near cell edges to prevent pop-in/out
+	// Distance from cell center (0 = center, 0.5 = edge)
+	float edge_dist = max(max(abs(local.x), abs(local.y)), abs(local.z));
+	float edge_fade = smoothstep(0.48, 0.35, edge_dist);
+
+	return (core + halo) * edge_fade;
 }
 
 // =============================================================================
@@ -303,19 +309,11 @@ void sky() {
 	// STARS — 4 layers with halos, clusters, and galactic concentration
 	// =========================================================================
 
-	float temp1, temp2, temp3, temp4;
+	float temp2, temp3;
 
-	// Layer 1: Ultra-fine background dust of tiny stars (new)
-	float ultra_thresh = 1.0 - star_density * 0.92 * galactic_boost + cluster * (-0.08);
-	ultra_thresh = clamp(ultra_thresh, 0.0, 1.0);
-	float stars_ultra = star_point(dir, 600.0, ultra_thresh, 0.0, temp4) * 0.15;
+	// Layer 1 & 2 removed — ultra-fine/dim grids caused aliasing flicker
 
-	// Layer 2: Dim background stars
-	float dim_thresh = 1.0 - star_density * 0.85 * galactic_boost + cluster * (-0.10);
-	dim_thresh = clamp(dim_thresh, 0.0, 1.0);
-	float stars_dim = star_point(dir, 250.0, dim_thresh, 0.0, temp1) * 0.3;
-
-	// Layer 3: Medium stars (subtle halo)
+	// Medium stars (subtle halo)
 	float med_thresh = 1.0 - star_density * 0.35 * galactic_boost + cluster * (-0.06);
 	med_thresh = clamp(med_thresh, 0.0, 1.0);
 	float stars_med = star_point(dir, 100.0, med_thresh, 0.1, temp2) * 0.7;
@@ -332,9 +330,7 @@ void sky() {
 	// Cluster brightness boost for visible stars
 	float cluster_bright = 1.0 + cluster * 1.5;
 
-	vec3 total_stars = star_color_temp(temp4) * stars_ultra * galactic_boost
-	                 + star_color_temp(temp1) * stars_dim * galactic_boost * cluster_bright
-	                 + star_color_temp(temp2) * stars_med * twinkle2 * cluster_bright
+	vec3 total_stars = star_color_temp(temp2) * stars_med * twinkle2 * cluster_bright
 	                 + star_color_temp(temp3) * stars_bright * twinkle;
 
 	// Dust dims stars

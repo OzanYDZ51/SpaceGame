@@ -19,7 +19,7 @@ static func create_biome_splatmap(pd: PlanetData, planet_radius: float, terrain_
 	mat.set_shader_parameter("moisture_seed", float(terrain_seed + 5000))
 	mat.set_shader_parameter("temperature_seed", float(terrain_seed + 7000))
 
-	# Tint biome colors toward planet base color for variety
+	# Tint biome colors toward planet base color for per-planet variety
 	var tint: Color = pd.color
 	_tint_uniform(mat, "biome_grass_base", tint, 0.1)
 	_tint_uniform(mat, "biome_grass_accent", tint, 0.1)
@@ -28,6 +28,10 @@ static func create_biome_splatmap(pd: PlanetData, planet_radius: float, terrain_
 	_tint_uniform(mat, "biome_savanna_base", tint, 0.1)
 	_tint_uniform(mat, "biome_desert_base", tint, 0.08)
 	_tint_uniform(mat, "biome_ocean_base", tint, 0.12)
+
+	# Apply custom biome profile overrides if set
+	if pd.biome_profile:
+		pd.biome_profile.apply_to_material(mat)
 
 	return mat
 

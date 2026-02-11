@@ -956,7 +956,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	for i in data.planets.size():
 		var pd: PlanetData = data.planets[i]
 		var ent_id := "planet_%d" % i
-		var angle: float = pd.orbital_angle
+		var angle: float = EntityRegistrySystem.compute_orbital_angle(pd.orbital_angle, pd.orbital_period)
 		var px: float = cos(angle) * pd.orbital_radius
 		var pz: float = sin(angle) * pd.orbital_radius
 		entities[ent_id] = {
@@ -982,7 +982,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	for i in data.stations.size():
 		var sd: StationData = data.stations[i]
 		var ent_id := "station_%d" % i
-		var angle: float = sd.orbital_angle
+		var angle: float = EntityRegistrySystem.compute_orbital_angle(sd.orbital_angle, sd.orbital_period)
 		var sx: float = cos(angle) * sd.orbital_radius
 		var sz: float = sin(angle) * sd.orbital_radius
 		entities[ent_id] = {

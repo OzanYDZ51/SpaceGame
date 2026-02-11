@@ -12,7 +12,7 @@ signal player_left()
 
 @export var ring_inner_radius: float = 45.0
 @export var ring_outer_radius: float = 55.0
-@export var trigger_radius: float = 40.0
+@export var trigger_radius: float = 80.0
 @export var emission_color: Color = Color(0.15, 0.6, 1.0)
 @export var spin_speed: float = 10.0
 

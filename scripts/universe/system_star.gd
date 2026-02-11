@@ -49,7 +49,8 @@ func _build_visuals() -> void:
 	var surface_mat := ShaderMaterial.new()
 	surface_mat.shader = surface_shader
 	surface_mat.set_shader_parameter("star_color", _star_color)
-	surface_mat.set_shader_parameter("emission_energy", clampf(1.8 + _star_luminosity * 0.3, 1.8, 3.5))
+	# High emission for realistic HDR bloom/glare — the star should be blinding
+	surface_mat.set_shader_parameter("emission_energy", clampf(6.0 + _star_luminosity * 2.0, 6.0, 15.0))
 
 	_mesh_instance = MeshInstance3D.new()
 	_mesh_instance.mesh = mesh

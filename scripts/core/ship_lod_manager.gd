@@ -36,7 +36,6 @@ var _node_ids: Dictionary = {}  # LOD0 + LOD1 (ships with node_ref)
 # --- MultiMesh (LOD3 rendering) ---
 var _multimesh: MultiMesh = null
 var _multimesh_instance: MultiMeshInstance3D = null
-var _ship_mesh: Mesh = null
 
 # --- Timers ---
 var _lod_eval_timer: float = 0.0
@@ -58,38 +57,28 @@ func _ready() -> void:
 
 func initialize(universe: Node3D) -> void:
 	_universe_node = universe
-	_load_ship_mesh()
 	_setup_multimesh()
 
 
-func _load_ship_mesh() -> void:
-	var scene: PackedScene = load("res://assets/models/tie.glb")
-	if scene == null:
-		push_warning("ShipLODManager: Could not load tie.glb for MultiMesh")
-		return
-	var instance := scene.instantiate() as Node3D
-	_ship_mesh = _find_first_mesh(instance)
-	instance.queue_free()
-
-
-func _find_first_mesh(node: Node) -> Mesh:
-	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null:
-		return (node as MeshInstance3D).mesh
-	for child in node.get_children():
-		var m := _find_first_mesh(child)
-		if m:
-			return m
-	return null
-
-
 func _setup_multimesh() -> void:
-	if _ship_mesh == null:
-		return
+	# Billboard dot mesh — proper per-instance color support for LOD3 distant ships
+	var dot_mesh := QuadMesh.new()
+	dot_mesh.size = Vector2(8.0, 8.0)  # 8m billboard — visible as a dot at 4km+
+	var dot_mat := StandardMaterial3D.new()
+	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dot_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	dot_mat.vertex_color_use_as_albedo = true
+	dot_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dot_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	dot_mat.no_depth_test = true
+	dot_mat.albedo_color = Color(1.0, 1.0, 1.0, 0.7)
+	dot_mesh.material = dot_mat
+
 	_multimesh = MultiMesh.new()
 	_multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	_multimesh.use_colors = true
 	_multimesh.instance_count = 0
-	_multimesh.mesh = _ship_mesh
+	_multimesh.mesh = dot_mesh
 
 	_multimesh_instance = MultiMeshInstance3D.new()
 	_multimesh_instance.name = "LOD3_MultiMesh"
@@ -569,8 +558,8 @@ func _update_multimesh() -> void:
 		var data: ShipLODData = _ships[id]
 		if data.is_dead:
 			continue
-		var xform := Transform3D(data.rotation_basis, data.position)
-		xform = xform.scaled_local(Vector3.ONE * data.model_scale)
+		# Billboard dot — position only, no rotation/scale needed
+		var xform := Transform3D(Basis.IDENTITY, data.position)
 		_multimesh.set_instance_transform(idx, xform)
 		_multimesh.set_instance_color(idx, data.color_tint)
 		idx += 1

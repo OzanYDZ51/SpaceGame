@@ -613,7 +613,7 @@ func _input(event: InputEvent) -> void:
 						# Right-click on a known entity (gate, station, planet...) → move to it
 						# Don't sync fleet selection from target — right-click is a command, not a selection change
 						_select_entity(target_id)
-						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"]}
+						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])

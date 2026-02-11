@@ -134,7 +134,7 @@ func _execute_transition() -> void:
 	_active_gate_target_name = ""
 	var ship := GameManager.player_ship as ShipController
 	if ship:
-		ship.disengage_autopilot()
+		ship.reset_flight_state()
 
 	# 3. Cleanup current system
 	_cleanup_current_system()
@@ -222,7 +222,7 @@ func _cleanup_current_system() -> void:
 			player_lod.ship_id = &"frigate_mk1"
 			player_lod.ship_class = &"Frigate"
 			player_lod.faction = &"neutral"
-			player_lod.display_name = "Player"
+			player_lod.display_name = NetworkManager.local_player_name
 			player_lod.node_ref = GameManager.player_ship
 			player_lod.current_lod = ShipLODData.LODLevel.LOD0
 			player_lod.position = GameManager.player_ship.global_position
@@ -304,7 +304,7 @@ func _populate_system() -> void:
 			GameManager.station_equipments[eq_key] = station.station_equipment
 
 		var orbit_r: float = sd.orbital_radius
-		var angle: float = sd.orbital_angle
+		var angle: float = EntityRegistrySystem.compute_orbital_angle(sd.orbital_angle, sd.orbital_period)
 		station.transform = Transform3D.IDENTITY
 		station.position = Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
 		station.scale = Vector3(100, 100, 100)
@@ -397,7 +397,7 @@ func _populate_system() -> void:
 	for i in current_system_data.planets.size():
 		var pd: PlanetData = current_system_data.planets[i]
 		var orbit_r: float = pd.orbital_radius
-		var angle: float = pd.orbital_angle
+		var angle: float = EntityRegistrySystem.compute_orbital_angle(pd.orbital_angle, pd.orbital_period)
 		var pos_x: float = cos(angle) * orbit_r
 		var pos_z: float = sin(angle) * orbit_r
 		EntityRegistry.register("planet_%d" % i, {
@@ -462,7 +462,7 @@ func _position_player() -> void:
 		if current_system_data.stations.size() > 0:
 			var st: StationData = current_system_data.stations[0]
 			var orbit_r: float = st.orbital_radius
-			var angle: float = st.orbital_angle
+			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
 			var station_pos := Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
 			var offset := Vector3(0, 100, 500)
 			ship.global_position = station_pos + offset

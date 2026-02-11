@@ -369,6 +369,8 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		hit_dir[1] if hit_dir.size() > 1 else 0.0,
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
 
+	var shield_absorbed: bool = false
+
 	# If the NPC has a node (LOD0/1), apply via HealthSystem
 	# For LOD0/1: apply_damage triggers ship_destroyed → ship_factory lambda handles
 	# broadcast + unregister (checks _npcs.has to avoid double broadcast).
@@ -376,7 +378,8 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
 		var health := lod_data.node_ref.get_node_or_null("HealthSystem") as HealthSystem
 		if health:
-			health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
+			var hit_result := health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
+			shield_absorbed = hit_result.get("shield_absorbed", false)
 			lod_data.hull_ratio = health.get_hull_ratio()
 			lod_data.shield_ratio = health.get_total_shield_ratio()
 			if health.is_dead():
@@ -384,6 +387,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 				_on_npc_killed(npc_id, sender_pid, weapon_name)
 	else:
 		# Data-only NPC (LOD2/3) — apply damage to ratios
+		shield_absorbed = lod_data.shield_ratio > 0.0
 		if lod_data.shield_ratio > 0.0:
 			lod_data.shield_ratio = maxf(lod_data.shield_ratio - claimed_damage * 0.008, 0.0)
 		else:
@@ -391,6 +395,9 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
 			_on_npc_killed(npc_id, sender_pid, weapon_name)
+
+	# 5. Broadcast hit effect to other peers (attacker already showed it locally)
+	broadcast_hit_effect(target_npc, sender_pid, hit_dir, shield_absorbed, sender_state.system_id)
 
 
 func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "") -> void:
@@ -456,6 +463,20 @@ func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: Strin
 		system_name = GameManager._galaxy.get_system_name(system_id)
 
 	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, system_id)
+
+
+## Broadcast hit effect to all peers in system (except the attacker who showed it locally).
+func broadcast_hit_effect(target_id: String, exclude_pid: int, hit_dir: Array, shield_absorbed: bool, system_id: int) -> void:
+	if not _active:
+		return
+	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	for pid in peers_in_sys:
+		if pid == exclude_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.hit_effect_received.emit(target_id, hit_dir, shield_absorbed)
+		else:
+			NetworkManager._rpc_hit_effect.rpc_id(pid, target_id, hit_dir, shield_absorbed)
 
 
 ## Broadcast NPC death to all peers in the NPC's system.
@@ -708,9 +729,10 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 	var base_pos := Vector3(500, 0, -1500)
 	if system_data.stations.size() > 0:
 		var st: StationData = system_data.stations[0]
+		var st_angle := EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
 		var station_pos := Vector3(
-			cos(st.orbital_angle) * st.orbital_radius, 0.0,
-			sin(st.orbital_angle) * st.orbital_radius)
+			cos(st_angle) * st.orbital_radius, 0.0,
+			sin(st_angle) * st.orbital_radius)
 		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 

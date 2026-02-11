@@ -24,6 +24,8 @@ enum PlanetType { ROCKY, LAVA, OCEAN, GAS_GIANT, ICE }
 @export var ocean_level: float = 0.0              ## 0-1 fraction of render_radius (0 = no ocean)
 @export var terrain_amplitude: float = 0.0        ## 0 = auto from type
 @export var heightmap_override: Texture2D = null  ## Override heightmap for hand-crafted planets
+@export var biome_profile: PlanetBiomeProfile = null  ## Custom biome colors (null = type defaults)
+@export var has_civilization: bool = false              ## City lights visible from orbit on night side
 
 
 ## Helper to get type as string (for backwards compat with existing code).

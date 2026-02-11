@@ -20,7 +20,7 @@ var _pool: ProjectilePool = null  # Set by pool on acquire
 
 func _ready() -> void:
 	collision_layer = Constants.LAYER_PROJECTILES
-	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
+	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN
 	monitoring = true
 	monitorable = false
 	body_entered.connect(_on_body_hit)
@@ -84,16 +84,22 @@ func _on_body_hit(body: Node3D) -> void:
 			if remote_player == owner_ship:
 				return
 			var hit_dir := (body.global_position - global_position).normalized()
+			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():
 				# Host: relay damage directly to target client (no self-RPC)
 				NetworkManager._rpc_receive_player_damage.rpc_id(
 					remote_player.peer_id, 1, String(weapon_name), damage,
-					[hit_dir.x, hit_dir.y, hit_dir.z])
+					hit_dir_arr)
+				# Broadcast hit effect to other observers
+				var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+				if npc_auth:
+					npc_auth.broadcast_hit_effect("player_%d" % remote_player.peer_id, 1, hit_dir_arr, false, GameManager.current_system_id_safe())
 			else:
 				NetworkManager._rpc_player_hit_claim.rpc_id(1,
 					remote_player.peer_id, String(weapon_name), damage,
-					[hit_dir.x, hit_dir.y, hit_dir.z])
+					hit_dir_arr)
 			_spawn_hit_effect(body, {"shield_absorbed": false})
+			_report_hit_to_owner(body, {"shield_absorbed": false})
 			_return_to_pool()
 			return
 
@@ -107,7 +113,13 @@ func _on_body_hit(body: Node3D) -> void:
 						NetworkManager._rpc_hit_claim.rpc_id(1,
 							body.name, String(weapon_name), damage,
 							[hit_dir.x, hit_dir.y, hit_dir.z])
-						_spawn_hit_effect(body, {"shield_absorbed": false})
+						# Predict shield state from synced lod data
+						var predicted_info := {
+							"shield_absorbed": lod_data.shield_ratio > 0.05,
+							"shield_ratio": lod_data.shield_ratio,
+						}
+						_spawn_hit_effect(body, predicted_info)
+						_report_hit_to_owner(body, predicted_info)
 						_return_to_pool()
 						return
 			# Structure hit claim (station) — clients only

@@ -8,8 +8,8 @@ extends Node3D
 # Orchestrates all visual subsystems for a single planet.
 # =============================================================================
 
-const MAX_TOTAL_CHUNKS: int = 300
-const UPDATE_INTERVAL: float = 0.2  # 5 Hz quadtree updates
+const MAX_TOTAL_CHUNKS: int = 500
+const UPDATE_INTERVAL: float = 0.125  # 8 Hz quadtree updates
 
 var planet_data: PlanetData = null
 var planet_index: int = 0
@@ -29,7 +29,8 @@ var _terrain_material: ShaderMaterial = null
 var _ocean: OceanRenderer = null
 var _cloud_layer: CloudLayer = null
 var _atmo_renderer: AtmosphereRenderer = null
-var _collision_body: StaticBody3D = null
+var _vegetation: VegetationScatter = null
+var _city_lights: CityLightsLayer = null
 
 var _update_timer: float = 0.0
 var _chunk_debug_timer: float = 0.0
@@ -51,9 +52,9 @@ func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float,
 	_heightmap = HeightmapGenerator.new()
 	_heightmap.setup(terrain_seed, pd.type, pd.get_terrain_amplitude(), pd.ocean_level)
 
-	# Biome generator (same seed family)
+	# Biome generator (same seed family, amplitude needed for height normalization)
 	_biome_gen = BiomeGenerator.new()
-	_biome_gen.setup(terrain_seed, pd.type, pd.ocean_level)
+	_biome_gen.setup(terrain_seed, pd.type, pd.ocean_level, pd.get_terrain_amplitude())
 
 	# Terrain material — use splatmap with biome data
 	_terrain_material = TerrainMaterialFactory.create_biome_splatmap(pd, planet_radius, terrain_seed)
@@ -74,8 +75,11 @@ func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float,
 	# Ocean
 	_create_ocean(pd)
 
-	# Ground collision (sphere approximation)
-	_create_collision(pd)
+	# Vegetation scatter (landable planets only, not gas giants/lava)
+	_create_vegetation(pd, terrain_seed)
+
+	# City lights (civilization planets only)
+	_create_city_lights(pd, terrain_seed)
 
 
 func activate() -> void:
@@ -88,6 +92,8 @@ func deactivate() -> void:
 	visible = false
 	for face in _faces:
 		face.free_all()
+	if _vegetation:
+		_vegetation.set_active(false)
 
 
 func _process(delta: float) -> void:
@@ -124,15 +130,24 @@ func _process(delta: float) -> void:
 	if _cloud_layer:
 		_cloud_layer.update_sun_direction(sun_dir)
 
-	# Throttled quadtree update
-	_update_timer += delta
-	if _update_timer < UPDATE_INTERVAL:
-		return
-	_update_timer = 0.0
+	# Update city lights sun direction
+	if _city_lights:
+		_city_lights.update_sun_direction(sun_dir)
 
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
+
+	# Smooth geo-morph factor update every frame (not throttled)
+	var planet_center := global_position
+	for face in _faces:
+		face.update_morph_factors(cam.global_position, planet_center)
+
+	# Throttled quadtree update (split/merge + mesh rebuilds)
+	_update_timer += delta
+	if _update_timer < UPDATE_INTERVAL:
+		return
+	_update_timer = 0.0
 
 	_update_quadtrees(cam.global_position)
 
@@ -144,6 +159,18 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 	for face in _faces:
 		var count: int = face.update(cam_pos, planet_center)
 		total_chunks += count
+
+	# Altitude (reused for vegetation + collision gating)
+	var altitude: float = cam_pos.distance_to(planet_center) - planet_radius
+
+	# Vegetation: activate below 5km altitude
+	if _vegetation:
+		_vegetation.set_active(altitude < 5000.0)
+
+	# Terrain collision: enable trimesh on nearby chunks when close to surface
+	if altitude < 10000.0:
+		for face in _faces:
+			face.update_collision(cam_pos, planet_center)
 
 	# Debug log (every 3s)
 	_chunk_debug_timer += UPDATE_INTERVAL
@@ -189,16 +216,25 @@ func _create_ocean(pd: PlanetData) -> void:
 	add_child(_ocean)
 
 
-func _create_collision(pd: PlanetData) -> void:
-	_collision_body = StaticBody3D.new()
-	_collision_body.collision_layer = 1
-	_collision_body.collision_mask = 0
-	var col_shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = planet_radius * (1.0 + pd.get_terrain_amplitude() * 0.3)
-	col_shape.shape = sphere
-	_collision_body.add_child(col_shape)
-	add_child(_collision_body)
+func _create_vegetation(pd: PlanetData, terrain_seed: int) -> void:
+	# No vegetation on gas giants or lava planets
+	if pd.type in [PlanetData.PlanetType.GAS_GIANT, PlanetData.PlanetType.LAVA]:
+		return
+	_vegetation = VegetationScatter.new()
+	_vegetation.name = "VegetationScatter"
+	_vegetation.setup(_biome_gen, _heightmap, planet_radius, pd.ocean_level, terrain_seed)
+	add_child(_vegetation)
+
+
+func _create_city_lights(pd: PlanetData, terrain_seed: int) -> void:
+	if not pd.has_civilization:
+		return
+	if pd.type == PlanetData.PlanetType.GAS_GIANT:
+		return
+	_city_lights = CityLightsLayer.new()
+	_city_lights.name = "CityLights"
+	_city_lights.setup(planet_radius, terrain_seed)
+	add_child(_city_lights)
 
 
 # =========================================================================
@@ -225,6 +261,8 @@ func get_atmosphere_config() -> AtmosphereConfig:
 
 ## Free all resources.
 func cleanup() -> void:
+	if _vegetation:
+		_vegetation.set_active(false)
 	for face in _faces:
 		face.free_all()
 	_faces.clear()

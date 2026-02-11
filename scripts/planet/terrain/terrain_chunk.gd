@@ -14,6 +14,7 @@ var chunk_center: Vector3 = Vector3.ZERO  # Center on unit sphere (for distance 
 var chunk_size: float = 2.0               # Angular size in UV space
 
 var _is_built: bool = false
+var _col_body: StaticBody3D = null
 
 
 func setup(p_face: int, p_depth: int, p_uv_min: Vector2, p_uv_max: Vector2) -> void:
@@ -40,3 +41,36 @@ func build_mesh(planet_radius: float, heightmap: HeightmapGenerator, material: M
 
 func is_built() -> bool:
 	return _is_built
+
+
+## Set geo-morph factor via instance shader parameter (no material duplication needed).
+## 0.0 = coarse (looks like parent LOD), 1.0 = full detail.
+func set_morph_factor(value: float) -> void:
+	set_instance_shader_parameter("morph_factor", value)
+
+
+## Create a trimesh collision shape from the terrain mesh.
+## The ConcavePolygonShape3D exactly follows the terrain surface (mountains, valleys).
+func enable_collision() -> void:
+	if _col_body or not _is_built or mesh == null:
+		return
+	var shape := mesh.create_trimesh_shape()
+	if shape == null:
+		return
+	_col_body = StaticBody3D.new()
+	_col_body.collision_layer = Constants.LAYER_TERRAIN
+	_col_body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	_col_body.add_child(cs)
+	add_child(_col_body)
+
+
+func disable_collision() -> void:
+	if _col_body:
+		_col_body.queue_free()
+		_col_body = null
+
+
+func has_collision() -> bool:
+	return _col_body != null

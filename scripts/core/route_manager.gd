@@ -20,6 +20,7 @@ var target_system_id: int = -1        # Final destination
 var target_system_name: String = ""   # Final destination name
 var next_gate_entity_id: String = ""  # EntityRegistry ID of the gate to next system
 var _jump_retry_count: int = 0
+var _pending_jump_target_id: int = -1
 const MAX_JUMP_RETRIES: int = 8
 
 # External references (set by GameManager)
@@ -64,6 +65,7 @@ func cancel_route() -> void:
 	target_system_id = -1
 	target_system_name = ""
 	next_gate_entity_id = ""
+	_pending_jump_target_id = -1
 	route_cancelled.emit()
 
 
@@ -111,6 +113,7 @@ func on_system_loaded(system_id: int) -> void:
 		target_system_id = -1
 		target_system_name = ""
 		next_gate_entity_id = ""
+		_pending_jump_target_id = -1
 		return
 
 	# Continue to next step
@@ -127,6 +130,7 @@ func _advance_to_next_step() -> void:
 		target_system_id = -1
 		target_system_name = ""
 		next_gate_entity_id = ""
+		_pending_jump_target_id = -1
 		return
 
 	var current_sys: int = route[route_index]
@@ -173,6 +177,7 @@ func on_gate_proximity(target_id: int) -> void:
 
 	# Verify this is the gate we're heading to
 	if route_index + 1 < route.size() and route[route_index + 1] == target_id:
+		_pending_jump_target_id = target_id
 		state = State.WAITING_AT_GATE
 		_jump_retry_count = 0
 		# Auto-jump after a short delay
@@ -204,4 +209,4 @@ func _auto_jump() -> void:
 		return
 
 	state = State.JUMPING
-	system_transition.initiate_gate_jump(system_transition.get_gate_target_id())
+	system_transition.initiate_gate_jump(_pending_jump_target_id)

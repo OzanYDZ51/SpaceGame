@@ -7,7 +7,7 @@ render_mode unshaded, shadows_disabled;
 // =============================================================================
 
 uniform vec4 star_color : source_color = vec4(1.0, 0.85, 0.5, 1.0);
-uniform float emission_energy : hint_range(1.0, 10.0) = 3.5;
+uniform float emission_energy : hint_range(1.0, 20.0) = 8.0;
 uniform float granulation_scale : hint_range(1.0, 20.0) = 8.0;
 uniform float granulation_speed : hint_range(0.0, 2.0) = 0.3;
 uniform float sunspot_scale : hint_range(0.5, 5.0) = 2.0;

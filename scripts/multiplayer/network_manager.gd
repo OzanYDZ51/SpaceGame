@@ -46,6 +46,7 @@ signal fleet_command_changed(owner_pid: int, fleet_index: int, npc_id: String, c
 # Combat sync signals
 signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
 signal player_damage_received(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array)
+signal hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed: bool)
 
 # Mining sync signals
 signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array)
@@ -666,12 +667,30 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 		player_damage_received.emit(sender_id, weapon_name, damage_val, hit_dir)
 	else:
 		_rpc_receive_player_damage.rpc_id(target_pid, sender_id, weapon_name, damage_val, hit_dir)
+	# Broadcast hit effect to observers (exclude attacker + target — they handle it locally)
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	if npc_auth:
+		var target_label := "player_%d" % target_pid
+		var peers_in_sys := get_peers_in_system(sender_state.system_id)
+		for pid in peers_in_sys:
+			if pid == sender_id or pid == target_pid:
+				continue
+			if pid == 1 and not is_dedicated_server:
+				hit_effect_received.emit(target_label, hit_dir, false)
+			else:
+				_rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
 
 
 ## Server -> Target client: You've been hit by another player.
 @rpc("authority", "reliable")
 func _rpc_receive_player_damage(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
 	player_damage_received.emit(attacker_pid, weapon_name, damage_val, hit_dir)
+
+
+## Server -> Client: A hit effect should be displayed on target (visual only).
+@rpc("authority", "unreliable_ordered")
+func _rpc_hit_effect(target_id: String, hit_dir: Array, shield_absorbed: bool) -> void:
+	hit_effect_received.emit(target_id, hit_dir, shield_absorbed)
 
 
 # =========================================================================

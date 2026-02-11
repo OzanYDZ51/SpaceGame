@@ -21,21 +21,14 @@ const FACE_AXES: Array[Array] = [
 
 
 ## Convert a face UV (u, v in [-1, 1]) to a unit sphere point.
+## Uses tangent remapping for near-uniform cell distribution across all 6 faces.
+## Without this, cells near face centers are ~1.7x larger than at edges/corners,
+## creating visible square patterns on the planet surface.
 static func cube_to_sphere(face: int, u: float, v: float) -> Vector3:
-	var axes: Array = FACE_AXES[face]
-	var right: Vector3 = axes[0]
-	var up: Vector3 = axes[1]
-	var forward: Vector3 = axes[2]
-	var cube_point: Vector3 = forward + right * u + up * v
-	return cube_point.normalized()
-
-
-## Convert face UV to unit sphere with improved distribution (tangent-adjusted).
-## Reduces distortion near cube corners.
-static func cube_to_sphere_tangent(face: int, u: float, v: float) -> Vector3:
-	# Apply tangent correction for more uniform cell sizes
-	var tu: float = tan(u * PI * 0.25) * 1.0
-	var tv: float = tan(v * PI * 0.25) * 1.0
+	# Tangent correction: maps [-1,1] UV through tan(x*π/4) → [-1,1]
+	# This warps the UV grid so that angular spacing between vertices is uniform
+	var tu: float = tan(u * PI * 0.25)
+	var tv: float = tan(v * PI * 0.25)
 	var axes: Array = FACE_AXES[face]
 	var right: Vector3 = axes[0]
 	var up: Vector3 = axes[1]

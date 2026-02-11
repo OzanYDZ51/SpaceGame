@@ -71,22 +71,29 @@ func apply_environment(env_data: SystemEnvironmentData) -> void:
 	var env: Environment = world_env.environment
 
 	# --- Ambient light ---
+	# Use COLOR source (not SKY) so the shadow side of objects is actually dark.
+	# SKY source floods ambient from the skybox in all directions, washing out shadows.
+	# In space, the shadow side should be nearly black — only a faint fill.
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = env_data.ambient_color
 	env.ambient_light_energy = env_data.ambient_energy
+	# Keep sky reflections for specular highlights (directional, not uniform)
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
-	# --- Glow (minimal, tight — no big soft halos) ---
+	# --- Glow / Bloom (HDR-driven, only very bright objects like the star bloom) ---
 	env.glow_enabled = true
-	env.glow_intensity = env_data.glow_intensity * 0.25
-	env.glow_bloom = 0.0
-	env.glow_strength = 0.15
-	env.glow_hdr_threshold = 2.0
-	env.glow_hdr_scale = 0.3
-	env.glow_hdr_luminance_cap = 4.0
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.glow_intensity = 0.8
+	env.glow_bloom = 0.1
+	env.glow_strength = 1.0
+	env.glow_hdr_threshold = 1.2
+	env.glow_hdr_scale = 1.5
+	env.glow_hdr_luminance_cap = 30.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
-	# --- SSAO/SSIL (always on, subtle depth) ---
+	# --- SSAO on, SSIL off in space ---
+	# SSIL bounces light into shadow areas — wrong for space where shadows are hard.
 	env.ssao_enabled = true
-	env.ssil_enabled = true
+	env.ssil_enabled = false
 
 	# --- Skybox shader parameters ---
 	if env.sky == null or env.sky.sky_material == null:

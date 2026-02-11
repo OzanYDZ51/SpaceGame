@@ -104,9 +104,10 @@ func _read_auth_token_from_cli() -> void:
 		if args[i] == "--auth-token" and i + 1 < args.size():
 			var token: String = args[i + 1]
 			AuthManager.set_token_from_launcher(token)
-			return
-	# No token — try restoring from saved session (auto-refresh)
-	# AuthManager._try_restore_session() is already called in its _ready()
+			break
+	# Set multiplayer display name from authenticated username
+	if AuthManager.is_authenticated and AuthManager.username != "":
+		NetworkManager.local_player_name = AuthManager.username
 
 
 func _setup_ui_managers() -> void:
@@ -385,7 +386,7 @@ func _initialize_game() -> void:
 	player_lod.ship_id = &"frigate_mk1"
 	player_lod.ship_class = &"Frigate"
 	player_lod.faction = &"neutral"
-	player_lod.display_name = "Player"
+	player_lod.display_name = NetworkManager.local_player_name
 	player_lod.node_ref = player_ship
 	player_lod.current_lod = ShipLODData.LODLevel.LOD0
 	player_lod.position = player_ship.global_position
@@ -833,11 +834,23 @@ func _autopilot_player_to(params: Dictionary) -> void:
 	var ship := player_ship as ShipController
 	if ship == null or current_state != GameState.PLAYING:
 		return
-	var target_x: float = params.get("target_x", 0.0)
-	var target_z: float = params.get("target_z", 0.0)
 	# Clean up previous temp waypoint
 	_cleanup_player_autopilot_wp()
-	# Register a temporary waypoint entity for autopilot
+	# Cancel any active route
+	if _route_manager and _route_manager.is_route_active():
+		_route_manager.cancel_route()
+	# If targeting a known entity (planet, station, gate), autopilot to it directly
+	var entity_id: String = params.get("entity_id", "")
+	if entity_id != "":
+		var ent: Dictionary = EntityRegistry.get_entity(entity_id)
+		if not ent.is_empty():
+			var ent_type: int = ent.get("type", -1)
+			var is_gate: bool = ent_type == EntityRegistrySystem.EntityType.JUMP_GATE
+			ship.engage_autopilot(entity_id, ent.get("name", "Destination"), is_gate)
+			return
+	# Fallback: register a temporary waypoint entity for autopilot
+	var target_x: float = params.get("target_x", 0.0)
+	var target_z: float = params.get("target_z", 0.0)
 	_player_autopilot_wp = "player_wp_%d" % Time.get_ticks_msec()
 	EntityRegistry.register(_player_autopilot_wp, {
 		"name": "Destination",
@@ -850,9 +863,6 @@ func _autopilot_player_to(params: Dictionary) -> void:
 		"color": Color.TRANSPARENT,
 		"extra": {"hidden": true},
 	})
-	# Cancel any active route
-	if _route_manager and _route_manager.is_route_active():
-		_route_manager.cancel_route()
 	# is_gate=true → 30m arrival (not 10km), smooth approach
 	ship.engage_autopilot(_player_autopilot_wp, "Destination", true)
 
@@ -923,6 +933,7 @@ func _process(_delta: float) -> void:
 	# Sync hangar prompt visibility with screen state
 	if current_state == GameState.DOCKED and _dock_instance and _dock_instance.hangar_scene and _screen_manager:
 		_dock_instance.hangar_scene.terminal_open = _screen_manager.is_any_screen_open()
+
 
 
 # =============================================================================
@@ -1084,6 +1095,8 @@ func _on_construction_completed(marker_id: int) -> void:
 func _on_station_renamed(new_name: String) -> void:
 	if _dock_instance:
 		_dock_instance.station_name = new_name
+
+
 
 
 # Used by SaveManager.apply_state for ship change after fleet restore

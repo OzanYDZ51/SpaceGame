@@ -64,7 +64,7 @@ func _do_spawn_encounters(danger_level: int, system_data: StarSystemData) -> voi
 	if system_data and system_data.stations.size() > 0:
 		var st: StationData = system_data.stations[0]
 		var orbit_r: float = st.orbital_radius
-		var angle: float = st.orbital_angle
+		var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
 		var station_pos := Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
 		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)

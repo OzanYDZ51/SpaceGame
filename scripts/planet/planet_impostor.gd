@@ -43,8 +43,8 @@ func _build_visuals() -> void:
 	var mesh := SphereMesh.new()
 	mesh.radius = 1.0
 	mesh.height = 2.0
-	mesh.radial_segments = 48
-	mesh.rings = 24
+	mesh.radial_segments = 64
+	mesh.rings = 32
 
 	var surface_shader := preload("res://shaders/planet/planet_impostor_surface.gdshader")
 	_surface_material = ShaderMaterial.new()

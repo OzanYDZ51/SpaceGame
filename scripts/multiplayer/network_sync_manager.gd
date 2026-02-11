@@ -76,6 +76,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
 	NetworkManager.remote_mining_beam_received.connect(_on_remote_mining_beam)
 	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
+	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
 
 	# Auto-connect
 	var args := OS.get_cmdline_args()
@@ -445,7 +446,61 @@ func _on_player_damage_received(attacker_pid: int, _weapon_name: String, damage_
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
 	# Find attacker node for damage attribution
 	var attacker: Node3D = remote_players.get(attacker_pid)
-	health.apply_damage(damage_val, &"thermal", dir_vec, attacker)
+	var hit_result := health.apply_damage(damage_val, &"thermal", dir_vec, attacker)
+
+	# Spawn hit effect on our own ship (same visual as NPC projectile impact)
+	var intensity := clampf(damage_val / 25.0, 0.5, 3.0)
+	var hit_pos := player_ship.global_position + dir_vec * 2.0
+	if hit_result.get("shield_absorbed", false):
+		var effect := ShieldHitEffect.new()
+		player_ship.add_child(effect)
+		effect.setup(hit_pos, player_ship, hit_result.get("shield_ratio", 0.0), intensity)
+	else:
+		var effect := HullHitEffect.new()
+		get_tree().current_scene.add_child(effect)
+		effect.global_position = hit_pos
+		var hit_normal := dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
+		effect.setup(hit_normal, intensity)
+
+
+# =============================================================================
+# HIT EFFECT BROADCAST — Show hit effects on targets for observer clients
+# =============================================================================
+
+func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed: bool) -> void:
+	var target_node: Node3D = null
+
+	# Player target: "player_<pid>"
+	if target_id.begins_with("player_"):
+		var pid := target_id.trim_prefix("player_").to_int()
+		if remote_players.has(pid):
+			target_node = remote_players[pid]
+	else:
+		# NPC target
+		if lod_manager:
+			var lod_data: ShipLODData = lod_manager.get_ship_data(StringName(target_id))
+			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+				target_node = lod_data.node_ref
+
+	if target_node == null or not is_instance_valid(target_node):
+		return
+
+	var dir_vec := Vector3(
+		hit_dir[0] if hit_dir.size() > 0 else 0.0,
+		hit_dir[1] if hit_dir.size() > 1 else 0.0,
+		hit_dir[2] if hit_dir.size() > 2 else 0.0)
+	var hit_pos := target_node.global_position + dir_vec * 2.0
+
+	if shield_absorbed:
+		var effect := ShieldHitEffect.new()
+		target_node.add_child(effect)
+		effect.setup(hit_pos, target_node, 0.5, 1.0)
+	else:
+		var effect := HullHitEffect.new()
+		get_tree().current_scene.add_child(effect)
+		effect.global_position = hit_pos
+		var hit_normal := dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
+		effect.setup(hit_normal, 1.0)
 
 
 # =============================================================================

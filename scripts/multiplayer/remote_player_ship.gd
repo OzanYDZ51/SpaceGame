@@ -117,6 +117,9 @@ func receive_state(state: NetworkState) -> void:
 	if should_hide:
 		return  # Don't update interpolation while hidden
 
+	# Stamp with LOCAL arrival time — sender's timestamp is from a different clock
+	# (each Godot process has its own Time.get_ticks_msec starting at 0).
+	# Using local time ensures render_time and snapshot times share the same clock.
 	var snapshot := {
 		"pos": [state.pos_x, state.pos_y, state.pos_z],
 		"vel": state.velocity,
@@ -124,7 +127,7 @@ func receive_state(state: NetworkState) -> void:
 		"thr": state.throttle,
 		"hull": state.hull_ratio,
 		"shd": state.shield_ratios,
-		"time": state.timestamp,
+		"time": Time.get_ticks_msec() / 1000.0,
 	}
 
 	_snapshots.append(snapshot)
@@ -136,53 +139,34 @@ func _process(_delta: float) -> void:
 	if _snapshots.is_empty():
 		return
 
-	# Interpolation: render at (current_time - interpolation_delay)
-	# This gives us a smooth path between snapshots
 	var render_time: float = (Time.get_ticks_msec() / 1000.0) - Constants.NET_INTERPOLATION_DELAY
 
 	if _snapshots.size() < 2:
-		# Only 1 snapshot: snap to it
-		_apply_snapshot(_snapshots[0])
+		# Single snapshot — place directly, no smoothing
+		var snap: Dictionary = _snapshots[0]
+		global_position = FloatingOrigin.to_local_pos(snap["pos"])
+		rotation_degrees = snap["rot"]
+		_update_engine_glow(snap.get("thr", 0.0))
 		return
 
-	# Find two snapshots to interpolate between (search from end — most recent is most likely)
+	# Find two snapshots to interpolate between (search from end — most recent first)
 	var from_idx: int = -1
 	for i in range(_snapshots.size() - 2, -1, -1):
 		if _snapshots[i]["time"] <= render_time and _snapshots[i + 1]["time"] >= render_time:
 			from_idx = i
 			break
 
-	if from_idx == -1:
-		# Render time is beyond our buffer — use latest snapshot
-		_apply_snapshot(_snapshots.back())
-		return
-
-	var from: Dictionary = _snapshots[from_idx]
-	var to: Dictionary = _snapshots[from_idx + 1]
-	var t_range: float = to["time"] - from["time"]
-	if t_range < 0.001:
-		_apply_snapshot(to)
-		return
-
-	var t: float = clampf((render_time - from["time"]) / t_range, 0.0, 1.0)
-	_interpolate_between(from, to, t)
-
-
-func _apply_snapshot(snap: Dictionary) -> void:
-	var local_pos := FloatingOrigin.to_local_pos(snap["pos"])
-
-	# Snap if teleported (system change, etc.), otherwise lerp for smoothing
-	if global_position.distance_to(local_pos) > Constants.NET_SNAP_THRESHOLD * 10.0:
-		global_position = local_pos
+	if from_idx >= 0:
+		_interpolate_between(_snapshots[from_idx], _snapshots[from_idx + 1], render_time)
 	else:
-		global_position = global_position.lerp(local_pos, 0.5)
-
-	rotation_degrees = snap["rot"]
-	_update_engine_glow(snap.get("thr", 0.0))
+		# render_time past all snapshots — extrapolate from last snapshot using velocity
+		_extrapolate(_snapshots.back(), render_time)
 
 
-func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
-	# Interpolate universe position, then convert to local
+func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) -> void:
+	var t_range: float = to["time"] - from["time"]
+	var t: float = clampf((render_time - from["time"]) / t_range, 0.0, 1.0) if t_range > 0.001 else 1.0
+
 	var pos_from := from["pos"] as Array
 	var pos_to := to["pos"] as Array
 	var interp_pos: Array = [
@@ -190,16 +174,8 @@ func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
 		lerpf(pos_from[1], pos_to[1], t),
 		lerpf(pos_from[2], pos_to[2], t),
 	]
+	global_position = FloatingOrigin.to_local_pos(interp_pos)
 
-	var local_pos := FloatingOrigin.to_local_pos(interp_pos)
-
-	# Snap if too far (teleport/system change), otherwise use interpolated position directly
-	if global_position.distance_to(local_pos) > Constants.NET_SNAP_THRESHOLD * 10.0:
-		global_position = local_pos
-	else:
-		global_position = global_position.lerp(local_pos, 0.65)
-
-	# Rotation interpolation with angle wrapping
 	var rot_from: Vector3 = from["rot"]
 	var rot_to: Vector3 = to["rot"]
 	rotation_degrees = Vector3(
@@ -208,9 +184,21 @@ func _interpolate_between(from: Dictionary, to: Dictionary, t: float) -> void:
 		lerp_angle(deg_to_rad(rot_from.z), deg_to_rad(rot_to.z), t),
 	) * (180.0 / PI)
 
-	# Throttle
-	var thr := lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t)
-	_update_engine_glow(thr)
+	_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
+
+
+func _extrapolate(snap: Dictionary, render_time: float) -> void:
+	var dt: float = clampf(render_time - snap["time"], 0.0, 0.25)
+	var vel: Vector3 = snap["vel"]
+	var pos_arr: Array = snap["pos"]
+	var extrap_pos: Array = [
+		pos_arr[0] + vel.x * dt,
+		pos_arr[1] + vel.y * dt,
+		pos_arr[2] + vel.z * dt,
+	]
+	global_position = FloatingOrigin.to_local_pos(extrap_pos)
+	rotation_degrees = snap["rot"]
+	_update_engine_glow(snap.get("thr", 0.0))
 
 
 func _update_engine_glow(throttle_amount: float) -> void:

@@ -125,6 +125,7 @@ const LAYER_SHIPS: int = 1
 const LAYER_STATIONS: int = 2
 const LAYER_ASTEROIDS: int = 4
 const LAYER_PROJECTILES: int = 8
+const LAYER_TERRAIN: int = 16
 
 # --- Speed Modes ---
 enum SpeedMode { NORMAL, BOOST, CRUISE }
