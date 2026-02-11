@@ -122,9 +122,9 @@ func update_sun_direction(direction: Vector3) -> void:
 
 	# Update star light to match
 	if star_light:
-		# DirectionalLight3D shines along -Z in local space, so we use look_at
-		# to orient it so that its -Z axis points along the sun direction.
-		var target := star_light.global_position + _sun_direction
+		# _sun_direction points TOWARD the sun. DirectionalLight3D shines along
+		# its -Z axis, so we aim it in the OPPOSITE direction (from sun toward scene).
+		var target := star_light.global_position - _sun_direction
 		star_light.look_at(target, Vector3.UP)
 
 	# Update skybox shader

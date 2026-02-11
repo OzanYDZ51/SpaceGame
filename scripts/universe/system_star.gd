@@ -100,8 +100,9 @@ func _process(_delta: float) -> void:
 	visual_radius = clampf(visual_radius, MIN_VISUAL_RADIUS, MAX_VISUAL_RADIUS)
 	_mesh_instance.scale = Vector3.ONE * visual_radius
 
-	# Sun direction for lighting
-	var sun_dir := -star_local.normalized()
+	# Sun direction for lighting — convention: direction TOWARD the sun
+	# (skybox god rays need dot(EYEDIR, sun_dir) > 0 when looking at star)
+	var sun_dir := dir_to_star
 	if sun_dir.distance_squared_to(_last_sun_dir) > 0.0001:
 		_last_sun_dir = sun_dir
 		var main := GameManager.main_scene
