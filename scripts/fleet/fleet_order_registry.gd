@@ -19,6 +19,7 @@ static func _ensure_init() -> void:
 	_register(&"patrol", "PATROUILLER", "Patrouiller dans cette zone")
 	_register(&"attack", "ATTAQUER", "Attaquer la cible ennemie")
 	_register(&"return_to_station", "RAPPELER", "Retourner a la station")
+	_register(&"construction", "CONSTRUCTION", "Livrer des ressources au site de construction")
 
 
 static func _register(id: StringName, display_name: String, description: String) -> void:
@@ -53,6 +54,8 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 			return ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC
 		&"return_to_station":
 			return is_deployed
+		&"construction":
+			return context.has("construction_marker")
 	return false
 
 
@@ -79,4 +82,11 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 			}
 		&"return_to_station":
 			return {}
+		&"construction":
+			var marker: Dictionary = context.get("construction_marker", {})
+			return {
+				"target_x": marker.get("pos_x", context.get("universe_x", 0.0)),
+				"target_z": marker.get("pos_z", context.get("universe_z", 0.0)),
+				"marker_id": marker.get("id", ""),
+			}
 	return {}

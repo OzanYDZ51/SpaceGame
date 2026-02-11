@@ -109,6 +109,9 @@ func _on_buy_pressed() -> void:
 		return
 	var ship_id: StringName = _available_ships[_selected_index]
 	if _commerce_manager.buy_ship(ship_id):
+		var data := ShipRegistry.get_ship_data(ship_id)
+		if GameManager._notif and data:
+			GameManager._notif.commerce.bought(String(data.ship_name), data.price)
 		ship_purchased.emit(ship_id)
 		queue_redraw()
 

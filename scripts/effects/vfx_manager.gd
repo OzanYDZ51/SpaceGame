@@ -9,7 +9,7 @@ extends Node
 
 # --- Per-system toggles (runtime-editable) ---
 var engine_trails_enabled := true
-var speed_effects_enabled := false
+var speed_effects_enabled := true
 var space_dust_reactive_enabled := false
 var camera_vibration_enabled := true
 var gforce_enabled := true

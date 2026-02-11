@@ -546,6 +546,22 @@ func _input(event: InputEvent) -> void:
 				# Right click released — quick release = move_to or attack
 				var effective_indices := _get_effective_fleet_indices()
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
+					# Check construction marker first
+					var cm := _entity_layer.get_construction_marker_at(event.position)
+					if not cm.is_empty():
+						var params := {
+							"target_x": cm["pos_x"],
+							"target_z": cm["pos_z"],
+							"marker_id": cm.get("id", ""),
+						}
+						for idx in effective_indices:
+							fleet_order_requested.emit(idx, &"construction", params)
+						_show_waypoint(cm["pos_x"], cm["pos_z"])
+						_set_route_lines(effective_indices, cm["pos_x"], cm["pos_z"])
+						_right_hold_start = 0.0
+						get_viewport().set_input_as_handled()
+						return
+
 					var target_id := _entity_layer.get_entity_at(event.position)
 					var target_ent := EntityRegistry.get_entity(target_id) if target_id != "" else {}
 					if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC:
@@ -632,6 +648,7 @@ func _input(event: InputEvent) -> void:
 			_renderer.update_toolbar_hover(event.position)
 			if _entity_layer.update_hover(event.position):
 				_dirty = true
+			_fleet_panel.handle_mouse_move(event.position)
 		get_viewport().set_input_as_handled()
 		return
 
@@ -923,6 +940,11 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 		"universe_z": universe_z,
 		"target_entity_id": _entity_layer.get_entity_at(screen_pos),
 	}
+
+	# Check if a construction marker is near the click position
+	var cm := _entity_layer.get_construction_marker_at(screen_pos)
+	if not cm.is_empty():
+		context["construction_marker"] = cm
 
 	if has_fleet:
 		var fs := _fleet_panel._fleet.ships[effective_idx]

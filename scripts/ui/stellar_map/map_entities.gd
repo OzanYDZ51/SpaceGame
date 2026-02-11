@@ -532,6 +532,9 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 				status_tag = "[ATTAQUE]"
 			"return_to_station":
 				status_tag = "[RAPPEL]"
+			"construction":
+				var arrived: bool = extra.get("arrived", false)
+				status_tag = "[CONSTRUCTION]" if arrived else "[LIVRAISON]"
 		if status_tag != "":
 			label_text += " " + status_tag
 		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
@@ -733,6 +736,20 @@ func get_entities_in_rect(screen_rect: Rect2) -> Array[String]:
 		if screen_rect.has_point(sp):
 			result.append(ent["id"])
 	return result
+
+
+func get_construction_marker_at(screen_pos: Vector2) -> Dictionary:
+	if camera == null or construction_markers.is_empty():
+		return {}
+	var best_marker: Dictionary = {}
+	var best_dist: float = HIT_RADIUS
+	for marker in construction_markers:
+		var sp: Vector2 = camera.universe_to_screen(marker["pos_x"], marker["pos_z"])
+		var d: float = screen_pos.distance_to(sp)
+		if d < best_dist:
+			best_dist = d
+			best_marker = marker
+	return best_marker
 
 
 func update_hover(screen_pos: Vector2) -> bool:

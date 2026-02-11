@@ -57,6 +57,7 @@ var station_services: StationServices:
 		if player_data:
 			player_data.station_services = value
 var _equipment_screen: EquipmentScreen = null
+var _shipyard_screen: ShipyardScreen = null
 var _loot_screen: LootScreen = null
 var _loot_pickup: LootPickupSystem = null
 var _lod_manager: ShipLODManager = null
@@ -162,6 +163,11 @@ func _setup_ui_managers() -> void:
 	_equipment_screen = EquipmentScreen.new()
 	_equipment_screen.name = "EquipmentScreen"
 	_screen_manager.register_screen("equipment", _equipment_screen)
+
+	# Register Shipyard screen (signal connections deferred)
+	_shipyard_screen = ShipyardScreen.new()
+	_shipyard_screen.name = "ShipyardScreen"
+	_screen_manager.register_screen("shipyard", _shipyard_screen)
 
 	# Register Loot screen
 	_loot_screen = LootScreen.new()
@@ -410,6 +416,14 @@ func _initialize_game() -> void:
 	add_child(_planet_approach_mgr)
 	_planet_approach_mgr.set_ship(player_ship)
 
+	# Wire atmosphere environment transitions (fog, sky, light changes on planet surface)
+	if main_scene is SpaceEnvironment:
+		var space_env := main_scene as SpaceEnvironment
+		var env: Environment = space_env.world_env.environment if space_env.world_env else null
+		var dir_light: DirectionalLight3D = space_env.star_light
+		if env:
+			_planet_approach_mgr.setup_atmosphere_environment(env, dir_light)
+
 	# Wire planetary HUD
 	var hud_planet := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
 	if hud_planet:
@@ -570,6 +584,7 @@ func _initialize_game() -> void:
 	_docking_mgr.commerce_manager = _commerce_manager
 	_docking_mgr.commerce_screen = _commerce_screen
 	_docking_mgr.equipment_screen = _equipment_screen
+	_docking_mgr.shipyard_screen = _shipyard_screen
 	_docking_mgr.station_screen = _station_screen
 	_docking_mgr.admin_screen = _admin_screen
 	_docking_mgr.system_transition = _system_transition
@@ -590,10 +605,12 @@ func _initialize_game() -> void:
 	_station_screen.equipment_requested.connect(_docking_mgr.handle_equipment_requested)
 	_station_screen.commerce_requested.connect(_docking_mgr.handle_commerce_requested)
 	_station_screen.repair_requested.connect(_docking_mgr.handle_repair_requested)
+	_station_screen.shipyard_requested.connect(_docking_mgr.handle_shipyard_requested)
 	_station_screen.station_equipment_requested.connect(_docking_mgr.handle_station_equipment_requested)
 	_station_screen.administration_requested.connect(_docking_mgr.handle_administration_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
+	_shipyard_screen.shipyard_closed.connect(_docking_mgr.handle_shipyard_closed)
 	_admin_screen.closed.connect(_docking_mgr.handle_admin_closed)
 	_admin_screen.station_renamed.connect(_on_station_renamed)
 	_docking_mgr.docked.connect(func(_sn: String):

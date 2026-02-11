@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_back, specular_schlick_ggx;
+render_mode cull_back, blend_mix, specular_schlick_ggx;
 
 // =============================================================================
 // Planet Ocean — Animated water surface at the ocean level

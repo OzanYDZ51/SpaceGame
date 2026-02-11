@@ -11,6 +11,7 @@ signal undock_requested
 signal equipment_requested
 signal commerce_requested
 signal repair_requested
+signal shipyard_requested
 signal station_equipment_requested
 signal administration_requested
 
@@ -33,17 +34,19 @@ var _system_id: int = -1
 var _station_idx: int = 0
 var _economy: PlayerEconomy = null
 
-# Service order: COMMERCE, RÉPARATIONS, ÉQUIPEMENT
+# Service order: COMMERCE, RÉPARATIONS, ÉQUIPEMENT, CHANTIER NAVAL
 const SERVICE_ORDER: Array[int] = [
 	StationServices.Service.COMMERCE,
 	StationServices.Service.REPAIR,
 	StationServices.Service.EQUIPMENT,
+	StationServices.Service.SHIPYARD,
 ]
 
 const SERVICE_DESCRIPTIONS: Dictionary = {
 	StationServices.Service.COMMERCE: "Acheter et vendre des marchandises",
 	StationServices.Service.REPAIR: "Réparer la coque et les boucliers",
 	StationServices.Service.EQUIPMENT: "Modifier l'armement du vaisseau",
+	StationServices.Service.SHIPYARD: "Acheter et vendre des vaisseaux",
 }
 
 
@@ -129,6 +132,8 @@ func _on_service_pressed(button_index: int) -> void:
 				repair_requested.emit()
 			StationServices.Service.EQUIPMENT:
 				equipment_requested.emit()
+			StationServices.Service.SHIPYARD:
+				shipyard_requested.emit()
 	else:
 		_try_unlock(svc)
 

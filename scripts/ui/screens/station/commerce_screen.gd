@@ -3,8 +3,8 @@ extends UIScreen
 
 # =============================================================================
 # Commerce Screen - Hub with category sidebar + content area
-# Left: 7 category buttons (buy + sell) with separator
-# Right: Active view (ShipShopView / EquipmentShopView / Sell views)
+# Left: 5 category buttons (buy + sell) with separator
+# Right: Active view (EquipmentShopView / Sell views)
 # Bottom: Credits display
 # =============================================================================
 
@@ -17,28 +17,24 @@ var station_id: String = ""
 
 var _sidebar_buttons: Array[UIButton] = []
 var _active_view: Control = null
-var _ship_shop: ShipShopView = null
 var _equipment_shop: EquipmentShopView = null
 var _sell_equipment: SellEquipmentView = null
 var _sell_cargo: SellCargoView = null
 var _sell_resource: SellResourceView = null
-var _sell_ship: SellShipView = null
 var _back_btn: UIButton = null
 var _current_category: int = -1
 
 const SIDEBAR_W := 180.0
 const CONTENT_TOP := 65.0
 const BOTTOM_H := 50.0
-const BUY_COUNT := 3      # first 3 categories are buy
+const BUY_COUNT := 2      # first 2 categories are buy
 const SECTION_HEADER_H := 22.0  # height reserved for section label
 const CATEGORIES: Array[Array] = [
-	["CHANTIER NAVAL", "Acheter des vaisseaux"],
 	["ARMURERIE", "Armes et tourelles"],
 	["EQUIPEMENTS", "Boucliers, moteurs, modules"],
 	["VENDRE EQUIP.", "Vendre equipement"],
 	["VENDRE CARGO", "Vendre cargaison"],
 	["VENDRE MINERAIS", "Vendre minerais"],
-	["VENDRE VAISSEAU", "Vendre un vaisseau"],
 ]
 
 
@@ -65,11 +61,6 @@ func _ready() -> void:
 	add_child(_back_btn)
 
 	# Create views (created once, shown/hidden)
-	_ship_shop = ShipShopView.new()
-	_ship_shop.visible = false
-	_ship_shop.ship_purchased.connect(_on_ship_purchased)
-	add_child(_ship_shop)
-
 	_equipment_shop = EquipmentShopView.new()
 	_equipment_shop.visible = false
 	add_child(_equipment_shop)
@@ -86,10 +77,6 @@ func _ready() -> void:
 	_sell_resource.visible = false
 	add_child(_sell_resource)
 
-	_sell_ship = SellShipView.new()
-	_sell_ship.visible = false
-	add_child(_sell_ship)
-
 
 func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") -> void:
 	commerce_manager = mgr
@@ -97,8 +84,6 @@ func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") ->
 	station_name = sname
 	station_id = sid
 	screen_title = "COMMERCE — " + sname.to_upper()
-	if _ship_shop:
-		_ship_shop.setup(mgr, stype)
 	if _equipment_shop:
 		_equipment_shop.setup(mgr, stype)
 	if _sell_equipment:
@@ -107,8 +92,6 @@ func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") ->
 		_sell_cargo.setup(mgr, sid)
 	if _sell_resource:
 		_sell_resource.setup(mgr, sid)
-	if _sell_ship:
-		_sell_ship.setup(mgr, sid)
 
 
 func _on_opened() -> void:
@@ -116,7 +99,7 @@ func _on_opened() -> void:
 	for btn in _sidebar_buttons:
 		btn.visible = true
 	_back_btn.visible = true
-	# Default to ship shop
+	# Default to weapons (ARMURERIE)
 	_switch_to_category(0)
 
 
@@ -137,11 +120,6 @@ func _on_back_pressed() -> void:
 	close()
 
 
-func _on_ship_purchased(_ship_id: StringName) -> void:
-	# Refresh ship shop after purchase (credits changed)
-	_switch_to_category(0)
-
-
 func _switch_to_category(idx: int) -> void:
 	_current_category = idx
 	_hide_all_views()
@@ -150,47 +128,37 @@ func _switch_to_category(idx: int) -> void:
 		_sidebar_buttons[i].accent_color = UITheme.PRIMARY if i == idx else UITheme.TEXT_DIM
 
 	match idx:
-		0:  # Ship shop
-			_ship_shop.visible = true
-			_active_view = _ship_shop
-			_ship_shop.refresh()
-		1:  # Weapons
+		0:  # Weapons
 			_equipment_shop.set_initial_tab(0)
 			_equipment_shop.visible = true
 			_active_view = _equipment_shop
 			_equipment_shop.refresh()
-		2:  # Shields/engines/modules
+		1:  # Shields/engines/modules
 			_equipment_shop.set_initial_tab(1)
 			_equipment_shop.visible = true
 			_active_view = _equipment_shop
 			_equipment_shop.refresh()
-		3:  # Sell equipment
+		2:  # Sell equipment
 			_sell_equipment.visible = true
 			_active_view = _sell_equipment
 			_sell_equipment.refresh()
-		4:  # Sell cargo
+		3:  # Sell cargo
 			_sell_cargo.visible = true
 			_active_view = _sell_cargo
 			_sell_cargo.refresh()
-		5:  # Sell resources
+		4:  # Sell resources
 			_sell_resource.visible = true
 			_active_view = _sell_resource
 			_sell_resource.refresh()
-		6:  # Sell ship
-			_sell_ship.visible = true
-			_active_view = _sell_ship
-			_sell_ship.refresh()
 	_layout_content_area()
 	queue_redraw()
 
 
 func _hide_all_views() -> void:
-	if _ship_shop: _ship_shop.visible = false
 	if _equipment_shop: _equipment_shop.visible = false
 	if _sell_equipment: _sell_equipment.visible = false
 	if _sell_cargo: _sell_cargo.visible = false
 	if _sell_resource: _sell_resource.visible = false
-	if _sell_ship: _sell_ship.visible = false
 	_active_view = null
 
 

@@ -12,8 +12,11 @@ func _init(svc: NotificationService) -> void:
 	_svc = svc
 
 
-func bought(item_name: String) -> void:
-	_svc.toast("%s acheté!" % item_name, UIToast.ToastType.SUCCESS)
+func bought(item_name: String, total: int = 0) -> void:
+	if total > 0:
+		_svc.toast("%s acheté! -%s CR" % [item_name, PlayerEconomy.format_credits(total)], UIToast.ToastType.SUCCESS)
+	else:
+		_svc.toast("%s acheté!" % item_name, UIToast.ToastType.SUCCESS)
 
 
 func sold(item_name: String, total: int = 0) -> void:

@@ -35,6 +35,9 @@ var _groups: Array[Dictionary] = []
 var _scroll_offset: float = 0.0
 var _max_scroll: float = 0.0
 
+# Hover tracking for cargo tooltip
+var _hover_fleet_index: int = -1
+
 # Double-click header tracking
 var _last_header_click_sq: int = -1
 var _last_header_click_time: float = 0.0
@@ -256,6 +259,61 @@ func handle_scroll(pos: Vector2, dir: int) -> bool:
 	return true
 
 
+func handle_mouse_move(pos: Vector2) -> bool:
+	if pos.x > PANEL_W or pos.x < 0:
+		if _hover_fleet_index >= 0:
+			_hover_fleet_index = -1
+			queue_redraw()
+		return false
+	if _fleet == null or _fleet.ships.is_empty():
+		if _hover_fleet_index >= 0:
+			_hover_fleet_index = -1
+			queue_redraw()
+		return false
+	var new_hover: int = _get_fleet_index_at(pos)
+	if new_hover != _hover_fleet_index:
+		_hover_fleet_index = new_hover
+		queue_redraw()
+	return _hover_fleet_index >= 0
+
+
+func _get_row_y_for_index(fleet_index: int) -> float:
+	var y: float = HEADER_H + MARGIN - _scroll_offset
+	for group in _groups:
+		y += GROUP_H
+		if group["collapsed"]:
+			continue
+		for st in group["stations"]:
+			y += 2
+			y += SHIP_H  # station sub-header
+			for entry in st["ships"]:
+				if entry["fleet_index"] == fleet_index:
+					return y
+				y += SHIP_H
+		var squadroned: Dictionary = {}
+		var unsquadroned: Array = []
+		for entry in group["deployed"]:
+			var fs: FleetShip = entry["ship"]
+			if fs.squadron_id >= 0:
+				if not squadroned.has(fs.squadron_id):
+					squadroned[fs.squadron_id] = []
+				squadroned[fs.squadron_id].append(entry)
+			else:
+				unsquadroned.append(entry)
+		for sq_id in squadroned:
+			y += SHIP_H  # squadron header
+			for entry in squadroned[sq_id]:
+				if entry["fleet_index"] == fleet_index:
+					return y
+				y += SHIP_H
+		for entry in unsquadroned:
+			if entry["fleet_index"] == fleet_index:
+				return y
+			y += SHIP_H
+		y += 6
+	return -1.0
+
+
 func _get_squadron_header_at(pos: Vector2) -> int:
 	var y: float = HEADER_H + MARGIN - _scroll_offset
 	for group in _groups:
@@ -406,6 +464,97 @@ func _draw() -> void:
 	var scan_y: float = fmod(Time.get_ticks_msec() / 40.0, size.y)
 	if scan_y > HEADER_H:
 		draw_line(Vector2(0, scan_y), Vector2(PANEL_W, scan_y), MapColors.SCANLINE, 1.0)
+
+	# Cargo tooltip on hover
+	if _hover_fleet_index >= 0 and _hover_fleet_index < _fleet.ships.size():
+		_draw_cargo_tooltip(font)
+
+
+func _draw_cargo_tooltip(font: Font) -> void:
+	var fs: FleetShip = _fleet.ships[_hover_fleet_index]
+	var row_y: float = _get_row_y_for_index(_hover_fleet_index)
+	if row_y < 0.0:
+		return
+
+	const TT_W: float = 180.0
+	const TT_PAD: float = 8.0
+	const LINE_H: float = 16.0
+	const SWATCH_SIZE: float = 8.0
+
+	# Gather content lines
+	var lines: Array[Dictionary] = []  # { "text": String, "color": Color, "swatch": Color or null }
+	var ship_name: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+	lines.append({"text": ship_name, "color": MapColors.TEXT, "swatch": Color(), "is_header": true})
+
+	# Resources section
+	var has_resources: bool = false
+	for res_id in PlayerEconomy.RESOURCE_DEFS:
+		var qty: int = fs.ship_resources.get(res_id, 0)
+		if qty > 0:
+			if not has_resources:
+				lines.append({"text": "RESSOURCES", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+				has_resources = true
+			var def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
+			lines.append({"text": "  %s  %d" % [def["name"], qty], "color": MapColors.LABEL_VALUE, "swatch": def["color"], "is_header": false})
+
+	# Cargo section
+	var has_cargo: bool = false
+	if fs.cargo:
+		for item in fs.cargo.get_all():
+			var qty: int = item.get("quantity", 0)
+			if qty > 0:
+				if not has_cargo:
+					lines.append({"text": "CARGO", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+					has_cargo = true
+				lines.append({"text": "  %s  x%d" % [item.get("name", "?"), qty], "color": MapColors.LABEL_VALUE, "swatch": Color(), "is_header": false})
+
+	if not has_resources and not has_cargo:
+		lines.append({"text": "SOUTE VIDE", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+
+	# Calculate tooltip dimensions
+	var tt_h: float = TT_PAD * 2 + lines.size() * LINE_H
+	var tt_x: float = PANEL_W + 8.0
+	var tt_y: float = row_y
+	# Keep on screen vertically
+	if tt_y + tt_h > size.y - 10:
+		tt_y = size.y - tt_h - 10
+	if tt_y < HEADER_H + 4:
+		tt_y = HEADER_H + 4
+
+	# Background
+	var bg_rect := Rect2(tt_x, tt_y, TT_W, tt_h)
+	draw_rect(bg_rect, MapColors.BG_PANEL)
+	draw_rect(bg_rect, MapColors.PANEL_BORDER, false, 1.0)
+
+	# Corner accents
+	var cl: float = 6.0
+	var cx: float = tt_x
+	var cy: float = tt_y
+	var cw: float = TT_W
+	var ch: float = tt_h
+	draw_line(Vector2(cx, cy), Vector2(cx + cl, cy), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx, cy), Vector2(cx, cy + cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx + cw, cy), Vector2(cx + cw - cl, cy), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx + cw, cy), Vector2(cx + cw, cy + cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx, cy + ch), Vector2(cx + cl, cy + ch), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx, cy + ch), Vector2(cx, cy + ch - cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx + cw, cy + ch), Vector2(cx + cw - cl, cy + ch), MapColors.CORNER, 1.5)
+	draw_line(Vector2(cx + cw, cy + ch), Vector2(cx + cw, cy + ch - cl), MapColors.CORNER, 1.5)
+
+	# Draw lines
+	var ly: float = tt_y + TT_PAD + LINE_H - 3.0
+	for line_data in lines:
+		var text: String = line_data["text"]
+		var col: Color = line_data["color"]
+		var swatch: Color = line_data["swatch"]
+		var fs_size: int = UITheme.FONT_SIZE_BODY if line_data.get("is_header", false) else UITheme.FONT_SIZE_SMALL
+		var tx: float = tt_x + TT_PAD
+		# Draw swatch if it has meaningful alpha
+		if swatch.a > 0.01:
+			draw_rect(Rect2(tx, ly - SWATCH_SIZE + 1, SWATCH_SIZE, SWATCH_SIZE), swatch)
+			tx += SWATCH_SIZE + 4.0
+		draw_string(font, Vector2(tx, ly), text, HORIZONTAL_ALIGNMENT_LEFT, TT_W - TT_PAD * 2 - 12, fs_size, col)
+		ly += LINE_H
 
 
 func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:

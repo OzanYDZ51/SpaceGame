@@ -19,6 +19,7 @@ var player_data: PlayerData = null
 var commerce_manager: CommerceManager = null
 var commerce_screen: CommerceScreen = null
 var equipment_screen: EquipmentScreen = null
+var shipyard_screen: ShipyardScreen = null
 var station_screen: StationScreen = null
 var admin_screen: StationAdminScreen = null
 var system_transition: SystemTransition = null
@@ -162,6 +163,37 @@ func handle_commerce_requested() -> void:
 
 
 func handle_commerce_closed() -> void:
+	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
+	if state_val != GameManagerSystem.GameState.DOCKED:
+		return
+	open_station_terminal()
+
+
+func handle_shipyard_requested() -> void:
+	if shipyard_screen == null or screen_manager == null or commerce_manager == null:
+		return
+	var stype: int = 0
+	var sname: String = dock_instance.station_name if dock_instance else "STATION"
+	var resolved_station_id: String = ""
+	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for ent in stations:
+		if ent.get("name", "") == sname:
+			resolved_station_id = ent.get("id", "")
+			var extra: Dictionary = ent.get("extra", {})
+			var type_str: String = extra.get("station_type", "repair")
+			match type_str:
+				"repair": stype = 0
+				"trade": stype = 1
+				"military": stype = 2
+				"mining": stype = 3
+			break
+	shipyard_screen.setup(commerce_manager, stype, sname, resolved_station_id)
+	screen_manager.close_screen("station")
+	await get_tree().process_frame
+	screen_manager.open_screen("shipyard")
+
+
+func handle_shipyard_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != GameManagerSystem.GameState.DOCKED:
 		return

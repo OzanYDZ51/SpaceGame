@@ -127,7 +127,21 @@ func _do_buy() -> void:
 		3: success = _commerce_manager.buy_module(item_name)
 	if success:
 		if GameManager._notif:
-			GameManager._notif.commerce.bought(String(item_name))
+			var price: int = 0
+			match _current_tab:
+				0:
+					var w := WeaponRegistry.get_weapon(item_name)
+					if w: price = w.price
+				1:
+					var sh := ShieldRegistry.get_shield(item_name)
+					if sh: price = sh.price
+				2:
+					var en := EngineRegistry.get_engine(item_name)
+					if en: price = en.price
+				3:
+					var mo := ModuleRegistry.get_module(item_name)
+					if mo: price = mo.price
+			GameManager._notif.commerce.bought(String(item_name), price)
 	queue_redraw()
 
 

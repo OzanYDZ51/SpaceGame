@@ -186,7 +186,8 @@ func _sell_one() -> void:
 	var item_name: String = item.get("name", "")
 	if _commerce_manager.sell_cargo_from_ship(item_name, 1, ship):
 		if GameManager._notif:
-			GameManager._notif.commerce.sold(item_name)
+			var unit_price := PriceCatalog.get_cargo_price(item_name)
+			GameManager._notif.commerce.sold(item_name, unit_price)
 		_refresh_items()
 	queue_redraw()
 

@@ -76,7 +76,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		return
 
 	# All mission commands: ignore threats, focus on destination
-	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station"])
+	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction"])
 	_brain.target = null
 
 	match cmd:
@@ -110,6 +110,16 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 						_brain.current_state = AIBrain.State.PURSUE
 					else:
 						_brain.current_state = AIBrain.State.PATROL
+		&"construction":
+			var target_x: float = params.get("target_x", 0.0)
+			var target_z: float = params.get("target_z", 0.0)
+			var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			var dist: float = _ship.global_position.distance_to(target_pos)
+			if dist > MOVE_ARRIVE_DIST:
+				_brain.set_patrol_area(target_pos, 50.0)
+				_brain.current_state = AIBrain.State.PATROL
+			else:
+				_mark_arrived(target_pos)
 		&"return_to_station":
 			_returning = true
 			# Preserve existing _station_id (set during deployment) if params don't include one
@@ -157,6 +167,15 @@ func _process(_delta: float) -> void:
 				_brain.set_patrol_area(station_pos, 50.0)
 				_brain.current_state = AIBrain.State.PATROL
 
+	# Monitor construction arrival (same as move_to)
+	if command == &"construction" and not _arrived:
+		var target_x: float = command_params.get("target_x", 0.0)
+		var target_z: float = command_params.get("target_z", 0.0)
+		var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		var dist: float = _ship.global_position.distance_to(target_pos)
+		if dist < MOVE_ARRIVE_DIST:
+			_mark_arrived(target_pos)
+
 	# Monitor move_to arrival
 	if command == &"move_to" and not _arrived:
 		var target_x: float = command_params.get("target_x", 0.0)
@@ -198,7 +217,7 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 	if _brain == null or command == &"":
 		return
 	match command:
-		&"move_to":
+		&"move_to", &"construction":
 			var tx: float = command_params.get("target_x", 0.0)
 			var tz: float = command_params.get("target_z", 0.0)
 			_brain.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 50.0)

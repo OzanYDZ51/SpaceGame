@@ -4,6 +4,7 @@ extends Node
 # =============================================================================
 # Planet Approach Manager — Orchestrates the seamless space→planet transition
 # Monitors distance to nearest planet, manages gravity/drag zones, locks cruise.
+# Also drives AtmosphereEnvironment for visual transitions (fog, sky, light).
 # =============================================================================
 
 signal entered_planet_zone(planet_body: PlanetBody, zone: int)
@@ -26,6 +27,7 @@ var current_planet_name: String = ""
 
 var _planet_lod_mgr: PlanetLODManager = null
 var _ship: ShipController = null
+var _atmo_env: AtmosphereEnvironment = null
 var _update_timer: float = 0.0
 const UPDATE_INTERVAL: float = 0.1  # 10 Hz
 
@@ -42,6 +44,13 @@ func _ready() -> void:
 
 func set_ship(ship: ShipController) -> void:
 	_ship = ship
+
+
+func setup_atmosphere_environment(env: Environment, dir_light: DirectionalLight3D) -> void:
+	_atmo_env = AtmosphereEnvironment.new()
+	_atmo_env.name = "AtmosphereEnvironment"
+	_atmo_env.setup(env, dir_light)
+	add_child(_atmo_env)
 
 
 func _process(delta: float) -> void:
@@ -64,6 +73,7 @@ func _process(delta: float) -> void:
 		max_speed_override = 0.0
 		_apply_to_ship()
 		_apply_to_camera()
+		_update_atmosphere_env(null, Zone.SPACE)
 		return
 
 	current_planet = body
@@ -74,7 +84,7 @@ func _process(delta: float) -> void:
 	# Determine zone
 	var render_radius: float = body.planet_radius
 	var atmo_height: float = render_radius * (body.planet_data.atmosphere_density * 0.08 if body.planet_data else 0.05)
-	var atmo_edge: float = atmo_height  # Altitude at atmosphere start
+	var atmo_edge: float = atmo_height
 
 	var new_zone: int
 	if current_altitude > ZONE_APPROACH:
@@ -94,11 +104,12 @@ func _process(delta: float) -> void:
 	# Compute gravity and drag based on altitude
 	_compute_physics(body, atmo_edge)
 
-	# Push physics values to ShipController
+	# Push physics values
 	_apply_to_ship()
-
-	# Push camera up-hint for planetary mode
 	_apply_to_camera()
+
+	# Drive atmosphere visuals
+	_update_atmosphere_env(body, new_zone)
 
 	# Emit altitude for HUD
 	altitude_changed.emit(current_altitude, current_planet_name)
@@ -125,19 +136,16 @@ func _compute_physics(body: PlanetBody, atmo_edge: float) -> void:
 			drag_factor = 0.0
 			max_speed_override = 0.0
 		Zone.APPROACH:
-			# Very light gravity starting, no drag
 			var t: float = 1.0 - clampf((current_altitude - ZONE_EXTERIOR) / (ZONE_APPROACH - ZONE_EXTERIOR), 0.0, 1.0)
-			gravity_strength = t * 0.01  # 1% max in approach
+			gravity_strength = t * 0.01
 			drag_factor = 0.0
 			max_speed_override = 0.0
 		Zone.EXTERIOR:
-			# Increasing gravity, light drag
 			var t: float = 1.0 - clampf((current_altitude - atmo_edge) / (ZONE_EXTERIOR - atmo_edge), 0.0, 1.0)
 			gravity_strength = lerpf(0.01, 0.3, t)
 			drag_factor = t * 0.1
-			max_speed_override = lerpf(0.0, 300.0, t)  # Gradually reduce from unlimited to 300 m/s
+			max_speed_override = lerpf(0.0, 300.0, t)
 		Zone.ATMOSPHERE:
-			# Full gravity and drag
 			var t: float = 1.0 - clampf((current_altitude - ZONE_SURFACE) / maxf(atmo_edge - ZONE_SURFACE, 1.0), 0.0, 1.0)
 			gravity_strength = lerpf(0.3, 1.0, t)
 			drag_factor = lerpf(0.1, 0.6, t)
@@ -151,7 +159,6 @@ func _compute_physics(body: PlanetBody, atmo_edge: float) -> void:
 func _apply_to_ship() -> void:
 	if _ship == null:
 		return
-	# Gravity: direction * strength * base_gravity (9.8 m/s²)
 	_ship.planetary_gravity = gravity_direction * gravity_strength * 9.8
 	_ship.atmospheric_drag = drag_factor
 	_ship.planetary_max_speed_override = max_speed_override
@@ -163,7 +170,6 @@ func _apply_to_camera() -> void:
 		return
 	var cam := _ship.get_node_or_null("ShipCamera") as ShipCamera
 	if cam == null:
-		# Camera might be a sibling or child — search
 		var viewport := _ship.get_viewport()
 		if viewport:
 			cam = viewport.get_camera_3d() as ShipCamera
@@ -171,11 +177,9 @@ func _apply_to_camera() -> void:
 		return
 
 	if current_zone >= Zone.ATMOSPHERE:
-		# In atmosphere: planet surface normal is "up"
 		cam.planetary_up = -gravity_direction
 		cam.planetary_up_blend = clampf(gravity_strength, 0.0, 1.0)
 	elif current_zone >= Zone.EXTERIOR:
-		# Approaching: gentle blend
 		cam.planetary_up = -gravity_direction
 		cam.planetary_up_blend = clampf(gravity_strength * 0.5, 0.0, 0.3)
 	else:
@@ -183,6 +187,42 @@ func _apply_to_camera() -> void:
 		cam.planetary_up_blend = 0.0
 
 
+func _update_atmosphere_env(body: PlanetBody, zone: int) -> void:
+	if _atmo_env == null:
+		return
+	if body == null or zone <= Zone.APPROACH:
+		_atmo_env.set_target_blend(0.0)
+		return
+
+	# Configure for this planet's atmosphere
+	var atmo_cfg := body.get_atmosphere_config()
+	if atmo_cfg:
+		_atmo_env.configure_for_planet(atmo_cfg)
+
+	# Blend based on zone and altitude
+	match zone:
+		Zone.EXTERIOR:
+			var t: float = 1.0 - clampf(current_altitude / ZONE_EXTERIOR, 0.0, 1.0)
+			_atmo_env.set_target_blend(t * 0.3)  # Subtle start
+		Zone.ATMOSPHERE:
+			var t: float = 1.0 - clampf(current_altitude / ZONE_EXTERIOR, 0.0, 1.0)
+			_atmo_env.set_target_blend(clampf(t, 0.3, 0.85))
+		Zone.SURFACE:
+			_atmo_env.set_target_blend(1.0)
+
+
 ## Check if cruise should be blocked.
 func is_cruise_blocked() -> bool:
 	return current_zone >= Zone.EXTERIOR
+
+
+## Hard reset (leaving system).
+func reset() -> void:
+	current_zone = Zone.SPACE
+	current_planet = null
+	current_altitude = INF
+	gravity_strength = 0.0
+	drag_factor = 0.0
+	max_speed_override = 0.0
+	if _atmo_env:
+		_atmo_env.reset()

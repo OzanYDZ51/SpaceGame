@@ -200,6 +200,11 @@ func _cleanup_current_system() -> void:
 	if planet_lod_mgr:
 		planet_lod_mgr.clear_all()
 
+	# Reset atmosphere environment (restore space fog/light/sky)
+	var planet_approach := GameManager.get_node_or_null("PlanetApproachManager") as PlanetApproachManager
+	if planet_approach:
+		planet_approach.reset()
+
 	# Clean up planet impostors (child of main_scene, not Universe)
 	for impostor in _active_planet_impostors:
 		if is_instance_valid(impostor):

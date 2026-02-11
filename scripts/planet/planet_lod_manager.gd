@@ -82,10 +82,6 @@ func _check_distances() -> void:
 		var spawn_dist: float = maxf(BODY_SPAWN_DISTANCE, render_radius * 3.0)
 		var despawn_dist: float = spawn_dist * 1.2
 
-		# Debug: show distance to nearest planet
-		if planet["index"] == 0 and Engine.get_frames_drawn() % 120 == 0:
-			print("[PlanetLOD] planet_%d dist=%.0fkm spawn_at=%.0fkm state=%d" % [planet["index"], dist / 1000.0, spawn_dist / 1000.0, planet["state"]])
-
 		match planet["state"]:
 			State.IMPOSTOR:
 				if dist < spawn_dist:
@@ -143,7 +139,7 @@ func _spawn_body(planet: Dictionary) -> void:
 
 	body.activate()
 	planet["body"] = body
-	print("[PlanetLOD] Spawned PlanetBody_%d (radius=%.0fm, dist=%.0fkm)" % [planet["index"], pd.get_render_radius(), 0.0])
+	print("[PlanetLOD] Spawned PlanetBody_%d (radius=%.0fkm)" % [planet["index"], pd.get_render_radius() / 1000.0])
 
 
 func _despawn_body(planet: Dictionary) -> void:

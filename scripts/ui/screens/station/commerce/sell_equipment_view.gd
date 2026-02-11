@@ -125,7 +125,21 @@ func _do_sell() -> void:
 		3: success = _commerce_manager.sell_module(item_name)
 	if success:
 		if GameManager._notif:
-			GameManager._notif.commerce.sold(String(item_name))
+			var sell_price: int = 0
+			match _current_tab:
+				0:
+					var w := WeaponRegistry.get_weapon(item_name)
+					if w: sell_price = PriceCatalog.get_sell_price(w.price)
+				1:
+					var sh := ShieldRegistry.get_shield(item_name)
+					if sh: sell_price = PriceCatalog.get_sell_price(sh.price)
+				2:
+					var en := EngineRegistry.get_engine(item_name)
+					if en: sell_price = PriceCatalog.get_sell_price(en.price)
+				3:
+					var mo := ModuleRegistry.get_module(item_name)
+					if mo: sell_price = PriceCatalog.get_sell_price(mo.price)
+			GameManager._notif.commerce.sold(String(item_name), sell_price)
 		_refresh_items()
 	queue_redraw()
 
