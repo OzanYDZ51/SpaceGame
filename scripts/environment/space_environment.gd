@@ -9,7 +9,7 @@ extends Node3D
 
 @export_group("Default Star Light")
 @export var default_star_color: Color = Color(0.95, 0.9, 0.85)
-@export var default_star_energy: float = 1.0
+@export var default_star_energy: float = 2.2
 
 @onready var star_light: DirectionalLight3D = $StarLight
 @onready var world_env: WorldEnvironment = $WorldEnvironment
@@ -23,8 +23,11 @@ func _ready() -> void:
 		star_light.light_color = default_star_color
 		star_light.light_energy = default_star_energy
 		star_light.shadow_enabled = true
-		star_light.shadow_bias = 0.05
+		star_light.shadow_bias = 0.02
+		star_light.shadow_normal_bias = 1.0
 		star_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+		star_light.directional_shadow_max_distance = 10000.0  # 10 km — covers stations/ships at distance
+		star_light.directional_shadow_fade_start = 0.9
 
 
 ## Called by SystemTransition when entering a new system.
@@ -124,8 +127,11 @@ func update_sun_direction(direction: Vector3) -> void:
 	if star_light:
 		# _sun_direction points TOWARD the sun. DirectionalLight3D shines along
 		# its -Z axis, so we aim it in the OPPOSITE direction (from sun toward scene).
-		var target := star_light.global_position - _sun_direction
-		star_light.look_at(target, Vector3.UP)
+		var light_dir := -_sun_direction
+		var target := star_light.global_position + light_dir
+		# Safe up vector: avoid gimbal lock when sun is near vertical
+		var up := Vector3.RIGHT if absf(light_dir.dot(Vector3.UP)) > 0.99 else Vector3.UP
+		star_light.look_at(target, up)
 
 	# Update skybox shader
 	if world_env and world_env.environment and world_env.environment.sky:

@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 star_light_color = Color(1, 0.55, 0.25, 1)
-star_light_energy = 0.8
+star_light_energy = 1.8
 ambient_color = Color(0.06, 0.02, 0.02, 1)
 ambient_energy = 0.18
 glow_intensity = 0.5

@@ -8,7 +8,7 @@ extends Resource
 
 @export_group("Star Light")
 @export var star_light_color: Color = Color(0.95, 0.9, 0.85)
-@export var star_light_energy: float = 1.0
+@export var star_light_energy: float = 2.2
 
 @export_group("Ambient Light")
 @export var ambient_color: Color = Color(0.04, 0.04, 0.07)
