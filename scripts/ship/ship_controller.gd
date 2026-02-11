@@ -49,6 +49,14 @@ const CRUISE_PUNCH_DURATION: float = 10.0  ## Phase 2: explosive acceleration
 var cruise_time: float = 0.0               ## Time spent in current cruise (read by camera for FOV)
 var _cruise_punched: bool = false
 
+# --- Post-cruise smooth deceleration ---
+var _post_cruise_decel_active: bool = false
+var _post_cruise_speed_cap: float = 0.0
+const POST_CRUISE_DECEL_RATE: float = 3.0
+
+# --- Gate approach speed cap (set by autopilot, consumed by _integrate_forces) ---
+var _gate_approach_speed_cap: float = 0.0
+
 # --- Autopilot ---
 var autopilot_active: bool = false
 var autopilot_target_id: String = ""
@@ -61,7 +69,7 @@ const AUTOPILOT_DECEL_DIST: float = 30000.0          # 30 km — drop cruise, ap
 const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
 const AUTOPILOT_APPROACH_SPEED: float = 3000.0        # 3 km/s — fast final approach during autopilot
-const AUTOPILOT_PLANET_ORBIT_MARGIN: float = 20000.0 # 20 km above surface for planet orbit stop
+const AUTOPILOT_PLANET_ORBIT_MARGIN: float = 50000.0 # 50 km above surface for planet orbit stop
 const AUTOPILOT_PLANET_AVOIDANCE_MARGIN: float = 1.5 # Avoidance radius = render_radius * this
 
 # --- Rotation state ---
@@ -92,7 +100,7 @@ var _near_planet_surface: bool = false                ## True when in atmosphere
 # --- Planet collision avoidance (pure distance-based) ---
 var _planet_check_timer: float = 0.0
 const PLANET_CHECK_INTERVAL: float = 0.25       # 4 Hz
-const PLANET_CRUISE_EXIT_DIST: float = 100_000.0  # 100 km — exit cruise when closer than this
+const PLANET_CRUISE_EXIT_MARGIN: float = 30_000.0  # 30 km above surface — exit cruise
 var planet_avoidance_active: bool = false   ## Read by HUD for warning display
 
 # --- Crosshair raycast throttle ---
@@ -467,6 +475,19 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if planetary_max_speed_override > 0.0:
 		max_speed_fwd = minf(max_speed_fwd, planetary_max_speed_override)
 
+	# Post-cruise smooth deceleration (Fix 1: no more speed wall)
+	if _post_cruise_decel_active:
+		var target_cap: float = max_speed_fwd
+		_post_cruise_speed_cap = lerpf(_post_cruise_speed_cap, target_cap, POST_CRUISE_DECEL_RATE * dt)
+		if absf(_post_cruise_speed_cap - target_cap) < 50.0:
+			_post_cruise_decel_active = false
+		else:
+			max_speed_fwd = _post_cruise_speed_cap
+
+	# Gate approach speed cap (Fix 3: prevent overshooting gate trigger)
+	if _gate_approach_speed_cap > 0.0:
+		max_speed_fwd = minf(max_speed_fwd, _gate_approach_speed_cap)
+
 	var max_lat := (ship_data.max_speed_lateral if ship_data else 150.0) * engine_speed_mult
 	var max_vert := (ship_data.max_speed_vertical if ship_data else 150.0) * engine_speed_mult
 
@@ -510,9 +531,10 @@ func _check_planet_collision(delta: float) -> void:
 	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
 
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		var is_autopilot_target: bool = autopilot_active and ent.get("id", "") == autopilot_target_id
 		var extra: Dictionary = ent.get("extra", {})
 		var rr: float = extra.get("render_radius", 50_000.0)
-		var cruise_exit_dist: float = maxf(PLANET_CRUISE_EXIT_DIST, rr * 2.0)
+		var cruise_exit_dist: float = rr + PLANET_CRUISE_EXIT_MARGIN
 
 		var dx: float = ent["pos_x"] - upos[0]
 		var dy: float = ent["pos_y"] - upos[1]
@@ -520,16 +542,37 @@ func _check_planet_collision(delta: float) -> void:
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 
 		if dist < cruise_exit_dist:
-			planet_avoidance_active = true
-			if speed_mode == Constants.SpeedMode.CRUISE:
-				_exit_cruise()
-			return
+			# Check if ship is heading TOWARD or AWAY from the planet
+			var to_planet := Vector3(float(dx), float(dy), float(dz)).normalized()
+			var ship_fwd := (-global_transform.basis.z).normalized()
+			var heading_toward: bool = ship_fwd.dot(to_planet) > 0.2  # heading toward planet
+
+			if is_autopilot_target:
+				# Target planet: still exit cruise/warp for safety, but don't block autopilot
+				if speed_mode == Constants.SpeedMode.CRUISE:
+					_exit_cruise()
+			elif heading_toward:
+				# Heading toward planet — block cruise and force exit
+				planet_avoidance_active = true
+				if speed_mode == Constants.SpeedMode.CRUISE:
+					_exit_cruise()
+				return
+			else:
+				# Heading away — allow cruise to escape, but still flag for HUD warning
+				if dist < rr * 1.2:
+					# Very close to surface — still block regardless of direction
+					planet_avoidance_active = true
+					if speed_mode == Constants.SpeedMode.CRUISE:
+						_exit_cruise()
+					return
 
 
 # === Cruise exit ===
 
 func _exit_cruise() -> void:
 	if speed_mode == Constants.SpeedMode.CRUISE:
+		_post_cruise_decel_active = true
+		_post_cruise_speed_cap = current_speed
 		speed_mode = Constants.SpeedMode.NORMAL
 		cruise_time = 0.0
 		_cruise_punched = false
@@ -569,12 +612,50 @@ func engage_autopilot(target_id: String, target_name: String, is_gate: bool = fa
 
 
 func disengage_autopilot() -> void:
+	var was_planet_approach: bool = false
+	if autopilot_active and autopilot_target_id != "":
+		var ent: Dictionary = EntityRegistry.get_entity(autopilot_target_id)
+		if ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+			was_planet_approach = true
 	autopilot_active = false
 	autopilot_target_id = ""
 	autopilot_target_name = ""
 	autopilot_is_gate = false
+	_gate_approach_speed_cap = 0.0
 	if speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
+	# Planet arrival: kill velocity to prevent drifting into the planet
+	if was_planet_approach:
+		linear_velocity = Vector3.ZERO
+		_post_cruise_decel_active = false
+
+
+## Full flight state reset — clears ALL transient flags. Called on system transition.
+func reset_flight_state() -> void:
+	disengage_autopilot()
+	cruise_time = 0.0
+	_cruise_punched = false
+	if cruise_warp_active:
+		_exit_cruise_warp()
+	_post_cruise_decel_active = false
+	_post_cruise_speed_cap = 0.0
+	_gate_approach_speed_cap = 0.0
+	speed_mode = Constants.SpeedMode.NORMAL
+	_last_combat_time = -100.0
+	combat_locked = false
+	planetary_gravity = Vector3.ZERO
+	atmospheric_drag = 0.0
+	planetary_max_speed_override = 0.0
+	_near_planet_surface = false
+	planet_avoidance_active = false
+	throttle_input = Vector3.ZERO
+	_target_pitch_rate = 0.0
+	_target_yaw_rate = 0.0
+	_target_roll_rate = 0.0
+	_current_pitch_rate = 0.0
+	_current_yaw_rate = 0.0
+	_current_roll_rate = 0.0
+	_mouse_delta = Vector2.ZERO
 
 
 func _run_autopilot() -> void:
@@ -615,7 +696,7 @@ func _run_autopilot() -> void:
 	if autopilot_is_gate:
 		decel_dist = AUTOPILOT_GATE_DECEL_DIST
 	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
-		decel_dist = arrival_dist + 50_000.0  # Start slowing 50km before orbit
+		decel_dist = arrival_dist + 100_000.0  # Start slowing 100km before orbit
 	else:
 		decel_dist = AUTOPILOT_DECEL_DIST
 	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
@@ -643,19 +724,37 @@ func _run_autopilot() -> void:
 		if autopilot_is_gate and dist < 500.0:
 			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
 			throttle_input = Vector3(0, 0, -approach_factor)
-		elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET and dist < arrival_dist + 30_000.0:
-			# Gentle approach when nearing planet orbit altitude
-			var approach_factor: float = clampf((dist - arrival_dist) / 30_000.0, 0.1, 1.0)
-			throttle_input = Vector3(0, 0, -approach_factor)
+		elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET and dist < arrival_dist + 50_000.0:
+			# Active braking: if going too fast for this distance, cut throttle entirely
+			if _gate_approach_speed_cap > 0.0 and current_speed > _gate_approach_speed_cap * 1.2:
+				throttle_input = Vector3.ZERO
+			else:
+				var approach_factor: float = clampf((dist - arrival_dist) / 50_000.0, 0.05, 1.0)
+				throttle_input = Vector3(0, 0, -approach_factor)
 		else:
 			throttle_input = Vector3(0, 0, -1)
 	else:
 		throttle_input = Vector3.ZERO
 
+	# Approach speed cap to avoid overshooting target (gates + planets)
+	if autopilot_is_gate and dist < 2000.0:
+		_gate_approach_speed_cap = lerpf(80.0, 500.0, clampf(dist / 2000.0, 0.0, 1.0))
+	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+		var margin: float = dist - arrival_dist
+		if margin < 100_000.0:
+			_gate_approach_speed_cap = lerpf(50.0, 5000.0, clampf(margin / 100_000.0, 0.0, 1.0))
+		else:
+			_gate_approach_speed_cap = 0.0
+	else:
+		_gate_approach_speed_cap = 0.0
+
 	# Engage cruise once well aligned and outside decel zone
 	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked and not planet_avoidance_active:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
+			cruise_time = 0.0
+			_cruise_punched = false
+			_post_cruise_decel_active = false
 
 
 ## Steer autopilot direction away from planets/stars that block the flight path.
@@ -664,13 +763,17 @@ func _autopilot_avoid_planets(desired_dir: Vector3, target_dist: float) -> Vecto
 	var best_avoidance := Vector3.ZERO
 	var worst_penetration: float = 0.0
 
-	# Collect obstacles: planets + star
+	# Collect obstacles: planets + star (exclude our autopilot destination)
 	var obstacles: Array[Dictionary] = []
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		if ent.get("id", "") == autopilot_target_id:
+			continue
 		var extra: Dictionary = ent.get("extra", {})
 		obstacles.append({"pos_x": ent["pos_x"], "pos_y": ent["pos_y"], "pos_z": ent["pos_z"],
 			"radius": extra.get("render_radius", 50_000.0)})
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR):
+		if ent.get("id", "") == autopilot_target_id:
+			continue
 		obstacles.append({"pos_x": ent["pos_x"], "pos_y": ent["pos_y"], "pos_z": ent["pos_z"],
 			"radius": ent.get("radius", 300_000.0)})
 
