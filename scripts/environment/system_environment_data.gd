@@ -41,7 +41,7 @@ extends Resource
 
 @export_group("Skybox — Nebula Detail")
 @export var nebula_warp_strength: float = 0.6
-@export var nebula_emission_strength: float = 1.5
+@export var nebula_emission_strength: float = 0.4
 
 @export_group("Skybox — Star Clusters")
 @export var star_cluster_density: float = 0.3

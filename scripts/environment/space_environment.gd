@@ -73,12 +73,12 @@ func apply_environment(env_data: SystemEnvironmentData) -> void:
 
 	# --- Glow (minimal, tight — no big soft halos) ---
 	env.glow_enabled = true
-	env.glow_intensity = env_data.glow_intensity * 0.35
-	env.glow_bloom = 0.01
-	env.glow_strength = 0.2
-	env.glow_hdr_threshold = 1.5
-	env.glow_hdr_scale = 0.5
-	env.glow_hdr_luminance_cap = 6.0
+	env.glow_intensity = env_data.glow_intensity * 0.25
+	env.glow_bloom = 0.0
+	env.glow_strength = 0.15
+	env.glow_hdr_threshold = 2.0
+	env.glow_hdr_scale = 0.3
+	env.glow_hdr_luminance_cap = 4.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 
 	# --- SSAO/SSIL (always on, subtle depth) ---

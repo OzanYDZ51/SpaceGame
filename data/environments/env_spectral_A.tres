@@ -22,5 +22,5 @@ milky_way_color = Color(0.07, 0.08, 0.18, 1)
 dust_intensity = 0.4
 god_ray_intensity = 0.6
 nebula_warp_strength = 0.65
-nebula_emission_strength = 1.1
+nebula_emission_strength = 0.4
 star_cluster_density = 0.35

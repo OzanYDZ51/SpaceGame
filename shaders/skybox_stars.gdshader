@@ -30,7 +30,7 @@ uniform float dust_intensity : hint_range(0.0, 1.0) = 0.5;
 uniform vec3 sun_direction = vec3(0.0, 0.0, -1.0);
 uniform float god_ray_intensity : hint_range(0.0, 2.0) = 0.5;
 uniform float nebula_warp_strength : hint_range(0.0, 2.0) = 0.6;
-uniform float nebula_emission_strength : hint_range(0.0, 5.0) = 1.5;
+uniform float nebula_emission_strength : hint_range(0.0, 5.0) = 0.4;
 uniform float star_cluster_density : hint_range(0.0, 1.0) = 0.3;
 
 // =============================================================================
@@ -186,10 +186,10 @@ void sky() {
 		vec3(5.2, 1.3, 2.8),
 		vec3(1.7, 9.2, 4.1)
 	);
-	float bg_mask = pow(max(smoothstep(0.48, 0.75, bg_warp), 0.0), 1.5);
+	float bg_mask = pow(max(smoothstep(0.52, 0.78, bg_warp), 0.0), 2.0);
 	// Mix cool and warm for color variation within the layer
-	vec3 bg_color = mix(nebula_cool * 1.2, nebula_warm * 0.8, smoothstep(0.4, 0.7, bg_warp));
-	vec3 nebula_bg = bg_color * bg_mask * 0.25;
+	vec3 bg_color = mix(nebula_cool * 1.0, nebula_warm * 0.6, smoothstep(0.4, 0.7, bg_warp));
+	vec3 nebula_bg = bg_color * bg_mask * 0.15;
 
 	// --- Midground layer (scale ~5.0): main structural detail, filaments ---
 	float mid_warp = warped_fbm(
@@ -199,12 +199,12 @@ void sky() {
 		vec3(8.3, 2.9, 6.1),
 		vec3(4.6, 0.8, 3.7)
 	);
-	float mid_mask = pow(max(smoothstep(0.52, 0.80, mid_warp), 0.0), 1.8);
+	float mid_mask = pow(max(smoothstep(0.55, 0.82, mid_warp), 0.0), 2.2);
 	// Rich color from accent and warm, with cool accents blended in
 	float mid_color_blend = smoothstep(0.35, 0.65, warped_fbm(dir * 4.0, nebula_warp_strength * 0.5, vec3(11.0, 2.0, 7.0), vec3(3.0, 8.0, 1.0), vec3(6.0, 4.0, 9.0)));
 	vec3 mid_color = mix(nebula_warm, nebula_accent, smoothstep(0.35, 0.65, mid_warp));
 	mid_color = mix(mid_color, nebula_cool * 0.7, mid_color_blend * 0.35);
-	vec3 nebula_mid = mid_color * mid_mask * 0.4;
+	vec3 nebula_mid = mid_color * mid_mask * 0.25;
 
 	// --- Foreground layer (scale ~8.0): fine wisps and tendrils ---
 	float fg_warp = warped_fbm(
@@ -214,10 +214,10 @@ void sky() {
 		vec3(2.1, 8.5, 0.4),
 		vec3(9.3, 1.1, 5.6)
 	);
-	float fg_mask = pow(max(smoothstep(0.55, 0.85, fg_warp), 0.0), 2.0);
+	float fg_mask = pow(max(smoothstep(0.58, 0.87, fg_warp), 0.0), 2.5);
 	// Different mix: accent into cool for wispy foreground
-	vec3 fg_color = mix(nebula_accent * 0.9, nebula_cool * 1.3, smoothstep(0.4, 0.7, fg_warp));
-	vec3 nebula_fg = fg_color * fg_mask * 0.2;
+	vec3 fg_color = mix(nebula_accent * 0.7, nebula_cool * 1.0, smoothstep(0.4, 0.7, fg_warp));
+	vec3 nebula_fg = fg_color * fg_mask * 0.12;
 
 	// Composite nebula layers (additive)
 	vec3 nebula_total = (nebula_bg + nebula_mid + nebula_fg) * nebula_intensity;
@@ -229,13 +229,13 @@ void sky() {
 	// HDR EMISSION CORES — trigger Godot bloom/glow naturally
 	// =========================================================================
 
-	// Emission from midground (strongest structural features) — tighter thresholds
-	float emission_mid = pow(max(smoothstep(0.70, 0.95, mid_warp), 0.0), 2.5);
-	// Emission from background (broader, softer glow) — tighter thresholds, reduced multiplier
-	float emission_bg = pow(max(smoothstep(0.75, 0.95, bg_warp), 0.0), 3.0) * 0.4;
+	// Emission from midground (strongest structural features) — very tight, rare highlights
+	float emission_mid = pow(max(smoothstep(0.80, 0.97, mid_warp), 0.0), 3.5);
+	// Emission from background (broader, softer glow) — very subtle
+	float emission_bg = pow(max(smoothstep(0.85, 0.97, bg_warp), 0.0), 4.0) * 0.2;
 
-	vec3 emission_color_mid = mix(nebula_warm * 2.0, nebula_accent * 1.8, smoothstep(0.5, 0.8, mid_warp));
-	vec3 emission_color_bg = nebula_cool * 1.5 + nebula_warm * 0.5;
+	vec3 emission_color_mid = mix(nebula_warm * 1.2, nebula_accent * 1.0, smoothstep(0.5, 0.8, mid_warp));
+	vec3 emission_color_bg = nebula_cool * 0.8 + nebula_warm * 0.3;
 
 	vec3 emission_cores = (emission_color_mid * emission_mid + emission_color_bg * emission_bg) * nebula_emission_strength;
 
@@ -257,7 +257,7 @@ void sky() {
 	float edge_bg = smoothstep(0.25, 0.45, bg_mask) - smoothstep(0.45, 0.70, bg_mask);
 	float edge_mid = smoothstep(0.30, 0.50, mid_mask) - smoothstep(0.50, 0.72, mid_mask);
 	float edge = max(edge_bg, edge_mid);
-	vec3 edge_glow = edge * sun_scatter * mix(nebula_warm, vec3(1.0, 0.8, 0.5), 0.4) * 2.0;
+	vec3 edge_glow = edge * sun_scatter * mix(nebula_warm, vec3(1.0, 0.8, 0.5), 0.4) * 0.6;
 
 	// =========================================================================
 	// Apply all nebula contributions
