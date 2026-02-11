@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode shadows_disabled;
+render_mode shadows_disabled, blend_mix, depth_draw_opaque;
 
 // =============================================================================
 // Planet Impostor Surface — Procedural per-type planet visuals
@@ -12,6 +12,7 @@ uniform int planet_type : hint_range(0, 4) = 0;
 uniform vec4 planet_color : source_color = vec4(0.5, 0.5, 0.5, 1.0);
 uniform float planet_seed : hint_range(0.0, 1000.0) = 0.0;
 uniform vec3 sun_direction = vec3(0.0, 0.3, -1.0);
+uniform float impostor_alpha : hint_range(0.0, 1.0) = 1.0;
 
 varying vec3 local_normal;
 varying vec3 local_pos;
@@ -363,4 +364,5 @@ void fragment() {
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	SPECULAR = mix(0.3, 0.7, spec_mask); // Higher specular on water/ice
+	ALPHA = impostor_alpha;
 }

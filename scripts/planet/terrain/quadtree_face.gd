@@ -7,7 +7,7 @@ extends RefCounted
 # Budget: max 2-4 chunk rebuilds per frame.
 # =============================================================================
 
-const MAX_REBUILDS_PER_FRAME: int = 4
+const MAX_REBUILDS_PER_FRAME: int = 8
 
 var face_index: int = 0
 var root: QuadtreeNode = null

@@ -15,10 +15,10 @@ var _ocean_level: float = 0.0
 # Per-type noise configs
 const CONFIGS: Dictionary = {
 	# [frequency, octaves, lacunarity, gain, noise_type]
-	"rocky":     [0.8, 6, 2.0, 0.5, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"lava":      [1.2, 6, 2.2, 0.45, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"ocean":     [0.4, 5, 2.0, 0.5, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"ice":       [0.5, 5, 2.0, 0.55, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
+	"rocky":     [0.6, 7, 2.0, 0.5, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
+	"lava":      [0.9, 7, 2.2, 0.45, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
+	"ocean":     [0.3, 6, 2.0, 0.5, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
+	"ice":       [0.4, 6, 2.0, 0.55, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
 	"gas_giant": [0.3, 4, 2.0, 0.5, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
 }
 
@@ -40,16 +40,16 @@ func setup(seed_val: int, planet_type: PlanetData.PlanetType, amplitude: float, 
 	_noise.fractal_lacunarity = cfg[2]
 	_noise.fractal_gain = cfg[3]
 
-	# Ridge noise for rocky/lava mountains
-	if planet_type == PlanetData.PlanetType.ROCKY or planet_type == PlanetData.PlanetType.LAVA:
+	# Ridge noise for rocky/lava/ice mountains
+	if planet_type in [PlanetData.PlanetType.ROCKY, PlanetData.PlanetType.LAVA, PlanetData.PlanetType.ICE]:
 		_ridge_noise = FastNoiseLite.new()
 		_ridge_noise.seed = seed_val + 1000
 		_ridge_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		_ridge_noise.frequency = cfg[0] * 1.5
+		_ridge_noise.frequency = cfg[0] * 2.0
 		_ridge_noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
-		_ridge_noise.fractal_octaves = 4
-		_ridge_noise.fractal_lacunarity = 2.0
-		_ridge_noise.fractal_gain = 0.5
+		_ridge_noise.fractal_octaves = 5
+		_ridge_noise.fractal_lacunarity = 2.2
+		_ridge_noise.fractal_gain = 0.55
 
 
 ## Get height at a unit sphere point. Returns value in [0, amplitude] range.
@@ -63,11 +63,13 @@ func get_height(sphere_point: Vector3) -> float:
 	# Base terrain: FBM noise in [-1, 1] → remap to [0, 1]
 	var h: float = (_noise.get_noise_3d(nx * 1000.0, ny * 1000.0, nz * 1000.0) + 1.0) * 0.5
 
-	# Ridge overlay for rocky/lava
+	# Ridge overlay for rocky/lava — strong ridged mountains
 	if _ridge_noise:
 		var ridge: float = _ridge_noise.get_noise_3d(nx * 1000.0, ny * 1000.0, nz * 1000.0)
 		ridge = (ridge + 1.0) * 0.5
-		h = h * 0.6 + ridge * 0.4
+		# Emphasize ridges for dramatic mountains
+		ridge = ridge * ridge  # Square for sharper peaks
+		h = h * 0.4 + ridge * 0.6
 
 	# Ocean clamping
 	if _ocean_level > 0.0 and h < _ocean_level:

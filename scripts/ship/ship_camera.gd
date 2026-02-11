@@ -29,8 +29,8 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 
 @export_group("FOV")
 @export var fov_base: float = 75.0
-@export var fov_boost: float = 80.0
-@export var fov_cruise: float = 82.0
+@export var fov_boost: float = 78.0
+@export var fov_cruise: float = 75.0  # No FOV change in cruise — shader handles speed feel
 
 @export_group("Cockpit")
 @export var cockpit_offset: Vector3 = Vector3(0.0, 3.0, -5.0)
@@ -108,13 +108,11 @@ func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
 
 
 func _on_cruise_punch() -> void:
-	_fov_spike = 4.0            # Subtle FOV surge (Star Citizen style)
-	_shake_intensity = maxf(_shake_intensity, 0.2)
+	_shake_intensity = maxf(_shake_intensity, 0.15)
 
 
 func _on_cruise_exit() -> void:
-	_fov_spike = -2.0           # Gentle FOV settle on exit
-	_shake_intensity = maxf(_shake_intensity, 0.12)
+	_shake_intensity = maxf(_shake_intensity, 0.1)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -150,15 +148,9 @@ func _update_third_person(delta: float) -> void:
 	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	# =========================================================================
-	# DYNAMIC DISTANCE (no pull-back in cruise — Star Citizen style)
+	# DYNAMIC DISTANCE (fixed — no speed pull-back in any mode)
 	# =========================================================================
-	var speed_pull: float
-	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-		speed_pull = 0.0  # Camera stays close during quantum travel
-	else:
-		speed_pull = minf(_ship.current_speed * cam_speed_pull, 3.0)
-	var effective_distance: float = target_distance + speed_pull
-	current_distance = lerpf(current_distance, effective_distance, 3.0 * delta)
+	current_distance = lerpf(current_distance, target_distance, 3.0 * delta)
 
 	# =========================================================================
 	# CAMERA POSITION (behind and above the ship)
@@ -190,8 +182,12 @@ func _update_third_person(delta: float) -> void:
 		)
 		desired_pos += ship_basis * vib
 
-	# Smooth position follow
-	var follow: float = cam_follow_speed * delta
+	# Smooth position follow (instant during cruise — ship must never outrun camera)
+	var follow: float
+	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+		follow = 1.0  # Instant snap — no lag at quantum speeds
+	else:
+		follow = cam_follow_speed * delta
 	global_position = global_position.lerp(desired_pos, follow)
 
 	# =========================================================================
@@ -245,12 +241,7 @@ func _update_cockpit(delta: float) -> void:
 func _get_fov_for_mode(mode: int) -> float:
 	match mode:
 		Constants.SpeedMode.BOOST: return fov_boost
-		Constants.SpeedMode.CRUISE:
-			# Subtle FOV ramp — speed sensation comes from shader, not fisheye
-			if _ship and _ship.cruise_time < _ship.CRUISE_SPOOL_DURATION:
-				var t := _ship.cruise_time / _ship.CRUISE_SPOOL_DURATION
-				return lerpf(fov_base, fov_base + 4.0, t * t)
-			return fov_cruise
+		Constants.SpeedMode.CRUISE: return fov_base  # Zero FOV change — no fisheye
 	return fov_base
 
 

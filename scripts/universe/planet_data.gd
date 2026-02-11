@@ -81,12 +81,12 @@ func get_terrain_amplitude() -> float:
 	if terrain_amplitude > 0.0:
 		return terrain_amplitude
 	match type:
-		PlanetType.ROCKY: return 0.02
-		PlanetType.LAVA: return 0.03
-		PlanetType.OCEAN: return 0.01
-		PlanetType.ICE: return 0.015
-		PlanetType.GAS_GIANT: return 0.005
-	return 0.02
+		PlanetType.ROCKY: return 0.06
+		PlanetType.LAVA: return 0.08
+		PlanetType.OCEAN: return 0.025
+		PlanetType.ICE: return 0.04
+		PlanetType.GAS_GIANT: return 0.008
+	return 0.06
 
 
 ## Whether this planet type supports landing.

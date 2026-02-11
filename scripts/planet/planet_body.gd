@@ -25,8 +25,10 @@ var _heightmap: HeightmapGenerator = null
 var _terrain_material: ShaderMaterial = null
 var _atmo_mesh: MeshInstance3D = null
 var _atmo_material: ShaderMaterial = null
+var _collision_body: StaticBody3D = null
 var _update_timer: float = 0.0
 var _is_active: bool = false
+var _chunk_debug_timer: float = 0.0
 
 
 func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float, system_seed: int) -> void:
@@ -56,6 +58,17 @@ func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float,
 
 	# Create atmosphere mesh
 	_create_atmosphere(pd)
+
+	# Sphere collision for ground (prevents ship from falling through)
+	_collision_body = StaticBody3D.new()
+	_collision_body.collision_layer = 1
+	_collision_body.collision_mask = 0
+	var col_shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = planet_radius * (1.0 + pd.get_terrain_amplitude() * 0.3)
+	col_shape.shape = sphere
+	_collision_body.add_child(col_shape)
+	add_child(_collision_body)
 
 
 func activate() -> void:
@@ -119,6 +132,14 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 	for face in _faces:
 		var count: int = face.update(cam_pos, planet_center)
 		total_chunks += count
+
+	# Debug: log chunk count periodically
+	_chunk_debug_timer += UPDATE_INTERVAL
+	if _chunk_debug_timer >= 3.0:
+		_chunk_debug_timer = 0.0
+		var dist_to_cam: float = cam_pos.distance_to(planet_center)
+		var alt: float = dist_to_cam - planet_radius
+		print("[PlanetBody] %s chunks=%d dist=%.0fkm alt=%.0fkm radius=%.0fkm" % [entity_id, total_chunks, dist_to_cam / 1000.0, alt / 1000.0, planet_radius / 1000.0])
 
 	# Budget enforcement: if over MAX_TOTAL_CHUNKS, reduce quality
 	# (In practice the quadtree thresholds should prevent this)

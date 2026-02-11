@@ -26,7 +26,7 @@ varying float v_slope;
 void vertex() {
 	// Height = distance from origin / planet_radius - 1.0
 	float dist = length(VERTEX);
-	v_height = clamp((dist / planet_radius - 1.0) * 50.0, 0.0, 1.0); // Amplify for visibility
+	v_height = clamp((dist / planet_radius - 1.0) * 15.0, 0.0, 1.0); // Scaled with new amplitude
 
 	// Slope from normal vs radial direction
 	vec3 radial = normalize(VERTEX);
