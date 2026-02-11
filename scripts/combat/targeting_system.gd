@@ -14,6 +14,7 @@ var target_lock_range: float = 5000.0
 var _targetable_ships: Array[Node3D] = []
 var _scan_timer: float = 0.0
 const SCAN_INTERVAL: float = 0.5
+const RETICLE_RADIUS: float = 150.0  # Pixels around crosshair to consider "in reticle"
 var _current_target_index: int = -1
 var _cached_target_health: HealthSystem = null
 var _cached_target_ref: Node3D = null  # tracks which target the cached health belongs to
@@ -68,31 +69,61 @@ func target_nearest_to_crosshair() -> void:
 	var cam := ship.get_viewport().get_camera_3d()
 	if cam == null:
 		return
+	if _targetable_ships.is_empty():
+		clear_target()
+		return
 
 	var screen_center := ship.get_viewport().get_visible_rect().size / 2.0
-	var nearest: Node3D = null
-	var nearest_angle: float = INF
+	var in_reticle: Array[Node3D] = []
+	var in_reticle_dist: Array[float] = []  # screen distance for sorting
+	var out_of_reticle: Array[Node3D] = []  # already sorted by 3D distance from _gather
 
 	for t in _targetable_ships:
 		if not is_instance_valid(t) or not t.is_inside_tree():
 			continue
-		# Check if target is in front of camera
 		var to_target: Vector3 = t.global_position - cam.global_position
 		var cam_fwd: Vector3 = -cam.global_transform.basis.z
 		if to_target.dot(cam_fwd) <= 0.0:
 			continue  # Behind camera
 
-		# Project to screen and measure distance from crosshair center
 		var screen_pos := cam.unproject_position(t.global_position)
 		var dist_to_center: float = screen_pos.distance_to(screen_center)
 
-		if dist_to_center < nearest_angle:
-			nearest_angle = dist_to_center
-			nearest = t
+		if dist_to_center <= RETICLE_RADIUS:
+			in_reticle.append(t)
+			in_reticle_dist.append(dist_to_center)
+		else:
+			out_of_reticle.append(t)
 
-	if nearest:
-		_set_target(nearest)
-		_current_target_index = _targetable_ships.find(nearest)
+	# Sort in_reticle by screen distance (closest to crosshair first)
+	if in_reticle.size() > 1:
+		var indices := range(in_reticle.size())
+		indices.sort_custom(func(a: int, b: int) -> bool:
+			return in_reticle_dist[a] < in_reticle_dist[b]
+		)
+		var sorted_reticle: Array[Node3D] = []
+		for i in indices:
+			sorted_reticle.append(in_reticle[i])
+		in_reticle = sorted_reticle
+
+	# Build ordered list: reticle targets first, then distance-sorted rest
+	var ordered: Array[Node3D] = []
+	ordered.append_array(in_reticle)
+	ordered.append_array(out_of_reticle)
+
+	if ordered.is_empty():
+		clear_target()
+		return
+
+	# Cycle: if current target is in the list, pick the next one
+	if current_target and current_target in ordered:
+		var idx := ordered.find(current_target)
+		var next_idx := (idx + 1) % ordered.size()
+		_set_target(ordered[next_idx])
+		_current_target_index = _targetable_ships.find(ordered[next_idx])
+	else:
+		_set_target(ordered[0])
+		_current_target_index = _targetable_ships.find(ordered[0])
 
 
 func clear_target() -> void:
