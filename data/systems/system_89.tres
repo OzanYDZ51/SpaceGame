@@ -58,7 +58,7 @@ script = ExtResource("3_erj08")
 planet_name = "Gamma Aquilae I"
 type = 2
 orbital_radius = 14432040.154933928
-orbital_period = 93.04388518674905
+orbital_period = 558263.3111204943
 orbital_angle = 4.5786948398756735
 radius = 6092956.781387329
 color = Color(0.23488663, 0.42776984, 0.8290124, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_erj08")
 planet_name = "Gamma Aquilae II"
 type = 3
 orbital_radius = 30093861.139380947
-orbital_period = 280.16450548008095
+orbital_period = 1680987.0328804858
 orbital_angle = 1.6758309424568094
 radius = 24089069.366455078
 color = Color(0.87874496, 0.69882786, 0.31649753, 0.9)
@@ -77,7 +77,7 @@ color = Color(0.87874496, 0.69882786, 0.31649753, 0.9)
 script = ExtResource("5_ovfmp")
 station_name = "Dock Outpost"
 orbital_radius = 29511520.31558728
-orbital_period = 252.14805493207285
+orbital_period = 1512888.329592437
 orbital_angle = 3.2515153349849784
 
 [resource]

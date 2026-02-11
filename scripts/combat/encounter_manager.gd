@@ -12,6 +12,12 @@ signal ship_destroyed_in_encounter(ship_name: String)
 var _active_npc_ids: Array[StringName] = []
 var _encounter_counter: int = 0
 
+# Deferred spawn: during initial load, NetworkSyncManager/NpcAuthority don't exist yet.
+# We store the pending request and GameManager triggers it after network role is known.
+var _deferred_spawn_pending: bool = false
+var _deferred_danger_level: int = 0
+var _deferred_system_data: StarSystemData = null
+
 
 func clear_all_npcs() -> void:
 	var lod_mgr := _get_lod_manager()
@@ -29,13 +35,33 @@ func clear_all_npcs() -> void:
 
 
 func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> void:
-	# In multiplayer, clients don't spawn NPCs locally — they receive them from the server
+	# Only the server spawns NPCs. Clients receive them via NpcAuthority sync.
 	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
 		return
 
+	# During initial load, NetworkSyncManager (and NpcAuthority) don't exist yet.
+	# Defer spawning until GameManager triggers it after network role is determined.
+	if not GameManager.get_node_or_null("NetworkSyncManager"):
+		_deferred_spawn_pending = true
+		_deferred_danger_level = danger_level
+		_deferred_system_data = system_data
+		return
+
+	_do_spawn_encounters(danger_level, system_data)
+
+
+## Called by GameManager after network role is determined.
+func spawn_deferred() -> void:
+	if not _deferred_spawn_pending:
+		return
+	_deferred_spawn_pending = false
+	_do_spawn_encounters(_deferred_danger_level, _deferred_system_data)
+
+
+func _do_spawn_encounters(danger_level: int, system_data: StarSystemData) -> void:
 	# Position encounters near the first station if available
 	var base_pos := Vector3(500, 0, -1500)
-	if system_data.stations.size() > 0:
+	if system_data and system_data.stations.size() > 0:
 		var st: StationData = system_data.stations[0]
 		var orbit_r: float = st.orbital_radius
 		var angle: float = st.orbital_angle

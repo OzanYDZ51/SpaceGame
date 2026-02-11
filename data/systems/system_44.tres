@@ -58,7 +58,7 @@ script = ExtResource("3_bntlg")
 planet_name = "Pi Ursae I"
 type = 3
 orbital_radius = 17817011.177539825
-orbital_period = 127.628751996639
+orbital_period = 765772.511979834
 orbital_angle = 6.148687849094882
 radius = 17480638.474225998
 color = Color(0.7526906, 0.6405735, 0.28191793, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_bntlg")
 planet_name = "Pi Ursae II"
 type = 4
 orbital_radius = 25561488.385527894
-orbital_period = 219.31859302889708
+orbital_period = 1315911.5581733824
 orbital_angle = 4.128193968923273
 radius = 6399155.616760254
 color = Color(0.64541006, 0.7215957, 0.96262634, 0.9)
@@ -78,7 +78,7 @@ color = Color(0.64541006, 0.7215957, 0.96262634, 0.9)
 script = ExtResource("5_qpsrv")
 station_name = "Omega Terminal"
 orbital_radius = 17895328.13031097
-orbital_period = 114.8658767969751
+orbital_period = 689195.2607818505
 orbital_angle = 5.909678961666791
 
 [resource]

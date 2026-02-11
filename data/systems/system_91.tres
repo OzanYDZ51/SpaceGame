@@ -57,7 +57,7 @@ script = ExtResource("3_53t3o")
 planet_name = "Altair Ursae I"
 type = 4
 orbital_radius = 22684761.881828308
-orbital_period = 183.35703656945864
+orbital_period = 1100142.2194167518
 orbital_angle = 3.287696084481278
 radius = 5780783.414840698
 color = Color(0.61343926, 0.7559711, 0.9070084, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_53t3o")
 planet_name = "Altair Ursae II"
 type = 4
 orbital_radius = 32902829.133494876
-orbital_period = 320.2920116316763
+orbital_period = 1921752.0697900578
 orbital_angle = 0.440650165773847
 radius = 3953368.067741394
 color = Color(0.5357101, 0.7655538, 0.9366754, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.5357101, 0.7655538, 0.9366754, 0.9)
 script = ExtResource("5_q1xo8")
 station_name = "Nexus Outpost"
 orbital_radius = 22380025.63434142
-orbital_period = 165.02133291251278
+orbital_period = 990127.9974750767
 orbital_angle = 0.3924032445530624
 
 [resource]

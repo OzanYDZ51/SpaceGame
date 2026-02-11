@@ -403,7 +403,7 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 
 	bolt.collision_layer = 0
 	bolt.collision_mask = 0
-	bolt.monitoring = false
+	bolt.set_deferred("monitoring", false)
 	bolt.owner_ship = remote
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
@@ -432,7 +432,7 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 # PVP DAMAGE — Server validated, applied on target client
 # =============================================================================
 
-func _on_player_damage_received(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
+func _on_player_damage_received(attacker_pid: int, _weapon_name: String, damage_val: float, hit_dir: Array) -> void:
 	var player_ship := GameManager.player_ship as ShipController
 	if player_ship == null:
 		return
@@ -452,7 +452,7 @@ func _on_player_damage_received(attacker_pid: int, weapon_name: String, damage_v
 # NPC FIRE RELAY — Visual projectiles from server NPCs on remote clients
 # =============================================================================
 
-func _on_npc_fire_received(npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
 	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
 	if weapon == null:
 		return
@@ -482,7 +482,7 @@ func _on_npc_fire_received(npc_id_str: String, weapon_name: String, fire_pos: Ar
 	# Visual-only projectile (no collision, no damage)
 	bolt.collision_layer = 0
 	bolt.collision_mask = 0
-	bolt.monitoring = false
+	bolt.set_deferred("monitoring", false)
 	bolt.owner_ship = null
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
@@ -580,11 +580,15 @@ func on_system_unloading(_system_id: int) -> void:
 
 ## Sends all NPCs to a peer after a short delay so the client has time to finish
 ## its system jump before receiving NPC data. Uses a SceneTreeTimer (1 second).
-func _deferred_send_npcs_to_peer(peer_id: int, system_id: int) -> void:
+func _deferred_send_npcs_to_peer(peer_id: int, _fallback_system_id: int) -> void:
 	await get_tree().create_timer(1.0).timeout
 	if not is_inside_tree():
 		return
 	if not NetworkManager.peers.has(peer_id):
 		return  # Peer disconnected during the delay
+	# Use the peer's actual system (may differ from server's current system)
+	var peer_sys: int = NetworkManager.peers[peer_id].system_id
 	if npc_authority:
-		npc_authority.send_all_npcs_to_peer(peer_id, system_id)
+		# Ensure NPCs exist for the peer's system (spawns remote NPCs if needed)
+		npc_authority.ensure_system_npcs(peer_sys)
+		npc_authority.send_all_npcs_to_peer(peer_id, peer_sys)

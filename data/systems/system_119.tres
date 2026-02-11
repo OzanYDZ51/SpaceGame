@@ -59,7 +59,7 @@ pos_z = -47960748.201878205
 script = ExtResource("3_kyom2")
 planet_name = "Chi Cygni I"
 orbital_radius = 17980958.52136612
-orbital_period = 129.3944064270331
+orbital_period = 776366.4385621985
 orbital_angle = 3.478692796375257
 radius = 4143096.774816513
 color = Color(0.5185374, 0.64083153, 0.3570274, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_kyom2")
 planet_name = "Chi Cygni II"
 type = 3
 orbital_radius = 31187140.501105186
-orbital_period = 295.5694742665916
+orbital_period = 1773416.8455995496
 orbital_angle = 3.488489151221329
 radius = 38386991.024017334
 color = Color(0.8871408, 0.7078758, 0.28674564, 0.9)
@@ -79,7 +79,7 @@ script = ExtResource("3_kyom2")
 planet_name = "Chi Cygni III"
 type = 4
 orbital_radius = 54092652.03965214
-orbital_period = 675.1552600343149
+orbital_period = 4050931.5602058894
 orbital_angle = 0.1282737481450604
 radius = 8314476.013183594
 color = Color(0.6144243, 0.79990923, 0.98073757, 0.9)
@@ -88,7 +88,7 @@ color = Color(0.6144243, 0.79990923, 0.98073757, 0.9)
 script = ExtResource("5_8jyqx")
 station_name = "Haven Outpost"
 orbital_radius = 53032097.46860099
-orbital_period = 607.6397340308835
+orbital_period = 3645838.4041853007
 orbital_angle = 3.2032398810099756
 
 [sub_resource type="Resource" id="Resource_0lcll"]
@@ -96,7 +96,7 @@ script = ExtResource("5_8jyqx")
 station_name = "Gateway Hub"
 station_type = 1
 orbital_radius = 53113303.43208515
-orbital_period = 607.6397340308835
+orbital_period = 3645838.4041853007
 orbital_angle = 2.0081064984502963
 
 [resource]

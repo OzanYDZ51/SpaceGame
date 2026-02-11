@@ -9,11 +9,12 @@ extends Node
 
 # --- Per-system toggles (runtime-editable) ---
 var engine_trails_enabled := true
-var speed_effects_enabled := true
-var space_dust_reactive_enabled := true
+var speed_effects_enabled := false
+var space_dust_reactive_enabled := false
 var camera_vibration_enabled := true
 var gforce_enabled := true
-var motion_blur_enabled := true
+var motion_blur_enabled := false
+var nebula_wisps_enabled := false
 
 # --- Internal refs ---
 var _ship: ShipController = null
@@ -24,6 +25,7 @@ var _main_scene: Node3D = null
 var _engine_trail: EngineTrail = null
 var _speed_effects: SpeedEffects = null
 var _space_dust: SpaceDust = null
+var _nebula_wisps: NebulaWisps = null
 var _gforce: GForceEffects = null
 var _motion_blur: MotionBlur = null
 
@@ -34,23 +36,24 @@ func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main
 	_universe = universe
 	_main_scene = main_scene
 
-	# --- Space Dust (ambient, universe child, follows camera) ---
-	if camera and universe:
-		_space_dust = SpaceDust.new()
-		_space_dust.name = "SpaceDust"
-		_space_dust.set_camera(camera)
-		_space_dust.set_ship(ship)
-		universe.add_child(_space_dust)
+	# --- Space Dust & Nebula Wisps: DISABLED (visual quality insufficient) ---
+	# SpaceDust and NebulaWisps are not created.
+	# Kill any leftover instances from previous sessions
+	if universe:
+		for child in universe.get_children():
+			if child.name == "SpaceDust" or child.name == "NebulaWisps":
+				child.queue_free()
 
 	# --- Engine Trails (child of ShipModel) ---
 	_create_engine_trail()
 
 	# --- Speed Effects (CanvasLayer, fullscreen post-process) ---
-	_speed_effects = SpeedEffects.new()
-	_speed_effects.name = "SpeedEffects"
-	main_scene.add_child(_speed_effects)
-	_speed_effects.set_ship(ship)
-	_connect_damage_flash(ship)
+	if speed_effects_enabled:
+		_speed_effects = SpeedEffects.new()
+		_speed_effects.name = "SpeedEffects"
+		main_scene.add_child(_speed_effects)
+		_speed_effects.set_ship(ship)
+		_connect_damage_flash(ship)
 
 	# --- G-force overlay (CanvasLayer) ---
 	_gforce = GForceEffects.new()
@@ -73,8 +76,6 @@ func on_ship_rebuilt(new_ship: ShipController) -> void:
 		_camera = new_camera
 
 	# Rewire subsystems that persist across ship changes
-	if _space_dust:
-		_space_dust.set_ship(new_ship)
 	if _speed_effects:
 		_speed_effects.set_ship(new_ship)
 		_connect_damage_flash(new_ship)
@@ -131,6 +132,12 @@ func _connect_damage_flash(ship: ShipController) -> void:
 			health.damage_taken.connect(_speed_effects.trigger_damage_flash)
 
 
+## Called when entering a new star system to update nebula wisp colors/opacity.
+## Pass the SystemEnvironmentData resolved by SpaceEnvironment.
+func configure_nebula_environment(_env_data: SystemEnvironmentData) -> void:
+	pass  # NebulaWisps disabled
+
+
 func set_all_enabled(enabled: bool) -> void:
 	engine_trails_enabled = enabled
 	speed_effects_enabled = enabled
@@ -138,6 +145,7 @@ func set_all_enabled(enabled: bool) -> void:
 	camera_vibration_enabled = enabled
 	gforce_enabled = enabled
 	motion_blur_enabled = enabled
+	nebula_wisps_enabled = enabled
 
 	if _motion_blur and is_instance_valid(_motion_blur):
 		_motion_blur.visible = enabled

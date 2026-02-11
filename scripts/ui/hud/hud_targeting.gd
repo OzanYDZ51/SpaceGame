@@ -63,7 +63,7 @@ func update(delta: float, is_cockpit: bool) -> void:
 	# Sync target hologram
 	_holo_hit_timer += delta
 	if _target_holo_pivot and _last_tracked_target and is_instance_valid(_last_tracked_target):
-		_target_holo_pivot.transform.basis = _last_tracked_target.global_transform.basis
+		_target_holo_pivot.transform.basis = _last_tracked_target.global_transform.basis.orthonormalized()
 
 	if _target_shield_mat:
 		if _connected_target_health:
@@ -73,6 +73,9 @@ func update(delta: float, is_cockpit: bool) -> void:
 				_connected_target_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT),
 				_connected_target_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT),
 			))
+		elif _connected_struct_health:
+			var sr := _connected_struct_health.get_shield_ratio()
+			_target_shield_mat.set_shader_parameter("shield_ratios", Vector4(sr, sr, sr, sr))
 		_target_shield_mat.set_shader_parameter("pulse_time", pulse_t)
 		_target_shield_mat.set_shader_parameter("hit_facing", _holo_hit_facing)
 		_target_shield_mat.set_shader_parameter("hit_time", _holo_hit_timer)
@@ -206,6 +209,7 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(x, y - 8), Vector2(x + w, y - 8), UITheme.PRIMARY_FAINT, 1.0)
 
 	if t_struct:
+		y += 110  # Hologram viewport space
 		_draw_structure_health(ctrl, font, x, y, w, t_struct)
 	else:
 		# 3D hologram renders the shield diagram (SubViewport behind _draw layer)
@@ -254,6 +258,7 @@ func _setup_target_holo(target: Node3D) -> void:
 	# Resolve ship_id and ship_data for any target type
 	var target_ship_id: StringName = &""
 	var target_ship_data: ShipData = null
+	var is_station := target is SpaceStation
 	if target is ShipController:
 		var sc := target as ShipController
 		if sc.ship_data == null:
@@ -266,7 +271,7 @@ func _setup_target_holo(target: Node3D) -> void:
 	elif target is RemoteNPCShip:
 		target_ship_id = (target as RemoteNPCShip).ship_id
 		target_ship_data = ShipRegistry.get_ship_data(target_ship_id)
-	if target_ship_data == null:
+	if target_ship_data == null and not is_station:
 		return
 
 	# SubViewportContainer — renders behind 2D draw layer
@@ -313,21 +318,22 @@ func _setup_target_holo(target: Node3D) -> void:
 	rim_light.position = Vector3(5, 3, -8)
 	_target_vp.add_child(rim_light)
 
-	# Camera — from EquipmentCamera data or fallback
+	# Camera — positioned based on target type
 	_target_holo_camera = Camera3D.new()
-	var cam_data := ShipFactory.get_equipment_camera_data(target_ship_id)
-	if not cam_data.is_empty():
-		_target_holo_camera.position = cam_data["position"]
-		_target_holo_camera.transform.basis = cam_data["basis"]
-		_target_holo_camera.fov = cam_data["fov"]
-		if cam_data.has("projection"):
-			_target_holo_camera.projection = cam_data["projection"]
-		if cam_data.has("size"):
-			_target_holo_camera.size = cam_data["size"]
-	else:
-		_target_holo_camera.position = Vector3(0, 30, 12)
-		_target_holo_camera.rotation_degrees = Vector3(-60, 0, 0)
-		_target_holo_camera.fov = 45.0
+	if not is_station:
+		var cam_data := ShipFactory.get_equipment_camera_data(target_ship_id)
+		if not cam_data.is_empty():
+			_target_holo_camera.position = cam_data["position"]
+			_target_holo_camera.transform.basis = cam_data["basis"]
+			_target_holo_camera.fov = cam_data["fov"]
+			if cam_data.has("projection"):
+				_target_holo_camera.projection = cam_data["projection"]
+			if cam_data.has("size"):
+				_target_holo_camera.size = cam_data["size"]
+		else:
+			_target_holo_camera.position = Vector3(0, 30, 12)
+			_target_holo_camera.rotation_degrees = Vector3(-60, 0, 0)
+			_target_holo_camera.fov = 45.0
 	_target_holo_camera.current = true
 	_target_vp.add_child(_target_holo_camera)
 
@@ -336,14 +342,30 @@ func _setup_target_holo(target: Node3D) -> void:
 	_target_holo_pivot.name = "TargetPivot"
 	_target_vp.add_child(_target_holo_pivot)
 
-	# Ship model — holographic blue
+	# Model — holographic blue
 	_target_holo_model = ShipModel.new()
-	_target_holo_model.model_path = target_ship_data.model_path
-	_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(target_ship_id)
-	_target_holo_model.model_rotation_degrees = ShipFactory.get_model_rotation(target_ship_id)
+	if is_station:
+		_target_holo_model.model_path = "res://assets/models/space_station.glb"
+	else:
+		_target_holo_model.model_path = target_ship_data.model_path
+		_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(target_ship_id)
+		_target_holo_model.model_rotation_degrees = ShipFactory.get_model_rotation(target_ship_id)
 	_target_holo_pivot.add_child(_target_holo_model)
 
 	_apply_target_holo_material(_target_holo_model)
+
+	# Station camera: position based on actual model AABB after loading
+	if is_station:
+		var aabb := _target_holo_model.get_visual_aabb()
+		var center := aabb.get_center()
+		var max_dim := maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z))
+		if max_dim < 0.01:
+			max_dim = 2.0
+		_target_holo_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		_target_holo_camera.size = max_dim * 2.5
+		_target_holo_camera.position = center + Vector3(0, max_dim * 1.2, max_dim * 0.9)
+		_target_holo_camera.rotation_degrees = Vector3(-50, 0, 0)
+
 	_create_target_shield_mesh()
 
 	# Flash light for shield impacts
@@ -435,7 +457,7 @@ func _trigger_target_hit_flash(facing: int) -> void:
 
 
 # =============================================================================
-# STRUCTURE HEALTH (stations — simple bars, no hologram)
+# STRUCTURE HEALTH (stations — omnidirectional shield + hull bars)
 # =============================================================================
 func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: float, sh: StructureHealth) -> void:
 	# Shield bar
@@ -542,6 +564,9 @@ func _on_target_shield_hit(facing: int, current: float, _max_val: float) -> void
 func _on_struct_shield_hit(current: float, _max_val: float) -> void:
 	if current < _prev_target_shields[0]:
 		_target_shield_flash[0] = 1.0
+		_holo_hit_facing = 0
+		_holo_hit_timer = 0.0
+		_trigger_target_hit_flash(0)
 	_prev_target_shields[0] = current
 
 

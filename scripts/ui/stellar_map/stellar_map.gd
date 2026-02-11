@@ -24,6 +24,7 @@ var managed_externally: bool = false
 signal view_switch_requested
 signal fleet_order_requested(fleet_index: int, order_id: StringName, params: Dictionary)
 signal squadron_action_requested(action: StringName, data: Dictionary)
+signal construction_marker_placed(marker: Dictionary)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
 var _preview_entities: Dictionary = {}
@@ -57,6 +58,9 @@ const RIGHT_HOLD_MAX_MOVE: float = 20.0
 # Context menu
 var _context_menu: FleetContextMenu = null
 var _squadron_mgr: SquadronManager = null
+
+# Construction
+var _construction_mgr: ConstructionManager = null
 
 # Inline rename
 var _rename_edit: LineEdit = null
@@ -729,6 +733,10 @@ func _sync_filters() -> void:
 	_dirty = true
 
 
+func set_construction_manager(mgr: ConstructionManager) -> void:
+	_construction_mgr = mgr
+
+
 func set_squadron_manager(mgr: SquadronManager) -> void:
 	_squadron_mgr = mgr
 	if _squadron_mgr:
@@ -903,33 +911,40 @@ func _on_toolbar_follow_toggled() -> void:
 # FLEET CONTEXT MENU
 # =============================================================================
 func _open_fleet_context_menu(screen_pos: Vector2) -> void:
-	var effective_idx := _get_effective_fleet_index()
-	if effective_idx < 0 or _fleet_panel._fleet == null:
-		return
-	if effective_idx >= _fleet_panel._fleet.ships.size():
-		return
-
-	var fs := _fleet_panel._fleet.ships[effective_idx]
 	var universe_x: float = _camera.screen_to_universe_x(screen_pos.x)
 	var universe_z: float = _camera.screen_to_universe_z(screen_pos.y)
+	var all_orders: Array[Dictionary] = []
 
-	# Build context
-	var context := {
-		"fleet_index": effective_idx,
-		"fleet_ship": fs,
-		"is_deployed": fs.deployment_state == FleetShip.DeploymentState.DEPLOYED,
+	# --- Fleet orders (only if a ship is selected) ---
+	var effective_idx := _get_effective_fleet_index()
+	var has_fleet: bool = effective_idx >= 0 and _fleet_panel._fleet != null and effective_idx < _fleet_panel._fleet.ships.size()
+	var context: Dictionary = {
 		"universe_x": universe_x,
 		"universe_z": universe_z,
 		"target_entity_id": _entity_layer.get_entity_at(screen_pos),
 	}
 
-	var orders := FleetOrderRegistry.get_available_orders(context)
+	if has_fleet:
+		var fs := _fleet_panel._fleet.ships[effective_idx]
+		context["fleet_index"] = effective_idx
+		context["fleet_ship"] = fs
+		context["is_deployed"] = fs.deployment_state == FleetShip.DeploymentState.DEPLOYED
 
-	# Inject squadron orders
-	var sq_orders := _build_squadron_context_orders(effective_idx)
-	orders.append_array(sq_orders)
+		var fleet_orders := FleetOrderRegistry.get_available_orders(context)
+		var sq_orders := _build_squadron_context_orders(effective_idx)
+		fleet_orders.append_array(sq_orders)
 
-	if orders.is_empty():
+		if not fleet_orders.is_empty():
+			all_orders.append({"id": &"_header_fleet", "display_name": "ORDRES FLOTTE", "is_header": true})
+			all_orders.append_array(fleet_orders)
+
+	# --- Construction orders (always available) ---
+	var build_orders := ConstructionOrderRegistry.get_available_orders()
+	if not build_orders.is_empty():
+		all_orders.append({"id": &"_header_construction", "display_name": "CONSTRUCTION", "is_header": true})
+		all_orders.append_array(build_orders)
+
+	if all_orders.is_empty():
 		return
 
 	_close_context_menu()
@@ -938,7 +953,7 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 	add_child(_context_menu)
 	_context_menu.order_selected.connect(_on_context_menu_order)
 	_context_menu.cancelled.connect(_close_context_menu)
-	_context_menu.show_menu(screen_pos, orders, context)
+	_context_menu.show_menu(screen_pos, all_orders, context)
 
 
 func _close_context_menu() -> void:
@@ -948,6 +963,12 @@ func _close_context_menu() -> void:
 
 
 func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
+	# Construction actions (prefixed with build_)
+	if String(order_id).begins_with("build_"):
+		_handle_construction_order(order_id)
+		_close_context_menu()
+		return
+
 	# Squadron actions (prefixed with sq_)
 	if String(order_id).begins_with("sq_"):
 		_handle_squadron_context_order(order_id, params)
@@ -966,6 +987,27 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 			if order_id == &"attack":
 				_entity_layer.route_target_entity_id = params.get("target_entity_id", "")
 	_close_context_menu()
+
+
+# =============================================================================
+# CONSTRUCTION ORDERS
+# =============================================================================
+func _handle_construction_order(order_id: StringName) -> void:
+	if _context_menu == null or _construction_mgr == null:
+		return
+	var ctx := _context_menu._context
+	var ux: float = ctx.get("universe_x", 0.0)
+	var uz: float = ctx.get("universe_z", 0.0)
+
+	var sys_id: int = -1
+	if GameManager._system_transition:
+		sys_id = GameManager._system_transition.current_system_id
+
+	if order_id == &"build_station":
+		var marker := _construction_mgr.add_marker(&"station", "Station spatiale", ux, uz, sys_id)
+		_entity_layer.construction_markers = _construction_mgr.get_markers()
+		_show_waypoint(ux, uz)
+		construction_marker_placed.emit(marker)
 
 
 # =============================================================================

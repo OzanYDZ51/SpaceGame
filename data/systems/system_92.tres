@@ -40,7 +40,7 @@ script = ExtResource("3_fu3lu")
 planet_name = "Rho Serpentis I"
 type = 3
 orbital_radius = 16789764.46390152
-orbital_period = 116.75168290236391
+orbital_period = 700510.0974141834
 orbital_angle = 5.076783195392103
 radius = 54381475.4486084
 color = Color(0.76946765, 0.693886, 0.2502399, 0.9)
@@ -50,7 +50,7 @@ script = ExtResource("3_fu3lu")
 planet_name = "Rho Serpentis II"
 type = 4
 orbital_radius = 33095915.481048267
-orbital_period = 323.11553739647366
+orbital_period = 1938693.224378842
 orbital_angle = 4.175726400954144
 radius = 2232736.5428209305
 color = Color(0.6209646, 0.71176344, 0.9761947, 0.9)
@@ -59,7 +59,7 @@ color = Color(0.6209646, 0.71176344, 0.9761947, 0.9)
 script = ExtResource("5_vdaep")
 station_name = "Haven Terminal"
 orbital_radius = 31679036.294573713
-orbital_period = 290.8039836568263
+orbital_period = 1744823.9019409576
 orbital_angle = 6.278456781440367
 
 [resource]

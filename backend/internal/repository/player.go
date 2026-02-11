@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"spacegame-backend/internal/model"
@@ -24,6 +25,7 @@ func (r *PlayerRepository) Create(ctx context.Context, username, email, password
 	err := r.pool.QueryRow(ctx, `
 		INSERT INTO players (username, email, password_hash)
 		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING
 		RETURNING id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		          pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
 		          credits, kills, deaths, clan_id, is_banned, last_login_at, last_save_at, created_at, updated_at
@@ -33,6 +35,9 @@ func (r *PlayerRepository) Create(ctx context.Context, username, email, password
 		&p.Credits, &p.Kills, &p.Deaths, &p.ClanID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("duplicate key")
+		}
 		return nil, err
 	}
 	return p, nil

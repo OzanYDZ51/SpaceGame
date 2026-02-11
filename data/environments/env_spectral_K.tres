@@ -4,19 +4,23 @@
 
 [resource]
 script = ExtResource("1")
-star_light_color = Color(1, 0.75, 0.45, 1)
+star_light_color = Color(1, 0.72, 0.4, 1)
 star_light_energy = 0.9
-ambient_color = Color(0.04, 0.03, 0.03, 1)
-ambient_energy = 0.18
-glow_intensity = 0.45
-glow_bloom = 0.03
-nebula_warm = Color(0.14, 0.05, 0.03, 1)
-nebula_cool = Color(0.04, 0.04, 0.09, 1)
-nebula_accent = Color(0.08, 0.025, 0.1, 1)
-nebula_intensity = 0.32
-star_density = 0.42
-star_brightness = 3.3
-milky_way_intensity = 0.48
+ambient_color = Color(0.05, 0.03, 0.03, 1)
+ambient_energy = 0.2
+glow_intensity = 0.55
+glow_bloom = 0.042
+nebula_warm = Color(0.28, 0.08, 0.02, 1)
+nebula_cool = Color(0.05, 0.04, 0.15, 1)
+nebula_accent = Color(0.3, 0.15, 0.03, 1)
+nebula_intensity = 0.4
+star_density = 0.43
+star_brightness = 3.2
+milky_way_intensity = 0.55
 milky_way_width = 0.16
-milky_way_color = Color(0.07, 0.06, 0.11, 1)
+milky_way_color = Color(0.1, 0.06, 0.08, 1)
 dust_intensity = 0.5
+god_ray_intensity = 0.35
+nebula_warp_strength = 0.55
+nebula_emission_strength = 0.9
+star_cluster_density = 0.28

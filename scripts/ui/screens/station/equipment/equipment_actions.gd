@@ -5,7 +5,6 @@ extends RefCounted
 # Equipment Screen — Business Logic (Equip / Remove / Button States)
 # =============================================================================
 
-signal loadout_changed
 
 var _adapter: RefCounted = null
 var _inventory: PlayerInventory = null

@@ -59,7 +59,7 @@ script = ExtResource("3_kaixr")
 planet_name = "Epsilon Virginis I"
 type = 4
 orbital_radius = 24338223.040103912
-orbital_period = 203.76497896146324
+orbital_period = 1222589.8737687794
 orbital_angle = 3.851942604573672
 radius = 7211428.165435791
 color = Color(0.6321949, 0.74480486, 0.9851051, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_kaixr")
 planet_name = "Epsilon Virginis II"
 type = 4
 orbital_radius = 42830646.99861665
-orbital_period = 475.6945723928805
+orbital_period = 2854167.434357283
 orbital_angle = 2.5142533089480077
 radius = 5271796.941757202
 color = Color(0.51096845, 0.79919815, 0.9712201, 0.9)
@@ -78,7 +78,7 @@ color = Color(0.51096845, 0.79919815, 0.9712201, 0.9)
 script = ExtResource("5_reonk")
 station_name = "Dock Hub"
 orbital_radius = 24079152.32357869
-orbital_period = 183.3884810653169
+orbital_period = 1100330.8863919014
 orbital_angle = 1.9898932853968665
 
 [resource]

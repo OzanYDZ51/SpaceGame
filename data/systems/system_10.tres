@@ -59,7 +59,7 @@ script = ExtResource("3_rx7h4")
 planet_name = "Pi Carinae I"
 type = 3
 orbital_radius = 16393108.218908308
-orbital_period = 112.63884866687687
+orbital_period = 675833.0920012612
 orbital_angle = 2.6288633203093004
 radius = 36347582.34024048
 color = Color(0.79525745, 0.61337936, 0.35053372, 0.9)
@@ -70,7 +70,7 @@ script = ExtResource("3_rx7h4")
 planet_name = "Pi Carinae II"
 type = 4
 orbital_radius = 34602668.65046157
-orbital_period = 345.4304631828971
+orbital_period = 2072582.7790973824
 orbital_angle = 3.4824809349664343
 radius = 7455121.994018555
 color = Color(0.6349597, 0.7737347, 0.9182474, 0.9)
@@ -79,7 +79,7 @@ color = Color(0.6349597, 0.7737347, 0.9182474, 0.9)
 script = ExtResource("5_pwt6h")
 station_name = "Haven Depot"
 orbital_radius = 16829966.665660065
-orbital_period = 101.37496380018918
+orbital_period = 608249.7828011351
 orbital_angle = 3.7155920857129776
 
 [resource]

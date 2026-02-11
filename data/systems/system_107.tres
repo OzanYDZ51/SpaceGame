@@ -58,7 +58,7 @@ script = ExtResource("3_8qqhq")
 planet_name = "Vega Aquilae I"
 type = 3
 orbital_radius = 19713078.141212463
-orbital_period = 148.53469507947347
+orbital_period = 891208.1704768408
 orbital_angle = 6.162126659298127
 radius = 48358139.991760254
 color = Color(0.8996361, 0.68263555, 0.3173147, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_8qqhq")
 planet_name = "Vega Aquilae II"
 type = 4
 orbital_radius = 30895331.144943174
-orbital_period = 291.43085174163133
+orbital_period = 1748585.110449788
 orbital_angle = 0.9376636393056992
 radius = 9417853.355407715
 color = Color(0.5794275, 0.7322818, 0.9658606, 0.9)
@@ -77,7 +77,7 @@ color = Color(0.5794275, 0.7322818, 0.9658606, 0.9)
 script = ExtResource("5_5qiyh")
 station_name = "Gamma Station"
 orbital_radius = 30550792.512612246
-orbital_period = 262.2877665674682
+orbital_period = 1573726.5994048093
 orbital_angle = 1.6425528096832898
 
 [resource]

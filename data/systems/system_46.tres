@@ -71,7 +71,7 @@ script = ExtResource("3_h2s5a")
 planet_name = "Procyon Lyrae I"
 type = 4
 orbital_radius = 12468754.351139069
-orbital_period = 74.71896496583503
+orbital_period = 448313.7897950102
 orbital_angle = 0.7810293984722819
 radius = 6182135.105133057
 color = Color(0.6339227, 0.749035, 0.9268959, 0.9)
@@ -81,7 +81,7 @@ script = ExtResource("3_h2s5a")
 planet_name = "Procyon Lyrae II"
 type = 4
 orbital_radius = 19554370.758083142
-orbital_period = 146.74456049125598
+orbital_period = 880467.3629475359
 orbital_angle = 0.8806093660804946
 radius = 8752126.216888428
 color = Color(0.5317451, 0.74765885, 0.9668967, 0.9)
@@ -91,7 +91,7 @@ script = ExtResource("3_h2s5a")
 planet_name = "Procyon Lyrae III"
 type = 4
 orbital_radius = 30666528.907087322
-orbital_period = 288.1994690855021
+orbital_period = 1729196.8145130125
 orbital_angle = 2.8142012310057813
 radius = 5779792.547225952
 color = Color(0.5420964, 0.7110112, 0.9686802, 0.9)
@@ -100,7 +100,7 @@ color = Color(0.5420964, 0.7110112, 0.9686802, 0.9)
 script = ExtResource("5_gfbqb")
 station_name = "Nexus Station"
 orbital_radius = 20452946.22257237
-orbital_period = 132.0701044421304
+orbital_period = 792420.6266527824
 orbital_angle = 3.1292573283454126
 
 [sub_resource type="Resource" id="Resource_htqfp"]
@@ -108,7 +108,7 @@ script = ExtResource("5_gfbqb")
 station_name = "Alpha Depot"
 station_type = 3
 orbital_radius = 12771072.156240657
-orbital_period = 67.24706846925153
+orbital_period = 403482.4108155092
 orbital_angle = 4.912990299526255
 
 [resource]

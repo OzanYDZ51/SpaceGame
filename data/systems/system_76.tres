@@ -58,7 +58,7 @@ script = ExtResource("3_bsu1e")
 planet_name = "Pi Cygni I"
 type = 3
 orbital_radius = 24640513.360500336
-orbital_period = 207.5730044358713
+orbital_period = 1245438.0266152278
 orbital_angle = 5.297438991391698
 radius = 36953146.45767212
 color = Color(0.8315448, 0.66567475, 0.257287, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_bsu1e")
 planet_name = "Pi Cygni II"
 type = 4
 orbital_radius = 48073357.79211345
-orbital_period = 565.6566928686211
+orbital_period = 3393940.1572117265
 orbital_angle = 3.880987871659917
 radius = 8367243.766784668
 color = Color(0.54370844, 0.73939514, 0.96583945, 0.9)
@@ -77,7 +77,7 @@ color = Color(0.54370844, 0.73939514, 0.96583945, 0.9)
 script = ExtResource("5_0tmg5")
 station_name = "Dock Platform"
 orbital_radius = 49932147.82051542
-orbital_period = 509.09102358175903
+orbital_period = 3054546.141490554
 orbital_angle = 6.137906166257373
 
 [resource]

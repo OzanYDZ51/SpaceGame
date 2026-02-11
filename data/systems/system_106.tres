@@ -57,7 +57,7 @@ pos_z = -17074302.863057513
 script = ExtResource("3_dkn6f")
 planet_name = "Aldebaran Leonis I"
 orbital_radius = 11786768.399178982
-orbital_period = 68.67337142031013
+orbital_period = 412040.2285218608
 orbital_angle = 3.3718384510628714
 radius = 3180032.417178154
 color = Color(0.49296755, 0.66985965, 0.42655024, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_dkn6f")
 planet_name = "Aldebaran Leonis II"
 type = 2
 orbital_radius = 16596987.293457448
-orbital_period = 114.74668193142016
+orbital_period = 688480.0915885209
 orbital_angle = 2.7692042115564504
 radius = 6746058.225631714
 color = Color(0.1509095, 0.47613454, 0.7361009, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.1509095, 0.47613454, 0.7361009, 0.9)
 script = ExtResource("5_i4772")
 station_name = "Nexus Hub"
 orbital_radius = 12265650.266311895
-orbital_period = 61.80603427827912
+orbital_period = 370836.20566967473
 orbital_angle = 2.8358312589318366
 
 [sub_resource type="Resource" id="Resource_qcx60"]
@@ -84,7 +84,7 @@ script = ExtResource("5_i4772")
 station_name = "Omega Depot"
 station_type = 2
 orbital_radius = 15920889.472049234
-orbital_period = 103.27201373827815
+orbital_period = 619632.0824296689
 orbital_angle = 5.685660841567187
 
 [resource]

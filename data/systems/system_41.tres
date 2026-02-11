@@ -48,7 +48,7 @@ pos_z = 11536587.00956931
 script = ExtResource("3_uytyt")
 planet_name = "Arcturus Pavonis I"
 orbital_radius = 11030789.576470852
-orbital_period = 62.17361849386117
+orbital_period = 373041.710963167
 orbital_angle = 3.037084220302631
 radius = 5156675.398349762
 color = Color(0.54085326, 0.6777353, 0.421018, 0.9)
@@ -58,7 +58,7 @@ script = ExtResource("3_uytyt")
 planet_name = "Arcturus Pavonis II"
 type = 3
 orbital_radius = 18263636.39937227
-orbital_period = 132.45767342489177
+orbital_period = 794746.0405493506
 orbital_angle = 5.913959202493144
 radius = 53591058.25424194
 color = Color(0.7699744, 0.74907285, 0.2677717, 0.9)
@@ -67,7 +67,7 @@ color = Color(0.7699744, 0.74907285, 0.2677717, 0.9)
 script = ExtResource("5_jmcqn")
 station_name = "Gamma Depot"
 orbital_radius = 17966174.72121729
-orbital_period = 119.21190608240259
+orbital_period = 715271.4364944155
 orbital_angle = 4.881007773817113
 
 [resource]

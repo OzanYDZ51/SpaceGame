@@ -55,7 +55,7 @@ pos_z = 26746345.04262623
 script = ExtResource("3_e6jlx")
 planet_name = "Altair Eridani I"
 orbital_radius = 15185262.56084442
-orbital_period = 100.42219321626118
+orbital_period = 602533.1592975671
 orbital_angle = 3.9898001397162153
 radius = 3278396.397829056
 color = Color(0.541404, 0.68191355, 0.38948998, 0.9)
@@ -65,7 +65,7 @@ script = ExtResource("3_e6jlx")
 planet_name = "Altair Eridani II"
 type = 3
 orbital_radius = 32794750.071226586
-orbital_period = 318.7151677125405
+orbital_period = 1912291.0062752431
 orbital_angle = 4.057081450870029
 radius = 51755514.14489746
 color = Color(0.82534635, 0.66052836, 0.37211478, 0.9)
@@ -74,7 +74,7 @@ color = Color(0.82534635, 0.66052836, 0.37211478, 0.9)
 script = ExtResource("5_py5fc")
 station_name = "Alpha Hub"
 orbital_radius = 31802998.441979803
-orbital_period = 286.84365094128646
+orbital_period = 1721061.9056477188
 orbital_angle = 2.254040769845571
 
 [resource]

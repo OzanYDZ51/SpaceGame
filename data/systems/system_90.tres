@@ -56,7 +56,7 @@ pos_z = -4253701.392869786
 script = ExtResource("3_lbsfs")
 planet_name = "Regulus Ursae I"
 orbital_radius = 14544533.789157867
-orbital_period = 94.13387815770392
+orbital_period = 564803.2689462235
 orbital_angle = 2.747282255401841
 radius = 2465671.308338642
 color = Color(0.65516007, 0.43717793, 0.3191574, 0.9)
@@ -66,7 +66,7 @@ script = ExtResource("3_lbsfs")
 planet_name = "Regulus Ursae II"
 type = 2
 orbital_radius = 29527224.40512228
-orbital_period = 272.2890526264507
+orbital_period = 1633734.3157587042
 orbital_angle = 4.143100472170395
 radius = 6914242.386817932
 color = Color(0.23615992, 0.42450213, 0.81101876, 0.9)
@@ -75,7 +75,7 @@ color = Color(0.23615992, 0.42450213, 0.81101876, 0.9)
 script = ExtResource("5_d3fnt")
 station_name = "Beta Platform"
 orbital_radius = 14622431.044794606
-orbital_period = 84.72049034193353
+orbital_period = 508322.9420516012
 orbital_angle = 4.253200669896991
 
 [resource]

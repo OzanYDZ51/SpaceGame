@@ -40,7 +40,7 @@ script = ExtResource("3_dsb12")
 planet_name = "Deneb Centauri I"
 type = 4
 orbital_radius = 16332613.229751585
-orbital_period = 112.01592266232274
+orbital_period = 672095.5359739364
 orbital_angle = 1.339871173572496
 radius = 6232394.695281982
 color = Color(0.552494, 0.79581845, 0.9187835, 0.9)
@@ -50,7 +50,7 @@ script = ExtResource("3_dsb12")
 planet_name = "Deneb Centauri II"
 type = 4
 orbital_radius = 24250699.83461604
-orbital_period = 202.66682230775842
+orbital_period = 1216000.9338465505
 orbital_angle = 3.0607815270248606
 radius = 7467309.951782227
 color = Color(0.6219883, 0.72161317, 0.9957525, 0.9)
@@ -59,7 +59,7 @@ color = Color(0.6219883, 0.72161317, 0.9957525, 0.9)
 script = ExtResource("5_7cjlx")
 station_name = "Port Hub"
 orbital_radius = 23134480.028387517
-orbital_period = 182.40014007698258
+orbital_period = 1094400.8404618956
 orbital_angle = 0.8680083280995404
 
 [sub_resource type="Resource" id="Resource_vevmy"]
@@ -67,7 +67,7 @@ script = ExtResource("5_7cjlx")
 station_name = "Gateway Terminal"
 station_type = 3
 orbital_radius = 16452474.103660341
-orbital_period = 100.81433039609047
+orbital_period = 604885.9823765428
 orbital_angle = 2.858631434067792
 
 [resource]

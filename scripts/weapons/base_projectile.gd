@@ -84,9 +84,15 @@ func _on_body_hit(body: Node3D) -> void:
 			if remote_player == owner_ship:
 				return
 			var hit_dir := (body.global_position - global_position).normalized()
-			NetworkManager._rpc_player_hit_claim.rpc_id(1,
-				remote_player.peer_id, String(weapon_name), damage,
-				[hit_dir.x, hit_dir.y, hit_dir.z])
+			if NetworkManager.is_server():
+				# Host: relay damage directly to target client (no self-RPC)
+				NetworkManager._rpc_receive_player_damage.rpc_id(
+					remote_player.peer_id, 1, String(weapon_name), damage,
+					[hit_dir.x, hit_dir.y, hit_dir.z])
+			else:
+				NetworkManager._rpc_player_hit_claim.rpc_id(1,
+					remote_player.peer_id, String(weapon_name), damage,
+					[hit_dir.x, hit_dir.y, hit_dir.z])
 			_spawn_hit_effect(body, {"shield_absorbed": false})
 			_return_to_pool()
 			return
@@ -104,15 +110,15 @@ func _on_body_hit(body: Node3D) -> void:
 						_spawn_hit_effect(body, {"shield_absorbed": false})
 						_return_to_pool()
 						return
-		# Structure hit claim (station)
-		if body.is_in_group("structures"):
-			var hit_dir := (body.global_position - global_position).normalized()
-			NetworkManager._rpc_structure_hit_claim.rpc_id(1,
-				body.name, String(weapon_name), damage,
-				[hit_dir.x, hit_dir.y, hit_dir.z])
-			_spawn_hit_effect(body, {"shield_absorbed": false})
-			_return_to_pool()
-			return
+			# Structure hit claim (station) — clients only
+			if body.is_in_group("structures"):
+				var hit_dir := (body.global_position - global_position).normalized()
+				NetworkManager._rpc_structure_hit_claim.rpc_id(1,
+					body.name, String(weapon_name), damage,
+					[hit_dir.x, hit_dir.y, hit_dir.z])
+				_spawn_hit_effect(body, {"shield_absorbed": false})
+				_return_to_pool()
+				return
 
 	var hit_info := _apply_damage_to(body)
 	_spawn_hit_effect(body, hit_info)

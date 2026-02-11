@@ -70,7 +70,7 @@ script = ExtResource("3_4hdgv")
 planet_name = "Betelgeuse Carinae I"
 type = 3
 orbital_radius = 13545275.256037712
-orbital_period = 84.60148693030008
+orbital_period = 507608.9215818005
 orbital_angle = 5.027181237522889
 radius = 49365994.930267334
 color = Color(0.8652667, 0.6392425, 0.3212481, 0.9)
@@ -80,7 +80,7 @@ script = ExtResource("3_4hdgv")
 planet_name = "Betelgeuse Carinae II"
 type = 4
 orbital_radius = 23527125.04357185
-orbital_period = 193.664284176797
+orbital_period = 1161985.705060782
 orbital_angle = 2.6557797021932172
 radius = 6755958.557128906
 color = Color(0.58284277, 0.7063067, 0.98146206, 0.9)
@@ -90,7 +90,7 @@ script = ExtResource("3_4hdgv")
 planet_name = "Betelgeuse Carinae III"
 type = 4
 orbital_radius = 40864847.87890416
-orbital_period = 443.3238271167838
+orbital_period = 2659942.9627007027
 orbital_angle = 4.930735940554862
 radius = 6253880.500793457
 color = Color(0.6415978, 0.7283194, 0.90780956, 0.9)
@@ -99,7 +99,7 @@ color = Color(0.6415978, 0.7283194, 0.90780956, 0.9)
 script = ExtResource("5_fdph6")
 station_name = "Gamma Station"
 orbital_radius = 41421219.38287945
-orbital_period = 398.9914444051054
+orbital_period = 2393948.6664306326
 orbital_angle = 2.4940067099844643
 
 [sub_resource type="Resource" id="Resource_qk03u"]
@@ -107,7 +107,7 @@ script = ExtResource("5_fdph6")
 station_name = "Orbital Hub"
 station_type = 1
 orbital_radius = 13351756.278053716
-orbital_period = 76.14133823727008
+orbital_period = 456848.02942362044
 orbital_angle = 2.7217253340306256
 
 [resource]

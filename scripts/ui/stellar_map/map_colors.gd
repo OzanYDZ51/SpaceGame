@@ -95,3 +95,8 @@ const PANEL_BORDER := Color(0.08, 0.4, 0.6, 0.6)
 const PANEL_HEADER := Color(0.1, 0.6, 0.8, 0.7)
 const LABEL_KEY := Color(0.3, 0.55, 0.7, 0.7)
 const LABEL_VALUE := Color(0.6, 0.9, 1.0, 0.9)
+
+# --- Construction markers ---
+const CONSTRUCTION_STATION := Color(1.0, 0.6, 0.1, 0.9)
+const CONSTRUCTION_GHOST := Color(1.0, 0.6, 0.1, 0.3)
+const CONSTRUCTION_HEADER := Color(1.0, 0.7, 0.2, 0.85)

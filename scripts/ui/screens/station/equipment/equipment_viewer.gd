@@ -6,7 +6,6 @@ extends Control
 # =============================================================================
 
 signal hardpoint_selected(idx: int)
-signal marker_hovered(idx: int)
 
 const EC := preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
 

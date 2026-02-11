@@ -7,6 +7,8 @@ extends Node3D
 # float32 jitter at real orbital distances. Tracks the star's true direction
 # and scales based on angular size.
 # NOT a child of Universe — doesn't get shifted by FloatingOrigin.
+# Updates DirectionalLight3D direction in SpaceEnvironment each frame so the
+# star actually lights planets and ships from the correct direction.
 # =============================================================================
 
 const IMPOSTOR_DISTANCE: float = 5000.0
@@ -18,9 +20,11 @@ var _star_radius: float = 696340.0 * 100.0  # default ~Sun size in game meters
 var _star_luminosity: float = 1.0
 
 var _mesh_instance: MeshInstance3D = null
-var _light: OmniLight3D = null
 var _last_cam_pos: Vector3 = Vector3(INF, INF, INF)
 var _last_origin_x: float = INF
+var _last_origin_y: float = INF
+var _last_origin_z: float = INF
+var _last_sun_dir: Vector3 = Vector3.ZERO
 
 
 func setup(star_color: Color, star_radius: float, star_luminosity: float) -> void:
@@ -51,15 +55,6 @@ func _build_visuals() -> void:
 	_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_mesh_instance)
 
-	# Glow light
-	_light = OmniLight3D.new()
-	_light.light_color = _star_color
-	_light.light_energy = clampf(_star_luminosity * 0.2, 0.1, 1.2)
-	_light.omni_range = 500.0
-	_light.omni_attenuation = 1.5
-	_light.shadow_enabled = false
-	add_child(_light)
-
 
 func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
@@ -68,18 +63,24 @@ func _process(_delta: float) -> void:
 
 	var cam_pos := cam.global_position
 	# Skip update if camera and origin haven't changed meaningfully
-	if cam_pos.distance_squared_to(_last_cam_pos) < 1.0 and FloatingOrigin.origin_offset_x == _last_origin_x:
+	var origin_changed: bool = FloatingOrigin.origin_offset_x != _last_origin_x \
+		or FloatingOrigin.origin_offset_y != _last_origin_y \
+		or FloatingOrigin.origin_offset_z != _last_origin_z
+	if cam_pos.distance_squared_to(_last_cam_pos) < 1.0 and not origin_changed:
 		return
 	_last_cam_pos = cam_pos
 	_last_origin_x = FloatingOrigin.origin_offset_x
+	_last_origin_y = FloatingOrigin.origin_offset_y
+	_last_origin_z = FloatingOrigin.origin_offset_z
 
-	# True star position in local scene coords is always at (0,0,0) minus FloatingOrigin offset.
+	# Star is at universe (0,0,0) — its scene position relative to world origin
 	var star_local := Vector3(
 		-FloatingOrigin.origin_offset_x,
 		-FloatingOrigin.origin_offset_y,
 		-FloatingOrigin.origin_offset_z
 	)
 
+	# Direction from camera to star (for impostor placement)
 	var to_star := star_local - cam_pos
 	var actual_distance := to_star.length()
 
@@ -88,12 +89,22 @@ func _process(_delta: float) -> void:
 		_mesh_instance.scale = Vector3.ONE * MIN_VISUAL_RADIUS
 		return
 
-	var direction := to_star / actual_distance
+	var dir_to_star := to_star / actual_distance
 
 	# Position impostor at clamped distance along the direction
-	global_position = cam_pos + direction * IMPOSTOR_DISTANCE
+	global_position = cam_pos + dir_to_star * IMPOSTOR_DISTANCE
 
 	# Scale based on angular size
 	var visual_radius: float = IMPOSTOR_DISTANCE * _star_radius / actual_distance
 	visual_radius = clampf(visual_radius, MIN_VISUAL_RADIUS, MAX_VISUAL_RADIUS)
 	_mesh_instance.scale = Vector3.ONE * visual_radius
+
+	# Sun direction for lighting = from star toward scene origin (0,0,0).
+	# Use scene origin (not camera) so the light doesn't shift when the camera rotates.
+	# star_local points from origin to star, so -star_local.normalized() = from star to origin.
+	var sun_dir := -star_local.normalized()
+	if sun_dir.distance_squared_to(_last_sun_dir) > 0.0001:
+		_last_sun_dir = sun_dir
+		var main := GameManager.main_scene
+		if main is SpaceEnvironment:
+			(main as SpaceEnvironment).update_sun_direction(sun_dir)

@@ -59,7 +59,7 @@ script = ExtResource("3_5oedj")
 planet_name = "Nu Persei I"
 type = 4
 orbital_radius = 18756977.915763855
-orbital_period = 137.86072068614467
+orbital_period = 827164.3241168681
 orbital_angle = 1.417897184994775
 radius = 6921490.669250488
 color = Color(0.5343256, 0.7408622, 0.9306573, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_5oedj")
 planet_name = "Nu Persei II"
 type = 4
 orbital_radius = 32530357.260421593
-orbital_period = 314.8687015473946
+orbital_period = 1889212.2092843677
 orbital_angle = 4.607981663995167
 radius = 8534335.613250732
 color = Color(0.5732106, 0.7450605, 0.9878315, 0.9)
@@ -78,7 +78,7 @@ color = Color(0.5732106, 0.7450605, 0.9878315, 0.9)
 script = ExtResource("5_nyv5y")
 station_name = "Omega Depot"
 orbital_radius = 16092234.0
-orbital_period = 124.07464861753022
+orbital_period = 744447.8917051813
 orbital_angle = -0.6345881697359858
 
 [resource]

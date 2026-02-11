@@ -40,9 +40,15 @@ func initialize(galaxy: GalaxyData) -> void:
 	# Fleet (starts with one ship — cargo lives on the ship)
 	fleet = PlayerFleet.new()
 	var starting_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(&"fighter_mk1"))
-	# Starting resources on the ship
-	starting_ship.add_resource(&"ice", 10)
-	starting_ship.add_resource(&"iron", 5)
+	# Starting resources on the ship (generous for testing)
+	starting_ship.add_resource(&"ice", 50)
+	starting_ship.add_resource(&"iron", 100)
+	starting_ship.add_resource(&"copper", 100)
+	starting_ship.add_resource(&"titanium", 100)
+	starting_ship.add_resource(&"gold", 50)
+	starting_ship.add_resource(&"crystal", 50)
+	starting_ship.add_resource(&"uranium", 50)
+	starting_ship.add_resource(&"platinum", 50)
 	fleet.add_ship(starting_ship)
 	fleet.active_ship_changed.connect(_on_active_ship_changed)
 

@@ -62,31 +62,30 @@ static func generate(seed_val: int, connections: Array[Dictionary] = []) -> Star
 		p.planet_name = data.system_name + " " + roman
 		p.orbital_radius = current_orbit
 		var orbit_au: float = current_orbit / GAME_AU
-		p.orbital_period = 600.0 * orbit_au * sqrt(orbit_au)
+		# Kepler-like scaling: longer orbits for farther planets.
+		# Base factor 3.6M gives multi-day orbits (0.3 AU ≈ 7 days, 1 AU ≈ 42 days).
+		p.orbital_period = 3_600_000.0 * orbit_au * sqrt(orbit_au)
 		p.orbital_angle = rng.randf() * TAU
 
 		# Planet type by orbital zone
 		if current_orbit < habitable_zone_inner:
 			if rng.randf() < 0.3:
 				p.type = PlanetData.PlanetType.LAVA
-				p.color = Color(1.0, 0.35, 0.15, 0.9)
 			else:
 				p.type = PlanetData.PlanetType.ROCKY
-				p.color = Color(0.55 + rng.randf() * 0.2, 0.4 + rng.randf() * 0.15, 0.25 + rng.randf() * 0.1, 0.9)
 		elif current_orbit < habitable_zone_outer:
 			if rng.randf() < 0.4:
 				p.type = PlanetData.PlanetType.OCEAN
-				p.color = Color(0.15 + rng.randf() * 0.1, 0.35 + rng.randf() * 0.15, 0.7 + rng.randf() * 0.15, 0.9)
 			else:
 				p.type = PlanetData.PlanetType.ROCKY
-				p.color = Color(0.45 + rng.randf() * 0.2, 0.55 + rng.randf() * 0.15, 0.35 + rng.randf() * 0.1, 0.9)
 		elif current_orbit < frost_line:
 			p.type = PlanetData.PlanetType.GAS_GIANT
-			p.color = Color(0.75 + rng.randf() * 0.15, 0.6 + rng.randf() * 0.15, 0.25 + rng.randf() * 0.15, 0.9)
 			p.has_rings = rng.randf() < 0.4
 		else:
 			p.type = PlanetData.PlanetType.ICE
-			p.color = Color(0.5 + rng.randf() * 0.15, 0.7 + rng.randf() * 0.1, 0.9 + rng.randf() * 0.1, 0.9)
+
+		# Realistic color from star luminosity + orbital distance
+		p.color = _compute_planet_color(rng, p.type, current_orbit, data.star_luminosity)
 
 		# Radius based on type
 		match p.type:
@@ -205,6 +204,58 @@ static func _generate_jump_gates(rng: RandomNumberGenerator, data: StarSystemDat
 		g.pos_y = (rng.randf() - 0.5) * gate_radius * 0.05
 		g.pos_z = sin(angle) * gate_radius
 		data.jump_gates.append(g)
+
+
+## Compute a realistic planet color based on type, orbital distance, and star luminosity.
+## Uses equilibrium temperature: heat ∝ L^0.25 / sqrt(distance_au).
+## Hot planets → warm tones (red/orange/brown), cold → cool tones (blue/white).
+static func _compute_planet_color(rng: RandomNumberGenerator, type: PlanetData.PlanetType, orbital_radius: float, star_luminosity: float) -> Color:
+	var orbit_au: float = orbital_radius / GAME_AU
+	# Equilibrium heat factor: 0 = frozen deep space, 1 = Earth-like, 2+ = scorching
+	var heat: float = clampf(pow(maxf(star_luminosity, 0.001), 0.25) / sqrt(maxf(orbit_au, 0.05)), 0.0, 3.5)
+
+	match type:
+		PlanetData.PlanetType.LAVA:
+			# Dark basalt with glowing lava. Hotter = brighter orange glow.
+			var glow: float = clampf(heat * 0.35, 0.15, 1.0)
+			return Color(
+				clampf(0.25 + glow * 0.75 + rng.randf_range(-0.04, 0.04), 0.2, 1.0),
+				clampf(0.08 + glow * 0.27 + rng.randf_range(-0.03, 0.03), 0.05, 0.4),
+				clampf(0.03 + glow * 0.07 + rng.randf_range(-0.02, 0.02), 0.01, 0.15),
+			)
+		PlanetData.PlanetType.ROCKY:
+			# Cold rocky: gray-blue (far). Warm rocky: brown-tan (close, like Mercury/Mars).
+			var warmth: float = clampf(heat * 0.45, 0.0, 1.0)
+			return Color(
+				clampf(lerpf(0.42, 0.7, warmth) + rng.randf_range(-0.06, 0.06), 0.25, 0.85),
+				clampf(lerpf(0.40, 0.50, warmth) + rng.randf_range(-0.05, 0.05), 0.25, 0.65),
+				clampf(lerpf(0.44, 0.30, warmth) + rng.randf_range(-0.05, 0.05), 0.15, 0.6),
+			)
+		PlanetData.PlanetType.OCEAN:
+			# Warmer = more teal/tropical (green hints). Cooler = deeper blue.
+			var tropical: float = clampf((heat - 0.5) * 0.7, 0.0, 1.0)
+			return Color(
+				clampf(lerpf(0.10, 0.18, tropical) + rng.randf_range(-0.03, 0.03), 0.05, 0.3),
+				clampf(lerpf(0.30, 0.50, tropical) + rng.randf_range(-0.05, 0.05), 0.2, 0.6),
+				clampf(lerpf(0.72, 0.55, tropical) + rng.randf_range(-0.05, 0.05), 0.4, 0.85),
+			)
+		PlanetData.PlanetType.GAS_GIANT:
+			# Close hot giants: warm amber/orange bands. Far cold giants: pale cream to blue-gray.
+			var cold: float = clampf(1.0 - heat * 0.5, 0.0, 1.0)
+			return Color(
+				clampf(lerpf(0.82, 0.52, cold) + rng.randf_range(-0.08, 0.08), 0.35, 0.95),
+				clampf(lerpf(0.62, 0.58, cold) + rng.randf_range(-0.06, 0.06), 0.35, 0.75),
+				clampf(lerpf(0.22, 0.62, cold) + rng.randf_range(-0.06, 0.06), 0.1, 0.75),
+			)
+		PlanetData.PlanetType.ICE:
+			# Extremely cold: bright icy white-blue. Less frozen: deeper blue-purple.
+			var frozen: float = clampf(1.0 - heat * 0.4, 0.0, 1.0)
+			return Color(
+				clampf(lerpf(0.38, 0.72, frozen) + rng.randf_range(-0.04, 0.04), 0.25, 0.85),
+				clampf(lerpf(0.50, 0.80, frozen) + rng.randf_range(-0.04, 0.04), 0.4, 0.9),
+				clampf(lerpf(0.70, 0.95, frozen) + rng.randf_range(-0.03, 0.03), 0.55, 1.0),
+			)
+	return Color(0.5, 0.5, 0.5)
 
 
 static func _pick_weighted(rng: RandomNumberGenerator, items: Array) -> Dictionary:

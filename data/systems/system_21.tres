@@ -57,7 +57,7 @@ pos_z = 4035235.720102129
 script = ExtResource("3_3xirx")
 planet_name = "Kappa Orionis I"
 orbital_radius = 16958892.941474915
-orbital_period = 118.52023167158944
+orbital_period = 711121.3900295367
 orbital_angle = 1.515236898373121
 radius = 2318179.838359356
 color = Color(0.53101027, 0.6074257, 0.4424085, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_3xirx")
 planet_name = "Kappa Orionis II"
 type = 4
 orbital_radius = 34156756.32142134
-orbital_period = 338.77486120052777
+orbital_period = 2032649.1672031665
 orbital_angle = 3.816981998975549
 radius = 2611509.144306183
 color = Color(0.6138531, 0.70091915, 0.955997, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.6138531, 0.70091915, 0.955997, 0.9)
 script = ExtResource("5_yv5dj")
 station_name = "Gateway Hub"
 orbital_radius = 16256644.898012143
-orbital_period = 106.6682085044305
+orbital_period = 640009.251026583
 orbital_angle = 1.664577006256623
 
 [resource]

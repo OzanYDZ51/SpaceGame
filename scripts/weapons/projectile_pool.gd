@@ -120,6 +120,8 @@ func release(bolt: BaseProjectile) -> void:
 
 func _activate(bolt: BaseProjectile) -> void:
 	bolt.visible = true
+	bolt.collision_layer = Constants.LAYER_PROJECTILES
+	bolt.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
 	bolt.set_process(true)
 	bolt.set_physics_process(true)
 	bolt.set_deferred("monitoring", true)

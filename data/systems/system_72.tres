@@ -51,7 +51,7 @@ pos_z = -22352511.43473547
 script = ExtResource("3_biccs")
 planet_name = "Iota Pavonis I"
 orbital_radius = 21493347.883224487
-orbital_period = 169.10340247638922
+orbital_period = 1014620.4148583353
 orbital_angle = 2.0670889211106642
 radius = 4744531.92949295
 color = Color(0.6140512, 0.5191925, 0.33274132, 0.9)
@@ -60,7 +60,7 @@ color = Color(0.6140512, 0.5191925, 0.33274132, 0.9)
 script = ExtResource("3_biccs")
 planet_name = "Iota Pavonis II"
 orbital_radius = 30111020.338814355
-orbital_period = 280.4041598643191
+orbital_period = 1682424.9591859148
 orbital_angle = 3.353149426829996
 radius = 4515802.383422852
 color = Color(0.7009816, 0.53888404, 0.2751233, 0.9)
@@ -69,7 +69,7 @@ color = Color(0.7009816, 0.53888404, 0.2751233, 0.9)
 script = ExtResource("3_biccs")
 planet_name = "Iota Pavonis III"
 orbital_radius = 42183914.33342726
-orbital_period = 464.9610340051718
+orbital_period = 2789766.204031031
 orbital_angle = 5.090116394613369
 radius = 4189607.322216034
 color = Color(0.466102, 0.5969421, 0.38279667, 0.9)
@@ -78,14 +78,14 @@ color = Color(0.466102, 0.5969421, 0.38279667, 0.9)
 script = ExtResource("5_aigv3")
 station_name = "Beta Terminal"
 orbital_radius = 21701872.693714384
-orbital_period = 152.1930622287503
+orbital_period = 913158.3733725018
 orbital_angle = 5.607413590117944
 
 [sub_resource type="Resource" id="Resource_25all"]
 script = ExtResource("5_aigv3")
 station_name = "Omega Depot"
 orbital_radius = 22233833.18705894
-orbital_period = 152.1930622287503
+orbital_period = 913158.3733725018
 orbital_angle = 1.1895245780504582
 
 [resource]

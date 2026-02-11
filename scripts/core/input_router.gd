@@ -13,6 +13,7 @@ signal map_toggled(view: int)
 signal screen_toggled(screen_name: String)
 signal terminal_requested
 signal undock_requested
+signal build_requested
 
 # Injected refs
 var screen_manager: UIScreenManager = null
@@ -20,6 +21,7 @@ var docking_system: DockingSystem = null
 var loot_pickup: LootPickupSystem = null
 var system_transition: SystemTransition = null
 var get_game_state: Callable  # () -> GameState
+var construction_proximity_check: Callable  # () -> bool
 
 
 func _ready() -> void:
@@ -55,6 +57,7 @@ func _setup_input_actions() -> void:
 		"toggle_multiplayer": KEY_P,
 		"gate_jump": KEY_J,
 		"wormhole_jump": KEY_W,
+		"build": KEY_B,
 		"toggle_weapon_1": KEY_1,
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
@@ -82,13 +85,7 @@ func _setup_input_actions() -> void:
 		InputMap.action_add_event(action_name, event)
 
 
-func _input(event: InputEvent) -> void:
-	# Skip all game keybinds when a text field has focus
-	if event is InputEventKey:
-		var focus_owner := get_viewport().gui_get_focus_owner()
-		if focus_owner is LineEdit or focus_owner is TextEdit:
-			return
-
+func _unhandled_input(event: InputEvent) -> void:
 	var state: int = get_game_state.call() if get_game_state.is_valid() else 0
 
 	# Respawn on R when dead
@@ -178,6 +175,19 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
+	if event.is_action_pressed("build") and state == GameManagerSystem.GameState.PLAYING:
+		if construction_proximity_check.is_valid() and construction_proximity_check.call():
+			build_requested.emit()
+			get_viewport().set_input_as_handled()
+			return
+
+	# DEBUG: F9 = teleport near nearest planet
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F9:
+		if state == GameManagerSystem.GameState.PLAYING:
+			_debug_teleport_to_planet()
+			get_viewport().set_input_as_handled()
+			return
+
 	if event.is_action_pressed("toggle_mouse_capture"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -187,3 +197,64 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+func _debug_teleport_to_planet() -> void:
+	# Find nearest planet in EntityRegistry and teleport player 200km from surface
+	var ship := GameManager.player_ship as ShipController
+	if ship == null:
+		return
+
+	var best_id: String = ""
+	var best_dist: float = INF
+	var cam_x: float = FloatingOrigin.origin_offset_x + ship.global_position.x
+	var cam_z: float = FloatingOrigin.origin_offset_z + ship.global_position.z
+
+	for id in EntityRegistry._entities:
+		var ent: Dictionary = EntityRegistry._entities[id]
+		if ent.get("type") != EntityRegistrySystem.EntityType.PLANET:
+			continue
+		var dx: float = cam_x - ent.get("pos_x", 0.0)
+		var dz: float = cam_z - ent.get("pos_z", 0.0)
+		var d: float = sqrt(dx * dx + dz * dz)
+		if d < best_dist:
+			best_dist = d
+			best_id = id
+
+	if best_id == "":
+		print("[DEBUG] No planet found in current system")
+		return
+
+	var ent: Dictionary = EntityRegistry.get_entity(best_id)
+	var planet_x: float = ent.get("pos_x", 0.0)
+	var planet_z: float = ent.get("pos_z", 0.0)
+
+	# Teleport: set floating origin so planet is ~200km away from player
+	var approach_dist: float = 200_000.0  # 200 km
+	var dir_x: float = cam_x - planet_x
+	var dir_z: float = cam_z - planet_z
+	var dir_len: float = sqrt(dir_x * dir_x + dir_z * dir_z)
+	if dir_len < 1.0:
+		dir_x = 1.0
+		dir_z = 0.0
+		dir_len = 1.0
+	dir_x /= dir_len
+	dir_z /= dir_len
+
+	# New player universe position: planet + approach_dist in the direction we came from
+	var new_x: float = planet_x + dir_x * approach_dist
+	var new_z: float = planet_z + dir_z * approach_dist
+
+	# Reset origin so player ends up at ~(0,0,0) in scene coords
+	FloatingOrigin.origin_offset_x = new_x
+	FloatingOrigin.origin_offset_y = 0.0
+	FloatingOrigin.origin_offset_z = new_z
+	ship.global_position = Vector3.ZERO
+	ship.linear_velocity = Vector3.ZERO
+	ship.angular_velocity = Vector3.ZERO
+
+	# Force universe shift
+	FloatingOrigin.origin_shifted.emit(Vector3.ZERO)
+
+	var planet_name: String = ent.get("name", best_id)
+	print("[DEBUG] Teleported near planet: %s (200km away)" % planet_name)

@@ -31,6 +31,8 @@ var _transition_phase: int = 0  # 0=idle, 1=fade_out, 2=loading, 3=fade_in
 var _pending_target_id: int = -1
 # Active star impostor (child of main_scene, not Universe)
 var _active_star: SystemStar = null
+# Active planet impostors (child of main_scene, not Universe)
+var _active_planet_impostors: Array[PlanetImpostor] = []
 
 # Gate proximity state (set by JumpGate signals, read by GameManager for J key)
 var _active_gate_target_id: int = -1
@@ -192,6 +194,17 @@ func _cleanup_current_system() -> void:
 	if _active_star and is_instance_valid(_active_star):
 		_active_star.queue_free()
 		_active_star = null
+
+	# Clean up planet LOD manager (before impostors — frees PlanetBody nodes)
+	var planet_lod_mgr := GameManager.get_node_or_null("PlanetLODManager") as PlanetLODManager
+	if planet_lod_mgr:
+		planet_lod_mgr.clear_all()
+
+	# Clean up planet impostors (child of main_scene, not Universe)
+	for impostor in _active_planet_impostors:
+		if is_instance_valid(impostor):
+			impostor.queue_free()
+	_active_planet_impostors.clear()
 
 	# Clear LOD system (frees LOD0/1 nodes, clears LOD2 data, resets MultiMesh)
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
@@ -361,6 +374,59 @@ func _populate_system() -> void:
 	)
 	GameManager.main_scene.add_child(_active_star)
 
+	# Pre-register star in EntityRegistry (needed as orbital parent for planets)
+	EntityRegistry.register("star_0", {
+		"name": current_system_data.star_name,
+		"type": EntityRegistrySystem.EntityType.STAR,
+		"pos_x": 0.0, "pos_y": 0.0, "pos_z": 0.0,
+		"radius": current_system_data.star_radius,
+		"color": current_system_data.star_color,
+		"extra": {
+			"spectral_class": current_system_data.star_spectral_class,
+			"temperature": current_system_data.star_temperature,
+			"luminosity": current_system_data.star_luminosity,
+		},
+	})
+
+	# Pre-register planets in EntityRegistry so PlanetImpostor can read positions immediately.
+	for i in current_system_data.planets.size():
+		var pd: PlanetData = current_system_data.planets[i]
+		var orbit_r: float = pd.orbital_radius
+		var angle: float = pd.orbital_angle
+		var pos_x: float = cos(angle) * orbit_r
+		var pos_z: float = sin(angle) * orbit_r
+		EntityRegistry.register("planet_%d" % i, {
+			"name": pd.planet_name,
+			"type": EntityRegistrySystem.EntityType.PLANET,
+			"pos_x": pos_x,
+			"pos_y": 0.0,
+			"pos_z": pos_z,
+			"orbital_radius": pd.orbital_radius,
+			"orbital_period": pd.orbital_period,
+			"orbital_angle": pd.orbital_angle,
+			"orbital_parent": "star_0",
+			"radius": pd.radius,
+			"color": pd.color,
+			"extra": {
+				"planet_type": pd.get_type_string(),
+				"has_rings": pd.has_rings,
+				"render_radius_visual": pd.get_render_radius() * pd.get_visual_scale(),
+			},
+		})
+
+	var planet_lod_mgr := GameManager.get_node_or_null("PlanetLODManager") as PlanetLODManager
+	for i in current_system_data.planets.size():
+		var pd: PlanetData = current_system_data.planets[i]
+		var ent_id: String = "planet_%d" % i
+		var impostor := PlanetImpostor.new()
+		impostor.name = "PlanetImpostor_%d" % i
+		impostor.setup(pd, i, ent_id)
+		GameManager.main_scene.add_child(impostor)
+		_active_planet_impostors.append(impostor)
+		# Register with LOD manager for terrain body spawning
+		if planet_lod_mgr:
+			planet_lod_mgr.register_planet(pd, i, ent_id, impostor, current_system_data.seed_value)
+
 
 func _position_player() -> void:
 	var ship := GameManager.player_ship
@@ -410,39 +476,8 @@ func _configure_environment() -> void:
 
 
 func _register_system_entities() -> void:
-	# Star
-	EntityRegistry.register("star_0", {
-		"name": current_system_data.star_name,
-		"type": EntityRegistrySystem.EntityType.STAR,
-		"pos_x": 0.0,
-		"pos_y": 0.0,
-		"pos_z": 0.0,
-		"radius": current_system_data.star_radius,
-		"color": current_system_data.star_color,
-		"extra": {
-			"spectral_class": current_system_data.star_spectral_class,
-			"temperature": current_system_data.star_temperature,
-			"luminosity": current_system_data.star_luminosity,
-		},
-	})
-
-	# Planets
-	for i in current_system_data.planets.size():
-		var pd: PlanetData = current_system_data.planets[i]
-		EntityRegistry.register("planet_%d" % i, {
-			"name": pd.planet_name,
-			"type": EntityRegistrySystem.EntityType.PLANET,
-			"orbital_radius": pd.orbital_radius,
-			"orbital_period": pd.orbital_period,
-			"orbital_angle": pd.orbital_angle,
-			"orbital_parent": "star_0",
-			"radius": pd.radius,
-			"color": pd.color,
-			"extra": {
-				"planet_type": pd.get_type_string(),
-				"has_rings": pd.has_rings,
-			},
-		})
+	# Star + Planets are pre-registered in _populate_system() so PlanetImpostors
+	# can read positions immediately. No need to re-register here.
 
 	# Stations
 	var universe := GameManager.universe_node

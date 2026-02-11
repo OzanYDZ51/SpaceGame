@@ -58,7 +58,7 @@ pos_z = 11174855.418270221
 script = ExtResource("3_m1ck2")
 planet_name = "Sol Cygni I"
 orbital_radius = 11819274.64902401
-orbital_period = 68.957654451324
+orbital_period = 413745.926707944
 orbital_angle = 2.583109983916333
 radius = 5485776.782035828
 color = Color(0.6882053, 0.49498582, 0.30074438, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_m1ck2")
 planet_name = "Sol Cygni II"
 type = 1
 orbital_radius = 21788418.51144916
-orbital_period = 172.5976215796665
+orbital_period = 1035585.729477999
 orbital_angle = 3.4079798773212007
 radius = 2255599.021911621
 color = Color(1, 0.35, 0.15, 0.9)
@@ -77,14 +77,14 @@ color = Color(1, 0.35, 0.15, 0.9)
 script = ExtResource("5_dqgxf")
 station_name = "Dock Station"
 orbital_radius = 11377054.893530624
-orbital_period = 62.061889006191606
+orbital_period = 372371.3340371496
 orbital_angle = 3.2143612417221465
 
 [sub_resource type="Resource" id="Resource_3pmsh"]
 script = ExtResource("5_dqgxf")
 station_name = "Beta Hub"
 orbital_radius = 12384251.740210302
-orbital_period = 62.061889006191606
+orbital_period = 372371.3340371496
 orbital_angle = 2.7600785987980494
 
 [resource]

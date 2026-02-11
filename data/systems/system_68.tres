@@ -68,7 +68,7 @@ script = ExtResource("3_3ap3p")
 planet_name = "Vega Carinae I"
 type = 1
 orbital_radius = 16359158.605337143
-orbital_period = 112.28912260082085
+orbital_period = 673734.7356049251
 orbital_angle = 1.3179474385095022
 radius = 1842095.7624912262
 color = Color(1, 0.35, 0.15, 0.9)
@@ -78,7 +78,7 @@ script = ExtResource("3_3ap3p")
 planet_name = "Vega Carinae II"
 type = 2
 orbital_radius = 30531102.560268193
-orbital_period = 286.2925033625501
+orbital_period = 1717755.0201753008
 orbital_angle = 4.459547675866618
 radius = 4132242.2325611115
 color = Color(0.22679208, 0.39349392, 0.84076166, 0.9)
@@ -88,7 +88,7 @@ script = ExtResource("3_3ap3p")
 planet_name = "Vega Carinae III"
 type = 3
 orbital_radius = 56980205.769354396
-orbital_period = 729.931765278542
+orbital_period = 4379590.591671252
 orbital_angle = 1.219138346805651
 radius = 54341456.8901062
 color = Color(0.80868703, 0.6750587, 0.3983817, 0.9)
@@ -98,7 +98,7 @@ has_rings = true
 script = ExtResource("5_vjroc")
 station_name = "Haven Depot"
 orbital_radius = 29495007.620781764
-orbital_period = 257.66325302629514
+orbital_period = 1545979.5181577709
 orbital_angle = 4.700127994785425
 
 [sub_resource type="Resource" id="Resource_mqnix"]
@@ -106,7 +106,7 @@ script = ExtResource("5_vjroc")
 station_name = "Nexus Terminal"
 station_type = 3
 orbital_radius = 16670145.3560969
-orbital_period = 101.06021034073876
+orbital_period = 606361.2620444326
 orbital_angle = 3.561427016530471
 
 [resource]

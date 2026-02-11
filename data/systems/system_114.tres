@@ -59,7 +59,7 @@ script = ExtResource("3_6klms")
 planet_name = "Upsilon Virginis I"
 type = 4
 orbital_radius = 22528527.677059174
-orbital_period = 181.4660803967331
+orbital_period = 1088796.4823803985
 orbital_angle = 0.8167566667706981
 radius = 8034268.856048584
 color = Color(0.50052184, 0.7036394, 0.9173051, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_6klms")
 planet_name = "Upsilon Virginis II"
 type = 4
 orbital_radius = 35612387.2114524
-orbital_period = 360.6599133929008
+orbital_period = 2163959.480357405
 orbital_angle = 1.7722485259047425
 radius = 6051177.024841309
 color = Color(0.63723576, 0.77510536, 0.9693576, 0.9)
@@ -78,14 +78,14 @@ color = Color(0.63723576, 0.77510536, 0.9693576, 0.9)
 script = ExtResource("5_gd4mx")
 station_name = "Orbital Outpost"
 orbital_radius = 33962579.494865336
-orbital_period = 324.59392205361075
+orbital_period = 1947563.5323216645
 orbital_angle = 1.753778401029904
 
 [sub_resource type="Resource" id="Resource_381kv"]
 script = ExtResource("5_gd4mx")
 station_name = "Port Station"
 orbital_radius = 36669109.479655765
-orbital_period = 324.59392205361075
+orbital_period = 1947563.5323216645
 orbital_angle = 1.9203235490466726
 
 [resource]

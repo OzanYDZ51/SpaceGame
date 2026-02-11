@@ -59,7 +59,7 @@ script = ExtResource("3_46nrj")
 planet_name = "Omicron Serpentis I"
 type = 3
 orbital_radius = 21770223.37913513
-orbital_period = 172.38146677905277
+orbital_period = 1034288.8006743166
 orbital_angle = 5.9680106783655
 radius = 17270794.957876205
 color = Color(0.86823136, 0.71164083, 0.31213936, 0.9)
@@ -70,7 +70,7 @@ script = ExtResource("3_46nrj")
 planet_name = "Omicron Serpentis II"
 type = 4
 orbital_radius = 39354696.4461434
-orbital_period = 418.9778793388283
+orbital_period = 2513867.27603297
 orbital_angle = 2.6304340027859587
 radius = 2822500.52690506
 color = Color(0.5726916, 0.721144, 0.99711806, 0.9)
@@ -79,14 +79,14 @@ color = Color(0.5726916, 0.721144, 0.99711806, 0.9)
 script = ExtResource("5_03t52")
 station_name = "Gateway Outpost"
 orbital_radius = 20862536.942821532
-orbital_period = 155.1433201011475
+orbital_period = 930859.9206068851
 orbital_angle = 6.021641208338056
 
 [sub_resource type="Resource" id="Resource_1quqb"]
 script = ExtResource("5_03t52")
 station_name = "Haven Station"
 orbital_radius = 20986149.332028996
-orbital_period = 155.1433201011475
+orbital_period = 930859.9206068851
 orbital_angle = 3.8378899773510566
 
 [resource]

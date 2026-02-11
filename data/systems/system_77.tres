@@ -59,7 +59,7 @@ script = ExtResource("3_4rxd0")
 planet_name = "Zeta Virginis I"
 type = 4
 orbital_radius = 19246178.86543274
-orbital_period = 143.28905559947893
+orbital_period = 859734.3335968736
 orbital_angle = 0.16046281448030572
 radius = 3493978.977203369
 color = Color(0.52334356, 0.76489496, 0.9946376, 0.9)
@@ -69,7 +69,7 @@ script = ExtResource("3_4rxd0")
 planet_name = "Zeta Virginis II"
 type = 4
 orbital_radius = 28620279.843647648
-orbital_period = 259.84062831446147
+orbital_period = 1559043.769886769
 orbital_angle = 1.86335878300123
 radius = 5342091.5603637695
 color = Color(0.50419647, 0.7342625, 0.9601523, 0.9)
@@ -78,7 +78,7 @@ color = Color(0.50419647, 0.7342625, 0.9601523, 0.9)
 script = ExtResource("5_hdkrs")
 station_name = "Gamma Hub"
 orbital_radius = 19147871.413493346
-orbital_period = 128.96015003953104
+orbital_period = 773760.9002371862
 orbital_angle = 4.840776730809831
 
 [resource]

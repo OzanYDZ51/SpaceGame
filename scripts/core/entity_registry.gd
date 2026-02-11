@@ -11,7 +11,7 @@ extends Node
 signal entity_registered(id: String)
 signal entity_unregistered(id: String)
 
-enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, ASTEROID, JUMP_GATE, CARGO_CRATE, SHIP_FLEET }
+enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, ASTEROID, JUMP_GATE, CARGO_CRATE, SHIP_FLEET, CONSTRUCTION_SITE }
 
 # Entity data stored as dictionaries for flexibility:
 # {
@@ -31,6 +31,7 @@ enum EntityType { STAR, PLANET, STATION, SHIP_PLAYER, SHIP_NPC, ASTEROID_BELT, A
 # }
 var _entities: Dictionary = {}  # id -> entity dict
 var _sync_timer: float = 0.0
+var _accumulated_delta: float = 0.0
 const SYNC_INTERVAL: float = 0.1  # 10 Hz position sync
 
 
@@ -94,9 +95,12 @@ func get_position(id: String) -> Array:
 
 
 func _process(delta: float) -> void:
+	_accumulated_delta += delta
 	_sync_timer -= delta
 	if _sync_timer > 0.0:
 		return
+	var elapsed: float = _accumulated_delta
+	_accumulated_delta = 0.0
 	_sync_timer = SYNC_INTERVAL
 
 	for ent in _entities.values():
@@ -121,7 +125,7 @@ func _process(delta: float) -> void:
 		elif ent.get("orbital_radius", 0.0) > 0.0 and ent.get("orbital_period", 0.0) > 0.0:
 			# Procedural orbiting entity: update angle and compute position
 			var period: float = ent["orbital_period"]
-			ent["orbital_angle"] += (TAU / period) * delta
+			ent["orbital_angle"] += (TAU / period) * elapsed
 			if ent["orbital_angle"] > TAU:
 				ent["orbital_angle"] -= TAU
 			var parent_id: String = ent["orbital_parent"]

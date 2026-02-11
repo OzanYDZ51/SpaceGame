@@ -71,7 +71,7 @@ script = ExtResource("3_w1wxg")
 planet_name = "Rho Scorpii I"
 type = 3
 orbital_radius = 22701351.34458542
-orbital_period = 183.5582080075937
+orbital_period = 1101349.248045562
 orbital_angle = 0.011015945761215066
 radius = 45106234.550476074
 color = Color(0.76527524, 0.6143802, 0.32282194, 0.9)
@@ -82,7 +82,7 @@ script = ExtResource("3_w1wxg")
 planet_name = "Rho Scorpii II"
 type = 4
 orbital_radius = 42885388.64868031
-orbital_period = 476.606838248218
+orbital_period = 2859641.029489308
 orbital_angle = 0.8214363193427258
 radius = 7404905.319213867
 color = Color(0.52859646, 0.79996234, 0.99475193, 0.9)
@@ -92,7 +92,7 @@ script = ExtResource("3_w1wxg")
 planet_name = "Rho Scorpii III"
 type = 4
 orbital_radius = 81015289.86674273
-orbital_period = 1237.5043357122217
+orbital_period = 7425026.014273331
 orbital_angle = 4.502616358627272
 radius = 4820044.040679932
 color = Color(0.5883523, 0.71884996, 0.9304638, 0.9)
@@ -101,7 +101,7 @@ color = Color(0.5883523, 0.71884996, 0.9304638, 0.9)
 script = ExtResource("5_iygn6")
 station_name = "Port Station"
 orbital_radius = 80013571.66608696
-orbital_period = 1113.7539021409996
+orbital_period = 6682523.412845997
 orbital_angle = 6.223097901532242
 
 [sub_resource type="Resource" id="Resource_1vwo3"]
@@ -109,7 +109,7 @@ script = ExtResource("5_iygn6")
 station_name = "Alpha Hub"
 station_type = 1
 orbital_radius = 42324439.931215286
-orbital_period = 428.94615442339625
+orbital_period = 2573676.9265403775
 orbital_angle = 3.145337723872717
 
 [resource]

@@ -72,6 +72,14 @@ var _backend_state_loaded: bool = false
 var _bug_report_screen: BugReportScreen = null
 var _notif: NotificationService = null
 var _structure_auth: StructureAuthority = null
+var _construction_mgr: ConstructionManager = null
+var _planet_lod_mgr: PlanetLODManager = null
+var _planet_approach_mgr: PlanetApproachManager = null
+var _build_available: bool = false
+var _build_beacon_name: String = ""
+var _build_marker_id: int = -1
+var _construction_screen: ConstructionScreen = null
+var _admin_screen: StationAdminScreen = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
@@ -159,6 +167,17 @@ func _setup_ui_managers() -> void:
 	_loot_screen = LootScreen.new()
 	_loot_screen.name = "LootScreen"
 	_screen_manager.register_screen("loot", _loot_screen)
+
+	# Register Construction screen
+	_construction_screen = ConstructionScreen.new()
+	_construction_screen.name = "ConstructionScreen"
+	_construction_screen.construction_completed.connect(_on_construction_completed)
+	_screen_manager.register_screen("construction", _construction_screen)
+
+	# Register Station Admin screen
+	_admin_screen = StationAdminScreen.new()
+	_admin_screen.name = "StationAdminScreen"
+	_screen_manager.register_screen("admin", _admin_screen)
 
 	# Register Multiplayer connection screen
 	var mp_screen := MultiplayerMenuScreen.new()
@@ -329,6 +348,12 @@ func _initialize_game() -> void:
 	# Wire stellar map
 	_stellar_map = main_scene.get_node_or_null("UI/StellarMap") as StellarMap
 
+	# Construction Manager (shared between map and GameManager)
+	_construction_mgr = ConstructionManager.new()
+	if _stellar_map:
+		_stellar_map.set_construction_manager(_construction_mgr)
+		_stellar_map.construction_marker_placed.connect(_on_construction_marker_placed)
+
 	# Create system transition manager
 	_system_transition = SystemTransition.new()
 	_system_transition.name = "SystemTransition"
@@ -373,6 +398,22 @@ func _initialize_game() -> void:
 	_asteroid_field_mgr.name = "AsteroidFieldManager"
 	add_child(_asteroid_field_mgr)
 	_asteroid_field_mgr.initialize(universe_node)
+
+	# Planet LOD Manager (must exist before system loading)
+	_planet_lod_mgr = PlanetLODManager.new()
+	_planet_lod_mgr.name = "PlanetLODManager"
+	add_child(_planet_lod_mgr)
+
+	# Planet Approach Manager (gravity, drag, zone transitions)
+	_planet_approach_mgr = PlanetApproachManager.new()
+	_planet_approach_mgr.name = "PlanetApproachManager"
+	add_child(_planet_approach_mgr)
+	_planet_approach_mgr.set_ship(player_ship)
+
+	# Wire planetary HUD
+	var hud_planet := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud_planet:
+		hud_planet.set_planet_approach_manager(_planet_approach_mgr)
 
 	# Wire mining system to asteroid field manager
 	if _mining_system:
@@ -500,6 +541,12 @@ func _initialize_game() -> void:
 	_net_sync_mgr.server_galaxy_changed.connect(func(new_gal: GalaxyData):
 		_galaxy = new_gal
 	)
+
+	# Spawn initial NPCs (deferred from system load — NpcAuthority needed first).
+	# Solo or server → spawn locally. Client connected to a server → receive via NpcAuthority.
+	if not NetworkManager.is_connected_to_server() or NetworkManager.is_server():
+		if _encounter_manager:
+			_encounter_manager.spawn_deferred()
 	# Now that network is set up, inject ship_net_sync into ShipChangeManager + LOD
 	if _ship_change_mgr:
 		_ship_change_mgr.ship_net_sync = _net_sync_mgr.ship_net_sync
@@ -524,6 +571,7 @@ func _initialize_game() -> void:
 	_docking_mgr.commerce_screen = _commerce_screen
 	_docking_mgr.equipment_screen = _equipment_screen
 	_docking_mgr.station_screen = _station_screen
+	_docking_mgr.admin_screen = _admin_screen
 	_docking_mgr.system_transition = _system_transition
 	_docking_mgr.route_manager = _route_manager
 	_docking_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
@@ -543,8 +591,11 @@ func _initialize_game() -> void:
 	_station_screen.commerce_requested.connect(_docking_mgr.handle_commerce_requested)
 	_station_screen.repair_requested.connect(_docking_mgr.handle_repair_requested)
 	_station_screen.station_equipment_requested.connect(_docking_mgr.handle_station_equipment_requested)
+	_station_screen.administration_requested.connect(_docking_mgr.handle_administration_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
+	_admin_screen.closed.connect(_docking_mgr.handle_admin_closed)
+	_admin_screen.station_renamed.connect(_on_station_renamed)
 	_docking_mgr.docked.connect(func(_sn: String):
 		current_state = GameState.DOCKED
 		if _discord_rpc:
@@ -578,6 +629,8 @@ func _initialize_game() -> void:
 	_input_router.terminal_requested.connect(_docking_mgr.open_station_terminal)
 	_input_router.undock_requested.connect(_docking_mgr.handle_undock)
 	_input_router.loot_pickup_requested.connect(_loot_mgr.open_loot_screen)
+	_input_router.build_requested.connect(_on_build_requested)
+	_input_router.construction_proximity_check = func() -> bool: return _build_available
 
 	current_state = GameState.PLAYING
 	if _discord_rpc:
@@ -616,6 +669,7 @@ func _setup_visual_effects() -> void:
 
 func _on_system_unloading(system_id: int) -> void:
 	_cleanup_player_autopilot_wp()
+	_build_available = false
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.auto_retrieve_all()
 	SaveManager.trigger_save("system_jump")
@@ -646,6 +700,14 @@ func _on_system_loaded(system_id: int) -> void:
 	# Redeploy fleet ships that were deployed in this system (from save)
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.redeploy_saved_ships()
+
+	# Respawn construction beacons for this system
+	_respawn_construction_beacons(system_id)
+
+	# Update nebula wisps with new system's environment colors/opacity
+	if _vfx_manager and main_scene is SpaceEnvironment:
+		var space_env := main_scene as SpaceEnvironment
+		_vfx_manager.configure_nebula_environment(space_env._current_env_data)
 
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
@@ -863,6 +925,7 @@ func current_system_id_safe() -> int:
 	return 0
 
 
+## Solo mode fallback: if still not connected after timeout, spawn NPCs locally.
 # =============================================================================
 # DOCKING (thin relay — DockingSystem.docked fires before _docking_mgr exists at init)
 # =============================================================================
@@ -871,6 +934,139 @@ func _on_docked(station_name: String) -> void:
 		return
 	if _docking_mgr:
 		_docking_mgr.handle_docked(station_name)
+
+
+# =============================================================================
+# CONSTRUCTION BEACONS
+# =============================================================================
+func _on_construction_marker_placed(marker: Dictionary) -> void:
+	_spawn_construction_beacon(marker)
+
+
+func _spawn_construction_beacon(marker: Dictionary) -> void:
+	if universe_node == null:
+		return
+	var beacon := ConstructionBeacon.new()
+	beacon.name = "ConstructionBeacon_%d" % marker["id"]
+	universe_node.add_child(beacon)
+	beacon.setup(marker)
+	beacon.player_nearby.connect(_on_beacon_player_nearby)
+	beacon.player_left.connect(_on_beacon_player_left)
+
+	EntityRegistry.register("construction_%d" % marker["id"], {
+		"name": marker["display_name"],
+		"type": EntityRegistrySystem.EntityType.CONSTRUCTION_SITE,
+		"node": beacon,
+		"pos_x": marker["pos_x"],
+		"pos_y": 0.0,
+		"pos_z": marker["pos_z"],
+		"radius": 10.0,
+		"color": Color(1.0, 0.6, 0.1, 0.9),
+	})
+
+
+func _respawn_construction_beacons(system_id: int) -> void:
+	if _construction_mgr == null:
+		return
+	var markers := _construction_mgr.get_markers_for_system(system_id)
+	for marker in markers:
+		_spawn_construction_beacon(marker)
+
+
+func _on_beacon_player_nearby(marker_id: int, beacon_name: String) -> void:
+	_build_available = true
+	_build_beacon_name = beacon_name
+	_build_marker_id = marker_id
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud:
+		hud.set_build_state(true, beacon_name)
+
+
+func _on_beacon_player_left() -> void:
+	_build_available = false
+	_build_beacon_name = ""
+	_build_marker_id = -1
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud:
+		hud.set_build_state(false, "")
+
+
+func _on_build_requested() -> void:
+	if not _build_available or _build_marker_id < 0:
+		return
+	if _construction_mgr == null or _construction_screen == null or _screen_manager == null:
+		return
+
+	var marker := _construction_mgr.get_marker(_build_marker_id)
+	if marker.is_empty():
+		return
+
+	_construction_screen.setup(marker, player_economy)
+	_screen_manager.open_screen("construction")
+
+
+func _on_construction_completed(marker_id: int) -> void:
+	if _construction_mgr == null or universe_node == null:
+		return
+
+	var marker := _construction_mgr.get_marker(marker_id)
+	if marker.is_empty():
+		return
+
+	# Spawn station at beacon position
+	var station := SpaceStation.new()
+	station.station_name = marker.get("display_name", "Station")
+	station.station_type = 0  # REPAIR — dockable immediately
+	station.transform = Transform3D.IDENTITY
+	station.position = FloatingOrigin.to_local_pos(
+		[marker.get("pos_x", 0.0), 0.0, marker.get("pos_z", 0.0)])
+	station.scale = Vector3(100, 100, 100)
+
+	# Station equipment for persistence within session
+	var sys_id: int = _system_transition.current_system_id if _system_transition else 0
+	var eq_key := "system_%d_built_%d" % [sys_id, marker_id]
+	station.station_equipment = StationEquipment.create_empty(eq_key, 0)
+	station_equipments[eq_key] = station.station_equipment
+
+	universe_node.add_child(station)
+
+	# Register in EntityRegistry so DockingSystem can find it
+	var station_entity_id := "built_station_%d" % marker_id
+	EntityRegistry.register(station_entity_id, {
+		"name": station.station_name,
+		"type": EntityRegistrySystem.EntityType.STATION,
+		"node": station,
+		"system_id": sys_id,
+		"pos_x": marker.get("pos_x", 0.0),
+		"pos_z": marker.get("pos_z", 0.0),
+		"station_type": 0,
+	})
+
+	# Remove beacon
+	var beacon_entity_id := "construction_%d" % marker_id
+	var beacon_entity := EntityRegistry.get_entity(beacon_entity_id)
+	var beacon_node: Node = beacon_entity.get("node")
+	if beacon_node and is_instance_valid(beacon_node):
+		beacon_node.queue_free()
+	EntityRegistry.unregister(beacon_entity_id)
+	_construction_mgr.remove_marker(marker_id)
+
+	# Reset build state
+	_build_available = false
+	_build_beacon_name = ""
+	_build_marker_id = -1
+	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud:
+		hud.set_build_state(false, "")
+
+	# Notification
+	if _notif:
+		_notif.toast("STATION CONSTRUITE: " + station.station_name)
+
+
+func _on_station_renamed(new_name: String) -> void:
+	if _dock_instance:
+		_dock_instance.station_name = new_name
 
 
 # Used by SaveManager.apply_state for ship change after fleet restore

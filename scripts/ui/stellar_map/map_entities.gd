@@ -21,6 +21,9 @@ var marquee: MarqueeSelect = null
 var _squadron_fleet: PlayerFleet = null
 var _squadron_list: Array = []  # Array[Squadron]
 
+# Construction markers (set by StellarMap)
+var construction_markers: Array[Dictionary] = []
+
 # Route lines (ships → destination, set by StellarMap)
 var route_ship_ids: Array[String] = []
 var route_dest_ux: float = 0.0
@@ -99,6 +102,9 @@ func _draw() -> void:
 		var rect := marquee.get_rect()
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.08), true)
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6), false, 1.0)
+
+	# Construction markers
+	_draw_construction_markers()
 
 	# Squadron formation lines (member → leader)
 	if not _squadron_list.is_empty() and _squadron_fleet:
@@ -228,15 +234,19 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 	var base_radius: float = clampf(ent["radius"] * camera.zoom, 3.5, 24.0)
 	var planet_type: String = ent["extra"].get("planet_type", "rocky")
 
-	# Atmosphere glow (thin halo around planet)
+	# Atmosphere glow derived from planet's actual color (coherent with 3D)
 	var atmo_alpha: float = 0.12
-	var atmo_col: Color
+	var atmo_col := Color(
+		lerpf(col.r, 1.0, 0.3),
+		lerpf(col.g, 1.0, 0.3),
+		lerpf(col.b, 1.0, 0.3),
+		atmo_alpha
+	)
 	match planet_type:
-		"ocean": atmo_col = Color(0.3, 0.6, 1.0, atmo_alpha)
-		"gas_giant": atmo_col = Color(col.r, col.g * 0.8, col.b * 0.5, atmo_alpha * 1.5)
-		"lava": atmo_col = Color(1.0, 0.4, 0.1, atmo_alpha * 1.2)
-		"ice": atmo_col = Color(0.6, 0.8, 1.0, atmo_alpha * 0.8)
-		_: atmo_col = Color(0.7, 0.6, 0.5, atmo_alpha * 0.5)
+		"gas_giant": atmo_col.a = atmo_alpha * 1.5
+		"lava": atmo_col = Color(lerpf(col.r, 1.0, 0.4), col.g * 0.6, col.b * 0.4, atmo_alpha * 1.2)
+		"ice": atmo_col.a = atmo_alpha * 0.8
+		"rocky": atmo_col.a = atmo_alpha * 0.5
 	draw_circle(pos, base_radius * 1.6, atmo_col)
 	draw_circle(pos, base_radius * 1.25, Color(atmo_col.r, atmo_col.g, atmo_col.b, atmo_col.a * 1.5))
 
@@ -296,7 +306,8 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 		var label_y: float = base_radius + 14.0
 		if ent["extra"].get("has_rings", false):
 			label_y = base_radius * 2.2 + 8.0
-		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
+		var label_col := Color(col.r, col.g, col.b, 0.7)
+		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
 
 # =============================================================================
@@ -682,6 +693,7 @@ func _type_label(type: int) -> String:
 		EntityRegistrySystem.EntityType.SHIP_FLEET: return "Vaisseau flotte"
 		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "Ceinture"
 		EntityRegistrySystem.EntityType.JUMP_GATE: return "Portail"
+		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: return "Site de construction"
 	return "Inconnu"
 
 
@@ -872,13 +884,63 @@ func _draw_waypoint_flash() -> void:
 
 
 func _draw_hint_text(font: Font) -> void:
-	var hint := "Clic droit = Deplacer | Maintenir = Ordres"
+	var hint := "Clic droit = Deplacer | Maintenir = Ordres/Construction"
 	var hint_y: float = size.y - 60.0
 	var hint_x: float = size.x * 0.5
 	var tw: float = font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 	draw_rect(Rect2(hint_x - tw * 0.5 - 8, hint_y - 14, tw + 16, 20), Color(0.0, 0.02, 0.05, 0.8))
 	var h_pulse: float = sin(Time.get_ticks_msec() / 400.0) * 0.15 + 0.85
 	draw_string(font, Vector2(hint_x - tw * 0.5, hint_y), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, h_pulse))
+
+
+# =============================================================================
+# CONSTRUCTION MARKERS (orange pulsing blueprint markers)
+# =============================================================================
+func _draw_construction_markers() -> void:
+	if construction_markers.is_empty() or camera == null:
+		return
+	var font: Font = UITheme.get_font()
+	var col := MapColors.CONSTRUCTION_STATION
+	var ghost_col := MapColors.CONSTRUCTION_GHOST
+
+	for marker in construction_markers:
+		var sp: Vector2 = camera.universe_to_screen(marker["pos_x"], marker["pos_z"])
+
+		# Cull off-screen
+		if sp.x < -60 or sp.x > size.x + 60 or sp.y < -60 or sp.y > size.y + 60:
+			continue
+
+		var age: float = Time.get_ticks_msec() / 1000.0 - marker["timestamp"]
+		var pulse: float = sin(age * 2.5) * 0.25 + 0.75
+
+		# Outer ghost ring (pulsing)
+		var ring_r: float = 22.0 + pulse * 4.0
+		draw_arc(sp, ring_r, 0, TAU, 32, Color(ghost_col.r, ghost_col.g, ghost_col.b, ghost_col.a * pulse), 1.5, true)
+
+		# Dashed circle (blueprint style) — draw segments
+		var dash_count: int = 16
+		for d in dash_count:
+			var a0: float = TAU * float(d) / float(dash_count)
+			var a1: float = TAU * float(d + 0.5) / float(dash_count)
+			draw_arc(sp, 14.0, a0, a1, 4, Color(col.r, col.g, col.b, 0.6 * pulse), 1.5, true)
+
+		# Center cross (X marker)
+		var cs: float = 5.0
+		draw_line(sp + Vector2(-cs, -cs), sp + Vector2(cs, cs), Color(col.r, col.g, col.b, 0.8), 2.0)
+		draw_line(sp + Vector2(cs, -cs), sp + Vector2(-cs, cs), Color(col.r, col.g, col.b, 0.8), 2.0)
+
+		# Center dot
+		draw_circle(sp, 2.5, col)
+
+		# Label: display name
+		var label_text: String = marker["display_name"]
+		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, sp + Vector2(-tw * 0.5, 30), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+		# Tag: [CONSTRUCTION]
+		var tag := "[CONSTRUCTION]"
+		var tag_w: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		draw_string(font, sp + Vector2(-tag_w * 0.5, 43), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(col.r, col.g, col.b, 0.6))
 
 
 func _draw_dashed_line(from: Vector2, to: Vector2, col: Color, width: float, dash_len: float, gap_len: float) -> void:

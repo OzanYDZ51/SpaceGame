@@ -58,7 +58,7 @@ script = ExtResource("3_esc3h")
 planet_name = "Rigel Tauri I"
 type = 3
 orbital_radius = 13525823.876261711
-orbital_period = 84.41931735173078
+orbital_period = 506515.9041103847
 orbital_angle = 0.4880885965406161
 radius = 18696686.029434204
 color = Color(0.85561806, 0.7315756, 0.2835565, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_esc3h")
 planet_name = "Rigel Tauri II"
 type = 4
 orbital_radius = 22120728.43553578
-orbital_period = 176.5612440313919
+orbital_period = 1059367.4641883515
 orbital_angle = 1.9659443099516247
 radius = 7720488.07144165
 color = Color(0.58467597, 0.7741041, 0.97676665, 0.9)
@@ -77,7 +77,7 @@ color = Color(0.58467597, 0.7741041, 0.97676665, 0.9)
 script = ExtResource("5_i42cw")
 station_name = "Port Platform"
 orbital_radius = 14185338.330445562
-orbital_period = 75.97738561655771
+orbital_period = 455864.31369934627
 orbital_angle = 6.094887667438511
 
 [resource]

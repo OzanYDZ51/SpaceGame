@@ -47,7 +47,7 @@ script = ExtResource("3_4fuqi")
 planet_name = "Mu Pavonis I"
 type = 3
 orbital_radius = 22039901.614189148
-orbital_period = 175.59442414513282
+orbital_period = 1053566.5448707968
 orbital_angle = 1.5041156312877073
 radius = 28001823.42529297
 color = Color(0.8387314, 0.7248966, 0.39593574, 0.9)
@@ -58,7 +58,7 @@ script = ExtResource("3_4fuqi")
 planet_name = "Mu Pavonis II"
 type = 4
 orbital_radius = 44682470.45041855
-orbital_period = 506.87632768094966
+orbital_period = 3041257.966085698
 orbital_angle = 6.224957328927713
 radius = 9299693.584442139
 color = Color(0.596308, 0.7460036, 0.9476171, 0.9)
@@ -67,7 +67,7 @@ color = Color(0.596308, 0.7460036, 0.9476171, 0.9)
 script = ExtResource("5_575cu")
 station_name = "Orbital Outpost"
 orbital_radius = 21359908.59585353
-orbital_period = 158.03498173061953
+orbital_period = 948209.8903837173
 orbital_angle = 6.073002974733217
 
 [sub_resource type="Resource" id="Resource_a4p8m"]
@@ -75,7 +75,7 @@ script = ExtResource("5_575cu")
 station_name = "Dock Platform"
 station_type = 2
 orbital_radius = 44478339.54639922
-orbital_period = 456.1886949128547
+orbital_period = 2737132.1694771284
 orbital_angle = 6.102163215477147
 
 [resource]

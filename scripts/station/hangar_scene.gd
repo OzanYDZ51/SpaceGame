@@ -159,7 +159,7 @@ func _process(delta: float) -> void:
 		_prompt_ctrl.queue_redraw()
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
 	if not _selection_active or terminal_open:
 		return
 	if _fleet_indices.size() <= 1:

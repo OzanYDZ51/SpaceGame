@@ -18,6 +18,7 @@ var _damage_feedback: HudDamageFeedback = null
 var _prompts: HudPrompts = null
 var _mining: HudMining = null
 var _route: HudRoute = null
+var _planetary: HudPlanetary = null
 
 # --- Shared animation state ---
 var _scan_line_y: float = 0.0
@@ -96,6 +97,11 @@ func _build_components() -> void:
 	_route.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(_route)
 
+	# Planetary: altimeter + planet name when near surface
+	_planetary = HudPlanetary.new()
+	_planetary.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(_planetary)
+
 
 # =============================================================================
 # SETTERS — same API as before, routes to components
@@ -157,6 +163,15 @@ func set_system_transition(st: SystemTransition) -> void:
 
 func set_mining_system(ms: MiningSystem) -> void:
 	_mining.mining_system = ms
+
+
+func set_planet_approach_manager(pam: PlanetApproachManager) -> void:
+	_planetary.planet_approach_mgr = pam
+
+
+func set_build_state(available: bool, target_name: String) -> void:
+	_prompts.can_build = available
+	_prompts.build_target_name = target_name
 
 
 ## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.

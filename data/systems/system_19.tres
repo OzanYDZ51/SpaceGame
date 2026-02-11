@@ -57,7 +57,7 @@ script = ExtResource("3_f8c6p")
 planet_name = "Pi Eridani I"
 type = 3
 orbital_radius = 22893157.00531006
-orbital_period = 185.88946350703256
+orbital_period = 1115336.7810421954
 orbital_angle = 6.174891356850445
 radius = 33680551.052093506
 color = Color(0.86881036, 0.6610198, 0.28666678, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_f8c6p")
 planet_name = "Pi Eridani II"
 type = 4
 orbital_radius = 45921047.44959943
-orbital_period = 528.0972699720023
+orbital_period = 3168583.6198320137
 orbital_angle = 6.085096181183806
 radius = 8672500.133514404
 color = Color(0.6373451, 0.71955466, 0.9455382, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.6373451, 0.71955466, 0.9455382, 0.9)
 script = ExtResource("5_c0ddo")
 station_name = "Alpha Outpost"
 orbital_radius = 21789674.999491543
-orbital_period = 167.3005171563293
+orbital_period = 1003803.1029379758
 orbital_angle = 5.866696790029673
 
 [resource]

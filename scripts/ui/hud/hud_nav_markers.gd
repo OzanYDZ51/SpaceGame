@@ -17,6 +17,8 @@ const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
 const NAV_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
+const NAV_COL_CONSTRUCTION: Color = Color(1.0, 0.6, 0.1, 0.85)
+const NAV_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
 
 var _nav_markers: Control = null
 
@@ -45,7 +47,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	# Stations + Star + Jump Gates + Asteroid Belts
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
-		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT:
+		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT and etype != EntityRegistrySystem.EntityType.CONSTRUCTION_SITE and etype != EntityRegistrySystem.EntityType.PLANET:
 			continue
 		var world_pos: Vector3
 		var node_ref = ent.get("node")
@@ -79,6 +81,11 @@ func _draw_nav_markers(ctrl: Control) -> void:
 			EntityRegistrySystem.EntityType.STATION: marker_col = NAV_COL_STATION
 			EntityRegistrySystem.EntityType.JUMP_GATE: marker_col = NAV_COL_GATE
 			EntityRegistrySystem.EntityType.ASTEROID_BELT: marker_col = NAV_COL_BELT
+			EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: marker_col = NAV_COL_CONSTRUCTION
+			EntityRegistrySystem.EntityType.PLANET:
+				# Use the planet's actual color (coherent with map + impostor)
+				var pcol: Color = ent.get("color", NAV_COL_PLANET)
+				marker_col = Color(lerpf(pcol.r, 1.0, 0.3), lerpf(pcol.g, 1.0, 0.3), lerpf(pcol.b, 1.0, 0.3), 0.85)
 			_: marker_col = NAV_COL_STAR
 		_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, ent["name"], dist, marker_col)
 

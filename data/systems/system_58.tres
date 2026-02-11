@@ -57,7 +57,7 @@ script = ExtResource("3_3fbo0")
 planet_name = "Tau Orionis I"
 type = 3
 orbital_radius = 23754489.421844482
-orbital_period = 196.47839151776182
+orbital_period = 1178870.349106571
 orbital_angle = 1.831748891785239
 radius = 42166028.02276611
 color = Color(0.89297724, 0.60150164, 0.27776223, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_3fbo0")
 planet_name = "Tau Orionis II"
 type = 4
 orbital_radius = 41591565.77287575
-orbital_period = 455.20198720841375
+orbital_period = 2731211.9232504824
 orbital_angle = 6.129785730362909
 radius = 2662068.9034461975
 color = Color(0.6090348, 0.7769742, 0.9853022, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.6090348, 0.7769742, 0.9853022, 0.9)
 script = ExtResource("5_44rbg")
 station_name = "Port Platform"
 orbital_radius = 41402039.51097168
-orbital_period = 409.68178848757236
+orbital_period = 2458090.7309254343
 orbital_angle = 1.5453534428137963
 
 [resource]

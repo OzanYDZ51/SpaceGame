@@ -57,7 +57,7 @@ script = ExtResource("3_5sa6f")
 planet_name = "Pi Persei I"
 type = 2
 orbital_radius = 14010073.244571686
-orbital_period = 88.9932059882855
+orbital_period = 533959.235929713
 orbital_angle = 3.7769438270878375
 radius = 4548704.80298996
 color = Color(0.16180372, 0.4234961, 0.8056501, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_5sa6f")
 planet_name = "Pi Persei II"
 type = 3
 orbital_radius = 25669726.54497043
-orbital_period = 220.71309826887736
+orbital_period = 1324278.5896132642
 orbital_angle = 6.258085471636401
 radius = 22716836.92932129
 color = Color(0.76220304, 0.63775283, 0.37010252, 0.9)
@@ -76,7 +76,7 @@ color = Color(0.76220304, 0.63775283, 0.37010252, 0.9)
 script = ExtResource("5_vk7ip")
 station_name = "Alpha Outpost"
 orbital_radius = 13394852.587049313
-orbital_period = 80.09388538945694
+orbital_period = 480563.31233674166
 orbital_angle = 1.2141857722367553
 
 [resource]

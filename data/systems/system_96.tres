@@ -69,7 +69,7 @@ script = ExtResource("3_wre1b")
 planet_name = "Theta Pavonis I"
 type = 3
 orbital_radius = 22986465.69252014
-orbital_period = 187.02710239292443
+orbital_period = 1122162.6143575467
 orbital_angle = 0.6136374900645443
 radius = 52283809.185028076
 color = Color(0.87956065, 0.70528114, 0.2987455, 0.9)
@@ -80,7 +80,7 @@ script = ExtResource("3_wre1b")
 planet_name = "Theta Pavonis II"
 type = 4
 orbital_radius = 42482374.435042515
-orbital_period = 469.90429822683484
+orbital_period = 2819425.789361009
 orbital_angle = 0.6342836880272755
 radius = 5852050.304412842
 color = Color(0.5784249, 0.7328727, 0.9993444, 0.9)
@@ -90,7 +90,7 @@ script = ExtResource("3_wre1b")
 planet_name = "Theta Pavonis III"
 type = 4
 orbital_radius = 78513685.47825189
-orbital_period = 1180.631291758749
+orbital_period = 7083787.750552494
 orbital_angle = 3.5707919392799505
 radius = 9643270.015716553
 color = Color(0.52058744, 0.79943424, 0.9783088, 0.9)
@@ -99,7 +99,7 @@ color = Color(0.52058744, 0.79943424, 0.9783088, 0.9)
 script = ExtResource("5_cmvqf")
 station_name = "Gateway Platform"
 orbital_radius = 76995634.46697378
-orbital_period = 1062.5681625828743
+orbital_period = 6375408.975497246
 orbital_angle = 6.090119443954292
 
 [sub_resource type="Resource" id="Resource_wwb1y"]
@@ -107,7 +107,7 @@ script = ExtResource("5_cmvqf")
 station_name = "Beta Hub"
 station_type = 1
 orbital_radius = 23955565.7330461
-orbital_period = 168.324392153632
+orbital_period = 1009946.3529217921
 orbital_angle = 5.714623342600179
 
 [resource]

@@ -84,7 +84,7 @@ static func _randomize(
 
 	# --- Star light (derived from star properties) ---
 	d.star_light_color = star_color
-	d.star_light_energy = clampf(star_luminosity * 0.4 + 0.7, 0.7, 2.2)
+	d.star_light_energy = clampf(star_luminosity * 0.8 + 1.0, 1.2, 4.0)
 
 	# --- Ambient (tinted from star, intensity from luminosity) ---
 	var ambient_tint := star_color.lerp(Color.WHITE, 0.6)
@@ -111,15 +111,21 @@ static func _randomize(
 		base.glow_bloom * 1.5,
 	)
 
-	# --- Nebula (preset colors + slight randomization) ---
-	d.nebula_warm = base.nebula_warm.lerp(
-		Color(rng.randf() * 0.1, rng.randf() * 0.05, rng.randf() * 0.05), 0.3
+	# --- Nebula (preserve base hue, vary saturation/brightness ±20%) ---
+	d.nebula_warm = Color(
+		base.nebula_warm.r * rng.randf_range(0.8, 1.2),
+		base.nebula_warm.g * rng.randf_range(0.8, 1.2),
+		base.nebula_warm.b * rng.randf_range(0.8, 1.2),
 	)
-	d.nebula_cool = base.nebula_cool.lerp(
-		Color(rng.randf() * 0.05, rng.randf() * 0.05, rng.randf() * 0.1), 0.3
+	d.nebula_cool = Color(
+		base.nebula_cool.r * rng.randf_range(0.8, 1.2),
+		base.nebula_cool.g * rng.randf_range(0.8, 1.2),
+		base.nebula_cool.b * rng.randf_range(0.8, 1.2),
 	)
-	d.nebula_accent = base.nebula_accent.lerp(
-		Color(rng.randf() * 0.05, rng.randf() * 0.03, rng.randf() * 0.1), 0.3
+	d.nebula_accent = Color(
+		base.nebula_accent.r * rng.randf_range(0.8, 1.2),
+		base.nebula_accent.g * rng.randf_range(0.8, 1.2),
+		base.nebula_accent.b * rng.randf_range(0.8, 1.2),
 	)
 	d.nebula_intensity = rng.randf_range(
 		base.nebula_intensity * 0.8, base.nebula_intensity * 1.3
@@ -149,6 +155,24 @@ static func _randomize(
 	# --- Dust ---
 	d.dust_intensity = rng.randf_range(
 		base.dust_intensity * 0.7, base.dust_intensity * 1.3
+	)
+
+	# --- God Rays ---
+	d.god_ray_intensity = rng.randf_range(
+		base.god_ray_intensity * 0.7, base.god_ray_intensity * 1.3
+	)
+
+	# --- Nebula Detail ---
+	d.nebula_warp_strength = rng.randf_range(
+		base.nebula_warp_strength * 0.8, base.nebula_warp_strength * 1.3
+	)
+	d.nebula_emission_strength = rng.randf_range(
+		base.nebula_emission_strength * 0.7, base.nebula_emission_strength * 1.3
+	)
+
+	# --- Star Clusters ---
+	d.star_cluster_density = rng.randf_range(
+		base.star_cluster_density * 0.7, base.star_cluster_density * 1.4
 	)
 
 	return d

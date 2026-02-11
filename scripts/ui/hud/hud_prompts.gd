@@ -9,11 +9,14 @@ var docking_system: DockingSystem = null
 var loot_pickup: LootPickupSystem = null
 var system_transition: SystemTransition = null
 var pulse_t: float = 0.0
+var can_build: bool = false
+var build_target_name: String = ""
 
 var _dock_prompt: Control = null
 var _loot_prompt: Control = null
 var _gate_prompt: Control = null
 var _wormhole_prompt: Control = null
+var _build_prompt: Control = null
 
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 
@@ -41,6 +44,11 @@ func _ready() -> void:
 	_wormhole_prompt.visible = false
 	add_child(_wormhole_prompt)
 
+	_build_prompt = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -130, 215, 130, 250)
+	_build_prompt.draw.connect(_draw_build_prompt.bind(_build_prompt))
+	_build_prompt.visible = false
+	add_child(_build_prompt)
+
 
 func update_visibility() -> void:
 	if _dock_prompt:
@@ -66,6 +74,11 @@ func update_visibility() -> void:
 		_wormhole_prompt.visible = show_wh
 		if show_wh:
 			_wormhole_prompt.queue_redraw()
+
+	if _build_prompt:
+		_build_prompt.visible = can_build
+		if can_build:
+			_build_prompt.queue_redraw()
 
 
 # --- Dock ---
@@ -169,6 +182,32 @@ func _draw_wormhole_prompt(ctrl: Control) -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
 	var tw: float = font.get_string_size("WORMHOLE  [W]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var dy: float = 24.0
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+# --- Build ---
+func _draw_build_prompt(ctrl: Control) -> void:
+	var s := ctrl.size
+	var font := UITheme.get_font_medium()
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
+
+	var build_col := Color(1.0, 0.6, 0.1)
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.06, 0.03, 0.0, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(build_col.r, build_col.g, build_col.b, 0.3 * pulse), false, 1.0)
+
+	if build_target_name != "":
+		ctrl.draw_string(font, Vector2(0, 13), build_target_name.to_upper(),
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+
+	var text_col := Color(build_col.r, build_col.g, build_col.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 28), "CONSTRUIRE  [B]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+
+	var tw: float = font.get_string_size("CONSTRUIRE  [B]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)

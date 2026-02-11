@@ -56,7 +56,7 @@ pos_z = -33368293.76865517
 script = ExtResource("3_dqfjp")
 planet_name = "Mira Tauri I"
 orbital_radius = 17783061.563968662
-orbital_period = 127.26413847811772
+orbital_period = 763584.8308687063
 orbital_angle = 6.230504527030781
 radius = 6413938.820362091
 color = Color(0.64166, 0.6093799, 0.35895002, 0.9)
@@ -66,7 +66,7 @@ script = ExtResource("3_dqfjp")
 planet_name = "Mira Tauri II"
 type = 3
 orbital_radius = 33938317.58769422
-orbital_period = 335.5302712628604
+orbital_period = 2013181.6275771626
 orbital_angle = 6.202137117665744
 radius = 21735665.202140808
 color = Color(0.80446213, 0.722905, 0.2970138, 0.9)
@@ -75,7 +75,7 @@ color = Color(0.80446213, 0.722905, 0.2970138, 0.9)
 script = ExtResource("5_g24jq")
 station_name = "Dock Depot"
 orbital_radius = 32554272.60150963
-orbital_period = 301.97724413657437
+orbital_period = 1811863.4648194462
 orbital_angle = 2.534376507845729
 
 [sub_resource type="Resource" id="Resource_mojvo"]
@@ -83,7 +83,7 @@ script = ExtResource("5_g24jq")
 station_name = "Nexus Terminal"
 station_type = 2
 orbital_radius = 17594116.76804117
-orbital_period = 114.53772463030595
+orbital_period = 687226.3477818357
 orbital_angle = 4.730463813091165
 
 [resource]

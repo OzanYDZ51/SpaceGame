@@ -35,3 +35,13 @@ extends Resource
 
 @export_group("Skybox — Dust Lanes")
 @export var dust_intensity: float = 0.5
+
+@export_group("Skybox — God Rays")
+@export var god_ray_intensity: float = 0.5
+
+@export_group("Skybox — Nebula Detail")
+@export var nebula_warp_strength: float = 0.6
+@export var nebula_emission_strength: float = 1.5
+
+@export_group("Skybox — Star Clusters")
+@export var star_cluster_density: float = 0.3

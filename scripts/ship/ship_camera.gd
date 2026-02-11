@@ -49,6 +49,10 @@ var _shake_offset: Vector3 = Vector3.ZERO
 var _fov_spike: float = 0.0  # Temporary FOV burst (decays) — cruise punch/exit effects
 const FOV_SPIKE_DECAY: float = 3.5
 
+## Planetary mode: when set, camera uses planet surface as "up" reference
+var planetary_up: Vector3 = Vector3.ZERO  ## Non-zero when near planet surface
+var planetary_up_blend: float = 0.0       ## 0 = space mode, 1 = full planetary up
+
 ## Micro-vibration: subtle camera oscillation for immersive flight feel
 var vibration_enabled: bool = false
 var _vibration_time: float = 0.0
@@ -113,7 +117,7 @@ func _on_cruise_exit() -> void:
 	_shake_intensity = maxf(_shake_intensity, 0.45)
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
 	if camera_mode == CameraMode.THIRD_PERSON:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -203,6 +207,9 @@ func _update_third_person(delta: float) -> void:
 
 	if smooth_forward.length_squared() > 0.001:
 		var up_hint := ship_basis.y.lerp(Vector3.UP, 0.05)
+		# Planetary mode: blend toward planet surface normal as "up"
+		if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
+			up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
 		# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
 		var up_vec := (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
 		look_at(global_position + smooth_forward, up_vec)

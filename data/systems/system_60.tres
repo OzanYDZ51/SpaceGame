@@ -58,7 +58,7 @@ script = ExtResource("3_71f3j")
 planet_name = "Alpha Eridani I"
 type = 2
 orbital_radius = 22780134.975910187
-orbital_period = 184.5145776230806
+orbital_period = 1107087.4657384837
 orbital_angle = 1.943107433126897
 radius = 5412965.655326843
 color = Color(0.2361644, 0.39964283, 0.7752461, 0.9)
@@ -68,7 +68,7 @@ script = ExtResource("3_71f3j")
 planet_name = "Alpha Eridani II"
 type = 3
 orbital_radius = 45029833.25234216
-orbital_period = 512.7985069209641
+orbital_period = 3076791.0415257844
 orbital_angle = 6.1130778483097
 radius = 22929107.546806335
 color = Color(0.8619729, 0.66280895, 0.33889866, 0.9)
@@ -78,7 +78,7 @@ has_rings = true
 script = ExtResource("5_nua7w")
 station_name = "Gamma Platform"
 orbital_radius = 44473049.901081316
-orbital_period = 461.5186562288677
+orbital_period = 2769111.9373732065
 orbital_angle = 2.543995908120933
 
 [resource]

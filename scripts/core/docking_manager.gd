@@ -20,6 +20,7 @@ var commerce_manager: CommerceManager = null
 var commerce_screen: CommerceScreen = null
 var equipment_screen: EquipmentScreen = null
 var station_screen: StationScreen = null
+var admin_screen: StationAdminScreen = null
 var system_transition: SystemTransition = null
 var route_manager: RouteManager = null
 var fleet_deployment_mgr: FleetDeploymentManager = null
@@ -219,6 +220,40 @@ func open_station_terminal() -> void:
 		station_screen.setup(player_data.station_services if player_data else null, sys_id, docked_station_idx, player_data.economy if player_data else null)
 	if screen_manager:
 		screen_manager.open_screen("station")
+
+
+func handle_administration_requested() -> void:
+	if admin_screen == null or screen_manager == null:
+		return
+	# Resolve docked station node + entity ID
+	var sname: String = dock_instance.station_name if dock_instance else ""
+	var station_node: SpaceStation = null
+	var entity_id: String = ""
+	var universe := main_scene.get_node_or_null("Universe") if main_scene else null
+	if universe:
+		station_node = universe.get_node_or_null("Station_%d" % docked_station_idx) as SpaceStation
+	# Search EntityRegistry for entity ID
+	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for ent in stations:
+		if ent.get("name", "") == sname:
+			entity_id = ent.get("id", "")
+			# If no node from Universe, try node ref from entity
+			if station_node == null:
+				station_node = ent.get("node") as SpaceStation
+			break
+	if station_node == null:
+		return
+	admin_screen.setup(station_node, entity_id)
+	screen_manager.close_screen("station")
+	await get_tree().process_frame
+	screen_manager.open_screen("admin")
+
+
+func handle_admin_closed() -> void:
+	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
+	if state_val != GameManagerSystem.GameState.DOCKED:
+		return
+	open_station_terminal()
 
 
 func _clear_npc_targets_on_player() -> void:

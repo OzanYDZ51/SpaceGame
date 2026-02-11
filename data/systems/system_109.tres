@@ -49,7 +49,7 @@ script = ExtResource("3_m2550")
 planet_name = "Regulus Lyrae I"
 type = 2
 orbital_radius = 17605128.288269047
-orbital_period = 125.35886028858357
+orbital_period = 752153.1617315015
 orbital_angle = 1.2464142554367283
 radius = 6088507.890701294
 color = Color(0.24618806, 0.44326162, 0.84316015, 0.9)
@@ -59,7 +59,7 @@ script = ExtResource("3_m2550")
 planet_name = "Regulus Lyrae II"
 type = 3
 orbital_radius = 26227031.534209862
-orbital_period = 227.93968906808837
+orbital_period = 1367638.1344085303
 orbital_angle = 1.1061284167227374
 radius = 46295478.34396362
 color = Color(0.8074333, 0.737626, 0.37373063, 0.9)
@@ -69,7 +69,7 @@ has_rings = true
 script = ExtResource("5_bp3bi")
 station_name = "Dock Hub"
 orbital_radius = 27102075.63157631
-orbital_period = 205.14572016127954
+orbital_period = 1230874.3209676773
 orbital_angle = 0.390265605248948
 
 [resource]

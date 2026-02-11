@@ -5,6 +5,7 @@ extends Control
 # Fleet Context Menu — Holographic popup menu for fleet orders
 # Appears at cursor position, shows filtered order list
 # Custom _draw(), no child Controls
+# Supports header items (non-clickable category separators)
 # =============================================================================
 
 signal order_selected(order_id: StringName, params: Dictionary)
@@ -13,8 +14,10 @@ signal cancelled
 var _orders: Array[Dictionary] = []
 var _context: Dictionary = {}
 var _hovered_index: int = -1
+var _item_offsets: PackedFloat32Array = []  # cumulative Y offsets per item
 
 const ITEM_H: float = 28.0
+const HEADER_H: float = 22.0
 const PADDING: float = 8.0
 const MENU_W: float = 180.0
 const CORNER_LEN: float = 6.0
@@ -29,9 +32,18 @@ func show_menu(pos: Vector2, orders: Array[Dictionary], context: Dictionary) -> 
 	_orders = orders
 	_context = context
 	_hovered_index = -1
-	visible = true
 
-	var menu_h: float = PADDING * 2 + _orders.size() * ITEM_H
+	# Pre-calculate cumulative Y offsets (variable height: headers vs items)
+	_item_offsets.resize(_orders.size())
+	var y: float = PADDING
+	for i in _orders.size():
+		_item_offsets[i] = y
+		if _orders[i].get("is_header", false):
+			y += HEADER_H
+		else:
+			y += ITEM_H
+
+	var menu_h: float = y + PADDING
 	# Clamp to screen bounds
 	var parent_size: Vector2 = get_parent_control().size if get_parent_control() else get_viewport_rect().size
 	if pos.x + MENU_W > parent_size.x - 10:
@@ -41,6 +53,7 @@ func show_menu(pos: Vector2, orders: Array[Dictionary], context: Dictionary) -> 
 
 	position = pos
 	size = Vector2(MENU_W, menu_h)
+	visible = true
 	queue_redraw()
 
 
@@ -49,7 +62,7 @@ func _draw() -> void:
 		return
 
 	var font: Font = UITheme.get_font()
-	var menu_h: float = PADDING * 2 + _orders.size() * ITEM_H
+	var menu_h: float = size.y
 	var rect := Rect2(Vector2.ZERO, Vector2(MENU_W, menu_h))
 
 	# Background
@@ -69,30 +82,33 @@ func _draw() -> void:
 
 	# Items
 	for i in _orders.size():
-		var y: float = PADDING + i * ITEM_H
-		var item_rect := Rect2(2, y, MENU_W - 4, ITEM_H)
+		var y: float = _item_offsets[i]
+		var is_header: bool = _orders[i].get("is_header", false)
 
-		# Hover highlight
-		if i == _hovered_index:
-			draw_rect(item_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
+		if is_header:
+			# Header: separator line + accent-colored label (non-clickable)
+			if i > 0:
+				draw_line(Vector2(PADDING, y + 2), Vector2(MENU_W - PADDING, y + 2), Color(MapColors.CONSTRUCTION_HEADER.r, MapColors.CONSTRUCTION_HEADER.g, MapColors.CONSTRUCTION_HEADER.b, 0.3), 1.0)
+			draw_string(font, Vector2(PADDING + 4, y + HEADER_H - 6), _orders[i]["display_name"], HORIZONTAL_ALIGNMENT_LEFT, MENU_W - PADDING * 2 - 8, 11, MapColors.CONSTRUCTION_HEADER)
+		else:
+			var item_rect := Rect2(2, y, MENU_W - 4, ITEM_H)
 
-		# Label
-		var text_col: Color = UITheme.PRIMARY if i == _hovered_index else UITheme.TEXT
-		draw_string(font, Vector2(PADDING + 4, y + ITEM_H - 8), _orders[i]["display_name"], HORIZONTAL_ALIGNMENT_LEFT, MENU_W - PADDING * 2 - 8, UITheme.FONT_SIZE_BODY, text_col)
+			# Hover highlight
+			if i == _hovered_index:
+				draw_rect(item_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
 
-		# Separator line (except after last)
-		if i < _orders.size() - 1:
-			draw_line(Vector2(PADDING, y + ITEM_H), Vector2(MENU_W - PADDING, y + ITEM_H), Color(UITheme.BORDER, 0.3), 1.0)
+			# Label
+			var text_col: Color = UITheme.PRIMARY if i == _hovered_index else UITheme.TEXT
+			draw_string(font, Vector2(PADDING + 4, y + ITEM_H - 8), _orders[i]["display_name"], HORIZONTAL_ALIGNMENT_LEFT, MENU_W - PADDING * 2 - 8, UITheme.FONT_SIZE_BODY, text_col)
+
+			# Separator line (except after last or before header)
+			if i < _orders.size() - 1 and not _orders[i + 1].get("is_header", false):
+				draw_line(Vector2(PADDING, y + ITEM_H), Vector2(MENU_W - PADDING, y + ITEM_H), Color(UITheme.BORDER, 0.3), 1.0)
 
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		var local_y: float = event.position.y - PADDING
-		var idx: int = int(local_y / ITEM_H)
-		if idx >= 0 and idx < _orders.size() and event.position.x >= 0 and event.position.x <= MENU_W:
-			_hovered_index = idx
-		else:
-			_hovered_index = -1
+		_hovered_index = _index_at_y(event.position.y)
 		queue_redraw()
 		accept_event()
 
@@ -101,8 +117,9 @@ func _gui_input(event: InputEvent) -> void:
 			if _hovered_index >= 0 and _hovered_index < _orders.size():
 				var order: Dictionary = _orders[_hovered_index]
 				var params: Dictionary = {}
-				# Squadron orders (sq_ prefix) don't use FleetOrderRegistry params
-				if not String(order["id"]).begins_with("sq_"):
+				var id_str := String(order["id"])
+				# Squadron and construction orders don't use FleetOrderRegistry params
+				if not id_str.begins_with("sq_") and not id_str.begins_with("build_"):
 					params = FleetOrderRegistry.build_default_params(order["id"], _context)
 				order_selected.emit(order["id"], params)
 			else:
@@ -111,6 +128,18 @@ func _gui_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			cancelled.emit()
 			accept_event()
+
+
+## Returns the item index at screen Y, skipping headers. Returns -1 if no valid item.
+func _index_at_y(mouse_y: float) -> int:
+	for i in _orders.size():
+		if _orders[i].get("is_header", false):
+			continue
+		var y: float = _item_offsets[i]
+		if mouse_y >= y and mouse_y < y + ITEM_H:
+			if mouse_y >= 0 and mouse_y <= size.y:
+				return i
+	return -1
 
 
 func _input(event: InputEvent) -> void:

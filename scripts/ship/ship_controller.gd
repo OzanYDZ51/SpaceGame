@@ -81,6 +81,12 @@ var _cached_targeting: TargetingSystem = null
 var _cached_mining_sys: MiningSystem = null
 var _refs_cached: bool = false
 
+# --- Planetary physics (set by PlanetApproachManager) ---
+var planetary_gravity: Vector3 = Vector3.ZERO         ## Gravity direction * strength (m/s²)
+var atmospheric_drag: float = 0.0                     ## 0-1 drag factor
+var planetary_max_speed_override: float = 0.0         ## 0 = no override, >0 = cap speed
+var _near_planet_surface: bool = false                ## True when in atmosphere (blocks cruise)
+
 # --- Crosshair raycast throttle ---
 var _aim_point: Vector3 = Vector3.ZERO
 var _aim_timer: float = 0.0
@@ -203,7 +209,7 @@ func _read_input() -> void:
 	if Input.is_action_just_pressed("toggle_cruise"):
 		if speed_mode == Constants.SpeedMode.CRUISE:
 			_exit_cruise()
-		elif not combat_locked:
+		elif not combat_locked and not _near_planet_surface:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0
 			_cruise_punched = false
@@ -423,6 +429,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		state.linear_velocity = ship_basis * fa_vel
 
 	# =========================================================================
+	# PLANETARY PHYSICS (gravity + atmospheric drag)
+	# =========================================================================
+	if planetary_gravity.length_squared() > 0.001:
+		state.linear_velocity += planetary_gravity * dt
+
+	if atmospheric_drag > 0.001:
+		var drag_mult: float = maxf(0.0, 1.0 - atmospheric_drag * 2.0 * dt)
+		state.linear_velocity *= drag_mult
+
+	# =========================================================================
 	# SPEED LIMIT (Fix 2: per-axis cap in local space)
 	# =========================================================================
 	var max_speed_fwd: float
@@ -438,8 +454,17 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if autopilot_active and speed_mode == Constants.SpeedMode.NORMAL:
 		max_speed_fwd = maxf(max_speed_fwd, AUTOPILOT_APPROACH_SPEED)
 
+	# Planetary speed cap (atmosphere/surface limit)
+	if planetary_max_speed_override > 0.0:
+		max_speed_fwd = minf(max_speed_fwd, planetary_max_speed_override)
+
 	var max_lat := (ship_data.max_speed_lateral if ship_data else 150.0) * engine_speed_mult
 	var max_vert := (ship_data.max_speed_vertical if ship_data else 150.0) * engine_speed_mult
+
+	# Also apply planetary speed cap to lateral/vertical
+	if planetary_max_speed_override > 0.0:
+		max_lat = minf(max_lat, planetary_max_speed_override)
+		max_vert = minf(max_vert, planetary_max_speed_override)
 
 	var local_vel: Vector3 = ship_basis.inverse() * state.linear_velocity
 	local_vel.x = clampf(local_vel.x, -max_lat, max_lat)

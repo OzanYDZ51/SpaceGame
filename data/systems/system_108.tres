@@ -59,7 +59,7 @@ script = ExtResource("3_oof2e")
 planet_name = "Alpha Leonis I"
 type = 3
 orbital_radius = 10434112.399816515
-orbital_period = 57.197824392870345
+orbital_period = 343186.94635722204
 orbital_angle = 0.5994686252230226
 radius = 40187737.94174194
 color = Color(0.7875947, 0.6278701, 0.34992328, 0.9)
@@ -70,7 +70,7 @@ script = ExtResource("3_oof2e")
 planet_name = "Alpha Leonis II"
 type = 4
 orbital_radius = 17923222.95420984
-orbital_period = 128.77169274226955
+orbital_period = 772630.1564536173
 orbital_angle = 6.250494588679944
 radius = 7981576.442718506
 color = Color(0.5394989, 0.73952615, 0.98695344, 0.9)
@@ -79,7 +79,7 @@ color = Color(0.5394989, 0.73952615, 0.98695344, 0.9)
 script = ExtResource("5_jf26d")
 station_name = "Alpha Station"
 orbital_radius = 17350752.386353895
-orbital_period = 115.89452346804259
+orbital_period = 695367.1408082555
 orbital_angle = 2.1022350949413062
 
 [sub_resource type="Resource" id="Resource_8rm34"]
@@ -87,7 +87,7 @@ script = ExtResource("5_jf26d")
 station_name = "Beta Terminal"
 station_type = 2
 orbital_radius = 10113675.959119614
-orbital_period = 51.478041953583315
+orbital_period = 308868.2517214999
 orbital_angle = 2.001942487271632
 
 [resource]

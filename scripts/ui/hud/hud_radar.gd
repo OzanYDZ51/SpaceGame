@@ -20,6 +20,7 @@ const NAV_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
 const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
+const NAV_COL_CONSTRUCTION: Color = Color(1.0, 0.6, 0.1, 0.85)
 
 var _radar: Control = null
 
@@ -135,6 +136,18 @@ func _draw_radar(ctrl: Control) -> void:
 				var lz: float = star_local.dot(ship_basis.z)
 				var dir := Vector2(lx, lz).normalized()
 				HudDrawHelpers.draw_diamond(ctrl, center + dir * (radar_r - 6), 3.0, NAV_COL_STAR)
+		elif etype == EntityRegistrySystem.EntityType.CONSTRUCTION_SITE:
+			var cnode = ent.get("node")
+			if cnode != null and is_instance_valid(cnode):
+				var rel := (cnode as Node3D).global_position - ship.global_position
+				if rel.length() > RADAR_RANGE:
+					var lx: float = rel.dot(ship_basis.x)
+					var lz: float = rel.dot(ship_basis.z)
+					if Vector2(lx, lz).length() > 0.01:
+						var dir := Vector2(lx, lz).normalized()
+						HudDrawHelpers.draw_diamond(ctrl, center + dir * (radar_r - 6), 3.0, NAV_COL_CONSTRUCTION)
+				else:
+					_draw_radar_blip(ctrl, center, radar_r, scale_factor, ship_basis, rel, NAV_COL_CONSTRUCTION, 4.0, true)
 
 	# NPC ship blips
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager

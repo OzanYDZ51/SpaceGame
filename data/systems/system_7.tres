@@ -57,7 +57,7 @@ pos_z = -19594082.674735405
 script = ExtResource("3_mydjl")
 planet_name = "Aldebaran Lyrae I"
 orbital_radius = 16412561.833858492
-orbital_period = 112.83941002903941
+orbital_period = 677036.4601742364
 orbital_angle = 5.541644538344375
 radius = 6525945.18661499
 color = Color(0.64198166, 0.65037686, 0.36969537, 0.9)
@@ -67,7 +67,7 @@ script = ExtResource("3_mydjl")
 planet_name = "Aldebaran Lyrae II"
 type = 3
 orbital_radius = 27460797.816121217
-orbital_period = 244.2114205015249
+orbital_period = 1465268.5230091496
 orbital_angle = 4.068816628601571
 radius = 50141496.658325195
 color = Color(0.8309329, 0.6946083, 0.3266985, 0.9)
@@ -77,7 +77,7 @@ has_rings = true
 script = ExtResource("5_g1d1r")
 station_name = "Port Outpost"
 orbital_radius = 17200627.203839175
-orbital_period = 101.55546902613547
+orbital_period = 609332.8141568128
 orbital_angle = 1.923561911320317
 
 [resource]

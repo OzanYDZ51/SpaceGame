@@ -60,7 +60,7 @@ script = ExtResource("3_0eudl")
 planet_name = "Phi Crucis I"
 type = 2
 orbital_radius = 10898214.969784021
-orbital_period = 61.056133628804616
+orbital_period = 366336.8017728277
 orbital_angle = 0.5699467511298971
 radius = 8618888.139724731
 color = Color(0.1816756, 0.44603816, 0.71120447, 0.9)
@@ -70,7 +70,7 @@ script = ExtResource("3_0eudl")
 planet_name = "Phi Crucis II"
 type = 3
 orbital_radius = 23841228.60098293
-orbital_period = 197.55553037796486
+orbital_period = 1185333.182267789
 orbital_angle = 5.461662195833053
 radius = 22084719.53868866
 color = Color(0.8539071, 0.6169465, 0.34904516, 0.9)
@@ -80,7 +80,7 @@ script = ExtResource("3_0eudl")
 planet_name = "Phi Crucis III"
 type = 4
 orbital_radius = 52155713.82838955
-orbital_period = 639.2181303223982
+orbital_period = 3835308.7819343894
 orbital_angle = 2.405727164261325
 radius = 3891088.366508484
 color = Color(0.5849711, 0.79327035, 0.91397, 0.9)
@@ -89,14 +89,14 @@ color = Color(0.5849711, 0.79327035, 0.91397, 0.9)
 script = ExtResource("5_nfcal")
 station_name = "Gateway Outpost"
 orbital_radius = 10762901.410072146
-orbital_period = 54.950520265924155
+orbital_period = 329703.1215955449
 orbital_angle = 0.9031349339379542
 
 [sub_resource type="Resource" id="Resource_wo7tw"]
 script = ExtResource("5_nfcal")
 station_name = "Nexus Terminal"
 orbital_radius = 50022185.210789695
-orbital_period = 575.2963172901584
+orbital_period = 3451777.9037409504
 orbital_angle = 0.6501699484737891
 
 [resource]

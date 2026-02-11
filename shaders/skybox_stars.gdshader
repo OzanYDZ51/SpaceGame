@@ -1,30 +1,41 @@
 shader_type sky;
 
 // =============================================================================
-// Space Skybox — Realistic but optimized
-// Gradient noise + 2-octave FBM (no domain warping) — ~45% less GPU than v1
-// Halos on bright stars, dust lanes, detailed nebulae
+// Space Skybox — Star Citizen-quality visuals
+// Domain-warped FBM nebulae (3 depth layers), HDR emission cores,
+// god rays / solar scattering, 4 star layers with galactic concentration,
+// star clusters, nebula edge glow, milky way band, dust lanes
 // =============================================================================
 
+// --- Stars ---
 uniform float star_density : hint_range(0.0, 1.0) = 0.4;
 uniform float star_brightness : hint_range(0.0, 6.0) = 3.5;
 uniform float twinkle_speed : hint_range(0.0, 5.0) = 0.5;
 
-// Nebula palette
-uniform vec3 nebula_warm : source_color = vec3(0.12, 0.03, 0.05);
-uniform vec3 nebula_cool : source_color = vec3(0.03, 0.04, 0.10);
-uniform vec3 nebula_accent : source_color = vec3(0.06, 0.02, 0.12);
-uniform float nebula_intensity : hint_range(0.0, 2.0) = 0.35;
+// --- Nebula palette ---
+uniform vec3 nebula_warm : source_color = vec3(0.25, 0.06, 0.10);
+uniform vec3 nebula_cool : source_color = vec3(0.06, 0.10, 0.30);
+uniform vec3 nebula_accent : source_color = vec3(0.15, 0.05, 0.35);
+uniform float nebula_intensity : hint_range(0.0, 2.0) = 0.5;
 
-// Milky Way band
+// --- Milky Way ---
 uniform float milky_way_intensity : hint_range(0.0, 2.0) = 0.5;
 uniform float milky_way_width : hint_range(0.05, 0.5) = 0.16;
 uniform vec3 milky_way_color : source_color = vec3(0.08, 0.07, 0.14);
 
-// Dust lanes
+// --- Dust lanes ---
 uniform float dust_intensity : hint_range(0.0, 1.0) = 0.5;
 
-// ─── Hash functions (no sin, GPU-safe) ──────────────────────────────────────
+// --- NEW uniforms ---
+uniform vec3 sun_direction = vec3(0.0, 0.0, -1.0);
+uniform float god_ray_intensity : hint_range(0.0, 2.0) = 0.5;
+uniform float nebula_warp_strength : hint_range(0.0, 2.0) = 0.6;
+uniform float nebula_emission_strength : hint_range(0.0, 5.0) = 1.5;
+uniform float star_cluster_density : hint_range(0.0, 1.0) = 0.3;
+
+// =============================================================================
+// Hash functions (no sin, GPU-safe)
+// =============================================================================
 
 vec3 _hash33(vec3 p) {
 	p = vec3(
@@ -41,7 +52,9 @@ float _hash31(vec3 p) {
 	return fract((p.x + p.y) * p.z);
 }
 
-// ─── 3D Gradient noise (Perlin-style, realistic detail) ─────────────────────
+// =============================================================================
+// 3D Gradient noise (Perlin-style)
+// =============================================================================
 
 float noise3d(vec3 p) {
 	vec3 i = floor(p);
@@ -64,12 +77,37 @@ float noise3d(vec3 p) {
 	) * 0.5 + 0.5;
 }
 
-// 2-octave FBM (good detail, way cheaper than 3-4 octaves)
+// =============================================================================
+// FBM (2 and 3 octave variants)
+// =============================================================================
+
 float fbm2(vec3 p) {
 	return noise3d(p) * 0.65 + noise3d(p * 2.0) * 0.35;
 }
 
-// ─── Star color from temperature ────────────────────────────────────────────
+float fbm3(vec3 p) {
+	return noise3d(p) * 0.5 + noise3d(p * 2.0) * 0.33 + noise3d(p * 4.0) * 0.17;
+}
+
+// =============================================================================
+// Domain-warped FBM — creates wispy, filamentary nebula structures
+// warp_str controls how much the domain is displaced before final FBM
+// =============================================================================
+
+float warped_fbm(vec3 p, float warp_str, vec3 offset_a, vec3 offset_b, vec3 offset_c) {
+	// First pass: compute warp displacement field
+	float wx = fbm2(p + offset_a);
+	float wy = fbm2(p + offset_b);
+	float wz = fbm2(p + offset_c);
+	vec3 warp_offset = vec3(wx, wy, wz);
+
+	// Second pass: evaluate FBM at warped position (3-octave for detail)
+	return fbm3(p + warp_offset * warp_str);
+}
+
+// =============================================================================
+// Star color from temperature
+// =============================================================================
 
 vec3 star_color_temp(float t) {
 	vec3 cool_c  = vec3(1.0, 0.5, 0.2);
@@ -78,13 +116,20 @@ vec3 star_color_temp(float t) {
 	vec3 white_c = vec3(0.9, 0.93, 1.0);
 	vec3 hot_c   = vec3(0.65, 0.75, 1.0);
 
-	if (t < 0.25) return mix(cool_c, warm_c, t * 4.0);
-	if (t < 0.5) return mix(warm_c, mid_c, (t - 0.25) * 4.0);
-	if (t < 0.75) return mix(mid_c, white_c, (t - 0.5) * 4.0);
-	return mix(white_c, hot_c, (t - 0.75) * 4.0);
+	if (t < 0.25) {
+		return mix(cool_c, warm_c, t * 4.0);
+	} else if (t < 0.5) {
+		return mix(warm_c, mid_c, (t - 0.25) * 4.0);
+	} else if (t < 0.75) {
+		return mix(mid_c, white_c, (t - 0.5) * 4.0);
+	} else {
+		return mix(white_c, hot_c, (t - 0.75) * 4.0);
+	}
 }
 
-// ─── Star point with glow halo ──────────────────────────────────────────────
+// =============================================================================
+// Star point with glow halo
+// =============================================================================
 
 float star_point(vec3 dir, float scale, float threshold, float halo_strength, out float temperature) {
 	vec3 cell = floor(dir * scale);
@@ -93,7 +138,9 @@ float star_point(vec3 dir, float scale, float threshold, float halo_strength, ou
 	float h = _hash31(cell);
 	temperature = _hash31(cell + vec3(42.0, 17.0, 91.0));
 
-	if (h < threshold) return 0.0;
+	if (h < threshold) {
+		return 0.0;
+	}
 
 	vec3 star_pos = vec3(
 		_hash31(cell + vec3(127.1, 311.7, 74.7)) - 0.5,
@@ -112,60 +159,168 @@ float star_point(vec3 dir, float scale, float threshold, float halo_strength, ou
 	return core + halo;
 }
 
-// ─── Main sky function ──────────────────────────────────────────────────────
+// =============================================================================
+// Main sky function
+// =============================================================================
 
 void sky() {
 	vec3 dir = normalize(EYEDIR);
+	vec3 sun_dir = normalize(sun_direction);
 
-	// === BASE (very faint deep blue, not pure black) ===
+	// === BASE (faint deep blue) ===
 	vec3 sky_color = vec3(0.003, 0.003, 0.008);
 
-	// === NEBULA (3x fbm2, no domain warp — realistic detail) ===
-	float n1 = fbm2(dir * 4.5 + vec3(0.0, 0.5, 1.0));
-	float n2 = fbm2(dir * 6.0 + vec3(4.7, 2.3, 0.0));
-	float n3 = fbm2(dir * 3.0 + vec3(1.2, 3.4, 2.1));
-
-	float emission = smoothstep(0.35, 0.70, n1) * smoothstep(0.25, 0.55, n2);
-	vec3 emission_col = mix(nebula_warm, nebula_accent, n3) * emission * 1.5;
-
-	float reflection = smoothstep(0.28, 0.60, n2) * (1.0 - emission * 0.5);
-	vec3 reflection_col = nebula_cool * reflection;
-
-	float diffuse = smoothstep(0.15, 0.75, n3) * 0.25;
-	vec3 diffuse_col = mix(nebula_cool, nebula_accent, n1) * diffuse;
-
-	sky_color += (emission_col + reflection_col + diffuse_col) * nebula_intensity;
-
-	// === MILKY WAY (band + fbm2 structure) ===
+	// === GALACTIC PLANE coordinate ===
 	float tilt = 0.3;
 	float galactic_y = dir.y * cos(tilt) - dir.z * sin(tilt);
+
+	// =========================================================================
+	// NEBULA — 3 depth layers with domain-warped FBM
+	// =========================================================================
+
+	// --- Background layer (scale ~2.5): large, soft, diffuse glow ---
+	float bg_warp = warped_fbm(
+		dir * 2.5,
+		nebula_warp_strength * 0.8,
+		vec3(0.0, 0.0, 0.0),
+		vec3(5.2, 1.3, 2.8),
+		vec3(1.7, 9.2, 4.1)
+	);
+	float bg_mask = pow(max(smoothstep(0.48, 0.75, bg_warp), 0.0), 1.5);
+	// Mix cool and warm for color variation within the layer
+	vec3 bg_color = mix(nebula_cool * 1.2, nebula_warm * 0.8, smoothstep(0.4, 0.7, bg_warp));
+	vec3 nebula_bg = bg_color * bg_mask * 0.25;
+
+	// --- Midground layer (scale ~5.0): main structural detail, filaments ---
+	float mid_warp = warped_fbm(
+		dir * 5.0,
+		nebula_warp_strength,
+		vec3(3.1, 7.4, 1.5),
+		vec3(8.3, 2.9, 6.1),
+		vec3(4.6, 0.8, 3.7)
+	);
+	float mid_mask = pow(max(smoothstep(0.52, 0.80, mid_warp), 0.0), 1.8);
+	// Rich color from accent and warm, with cool accents blended in
+	float mid_color_blend = smoothstep(0.35, 0.65, warped_fbm(dir * 4.0, nebula_warp_strength * 0.5, vec3(11.0, 2.0, 7.0), vec3(3.0, 8.0, 1.0), vec3(6.0, 4.0, 9.0)));
+	vec3 mid_color = mix(nebula_warm, nebula_accent, smoothstep(0.35, 0.65, mid_warp));
+	mid_color = mix(mid_color, nebula_cool * 0.7, mid_color_blend * 0.35);
+	vec3 nebula_mid = mid_color * mid_mask * 0.4;
+
+	// --- Foreground layer (scale ~8.0): fine wisps and tendrils ---
+	float fg_warp = warped_fbm(
+		dir * 8.0,
+		nebula_warp_strength * 1.2,
+		vec3(6.7, 3.2, 9.0),
+		vec3(2.1, 8.5, 0.4),
+		vec3(9.3, 1.1, 5.6)
+	);
+	float fg_mask = pow(max(smoothstep(0.55, 0.85, fg_warp), 0.0), 2.0);
+	// Different mix: accent into cool for wispy foreground
+	vec3 fg_color = mix(nebula_accent * 0.9, nebula_cool * 1.3, smoothstep(0.4, 0.7, fg_warp));
+	vec3 nebula_fg = fg_color * fg_mask * 0.2;
+
+	// Composite nebula layers (additive)
+	vec3 nebula_total = (nebula_bg + nebula_mid + nebula_fg) * nebula_intensity;
+
+	// Combined nebula density for downstream effects (edge glow, dust interaction)
+	float nebula_density = max(max(bg_mask, mid_mask), fg_mask);
+
+	// =========================================================================
+	// HDR EMISSION CORES — trigger Godot bloom/glow naturally
+	// =========================================================================
+
+	// Emission from midground (strongest structural features) — tighter thresholds
+	float emission_mid = pow(max(smoothstep(0.70, 0.95, mid_warp), 0.0), 2.5);
+	// Emission from background (broader, softer glow) — tighter thresholds, reduced multiplier
+	float emission_bg = pow(max(smoothstep(0.75, 0.95, bg_warp), 0.0), 3.0) * 0.4;
+
+	vec3 emission_color_mid = mix(nebula_warm * 2.0, nebula_accent * 1.8, smoothstep(0.5, 0.8, mid_warp));
+	vec3 emission_color_bg = nebula_cool * 1.5 + nebula_warm * 0.5;
+
+	vec3 emission_cores = (emission_color_mid * emission_mid + emission_color_bg * emission_bg) * nebula_emission_strength;
+
+	// =========================================================================
+	// GOD RAYS / SOLAR SCATTERING
+	// =========================================================================
+
+	float sun_scatter = max(dot(dir, sun_dir), 0.0);
+	float god_ray = pow(max(sun_scatter, 0.0), 4.0) * god_ray_intensity;
+	// Warm tinted scattering through nebula gas
+	vec3 god_ray_color = nebula_total * god_ray * vec3(1.2, 1.0, 0.8);
+	// Ambient forward-scatter even without nebula (faint haze near sun)
+	vec3 sun_haze = vec3(0.04, 0.03, 0.02) * pow(max(sun_scatter, 0.0), 8.0) * god_ray_intensity;
+
+	// =========================================================================
+	// NEBULA EDGE GLOW (backlit gas rim lighting)
+	// =========================================================================
+
+	float edge_bg = smoothstep(0.25, 0.45, bg_mask) - smoothstep(0.45, 0.70, bg_mask);
+	float edge_mid = smoothstep(0.30, 0.50, mid_mask) - smoothstep(0.50, 0.72, mid_mask);
+	float edge = max(edge_bg, edge_mid);
+	vec3 edge_glow = edge * sun_scatter * mix(nebula_warm, vec3(1.0, 0.8, 0.5), 0.4) * 2.0;
+
+	// =========================================================================
+	// Apply all nebula contributions
+	// =========================================================================
+
+	sky_color += nebula_total + emission_cores + god_ray_color + edge_glow + sun_haze;
+
+	// =========================================================================
+	// MILKY WAY (band + FBM structure)
+	// =========================================================================
+
 	float band = exp(-galactic_y * galactic_y / (milky_way_width * milky_way_width));
 	float mw_structure = fbm2(dir * 6.0 + vec3(3.7, 0.0, 1.2));
 	float mw = band * smoothstep(0.3, 0.7, mw_structure) * milky_way_intensity;
 	sky_color += milky_way_color * mw;
 
-	// === DUST LANES (fbm2, lighter absorption than before) ===
+	// =========================================================================
+	// DUST LANES (absorption in galactic plane)
+	// =========================================================================
+
 	float d1 = fbm2(dir * 5.0 + vec3(2.0, 1.0, 3.0));
 	float d2 = fbm2(dir * 9.0 + vec3(5.0, 3.0, 1.0));
 	float dust = smoothstep(0.52, 0.72, d1) * smoothstep(0.38, 0.62, d2);
 	float plane_boost = exp(-galactic_y * galactic_y / 0.15);
 	dust *= (0.3 + plane_boost * 0.7) * dust_intensity;
 
-	// Apply dust (60% absorption — less harsh than before)
-	sky_color *= (1.0 - dust * 0.6);
+	// Apply dust absorption (75% — stronger dark voids for contrast)
+	sky_color *= (1.0 - dust * 0.75);
 
-	// === STARS (3 layers with halos on bright ones) ===
-	float temp1, temp2, temp3;
+	// =========================================================================
+	// STAR CLUSTERS — regions of increased star density
+	// =========================================================================
 
-	// Layer 1: Dim background stars (no halo)
-	float dim_thresh = 1.0 - star_density * 0.85;
+	float cluster = smoothstep(0.6, 0.9, fbm2(dir * 2.0 + vec3(7.0, 3.0, 1.0))) * star_cluster_density;
+
+	// =========================================================================
+	// GALACTIC CONCENTRATION — more stars near galactic equator
+	// =========================================================================
+
+	float galactic_boost = exp(-galactic_y * galactic_y / 0.08) * 0.5 + 1.0;
+
+	// =========================================================================
+	// STARS — 4 layers with halos, clusters, and galactic concentration
+	// =========================================================================
+
+	float temp1, temp2, temp3, temp4;
+
+	// Layer 1: Ultra-fine background dust of tiny stars (new)
+	float ultra_thresh = 1.0 - star_density * 0.92 * galactic_boost + cluster * (-0.08);
+	ultra_thresh = clamp(ultra_thresh, 0.0, 1.0);
+	float stars_ultra = star_point(dir, 600.0, ultra_thresh, 0.0, temp4) * 0.15;
+
+	// Layer 2: Dim background stars
+	float dim_thresh = 1.0 - star_density * 0.85 * galactic_boost + cluster * (-0.10);
+	dim_thresh = clamp(dim_thresh, 0.0, 1.0);
 	float stars_dim = star_point(dir, 250.0, dim_thresh, 0.0, temp1) * 0.3;
 
-	// Layer 2: Medium stars (subtle halo)
-	float med_thresh = 1.0 - star_density * 0.35;
+	// Layer 3: Medium stars (subtle halo)
+	float med_thresh = 1.0 - star_density * 0.35 * galactic_boost + cluster * (-0.06);
+	med_thresh = clamp(med_thresh, 0.0, 1.0);
 	float stars_med = star_point(dir, 100.0, med_thresh, 0.1, temp2) * 0.7;
 
-	// Layer 3: Bright stars (visible halo)
+	// Layer 4: Bright stars (visible halo)
 	float bright_thresh = 1.0 - star_density * 0.1;
 	float stars_bright = star_point(dir, 35.0, bright_thresh, 0.15, temp3) * 1.8;
 
@@ -174,12 +329,20 @@ void sky() {
 	float twinkle = sin(TIME * twinkle_speed + twinkle_seed * TAU) * 0.25 + 0.75;
 	float twinkle2 = sin(TIME * twinkle_speed * 0.7 + twinkle_seed * 3.14) * 0.15 + 0.85;
 
-	vec3 total_stars = star_color_temp(temp1) * stars_dim
-	                 + star_color_temp(temp2) * stars_med * twinkle2
+	// Cluster brightness boost for visible stars
+	float cluster_bright = 1.0 + cluster * 1.5;
+
+	vec3 total_stars = star_color_temp(temp4) * stars_ultra * galactic_boost
+	                 + star_color_temp(temp1) * stars_dim * galactic_boost * cluster_bright
+	                 + star_color_temp(temp2) * stars_med * twinkle2 * cluster_bright
 	                 + star_color_temp(temp3) * stars_bright * twinkle;
 
-	// Dust dims stars too
+	// Dust dims stars
 	total_stars *= (1.0 - dust * 0.4);
+
+	// Nebula slightly occludes background stars (reduced — stars more visible through gas)
+	total_stars *= (1.0 - nebula_density * 0.15);
+
 	sky_color += total_stars * star_brightness;
 
 	COLOR = sky_color;

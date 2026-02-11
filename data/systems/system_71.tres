@@ -59,7 +59,7 @@ script = ExtResource("3_r8p4i")
 planet_name = "Nu Centauri I"
 type = 3
 orbital_radius = 22329637.40825653
-orbital_period = 179.06831639060354
+orbital_period = 1074409.8983436213
 orbital_angle = 6.081548850611821
 radius = 20896035.43281555
 color = Color(0.75338376, 0.69107807, 0.27785212, 0.9)
@@ -70,7 +70,7 @@ script = ExtResource("3_r8p4i")
 planet_name = "Nu Centauri II"
 type = 4
 orbital_radius = 33262119.73885142
-orbital_period = 325.55256975767355
+orbital_period = 1953315.4185460412
 orbital_angle = 2.129458947095451
 radius = 5857207.775115967
 color = Color(0.59501576, 0.7625824, 0.9317287, 0.9)
@@ -79,7 +79,7 @@ color = Color(0.59501576, 0.7625824, 0.9317287, 0.9)
 script = ExtResource("5_7x364")
 station_name = "Alpha Hub"
 orbital_radius = 31861835.040866487
-orbital_period = 292.9973127819062
+orbital_period = 1757983.8766914373
 orbital_angle = 5.125427538789974
 
 [resource]

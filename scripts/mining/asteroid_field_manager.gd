@@ -87,10 +87,9 @@ func _setup_multimesh() -> void:
 	mm.mesh = dot_mesh
 	_multimesh_instance.multimesh = mm
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.6, 0.6, 0.7)
-	mat.emission_enabled = true
-	mat.emission = Color(0.4, 0.45, 0.5)
-	mat.emission_energy_multiplier = 1.5
+	mat.albedo_color = Color(0.35, 0.33, 0.3)
+	mat.emission_enabled = false
+	mat.roughness = 0.95
 	_multimesh_instance.material_override = mat
 	_universe_node.add_child(_multimesh_instance)
 
@@ -492,12 +491,13 @@ func _spawn_simplified(id: StringName, asteroid: AsteroidData) -> void:
 	mesh_inst.scale = asteroid.scale_distort
 
 	var mat := StandardMaterial3D.new()
-	var res := MiningRegistry.get_resource(asteroid.primary_resource)
-	mat.albedo_color = asteroid.color_tint if asteroid.color_tint != Color.GRAY else (res.color if res else Color.GRAY)
+	var base_col: Color = asteroid.color_tint if asteroid.color_tint != Color.GRAY else Color(0.35, 0.33, 0.3)
+	# Darken the color so simplified asteroids look like dark rocks, not bright blobs
+	mat.albedo_color = Color(base_col.r * 0.4, base_col.g * 0.4, base_col.b * 0.4)
 	if asteroid.is_depleted:
-		mat.albedo_color = Color(0.2, 0.2, 0.2, 0.5)
+		mat.albedo_color = Color(0.15, 0.15, 0.15, 0.5)
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness = 0.9
+	mat.roughness = 0.95
 	mesh_inst.material_override = mat
 	mesh_inst.position = asteroid.position
 	_universe_node.add_child(mesh_inst)

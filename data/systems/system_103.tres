@@ -57,7 +57,7 @@ script = ExtResource("3_qjjox")
 planet_name = "Upsilon Ursae I"
 type = 1
 orbital_radius = 19950996.339321136
-orbital_period = 151.23180209394616
+orbital_period = 907390.812563677
 orbital_angle = 4.011955601002965
 radius = 2164616.5251731873
 color = Color(1, 0.35, 0.15, 0.9)
@@ -66,7 +66,7 @@ color = Color(1, 0.35, 0.15, 0.9)
 script = ExtResource("3_qjjox")
 planet_name = "Upsilon Ursae II"
 orbital_radius = 30673739.06871827
-orbital_period = 288.3011150964879
+orbital_period = 1729806.6905789273
 orbital_angle = 0.22268993092376507
 radius = 6709289.968013763
 color = Color(0.5925599, 0.5694902, 0.44837448, 0.9)
@@ -75,14 +75,14 @@ color = Color(0.5925599, 0.5694902, 0.44837448, 0.9)
 script = ExtResource("5_qs5ev")
 station_name = "Port Outpost"
 orbital_radius = 20402819.524516672
-orbital_period = 136.10862188455155
+orbital_period = 816651.7313073094
 orbital_angle = 4.025723977391106
 
 [sub_resource type="Resource" id="Resource_vamf2"]
 script = ExtResource("5_qs5ev")
 station_name = "Beta Depot"
 orbital_radius = 31397619.38668713
-orbital_period = 259.4710035868391
+orbital_period = 1556826.0215210347
 orbital_angle = 1.9172370493730009
 
 [resource]

@@ -12,6 +12,7 @@ signal equipment_requested
 signal commerce_requested
 signal repair_requested
 signal station_equipment_requested
+signal administration_requested
 
 @export_group("Layout")
 @export var button_width: float = 280.0
@@ -22,6 +23,7 @@ signal station_equipment_requested
 var _station_name: String = "STATION"
 var _service_buttons: Array[UIButton] = []
 var _station_equip_button: UIButton = null
+var _admin_button: UIButton = null
 var _undock_button: UIButton = null
 var _emblem_pulse: float = 0.0
 
@@ -83,6 +85,13 @@ func _create_buttons() -> void:
 	_station_equip_button.visible = false
 	_station_equip_button.pressed.connect(_on_station_equip_pressed)
 	add_child(_station_equip_button)
+
+	_admin_button = UIButton.new()
+	_admin_button.text = "ADMINISTRATION"
+	_admin_button.accent_color = Color(0.6, 0.4, 1.0)
+	_admin_button.visible = false
+	_admin_button.pressed.connect(_on_admin_pressed)
+	add_child(_admin_button)
 
 	_undock_button = UIButton.new()
 	_undock_button.text = "QUITTER LE DOCK"
@@ -146,6 +155,7 @@ func _on_opened() -> void:
 	for btn in _service_buttons:
 		btn.visible = true
 	_station_equip_button.visible = true
+	_admin_button.visible = true
 	_undock_button.visible = true
 
 
@@ -153,6 +163,7 @@ func _on_closed() -> void:
 	for btn in _service_buttons:
 		btn.visible = false
 	_station_equip_button.visible = false
+	_admin_button.visible = false
 	_undock_button.visible = false
 
 
@@ -162,6 +173,10 @@ func _on_undock_pressed() -> void:
 
 func _on_station_equip_pressed() -> void:
 	station_equipment_requested.emit()
+
+
+func _on_admin_pressed() -> void:
+	administration_requested.emit()
 
 
 func _layout_buttons() -> void:
@@ -177,6 +192,11 @@ func _layout_buttons() -> void:
 	var station_equip_y: float = services_start_y + _service_buttons.size() * (button_height + button_gap) + 12
 	_station_equip_button.position = Vector2(cx - button_width * 0.5, station_equip_y)
 	_station_equip_button.size = Vector2(button_width, button_height)
+
+	# Administration button — after station equipment
+	var admin_y: float = station_equip_y + button_height + button_gap
+	_admin_button.position = Vector2(cx - button_width * 0.5, admin_y)
+	_admin_button.size = Vector2(button_width, button_height)
 
 	_undock_button.position = Vector2(cx - button_width * 0.5, s.y - 72)
 	_undock_button.size = Vector2(button_width, button_height)

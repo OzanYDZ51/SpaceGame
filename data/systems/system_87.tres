@@ -70,7 +70,7 @@ script = ExtResource("3_tsvc2")
 planet_name = "Mu Aquilae I"
 type = 3
 orbital_radius = 22275031.208992004
-orbital_period = 178.41186195656013
+orbital_period = 1070471.1717393608
 orbital_angle = 2.7087033501498707
 radius = 15185762.1781528
 color = Color(0.8358019, 0.6366054, 0.3328185, 0.9)
@@ -80,7 +80,7 @@ script = ExtResource("3_tsvc2")
 planet_name = "Mu Aquilae II"
 type = 4
 orbital_radius = 35099041.706501536
-orbital_period = 352.88982209709275
+orbital_period = 2117338.9325825563
 orbital_angle = 5.50932720335194
 radius = 7840617.1798706055
 color = Color(0.5908677, 0.7075624, 0.9185267, 0.9)
@@ -90,7 +90,7 @@ script = ExtResource("3_tsvc2")
 planet_name = "Mu Aquilae III"
 type = 4
 orbital_radius = 55305993.38587784
-orbital_period = 697.9985813389396
+orbital_period = 4187991.488033638
 orbital_angle = 3.679245055096116
 radius = 3570276.8564224243
 color = Color(0.5904745, 0.7336513, 0.9701166, 0.9)
@@ -99,7 +99,7 @@ color = Color(0.5904745, 0.7336513, 0.9701166, 0.9)
 script = ExtResource("5_0f25d")
 station_name = "Haven Hub"
 orbital_radius = 35315689.14862111
-orbital_period = 317.6008398873835
+orbital_period = 1905605.0393243008
 orbital_angle = 0.20636004349554993
 
 [sub_resource type="Resource" id="Resource_1cycc"]
@@ -107,7 +107,7 @@ script = ExtResource("5_0f25d")
 station_name = "Gateway Hub"
 station_type = 2
 orbital_radius = 56194068.563997746
-orbital_period = 628.1987232050457
+orbital_period = 3769192.339230274
 orbital_angle = 4.436316255887585
 
 [resource]

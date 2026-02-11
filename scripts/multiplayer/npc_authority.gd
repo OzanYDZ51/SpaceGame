@@ -26,6 +26,12 @@ var _npcs: Dictionary = {}
 # system_id -> Array[StringName] npc_ids
 var _npcs_by_system: Dictionary = {}
 
+# Remote system NPCs: NPCs in systems the server isn't physically in.
+# system_id -> Array of npc state dicts (positions stored as system-local coords).
+var _remote_npcs: Dictionary = {}
+# Peer system tracking: peer_id -> last known system_id (detect system changes).
+var _peer_systems: Dictionary = {}
+
 # Fleet NPC tracking: npc_id -> { owner_pid, fleet_index }
 var _fleet_npcs: Dictionary = {}
 # owner_pid -> Array[StringName] npc_ids
@@ -50,6 +56,9 @@ func _physics_process(delta: float) -> void:
 	_batch_timer -= delta
 	_slow_batch_timer -= delta
 
+	# Update remote system NPC positions (simple velocity drift)
+	_update_remote_npcs(delta)
+
 	var do_full := _batch_timer <= 0.0
 	var do_slow := _slow_batch_timer <= 0.0
 
@@ -57,9 +66,11 @@ func _physics_process(delta: float) -> void:
 		_batch_timer = BATCH_INTERVAL
 	if do_slow:
 		_slow_batch_timer = SLOW_SYNC_INTERVAL
+		_check_peer_system_changes()
 
 	if do_full or do_slow:
 		_broadcast_npc_states(do_full, do_slow)
+		_broadcast_remote_npc_states(do_slow)
 
 
 # =========================================================================
@@ -93,12 +104,12 @@ func unregister_npc(npc_id: StringName) -> void:
 
 
 func clear_system_npcs(system_id: int) -> void:
-	if not _npcs_by_system.has(system_id):
-		return
-	var ids: Array = _npcs_by_system[system_id].duplicate()
-	for npc_id in ids:
-		_npcs.erase(npc_id)
-	_npcs_by_system.erase(system_id)
+	if _npcs_by_system.has(system_id):
+		var ids: Array = _npcs_by_system[system_id].duplicate()
+		for npc_id in ids:
+			_npcs.erase(npc_id)
+		_npcs_by_system.erase(system_id)
+	_remote_npcs.erase(system_id)
 
 
 ## Connect NPC weapon_fired signal to relay fire events to remote clients.
@@ -171,36 +182,43 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 
 ## Send all NPC spawns for a system to a specific peer (join mid-combat).
 func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
-	if not _npcs_by_system.has(system_id):
-		return
+	# Send local system NPCs (managed by LOD manager)
+	if _npcs_by_system.has(system_id):
+		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+		var npc_ids: Array = _npcs_by_system[system_id]
 
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
-	var npc_ids: Array = _npcs_by_system[system_id]
+		for npc_id in npc_ids:
+			if not _npcs.has(npc_id):
+				continue
+			var info: Dictionary = _npcs[npc_id]
+			var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-	for npc_id in npc_ids:
-		if not _npcs.has(npc_id):
-			continue
-		var info: Dictionary = _npcs[npc_id]
-		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
+			var spawn_dict := {
+				"nid": String(npc_id),
+				"sid": String(info.get("ship_id", "")),
+				"fac": String(info.get("faction", "hostile")),
+				"px": 0.0, "py": 0.0, "pz": 0.0,
+			}
+			if lod_data:
+				var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+				spawn_dict["px"] = upos[0]
+				spawn_dict["py"] = upos[1]
+				spawn_dict["pz"] = upos[2]
+				spawn_dict["hull"] = lod_data.hull_ratio
+				spawn_dict["shd"] = lod_data.shield_ratio
 
-		var spawn_dict := {
-			"nid": String(npc_id),
-			"sid": String(info.get("ship_id", "")),
-			"fac": String(info.get("faction", "hostile")),
-			"px": 0.0, "py": 0.0, "pz": 0.0,
-		}
-		if lod_data:
-			var upos := FloatingOrigin.to_universe_pos(lod_data.position)
-			spawn_dict["px"] = upos[0]
-			spawn_dict["py"] = upos[1]
-			spawn_dict["pz"] = upos[2]
-			spawn_dict["hull"] = lod_data.hull_ratio
-			spawn_dict["shd"] = lod_data.shield_ratio
+			if peer_id == 1 and not NetworkManager.is_dedicated_server:
+				NetworkManager.npc_spawned.emit(spawn_dict)
+			else:
+				NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
 
-		if peer_id == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.npc_spawned.emit(spawn_dict)
-		else:
-			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
+	# Send remote system NPCs (data-only, not in LOD manager)
+	if _remote_npcs.has(system_id):
+		for npc_data in _remote_npcs[system_id]:
+			if peer_id == 1 and not NetworkManager.is_dedicated_server:
+				NetworkManager.npc_spawned.emit(npc_data)
+			else:
+				NetworkManager._rpc_npc_spawned.rpc_id(peer_id, npc_data)
 
 
 # =========================================================================
@@ -646,6 +664,143 @@ func _get_peer_name(pid: int) -> String:
 	if NetworkManager.peers.has(pid):
 		return NetworkManager.peers[pid].player_name
 	return "Pilote #%d" % pid
+
+
+# =========================================================================
+# REMOTE SYSTEM NPC MANAGEMENT
+# Server spawns data-only NPCs for systems it's not physically in,
+# so clients in those systems still see NPCs.
+# =========================================================================
+
+## Ensure NPCs exist for a system. Spawns them server-side if needed.
+func ensure_system_npcs(system_id: int) -> void:
+	if not _active:
+		return
+	# Already has local NPCs (server is in this system)
+	if _npcs_by_system.has(system_id) and not _npcs_by_system[system_id].is_empty():
+		return
+	# Already has remote NPCs
+	if _remote_npcs.has(system_id):
+		return
+	_spawn_remote_system_npcs(system_id)
+
+
+func _spawn_remote_system_npcs(system_id: int) -> void:
+	var gm := GameManager as GameManagerSystem
+	if gm == null or gm._system_transition == null:
+		return
+	var galaxy: GalaxyData = gm._system_transition.galaxy
+	if galaxy == null:
+		return
+	var galaxy_sys: Dictionary = galaxy.get_system(system_id)
+	if galaxy_sys.is_empty():
+		return
+
+	var danger_level: int = galaxy_sys.get("danger_level", 0)
+
+	# Resolve system data (override > procedural)
+	var system_data: StarSystemData = SystemDataRegistry.get_override(system_id)
+	if system_data == null:
+		var connections := gm._system_transition._build_connection_list(system_id)
+		system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
+
+	# Base position near first station
+	var base_pos := Vector3(500, 0, -1500)
+	if system_data.stations.size() > 0:
+		var st: StationData = system_data.stations[0]
+		var station_pos := Vector3(
+			cos(st.orbital_angle) * st.orbital_radius, 0.0,
+			sin(st.orbital_angle) * st.orbital_radius)
+		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
+		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+
+	# Spawn config from danger level (mirrors EncounterManager logic)
+	var configs: Array = []
+	match danger_level:
+		0: configs = [{"count": 1, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
+		1: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"neutral", "radius": 300.0}]
+		2: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
+		3: configs = [{"count": 3, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 500.0}]
+		4: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
+		5: configs = [{"count": 3, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 500.0}]
+
+	var npcs: Array = []
+	for config in configs:
+		var count: int = config["count"]
+		var ship_id: StringName = config["ship"]
+		var faction: StringName = config["fac"]
+		var radius: float = config["radius"]
+		for i in count:
+			var angle: float = (float(i) / float(count)) * TAU
+			var offset := Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
+			var pos := base_pos + offset
+			var vel := Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
+			var npc_id := StringName("NPC_%s_%d" % [ship_id, randi() % 100000])
+
+			npcs.append({
+				"nid": String(npc_id),
+				"sid": String(ship_id),
+				"fac": String(faction),
+				"px": pos.x, "py": pos.y, "pz": pos.z,
+				"vx": vel.x, "vy": vel.y, "vz": vel.z,
+				"rx": 0.0, "ry": randf() * 360.0, "rz": 0.0,
+				"hull": 1.0, "shd": 1.0,
+				"thr": 0.5, "ai": 0, "tid": "",
+				"t": Time.get_ticks_msec() / 1000.0,
+			})
+			register_npc(npc_id, system_id, ship_id, faction)
+
+	_remote_npcs[system_id] = npcs
+	print("NpcAuthority: Spawned %d remote NPCs for system %d" % [npcs.size(), system_id])
+
+
+## Simple velocity-based position update for remote system NPCs.
+func _update_remote_npcs(delta: float) -> void:
+	for system_id in _remote_npcs:
+		var npcs: Array = _remote_npcs[system_id]
+		for npc in npcs:
+			npc["px"] += npc.get("vx", 0.0) * delta
+			npc["py"] += npc.get("vy", 0.0) * delta
+			npc["pz"] += npc.get("vz", 0.0) * delta
+			npc["t"] = Time.get_ticks_msec() / 1000.0
+
+
+## Broadcast state of NPCs in remote systems (not managed by LOD manager).
+func _broadcast_remote_npc_states(slow_sync: bool) -> void:
+	if not slow_sync:
+		return  # Remote NPCs only need slow sync (2Hz)
+
+	var peers_by_sys: Dictionary = {}
+	for pid in NetworkManager.peers:
+		var pstate: NetworkState = NetworkManager.peers[pid]
+		if not peers_by_sys.has(pstate.system_id):
+			peers_by_sys[pstate.system_id] = []
+		peers_by_sys[pstate.system_id].append(pid)
+
+	for system_id in _remote_npcs:
+		if not peers_by_sys.has(system_id):
+			continue
+		var peer_ids: Array = peers_by_sys[system_id]
+		var npcs: Array = _remote_npcs[system_id]
+		if npcs.is_empty():
+			continue
+
+		for pid in peer_ids:
+			if pid == 1 and not NetworkManager.is_dedicated_server:
+				NetworkManager.npc_batch_received.emit(npcs)
+			else:
+				NetworkManager._rpc_npc_batch.rpc_id(pid, npcs)
+
+
+## Detect when peers change systems and spawn NPCs for the new system.
+func _check_peer_system_changes() -> void:
+	for pid in NetworkManager.peers:
+		var state: NetworkState = NetworkManager.peers[pid]
+		var prev_sys: int = _peer_systems.get(pid, -1)
+		if state.system_id != prev_sys:
+			_peer_systems[pid] = state.system_id
+			if state.system_id >= 0:
+				ensure_system_npcs(state.system_id)
 
 
 # =========================================================================
