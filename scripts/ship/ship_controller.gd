@@ -95,6 +95,7 @@ var _refs_cached: bool = false
 var planetary_gravity: Vector3 = Vector3.ZERO         ## Gravity direction * strength (m/s²)
 var atmospheric_drag: float = 0.0                     ## 0-1 drag factor
 var planetary_max_speed_override: float = 0.0         ## 0 = no override, >0 = cap speed
+var planetary_orbit_velocity: Vector3 = Vector3.ZERO  ## Frame-dragging: planet orbital velocity
 var _near_planet_surface: bool = false                ## True when in atmosphere (blocks cruise)
 
 # --- Planet collision avoidance (pure distance-based) ---
@@ -117,7 +118,7 @@ func _ready() -> void:
 	linear_damp = 0.0
 	angular_damp = 0.0
 	collision_layer = Constants.LAYER_SHIPS
-	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
+	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN
 	_cache_refs.call_deferred()
 
 
@@ -330,7 +331,7 @@ func _get_crosshair_aim_point() -> Vector3:
 		return ray_origin + ray_dir * WEAPON_CONVERGENCE_DISTANCE
 	var space_state := world.direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 5000.0)
-	query.collision_mask = Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_SHIPS
+	query.collision_mask = Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_SHIPS | Constants.LAYER_TERRAIN
 	query.exclude = [get_rid()]  # Don't hit ourselves
 
 	var result := space_state.intersect_ray(query)
@@ -456,6 +457,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		state.linear_velocity *= drag_mult
 
 	# =========================================================================
+	# FRAME-DRAGGING: subtract orbital velocity before speed limits, add back after.
+	# Speed caps apply to movement RELATIVE to the planet, so the ship naturally
+	# matches the planet's orbit without it eating into flight speed.
+	# =========================================================================
+	var orbit_vel := planetary_orbit_velocity
+	var has_orbit_drag := orbit_vel.length_squared() > 0.1
+	if has_orbit_drag:
+		state.linear_velocity -= orbit_vel
+
+	# =========================================================================
 	# SPEED LIMIT (Fix 2: per-axis cap in local space)
 	# =========================================================================
 	var max_speed_fwd: float
@@ -501,6 +512,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	local_vel.y = clampf(local_vel.y, -max_vert, max_vert)
 	local_vel.z = clampf(local_vel.z, -max_speed_fwd, max_speed_fwd)
 	state.linear_velocity = ship_basis * local_vel
+
+	# Re-add orbital velocity after speed clamping (frame-dragging)
+	if has_orbit_drag:
+		state.linear_velocity += orbit_vel
+
 	current_speed = state.linear_velocity.length()
 
 
@@ -646,6 +662,7 @@ func reset_flight_state() -> void:
 	planetary_gravity = Vector3.ZERO
 	atmospheric_drag = 0.0
 	planetary_max_speed_override = 0.0
+	planetary_orbit_velocity = Vector3.ZERO
 	_near_planet_surface = false
 	planet_avoidance_active = false
 	throttle_input = Vector3.ZERO

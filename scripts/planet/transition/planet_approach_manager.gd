@@ -129,30 +129,21 @@ func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
 			_ship._exit_cruise()
 
 
-func _compute_physics(body: PlanetBody, atmo_edge: float) -> void:
+func _compute_physics(_body: PlanetBody, _atmo_edge: float) -> void:
+	# Gravity and drag disabled — ships fly freely near planets.
+	# Zone transitions still function for cruise lock and atmosphere visuals.
+	gravity_strength = 0.0
+	drag_factor = 0.0
 	match current_zone:
-		Zone.SPACE:
-			gravity_strength = 0.0
-			drag_factor = 0.0
-			max_speed_override = 0.0
-		Zone.APPROACH:
-			var t: float = 1.0 - clampf((current_altitude - ZONE_EXTERIOR) / (ZONE_APPROACH - ZONE_EXTERIOR), 0.0, 1.0)
-			gravity_strength = t * 0.01
-			drag_factor = 0.0
+		Zone.SPACE, Zone.APPROACH:
 			max_speed_override = 0.0
 		Zone.EXTERIOR:
-			var t: float = 1.0 - clampf((current_altitude - atmo_edge) / (ZONE_EXTERIOR - atmo_edge), 0.0, 1.0)
-			gravity_strength = lerpf(0.01, 0.3, t)
-			drag_factor = t * 0.1
+			var t: float = 1.0 - clampf((current_altitude - _atmo_edge) / (ZONE_EXTERIOR - _atmo_edge), 0.0, 1.0)
 			max_speed_override = lerpf(0.0, 300.0, t)
 		Zone.ATMOSPHERE:
-			var t: float = 1.0 - clampf((current_altitude - ZONE_SURFACE) / maxf(atmo_edge - ZONE_SURFACE, 1.0), 0.0, 1.0)
-			gravity_strength = lerpf(0.3, 1.0, t)
-			drag_factor = lerpf(0.1, 0.6, t)
+			var t: float = 1.0 - clampf((current_altitude - ZONE_SURFACE) / maxf(_atmo_edge - ZONE_SURFACE, 1.0), 0.0, 1.0)
 			max_speed_override = lerpf(300.0, 100.0, t)
 		Zone.SURFACE:
-			gravity_strength = 1.0
-			drag_factor = 0.8
 			max_speed_override = 100.0
 
 
@@ -163,6 +154,21 @@ func _apply_to_ship() -> void:
 	_ship.atmospheric_drag = drag_factor
 	_ship.planetary_max_speed_override = max_speed_override
 	_ship._near_planet_surface = current_zone >= Zone.EXTERIOR
+
+	# Frame-dragging: match the planet's orbital velocity when in approach zone
+	if current_zone >= Zone.APPROACH and current_planet and current_planet.entity_id != "":
+		var vel: Array = EntityRegistry.get_orbital_velocity(current_planet.entity_id)
+		var orbit_v := Vector3(float(vel[0]), float(vel[1]), float(vel[2]))
+		# Smooth blend: full drag at EXTERIOR, ramp in during APPROACH
+		if current_zone >= Zone.EXTERIOR:
+			_ship.planetary_orbit_velocity = orbit_v
+		else:
+			# Blend from 0 at 100km to full at 10km
+			var t: float = 1.0 - clampf(
+				(current_altitude - ZONE_EXTERIOR) / (ZONE_APPROACH - ZONE_EXTERIOR), 0.0, 1.0)
+			_ship.planetary_orbit_velocity = orbit_v * t
+	else:
+		_ship.planetary_orbit_velocity = Vector3.ZERO
 
 
 func _apply_to_camera() -> void:

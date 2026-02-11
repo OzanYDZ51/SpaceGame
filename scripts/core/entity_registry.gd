@@ -49,6 +49,8 @@ func register(id: String, data: Dictionary) -> void:
 	if not data.has("orbital_period"): data["orbital_period"] = 0.0
 	if not data.has("orbital_angle"): data["orbital_angle"] = 0.0
 	if not data.has("orbital_parent"): data["orbital_parent"] = ""
+	# Store seed angle for deterministic orbit from unix time
+	data["orbital_angle_base"] = data["orbital_angle"]
 	if not data.has("radius"): data["radius"] = 1.0
 	if not data.has("color"): data["color"] = Color.WHITE
 	if not data.has("extra"): data["extra"] = {}
@@ -87,11 +89,38 @@ func get_by_type(type: EntityType) -> Array[Dictionary]:
 	return result
 
 
+## Compute the deterministic orbital angle at the current moment.
+## Uses Unix time so all clients get the same result regardless of when they loaded.
+static func compute_orbital_angle(base_angle: float, period: float) -> float:
+	if period <= 0.0:
+		return base_angle
+	var phase: float = fmod(Time.get_unix_time_from_system(), period) / period
+	return fmod(base_angle + phase * TAU, TAU)
+
+
 func get_position(id: String) -> Array:
 	var ent: Dictionary = _entities.get(id, {})
 	if ent.is_empty():
 		return [0.0, 0.0, 0.0]
 	return [ent["pos_x"], ent["pos_y"], ent["pos_z"]]
+
+
+## Returns the orbital velocity vector [vx, vy, vz] in meters/sec for an orbiting entity.
+## Velocity is tangent to the circular orbit in the XZ plane.
+func get_orbital_velocity(id: String) -> Array:
+	var ent: Dictionary = _entities.get(id, {})
+	if ent.is_empty():
+		return [0.0, 0.0, 0.0]
+	var r: float = ent.get("orbital_radius", 0.0)
+	var period: float = ent.get("orbital_period", 0.0)
+	if r <= 0.0 or period <= 0.0:
+		return [0.0, 0.0, 0.0]
+	var omega: float = TAU / period  # angular velocity (rad/s)
+	var angle: float = ent.get("orbital_angle", 0.0)
+	# Position derivative: d/dt [r*cos(θ), 0, r*sin(θ)] = [-r*ω*sin(θ), 0, r*ω*cos(θ)]
+	var vx: float = -r * omega * sin(angle)
+	var vz: float = r * omega * cos(angle)
+	return [vx, 0.0, vz]
 
 
 func _process(delta: float) -> void:
@@ -123,11 +152,9 @@ func _process(delta: float) -> void:
 				ent["vel_y"] = float(vel.y)
 				ent["vel_z"] = float(vel.z)
 		elif ent.get("orbital_radius", 0.0) > 0.0 and ent.get("orbital_period", 0.0) > 0.0:
-			# Procedural orbiting entity: update angle and compute position
-			var period: float = ent["orbital_period"]
-			ent["orbital_angle"] += (TAU / period) * elapsed
-			if ent["orbital_angle"] > TAU:
-				ent["orbital_angle"] -= TAU
+			# Deterministic orbit from unix time — all clients compute the same
+			# angle regardless of when they loaded the system.
+			ent["orbital_angle"] = compute_orbital_angle(ent["orbital_angle_base"], ent["orbital_period"])
 			var parent_id: String = ent["orbital_parent"]
 			var px: float = 0.0
 			var pz: float = 0.0
