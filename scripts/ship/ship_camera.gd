@@ -29,8 +29,8 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 
 @export_group("FOV")
 @export var fov_base: float = 75.0
-@export var fov_boost: float = 85.0
-@export var fov_cruise: float = 95.0
+@export var fov_boost: float = 80.0
+@export var fov_cruise: float = 82.0
 
 @export_group("Cockpit")
 @export var cockpit_offset: Vector3 = Vector3(0.0, 3.0, -5.0)
@@ -108,13 +108,13 @@ func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
 
 
 func _on_cruise_punch() -> void:
-	_fov_spike = 18.0           # Big FOV burst outward
-	_shake_intensity = maxf(_shake_intensity, 0.6)
+	_fov_spike = 4.0            # Subtle FOV surge (Star Citizen style)
+	_shake_intensity = maxf(_shake_intensity, 0.2)
 
 
 func _on_cruise_exit() -> void:
-	_fov_spike = -14.0          # FOV slams inward (deceleration punch)
-	_shake_intensity = maxf(_shake_intensity, 0.45)
+	_fov_spike = -2.0           # Gentle FOV settle on exit
+	_shake_intensity = maxf(_shake_intensity, 0.12)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -150,9 +150,13 @@ func _update_third_person(delta: float) -> void:
 	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	# =========================================================================
-	# DYNAMIC DISTANCE (speed pull-back only)
+	# DYNAMIC DISTANCE (no pull-back in cruise — Star Citizen style)
 	# =========================================================================
-	var speed_pull: float = minf(_ship.current_speed * cam_speed_pull, 10.0)
+	var speed_pull: float
+	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+		speed_pull = 0.0  # Camera stays close during quantum travel
+	else:
+		speed_pull = minf(_ship.current_speed * cam_speed_pull, 3.0)
 	var effective_distance: float = target_distance + speed_pull
 	current_distance = lerpf(current_distance, effective_distance, 3.0 * delta)
 
@@ -242,11 +246,10 @@ func _get_fov_for_mode(mode: int) -> float:
 	match mode:
 		Constants.SpeedMode.BOOST: return fov_boost
 		Constants.SpeedMode.CRUISE:
-			# Phase 1 (spool): FOV gradually increases from base toward boost+
+			# Subtle FOV ramp — speed sensation comes from shader, not fisheye
 			if _ship and _ship.cruise_time < _ship.CRUISE_SPOOL_DURATION:
 				var t := _ship.cruise_time / _ship.CRUISE_SPOOL_DURATION
-				return lerpf(fov_base, fov_boost + 2.0, t * t)
-			# Phase 2 (punch active): full cruise FOV
+				return lerpf(fov_base, fov_base + 4.0, t * t)
 			return fov_cruise
 	return fov_base
 

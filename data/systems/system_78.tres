@@ -73,7 +73,7 @@ orbital_radius = 16218549.16214943
 orbital_period = 665067.149425208
 orbital_angle = 3.036346254203381
 radius = 6991884.231567383
-color = Color(0.59477395, 0.5716074, 0.3597279, 0.9)
+color = Color(0.5076763, 0.4507489, 0.3804843, 0.9)
 
 [sub_resource type="Resource" id="Resource_1lmfw"]
 script = ExtResource("3_sd40o")
@@ -83,7 +83,7 @@ orbital_radius = 24430250.339672904
 orbital_period = 1229530.6804735933
 orbital_angle = 2.7998598588643526
 radius = 26340247.39265442
-color = Color(0.7850032, 0.744322, 0.3415198, 0.9)
+color = Color(0.6586459, 0.6314553, 0.4767912, 0.9)
 
 [sub_resource type="Resource" id="Resource_pbaoh"]
 script = ExtResource("3_sd40o")
@@ -93,7 +93,7 @@ orbital_radius = 36799662.268927
 orbital_period = 2273072.268766246
 orbital_angle = 2.480513783515632
 radius = 37883887.29095459
-color = Color(0.79150516, 0.65680933, 0.2937777, 0.9)
+color = Color(0.6374502, 0.5698774, 0.4805788, 0.9)
 has_rings = true
 
 [sub_resource type="Resource" id="Resource_1wils"]
@@ -104,7 +104,7 @@ orbital_radius = 55431897.924842186
 orbital_period = 4202300.618512379
 orbital_angle = 0.4935825210189084
 radius = 2105068.0950284004
-color = Color(0.61724555, 0.7786815, 0.980842, 0.9)
+color = Color(0.6882293, 0.7576106, 0.9108855, 0.9)
 
 [sub_resource type="Resource" id="Resource_jcy82"]
 script = ExtResource("3_sd40o")
@@ -114,7 +114,7 @@ orbital_radius = 83497921.39654103
 orbital_period = 7768926.1054310715
 orbital_angle = 1.7899194527812048
 radius = 5441166.400909424
-color = Color(0.61867416, 0.79810196, 0.9378339, 0.9)
+color = Color(0.6540383, 0.7455148, 0.8943269, 0.9)
 
 [sub_resource type="Resource" id="Resource_tyg1h"]
 script = ExtResource("3_sd40o")
@@ -124,7 +124,7 @@ orbital_radius = 125774204.71865962
 orbital_period = 14362659.483655555
 orbital_angle = 3.307792131619448
 radius = 7960794.925689697
-color = Color(0.59861207, 0.7727779, 0.9076646, 0.9)
+color = Color(0.6996885, 0.7750155, 0.9131132, 0.9)
 
 [sub_resource type="Resource" id="Resource_8ige2"]
 script = ExtResource("5_gejny")

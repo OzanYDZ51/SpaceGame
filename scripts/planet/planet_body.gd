@@ -24,6 +24,7 @@ var _faces: Array[QuadtreeFace] = []
 var _heightmap: HeightmapGenerator = null
 var _terrain_material: ShaderMaterial = null
 var _atmo_mesh: MeshInstance3D = null
+var _atmo_material: ShaderMaterial = null
 var _update_timer: float = 0.0
 var _is_active: bool = false
 
@@ -88,6 +89,16 @@ func _process(delta: float) -> void:
 		float(true_pos_z) - float(FloatingOrigin.origin_offset_z)
 	)
 
+	# Update atmosphere sun direction (star at universe origin)
+	if _atmo_material:
+		var star_local := Vector3(
+			-float(FloatingOrigin.origin_offset_x),
+			-float(FloatingOrigin.origin_offset_y),
+			-float(FloatingOrigin.origin_offset_z)
+		)
+		var sun_dir := (star_local - global_position).normalized()
+		_atmo_material.set_shader_parameter("sun_direction", sun_dir)
+
 	# Throttled quadtree update
 	_update_timer += delta
 	if _update_timer < UPDATE_INTERVAL:
@@ -134,7 +145,9 @@ func _create_atmosphere(pd: PlanetData) -> void:
 	atmo_mat.set_shader_parameter("glow_intensity", atmo_cfg.glow_intensity)
 	atmo_mat.set_shader_parameter("glow_falloff", atmo_cfg.glow_falloff)
 	atmo_mat.set_shader_parameter("atmosphere_density", atmo_cfg.density)
+	atmo_mat.set_shader_parameter("planet_radius_norm", 1.0 / atmo_cfg.atmosphere_scale)
 
+	_atmo_material = atmo_mat
 	_atmo_mesh = MeshInstance3D.new()
 	_atmo_mesh.mesh = atmo_mesh
 	_atmo_mesh.material_override = atmo_mat

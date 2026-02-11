@@ -92,7 +92,7 @@ orbital_radius = 19136960.20841599
 orbital_period = 852426.4657385048
 orbital_angle = 0.33616879061947913
 radius = 5528617.322444916
-color = Color(0.5961943, 0.4081634, 0.3180331, 0.9)
+color = Color(0.6932329, 0.4970421, 0.3137486, 0.9)
 
 [sub_resource type="Resource" id="Resource_8pnmr"]
 script = ExtResource("3_yp0b0")
@@ -102,7 +102,7 @@ orbital_radius = 40358924.074884705
 orbital_period = 2610699.3684705743
 orbital_angle = 1.2758645518740714
 radius = 1520190.5723661184
-color = Color(1, 0.35, 0.15, 0.9)
+color = Color(0.6490925, 0.2211448, 0.07471551, 0.9)
 
 [sub_resource type="Resource" id="Resource_c87xp"]
 script = ExtResource("3_yp0b0")
@@ -111,7 +111,7 @@ orbital_radius = 85115020.08380523
 orbital_period = 7995705.748797685
 orbital_angle = 2.205803890094483
 radius = 3960851.550102234
-color = Color(0.607992, 0.69193816, 0.3936181, 0.9)
+color = Color(0.5456842, 0.4298682, 0.4098166, 0.9)
 
 [sub_resource type="Resource" id="Resource_uvdak"]
 script = ExtResource("3_yp0b0")
@@ -121,7 +121,7 @@ orbital_radius = 179503463.23466164
 orbital_period = 24488193.161363203
 orbital_angle = 3.452916226631948
 radius = 51535387.03918457
-color = Color(0.880023, 0.68461454, 0.27952212, 0.9)
+color = Color(0.6300198, 0.6223709, 0.5030807, 0.9)
 has_rings = true
 
 [sub_resource type="Resource" id="Resource_osu7e"]
@@ -132,7 +132,7 @@ orbital_radius = 378564127.4772874
 orbital_period = 74999208.7188061
 orbital_angle = 2.38289403250688
 radius = 3943947.196006775
-color = Color(0.5070847, 0.7560398, 0.95909005, 0.9)
+color = Color(0.6544344, 0.7185232, 0.8687127, 0.9)
 
 [sub_resource type="Resource" id="Resource_5nepy"]
 script = ExtResource("3_yp0b0")
@@ -142,7 +142,7 @@ orbital_radius = 798373446.5629351
 orbital_period = 229697686.20258287
 orbital_angle = 4.2426549264873055
 radius = 9357188.701629639
-color = Color(0.52664095, 0.71440476, 0.91801196, 0.9)
+color = Color(0.6929957, 0.7926727, 0.943175, 0.9)
 
 [sub_resource type="Resource" id="Resource_ujifp"]
 script = ExtResource("5_y7abn")

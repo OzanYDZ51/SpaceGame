@@ -87,6 +87,12 @@ var atmospheric_drag: float = 0.0                     ## 0-1 drag factor
 var planetary_max_speed_override: float = 0.0         ## 0 = no override, >0 = cap speed
 var _near_planet_surface: bool = false                ## True when in atmosphere (blocks cruise)
 
+# --- Planet collision avoidance (pure distance-based) ---
+var _planet_check_timer: float = 0.0
+const PLANET_CHECK_INTERVAL: float = 0.25  # 4 Hz
+const PLANET_CRUISE_EXIT_DIST: float = 100_000.0  # 100 km — exit cruise when closer than this
+var planet_avoidance_active: bool = false   ## Read by HUD for warning display
+
 # --- Crosshair raycast throttle ---
 var _aim_point: Vector3 = Vector3.ZERO
 var _aim_timer: float = 0.0
@@ -130,6 +136,7 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if is_player_controlled:
 		_read_input()
+		_check_planet_collision(delta)
 		_aim_timer -= delta
 		_handle_player_weapon_input()
 	_update_visuals()
@@ -209,7 +216,7 @@ func _read_input() -> void:
 	if Input.is_action_just_pressed("toggle_cruise"):
 		if speed_mode == Constants.SpeedMode.CRUISE:
 			_exit_cruise()
-		elif not combat_locked and not _near_planet_surface:
+		elif not combat_locked and not _near_planet_surface and not planet_avoidance_active:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0
 			_cruise_punched = false
@@ -488,6 +495,32 @@ func _fa_axis_brake(vel: float, input: float, dt: float) -> float:
 	return vel
 
 
+# === Planet collision avoidance (cruise/boost safety) ===
+
+func _check_planet_collision(delta: float) -> void:
+	_planet_check_timer -= delta
+	if _planet_check_timer > 0.0:
+		return
+	_planet_check_timer = PLANET_CHECK_INTERVAL
+	planet_avoidance_active = false
+
+	# Pure distance check — exit cruise within 100 km of any planet center.
+	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
+
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		# Distance in float64 to avoid precision issues at large distances
+		var dx: float = ent["pos_x"] - upos[0]
+		var dy: float = ent["pos_y"] - upos[1]
+		var dz: float = ent["pos_z"] - upos[2]
+		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
+
+		if dist < PLANET_CRUISE_EXIT_DIST:
+			planet_avoidance_active = true
+			if speed_mode == Constants.SpeedMode.CRUISE:
+				_exit_cruise()
+			return
+
+
 # === Cruise exit ===
 
 func _exit_cruise() -> void:
@@ -594,7 +627,7 @@ func _run_autopilot() -> void:
 		throttle_input = Vector3.ZERO
 
 	# Engage cruise once well aligned and outside decel zone
-	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked:
+	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked and not planet_avoidance_active:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
 

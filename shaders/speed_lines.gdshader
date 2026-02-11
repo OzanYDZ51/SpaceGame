@@ -1,137 +1,85 @@
 shader_type canvas_item;
 
 // =============================================================================
-// Speed VFX - Cinematic post-processing for space flight
-// Radial motion blur + animated speed streaks + vignette + aberration + flashes
+// Quantum Travel VFX - Star Citizen style post-processing
+// Radial scene stretch (stars become lines) + blue quantum vignette
+// No fake animated streaks. The actual scene content stretches naturally.
 // =============================================================================
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
 uniform float speed_ratio : hint_range(0.0, 1.0) = 0.0;
-uniform float boost_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float damage_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float cruise_warp : hint_range(0.0, 1.0) = 0.0;
+uniform float quantum_engage : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
-	vec2 orig_uv = SCREEN_UV;
-	vec2 center = orig_uv - 0.5;
+	vec2 center = SCREEN_UV - 0.5;
 	float dist = length(center);
-	float angle = atan(center.y, center.x);
 	float sq = speed_ratio * speed_ratio;
 
-	// === DAMAGE ZOOM DISTORTION (zoom-in pulse toward center) ===
+	// === DAMAGE ZOOM DISTORTION ===
 	float dmg = damage_flash * damage_flash;
-	vec2 uv = orig_uv + center * dmg * 0.06;
+	vec2 uv = SCREEN_UV + center * dmg * 0.06;
 
-	// === RADIAL MOTION BLUR (5-tap, edges only) ===
-	float blur_str = sq * 0.018;
-	vec2 blur_dir = center * blur_str;
+	// === RADIAL STRETCH — core quantum travel effect ===
+	// Stretches the actual scene content outward from center.
+	// Stars, nebulae, everything becomes radial streaks naturally.
+	// Stronger at edges, zero at center (you always see your destination).
+	float stretch = sq * 0.008 + cruise_warp * 0.035 + quantum_engage * 0.025;
+	float stretch_mask = smoothstep(0.05, 0.55, dist);
+	vec2 stretch_dir = normalize(center + vec2(0.0001)) * stretch_mask * stretch;
+
+	// 8-tap radial blur along stretch direction
 	vec3 col = vec3(0.0);
-	col += texture(screen_texture, uv).rgb                    * 0.34;
-	col += texture(screen_texture, uv - blur_dir * 0.3).rgb   * 0.24;
-	col += texture(screen_texture, uv - blur_dir * 0.65).rgb  * 0.18;
-	col += texture(screen_texture, uv - blur_dir * 1.0).rgb   * 0.14;
-	col += texture(screen_texture, uv + blur_dir * 0.25).rgb  * 0.10;
+	col += texture(screen_texture, uv).rgb                       * 0.22;
+	col += texture(screen_texture, uv - stretch_dir * 0.14).rgb  * 0.18;
+	col += texture(screen_texture, uv - stretch_dir * 0.29).rgb  * 0.16;
+	col += texture(screen_texture, uv - stretch_dir * 0.43).rgb  * 0.13;
+	col += texture(screen_texture, uv - stretch_dir * 0.57).rgb  * 0.10;
+	col += texture(screen_texture, uv - stretch_dir * 0.71).rgb  * 0.08;
+	col += texture(screen_texture, uv - stretch_dir * 0.86).rgb  * 0.07;
+	col += texture(screen_texture, uv - stretch_dir * 1.0).rgb   * 0.06;
 
-	// === ANIMATED SPEED STREAKS ===
-	float num_lines = 80.0;
-	float line_id = floor(angle * num_lines / TAU);
-	float line_frac = fract(angle * num_lines / TAU);
+	// === CHROMATIC ABERRATION (subtle, edge-weighted) ===
+	float ab_strength = sq * 0.0015 + cruise_warp * 0.0025;
+	float ab = ab_strength * dist;
+	vec2 ab_dir = normalize(center + vec2(0.0001)) * ab;
+	if (ab_strength > 0.0005) {
+		col.r = mix(col.r, texture(screen_texture, uv + ab_dir).r, 0.7);
+		col.b = mix(col.b, texture(screen_texture, uv - ab_dir).b, 0.7);
+	}
 
-	// Per-line random seed
-	float seed = fract(sin(line_id * 78.233 + 12.9898) * 43758.5453);
-	float seed2 = fract(sin(line_id * 127.1 + 311.7) * 43758.5453);
+	// === QUANTUM VIGNETTE (blue-tinted darkening at edges) ===
+	float vig_strength = sq * 0.12 + cruise_warp * 0.2;
+	float vig_mask = smoothstep(0.35, 0.9, dist);
+	col *= 1.0 - vig_mask * vig_strength;
+	// Blue tint at edges during warp
+	vec3 blue_tint = vec3(0.08, 0.12, 0.25) * vig_mask * cruise_warp * 0.3;
+	col += blue_tint;
 
-	// Animated outward pulse (each line pulses at its own phase)
-	float anim_speed = 0.6 + seed * 0.8;
-	float anim = fract(TIME * anim_speed + seed * 6.28);
-	float pulse = smoothstep(0.0, 0.25, anim) * smoothstep(1.0, 0.55, anim);
+	// === QUANTUM EDGE GLOW (subtle blue luminance at screen borders) ===
+	float edge_glow = smoothstep(0.6, 0.95, dist) * cruise_warp * 0.08;
+	col += vec3(0.15, 0.3, 0.7) * edge_glow;
 
-	// Line shape: soft thin streak
-	float line_w = 0.04 + seed2 * 0.04;
-	float line = smoothstep(0.0, line_w, line_frac) * smoothstep(line_w * 2.5, line_w, line_frac);
-
-	// Radial fade (nothing at center, strong at edges)
-	float inner_r = 0.08 + seed * 0.15;
-	float radial = smoothstep(inner_r, 0.52, dist);
-
-	// Brightness variation per line
-	float bright = 0.4 + seed2 * 0.6;
-
-	// Color: warm white at center → cool blue at edges
-	vec3 line_tint = mix(vec3(0.8, 0.9, 1.0), vec3(0.3, 0.55, 1.0), clamp(dist * 2.2, 0.0, 1.0));
-	vec3 streak_col = line_tint * line * radial * pulse * bright * sq * 0.6;
-
-	// Second layer: thinner, faster, brighter lines (fewer)
-	float line_id2 = floor(angle * 30.0 / TAU);
-	float line_frac2 = fract(angle * 30.0 / TAU);
-	float seed3 = fract(sin(line_id2 * 45.17) * 43758.5453);
-	float anim2 = fract(TIME * 1.2 + seed3 * 6.28);
-	float pulse2 = smoothstep(0.0, 0.15, anim2) * smoothstep(1.0, 0.4, anim2);
-	float line2 = smoothstep(0.0, 0.02, line_frac2) * smoothstep(0.06, 0.02, line_frac2);
-	float radial2 = smoothstep(0.2, 0.55, dist);
-	vec3 streak2 = vec3(0.6, 0.8, 1.0) * line2 * radial2 * pulse2 * sq * 0.4;
-
-	// === VIGNETTE (closes in at higher speed) ===
-	float vig_inner = mix(0.4, 0.2, speed_ratio);
-	float vig = smoothstep(vig_inner, 0.82, dist) * speed_ratio * 0.55;
-
-	// === CHROMATIC ABERRATION (distance-scaled) ===
-	float ab = sq * 0.003 * dist;
-	vec2 ab_dir = normalize(center + vec2(0.001)) * ab;
-	float r_ch = texture(screen_texture, uv + ab_dir).r;
-	float b_ch = texture(screen_texture, uv - ab_dir).b;
-	col = mix(col, vec3(r_ch, col.g, b_ch), step(0.15, speed_ratio));
-
-	// === BOOST FLASH (intense white burst) ===
-	float flash = boost_flash * boost_flash * max(0.0, 1.0 - dist * 1.6);
+	// === ENGAGE PULSE (brief bright surge when quantum activates) ===
+	if (quantum_engage > 0.01) {
+		float pulse_ring = smoothstep(0.1, 0.3, dist) * smoothstep(0.6, 0.3, dist);
+		col += vec3(0.3, 0.5, 0.9) * pulse_ring * quantum_engage * 0.15;
+	}
 
 	// === DAMAGE CHROMATIC ABERRATION + RED VIGNETTE ===
 	if (dmg > 0.01) {
 		float dmg_ab = dmg * 0.012 * (0.5 + dist);
-		vec2 dmg_ab_dir = normalize(center + vec2(0.001)) * dmg_ab;
+		vec2 dmg_ab_dir = normalize(center + vec2(0.0001)) * dmg_ab;
 		col.r = texture(screen_texture, uv + dmg_ab_dir).r;
 		col.b = texture(screen_texture, uv - dmg_ab_dir).b;
 	}
 	float dmg_vig = smoothstep(0.15, 0.65, dist) * dmg * 0.45;
-	vec3 dmg_col = vec3(0.5, 0.02, 0.01) * dmg_vig;
+	col += vec3(0.5, 0.02, 0.01) * dmg_vig;
 
-	// === COLOR GRADE (subtle blue shift at high speed) ===
-	vec3 grade = mix(vec3(1.0), vec3(0.92, 0.95, 1.08), sq * 0.4);
+	// === SUBTLE COLOR GRADE (very slight blue shift at high speed) ===
+	vec3 grade = mix(vec3(1.0), vec3(0.96, 0.97, 1.04), sq * 0.3 + cruise_warp * 0.2);
+	col *= grade;
 
-	// === CRUISE WARP TUNNEL (phase 2 — intense radial streaks + blur) ===
-	float warp_streaks = 0.0;
-	if (cruise_warp > 0.01) {
-		// Intensified radial lines converging to center
-		float warp_lines = 120.0;
-		float wl_id = floor(angle * warp_lines / TAU);
-		float wl_frac = fract(angle * warp_lines / TAU);
-		float ws = fract(sin(wl_id * 91.3 + 7.7) * 43758.5453);
-		float wa = fract(TIME * (1.0 + ws * 0.6) + ws * 6.28);
-		float wp = smoothstep(0.0, 0.1, wa) * smoothstep(1.0, 0.3, wa);
-		float wl = smoothstep(0.0, 0.015, wl_frac) * smoothstep(0.05, 0.015, wl_frac);
-		float wr = smoothstep(0.05, 0.6, dist);
-		warp_streaks = wl * wr * wp * cruise_warp * 1.2;
-	}
-	vec3 warp_col = mix(vec3(0.5, 0.7, 1.0), vec3(0.2, 0.4, 1.0), dist * 2.0) * warp_streaks;
-
-	// Extra warp vignette (tight tunnel)
-	float warp_vig = smoothstep(0.15, 0.75, dist) * cruise_warp * 0.4;
-
-	// Extra radial blur for warp
-	if (cruise_warp > 0.01) {
-		float warp_blur = cruise_warp * 0.03;
-		vec2 wb_dir = center * warp_blur;
-		col = col * 0.5
-			+ texture(screen_texture, uv - wb_dir * 0.5).rgb * 0.25
-			+ texture(screen_texture, uv - wb_dir * 1.0).rgb * 0.25;
-	}
-
-	// === COMBINE ===
-	vec3 result = col * grade;
-	result += streak_col + streak2 + warp_col;
-	result *= 1.0 - vig - warp_vig;
-	result += vec3(flash);
-	result += dmg_col;
-
-	COLOR = vec4(result, 1.0);
+	COLOR = vec4(col, 1.0);
 }

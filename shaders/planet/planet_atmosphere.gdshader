@@ -2,9 +2,10 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, blend_add, depth_draw_never, shadows_disabled;
 
 // =============================================================================
-// Planet Atmosphere — Rayleigh + Mie single-scatter ray march
-// Visible from space (glow ring) and from near surface (sky color).
-// 8 samples along view ray, optical depth via scale-height approximation.
+// Planet Atmosphere — Ray-based limb glow
+// Instead of fresnel on the atmosphere mesh (creates hard edge), we compute
+// how close the view ray passes to the PLANET surface. Glow peaks at the
+// planet limb and decays smoothly outward — no visible mesh boundary.
 // =============================================================================
 
 uniform vec4 glow_color : source_color = vec4(0.4, 0.6, 1.0, 1.0);
@@ -12,49 +13,22 @@ uniform vec4 scatter_color : source_color = vec4(0.3, 0.5, 1.0, 1.0);
 uniform float glow_intensity : hint_range(0.0, 5.0) = 1.5;
 uniform float glow_falloff : hint_range(0.5, 10.0) = 3.0;
 uniform float atmosphere_density : hint_range(0.0, 2.0) = 1.0;
-uniform float planet_radius_norm : hint_range(0.5, 1.0) = 0.92; // planet_r / atmo_r
-uniform float atmosphere_height = 5000.0; // meters
+uniform float planet_radius_norm : hint_range(0.5, 1.0) = 0.92;
+uniform float atmosphere_height = 5000.0;
 
-// Sun direction (set by PlanetBody or defaults to star direction)
 uniform vec3 sun_direction = vec3(0.0, 0.3, -1.0);
 
-// Rayleigh coefficients (wavelength-dependent)
-const vec3 RAYLEIGH_COEFF = vec3(5.8e-3, 13.5e-3, 33.1e-3); // RGB scatter
-const float MIE_COEFF = 2.0e-3;
-const float MIE_G = 0.76; // Forward scattering asymmetry
-const int NUM_SAMPLES = 8;
-const float SCALE_HEIGHT_R = 0.15; // Rayleigh scale height (fraction of atmo)
-const float SCALE_HEIGHT_M = 0.08; // Mie scale height
+// Mie phase function
+const float MIE_G = 0.76;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
 
-// Compute optical depth along a ray from point to atmosphere boundary
-float optical_depth_approx(vec3 pos, vec3 dir, float planet_r, float atmo_r) {
-	// Simple approximation: based on altitude and angle
-	float altitude = length(pos) - planet_r;
-	float norm_alt = clamp(altitude / (atmo_r - planet_r), 0.0, 1.0);
-	float base_depth = exp(-norm_alt / SCALE_HEIGHT_R);
-
-	// Angle factor: looking through more atmosphere near horizon
-	float cos_angle = dot(normalize(pos), dir);
-	float angle_factor = 1.0 / max(abs(cos_angle), 0.1);
-	angle_factor = min(angle_factor, 10.0);
-
-	return base_depth * angle_factor;
-}
-
-// Mie phase function (Henyey-Greenstein)
 float mie_phase(float cos_theta) {
 	float g2 = MIE_G * MIE_G;
 	float num = 1.0 - g2;
 	float denom = pow(abs(1.0 + g2 - 2.0 * MIE_G * cos_theta), 1.5);
 	return num / (4.0 * 3.14159 * max(denom, 0.001));
-}
-
-// Rayleigh phase function
-float rayleigh_phase(float cos_theta) {
-	return 0.75 * (1.0 + cos_theta * cos_theta);
 }
 
 void vertex() {
@@ -64,59 +38,59 @@ void vertex() {
 
 void fragment() {
 	vec3 center = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	vec3 view_dir = normalize(CAMERA_POSITION_WORLD - world_pos);
-	float ndotv = abs(dot(world_normal, view_dir));
+	vec3 cam_pos = CAMERA_POSITION_WORLD;
+	vec3 view_dir = normalize(cam_pos - world_pos);
 
-	// Get mesh scale (atmosphere radius in world units)
+	// Atmosphere and planet radii in world units
 	float atmo_r = length(vec3(MODEL_MATRIX[0].x, MODEL_MATRIX[1].y, MODEL_MATRIX[2].z));
 	float planet_r = atmo_r * planet_radius_norm;
+	float shell_thickness = atmo_r - planet_r;
 
-	// Ray from camera toward the surface point
-	vec3 ray_start = world_pos;
-	vec3 to_center = center - ray_start;
-	float dist_to_center = length(to_center);
+	// === Ray closest approach to planet center ===
+	// Ray: from camera through this fragment toward the scene
+	vec3 ray_dir = -view_dir; // from camera into scene
+	vec3 oc = center - cam_pos;
+	float b = dot(oc, ray_dir);
+	float closest_dist_sq = dot(oc, oc) - b * b;
+	float closest_dist = sqrt(max(closest_dist_sq, 0.0));
 
-	// Normalized altitude of this fragment
-	float altitude = dist_to_center - planet_r;
-	float norm_alt = clamp(altitude / (atmo_r - planet_r), 0.0, 1.0);
+	// How far above the planet surface does the ray pass?
+	// 0 = ray grazes planet surface (limb), grows outward
+	float above_surface = max(closest_dist - planet_r, 0.0);
+	float t = clamp(above_surface / shell_thickness, 0.0, 1.0); // 0=limb, 1=atmo edge
 
-	// === Fresnel glow (works great from distance) ===
-	float fresnel = 1.0 - ndotv;
-	fresnel = pow(abs(fresnel), glow_falloff);
-	float glow = fresnel * glow_intensity * atmosphere_density;
+	// === Ring glow profile: peaks at planet limb, decays outward ===
+	// Steeper falloff = thinner ring
+	float ring = exp(-t * t * glow_falloff * glow_falloff);
 
-	// === Scatter contribution (more visible up close) ===
+	// For rays that HIT the planet (closest_dist < planet_r):
+	// Show a very subtle tint (looking through atmosphere at the planet face)
+	float hits_planet = step(closest_dist, planet_r);
+	float depth_into_planet = (planet_r - closest_dist) / planet_r;
+	float front_tint = hits_planet * (1.0 - depth_into_planet) * 0.04 * atmosphere_density;
+
+	// === Sun modulation ===
 	vec3 sun_dir = normalize(sun_direction);
-	float cos_theta = dot(view_dir, sun_dir);
+	vec3 frag_dir = normalize(world_pos - center);
+	float sun_facing = dot(frag_dir, sun_dir);
+	// Bright crescent on sun side, dim on dark side
+	float sun_mod = smoothstep(-0.5, 0.4, sun_facing) * 0.85 + 0.15;
 
-	// Rayleigh + Mie in-scatter
-	float rayleigh_p = rayleigh_phase(cos_theta);
-	float mie_p = mie_phase(cos_theta);
+	// === Forward scattering (Mie) for bright halo when looking toward sun ===
+	float cos_theta = dot(-view_dir, sun_dir);
+	float mie = mie_phase(cos_theta);
+	float scatter_boost = mie * 0.15 * atmosphere_density;
 
-	// Optical depth at this point
-	float density_r = exp(-norm_alt / SCALE_HEIGHT_R) * atmosphere_density;
-	float density_m = exp(-norm_alt / SCALE_HEIGHT_M) * atmosphere_density;
+	// === Final glow ===
+	float total_glow = (ring * glow_intensity * atmosphere_density * sun_mod + front_tint + scatter_boost * ring);
 
-	// Sun optical depth (how much atmosphere light traverses to reach this point)
-	float sun_od = optical_depth_approx(ray_start - center, sun_dir, planet_r, atmo_r);
+	// Color: glow_color for the ring, scatter_color for forward scatter
+	vec3 ring_contrib = glow_color.rgb * ring * glow_intensity * atmosphere_density * sun_mod;
+	vec3 scatter_contrib = scatter_color.rgb * scatter_boost * ring;
+	vec3 tint_contrib = glow_color.rgb * front_tint;
 
-	// Extinction
-	vec3 extinction = exp(-(RAYLEIGH_COEFF * sun_od + MIE_COEFF * sun_od));
-
-	// In-scatter light
-	vec3 scatter_r = RAYLEIGH_COEFF * density_r * rayleigh_p * extinction;
-	vec3 scatter_m = vec3(MIE_COEFF) * density_m * mie_p * extinction;
-	vec3 scatter = (scatter_r + scatter_m) * 15.0; // Intensity multiplier
-
-	// === Combine ===
-	vec3 glow_contrib = glow_color.rgb * glow;
-	vec3 scatter_contrib = scatter_color.rgb * scatter;
-
-	// Blend: glow dominates from far away, scatter from near
-	float near_factor = clamp(1.0 - norm_alt, 0.0, 1.0);
-	vec3 final_color = glow_contrib + scatter_contrib * near_factor * 2.0;
-
-	float final_alpha = clamp(glow + length(scatter) * near_factor, 0.0, 1.5);
+	vec3 final_color = ring_contrib + scatter_contrib + tint_contrib;
+	float final_alpha = clamp(total_glow * 0.5, 0.0, 0.5);
 
 	ALBEDO = final_color;
 	ALPHA = final_alpha * glow_color.a;

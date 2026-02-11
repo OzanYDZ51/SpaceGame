@@ -70,7 +70,7 @@ orbital_radius = 10750399.380922318
 orbital_period = 358909.03597550426
 orbital_angle = 2.5329850269821086
 radius = 4624275.982379913
-color = Color(0.6893955, 0.49422762, 0.3357702, 0.9)
+color = Color(0.7182832, 0.5268719, 0.265201, 0.9)
 
 [sub_resource type="Resource" id="Resource_0p8ms"]
 script = ExtResource("3_6ktu2")
@@ -79,7 +79,7 @@ orbital_radius = 19133341.26550301
 orbital_period = 852184.6767995716
 orbital_angle = 1.9175143718274514
 radius = 3433585.8821868896
-color = Color(0.71257913, 0.41206634, 0.32437798, 0.9)
+color = Color(0.6870677, 0.5019897, 0.2954104, 0.9)
 
 [sub_resource type="Resource" id="Resource_ke6mc"]
 script = ExtResource("3_6ktu2")
@@ -88,7 +88,7 @@ orbital_radius = 34053130.02899736
 orbital_period = 2023406.0739043513
 orbital_angle = 5.141832070150265
 radius = 2227585.583925247
-color = Color(0.74382424, 0.49811205, 0.3277175, 0.9)
+color = Color(0.6032592, 0.5087487, 0.3395083, 0.9)
 
 [sub_resource type="Resource" id="Resource_wksub"]
 script = ExtResource("3_6ktu2")
@@ -97,7 +97,7 @@ orbital_radius = 60607065.36722695
 orbital_period = 4804324.991255322
 orbital_angle = 3.5574621106219393
 radius = 6708244.502544403
-color = Color(0.56323564, 0.47768486, 0.32029933, 0.9)
+color = Color(0.5670515, 0.4863111, 0.3571357, 0.9)
 
 [sub_resource type="Resource" id="Resource_54puv"]
 script = ExtResource("3_6ktu2")
@@ -106,7 +106,7 @@ orbital_radius = 107867217.17796442
 orbital_period = 11407269.612995896
 orbital_angle = 4.3797791768684515
 radius = 4575083.076953888
-color = Color(0.5191382, 0.6994327, 0.39552507, 0.9)
+color = Color(0.5270777, 0.4013853, 0.4182699, 0.9)
 
 [sub_resource type="Resource" id="Resource_eeu4g"]
 script = ExtResource("3_6ktu2")
@@ -116,7 +116,7 @@ orbital_radius = 191979870.18869764
 orbital_period = 27085136.884043105
 orbital_angle = 0.917587628293543
 radius = 30107915.40145874
-color = Color(0.75578916, 0.63997704, 0.3120225, 0.9)
+color = Color(0.5919315, 0.5766563, 0.4873906, 0.9)
 has_rings = true
 
 [sub_resource type="Resource" id="Resource_x02fy"]

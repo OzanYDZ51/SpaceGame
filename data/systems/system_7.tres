@@ -60,7 +60,7 @@ orbital_radius = 16412561.833858492
 orbital_period = 677036.4601742364
 orbital_angle = 5.541644538344375
 radius = 6525945.18661499
-color = Color(0.64198166, 0.65037686, 0.36969537, 0.9)
+color = Color(0.5026413, 0.4143974, 0.401315, 0.9)
 
 [sub_resource type="Resource" id="Resource_38y02"]
 script = ExtResource("3_mydjl")
@@ -70,7 +70,7 @@ orbital_radius = 27460797.816121217
 orbital_period = 1465268.5230091496
 orbital_angle = 4.068816628601571
 radius = 50141496.658325195
-color = Color(0.8309329, 0.6946083, 0.3266985, 0.9)
+color = Color(0.6404059, 0.5933666, 0.4547016, 0.9)
 has_rings = true
 
 [sub_resource type="Resource" id="Resource_bif5c"]

@@ -63,7 +63,7 @@ orbital_radius = 10898214.969784021
 orbital_period = 366336.8017728277
 orbital_angle = 0.5699467511298971
 radius = 8618888.139724731
-color = Color(0.1816756, 0.44603816, 0.71120447, 0.9)
+color = Color(0.1080435, 0.4136862, 0.6243912, 0.9)
 
 [sub_resource type="Resource" id="Resource_src6k"]
 script = ExtResource("3_0eudl")
@@ -73,7 +73,7 @@ orbital_radius = 23841228.60098293
 orbital_period = 1185333.182267789
 orbital_angle = 5.461662195833053
 radius = 22084719.53868866
-color = Color(0.8539071, 0.6169465, 0.34904516, 0.9)
+color = Color(0.5857579, 0.5811061, 0.4905559, 0.9)
 
 [sub_resource type="Resource" id="Resource_f1ffl"]
 script = ExtResource("3_0eudl")
@@ -83,7 +83,7 @@ orbital_radius = 52155713.82838955
 orbital_period = 3835308.7819343894
 orbital_angle = 2.405727164261325
 radius = 3891088.366508484
-color = Color(0.5849711, 0.79327035, 0.91397, 0.9)
+color = Color(0.677117, 0.761303, 0.9035564, 0.9)
 
 [sub_resource type="Resource" id="Resource_8c1uo"]
 script = ExtResource("5_nfcal")
