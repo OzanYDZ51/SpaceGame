@@ -26,7 +26,7 @@ func _ready() -> void:
 		star_light.shadow_bias = 0.02
 		star_light.shadow_normal_bias = 1.0
 		star_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-		star_light.directional_shadow_max_distance = 10000.0  # 10 km — covers stations/ships at distance
+		star_light.directional_shadow_max_distance = 50000.0  # 50 km — covers combat, docking, station approach
 		star_light.directional_shadow_fade_start = 0.9
 
 
