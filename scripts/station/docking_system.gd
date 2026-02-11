@@ -11,8 +11,8 @@ signal dock_unavailable()
 signal docked(station_name: String)
 signal undocked()
 
-@export var dock_range: float = 300.0     ## Max distance to dock (meters)
-@export var dock_max_speed: float = 50.0  ## Max speed to allow docking (m/s)
+@export var dock_range: float = 5000.0    ## Max distance to dock (meters)
+@export var dock_max_speed: float = 350.0 ## Max speed to allow docking (m/s)
 @export var scan_interval: float = 0.25   ## Seconds between station scans
 
 var is_docked: bool = false

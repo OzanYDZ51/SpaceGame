@@ -11,7 +11,7 @@ extends Node3D
 
 const IMPOSTOR_DISTANCE: float = 4500.0
 const MIN_VISUAL_RADIUS: float = 5.0
-const MAX_VISUAL_RADIUS: float = 1500.0
+const MAX_VISUAL_RADIUS: float = 4400.0  # 98% of IMPOSTOR_DISTANCE — camera stays 100m outside sphere
 
 var planet_data: PlanetData = null
 var planet_index: int = 0
@@ -21,9 +21,6 @@ var _render_radius: float = 50_000.0  # meters
 
 var _mesh_instance: MeshInstance3D = null
 var _surface_material: ShaderMaterial = null
-var _atmo_mesh: MeshInstance3D = null
-var _atmo_config: AtmosphereConfig = null
-var _atmo_material: ShaderMaterial = null
 var _ring_instance: MeshInstance3D = null
 var _ring_material: ShaderMaterial = null
 
@@ -35,11 +32,9 @@ func setup(pd: PlanetData, index: int, ent_id: String) -> void:
 	planet_data = pd
 	planet_index = index
 	entity_id = ent_id
-	# Visual radius for impostor is much larger than terrain render_radius
-	# so planets look impressive from orbital distances (Star Citizen style).
-	# Terrain radius stays the same for actual landing.
-	_render_radius = pd.get_render_radius() * pd.get_visual_scale()
-	_atmo_config = AtmosphereConfig.from_planet_data(pd)
+	# Impostor uses the REAL terrain radius — same size as PlanetBody.
+	# No visual_scale: what you see from space = what you land on.
+	_render_radius = pd.get_render_radius()
 	_build_visuals()
 
 
@@ -64,29 +59,10 @@ func _build_visuals() -> void:
 	_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_mesh_instance)
 
-	# Atmosphere glow sphere (slightly larger)
-	if _atmo_config and _atmo_config.density > 0.01:
-		var atmo_mesh := SphereMesh.new()
-		atmo_mesh.radius = 1.0
-		atmo_mesh.height = 2.0
-		atmo_mesh.radial_segments = 48
-		atmo_mesh.rings = 24
-
-		var atmo_shader := preload("res://shaders/planet/planet_atmosphere.gdshader")
-		var atmo_mat := ShaderMaterial.new()
-		atmo_mat.shader = atmo_shader
-		atmo_mat.set_shader_parameter("glow_color", _atmo_config.glow_color)
-		atmo_mat.set_shader_parameter("glow_intensity", _atmo_config.glow_intensity)
-		atmo_mat.set_shader_parameter("glow_falloff", _atmo_config.glow_falloff)
-		atmo_mat.set_shader_parameter("atmosphere_density", _atmo_config.density)
-		atmo_mat.set_shader_parameter("planet_radius_norm", 1.0 / _atmo_config.atmosphere_scale)
-
-		_atmo_material = atmo_mat
-		_atmo_mesh = MeshInstance3D.new()
-		_atmo_mesh.mesh = atmo_mesh
-		_atmo_mesh.material_override = atmo_mat
-		_atmo_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(_atmo_mesh)
+	# Atmosphere glow — only for rocky/ocean/ice (not gas giants, their surface IS atmosphere)
+	# Only used on PlanetBody when close. Impostor relies on PBR lighting alone
+	# to avoid visible mesh boundary halos from space.
+	pass
 
 	# Planetary rings (gas giants with has_rings)
 	if planet_data.has_rings:
@@ -144,12 +120,13 @@ func _process(_delta: float) -> void:
 	var to_planet := planet_local - cam_pos
 	var direction := to_planet.normalized()
 
-	# Position impostor at clamped distance
-	global_position = cam_pos + direction * IMPOSTOR_DISTANCE
-
-	# Scale based on angular size: visual_size = IMPOSTOR_DISTANCE * real_size / real_distance
+	# Scale based on angular size: visual_radius = IMPOSTOR_DISTANCE * render_radius / distance
+	# Clamped so camera never enters the sphere (MAX_VISUAL_RADIUS < IMPOSTOR_DISTANCE).
 	var visual_radius: float = IMPOSTOR_DISTANCE * _render_radius / actual_distance
 	visual_radius = clampf(visual_radius, MIN_VISUAL_RADIUS, MAX_VISUAL_RADIUS)
+
+	# Position impostor at fixed distance from camera toward planet
+	global_position = cam_pos + direction * IMPOSTOR_DISTANCE
 	_mesh_instance.scale = Vector3.ONE * visual_radius
 
 	# Compute sun direction (star at universe origin)
@@ -162,12 +139,6 @@ func _process(_delta: float) -> void:
 
 	# Pass sun direction to surface shader
 	_surface_material.set_shader_parameter("sun_direction", sun_dir)
-
-	# Atmosphere is slightly larger + pass sun direction
-	if _atmo_mesh:
-		_atmo_mesh.scale = Vector3.ONE * visual_radius * _atmo_config.atmosphere_scale
-		if _atmo_material:
-			_atmo_material.set_shader_parameter("sun_direction", sun_dir)
 
 	# Rings scale with planet
 	if _ring_instance:

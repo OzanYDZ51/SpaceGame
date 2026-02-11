@@ -89,7 +89,7 @@ var _near_planet_surface: bool = false                ## True when in atmosphere
 
 # --- Planet collision avoidance (pure distance-based) ---
 var _planet_check_timer: float = 0.0
-const PLANET_CHECK_INTERVAL: float = 0.25  # 4 Hz
+const PLANET_CHECK_INTERVAL: float = 0.25       # 4 Hz
 const PLANET_CRUISE_EXIT_DIST: float = 100_000.0  # 100 km — exit cruise when closer than this
 var planet_avoidance_active: bool = false   ## Read by HUD for warning display
 
@@ -508,7 +508,6 @@ func _check_planet_collision(delta: float) -> void:
 	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
 
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
-		# Distance in float64 to avoid precision issues at large distances
 		var dx: float = ent["pos_x"] - upos[0]
 		var dy: float = ent["pos_y"] - upos[1]
 		var dz: float = ent["pos_z"] - upos[2]

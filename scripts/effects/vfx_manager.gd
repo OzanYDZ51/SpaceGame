@@ -24,8 +24,6 @@ var _main_scene: Node3D = null
 
 var _engine_trail: EngineTrail = null
 var _speed_effects: SpeedEffects = null
-var _space_dust: SpaceDust = null
-var _nebula_wisps: NebulaWisps = null
 var _gforce: GForceEffects = null
 var _motion_blur: MotionBlur = null
 

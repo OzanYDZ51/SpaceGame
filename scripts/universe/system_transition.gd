@@ -410,7 +410,7 @@ func _populate_system() -> void:
 			"extra": {
 				"planet_type": pd.get_type_string(),
 				"has_rings": pd.has_rings,
-				"render_radius_visual": pd.get_render_radius() * pd.get_visual_scale(),
+				"render_radius": pd.get_render_radius(),
 			},
 		})
 

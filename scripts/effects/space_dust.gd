@@ -82,17 +82,34 @@ func _process(_delta: float) -> void:
 	if _camera:
 		global_position = _camera.global_position
 
-	# Speed-reactive dust: subtle increase at high speed for sense of motion
 	if _ship and _mat:
-		# Use boost max as reference (cruise is warp territory, dust irrelevant)
-		var speed_ratio: float = clampf(_ship.current_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
-		# Gradual ramp: 0.5 at rest, 0.7 at full speed — no dramatic pop-in
-		amount_ratio = 0.5 + speed_ratio * 0.2
-		# Gentle speed scale: 0.5 at rest, 1.2 at full speed — not frantic
-		speed_scale = 0.5 + speed_ratio * 0.7
-		# Mild Z stretch for subtle streaking at speed
-		var z_extent: float = 100.0 + speed_ratio * 60.0
-		_mat.emission_box_extents.z = z_extent
+		var is_cruise: bool = _ship.speed_mode == Constants.SpeedMode.CRUISE
+		var is_warp: bool = _ship.cruise_warp_active
+
+		if is_warp:
+			# Quantum warp: extreme streaks — particles become long speed lines
+			amount_ratio = 1.0
+			speed_scale = 4.0
+			_mat.emission_box_extents = Vector3(60.0, 30.0, 400.0)
+			_mat.scale_min = 0.8
+			_mat.scale_max = 2.0
+		elif is_cruise:
+			# Cruise spool: progressive streak buildup
+			var t: float = clampf(_ship.cruise_time / _ship.CRUISE_SPOOL_DURATION, 0.0, 1.0)
+			amount_ratio = lerpf(0.5, 0.9, t)
+			speed_scale = lerpf(0.5, 2.5, t * t)
+			var z_ext: float = lerpf(100.0, 300.0, t * t)
+			_mat.emission_box_extents = Vector3(80.0, 40.0, z_ext)
+			_mat.scale_min = lerpf(0.5, 0.7, t)
+			_mat.scale_max = lerpf(1.2, 1.6, t)
+		else:
+			# Normal/boost: subtle ambient dust
+			var speed_ratio: float = clampf(_ship.current_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
+			amount_ratio = 0.5 + speed_ratio * 0.2
+			speed_scale = 0.5 + speed_ratio * 0.7
+			_mat.emission_box_extents = Vector3(80.0, 40.0, 100.0 + speed_ratio * 60.0)
+			_mat.scale_min = 0.5
+			_mat.scale_max = 1.2
 
 
 func _create_soft_circle(tex_size: int = 24) -> GradientTexture2D:

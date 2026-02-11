@@ -15,7 +15,7 @@ extends Resource
 @export var star_name: String = ""
 @export var star_spectral_class: String = "G"
 @export var star_temperature: float = 5778.0
-@export var star_radius: float = 696340000.0
+@export var star_radius: float = 696340.0
 @export var star_color: Color = Color.WHITE
 @export var star_luminosity: float = 1.0
 

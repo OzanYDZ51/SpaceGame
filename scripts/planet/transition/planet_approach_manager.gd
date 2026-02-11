@@ -105,7 +105,6 @@ func _process(delta: float) -> void:
 
 
 func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
-	var old_zone := current_zone
 	current_zone = new_zone
 
 	if body:
@@ -120,8 +119,6 @@ func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
 
 
 func _compute_physics(body: PlanetBody, atmo_edge: float) -> void:
-	var render_radius: float = body.planet_radius
-
 	match current_zone:
 		Zone.SPACE:
 			gravity_strength = 0.0

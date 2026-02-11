@@ -4,10 +4,16 @@ shader_type canvas_item;
 // Quantum Travel VFX - Star Citizen style post-processing
 // Radial scene stretch (stars become lines) + blue quantum vignette
 // No fake animated streaks. The actual scene content stretches naturally.
+//
+// Two intensity drivers:
+//   flight_ratio  = speed / boost_max  → subtle blur during normal/boost flight
+//   cruise_spool  = cruise_time / spool_duration  → 0→1 over 10s, main quantum effect
+//   cruise_warp   = phase 2 warp active → full quantum intensity
 // =============================================================================
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
-uniform float speed_ratio : hint_range(0.0, 1.0) = 0.0;
+uniform float flight_ratio : hint_range(0.0, 1.0) = 0.0;
+uniform float cruise_spool : hint_range(0.0, 1.0) = 0.0;
 uniform float damage_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float cruise_warp : hint_range(0.0, 1.0) = 0.0;
 uniform float quantum_engage : hint_range(0.0, 1.0) = 0.0;
@@ -15,17 +21,20 @@ uniform float quantum_engage : hint_range(0.0, 1.0) = 0.0;
 void fragment() {
 	vec2 center = SCREEN_UV - 0.5;
 	float dist = length(center);
-	float sq = speed_ratio * speed_ratio;
+
+	// Intensity curves
+	float flight_sq = flight_ratio * flight_ratio;    // Normal/boost: 0→1
+	float spool_sq = cruise_spool * cruise_spool;     // Cruise spool: quadratic ramp
 
 	// === DAMAGE ZOOM DISTORTION ===
 	float dmg = damage_flash * damage_flash;
 	vec2 uv = SCREEN_UV + center * dmg * 0.06;
 
 	// === RADIAL STRETCH — core quantum travel effect ===
-	// Stretches the actual scene content outward from center.
-	// Stars, nebulae, everything becomes radial streaks naturally.
-	// Stronger at edges, zero at center (you always see your destination).
-	float stretch = sq * 0.008 + cruise_warp * 0.035 + quantum_engage * 0.025;
+	// flight_sq gives subtle blur during boost
+	// spool_sq drives the spool-up phase (visible immediately when you press C)
+	// cruise_warp adds the final warp intensity
+	float stretch = flight_sq * 0.004 + spool_sq * 0.025 + cruise_warp * 0.04 + quantum_engage * 0.02;
 	float stretch_mask = smoothstep(0.05, 0.55, dist);
 	vec2 stretch_dir = normalize(center + vec2(0.0001)) * stretch_mask * stretch;
 
@@ -41,30 +50,35 @@ void fragment() {
 	col += texture(screen_texture, uv - stretch_dir * 1.0).rgb   * 0.06;
 
 	// === CHROMATIC ABERRATION (subtle, edge-weighted) ===
-	float ab_strength = sq * 0.0015 + cruise_warp * 0.0025;
+	float ab_strength = flight_sq * 0.001 + spool_sq * 0.002 + cruise_warp * 0.003;
 	float ab = ab_strength * dist;
 	vec2 ab_dir = normalize(center + vec2(0.0001)) * ab;
-	if (ab_strength > 0.0005) {
+	if (ab_strength > 0.0003) {
 		col.r = mix(col.r, texture(screen_texture, uv + ab_dir).r, 0.7);
 		col.b = mix(col.b, texture(screen_texture, uv - ab_dir).b, 0.7);
 	}
 
 	// === QUANTUM VIGNETTE (blue-tinted darkening at edges) ===
-	float vig_strength = sq * 0.12 + cruise_warp * 0.2;
+	// Builds during spool, full during warp
+	float quantum_intensity = spool_sq + cruise_warp;
+	float vig_strength = flight_sq * 0.06 + quantum_intensity * 0.18;
 	float vig_mask = smoothstep(0.35, 0.9, dist);
 	col *= 1.0 - vig_mask * vig_strength;
-	// Blue tint at edges during warp
-	vec3 blue_tint = vec3(0.08, 0.12, 0.25) * vig_mask * cruise_warp * 0.3;
-	col += blue_tint;
+
+	// Blue tint at edges (cruise only)
+	if (quantum_intensity > 0.01) {
+		vec3 blue_tint = vec3(0.06, 0.1, 0.22) * vig_mask * quantum_intensity * 0.25;
+		col += blue_tint;
+	}
 
 	// === QUANTUM EDGE GLOW (subtle blue luminance at screen borders) ===
-	float edge_glow = smoothstep(0.6, 0.95, dist) * cruise_warp * 0.08;
+	float edge_glow = smoothstep(0.6, 0.95, dist) * cruise_warp * 0.1;
 	col += vec3(0.15, 0.3, 0.7) * edge_glow;
 
 	// === ENGAGE PULSE (brief bright surge when quantum activates) ===
 	if (quantum_engage > 0.01) {
 		float pulse_ring = smoothstep(0.1, 0.3, dist) * smoothstep(0.6, 0.3, dist);
-		col += vec3(0.3, 0.5, 0.9) * pulse_ring * quantum_engage * 0.15;
+		col += vec3(0.3, 0.5, 0.9) * pulse_ring * quantum_engage * 0.2;
 	}
 
 	// === DAMAGE CHROMATIC ABERRATION + RED VIGNETTE ===
@@ -77,8 +91,8 @@ void fragment() {
 	float dmg_vig = smoothstep(0.15, 0.65, dist) * dmg * 0.45;
 	col += vec3(0.5, 0.02, 0.01) * dmg_vig;
 
-	// === SUBTLE COLOR GRADE (very slight blue shift at high speed) ===
-	vec3 grade = mix(vec3(1.0), vec3(0.96, 0.97, 1.04), sq * 0.3 + cruise_warp * 0.2);
+	// === COLOR GRADE (subtle blue shift during quantum) ===
+	vec3 grade = mix(vec3(1.0), vec3(0.95, 0.96, 1.05), quantum_intensity * 0.25);
 	col *= grade;
 
 	COLOR = vec4(col, 1.0);

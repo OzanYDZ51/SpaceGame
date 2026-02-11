@@ -211,11 +211,11 @@ func _debug_teleport_to_planet() -> void:
 	var cam_z: float = FloatingOrigin.origin_offset_z + ship.global_position.z
 
 	for id in EntityRegistry._entities:
-		var ent: Dictionary = EntityRegistry._entities[id]
-		if ent.get("type") != EntityRegistrySystem.EntityType.PLANET:
+		var entry: Dictionary = EntityRegistry._entities[id]
+		if entry.get("type") != EntityRegistrySystem.EntityType.PLANET:
 			continue
-		var dx: float = cam_x - ent.get("pos_x", 0.0)
-		var dz: float = cam_z - ent.get("pos_z", 0.0)
+		var dx: float = cam_x - entry.get("pos_x", 0.0)
+		var dz: float = cam_z - entry.get("pos_z", 0.0)
 		var d: float = sqrt(dx * dx + dz * dz)
 		if d < best_dist:
 			best_dist = d

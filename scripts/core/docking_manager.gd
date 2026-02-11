@@ -101,6 +101,9 @@ func handle_undock() -> void:
 	if ship:
 		ship.is_player_controlled = true
 
+	# Reposition player near the docked station (random within 5km)
+	_reposition_at_station()
+
 	# Show flight HUD
 	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
@@ -112,6 +115,26 @@ func handle_undock() -> void:
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	undocked.emit()
+
+
+const UNDOCK_RADIUS: float = 5000.0  ## Spawn within 5km of station
+
+func _reposition_at_station() -> void:
+	if docking_system == null or player_ship == null:
+		return
+	var station_node: Node3D = docking_system.nearest_station_node
+	if station_node == null or not is_instance_valid(station_node):
+		return
+
+	# Random direction on the XZ plane, random distance within radius
+	var angle: float = randf() * TAU
+	var dist: float = randf_range(UNDOCK_RADIUS * 0.3, UNDOCK_RADIUS)
+	var offset := Vector3(cos(angle) * dist, randf_range(-200.0, 200.0), sin(angle) * dist)
+	var new_pos: Vector3 = station_node.global_position + offset
+
+	player_ship.global_position = new_pos
+	player_ship.linear_velocity = Vector3.ZERO
+	player_ship.angular_velocity = Vector3.ZERO
 
 
 func handle_commerce_requested() -> void:
