@@ -61,6 +61,8 @@ const AUTOPILOT_DECEL_DIST: float = 30000.0          # 30 km — drop cruise, ap
 const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
 const AUTOPILOT_APPROACH_SPEED: float = 3000.0        # 3 km/s — fast final approach during autopilot
+const AUTOPILOT_PLANET_ORBIT_MARGIN: float = 20000.0 # 20 km above surface for planet orbit stop
+const AUTOPILOT_PLANET_AVOIDANCE_MARGIN: float = 1.5 # Avoidance radius = render_radius * this
 
 # --- Rotation state ---
 var _target_pitch_rate: float = 0.0
@@ -504,16 +506,20 @@ func _check_planet_collision(delta: float) -> void:
 	_planet_check_timer = PLANET_CHECK_INTERVAL
 	planet_avoidance_active = false
 
-	# Pure distance check — exit cruise within 100 km of any planet center.
+	# Distance check relative to each planet's render_radius — exit cruise when close.
 	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
 
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		var extra: Dictionary = ent.get("extra", {})
+		var rr: float = extra.get("render_radius", 50_000.0)
+		var cruise_exit_dist: float = maxf(PLANET_CRUISE_EXIT_DIST, rr * 2.0)
+
 		var dx: float = ent["pos_x"] - upos[0]
 		var dy: float = ent["pos_y"] - upos[1]
 		var dz: float = ent["pos_z"] - upos[2]
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 
-		if dist < PLANET_CRUISE_EXIT_DIST:
+		if dist < cruise_exit_dist:
 			planet_avoidance_active = true
 			if speed_mode == Constants.SpeedMode.CRUISE:
 				_exit_cruise()
@@ -588,19 +594,37 @@ func _run_autopilot() -> void:
 	var to_target: Vector3 = target_world - global_position
 	var dist: float = to_target.length()
 
-	# Arrived — disengage (gate uses much closer distance)
-	var arrival_dist: float = AUTOPILOT_GATE_ARRIVAL_DIST if autopilot_is_gate else AUTOPILOT_ARRIVAL_DIST
+	# --- Planet-aware arrival distance ---
+	# If target is a planet, stop at render_radius + margin above surface
+	var arrival_dist: float
+	if autopilot_is_gate:
+		arrival_dist = AUTOPILOT_GATE_ARRIVAL_DIST
+	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+		var extra: Dictionary = ent.get("extra", {})
+		var rr: float = extra.get("render_radius", 50_000.0)
+		arrival_dist = rr + AUTOPILOT_PLANET_ORBIT_MARGIN
+	else:
+		arrival_dist = AUTOPILOT_ARRIVAL_DIST
+
 	if dist < arrival_dist:
 		disengage_autopilot()
 		return
 
-	# Deceleration zone — drop cruise (gate uses shorter decel zone)
-	var decel_dist: float = AUTOPILOT_GATE_DECEL_DIST if autopilot_is_gate else AUTOPILOT_DECEL_DIST
+	# Deceleration zone — drop cruise (gate uses shorter decel zone, planet uses orbit dist)
+	var decel_dist: float
+	if autopilot_is_gate:
+		decel_dist = AUTOPILOT_GATE_DECEL_DIST
+	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+		decel_dist = arrival_dist + 50_000.0  # Start slowing 50km before orbit
+	else:
+		decel_dist = AUTOPILOT_DECEL_DIST
 	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
 
-	# Steer toward target
+	# --- Planet avoidance: steer around planets in the flight path ---
 	var dir: Vector3 = to_target.normalized()
+	dir = _autopilot_avoid_planets(dir, dist)
+
 	var ship_fwd: Vector3 = -global_transform.basis.z
 	var dot: float = ship_fwd.dot(dir)
 
@@ -614,11 +638,14 @@ func _run_autopilot() -> void:
 	_target_yaw_rate = clampf(-local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
 	_target_roll_rate = 0.0
 
-	# Throttle: full forward once reasonably aligned, gentle near gate
+	# Throttle: full forward once reasonably aligned, gentle near gate/planet approach
 	if dot > 0.5:
-		# When very close to a gate, reduce throttle to avoid overshooting
 		if autopilot_is_gate and dist < 500.0:
 			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
+			throttle_input = Vector3(0, 0, -approach_factor)
+		elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET and dist < arrival_dist + 30_000.0:
+			# Gentle approach when nearing planet orbit altitude
+			var approach_factor: float = clampf((dist - arrival_dist) / 30_000.0, 0.1, 1.0)
 			throttle_input = Vector3(0, 0, -approach_factor)
 		else:
 			throttle_input = Vector3(0, 0, -1)
@@ -629,6 +656,69 @@ func _run_autopilot() -> void:
 	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked and not planet_avoidance_active:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
+
+
+## Steer autopilot direction away from planets/stars that block the flight path.
+## Returns adjusted direction vector.
+func _autopilot_avoid_planets(desired_dir: Vector3, target_dist: float) -> Vector3:
+	var best_avoidance := Vector3.ZERO
+	var worst_penetration: float = 0.0
+
+	# Collect obstacles: planets + star
+	var obstacles: Array[Dictionary] = []
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		var extra: Dictionary = ent.get("extra", {})
+		obstacles.append({"pos_x": ent["pos_x"], "pos_y": ent["pos_y"], "pos_z": ent["pos_z"],
+			"radius": extra.get("render_radius", 50_000.0)})
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR):
+		obstacles.append({"pos_x": ent["pos_x"], "pos_y": ent["pos_y"], "pos_z": ent["pos_z"],
+			"radius": ent.get("radius", 300_000.0)})
+
+	for obs in obstacles:
+		var avoid_radius: float = obs["radius"] * AUTOPILOT_PLANET_AVOIDANCE_MARGIN
+
+		# Vector from ship to obstacle center
+		var obs_world := FloatingOrigin.to_local_pos([obs["pos_x"], obs["pos_y"], obs["pos_z"]])
+		var to_obs: Vector3 = obs_world - global_position
+		var obs_dist: float = to_obs.length()
+
+		# Skip obstacles farther than our target or very far away
+		if obs_dist > target_dist + avoid_radius:
+			continue
+		# Skip obstacles behind us
+		var proj: float = to_obs.dot(desired_dir)
+		if proj < 0.0:
+			continue
+
+		# Closest approach point along the desired flight line
+		var closest_point: Vector3 = global_position + desired_dir * proj
+		var offset: Vector3 = obs_world - closest_point
+		var offset_dist: float = offset.length()
+
+		if offset_dist < avoid_radius:
+			# We would pass through the avoidance sphere — compute deflection
+			var penetration: float = avoid_radius - offset_dist
+
+			# Deflection: push away from obstacle center, perpendicular to desired_dir
+			var deflect: Vector3
+			if offset_dist > 1.0:
+				deflect = -offset.normalized()
+			else:
+				# Heading straight at center — deflect up
+				deflect = global_transform.basis.y
+
+			var strength: float = clampf(penetration / avoid_radius, 0.1, 1.0)
+
+			if penetration > worst_penetration:
+				worst_penetration = penetration
+				best_avoidance = deflect * strength
+
+	if worst_penetration > 0.0:
+		# Blend avoidance into desired direction (stronger avoidance overrides more)
+		var blend: float = clampf(worst_penetration / (50_000.0), 0.3, 0.95)
+		return (desired_dir * (1.0 - blend) + best_avoidance * blend).normalized()
+
+	return desired_dir
 
 
 # === Combat lock ===
