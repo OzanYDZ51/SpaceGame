@@ -2,31 +2,55 @@ class_name VegetationMeshLib
 extends RefCounted
 
 # =============================================================================
-# Vegetation Mesh Library — Procedural ArrayMesh generation via SurfaceTool.
-# Two LOD levels: HIGH (detailed, close range) and LOW (simplified, mid range).
-# All meshes use vertex colors for natural look, no textures.
-# Meshes are cached statically — generated once, shared by all MultiMesh users.
+# Vegetation Mesh Library — Loads .glb models for vegetation, with procedural
+# fallback for types that don't have a model yet.
+# GLBs with multiple meshes are split: biggest = main tree, smaller = variants.
+# Meshes are cached statically — loaded once, shared by all MultiMesh users.
 # =============================================================================
 
 enum VegType { CONIFER, BROADLEAF, PALM, BUSH, ROCK, GRASS }
 enum LOD { HIGH, LOW }
 
-static var _mesh_cache: Dictionary = {}
-static var _mat_cache: Dictionary = {}
+## GLB paths per VegType. Empty string = use procedural fallback.
+const GLB_PATHS: Dictionary = {
+	VegType.CONIFER: "res://assets/models/vegetation/conifer_01.glb",
+	VegType.BROADLEAF: "res://assets/models/vegetation/broadleaf_01.glb",
+	VegType.PALM: "res://assets/models/vegetation/palm_01.glb",
+	VegType.BUSH: "res://assets/models/vegetation/bush_01.glb",
+	VegType.ROCK: "res://assets/models/vegetation/rock_01.glb",
+	VegType.GRASS: "res://assets/models/vegetation/grass_01.glb",
+}
+
+static var _mesh_cache: Dictionary = {}   # key(int) -> Mesh
+static var _mat_cache: Dictionary = {}    # vtype -> Material or null
+static var _glb_cache: Dictionary = {}    # path(String) -> Array[Dictionary] sorted by volume
 
 
-static func get_mesh(vtype: int, lod: int) -> ArrayMesh:
+static func get_mesh(vtype: int, lod: int) -> Mesh:
 	var key: int = vtype * 2 + lod
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var m := _build(vtype, lod)
-	_mesh_cache[key] = m
-	return m
+
+	var mesh: Mesh = _try_load_glb_mesh(vtype, lod)
+	if mesh == null:
+		mesh = _build_procedural(vtype, lod)
+
+	_mesh_cache[key] = mesh
+	return mesh
 
 
+## Returns null for GLB-based types (mesh has its own materials).
+## Returns a StandardMaterial3D for procedural types.
 static func get_material(vtype: int) -> StandardMaterial3D:
 	if _mat_cache.has(vtype):
 		return _mat_cache[vtype]
+
+	# Check if this type has a GLB model available
+	if _has_glb(vtype):
+		_mat_cache[vtype] = null
+		return null
+
+	# Procedural fallback material
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 0.92 if vtype == VegType.ROCK else 0.82
@@ -36,7 +60,93 @@ static func get_material(vtype: int) -> StandardMaterial3D:
 	return mat
 
 
-static func _build(vtype: int, lod: int) -> ArrayMesh:
+# =========================================================================
+# GLB loading
+# =========================================================================
+
+static func _has_glb(vtype: int) -> bool:
+	var path: String = GLB_PATHS.get(vtype, "")
+	if path == "":
+		return false
+	return ResourceLoader.exists(path)
+
+
+## Try to load a mesh from GLB for this VegType.
+## For CONIFER: picks the biggest mesh (main tree).
+## For BUSH: if conifer GLB has a second smaller mesh, uses that.
+## Returns null if no GLB available.
+static func _try_load_glb_mesh(vtype: int, _lod: int) -> Mesh:
+	var path: String = GLB_PATHS.get(vtype, "")
+
+	# Special case: BUSH can fall back to smaller meshes from CONIFER GLB
+	if not _has_glb(vtype) and vtype == VegType.BUSH:
+		var conifer_path: String = GLB_PATHS.get(VegType.CONIFER, "")
+		if ResourceLoader.exists(conifer_path):
+			var entries := _get_glb_meshes(conifer_path)
+			if entries.size() >= 2:
+				return entries[1]["mesh"]  # Second biggest = small plant
+		return null
+
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+
+	var entries := _get_glb_meshes(path)
+	if entries.is_empty():
+		return null
+
+	# Pick the biggest mesh (index 0 after sort)
+	return entries[0]["mesh"]
+
+
+## Extract all MeshInstance3D meshes from a GLB, sorted by AABB volume (biggest first).
+## Cached so each GLB is only loaded once.
+static func _get_glb_meshes(path: String) -> Array:
+	if _glb_cache.has(path):
+		return _glb_cache[path]
+
+	var scene: PackedScene = load(path)
+	if scene == null:
+		_glb_cache[path] = []
+		return []
+
+	var root: Node3D = scene.instantiate()
+	var entries: Array = []
+
+	for child in _get_all_mesh_instances(root):
+		var mi: MeshInstance3D = child
+		if mi.mesh == null:
+			continue
+		var aabb: AABB = mi.mesh.get_aabb()
+		var volume: float = aabb.size.x * aabb.size.y * aabb.size.z
+		entries.append({
+			"mesh": mi.mesh,
+			"volume": volume,
+		})
+
+	# Sort biggest first
+	entries.sort_custom(func(a, b): return a["volume"] > b["volume"])
+
+	# Free the temporary scene instance (meshes are Resource, they persist)
+	root.queue_free()
+
+	_glb_cache[path] = entries
+	return entries
+
+
+static func _get_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
+	var result: Array[MeshInstance3D] = []
+	if node is MeshInstance3D:
+		result.append(node)
+	for child in node.get_children():
+		result.append_array(_get_all_mesh_instances(child))
+	return result
+
+
+# =========================================================================
+# Procedural fallback (for types without GLB models)
+# =========================================================================
+
+static func _build_procedural(vtype: int, lod: int) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
@@ -53,10 +163,9 @@ static func _build(vtype: int, lod: int) -> ArrayMesh:
 
 
 # =========================================================================
-# Primitives
+# Procedural primitives
 # =========================================================================
 
-## Tapered cylinder between two points with vertex noise.
 static func _cylinder(st: SurfaceTool, base: Vector3, top: Vector3, rb: float, rt: float,
 		segs: int, cb: Color, ct: Color, rng: RandomNumberGenerator, noise: float) -> void:
 	var axis := top - base
@@ -77,7 +186,6 @@ static func _cylinder(st: SurfaceTool, base: Vector3, top: Vector3, rb: float, r
 		_tri(st, b0, t1, t0, cb, ct, ct)
 
 
-## Cone from ring base to single apex — foliage layers, tree tops.
 static func _cone(st: SurfaceTool, base: Vector3, apex: Vector3, radius: float,
 		segs: int, cb: Color, ca: Color, rng: RandomNumberGenerator, noise: float) -> void:
 	var axis := apex - base
@@ -97,7 +205,6 @@ static func _cone(st: SurfaceTool, base: Vector3, apex: Vector3, radius: float,
 			_vary(cb, rng, 0.03), _vary(cb, rng, 0.03), ca)
 
 
-## Deformed sphere blob — canopy, bushes, rocks.
 static func _sphere(st: SurfaceTool, center: Vector3, radius: float, rings: int,
 		segs: int, col: Color, rng: RandomNumberGenerator, noise: float, squash_y: float = 1.0) -> void:
 	for r in rings:
@@ -136,7 +243,7 @@ static func _vary(col: Color, rng: RandomNumberGenerator, amt: float) -> Color:
 
 
 # =========================================================================
-# Mesh Builders
+# Procedural mesh builders (fallback)
 # =========================================================================
 
 static func _mk_conifer(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -> void:
@@ -144,9 +251,7 @@ static func _mk_conifer(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -
 	var fsegs := 18 if lod == LOD.HIGH else 8
 	var bark := Color(0.32, 0.20, 0.09)
 	var bark_t := Color(0.38, 0.24, 0.11)
-	# Trunk — 12m, tapers 0.35 → 0.08
 	_cylinder(st, Vector3.ZERO, Vector3(0, 12, 0), 0.35, 0.08, segs, bark, bark_t, rng, 0.025)
-	# 5 foliage cone layers, drooping at outer edge, noisy silhouette
 	var layers := 5 if lod == LOD.HIGH else 3
 	for i in layers:
 		var y := 2.5 + float(i) * 1.9
@@ -155,7 +260,6 @@ static func _mk_conifer(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -
 		var g := Color(0.06 + float(i) * 0.012, 0.28 + float(i) * 0.035, 0.04)
 		var gt := Color(0.10 + float(i) * 0.015, 0.38 + float(i) * 0.025, 0.06)
 		_cone(st, Vector3(0, y - 0.6, 0), Vector3(0, y + 2.0, 0), r, fsegs, g, gt, rng, n)
-	# Pointed leader at top
 	var tg := Color(0.10, 0.36, 0.06)
 	_cone(st, Vector3(0, 11, 0), Vector3(0, 14, 0), 0.9, fsegs, tg, Color(0.14, 0.42, 0.08), rng, 0.2)
 
@@ -163,14 +267,11 @@ static func _mk_conifer(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -
 static func _mk_broadleaf(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -> void:
 	var segs := 12 if lod == LOD.HIGH else 6
 	var bark := Color(0.28, 0.17, 0.07)
-	# Trunk — 6m, tapers 0.5 → 0.25
 	_cylinder(st, Vector3.ZERO, Vector3(0, 6, 0), 0.5, 0.25, segs, bark, bark, rng, 0.03)
-	# Branch forks (HIGH only)
 	if lod == LOD.HIGH:
 		_cylinder(st, Vector3(0, 4.5, 0), Vector3(2.0, 7.5, 0.5), 0.2, 0.08, 8, bark, bark, rng, 0.02)
 		_cylinder(st, Vector3(0, 5, 0), Vector3(-1.2, 8, 1.2), 0.18, 0.07, 8, bark, bark, rng, 0.02)
 		_cylinder(st, Vector3(0, 5.5, 0), Vector3(0.5, 8.5, -1.5), 0.15, 0.06, 8, bark, bark, rng, 0.02)
-	# Canopy — overlapping deformed spheres
 	var sr := 9 if lod == LOD.HIGH else 5
 	var ss := 14 if lod == LOD.HIGH else 7
 	var n := 0.6 if lod == LOD.HIGH else 0.2
@@ -185,7 +286,6 @@ static func _mk_broadleaf(st: SurfaceTool, rng: RandomNumberGenerator, lod: int)
 static func _mk_palm(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -> void:
 	var segs := 10 if lod == LOD.HIGH else 6
 	var bark := Color(0.52, 0.38, 0.22)
-	# Curved trunk — segments along a quadratic curve
 	var trunk_segs := 7 if lod == LOD.HIGH else 3
 	for i in trunk_segs:
 		var t0 := float(i) / trunk_segs
@@ -194,7 +294,6 @@ static func _mk_palm(st: SurfaceTool, rng: RandomNumberGenerator, lod: int) -> v
 		var b := Vector3(lean * t0 * t0, 10.0 * t0, 0)
 		var t := Vector3(lean * t1 * t1, 10.0 * t1, 0)
 		_cylinder(st, b, t, lerpf(0.35, 0.12, t0), lerpf(0.35, 0.12, t1), segs, bark, bark, rng, 0.02)
-	# Frond leaves fanning from crown
 	var crown := Vector3(1.8, 10, 0)
 	var leaf_n := 8 if lod == LOD.HIGH else 4
 	for i in leaf_n:
@@ -246,4 +345,4 @@ static func _mk_grass(st: SurfaceTool, rng: RandomNumberGenerator, _lod: int) ->
 		var gc := _vary(Color(0.15, 0.40, 0.08), rng, 0.04)
 		var gt := _vary(Color(0.30, 0.50, 0.12), rng, 0.04)
 		_tri(st, bl, br, tip, gc, gc, gt)
-		_tri(st, br, bl, tip, gc, gc, gt)  # Back face
+		_tri(st, br, bl, tip, gc, gc, gt)

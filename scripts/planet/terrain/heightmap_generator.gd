@@ -3,25 +3,17 @@ extends RefCounted
 
 # =============================================================================
 # Heightmap Generator — Procedural terrain height via FastNoiseLite
-# Multi-octave FBM + ridged noise for realistic mountains.
-# Returns height values in [0, amplitude] range.
+# Mostly FLAT terrain with localized gentle hills and rare mountain zones.
+# Noise sampled at low scale (100) = few broad features, not hundreds of spikes.
 # =============================================================================
 
 var _noise: FastNoiseLite = null
-var _ridge_noise: FastNoiseLite = null
-var _detail_noise: FastNoiseLite = null
+var _mountain_mask: FastNoiseLite = null
 var _planet_type: PlanetData.PlanetType = PlanetData.PlanetType.ROCKY
-var _amplitude: float = 0.06
+var _amplitude: float = 0.015
 var _ocean_level: float = 0.0
 
-# Per-type noise configs: [frequency, octaves, lacunarity, gain, noise_type]
-const CONFIGS: Dictionary = {
-	"rocky":     [0.6, 7, 2.0, 0.50, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"lava":      [0.9, 7, 2.2, 0.45, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"ocean":     [0.3, 6, 2.0, 0.50, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"ice":       [0.4, 6, 2.0, 0.55, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-	"gas_giant": [0.3, 4, 2.0, 0.50, FastNoiseLite.TYPE_SIMPLEX_SMOOTH],
-}
+const NOISE_SCALE: float = 100.0  # Low scale = broad continental features
 
 
 func setup(seed_val: int, planet_type: PlanetData.PlanetType, amplitude: float, ocean_level: float) -> void:
@@ -29,61 +21,48 @@ func setup(seed_val: int, planet_type: PlanetData.PlanetType, amplitude: float, 
 	_amplitude = amplitude
 	_ocean_level = ocean_level
 
-	var type_key: String = _type_to_key(planet_type)
-	var cfg: Array = CONFIGS.get(type_key, CONFIGS["rocky"])
-
-	# Base terrain FBM
+	# Base terrain — very smooth, few octaves, low frequency
 	_noise = FastNoiseLite.new()
 	_noise.seed = seed_val
-	_noise.noise_type = cfg[4]
-	_noise.frequency = cfg[0]
+	_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_noise.frequency = 0.3
 	_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	_noise.fractal_octaves = cfg[1]
-	_noise.fractal_lacunarity = cfg[2]
-	_noise.fractal_gain = cfg[3]
+	_noise.fractal_octaves = 4
+	_noise.fractal_lacunarity = 2.0
+	_noise.fractal_gain = 0.4
 
-	# Ridge noise for rocky/lava/ice mountains
-	if planet_type in [PlanetData.PlanetType.ROCKY, PlanetData.PlanetType.LAVA, PlanetData.PlanetType.ICE]:
-		_ridge_noise = FastNoiseLite.new()
-		_ridge_noise.seed = seed_val + 1000
-		_ridge_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		_ridge_noise.frequency = cfg[0] * 2.0
-		_ridge_noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
-		_ridge_noise.fractal_octaves = 6
-		_ridge_noise.fractal_lacunarity = 2.2
-		_ridge_noise.fractal_gain = 0.55
-
-	# Detail noise (adds small-scale variation to break up flat areas)
-	_detail_noise = FastNoiseLite.new()
-	_detail_noise.seed = seed_val + 2000
-	_detail_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_detail_noise.frequency = cfg[0] * 6.0
-	_detail_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	_detail_noise.fractal_octaves = 3
-	_detail_noise.fractal_lacunarity = 2.0
-	_detail_noise.fractal_gain = 0.5
+	# Mountain mask — even lower frequency, decides where mountains CAN exist
+	if planet_type != PlanetData.PlanetType.GAS_GIANT:
+		_mountain_mask = FastNoiseLite.new()
+		_mountain_mask.seed = seed_val + 500
+		_mountain_mask.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_mountain_mask.frequency = 0.15
+		_mountain_mask.fractal_type = FastNoiseLite.FRACTAL_FBM
+		_mountain_mask.fractal_octaves = 2
+		_mountain_mask.fractal_lacunarity = 2.0
+		_mountain_mask.fractal_gain = 0.5
 
 
 ## Get height at a unit sphere point. Returns value in [0, amplitude] range.
 func get_height(sphere_point: Vector3) -> float:
-	var nx: float = sphere_point.x
-	var ny: float = sphere_point.y
-	var nz: float = sphere_point.z
+	var sx: float = sphere_point.x * NOISE_SCALE
+	var sy: float = sphere_point.y * NOISE_SCALE
+	var sz: float = sphere_point.z * NOISE_SCALE
 
-	# Base terrain: FBM noise in [-1, 1] → remap to [0, 1]
-	var h: float = (_noise.get_noise_3d(nx * 1000.0, ny * 1000.0, nz * 1000.0) + 1.0) * 0.5
+	# Base terrain noise [-1,1] → [0,1]
+	var h: float = (_noise.get_noise_3d(sx, sy, sz) + 1.0) * 0.5
 
-	# Ridge overlay for rocky/lava/ice — dramatic mountain ranges
-	if _ridge_noise:
-		var ridge: float = _ridge_noise.get_noise_3d(nx * 1000.0, ny * 1000.0, nz * 1000.0)
-		ridge = (ridge + 1.0) * 0.5
-		ridge = ridge * ridge  # Square for sharper peaks
-		h = h * 0.4 + ridge * 0.6
+	# Flatten: crush low/mid values to near-zero, only peaks survive
+	# Power of 3 makes ~80% of terrain nearly flat
+	h = h * h * h
 
-	# Small-scale detail (12% contribution — adds rolling hills, erosion-like features)
-	if _detail_noise:
-		var detail: float = (_detail_noise.get_noise_3d(nx * 1000.0, ny * 1000.0, nz * 1000.0) + 1.0) * 0.5
-		h = h * 0.88 + detail * 0.12
+	# Mountain mask: further restrict WHERE terrain can rise
+	if _mountain_mask:
+		var mask: float = (_mountain_mask.get_noise_3d(sx * 0.5, sy * 0.5, sz * 0.5) + 1.0) * 0.5
+		# Only let terrain rise where mask > 0.55 (about 40% of surface)
+		var factor: float = clampf((mask - 0.55) / 0.45, 0.0, 1.0)
+		# Outside mountain zones: terrain stays at 5% of its value (nearly flat)
+		h = h * (0.05 + 0.95 * factor)
 
 	# Ocean clamping
 	if _ocean_level > 0.0 and h < _ocean_level:

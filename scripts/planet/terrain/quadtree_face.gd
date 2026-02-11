@@ -7,7 +7,7 @@ extends RefCounted
 # Parent chunks linger after split until all children are built (seamless LOD).
 # =============================================================================
 
-const MAX_REBUILDS_PER_FRAME: int = 24
+const MAX_REBUILDS_PER_FRAME: int = 48
 
 var face_index: int = 0
 var root: QuadtreeNode = null

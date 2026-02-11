@@ -8,8 +8,8 @@ extends Node3D
 # Orchestrates all visual subsystems for a single planet.
 # =============================================================================
 
-const MAX_TOTAL_CHUNKS: int = 500
-const UPDATE_INTERVAL: float = 0.125  # 8 Hz quadtree updates
+const MAX_TOTAL_CHUNKS: int = 800
+const UPDATE_INTERVAL: float = 0.0625  # 16 Hz quadtree updates
 
 var planet_data: PlanetData = null
 var planet_index: int = 0
@@ -35,6 +35,7 @@ var _city_lights: CityLightsLayer = null
 var _update_timer: float = 0.0
 var _chunk_debug_timer: float = 0.0
 var _is_active: bool = false
+var _rotation_angle: float = 0.0  # Accumulated axial rotation (radians)
 
 
 func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float, system_seed: int) -> void:
@@ -114,7 +115,16 @@ func _process(delta: float) -> void:
 		float(true_pos_z) - float(FloatingOrigin.origin_offset_z)
 	)
 
-	# Sun direction (star at universe origin)
+	# Axial rotation — accumulate angle then set rotation
+	# (global_position = only sets translation, rotation is preserved)
+	var rot_period: float = planet_data.get_rotation_period() if planet_data else 0.0
+	if rot_period > 0.0:
+		_rotation_angle += TAU / rot_period * delta
+		if _rotation_angle > TAU:
+			_rotation_angle -= TAU
+		rotation.y = _rotation_angle
+
+	# Sun direction (star at universe origin) — world space for shaders
 	var star_local := Vector3(
 		-float(FloatingOrigin.origin_offset_x),
 		-float(FloatingOrigin.origin_offset_y),
@@ -138,10 +148,15 @@ func _process(delta: float) -> void:
 	if cam == null:
 		return
 
+	# Transform camera into planet's local (unrotated) space for LOD calculations.
+	# Quadtree chunks are in local space — their centers are at center_sphere * radius
+	# relative to the planet origin. By working in local space, rotation doesn't break
+	# distance-based LOD decisions.
+	var local_cam: Vector3 = to_local(cam.global_position)
+
 	# Smooth geo-morph factor update every frame (not throttled)
-	var planet_center := global_position
 	for face in _faces:
-		face.update_morph_factors(cam.global_position, planet_center)
+		face.update_morph_factors(local_cam, Vector3.ZERO)
 
 	# Throttled quadtree update (split/merge + mesh rebuilds)
 	_update_timer += delta
@@ -149,19 +164,19 @@ func _process(delta: float) -> void:
 		return
 	_update_timer = 0.0
 
-	_update_quadtrees(cam.global_position)
+	_update_quadtrees(local_cam)
 
 
+## cam_pos is in planet-local space (rotation removed). planet_center = Vector3.ZERO.
 func _update_quadtrees(cam_pos: Vector3) -> void:
-	var planet_center := global_position
 	var total_chunks: int = 0
 
 	for face in _faces:
-		var count: int = face.update(cam_pos, planet_center)
+		var count: int = face.update(cam_pos, Vector3.ZERO)
 		total_chunks += count
 
-	# Altitude (reused for vegetation + collision gating)
-	var altitude: float = cam_pos.distance_to(planet_center) - planet_radius
+	# Altitude: distance from local origin minus radius (rotation-invariant)
+	var altitude: float = cam_pos.length() - planet_radius
 
 	# Vegetation: activate below 5km altitude
 	if _vegetation:
@@ -170,15 +185,13 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 	# Terrain collision: enable trimesh on nearby chunks when close to surface
 	if altitude < 10000.0:
 		for face in _faces:
-			face.update_collision(cam_pos, planet_center)
+			face.update_collision(cam_pos, Vector3.ZERO)
 
 	# Debug log (every 3s)
 	_chunk_debug_timer += UPDATE_INTERVAL
 	if _chunk_debug_timer >= 3.0:
 		_chunk_debug_timer = 0.0
-		var dist_to_cam: float = cam_pos.distance_to(planet_center)
-		var alt: float = dist_to_cam - planet_radius
-		print("[PlanetBody] %s chunks=%d alt=%.0fkm" % [entity_id, total_chunks, alt / 1000.0])
+		print("[PlanetBody] %s chunks=%d alt=%.0fkm" % [entity_id, total_chunks, altitude / 1000.0])
 
 	if total_chunks > MAX_TOTAL_CHUNKS:
 		push_warning("PlanetBody: %d chunks exceeds budget %d" % [total_chunks, MAX_TOTAL_CHUNKS])

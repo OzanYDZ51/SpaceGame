@@ -15,6 +15,8 @@ var _cached_hp_screen: Array[Vector2] = []
 var _cached_wp_size: Vector2 = Vector2.ZERO
 
 var _weapon_panel: Control = null
+var _bg_alpha: float = 0.0
+var _bg_target: float = 0.0
 
 # 3D hologram viewer
 var _vp_container: SubViewportContainer = null
@@ -28,8 +30,15 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_weapon_panel = HudDrawHelpers.make_ctrl(0.5, 1.0, 0.5, 1.0, 140, -175, 390, -10)
+	_weapon_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	_weapon_panel.mouse_entered.connect(func(): _bg_target = 1.0)
+	_weapon_panel.mouse_exited.connect(func(): _bg_target = 0.0)
 	_weapon_panel.draw.connect(_draw_weapon_panel.bind(_weapon_panel))
 	add_child(_weapon_panel)
+
+
+func _process(delta: float) -> void:
+	_bg_alpha = move_toward(_bg_alpha, _bg_target, delta * 5.0)
 
 
 func set_cockpit_mode(is_cockpit: bool) -> void:
@@ -232,12 +241,16 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 	var font := UITheme.get_font_medium()
 	var s := ctrl.size
 
-	ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.06, 0.45))
-	ctrl.draw_line(Vector2(0, 0), Vector2(s.x, 0), UITheme.PRIMARY_DIM, 1.0)
-	ctrl.draw_line(Vector2(0, 0), Vector2(0, 12), UITheme.PRIMARY, 1.5)
-	ctrl.draw_line(Vector2(s.x, 0), Vector2(s.x, 12), UITheme.PRIMARY, 1.5)
-	var sly: float = fmod(scan_line_y, s.y)
-	ctrl.draw_line(Vector2(0, sly), Vector2(s.x, sly), UITheme.SCANLINE, 1.0)
+	if _bg_alpha > 0.001:
+		ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.06, 0.45 * _bg_alpha))
+		var pd := UITheme.PRIMARY_DIM
+		ctrl.draw_line(Vector2(0, 0), Vector2(s.x, 0), Color(pd.r, pd.g, pd.b, pd.a * _bg_alpha), 1.0)
+		var p := UITheme.PRIMARY
+		ctrl.draw_line(Vector2(0, 0), Vector2(0, 12), Color(p.r, p.g, p.b, p.a * _bg_alpha), 1.5)
+		ctrl.draw_line(Vector2(s.x, 0), Vector2(s.x, 12), Color(p.r, p.g, p.b, p.a * _bg_alpha), 1.5)
+		var sl := UITheme.SCANLINE
+		var sly: float = fmod(scan_line_y, s.y)
+		ctrl.draw_line(Vector2(0, sly), Vector2(s.x, sly), Color(sl.r, sl.g, sl.b, sl.a * _bg_alpha), 1.0)
 
 	if weapon_manager == null or ship == null or ship.ship_data == null:
 		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "---", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)

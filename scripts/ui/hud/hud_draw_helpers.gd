@@ -24,13 +24,19 @@ static func draw_section_header(ctrl: Control, font: Font, x: float, y: float, w
 	return y + 18
 
 
-static func draw_panel_bg(ctrl: Control, scan_line_y: float) -> void:
-	ctrl.draw_rect(Rect2(Vector2.ZERO, ctrl.size), UITheme.BG)
-	ctrl.draw_line(Vector2(0, 0), Vector2(ctrl.size.x, 0), UITheme.PRIMARY_DIM, 1.5)
-	ctrl.draw_line(Vector2(0, 0), Vector2(0, 14), UITheme.PRIMARY, 1.5)
-	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x, 14), UITheme.PRIMARY, 1.5)
+static func draw_panel_bg(ctrl: Control, scan_line_y: float, alpha: float = 1.0) -> void:
+	if alpha < 0.001:
+		return
+	var bg := UITheme.BG
+	ctrl.draw_rect(Rect2(Vector2.ZERO, ctrl.size), Color(bg.r, bg.g, bg.b, bg.a * alpha))
+	var pd := UITheme.PRIMARY_DIM
+	ctrl.draw_line(Vector2(0, 0), Vector2(ctrl.size.x, 0), Color(pd.r, pd.g, pd.b, pd.a * alpha), 1.5)
+	var p := UITheme.PRIMARY
+	ctrl.draw_line(Vector2(0, 0), Vector2(0, 14), Color(p.r, p.g, p.b, p.a * alpha), 1.5)
+	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x, 14), Color(p.r, p.g, p.b, p.a * alpha), 1.5)
+	var sl := UITheme.SCANLINE
 	var sy: float = fmod(scan_line_y, ctrl.size.y)
-	ctrl.draw_line(Vector2(0, sy), Vector2(ctrl.size.x, sy), UITheme.SCANLINE, 1.0)
+	ctrl.draw_line(Vector2(0, sy), Vector2(ctrl.size.x, sy), Color(sl.r, sl.g, sl.b, sl.a * alpha), 1.0)
 
 
 static func draw_bar(ctrl: Control, pos: Vector2, width: float, ratio: float, col: Color) -> void:

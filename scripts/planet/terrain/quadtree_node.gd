@@ -6,8 +6,8 @@ extends RefCounted
 # Manages split/merge decisions and creates TerrainChunk leaves.
 # =============================================================================
 
-const SPLIT_THRESHOLD: float = 0.5    # screen_error above which we split (lower = more detail)
-const MERGE_THRESHOLD: float = 0.25   # SPLIT/2 — ensures children start at morph_factor=0 after split
+const SPLIT_THRESHOLD: float = 0.35   # screen_error above which we split (lower = more detail, smoother LOD)
+const MERGE_THRESHOLD: float = 0.175  # SPLIT/2 — ensures children start at morph_factor=0 after split
 const MAX_DEPTH: int = 14             # ~5-20m tiles for 60km radius planet
 
 var face: int = 0

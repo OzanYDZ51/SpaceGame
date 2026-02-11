@@ -24,16 +24,16 @@ func populate(instances: Dictionary) -> void:
 			continue
 		var mat := VegetationMeshLib.get_material(vtype)
 		# HIGH LOD
-		var mesh_hi := VegetationMeshLib.get_mesh(vtype, VegetationMeshLib.LOD.HIGH)
+		var mesh_hi: Mesh = VegetationMeshLib.get_mesh(vtype, VegetationMeshLib.LOD.HIGH)
 		var hi_end := VIS_GRASS_END if vtype == VegetationMeshLib.VegType.GRASS else VIS_HI_END
 		_add_mmi("H%d" % vtype, mesh_hi, mat, xforms, 0.0, hi_end)
 		# LOW LOD (skip grass — too small to see far)
 		if vtype != VegetationMeshLib.VegType.GRASS:
-			var mesh_lo := VegetationMeshLib.get_mesh(vtype, VegetationMeshLib.LOD.LOW)
+			var mesh_lo: Mesh = VegetationMeshLib.get_mesh(vtype, VegetationMeshLib.LOD.LOW)
 			_add_mmi("L%d" % vtype, mesh_lo, mat, xforms, VIS_LO_BEGIN, VIS_LO_END)
 
 
-func _add_mmi(n: String, mesh: ArrayMesh, mat: StandardMaterial3D,
+func _add_mmi(n: String, mesh: Mesh, mat: StandardMaterial3D,
 		xforms: Array, vis_begin: float, vis_end: float) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.name = n
@@ -46,7 +46,8 @@ func _add_mmi(n: String, mesh: ArrayMesh, mat: StandardMaterial3D,
 		mm.set_instance_transform(i, xforms[i])
 		mm.set_instance_color(i, Color.WHITE)
 	mmi.multimesh = mm
-	mmi.material_override = mat
+	if mat != null:
+		mmi.material_override = mat
 	mmi.visibility_range_begin = vis_begin
 	mmi.visibility_range_end = vis_end
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF

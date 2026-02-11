@@ -262,9 +262,12 @@ vec3 get_biome_color(vec2 climate, float height, vec3 sn) {
 
 void vertex() {
 	// Geo-morph: blend vertex between coarse (parent LOD) and fine (current LOD) position
-	// CUSTOM0.xyz = morph delta (fine_pos - coarse_pos)
-	// morph_factor=0 → VERTEX at coarse position, morph_factor=1 → VERTEX at true position
-	VERTEX -= CUSTOM0.xyz * (1.0 - morph_factor);
+	// CUSTOM0.xyz = position morph delta (fine_pos - coarse_pos)
+	// CUSTOM1.xyz = normal morph delta (fine_normal - coarse_normal)
+	// morph_factor=0 → coarse (parent LOD), morph_factor=1 → full detail
+	float inv_morph = 1.0 - morph_factor;
+	VERTEX -= CUSTOM0.xyz * inv_morph;
+	NORMAL = normalize(NORMAL - CUSTOM1.xyz * inv_morph);
 
 	float dist = length(VERTEX);
 	v_height = clamp(dist / planet_radius - 1.0, 0.0, terrain_amplitude * 2.0);

@@ -26,6 +26,7 @@ enum PlanetType { ROCKY, LAVA, OCEAN, GAS_GIANT, ICE }
 @export var heightmap_override: Texture2D = null  ## Override heightmap for hand-crafted planets
 @export var biome_profile: PlanetBiomeProfile = null  ## Custom biome colors (null = type defaults)
 @export var has_civilization: bool = false              ## City lights visible from orbit on night side
+@export var rotation_period: float = 0.0               ## Seconds for one full rotation (0 = auto from type)
 
 
 ## Helper to get type as string (for backwards compat with existing code).
@@ -83,12 +84,24 @@ func get_terrain_amplitude() -> float:
 	if terrain_amplitude > 0.0:
 		return terrain_amplitude
 	match type:
-		PlanetType.ROCKY: return 0.06
-		PlanetType.LAVA: return 0.08
-		PlanetType.OCEAN: return 0.025
-		PlanetType.ICE: return 0.04
-		PlanetType.GAS_GIANT: return 0.008
-	return 0.06
+		PlanetType.ROCKY: return 0.025
+		PlanetType.LAVA: return 0.03
+		PlanetType.OCEAN: return 0.01
+		PlanetType.ICE: return 0.02
+		PlanetType.GAS_GIANT: return 0.005
+	return 0.025
+
+
+## Get rotation period in seconds (time for one full axial rotation).
+func get_rotation_period() -> float:
+	if rotation_period > 0.0:
+		return rotation_period
+	match type:
+		PlanetType.GAS_GIANT: return 600.0    # 10 min — fast spinner like Jupiter
+		PlanetType.LAVA: return 2400.0        # 40 min — slow, tidally locked feel
+		PlanetType.OCEAN: return 1200.0       # 20 min
+		PlanetType.ICE: return 1500.0         # 25 min
+		_: return 1200.0  # ROCKY — 20 min
 
 
 ## Whether this planet type supports landing.

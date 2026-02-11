@@ -15,6 +15,10 @@ var scan_line_y: float = 0.0
 
 var _left_panel: Control = null
 var _economy_panel: Control = null
+var _left_bg_alpha: float = 0.0
+var _left_bg_target: float = 0.0
+var _eco_bg_alpha: float = 0.0
+var _eco_bg_target: float = 0.0
 
 # 3D shield hologram
 var _vp_container: SubViewportContainer = null
@@ -37,15 +41,24 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_left_panel = HudDrawHelpers.make_ctrl(0.0, 0.5, 0.0, 0.5, 16, -195, 242, 113)
+	_left_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	_left_panel.mouse_entered.connect(func(): _left_bg_target = 1.0)
+	_left_panel.mouse_exited.connect(func(): _left_bg_target = 0.0)
 	_left_panel.draw.connect(_draw_left_panel.bind(_left_panel))
 	add_child(_left_panel)
 
 	_economy_panel = HudDrawHelpers.make_ctrl(0.0, 0.0, 0.0, 0.0, 16, 12, 230, 180)
+	_economy_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	_economy_panel.mouse_entered.connect(func(): _eco_bg_target = 1.0)
+	_economy_panel.mouse_exited.connect(func(): _eco_bg_target = 0.0)
 	_economy_panel.draw.connect(_draw_economy_panel.bind(_economy_panel))
 	add_child(_economy_panel)
 
 
 func _process(delta: float) -> void:
+	_left_bg_alpha = move_toward(_left_bg_alpha, _left_bg_target, delta * 5.0)
+	_eco_bg_alpha = move_toward(_eco_bg_alpha, _eco_bg_target, delta * 5.0)
+
 	if not _left_panel or not _left_panel.visible:
 		return
 
@@ -105,7 +118,7 @@ func invalidate_cache() -> void:
 # LEFT PANEL
 # =============================================================================
 func _draw_left_panel(ctrl: Control) -> void:
-	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
+	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y, _left_bg_alpha)
 	var font := UITheme.get_font_medium()
 	var x := 12.0
 	var w := ctrl.size.x - 24.0
@@ -360,14 +373,16 @@ func _draw_economy_panel(ctrl: Control) -> void:
 	ctrl.custom_minimum_size.y = panel_h
 	ctrl.size.y = panel_h
 
-	# --- Panel background ---
-	var bg := Rect2(Vector2.ZERO, Vector2(w, panel_h))
-	ctrl.draw_rect(bg, Color(0.0, 0.02, 0.05, 0.6))
-	# Top + left accent lines
-	ctrl.draw_line(Vector2(0, 0), Vector2(w, 0), UITheme.PRIMARY_DIM, 1.0)
-	ctrl.draw_line(Vector2(0, 0), Vector2(0, 10), UITheme.PRIMARY, 1.5)
-	# Bottom fade line
-	ctrl.draw_line(Vector2(4, panel_h - 1), Vector2(w - 4, panel_h - 1), UITheme.PRIMARY_FAINT, 1.0)
+	# --- Panel background (fade in on hover) ---
+	if _eco_bg_alpha > 0.001:
+		var bg := Rect2(Vector2.ZERO, Vector2(w, panel_h))
+		ctrl.draw_rect(bg, Color(0.0, 0.02, 0.05, 0.6 * _eco_bg_alpha))
+		var pd := UITheme.PRIMARY_DIM
+		ctrl.draw_line(Vector2(0, 0), Vector2(w, 0), Color(pd.r, pd.g, pd.b, pd.a * _eco_bg_alpha), 1.0)
+		var p := UITheme.PRIMARY
+		ctrl.draw_line(Vector2(0, 0), Vector2(0, 10), Color(p.r, p.g, p.b, p.a * _eco_bg_alpha), 1.5)
+		var pf := UITheme.PRIMARY_FAINT
+		ctrl.draw_line(Vector2(4, panel_h - 1), Vector2(w - 4, panel_h - 1), Color(pf.r, pf.g, pf.b, pf.a * _eco_bg_alpha), 1.0)
 
 	var x := 10.0
 	var y := 16.0
@@ -416,5 +431,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.45))
 
 	# Scanline
-	var sy: float = fmod(scan_line_y, panel_h)
-	ctrl.draw_line(Vector2(0, sy), Vector2(w, sy), UITheme.SCANLINE, 1.0)
+	if _eco_bg_alpha > 0.001:
+		var sl := UITheme.SCANLINE
+		var sy: float = fmod(scan_line_y, panel_h)
+		ctrl.draw_line(Vector2(0, sy), Vector2(w, sy), Color(sl.r, sl.g, sl.b, sl.a * _eco_bg_alpha), 1.0)
