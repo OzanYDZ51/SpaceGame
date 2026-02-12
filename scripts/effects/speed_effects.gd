@@ -15,7 +15,6 @@ var _rect: ColorRect = null
 var _shader_mat: ShaderMaterial = null
 var _ship: ShipController = null
 
-var _damage_flash: float = 0.0
 var _cruise_warp: float = 0.0
 var _cruise_spool: float = 0.0    # Smooth spool-up visual intensity
 var _quantum_engage: float = 0.0  # Brief pulse when cruise activates
@@ -46,10 +45,6 @@ func set_ship(ship: ShipController) -> void:
 	_prev_speed_mode = ship.speed_mode
 
 
-func trigger_damage_flash(_attacker: Node3D = null, _amount: float = 0.0) -> void:
-	_damage_flash = 1.0
-
-
 func _process(delta: float) -> void:
 	if _shader_mat == null or _ship == null:
 		return
@@ -74,17 +69,15 @@ func _process(delta: float) -> void:
 	_cruise_warp = lerpf(_cruise_warp, target_warp, delta * (2.5 if target_warp > _cruise_warp else 4.0))
 
 	# Decay flashes
-	_damage_flash = maxf(0.0, _damage_flash - delta * 3.5)
 	_quantum_engage = maxf(0.0, _quantum_engage - delta * 2.5)
 
 	# Hide when no effect active (zero GPU cost)
-	var any_effect: bool = flight_ratio > 0.01 or _cruise_spool > 0.01 or _damage_flash > 0.01 or _cruise_warp > 0.01 or _quantum_engage > 0.01
+	var any_effect: bool = flight_ratio > 0.01 or _cruise_spool > 0.01 or _cruise_warp > 0.01 or _quantum_engage > 0.01
 	_rect.visible = any_effect
 	if not any_effect:
 		return
 
 	_shader_mat.set_shader_parameter("flight_ratio", flight_ratio)
 	_shader_mat.set_shader_parameter("cruise_spool", _cruise_spool)
-	_shader_mat.set_shader_parameter("damage_flash", _damage_flash)
 	_shader_mat.set_shader_parameter("cruise_warp", _cruise_warp)
 	_shader_mat.set_shader_parameter("quantum_engage", _quantum_engage)

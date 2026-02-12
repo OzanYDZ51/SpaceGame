@@ -558,8 +558,8 @@ func _initialize_game() -> void:
 	)
 
 	# Spawn initial NPCs (deferred from system load — NpcAuthority needed first).
-	# Solo or server → spawn locally. Client connected to a server → receive via NpcAuthority.
-	if not NetworkManager.is_connected_to_server() or NetworkManager.is_server():
+	# Server only — clients receive NPCs via NpcAuthority sync.
+	if NetworkManager.is_server():
 		if _encounter_manager:
 			_encounter_manager.spawn_deferred()
 	# Now that network is set up, inject ship_net_sync into ShipChangeManager + LOD
@@ -953,7 +953,6 @@ func current_system_id_safe() -> int:
 	return 0
 
 
-## Solo mode fallback: if still not connected after timeout, spawn NPCs locally.
 # =============================================================================
 # DOCKING (thin relay — DockingSystem.docked fires before _docking_mgr exists at init)
 # =============================================================================

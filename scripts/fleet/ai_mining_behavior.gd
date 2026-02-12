@@ -1,0 +1,585 @@
+class_name AIMiningBehavior
+extends Node
+
+# =============================================================================
+# AI Mining Behavior — Autonomous mining loop for fleet ships
+# Mine → Cargo full → Return to station → Dock → Sell → Undock → Depart → Repeat
+# States: SEARCHING → NAVIGATING → POSITIONING → EXTRACTING → COOLING
+#         → RETURNING → DOCKED → DEPARTING → SEARCHING ...
+# Reuses MiningSystem constants, AsteroidFieldManager API, MiningLaserBeam visual.
+# Supports physical asteroids (near player) and virtual mining (far from player).
+# =============================================================================
+
+enum MiningState { SEARCHING, NAVIGATING, POSITIONING, EXTRACTING, COOLING, RETURNING, DOCKED, DEPARTING }
+
+var fleet_index: int = -1
+var fleet_ship: FleetShip = null
+
+var _state: MiningState = MiningState.SEARCHING
+var _ship: ShipController = null
+var _brain: AIBrain = null
+var _pilot: AIPilot = null
+var _asteroid_mgr: AsteroidFieldManager = null
+
+# Physical mining target (when near player — real AsteroidData from AsteroidFieldManager)
+var _mining_target: AsteroidData = null
+
+# Virtual mining target (when far from player — simulated asteroid)
+var _virtual_target: Dictionary = {}  # { resource_id, health, yield_per_hit, position }
+
+# Mining stats
+var _mining_dps: float = 10.0
+var _mining_tick_timer: float = 0.0
+
+# Heat system (same constants as MiningSystem)
+var heat: float = 0.0
+var is_overheated: bool = false
+
+# Beam visual (only when near player)
+var _beam: MiningLaserBeam = null
+var _beam_visible: bool = false
+const BEAM_VISIBILITY_DIST: float = 2000.0
+
+# Timers
+var _search_timer: float = 0.0
+const SEARCH_INTERVAL: float = 1.0
+const SEARCH_RADIUS: float = 1500.0
+const NAVIGATE_ARRIVE_DIST: float = 150.0
+const POSITIONING_DOT_THRESHOLD: float = 0.9
+
+# Virtual mining
+var _virtual_rng: RandomNumberGenerator = null
+
+# Autonomous sell loop
+var _resource_capacity: int = 50
+var _home_station_id: String = ""
+var _belt_center_x: float = 0.0
+var _belt_center_z: float = 0.0
+const STATION_ARRIVE_DIST: float = 150.0
+const BELT_ARRIVE_DIST: float = 200.0
+
+# Docking state
+var _dock_timer: float = 0.0
+const DOCK_SELL_DELAY: float = 3.0    # seconds docked before selling
+const DOCK_UNDOCK_DELAY: float = 2.0  # seconds after sell before undock
+var _dock_sold: bool = false
+var _saved_collision_layer: int = 0
+var _saved_collision_mask: int = 0
+
+
+func _ready() -> void:
+	_ship = get_parent() as ShipController
+	if _ship == null:
+		return
+
+	await get_tree().process_frame
+	_brain = _ship.get_node_or_null("AIBrain") as AIBrain
+	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot
+
+	# Find AsteroidFieldManager (child of GameManager)
+	_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+
+	# Read mining DPS from equipped mining laser
+	_update_mining_dps()
+
+	# Create beam visual
+	_beam = MiningLaserBeam.new()
+	_beam.name = "AIMiningBeam"
+	add_child(_beam)
+
+	# Virtual RNG for procedural virtual asteroids
+	_virtual_rng = RandomNumberGenerator.new()
+	_virtual_rng.seed = hash(fleet_index) + int(Time.get_unix_time_from_system())
+
+	# Read cargo capacity from ship data
+	if fleet_ship:
+		var ship_data := ShipRegistry.get_ship_data(fleet_ship.ship_id)
+		if ship_data:
+			_resource_capacity = ship_data.cargo_capacity
+		_home_station_id = fleet_ship.docked_station_id
+
+	# Read belt center from FleetAIBridge sibling
+	var bridge := _ship.get_node_or_null("FleetAIBridge") as FleetAIBridge
+	if bridge:
+		_belt_center_x = bridge.command_params.get("center_x", 0.0)
+		_belt_center_z = bridge.command_params.get("center_z", 0.0)
+
+	# Listen to origin shifts for virtual target position correction
+	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
+
+
+func _exit_tree() -> void:
+	# Restore ship if removed while docked (e.g. player gives another order)
+	if _state == MiningState.DOCKED and _ship and is_instance_valid(_ship):
+		_exit_dock()
+	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
+		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
+	if _beam and _beam._active:
+		_beam.deactivate()
+
+
+func _update_mining_dps() -> void:
+	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm == null:
+		return
+	var mining_hps := wm.get_mining_hardpoints_in_group(0)
+	if not mining_hps.is_empty() and mining_hps[0].mounted_weapon:
+		_mining_dps = mining_hps[0].mounted_weapon.damage_per_hit
+
+
+func _process(delta: float) -> void:
+	if _ship == null or _pilot == null:
+		return
+	if _brain == null or _brain.current_state != AIBrain.State.MINING:
+		_stop_beam()
+		return
+
+	# Heat system (always ticks)
+	_update_heat(delta)
+
+	match _state:
+		MiningState.SEARCHING:
+			_tick_searching(delta)
+		MiningState.NAVIGATING:
+			_tick_navigating()
+		MiningState.POSITIONING:
+			_tick_positioning()
+		MiningState.EXTRACTING:
+			_tick_extracting(delta)
+		MiningState.COOLING:
+			_tick_cooling()
+		MiningState.RETURNING:
+			_tick_returning()
+		MiningState.DOCKED:
+			_tick_docked(delta)
+		MiningState.DEPARTING:
+			_tick_departing()
+
+
+# =========================================================================
+# State ticks
+# =========================================================================
+
+func _tick_searching(delta: float) -> void:
+	_search_timer += delta
+	if _search_timer < SEARCH_INTERVAL:
+		return
+	_search_timer = 0.0
+
+	# Try physical asteroid first (near player, cells loaded)
+	var asteroid := _find_physical_asteroid()
+	if asteroid:
+		_mining_target = asteroid
+		_virtual_target = {}
+		_state = MiningState.NAVIGATING
+		return
+
+	# Try virtual mining (check if we're in a belt)
+	var vt := _generate_virtual_target()
+	if not vt.is_empty():
+		_virtual_target = vt
+		_mining_target = null
+		_state = MiningState.NAVIGATING
+		return
+
+
+func _tick_navigating() -> void:
+	var target_pos := _get_target_position()
+	if target_pos == Vector3.ZERO:
+		_state = MiningState.SEARCHING
+		return
+
+	var dist := _pilot.get_distance_to(target_pos)
+	if dist < NAVIGATE_ARRIVE_DIST:
+		_state = MiningState.POSITIONING
+		return
+
+	_pilot.fly_toward(target_pos, NAVIGATE_ARRIVE_DIST)
+
+
+func _tick_positioning() -> void:
+	var target_pos := _get_target_position()
+	if target_pos == Vector3.ZERO:
+		_state = MiningState.SEARCHING
+		return
+
+	# Check if physical target got depleted while we were approaching
+	if _mining_target and _mining_target.is_depleted:
+		_mining_target = null
+		_state = MiningState.SEARCHING
+		return
+
+	# Face the target
+	_pilot.face_target(target_pos)
+	# Zero throttle while aligning
+	_ship.set_throttle(Vector3.ZERO)
+
+	# Check alignment
+	var to_target := (target_pos - _ship.global_position).normalized()
+	var forward := -_ship.global_transform.basis.z
+	if forward.dot(to_target) > POSITIONING_DOT_THRESHOLD:
+		_mining_tick_timer = 0.0
+		_state = MiningState.EXTRACTING
+
+
+func _tick_extracting(delta: float) -> void:
+	if is_overheated:
+		_stop_beam()
+		_state = MiningState.COOLING
+		return
+
+	var target_pos := _get_target_position()
+	if target_pos == Vector3.ZERO:
+		_stop_beam()
+		_state = MiningState.SEARCHING
+		return
+
+	# Check if physical target got depleted
+	if _mining_target and _mining_target.is_depleted:
+		_stop_beam()
+		_mining_target = null
+		_state = MiningState.SEARCHING
+		return
+
+	# Keep facing target
+	_pilot.face_target(target_pos)
+	_ship.set_throttle(Vector3.ZERO)
+
+	# Update beam visual (only if player is nearby)
+	_update_beam_visual(target_pos)
+
+	# Mining tick
+	_mining_tick_timer += delta
+	if _mining_tick_timer >= MiningSystem.MINING_TICK_INTERVAL:
+		_mining_tick_timer -= MiningSystem.MINING_TICK_INTERVAL
+		_do_mining_tick()
+
+
+func _tick_cooling() -> void:
+	# Wait for heat to drop below threshold
+	if not is_overheated:
+		_state = MiningState.SEARCHING
+
+
+func _tick_returning() -> void:
+	if _home_station_id == "":
+		_state = MiningState.SEARCHING
+		return
+	var ent := EntityRegistry.get_entity(_home_station_id)
+	if ent.is_empty():
+		_state = MiningState.SEARCHING
+		return
+	var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+	var dist := _ship.global_position.distance_to(station_pos)
+	if dist < STATION_ARRIVE_DIST:
+		_enter_dock()
+		return
+	_pilot.fly_toward(station_pos, STATION_ARRIVE_DIST)
+
+
+func _enter_dock() -> void:
+	# Stop the ship
+	_ship.set_throttle(Vector3.ZERO)
+	_ship.linear_velocity = Vector3.ZERO
+	_ship.angular_velocity = Vector3.ZERO
+
+	# Hide ship + disable collisions (like a real dock)
+	_ship.visible = false
+	_saved_collision_layer = _ship.collision_layer
+	_saved_collision_mask = _ship.collision_mask
+	_ship.collision_layer = 0
+	_ship.collision_mask = 0
+
+	_dock_timer = 0.0
+	_dock_sold = false
+	_state = MiningState.DOCKED
+
+
+func _exit_dock() -> void:
+	# Restore ship visibility + collisions
+	_ship.visible = true
+	_ship.collision_layer = _saved_collision_layer
+	_ship.collision_mask = _saved_collision_mask
+
+
+func _tick_docked(delta: float) -> void:
+	# Keep ship frozen while docked
+	_ship.set_throttle(Vector3.ZERO)
+	_ship.linear_velocity = Vector3.ZERO
+	_ship.angular_velocity = Vector3.ZERO
+
+	_dock_timer += delta
+
+	# Phase 1: wait DOCK_SELL_DELAY then sell
+	if not _dock_sold and _dock_timer >= DOCK_SELL_DELAY:
+		_dock_sold = true
+		_do_sell_resources()
+
+	# Phase 2: wait DOCK_UNDOCK_DELAY after sell then undock + depart
+	if _dock_sold and _dock_timer >= DOCK_SELL_DELAY + DOCK_UNDOCK_DELAY:
+		_exit_dock()
+		_state = MiningState.DEPARTING
+
+
+func _do_sell_resources() -> void:
+	var total_credits: int = 0
+	for res_id in fleet_ship.ship_resources:
+		var qty: int = fleet_ship.ship_resources[res_id]
+		if qty <= 0:
+			continue
+		var unit_price := PriceCatalog.get_resource_price(res_id)
+		total_credits += unit_price * qty
+		fleet_ship.ship_resources[res_id] = 0
+
+	if total_credits > 0:
+		GameManager.player_data.economy.add_credits(total_credits)
+		SaveManager.mark_dirty()
+		if GameManager._notif:
+			GameManager._notif.fleet.earned(fleet_ship.custom_name, total_credits)
+
+
+func _tick_departing() -> void:
+	var belt_pos := FloatingOrigin.to_local_pos([_belt_center_x, 0.0, _belt_center_z])
+	var dist := _ship.global_position.distance_to(belt_pos)
+	if dist < BELT_ARRIVE_DIST:
+		_state = MiningState.SEARCHING
+		return
+	_pilot.fly_toward(belt_pos, BELT_ARRIVE_DIST)
+
+
+func _get_total_resources() -> int:
+	if fleet_ship == null:
+		return 0
+	var total: int = 0
+	for res_id in fleet_ship.ship_resources:
+		total += fleet_ship.ship_resources[res_id]
+	return total
+
+
+# =========================================================================
+# Mining logic
+# =========================================================================
+
+func _do_mining_tick() -> void:
+	if _mining_target:
+		_do_physical_mining_tick()
+	elif not _virtual_target.is_empty():
+		_do_virtual_mining_tick()
+
+
+func _do_physical_mining_tick() -> void:
+	if _mining_target == null or _mining_target.is_depleted:
+		_state = MiningState.SEARCHING
+		return
+
+	var res := MiningRegistry.get_resource(_mining_target.primary_resource)
+	var difficulty: float = res.mining_difficulty if res else 1.0
+	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
+
+	var yield_data: Dictionary
+	if _mining_target.node_ref and is_instance_valid(_mining_target.node_ref):
+		var node := _mining_target.node_ref as AsteroidNode
+		yield_data = node.take_mining_damage(damage)
+	else:
+		_mining_target.health_current -= damage
+		if _mining_target.health_current <= 0.0:
+			_mining_target.health_current = 0.0
+			_mining_target.is_depleted = true
+			_mining_target.respawn_timer = Constants.ASTEROID_RESPAWN_TIME
+		yield_data = {
+			"resource_id": _mining_target.primary_resource,
+			"quantity": _mining_target.get_yield_per_hit(),
+		}
+
+	_store_yield(yield_data)
+	if _state == MiningState.RETURNING:
+		return  # Cargo full — _store_yield already transitioned
+
+	if _mining_target and _mining_target.is_depleted:
+		# Broadcast depletion
+		if _asteroid_mgr:
+			_asteroid_mgr.on_asteroid_depleted(_mining_target.id)
+		_stop_beam()
+		_mining_target = null
+		_state = MiningState.SEARCHING
+
+
+func _do_virtual_mining_tick() -> void:
+	if _virtual_target.is_empty():
+		_state = MiningState.SEARCHING
+		return
+
+	var resource_id: StringName = _virtual_target["resource_id"]
+	var res := MiningRegistry.get_resource(resource_id)
+	var difficulty: float = res.mining_difficulty if res else 1.0
+	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
+
+	_virtual_target["health"] -= damage
+
+	var yield_data := {
+		"resource_id": resource_id,
+		"quantity": int(_virtual_target["yield_per_hit"]),
+	}
+	_store_yield(yield_data)
+	if _state == MiningState.RETURNING:
+		return  # Cargo full — _store_yield already transitioned
+
+	if _virtual_target["health"] <= 0.0:
+		_stop_beam()
+		_virtual_target = {}
+		_state = MiningState.SEARCHING
+
+
+func _store_yield(yield_data: Dictionary) -> void:
+	if yield_data.is_empty() or yield_data.get("quantity", 0) <= 0:
+		return
+	if fleet_ship == null:
+		return
+	var resource_id: StringName = yield_data["resource_id"]
+	var qty: int = yield_data["quantity"]
+	fleet_ship.add_resource(resource_id, qty)
+
+	# Check if cargo is full → start return trip
+	if _home_station_id != "" and _get_total_resources() >= _resource_capacity:
+		_stop_beam()
+		_mining_target = null
+		_virtual_target = {}
+		_state = MiningState.RETURNING
+
+
+# =========================================================================
+# Heat system (same as MiningSystem)
+# =========================================================================
+
+func _update_heat(delta: float) -> void:
+	if _state == MiningState.EXTRACTING and not is_overheated:
+		heat = minf(heat + MiningSystem.HEAT_RATE * delta, 1.0)
+		if heat >= 1.0:
+			is_overheated = true
+	else:
+		heat = maxf(heat - MiningSystem.COOL_RATE * delta, 0.0)
+		if is_overheated and heat <= MiningSystem.OVERHEAT_THRESHOLD:
+			is_overheated = false
+
+
+# =========================================================================
+# Target finding
+# =========================================================================
+
+func _find_physical_asteroid() -> AsteroidData:
+	if _asteroid_mgr == null:
+		return null
+	return _asteroid_mgr.get_nearest_minable_asteroid(_ship.global_position, SEARCH_RADIUS)
+
+
+func _generate_virtual_target() -> Dictionary:
+	if _asteroid_mgr == null:
+		return {}
+
+	# Check if ship is inside a belt (using universe coords)
+	var upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+	var belt_name := _asteroid_mgr.get_belt_at_position(upos[0], upos[2])
+	if belt_name == "":
+		return {}
+
+	# Find the matching belt data
+	var field: AsteroidFieldData = null
+	for f in _asteroid_mgr._fields:
+		if f.field_name == belt_name:
+			field = f
+			break
+	if field == null:
+		return {}
+
+	# Resource distribution: 60% dominant, 25% secondary, 15% rare
+	var res_roll: float = _virtual_rng.randf()
+	var resource_id: StringName
+	if res_roll < 0.60:
+		resource_id = field.dominant_resource
+	elif res_roll < 0.85:
+		resource_id = field.secondary_resource
+	else:
+		resource_id = field.rare_resource
+
+	# Size distribution: 60% small, 30% medium, 10% large
+	var size_roll: float = _virtual_rng.randf()
+	var health: float
+	var yield_per_hit: int
+	if size_roll < 0.6:
+		health = 50.0; yield_per_hit = 1
+	elif size_roll < 0.9:
+		health = 150.0; yield_per_hit = 2
+	else:
+		health = 400.0; yield_per_hit = 4
+
+	# Virtual position: nearby random offset from ship
+	var angle: float = _virtual_rng.randf() * TAU
+	var dist: float = _virtual_rng.randf_range(80.0, 200.0)
+	var offset := Vector3(cos(angle) * dist, _virtual_rng.randf_range(-20.0, 20.0), sin(angle) * dist)
+
+	return {
+		"resource_id": resource_id,
+		"health": health,
+		"yield_per_hit": yield_per_hit,
+		"position": _ship.global_position + offset,
+	}
+
+
+func _get_target_position() -> Vector3:
+	if _mining_target:
+		if _mining_target.node_ref and is_instance_valid(_mining_target.node_ref):
+			return _mining_target.node_ref.global_position
+		return _mining_target.position
+	if not _virtual_target.is_empty():
+		return _virtual_target["position"]
+	return Vector3.ZERO
+
+
+# =========================================================================
+# Beam visual
+# =========================================================================
+
+func _update_beam_visual(target_pos: Vector3) -> void:
+	var player := GameManager.player_ship
+	if player == null or not is_instance_valid(player):
+		_stop_beam()
+		return
+
+	var dist_to_player := _ship.global_position.distance_to(player.global_position)
+	if dist_to_player > BEAM_VISIBILITY_DIST:
+		_stop_beam()
+		return
+
+	# Get beam source position from mining hardpoint
+	var source_pos := _get_beam_source()
+
+	if not _beam._active:
+		_beam.activate(source_pos, target_pos)
+		_beam_visible = true
+	_beam.update_beam(source_pos, target_pos)
+
+
+func _get_beam_source() -> Vector3:
+	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm:
+		var mining_hps := wm.get_mining_hardpoints_in_group(0)
+		if not mining_hps.is_empty():
+			return mining_hps[0].get_muzzle_transform_stable().origin
+	return _ship.global_position
+
+
+func _stop_beam() -> void:
+	if _beam and _beam._active:
+		_beam.deactivate()
+		_beam_visible = false
+
+
+# =========================================================================
+# Floating origin
+# =========================================================================
+
+func _on_origin_shifted(shift: Vector3) -> void:
+	# Physical asteroid positions are shifted by AsteroidFieldManager.
+	# Virtual target position needs manual correction.
+	if not _virtual_target.is_empty():
+		_virtual_target["position"] -= shift

@@ -7,6 +7,12 @@ extends Node
 # Obstacle avoidance delegated to ObstacleSensor component
 # =============================================================================
 
+# --- Navigation tuning ---
+const DECEL_START_FACTOR: float = 3.0          # Start braking at 3x arrival distance
+const AVOIDANCE_BRAKE_THRESHOLD: float = 300.0 # Brake if obstacle closer than 300m
+const APPROACH_OFFSET_AMOUNT: float = 150.0    # Lateral offset for intercept approach
+const ORBIT_ANGULAR_SPEED: float = 0.8         # Orbit speed in combat (rad/s)
+
 var _ship: ShipController = null
 var _cached_wm: WeaponManager = null
 var _cached_targeting: TargetingSystem = null
@@ -19,6 +25,13 @@ var _maneuver_timer: float = 0.0
 # Evasion jink
 var _jink_offset: Vector3 = Vector3.ZERO
 var _jink_timer: float = 0.0
+
+# Intercept approach offset (persistent until close)
+var _approach_offset_dir: Vector3 = Vector3.ZERO
+var _approach_offset_set: bool = false
+
+# Orbit angle for combat circling
+var _orbit_angle: float = 0.0
 
 # LOS check mask for fire_at_target (stations + asteroids)
 const LOS_COLLISION_MASK: int = 6
@@ -57,6 +70,29 @@ func fly_intercept(target: Node3D, arrival_dist: float = 50.0) -> void:
 	var time_to_intercept: float = clampf(dist / closing_speed, 0.0, 5.0)
 
 	var intercept_pos: Vector3 = target_pos + target_vel * time_to_intercept
+
+	# Lateral offset approach: at long range, don't fly straight at the target
+	if dist > 1200.0:
+		if not _approach_offset_set:
+			# Generate a persistent lateral offset direction (perpendicular to approach)
+			var fwd := to_target.normalized()
+			var up := Vector3.UP
+			var right := fwd.cross(up).normalized()
+			if right.length_squared() < 0.5:
+				right = fwd.cross(Vector3.RIGHT).normalized()
+			# Random: left or right, slight vertical
+			_approach_offset_dir = (right * (1.0 if randf() > 0.5 else -1.0) + up * randf_range(-0.3, 0.3)).normalized()
+			_approach_offset_set = true
+		intercept_pos += _approach_offset_dir * APPROACH_OFFSET_AMOUNT
+	elif dist < arrival_dist * DECEL_START_FACTOR:
+		# Close enough: clear offset for final convergence
+		_approach_offset_set = false
+	else:
+		# Medium range: fade offset linearly
+		if _approach_offset_set:
+			var fade := clampf((dist - arrival_dist * DECEL_START_FACTOR) / (1200.0 - arrival_dist * DECEL_START_FACTOR), 0.0, 1.0)
+			intercept_pos += _approach_offset_dir * APPROACH_OFFSET_AMOUNT * fade
+
 	fly_toward(intercept_pos, arrival_dist)
 
 
@@ -99,6 +135,23 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 	else:
 		fwd_throttle = 0.0  # Facing away: just turn
 
+	# --- Progressive deceleration near target ---
+	var decel_zone := arrival_dist * DECEL_START_FACTOR
+	if dist < decel_zone:
+		var decel_t := clampf(dist / decel_zone, 0.0, 1.0)
+		fwd_throttle *= decel_t  # Linear ramp-down to zero at arrival
+
+	# --- Obstacle braking ---
+	if _obstacle_sensor:
+		var obs_dist := _obstacle_sensor.nearest_obstacle_dist
+		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:
+			var brake_factor := clampf(obs_dist / AVOIDANCE_BRAKE_THRESHOLD, 0.1, 1.0)
+			fwd_throttle *= brake_factor
+
+		# Emergency: full reverse
+		if _obstacle_sensor.is_emergency:
+			fwd_throttle = 1.0  # Positive Z = reverse thrust
+
 	# If actively avoiding, add lateral strafe thrust for faster clearance
 	var strafe := Vector3.ZERO
 	if avoid.length_squared() > 100.0:
@@ -118,24 +171,15 @@ func face_target(target_pos: Vector3) -> void:
 		return
 	to_target = to_target.normalized()
 
-	# Transform target direction into ship's LOCAL space
-	# In local space: +X = right, +Y = up, -Z = forward
 	var local_dir: Vector3 = _ship.global_transform.basis.inverse() * to_target
 
-	# atan2 gives correct angles for ALL directions (including behind the ship)
-	# Yaw: angle from forward (-Z) projected onto XZ plane
-	# Negate local_dir.x because positive yaw_rate = turn LEFT (CCW from above)
-	# and positive local_dir.x = target is to the RIGHT (need negative rate)
 	var yaw_error: float = rad_to_deg(atan2(-local_dir.x, -local_dir.z))
-	# Pitch: elevation angle — positive = target above = pitch UP
 	var xz_len: float = sqrt(local_dir.x * local_dir.x + local_dir.z * local_dir.z)
 	var pitch_error: float = rad_to_deg(atan2(local_dir.y, xz_len))
 
 	var pitch_speed := _ship.ship_data.rotation_pitch_speed if _ship.ship_data else 30.0
 	var yaw_speed := _ship.ship_data.rotation_yaw_speed if _ship.ship_data else 25.0
 
-	# Proportional gain (4x) — combined with rotation_responsiveness=3.0 on the
-	# ShipController, this gives the AI fast, smooth tracking.
 	var pitch_rate: float = clampf(pitch_error * 4.0, -pitch_speed, pitch_speed)
 	var yaw_rate: float = clampf(yaw_error * 4.0, -yaw_speed, yaw_speed)
 
@@ -146,16 +190,16 @@ func face_target(target_pos: Vector3) -> void:
 # COMBAT
 # =============================================================================
 func update_combat_maneuver(delta: float) -> void:
-	# Maintain a consistent strafe direction for 1-2.5 seconds before changing.
-	# This prevents the jittery random-per-tick movement.
 	_maneuver_timer -= delta
 	if _maneuver_timer <= 0.0:
 		_maneuver_timer = randf_range(1.0, 2.5)
 		_maneuver_dir = Vector3(
 			randf_range(-0.7, 0.7),
 			randf_range(-0.3, 0.3),
-			randf_range(-0.4, 0.1)  # Mostly forward-neutral
+			randf_range(-0.4, 0.1)
 		)
+	# Advance orbit angle
+	_orbit_angle += ORBIT_ANGULAR_SPEED * delta
 
 
 func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> void:
@@ -176,11 +220,24 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 		# Too close: back away while strafing
 		throttle = Vector3(_maneuver_dir.x, _maneuver_dir.y, 0.6)
 	elif dist_to_target < preferred_range * 0.7:
-		# Slightly close: orbit/strafe
-		throttle = Vector3(_maneuver_dir.x * 0.8, _maneuver_dir.y * 0.5, 0.0)
+		# Orbit zone: circular strafing around target
+		var orbit_x := cos(_orbit_angle) * 0.8
+		var orbit_z := sin(_orbit_angle) * 0.3  # Slight in-out oscillation
+		throttle = Vector3(orbit_x, _maneuver_dir.y * 0.3, orbit_z)
 	else:
-		# Sweet spot: slow approach with strafing
-		throttle = Vector3(_maneuver_dir.x * 0.5, _maneuver_dir.y * 0.3, -0.25)
+		# Sweet spot: orbit + gentle approach
+		var orbit_x := cos(_orbit_angle) * 0.5
+		throttle = Vector3(orbit_x + _maneuver_dir.x * 0.3, _maneuver_dir.y * 0.2, -0.2)
+
+	# --- Obstacle braking during combat ---
+	if _obstacle_sensor:
+		var obs_dist := _obstacle_sensor.nearest_obstacle_dist
+		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:
+			var brake_factor := clampf(obs_dist / AVOIDANCE_BRAKE_THRESHOLD, 0.1, 1.0)
+			throttle.z *= brake_factor
+
+		if _obstacle_sensor.is_emergency:
+			throttle.z = 0.6  # Back away
 
 	# Override strafe with avoidance if an obstacle is nearby
 	if avoid.length_squared() > 100.0:
@@ -199,7 +256,6 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	if _cached_wm == null:
 		return
 
-	# Calculate lead position
 	var target_pos: Vector3
 	if _cached_targeting:
 		_cached_targeting.current_target = target
@@ -207,7 +263,6 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	else:
 		target_pos = target.global_position
 
-	# Add inaccuracy based on accuracy_mod
 	var inaccuracy := (1.0 - accuracy_mod) * 12.0
 	target_pos += Vector3(
 		randf_range(-inaccuracy, inaccuracy),
@@ -215,12 +270,10 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 		randf_range(-inaccuracy, inaccuracy)
 	)
 
-	# Relaxed firing cone: ~41 degrees (was 25). AI can shoot while maneuvering.
 	var to_target: Vector3 = (target_pos - _ship.global_position).normalized()
 	var forward: Vector3 = -_ship.global_transform.basis.z
 	var dot: float = forward.dot(to_target)
 	if dot > 0.75:
-		# Line of sight check: don't fire through stations or asteroids
 		var space := _ship.get_world_3d().direct_space_state
 		if space:
 			var los_query := PhysicsRayQueryParameters3D.create(
@@ -253,6 +306,11 @@ func evade_random(delta: float, amplitude: float = 30.0, frequency: float = 2.0)
 		).normalized() * amplitude
 
 	var throttle := Vector3(signf(_jink_offset.x), signf(_jink_offset.y), -1.0)
+
+	# Emergency: reverse thrust instead of charging forward
+	if _obstacle_sensor and _obstacle_sensor.is_emergency:
+		throttle.z = 0.8  # Back away
+
 	if avoid.length_squared() > 100.0:
 		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
 		throttle.x = clampf(local_avoid.x, -1.0, 1.0)

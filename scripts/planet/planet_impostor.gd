@@ -86,10 +86,7 @@ func _create_rings() -> void:
 
 
 func _process(_delta: float) -> void:
-	# Axial rotation
-	if planet_data and planet_data.get_rotation_period() > 0.0:
-		var rot_speed: float = TAU / planet_data.get_rotation_period()
-		_mesh_instance.rotate_y(rot_speed * _delta)
+	# Axial rotation — disabled
 
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:

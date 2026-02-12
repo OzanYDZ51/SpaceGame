@@ -76,7 +76,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		return
 
 	# All mission commands: ignore threats, focus on destination
-	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction"])
+	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction", &"mine"])
 	_brain.target = null
 
 	match cmd:
@@ -120,6 +120,17 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 				_brain.current_state = AIBrain.State.PATROL
 			else:
 				_mark_arrived(target_pos)
+		&"mine":
+			var center_x: float = params.get("center_x", 0.0)
+			var center_z: float = params.get("center_z", 0.0)
+			var target_pos := FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
+			var dist: float = _ship.global_position.distance_to(target_pos)
+			if dist > MOVE_ARRIVE_DIST:
+				_brain.set_patrol_area(target_pos, 50.0)
+				_brain.current_state = AIBrain.State.PATROL
+			else:
+				_brain.current_state = AIBrain.State.MINING
+				_arrived = true
 		&"return_to_station":
 			_returning = true
 			# Preserve existing _station_id (set during deployment) if params don't include one
@@ -176,6 +187,16 @@ func _process(_delta: float) -> void:
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
 
+	# Monitor mine arrival — switch to MINING state when close
+	if command == &"mine" and not _arrived:
+		var cx: float = command_params.get("center_x", 0.0)
+		var cz: float = command_params.get("center_z", 0.0)
+		var target_pos := FloatingOrigin.to_local_pos([cx, 0.0, cz])
+		var dist: float = _ship.global_position.distance_to(target_pos)
+		if dist < MOVE_ARRIVE_DIST:
+			_arrived = true
+			_brain.current_state = AIBrain.State.MINING
+
 	# Monitor move_to arrival
 	if command == &"move_to" and not _arrived:
 		var target_x: float = command_params.get("target_x", 0.0)
@@ -221,6 +242,10 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 			var tx: float = command_params.get("target_x", 0.0)
 			var tz: float = command_params.get("target_z", 0.0)
 			_brain.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 50.0)
+		&"mine":
+			var cx: float = command_params.get("center_x", 0.0)
+			var cz: float = command_params.get("center_z", 0.0)
+			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), 50.0)
 		&"patrol":
 			var cx: float = command_params.get("center_x", 0.0)
 			var cz: float = command_params.get("center_z", 0.0)

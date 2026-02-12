@@ -12,8 +12,9 @@ const CELL_SIZE: float = 500.0
 const LOAD_RADIUS: float = 2500.0
 const UNLOAD_RADIUS: float = 3500.0
 const EVAL_INTERVAL: float = 0.5
-const MAX_CELLS: int = 80
+const MAX_CELLS: int = 120
 const ALTITUDE_MAX: float = 5000.0
+const MAX_CELLS_PER_EVAL: int = 5  # Max new cells to load per evaluation (prevents frame spike)
 
 var _biome_gen: BiomeGenerator = null
 var _heightmap: HeightmapGenerator = null
@@ -69,9 +70,9 @@ func _evaluate_cells() -> void:
 	if cam == null:
 		return
 
-	var planet_center: Vector3 = get_parent().global_position
+	var planet_body: Node3D = get_parent()
 	var cam_pos := cam.global_position
-	var to_cam := cam_pos - planet_center
+	var to_cam := cam_pos - planet_body.global_position
 	var dist := to_cam.length()
 	var altitude := dist - _planet_radius
 
@@ -80,8 +81,10 @@ func _evaluate_cells() -> void:
 			_clear_all()
 		return
 
-	# Player sphere point & lat/lon
-	var sp := to_cam.normalized()
+	# Player sphere point in planet LOCAL space (rotation-invariant).
+	# Without this, planet rotation would cause cell lat/lon drift.
+	var local_cam: Vector3 = planet_body.to_local(cam_pos)
+	var sp := local_cam.normalized()
 	var lat := asin(clampf(sp.y, -1.0, 1.0))
 	var lon := atan2(sp.z, sp.x)
 	var pcell_lat := floori(lat / _angular_cell)
@@ -113,12 +116,16 @@ func _evaluate_cells() -> void:
 	for key in to_remove:
 		_unload_cell(key)
 
-	# Load new cells
+	# Load new cells (amortized: max N per evaluation to avoid frame spikes)
+	var loaded_this_eval: int = 0
 	for key: Vector2i in desired:
 		if _loaded_cells.size() >= MAX_CELLS:
 			break
+		if loaded_this_eval >= MAX_CELLS_PER_EVAL:
+			break
 		if not _loaded_cells.has(key):
 			_load_cell(key, desired[key])
+			loaded_this_eval += 1
 
 
 # =========================================================================
@@ -185,13 +192,15 @@ func _make_instance(cell_key: Vector2i, cell_sp: Vector3, cell_surface: Vector3,
 	var basis := Basis(right, up, forward)
 	basis = basis * Basis(Vector3.UP, rng.randf() * TAU)
 
-	# Scale: trees/palms larger variance, grass/rocks less
-	var s_min := 0.6
-	var s_max := 1.4
-	if vtype == _VT.GRASS:
-		s_min = 0.5; s_max = 1.2
+	# Scale: trees/bushes big, rocks small
+	var s_min := 1.2
+	var s_max := 2.5
+	if vtype == _VT.BUSH:
+		s_min = 1.0; s_max = 2.0
+	elif vtype == _VT.GRASS:
+		s_min = 0.7; s_max = 1.5
 	elif vtype == _VT.ROCK:
-		s_min = 0.4; s_max = 2.5
+		s_min = 0.3; s_max = 1.0
 	var s := rng.randf_range(s_min, s_max)
 	basis = basis.scaled(Vector3(s, s, s))
 
@@ -207,31 +216,31 @@ func _get_recipe(biome: int) -> Dictionary:
 	var r: Dictionary = {}
 	match biome:
 		BiomeTypes.Biome.FOREST:
-			r = { _VT.CONIFER: int(6 * d), _VT.BROADLEAF: int(6 * d),
-				_VT.BUSH: int(8 * d), _VT.GRASS: int(22 * d), _VT.ROCK: 1 }
+			r = { _VT.CONIFER: int(14 * d), _VT.BROADLEAF: int(14 * d),
+				_VT.BUSH: int(18 * d), _VT.GRASS: int(45 * d), _VT.ROCK: 2 }
 		BiomeTypes.Biome.RAINFOREST:
-			r = { _VT.BROADLEAF: int(8 * d), _VT.PALM: int(4 * d),
-				_VT.BUSH: int(10 * d), _VT.GRASS: int(28 * d) }
+			r = { _VT.BROADLEAF: int(18 * d), _VT.PALM: int(10 * d),
+				_VT.BUSH: int(22 * d), _VT.GRASS: int(55 * d) }
 		BiomeTypes.Biome.TAIGA:
-			r = { _VT.CONIFER: int(10 * d), _VT.BUSH: int(4 * d), _VT.ROCK: 2 }
+			r = { _VT.CONIFER: int(22 * d), _VT.BUSH: int(10 * d), _VT.ROCK: 3 }
 		BiomeTypes.Biome.GRASSLAND:
-			r = { _VT.BROADLEAF: int(4 * d), _VT.BUSH: int(6 * d),
-				_VT.GRASS: int(30 * d), _VT.ROCK: 1 }
+			r = { _VT.BROADLEAF: int(10 * d), _VT.BUSH: int(14 * d),
+				_VT.GRASS: int(60 * d), _VT.ROCK: 2 }
 		BiomeTypes.Biome.SAVANNA:
-			r = { _VT.BROADLEAF: int(3 * d), _VT.BUSH: int(4 * d),
-				_VT.GRASS: int(18 * d), _VT.ROCK: 2 }
+			r = { _VT.BROADLEAF: int(8 * d), _VT.BUSH: int(10 * d),
+				_VT.GRASS: int(40 * d), _VT.ROCK: 3 }
 		BiomeTypes.Biome.BEACH:
-			r = { _VT.PALM: 2, _VT.BUSH: 1, _VT.ROCK: 2 }
+			r = { _VT.PALM: 5, _VT.BUSH: 3, _VT.ROCK: 2 }
 		BiomeTypes.Biome.TUNDRA:
-			r = { _VT.BUSH: int(4 * d), _VT.ROCK: 3 }
+			r = { _VT.BUSH: int(10 * d), _VT.ROCK: 4 }
 		BiomeTypes.Biome.MOUNTAIN:
-			r = { _VT.CONIFER: int(4 * d), _VT.ROCK: 4 }
+			r = { _VT.CONIFER: int(10 * d), _VT.ROCK: 5 }
 		BiomeTypes.Biome.DESERT:
-			r = { _VT.ROCK: 3 }
-		BiomeTypes.Biome.SNOW:
-			r = { _VT.ROCK: 2 }
-		BiomeTypes.Biome.VOLCANIC:
 			r = { _VT.ROCK: 4 }
+		BiomeTypes.Biome.SNOW:
+			r = { _VT.ROCK: 3 }
+		BiomeTypes.Biome.VOLCANIC:
+			r = { _VT.ROCK: 5 }
 	# Remove zero-count entries
 	var clean: Dictionary = {}
 	for k: int in r:

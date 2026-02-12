@@ -463,13 +463,18 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	else:
 		var parent := _universe_node if _universe_node else get_tree().current_scene
 		var spawn_id: StringName = data.ship_id if data.ship_id != &"" else data.ship_class
+		var is_fleet: bool = data.fleet_index >= 0
 		node = ShipFactory.spawn_npc_ship(
-			spawn_id, data.behavior_name, data.position, parent, data.faction, true
+			spawn_id, data.behavior_name, data.position, parent, data.faction, true, is_fleet
 		)
 		if node == null:
 			data.is_promoting = false
 			return
 		node.name = String(id)
+		# Fleet ships: re-equip custom loadout + always process
+		if is_fleet:
+			node.process_mode = Node.PROCESS_MODE_ALWAYS
+			_reequip_fleet_ship(node, data.fleet_index)
 
 	if (data.is_remote_player or data.is_server_npc) and _universe_node:
 		_universe_node.add_child(node)
@@ -669,6 +674,71 @@ func _tick_combat_bridge() -> void:
 
 	for dead_id in dead_ids:
 		unregister_ship(dead_id)
+
+
+# =============================================================================
+# FLEET SHIP RE-EQUIPMENT (after LOD re-promotion)
+# =============================================================================
+
+func _reequip_fleet_ship(npc: ShipController, fleet_index: int) -> void:
+	var fleet: PlayerFleet = GameManager.player_data.fleet if GameManager.player_data else null
+	if fleet == null or fleet_index < 0 or fleet_index >= fleet.ships.size():
+		return
+	var fs: FleetShip = fleet.ships[fleet_index]
+
+	# Weapons
+	var wm := npc.get_node_or_null("WeaponManager") as WeaponManager
+	if wm:
+		wm.equip_weapons(fs.weapons)
+
+	# Shield / Engine / Modules
+	var em := npc.get_node_or_null("EquipmentManager") as EquipmentManager
+	if em == null:
+		em = EquipmentManager.new()
+		em.name = "EquipmentManager"
+		npc.add_child(em)
+		em.setup(npc.ship_data)
+	if fs.shield_name != &"":
+		var shield_res := ShieldRegistry.get_shield(fs.shield_name)
+		if shield_res:
+			em.equip_shield(shield_res)
+	if fs.engine_name != &"":
+		var engine_res := EngineRegistry.get_engine(fs.engine_name)
+		if engine_res:
+			em.equip_engine(engine_res)
+	for i in fs.modules.size():
+		if fs.modules[i] != &"":
+			var mod_res := ModuleRegistry.get_module(fs.modules[i])
+			if mod_res:
+				em.equip_module(i, mod_res)
+
+	# Re-attach FleetAIBridge + AIMiningBehavior
+	if npc.get_node_or_null("FleetAIBridge") == null:
+		var bridge := FleetAIBridge.new()
+		bridge.name = "FleetAIBridge"
+		bridge.fleet_index = fleet_index
+		bridge.command = fs.deployed_command
+		bridge.command_params = fs.deployed_command_params
+		bridge._station_id = fs.docked_station_id
+		npc.add_child(bridge)
+
+	if fs.deployed_command == &"mine" and npc.get_node_or_null("AIMiningBehavior") == null:
+		var mining_behavior := AIMiningBehavior.new()
+		mining_behavior.name = "AIMiningBehavior"
+		mining_behavior.fleet_index = fleet_index
+		mining_behavior.fleet_ship = fs
+		npc.add_child(mining_behavior)
+
+	# Re-connect death signal
+	var health := npc.get_node_or_null("HealthSystem") as HealthSystem
+	var fdm := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	if health and fdm:
+		if not health.ship_destroyed.is_connected(fdm._on_fleet_npc_died):
+			health.ship_destroyed.connect(fdm._on_fleet_npc_died.bind(fleet_index, npc))
+
+	# Update deployed_ships ref
+	if fdm:
+		fdm._deployed_ships[fleet_index] = npc
 
 
 # =============================================================================

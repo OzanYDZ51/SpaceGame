@@ -64,8 +64,8 @@ func _on_destroyed() -> void:
 	if _station.is_in_group("structures"):
 		_station.remove_from_group("structures")
 
-	# Drop loot (solo only — in multiplayer, server handles via StructureAuthority)
-	if not NetworkManager.is_connected_to_server() or NetworkManager.is_server():
+	# Drop loot (server only — clients receive via StructureAuthority)
+	if NetworkManager.is_server():
 		_drop_loot()
 
 	station_destroyed.emit(_station.station_name if "station_name" in _station else _station.name)

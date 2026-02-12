@@ -289,6 +289,7 @@ func _do_mining_tick() -> void:
 
 func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 	if not NetworkManager.is_connected_to_server():
+		push_warning("MiningSystem: skipping asteroid depletion broadcast — not connected to server")
 		return
 	var id_str := String(asteroid_id)
 	if NetworkManager.is_host:

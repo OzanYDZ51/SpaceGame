@@ -40,17 +40,17 @@ const PALETTES: Dictionary = {
 ## Vegetation density per biome (0-1). Used by future VegetationSpawner.
 const VEGETATION_DENSITY: Dictionary = {
 	Biome.OCEAN: 0.0,
-	Biome.BEACH: 0.05,
-	Biome.DESERT: 0.02,
-	Biome.SAVANNA: 0.25,
-	Biome.GRASSLAND: 0.55,
-	Biome.FOREST: 0.85,
-	Biome.RAINFOREST: 0.95,
-	Biome.TAIGA: 0.55,
-	Biome.TUNDRA: 0.08,
+	Biome.BEACH: 0.15,
+	Biome.DESERT: 0.05,
+	Biome.SAVANNA: 0.45,
+	Biome.GRASSLAND: 0.75,
+	Biome.FOREST: 1.0,
+	Biome.RAINFOREST: 1.0,
+	Biome.TAIGA: 0.75,
+	Biome.TUNDRA: 0.15,
 	Biome.SNOW: 0.0,
 	Biome.VOLCANIC: 0.0,
-	Biome.MOUNTAIN: 0.10,
+	Biome.MOUNTAIN: 0.20,
 }
 
 ## Roughness per biome (for PBR terrain shader).

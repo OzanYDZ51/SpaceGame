@@ -36,7 +36,7 @@ func clear_all_npcs() -> void:
 
 func spawn_system_encounters(danger_level: int, system_data: StarSystemData) -> void:
 	# Only the server spawns NPCs. Clients receive them via NpcAuthority sync.
-	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+	if not NetworkManager.is_server():
 		return
 
 	# During initial load, NetworkSyncManager (and NpcAuthority) don't exist yet.

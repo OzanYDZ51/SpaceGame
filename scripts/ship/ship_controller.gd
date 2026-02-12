@@ -95,13 +95,15 @@ var _refs_cached: bool = false
 var planetary_gravity: Vector3 = Vector3.ZERO         ## Gravity direction * strength (m/s²)
 var atmospheric_drag: float = 0.0                     ## 0-1 drag factor
 var planetary_max_speed_override: float = 0.0         ## 0 = no override, >0 = cap speed
-var planetary_orbit_velocity: Vector3 = Vector3.ZERO  ## Frame-dragging: planet orbital velocity
-var planetary_rotation_velocity: Vector3 = Vector3.ZERO  ## Frame-dragging: planet axial rotation velocity
+var planetary_orbit_velocity: Vector3 = Vector3.ZERO  ## Frame-dragging: planet orbital velocity (target)
+var planetary_rotation_velocity: Vector3 = Vector3.ZERO  ## Frame-dragging: planet axial rotation velocity (target)
+var _smoothed_orbit_vel: Vector3 = Vector3.ZERO  ## Smoothed frame-dragging velocity (actually applied)
 var _near_planet_surface: bool = false                ## True when in atmosphere (blocks cruise)
 
-# --- Planet proximity guard (set by PlanetApproachManager, used per-frame in _integrate_forces) ---
+# --- Planet proximity guard (used per-frame in _integrate_forces) ---
 var _planet_guard_center: Vector3 = Vector3.ZERO  ## Nearest planet center (world coords)
-var _planet_guard_radius: float = 0.0             ## Nearest planet render_radius (0 = no planet)
+var _planet_guard_radius: float = 0.0             ## Nearest planet surface_radius including terrain (0 = no planet)
+var _planet_guard_body: PlanetBody = null          ## Direct ref for per-frame position update
 
 # --- Planet collision avoidance (pure distance-based) ---
 var _planet_check_timer: float = 0.0
@@ -465,11 +467,13 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# FRAME-DRAGGING: subtract orbital velocity before speed limits, add back after.
 	# Speed caps apply to movement RELATIVE to the planet, so the ship naturally
 	# matches the planet's orbit without it eating into flight speed.
+	# Smoothed to avoid velocity jumps when PlanetApproachManager updates at 10Hz.
 	# =========================================================================
-	var orbit_vel := planetary_orbit_velocity + planetary_rotation_velocity
-	var has_orbit_drag := orbit_vel.length_squared() > 0.1
+	var target_orbit_vel := planetary_orbit_velocity
+	_smoothed_orbit_vel = _smoothed_orbit_vel.lerp(target_orbit_vel, minf(16.0 * dt, 1.0))
+	var has_orbit_drag := _smoothed_orbit_vel.length_squared() > 0.1
 	if has_orbit_drag:
-		state.linear_velocity -= orbit_vel
+		state.linear_velocity -= _smoothed_orbit_vel
 
 	# =========================================================================
 	# SPEED LIMIT (Fix 2: per-axis cap in local space)
@@ -512,35 +516,13 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		max_lat = minf(max_lat, planetary_max_speed_override)
 		max_vert = minf(max_vert, planetary_max_speed_override)
 
-	# =========================================================================
-	# PLANET PROXIMITY GUARD — per-frame altitude-based speed cap
-	# Star Citizen-style: cruise continues but speed decreases naturally with
-	# altitude. No abrupt cruise exit — just a smooth deceleration curve.
-	# At altitude h, max speed = h * 0.5 → need 2s at full speed to reach surface.
-	# Also handles emergency push-out if ship ends up inside the planet.
-	# =========================================================================
+	# Planet proximity: exit cruise warp when close to surface
 	if _planet_guard_radius > 0.0:
+		if _planet_guard_body and is_instance_valid(_planet_guard_body):
+			_planet_guard_center = _planet_guard_body.global_position
 		var alt: float = state.transform.origin.distance_to(_planet_guard_center) - _planet_guard_radius
-		if alt <= 0.0:
-			# Emergency: ship is INSIDE the planet — push out to surface + 500m
-			var dir_out: Vector3 = (state.transform.origin - _planet_guard_center)
-			if dir_out.length_squared() < 1.0:
-				dir_out = Vector3.UP
-			dir_out = dir_out.normalized()
-			state.transform.origin = _planet_guard_center + dir_out * (_planet_guard_radius + 500.0)
-			state.linear_velocity = dir_out * 50.0
-			if speed_mode == Constants.SpeedMode.CRUISE:
-				_exit_cruise()
-		elif alt < 80_000.0:
-			# Smooth altitude-based speed cap (makes tunneling impossible)
-			# 80km → 40 km/s, 10km → 5 km/s, 1km → 500 m/s, 200m → 100 m/s
-			var safe_speed: float = maxf(100.0, alt * 0.5)
-			max_speed_fwd = minf(max_speed_fwd, safe_speed)
-			max_lat = minf(max_lat, safe_speed)
-			max_vert = minf(max_vert, safe_speed)
-			# Exit cruise warp (re-enable collision) when close, but keep cruise mode
-			if cruise_warp_active and alt < 50_000.0:
-				_exit_cruise_warp()
+		if cruise_warp_active and alt < 50_000.0:
+			_exit_cruise_warp()
 
 	var local_vel: Vector3 = ship_basis.inverse() * state.linear_velocity
 	local_vel.x = clampf(local_vel.x, -max_lat, max_lat)
@@ -550,7 +532,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	# Re-add orbital velocity after speed clamping (frame-dragging)
 	if has_orbit_drag:
-		state.linear_velocity += orbit_vel
+		state.linear_velocity += _smoothed_orbit_vel
 
 	current_speed = state.linear_velocity.length()
 
@@ -624,13 +606,9 @@ func _check_planet_collision(delta: float) -> void:
 					_exit_cruise()
 				break
 
-	# Set proximity guard for the nearest planet (used per-frame in _integrate_forces).
-	# This covers the gap between approach manager updates (10 Hz).
-	if nearest_dist < nearest_rr + 100_000.0:  # Within 100km of surface
-		_planet_guard_center = nearest_center
-		_planet_guard_radius = nearest_rr
-	elif _planet_guard_radius > 0.0 and nearest_dist > nearest_rr + 120_000.0:
-		_planet_guard_radius = 0.0  # Hysteresis: clear guard when well beyond range
+	# NOTE: Planet proximity guard (_planet_guard_center/radius) is now set exclusively
+	# by PlanetApproachManager._apply_to_ship() which has the correct surface radius
+	# (including terrain amplitude). Do NOT override it here to avoid conflicts.
 
 
 # === Cruise exit ===
@@ -714,10 +692,12 @@ func reset_flight_state() -> void:
 	planetary_max_speed_override = 0.0
 	planetary_orbit_velocity = Vector3.ZERO
 	planetary_rotation_velocity = Vector3.ZERO
+	_smoothed_orbit_vel = Vector3.ZERO
 	_near_planet_surface = false
 	planet_avoidance_active = false
 	_planet_guard_center = Vector3.ZERO
 	_planet_guard_radius = 0.0
+	_planet_guard_body = null
 	throttle_input = Vector3.ZERO
 	_target_pitch_rate = 0.0
 	_target_yaw_rate = 0.0
@@ -766,7 +746,7 @@ func _run_autopilot() -> void:
 	if autopilot_is_gate:
 		decel_dist = AUTOPILOT_GATE_DECEL_DIST
 	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
-		decel_dist = arrival_dist + 100_000.0  # Start slowing 100km before orbit
+		decel_dist = arrival_dist + 40_000.0  # Start slowing 40km before orbit (planet guard handles safety)
 	else:
 		decel_dist = AUTOPILOT_DECEL_DIST
 	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:

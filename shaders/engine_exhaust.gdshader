@@ -1,0 +1,105 @@
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
+
+// =============================================================================
+// Engine Exhaust Core — Thick volumetric plume shader (Star Citizen style)
+// Applied to a CylinderMesh — nearly cylindrical, NOT a thin cone.
+// Produces a fat, solid-looking plasma plume with HDR bloom.
+// =============================================================================
+
+uniform vec3 color_core : source_color = vec3(0.85, 0.92, 1.0);
+uniform vec3 color_mid : source_color = vec3(0.3, 0.6, 1.0);
+uniform vec3 color_tip : source_color = vec3(0.15, 0.35, 0.9);
+uniform float intensity : hint_range(0.0, 30.0) = 10.0;
+uniform float throttle : hint_range(0.0, 2.0) = 1.0;
+uniform float flame_length : hint_range(0.5, 6.0) = 1.0;
+uniform float flicker_speed : hint_range(0.0, 20.0) = 8.0;
+uniform float flicker_strength : hint_range(0.0, 1.0) = 0.35;
+uniform float pulse_speed : hint_range(0.0, 5.0) = 2.5;
+uniform float pulse_amount : hint_range(0.0, 0.5) = 0.15;
+uniform float boost_glow : hint_range(0.0, 1.0) = 0.0;
+
+float hash(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = hash(i);
+	float b = hash(i + vec2(1.0, 0.0));
+	float c = hash(i + vec2(0.0, 1.0));
+	float d = hash(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p, float t) {
+	float val = 0.0;
+	float amp = 0.5;
+	vec2 shift = vec2(t * 0.7, t * 0.3);
+	for (int i = 0; i < 4; i++) {
+		val += amp * noise(p + shift);
+		p *= 2.1;
+		shift *= 1.3;
+		amp *= 0.5;
+	}
+	return val;
+}
+
+void vertex() {
+	// Breathing pulse
+	float pulse = 1.0 + sin(TIME * pulse_speed) * pulse_amount * throttle;
+	// Boost swells the nozzle area
+	float nozzle_prox = 1.0 - clamp(abs(VERTEX.z) / max(flame_length * 3.0, 0.1), 0.0, 1.0);
+	float boost_swell = 1.0 + boost_glow * nozzle_prox * 0.5;
+	VERTEX.xy *= pulse * boost_swell;
+	VERTEX.z *= flame_length;
+}
+
+void fragment() {
+	float z_pos = UV.y;
+	float radial = abs(UV.x - 0.5) * 2.0;
+
+	// Z-gradient: very bright at nozzle, holds intensity longer, then fades
+	float z_fade = 1.0 - smoothstep(0.1, 0.95, z_pos);
+	float z_core = pow(max(1.0 - z_pos, 0.0), 1.8);
+
+	// Radial: thick center, softer edges — less aggressive falloff for fat plume
+	float r_fade = 1.0 - smoothstep(0.0, 0.95, radial);
+	float r_core = pow(max(1.0 - radial, 0.0), 2.0);
+
+	// Noise flicker — bigger turbulence cells for chunky look
+	float flicker_t = TIME * flicker_speed;
+	float n1 = fbm(vec2(z_pos * 3.0, radial * 1.5), flicker_t);
+	float n2 = fbm(vec2(z_pos * 6.0 + 5.0, radial * 3.0 + 3.0), flicker_t * 1.3);
+	float flicker = mix(1.0, 0.55 + n1 * 0.45 + n2 * 0.25, flicker_strength);
+
+	// Color temperature
+	vec3 col;
+	if (z_pos < 0.1) {
+		col = mix(color_core, color_mid, z_pos / 0.1);
+	} else if (z_pos < 0.5) {
+		col = mix(color_mid, mix(color_mid, color_tip, 0.5), (z_pos - 0.1) / 0.4);
+	} else {
+		col = mix(mix(color_mid, color_tip, 0.5), color_tip, (z_pos - 0.5) / 0.5);
+	}
+
+	// Hot nozzle ring
+	float nozzle_ring = pow(max(1.0 - z_pos * 6.0, 0.0), 2.5) * r_fade;
+	float ring_boost = nozzle_ring * (1.0 + boost_glow * 5.0);
+
+	float alpha = z_fade * r_fade * flicker * throttle;
+	float core_boost = z_core * r_core * 3.0;
+
+	float final_intensity = intensity * throttle;
+	vec3 emission = col * (alpha + core_boost + ring_boost) * final_intensity;
+
+	// White-hot punch at nozzle during boost
+	emission += vec3(1.0, 0.95, 0.9) * ring_boost * boost_glow * intensity * 0.6;
+
+	ALBEDO = emission;
+	ALPHA = clamp((alpha + ring_boost * 0.4) * throttle, 0.0, 1.0);
+}

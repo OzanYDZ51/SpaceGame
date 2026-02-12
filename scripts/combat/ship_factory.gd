@@ -261,7 +261,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 		var death_pos: Vector3 = ship.global_position
 		var npc_name := StringName(ship.name)
 
-		# On server: broadcast death via NpcAuthority (clients get loot via RPC)
+		# Server only: broadcast death via NpcAuthority (clients get loot via RPC)
 		if NetworkManager.is_server():
 			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 			if npc_auth and npc_auth._npcs.has(npc_name):
@@ -278,23 +278,6 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 					crate.contents = drops
 					crate.global_position = death_pos
 					ship.get_parent().call_deferred("add_child", crate)
-		elif not NetworkManager.is_connected_to_server():
-			# Solo mode: spawn loot crate locally
-			var drops := LootTable.roll_drops(ship.ship_data.ship_class)
-			if not drops.is_empty():
-				var crate := CargoCrate.new()
-				crate.contents = drops
-				crate.position = death_pos
-				ship.get_parent().call_deferred("add_child", crate)
-		else:
-			# Client connected to server — local NPC shouldn't exist, but if it does
-			# (timing race), spawn loot locally for responsiveness
-			var drops := LootTable.roll_drops(ship.ship_data.ship_class)
-			if not drops.is_empty():
-				var crate := CargoCrate.new()
-				crate.contents = drops
-				crate.position = death_pos
-				ship.get_parent().call_deferred("add_child", crate)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system

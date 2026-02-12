@@ -22,7 +22,7 @@ var _camera: ShipCamera = null
 var _universe: Node3D = null
 var _main_scene: Node3D = null
 
-var _engine_trail: EngineTrail = null
+var _engine_exhaust: EngineExhaust = null
 var _speed_effects: SpeedEffects = null
 var _gforce: GForceEffects = null
 var _motion_blur: MotionBlur = null
@@ -42,8 +42,8 @@ func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main
 			if child.name == "SpaceDust" or child.name == "NebulaWisps":
 				child.queue_free()
 
-	# --- Engine Trails (child of ShipModel) ---
-	_create_engine_trail()
+	# --- Engine Exhaust (child of ShipModel) ---
+	_create_engine_exhaust()
 
 	# --- Speed Effects (CanvasLayer, fullscreen post-process) ---
 	if speed_effects_enabled:
@@ -51,7 +51,6 @@ func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main
 		_speed_effects.name = "SpeedEffects"
 		main_scene.add_child(_speed_effects)
 		_speed_effects.set_ship(ship)
-		_connect_damage_flash(ship)
 
 	# --- G-force overlay (CanvasLayer) ---
 	_gforce = GForceEffects.new()
@@ -76,7 +75,6 @@ func on_ship_rebuilt(new_ship: ShipController) -> void:
 	# Rewire subsystems that persist across ship changes
 	if _speed_effects:
 		_speed_effects.set_ship(new_ship)
-		_connect_damage_flash(new_ship)
 	if _gforce:
 		_gforce.set_ship(new_ship)
 	if _camera:
@@ -94,25 +92,25 @@ func on_ship_rebuilt(new_ship: ShipController) -> void:
 
 func _recreate_ship_model_effects() -> void:
 	# Destroy old
-	if _engine_trail and is_instance_valid(_engine_trail):
-		_engine_trail.queue_free()
-		_engine_trail = null
+	if _engine_exhaust and is_instance_valid(_engine_exhaust):
+		_engine_exhaust.queue_free()
+		_engine_exhaust = null
 
 	# Recreate on new ShipModel
-	_create_engine_trail()
+	_create_engine_exhaust()
 
 
-func _create_engine_trail() -> void:
+func _create_engine_exhaust() -> void:
 	if _ship == null or not engine_trails_enabled:
 		return
 	var model := _ship.get_node_or_null("ShipModel") as ShipModel
 	if model == null:
 		return
 	var vfx_pts := _get_vfx_points()
-	_engine_trail = EngineTrail.new()
-	_engine_trail.name = "EngineTrail"
-	model.add_child(_engine_trail)
-	_engine_trail.setup(model.model_scale, model.engine_light_color, vfx_pts)
+	_engine_exhaust = EngineExhaust.new()
+	_engine_exhaust.name = "EngineExhaust"
+	model.add_child(_engine_exhaust)
+	_engine_exhaust.setup(model.model_scale, model.engine_light_color, vfx_pts)
 
 
 func _create_motion_blur() -> void:
@@ -121,13 +119,6 @@ func _create_motion_blur() -> void:
 	_motion_blur = MotionBlur.new()
 	_motion_blur.name = "MotionBlur"
 	_camera.add_child(_motion_blur)
-
-
-func _connect_damage_flash(ship: ShipController) -> void:
-	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
-	if health and _speed_effects:
-		if not health.damage_taken.is_connected(_speed_effects.trigger_damage_flash):
-			health.damage_taken.connect(_speed_effects.trigger_damage_flash)
 
 
 ## Called when entering a new star system to update nebula wisp colors/opacity.
@@ -156,9 +147,9 @@ func set_all_enabled(enabled: bool) -> void:
 
 	# Ship-model effects: destroy or recreate
 	if not enabled:
-		if _engine_trail and is_instance_valid(_engine_trail):
-			_engine_trail.queue_free()
-			_engine_trail = null
+		if _engine_exhaust and is_instance_valid(_engine_exhaust):
+			_engine_exhaust.queue_free()
+			_engine_exhaust = null
 	else:
 		_recreate_ship_model_effects()
 
@@ -175,9 +166,9 @@ func _process(_delta: float) -> void:
 
 	var throttle: float = clampf(_ship.throttle_input.length(), 0.0, 1.0)
 
-	# Update engine trail intensity from ship throttle
-	if _engine_trail and is_instance_valid(_engine_trail):
-		_engine_trail.update_intensity(throttle)
+	# Update engine exhaust (throttle + speed mode aware)
+	if _engine_exhaust and is_instance_valid(_engine_exhaust):
+		_engine_exhaust.update_intensity(throttle, _ship.speed_mode)
 
 	# Update motion blur intensity based on ship speed
 	if _motion_blur and is_instance_valid(_motion_blur):

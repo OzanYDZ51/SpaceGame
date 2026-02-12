@@ -6,8 +6,8 @@ extends Node
 # Child of GameManager. Spawns fleet NPCs, manages AI bridge, handles death.
 # =============================================================================
 
-const SPAWN_OFFSET_MIN: float = 200.0
-const SPAWN_OFFSET_MAX: float = 500.0
+const SPAWN_OFFSET_MIN: float = 1800.0
+const SPAWN_OFFSET_MAX: float = 2200.0
 const FLEET_FACTION: StringName = &"player_fleet"
 
 var _fleet: PlayerFleet = null
@@ -57,7 +57,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	# Random offset around station (facing away from station)
 	var angle: float = randf() * TAU
 	var dist: float = randf_range(SPAWN_OFFSET_MIN, SPAWN_OFFSET_MAX)
-	var offset := Vector3(cos(angle) * dist, randf_range(-50.0, 50.0), sin(angle) * dist)
+	var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
 	var spawn_pos := station_local_pos + offset
 
 	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
@@ -65,6 +65,9 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	if npc == null:
 		push_error("FleetDeploy: spawn_npc_ship FAILED for ship_id '%s'" % fs.ship_id)
 		return false
+
+	# Fleet NPCs must process even when Universe is disabled (player docked)
+	npc.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# Orient ship facing away from station (Godot forward = -Z)
 	if offset.length_squared() > 1.0:
@@ -106,6 +109,14 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	bridge._station_id = fs.docked_station_id
 	npc.add_child(bridge)
 
+	# Attach AIMiningBehavior if mining order
+	if cmd == &"mine":
+		var mining_behavior := AIMiningBehavior.new()
+		mining_behavior.name = "AIMiningBehavior"
+		mining_behavior.fleet_index = fleet_index
+		mining_behavior.fleet_ship = fs
+		npc.add_child(mining_behavior)
+
 	# Connect death signal
 	var health := npc.get_node_or_null("HealthSystem") as HealthSystem
 	if health:
@@ -133,6 +144,13 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	fs.deployed_npc_id = npc_id
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
+
+	# Tag ShipLODData so LOD re-promotion re-equips custom loadout
+	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	if lod_mgr:
+		var lod_data := lod_mgr.get_ship_data(npc_id)
+		if lod_data:
+			lod_data.fleet_index = fleet_index
 
 	_deployed_ships[fleet_index] = npc
 	_fleet.fleet_changed.emit()
@@ -197,6 +215,18 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 	var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
 	if bridge:
 		bridge.apply_command(cmd, params)
+
+	# Manage AIMiningBehavior lifecycle
+	var existing_mining := npc.get_node_or_null("AIMiningBehavior")
+	if cmd == &"mine":
+		if existing_mining == null:
+			var mining_behavior := AIMiningBehavior.new()
+			mining_behavior.name = "AIMiningBehavior"
+			mining_behavior.fleet_index = fleet_index
+			mining_behavior.fleet_ship = fs
+			npc.add_child(mining_behavior)
+	elif existing_mining:
+		existing_mining.queue_free()
 
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
@@ -278,50 +308,45 @@ func get_deployed_npc(fleet_index: int) -> ShipController:
 # =========================================================================
 # MULTIPLAYER-AWARE PUBLIC API
 # =========================================================================
-# These methods route through server RPCs when connected to multiplayer,
-# or execute locally in singleplayer.
+# These methods route through server RPCs when client,
+# or execute via NpcAuthority when server.
 
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
 		var params_json := JSON.stringify(params) if not params.is_empty() else ""
 		NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json)
-	elif NetworkManager.is_server():
-		# Host: go through NpcAuthority for proper broadcasting
+	else:
+		# Server: go through NpcAuthority for proper broadcasting
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 		if npc_auth:
 			npc_auth.handle_fleet_deploy_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
 		else:
 			deploy_ship(fleet_index, cmd, params)
-	else:
-		# Singleplayer
-		deploy_ship(fleet_index, cmd, params)
 
 
 func request_retrieve(fleet_index: int) -> void:
 	if _is_multiplayer_client():
 		NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
-	elif NetworkManager.is_server():
+	else:
+		# Server: go through NpcAuthority for proper broadcasting
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 		if npc_auth:
 			npc_auth.handle_fleet_retrieve_request(NetworkManager.local_peer_id, fleet_index)
 		else:
 			retrieve_ship(fleet_index)
-	else:
-		retrieve_ship(fleet_index)
 
 
 func request_change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
 		var params_json := JSON.stringify(params) if not params.is_empty() else ""
 		NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
-	elif NetworkManager.is_server():
+	else:
+		# Server: go through NpcAuthority for proper broadcasting
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 		if npc_auth:
 			npc_auth.handle_fleet_command_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
 		else:
 			change_command(fleet_index, cmd, params)
-	else:
-		change_command(fleet_index, cmd, params)
 
 
 func _is_multiplayer_client() -> bool:

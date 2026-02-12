@@ -69,10 +69,9 @@ func update(cam_pos: Vector3, planet_center: Vector3, planet_radius: float) -> i
 		# Should we split?
 		if error > SPLIT_THRESHOLD and depth < MAX_DEPTH:
 			_split()
-			# Recursively update new children
-			for child in children:
-				rebuilds += child.update(cam_pos, planet_center, planet_radius)
-			return rebuilds
+			# Do NOT recursively update children — they'll be processed next cycle.
+			# This prevents cascading splits (depth 0→14 in one frame).
+			return 4  # Signal that 4 new leaves need chunks
 		# Leaf is fine at current depth
 		return 0
 

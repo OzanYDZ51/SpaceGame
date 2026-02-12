@@ -34,6 +34,19 @@ var _sync_timer: float = 0.0
 var _accumulated_delta: float = 0.0
 const SYNC_INTERVAL: float = 0.1  # 10 Hz position sync
 
+## Set of entity IDs whose orbital motion is frozen (player is nearby).
+var _frozen_orbits: Dictionary = {}  # id -> true
+
+
+## Freeze an entity's orbital motion (call when player approaches a planet).
+func freeze_orbit(id: String) -> void:
+	_frozen_orbits[id] = true
+
+
+## Unfreeze an entity's orbital motion (call when player leaves).
+func unfreeze_orbit(id: String) -> void:
+	_frozen_orbits.erase(id)
+
 
 func register(id: String, data: Dictionary) -> void:
 	data["id"] = id
@@ -152,6 +165,9 @@ func _process(delta: float) -> void:
 				ent["vel_y"] = float(vel.y)
 				ent["vel_z"] = float(vel.z)
 		elif ent.get("orbital_radius", 0.0) > 0.0 and ent.get("orbital_period", 0.0) > 0.0:
+			# Skip orbital update if frozen (player is near this planet)
+			if _frozen_orbits.has(ent["id"]):
+				continue
 			# Deterministic orbit from unix time — all clients compute the same
 			# angle regardless of when they loaded the system.
 			ent["orbital_angle"] = compute_orbital_angle(ent["orbital_angle_base"], ent["orbital_period"])

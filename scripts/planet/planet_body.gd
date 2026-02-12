@@ -10,6 +10,7 @@ extends Node3D
 
 const MAX_TOTAL_CHUNKS: int = 800
 const UPDATE_INTERVAL: float = 0.0625  # 16 Hz quadtree updates
+const GLOBAL_REBUILD_BUDGET: int = 12  # Total mesh rebuilds across all 6 faces per update
 
 var planet_data: PlanetData = null
 var planet_index: int = 0
@@ -31,6 +32,7 @@ var _cloud_layer: CloudLayer = null
 var _atmo_renderer: AtmosphereRenderer = null
 var _vegetation: VegetationScatter = null
 var _city_lights: CityLightsLayer = null
+var _cached_atmo_config: AtmosphereConfig = null
 
 var _update_timer: float = 0.0
 var _chunk_debug_timer: float = 0.0
@@ -88,11 +90,22 @@ func activate() -> void:
 	visible = true
 
 
+## Fully deactivate (hides + frees resources). Called after despawn fade completes.
 func deactivate() -> void:
 	_is_active = false
 	visible = false
 	for face in _faces:
 		face.free_all()
+	if _vegetation:
+		_vegetation.set_active(false)
+
+
+## Soft deactivate: stop expensive processing but KEEP VISIBLE for crossfade.
+## Called when starting DESPAWNING_BODY — the body stays visible while the
+## impostor fades in, then deactivate() + queue_free() when fade completes.
+func deactivate_soft() -> void:
+	_is_active = false
+	# visible stays true — LOD manager will free us after impostor fade-in completes
 	if _vegetation:
 		_vegetation.set_active(false)
 
@@ -115,14 +128,7 @@ func _process(delta: float) -> void:
 		float(true_pos_z) - float(FloatingOrigin.origin_offset_z)
 	)
 
-	# Axial rotation — accumulate angle then set rotation
-	# (global_position = only sets translation, rotation is preserved)
-	var rot_period: float = planet_data.get_rotation_period() if planet_data else 0.0
-	if rot_period > 0.0:
-		_rotation_angle += TAU / rot_period * delta
-		if _rotation_angle > TAU:
-			_rotation_angle -= TAU
-		rotation.y = _rotation_angle
+	# Axial rotation — disabled
 
 	# Sun direction (star at universe origin) — world space for shaders
 	var star_local := Vector3(
@@ -171,6 +177,11 @@ func _process(delta: float) -> void:
 func _update_quadtrees(cam_pos: Vector3) -> void:
 	var total_chunks: int = 0
 
+	# Distribute global rebuild budget evenly across faces (2 per face by default)
+	var per_face: int = maxi(1, GLOBAL_REBUILD_BUDGET / 6)
+	for face in _faces:
+		face.max_rebuilds_per_frame = per_face
+
 	for face in _faces:
 		var count: int = face.update(cam_pos, Vector3.ZERO)
 		total_chunks += count
@@ -183,15 +194,13 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 		_vegetation.set_active(altitude < 5000.0)
 
 	# Terrain collision: enable trimesh on nearby chunks when close to surface
+	# Budget: max 2 total collision shapes per update (trimesh creation is expensive)
 	if altitude < 10000.0:
+		var col_budget: int = 2
 		for face in _faces:
-			face.update_collision(cam_pos, Vector3.ZERO)
-
-	# Debug log (every 3s)
-	_chunk_debug_timer += UPDATE_INTERVAL
-	if _chunk_debug_timer >= 3.0:
-		_chunk_debug_timer = 0.0
-		print("[PlanetBody] %s chunks=%d alt=%.0fkm" % [entity_id, total_chunks, altitude / 1000.0])
+			if col_budget <= 0:
+				break
+			col_budget -= face.update_collision(cam_pos, Vector3.ZERO, col_budget)
 
 	if total_chunks > MAX_TOTAL_CHUNKS:
 		push_warning("PlanetBody: %d chunks exceeds budget %d" % [total_chunks, MAX_TOTAL_CHUNKS])
@@ -255,10 +264,18 @@ func _create_city_lights(pd: PlanetData, terrain_seed: int) -> void:
 # =========================================================================
 
 ## Get the distance from a world position to the planet surface (negative = inside).
+## Uses actual heightmap terrain height at the ship's position for accuracy.
 func get_altitude(world_pos: Vector3) -> float:
 	var to_center: Vector3 = world_pos - global_position
 	var dist: float = to_center.length()
-	var surface_radius: float = planet_radius * (1.0 + planet_data.get_terrain_amplitude() * 0.5)
+	if dist < 0.01:
+		return 0.0
+	# Sample actual terrain height at this direction on the sphere
+	var sphere_point: Vector3 = to_center / dist  # Unit sphere direction
+	var terrain_h: float = 0.0
+	if _heightmap:
+		terrain_h = _heightmap.get_height(sphere_point)
+	var surface_radius: float = planet_radius * (1.0 + terrain_h)
 	return dist - surface_radius
 
 
@@ -267,9 +284,11 @@ func get_center_direction(world_pos: Vector3) -> Vector3:
 	return (global_position - world_pos).normalized()
 
 
-## Get atmosphere config for this planet.
+## Get atmosphere config for this planet (cached — no allocation per call).
 func get_atmosphere_config() -> AtmosphereConfig:
-	return AtmosphereConfig.from_planet_data(planet_data) if planet_data else null
+	if _cached_atmo_config == null and planet_data:
+		_cached_atmo_config = AtmosphereConfig.from_planet_data(planet_data)
+	return _cached_atmo_config
 
 
 ## Free all resources.

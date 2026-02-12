@@ -8,14 +8,15 @@ extends Node
 
 const BODY_SPAWN_DISTANCE: float = 100_000.0     # 100 km — spawn PlanetBody
 const BODY_DESPAWN_DISTANCE: float = 120_000.0    # 120 km — despawn (hysteresis)
-const FADE_DURATION: float = 4.0                  # Seconds for smooth crossfade
+const FADE_DURATION: float = 2.0                  # Seconds for crossfade (after body is ready)
+const BODY_READY_WAIT: float = 3.0                # Max time to wait for body chunks before fading
 
 var _planets: Array[Dictionary] = []
 # Each: { "data": PlanetData, "index": int, "entity_id": String,
 #          "impostor": PlanetImpostor, "body": PlanetBody, "state": int,
-#          "fade_t": float, "system_seed": int }
+#          "fade_t": float, "wait_t": float, "system_seed": int }
 
-enum State { IMPOSTOR, SPAWNING_BODY, BODY_ACTIVE, DESPAWNING_BODY }
+enum State { IMPOSTOR, WAITING_BODY, FADING_IN, BODY_ACTIVE, DESPAWNING_BODY }
 
 var _update_timer: float = 0.0
 const UPDATE_INTERVAL: float = 0.5  # Check distances every 0.5s
@@ -30,6 +31,7 @@ func register_planet(pd: PlanetData, index: int, entity_id: String, impostor: Pl
 		"body": null,
 		"state": State.IMPOSTOR,
 		"fade_t": 0.0,
+		"wait_t": 0.0,
 		"system_seed": system_seed,
 	})
 
@@ -86,7 +88,8 @@ func _check_distances() -> void:
 			State.IMPOSTOR:
 				if dist < spawn_dist:
 					_spawn_body(planet)
-					planet["state"] = State.SPAWNING_BODY
+					planet["state"] = State.WAITING_BODY
+					planet["wait_t"] = 0.0
 					planet["fade_t"] = 0.0
 			State.BODY_ACTIVE:
 				if dist > despawn_dist:
@@ -98,9 +101,30 @@ func _check_distances() -> void:
 func _update_fades(delta: float) -> void:
 	for planet in _planets:
 		match planet["state"]:
-			State.SPAWNING_BODY:
+			State.WAITING_BODY:
+				# Body is spawned but building terrain chunks in the background.
+				# Keep impostor fully visible. Wait until body has some chunks
+				# or BODY_READY_WAIT expires, then start fading.
+				planet["wait_t"] = planet["wait_t"] + delta
+				var body: PlanetBody = planet["body"]
+				var body_ready: bool = planet["wait_t"] >= BODY_READY_WAIT
+				if body and is_instance_valid(body):
+					# Check if body has built at least a few chunks
+					var chunk_count: int = 0
+					for face in body._faces:
+						chunk_count += face.get_chunk_count()
+					if chunk_count >= 6:
+						body_ready = true
+				if body_ready:
+					# Body ready: hide body initially for the crossfade
+					if body and is_instance_valid(body):
+						body.visible = true
+					planet["state"] = State.FADING_IN
+					planet["fade_t"] = 0.0
+
+			State.FADING_IN:
 				planet["fade_t"] = minf(planet["fade_t"] + delta / FADE_DURATION, 1.0)
-				# Fade out impostor, fade in body
+				# Fade out impostor → reveal body underneath
 				if planet["impostor"] and is_instance_valid(planet["impostor"]):
 					planet["impostor"].fade_alpha = 1.0 - planet["fade_t"]
 				if planet["fade_t"] >= 1.0:
@@ -130,6 +154,11 @@ func _spawn_body(planet: Dictionary) -> void:
 	body.entity_id = planet["entity_id"]
 	body.setup(pd, planet["index"], pos[0], pos[1], pos[2], planet["system_seed"])
 
+	# Sync rotation angle from impostor (if it was rotating)
+	var impostor: PlanetImpostor = planet["impostor"]
+	if impostor and is_instance_valid(impostor) and impostor._mesh_instance:
+		body._rotation_angle = impostor._mesh_instance.rotation.y
+
 	# Add to Universe node (gets shifted by FloatingOrigin)
 	var universe := GameManager.universe_node
 	if universe:
@@ -137,7 +166,21 @@ func _spawn_body(planet: Dictionary) -> void:
 	else:
 		add_child(body)
 
-	body.activate()
+	# CRITICAL: Set correct position IMMEDIATELY after add_child, before any
+	# _process or _physics_process runs. Without this, the body sits at (0,0,0)
+	# for 1 frame which triggers the ship's emergency planet-pushout.
+	body.global_position = Vector3(
+		float(pos[0]) - float(FloatingOrigin.origin_offset_x),
+		float(pos[1]) - float(FloatingOrigin.origin_offset_y),
+		float(pos[2]) - float(FloatingOrigin.origin_offset_z)
+	)
+	if body._rotation_angle != 0.0:
+		body.rotation.y = body._rotation_angle
+
+	# Start HIDDEN — LOD manager will make it visible when terrain chunks are ready
+	body._is_active = true
+	body.visible = false
+
 	planet["body"] = body
 	print("[PlanetLOD] Spawned PlanetBody_%d (radius=%.0fkm)" % [planet["index"], pd.get_render_radius() / 1000.0])
 
@@ -145,7 +188,9 @@ func _spawn_body(planet: Dictionary) -> void:
 func _despawn_body(planet: Dictionary) -> void:
 	print("[PlanetLOD] Despawning PlanetBody_%d" % planet["index"])
 	if planet["body"] and is_instance_valid(planet["body"]):
-		(planet["body"] as PlanetBody).deactivate()
+		# Soft deactivate: stop processing but KEEP VISIBLE while impostor fades in.
+		# Full cleanup happens when fade completes (in _update_fades → DESPAWNING_BODY).
+		(planet["body"] as PlanetBody).deactivate_soft()
 
 
 ## Get the nearest active PlanetBody (or null if none spawned).
@@ -154,7 +199,7 @@ func get_nearest_body(world_pos: Vector3) -> PlanetBody:
 	var best_dist: float = INF
 
 	for planet in _planets:
-		if planet["state"] != State.BODY_ACTIVE and planet["state"] != State.SPAWNING_BODY:
+		if planet["state"] == State.IMPOSTOR or planet["state"] == State.DESPAWNING_BODY:
 			continue
 		var body: PlanetBody = planet["body"]
 		if body == null or not is_instance_valid(body):

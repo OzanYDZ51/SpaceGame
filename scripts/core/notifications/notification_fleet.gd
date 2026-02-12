@@ -28,5 +28,9 @@ func deploy_failed(reason: String) -> void:
 	_svc.toast(reason, UIToast.ToastType.WARNING)
 
 
+func earned(ship_name: String, credits: int) -> void:
+	_svc.toast("VENTE: %s — %s CR" % [ship_name, PlayerEconomy.format_credits(credits)], UIToast.ToastType.SUCCESS)
+
+
 func destroyed() -> void:
 	_svc.toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)

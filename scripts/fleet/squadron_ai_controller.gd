@@ -40,7 +40,11 @@ func _process(delta: float) -> void:
 
 	# If FleetAIBridge has an active move/patrol/attack command that hasn't arrived,
 	# let the bridge handle navigation — don't override to FORMATION
-	if _bridge and not _bridge._arrived and _bridge.command in [&"move_to", &"patrol", &"attack", &"return_to_station"]:
+	if _bridge and not _bridge._arrived and _bridge.command in [&"move_to", &"patrol", &"attack", &"return_to_station", &"mine"]:
+		return
+
+	# Mining state is handled entirely by AIMiningBehavior — don't override
+	if _brain.current_state == AIBrain.State.MINING:
 		return
 
 	# Validate leader

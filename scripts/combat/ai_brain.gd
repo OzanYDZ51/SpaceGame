@@ -3,11 +3,12 @@ extends Node
 
 # =============================================================================
 # AI Brain - High-level behavior state machine for NPC ships
-# States: IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, DEAD
+# States: IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, DEAD
 # Ticks at 10Hz for performance.
+# Environment-aware: adapts to asteroid belts, stations, nearby obstacles.
 # =============================================================================
 
-enum State { IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, DEAD }
+enum State { IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, DEAD }
 
 var current_state: State = State.PATROL
 var target: Node3D = null
@@ -35,6 +36,18 @@ var _waypoints: Array[Vector3] = []
 var _current_waypoint: int = 0
 var _patrol_center: Vector3 = Vector3.ZERO
 var _patrol_radius: float = 300.0
+
+# Environment awareness
+const MIN_SAFE_DIST: float = 50.0           # Emergency breakaway distance
+const STATION_EXCLUSION_RADIUS: float = 400.0  # Waypoints must be outside this
+const STATION_CACHE_RANGE: float = 2000.0   # Only cache stations within 2km
+const ENV_UPDATE_INTERVAL: float = 2.0      # Refresh environment every 2s
+
+var _in_asteroid_belt: bool = false
+var _near_station: bool = false
+var _station_scene_positions: Array[Vector3] = []
+var _env_timer: float = 0.0
+var _cached_asteroid_mgr: AsteroidFieldManager = null
 
 # AI tick
 var _tick_timer: float = 0.0
@@ -85,10 +98,12 @@ func _ready() -> void:
 
 	# Cache LOD manager (autoload child, never changes)
 	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	_cached_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
 
 	# Generate initial patrol waypoints
 	if _ship:
 		_patrol_center = _ship.global_position
+		_update_environment()
 		_generate_patrol_waypoints()
 
 
@@ -131,6 +146,12 @@ func _process(delta: float) -> void:
 	# Decay and cleanup threat table
 	_update_threat_table(tick_rate)
 
+	# Periodic environment scan (cheap: O(1) belt check + O(k) station filter)
+	_env_timer -= tick_rate
+	if _env_timer <= 0.0:
+		_env_timer = ENV_UPDATE_INTERVAL
+		_update_environment()
+
 	match current_state:
 		State.IDLE:
 			_tick_idle()
@@ -146,10 +167,87 @@ func _process(delta: float) -> void:
 			_tick_flee()
 		State.FORMATION:
 			_tick_formation()
+		State.MINING:
+			_tick_mining()
 
 	_debug_timer -= TICK_INTERVAL
 
 
+# =============================================================================
+# ENVIRONMENT AWARENESS
+# =============================================================================
+func _update_environment() -> void:
+	if _ship == null:
+		return
+
+	# Check if inside asteroid belt (uses universe coords)
+	_in_asteroid_belt = false
+	if _cached_asteroid_mgr:
+		var pos := _ship.global_position
+		var ux: float = FloatingOrigin.origin_offset_x + float(pos.x)
+		var uz: float = FloatingOrigin.origin_offset_z + float(pos.z)
+		var belt_name := _cached_asteroid_mgr.get_belt_at_position(ux, uz)
+		_in_asteroid_belt = belt_name != ""
+
+	# Cache nearby station scene positions (universe → scene coords)
+	_station_scene_positions.clear()
+	_near_station = false
+	var stations := EntityRegistry.get_by_type(EntityRegistry.EntityType.STATION)
+	var ship_pos := _ship.global_position
+	for st in stations:
+		var scene_pos := FloatingOrigin.to_local_pos([st["pos_x"], st["pos_y"], st["pos_z"]])
+		var dist := ship_pos.distance_to(scene_pos)
+		if dist < STATION_CACHE_RANGE:
+			_station_scene_positions.append(scene_pos)
+			if dist < 800.0:
+				_near_station = true
+
+
+func _push_away_from_stations(pos: Vector3) -> Vector3:
+	## Pushes a waypoint outside station exclusion zones. Returns adjusted position.
+	for st_pos in _station_scene_positions:
+		var to_wp := pos - st_pos
+		var dist := to_wp.length()
+		if dist < STATION_EXCLUSION_RADIUS:
+			if dist < 1.0:
+				# Overlapping — push in random horizontal direction
+				to_wp = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
+			else:
+				to_wp = to_wp.normalized()
+			pos = st_pos + to_wp * (STATION_EXCLUSION_RADIUS + 50.0)
+	return pos
+
+
+func _compute_safe_flee_direction(desired_dir: Vector3) -> Vector3:
+	## Adjusts flee direction to avoid stations and incorporate obstacle avoidance.
+	var result := desired_dir
+
+	# Deviate if fleeing toward a station
+	for st_pos in _station_scene_positions:
+		var to_station := st_pos - _ship.global_position
+		var station_dist := to_station.length()
+		if station_dist > STATION_CACHE_RANGE:
+			continue
+		var station_dir := to_station.normalized()
+		var dot := desired_dir.dot(station_dir)
+		if dot > 0.5 and station_dist < 1200.0:
+			# Fleeing toward station — deflect perpendicular
+			var perp := desired_dir.cross(Vector3.UP).normalized()
+			if perp.length_squared() < 0.5:
+				perp = desired_dir.cross(Vector3.RIGHT).normalized()
+			result = (result + perp * 0.8).normalized()
+
+	# Blend in obstacle sensor avoidance if available
+	var sensor := _ship.get_node_or_null("ObstacleSensor") as ObstacleSensor
+	if sensor and sensor.avoidance_vector.length_squared() > 100.0:
+		result = (result + sensor.avoidance_vector.normalized() * 0.5).normalized()
+
+	return result
+
+
+# =============================================================================
+# STATE TICKS
+# =============================================================================
 func _tick_idle() -> void:
 	_detect_threats()
 	if target:
@@ -162,27 +260,33 @@ func _tick_patrol() -> void:
 		current_state = State.PURSUE
 		return
 
-	# Move to current waypoint
 	if _waypoints.is_empty():
 		return
 
-	var wp: Vector3 = _waypoints[_current_waypoint]
-	_pilot.fly_toward(wp, 80.0)
+	# Wider arrival distance in asteroid belt to avoid getting stuck
+	var arrival := 150.0 if _in_asteroid_belt else 80.0
 
-	# Check if reached waypoint
-	if _pilot.get_distance_to(wp) < 80.0:
+	var wp: Vector3 = _waypoints[_current_waypoint]
+	_pilot.fly_toward(wp, arrival)
+
+	if _pilot.get_distance_to(wp) < arrival:
 		_current_waypoint = (_current_waypoint + 1) % _waypoints.size()
 
 
 func _tick_pursue() -> void:
 	if not _is_target_valid():
-		# Try to pick next highest threat before going back to patrol
 		target = _get_highest_threat()
 		if target == null:
 			current_state = State.PATROL
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
+
+	# Emergency breakaway if dangerously close
+	if dist < MIN_SAFE_DIST:
+		var away := (_ship.global_position - target.global_position).normalized()
+		_pilot.fly_toward(_ship.global_position + away * 300.0, 10.0)
+		return
 
 	# Disengage if too far
 	if dist > DISENGAGE_RANGE:
@@ -191,8 +295,9 @@ func _tick_pursue() -> void:
 			current_state = State.PATROL
 		return
 
-	# Engage when in range
-	if dist <= preferred_range * 1.5:
+	# Engage when in range (wider threshold in belt)
+	var engage_mult := 2.0 if _in_asteroid_belt else 1.5
+	if dist <= preferred_range * engage_mult:
 		current_state = State.ATTACK
 		return
 
@@ -205,7 +310,6 @@ func _tick_pursue() -> void:
 
 func _tick_attack(_delta: float) -> void:
 	if not _is_target_valid():
-		# Try to pick next highest threat before going back to patrol
 		target = _get_highest_threat()
 		if target == null:
 			current_state = State.PATROL
@@ -214,6 +318,12 @@ func _tick_attack(_delta: float) -> void:
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
+
+	# Emergency breakaway if dangerously close
+	if dist < MIN_SAFE_DIST:
+		var away := (_ship.global_position - target.global_position).normalized()
+		_pilot.fly_toward(_ship.global_position + away * 300.0, 10.0)
+		return
 
 	# Check flee condition
 	if _health and _health.get_hull_ratio() < flee_threshold:
@@ -276,12 +386,13 @@ func _tick_flee() -> void:
 		target = null
 		return
 
-	# Fly directly away from target
+	# Compute safe flee direction (avoids stations)
 	var away_dir: Vector3 = (_ship.global_position - target.global_position).normalized()
+	away_dir = _compute_safe_flee_direction(away_dir)
 	var flee_pos: Vector3 = _ship.global_position + away_dir * 2000.0
 	_pilot.fly_toward(flee_pos, 100.0)
 
-	# If we get far enough and hull regenerates, re-engage
+	# If we get far enough, re-engage or patrol
 	var dist: float = _pilot.get_distance_to(target.global_position)
 	if dist > DISENGAGE_RANGE:
 		current_state = State.PATROL
@@ -306,6 +417,15 @@ func _tick_formation() -> void:
 			current_state = State.ATTACK
 
 
+func _tick_mining() -> void:
+	# Mining behavior is handled by AIMiningBehavior node (attached to fleet NPCs).
+	# This state just keeps the ship idle — AIMiningBehavior drives AIPilot directly.
+	pass
+
+
+# =============================================================================
+# THREAT DETECTION
+# =============================================================================
 func _detect_threats() -> void:
 	if _ship == null or ignore_threats or not weapons_enabled:
 		return
@@ -392,6 +512,8 @@ func _generate_patrol_waypoints() -> void:
 			randf_range(-50.0, 50.0),
 			sin(angle) * _patrol_radius,
 		)
+		# Push waypoint away from stations
+		wp = _push_away_from_stations(wp)
 		_waypoints.append(wp)
 
 
@@ -399,9 +521,13 @@ func set_patrol_area(center: Vector3, radius: float) -> void:
 	_patrol_center = center
 	_patrol_radius = radius
 	_current_waypoint = 0
+	_update_environment()
 	_generate_patrol_waypoints()
 
 
+# =============================================================================
+# THREAT TABLE
+# =============================================================================
 func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 	if current_state == State.DEAD or ignore_threats or not weapons_enabled:
 		return
@@ -448,19 +574,16 @@ func _update_threat_table(dt: float) -> void:
 
 func _maybe_switch_target() -> void:
 	if target == null or not is_instance_valid(target):
-		# Current target lost — pick highest threat
 		var best := _get_highest_threat()
 		if best:
 			target = best
 		return
 
-	# Get current target's threat level
 	var current_tid: int = target.get_instance_id()
 	var current_threat: float = 0.0
 	if _threat_table.has(current_tid):
 		current_threat = _threat_table[current_tid]["threat"]
 
-	# Find highest threat attacker
 	var best_node: Node3D = null
 	var best_threat: float = 0.0
 	for aid: int in _threat_table:
@@ -471,7 +594,6 @@ func _maybe_switch_target() -> void:
 				best_threat = entry["threat"]
 				best_node = node
 
-	# Switch if new attacker has significantly more threat than current target
 	if best_node and best_node != target and best_threat > current_threat * THREAT_SWITCH_RATIO:
 		target = best_node
 		if current_state == State.EVADE:

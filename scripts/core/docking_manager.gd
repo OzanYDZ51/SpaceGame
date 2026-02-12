@@ -118,20 +118,38 @@ func handle_undock() -> void:
 	undocked.emit()
 
 
-const UNDOCK_RADIUS: float = 5000.0  ## Spawn within 5km of station
+const UNDOCK_DISTANCE_MIN: float = 1800.0  ## Min spawn distance from station
+const UNDOCK_DISTANCE_MAX: float = 2200.0  ## Max spawn distance from station
 
 func _reposition_at_station() -> void:
-	if docking_system == null or player_ship == null:
-		return
-	var station_node: Node3D = docking_system.nearest_station_node
-	if station_node == null or not is_instance_valid(station_node):
+	if player_ship == null:
 		return
 
-	# Random direction on the XZ plane, random distance within radius
+	# Resolve station position — prefer live node, fallback to EntityRegistry
+	var station_pos := Vector3.ZERO
+	var found: bool = false
+
+	if docking_system and docking_system.nearest_station_node != null and is_instance_valid(docking_system.nearest_station_node):
+		station_pos = docking_system.nearest_station_node.global_position
+		found = true
+	else:
+		# Fallback: find station from EntityRegistry using docked_station_idx
+		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		for ent in stations:
+			var extra: Dictionary = ent.get("extra", {})
+			if extra.get("station_index", -1) == docked_station_idx:
+				station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+				found = true
+				break
+
+	if not found:
+		return
+
+	# Random direction on the XZ plane, ~2km from station
 	var angle: float = randf() * TAU
-	var dist: float = randf_range(UNDOCK_RADIUS * 0.3, UNDOCK_RADIUS)
-	var offset := Vector3(cos(angle) * dist, randf_range(-200.0, 200.0), sin(angle) * dist)
-	var new_pos: Vector3 = station_node.global_position + offset
+	var dist: float = randf_range(UNDOCK_DISTANCE_MIN, UNDOCK_DISTANCE_MAX)
+	var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+	var new_pos: Vector3 = station_pos + offset
 
 	player_ship.global_position = new_pos
 	player_ship.linear_velocity = Vector3.ZERO

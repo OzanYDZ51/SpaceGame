@@ -20,6 +20,7 @@ static func _ensure_init() -> void:
 	_register(&"attack", "ATTAQUER", "Attaquer la cible ennemie")
 	_register(&"return_to_station", "RAPPELER", "Retourner a la station")
 	_register(&"construction", "CONSTRUCTION", "Livrer des ressources au site de construction")
+	_register(&"mine", "MINER", "Miner les asteroides dans cette zone")
 
 
 static func _register(id: StringName, display_name: String, description: String) -> void:
@@ -56,6 +57,16 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 			return is_deployed
 		&"construction":
 			return context.has("construction_marker")
+		&"mine":
+			var fleet_ship: FleetShip = context.get("fleet_ship")
+			if fleet_ship == null:
+				return false
+			for wn in fleet_ship.weapons:
+				if wn != &"":
+					var w := WeaponRegistry.get_weapon(wn)
+					if w and w.weapon_type == WeaponResource.WeaponType.MINING_LASER:
+						return true
+			return false
 	return false
 
 
@@ -88,5 +99,10 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 				"target_x": marker.get("pos_x", context.get("universe_x", 0.0)),
 				"target_z": marker.get("pos_z", context.get("universe_z", 0.0)),
 				"marker_id": marker.get("id", ""),
+			}
+		&"mine":
+			return {
+				"center_x": context.get("universe_x", 0.0),
+				"center_z": context.get("universe_z", 0.0),
 			}
 	return {}

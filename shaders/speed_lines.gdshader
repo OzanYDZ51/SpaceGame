@@ -14,7 +14,6 @@ shader_type canvas_item;
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
 uniform float flight_ratio : hint_range(0.0, 1.0) = 0.0;
 uniform float cruise_spool : hint_range(0.0, 1.0) = 0.0;
-uniform float damage_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float cruise_warp : hint_range(0.0, 1.0) = 0.0;
 uniform float quantum_engage : hint_range(0.0, 1.0) = 0.0;
 
@@ -26,9 +25,7 @@ void fragment() {
 	float flight_sq = flight_ratio * flight_ratio;    // Normal/boost: 0→1
 	float spool_sq = cruise_spool * cruise_spool;     // Cruise spool: quadratic ramp
 
-	// === DAMAGE ZOOM DISTORTION ===
-	float dmg = damage_flash * damage_flash;
-	vec2 uv = SCREEN_UV + center * dmg * 0.06;
+	vec2 uv = SCREEN_UV;
 
 	// === RADIAL STRETCH — core quantum travel effect ===
 	// flight_sq gives subtle blur during boost
@@ -80,16 +77,6 @@ void fragment() {
 		float pulse_ring = smoothstep(0.1, 0.3, dist) * smoothstep(0.6, 0.3, dist);
 		col += vec3(0.3, 0.5, 0.9) * pulse_ring * quantum_engage * 0.2;
 	}
-
-	// === DAMAGE CHROMATIC ABERRATION + RED VIGNETTE ===
-	if (dmg > 0.01) {
-		float dmg_ab = dmg * 0.012 * (0.5 + dist);
-		vec2 dmg_ab_dir = normalize(center + vec2(0.0001)) * dmg_ab;
-		col.r = texture(screen_texture, uv + dmg_ab_dir).r;
-		col.b = texture(screen_texture, uv - dmg_ab_dir).b;
-	}
-	float dmg_vig = smoothstep(0.15, 0.65, dist) * dmg * 0.45;
-	col += vec3(0.5, 0.02, 0.01) * dmg_vig;
 
 	// === COLOR GRADE (subtle blue shift during quantum) ===
 	vec3 grade = mix(vec3(1.0), vec3(0.95, 0.96, 1.05), quantum_intensity * 0.25);

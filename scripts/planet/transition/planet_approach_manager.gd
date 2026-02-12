@@ -29,7 +29,7 @@ var _planet_lod_mgr: PlanetLODManager = null
 var _ship: ShipController = null
 var _atmo_env: AtmosphereEnvironment = null
 var _update_timer: float = 0.0
-const UPDATE_INTERVAL: float = 0.1  # 10 Hz
+const UPDATE_INTERVAL: float = 0.05  # 20 Hz (faster to reduce frame-dragging staleness)
 
 # Gravity/drag values (smoothly interpolated)
 var gravity_strength: float = 0.0     # 0-1, applied by ship_controller
@@ -66,6 +66,9 @@ func _process(delta: float) -> void:
 	var body := _planet_lod_mgr.get_nearest_body(_ship.global_position)
 
 	if body == null:
+		# Unfreeze previous planet orbit if we had one
+		if current_planet and current_planet.entity_id != "" and current_zone >= Zone.APPROACH:
+			EntityRegistry.unfreeze_orbit(current_planet.entity_id)
 		if current_zone != Zone.SPACE:
 			_transition_to_zone(Zone.SPACE, null)
 		gravity_strength = 0.0
@@ -116,6 +119,7 @@ func _process(delta: float) -> void:
 
 
 func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
+	var old_zone := current_zone
 	current_zone = new_zone
 
 	if body:
@@ -127,6 +131,14 @@ func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
 	if new_zone >= Zone.EXTERIOR and _ship:
 		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 			_ship._exit_cruise()
+
+	# Freeze/unfreeze planet orbital motion when player is nearby.
+	# Prevents terrain from sliding under the ship due to orbit updates.
+	if body and body.entity_id != "":
+		if new_zone >= Zone.APPROACH and old_zone < Zone.APPROACH:
+			EntityRegistry.freeze_orbit(body.entity_id)
+		elif new_zone < Zone.APPROACH and old_zone >= Zone.APPROACH:
+			EntityRegistry.unfreeze_orbit(body.entity_id)
 
 
 func _compute_physics(_body: PlanetBody, _atmo_edge: float) -> void:
@@ -159,46 +171,18 @@ func _apply_to_ship() -> void:
 	_ship.planetary_max_speed_override = max_speed_override
 	_ship._near_planet_surface = current_zone >= Zone.EXTERIOR
 
-	# Planet proximity guard — ship uses this per-frame in _integrate_forces
+	# Planet ref for cruise warp exit (terrain collision handles surface contact)
 	if current_planet and current_zone >= Zone.APPROACH:
+		_ship._planet_guard_body = current_planet
 		_ship._planet_guard_center = current_planet.global_position
 		_ship._planet_guard_radius = current_planet.planet_radius
 	else:
+		_ship._planet_guard_body = null
 		_ship._planet_guard_radius = 0.0
 
-	# Frame-dragging: match the planet's orbital velocity when in approach zone
-	if current_zone >= Zone.APPROACH and current_planet and current_planet.entity_id != "":
-		var vel: Array = EntityRegistry.get_orbital_velocity(current_planet.entity_id)
-		var orbit_v := Vector3(float(vel[0]), float(vel[1]), float(vel[2]))
-		# Smooth blend: full drag at EXTERIOR, ramp in during APPROACH
-		if current_zone >= Zone.EXTERIOR:
-			_ship.planetary_orbit_velocity = orbit_v
-		else:
-			# Blend from 0 at 100km to full at 10km
-			var t: float = 1.0 - clampf(
-				(current_altitude - ZONE_EXTERIOR) / (ZONE_APPROACH - ZONE_EXTERIOR), 0.0, 1.0)
-			_ship.planetary_orbit_velocity = orbit_v * t
-	else:
-		_ship.planetary_orbit_velocity = Vector3.ZERO
-
-	# Axial rotation frame-dragging: match planet's surface spin when close.
-	# v_tangent = omega × r (tangential velocity at ship position).
-	# Blend: 0% at APPROACH edge (100km), 100% at EXTERIOR (10km).
-	if current_zone >= Zone.APPROACH and current_planet and current_planet.planet_data:
-		var rot_period: float = current_planet.planet_data.get_rotation_period()
-		if rot_period > 0.0:
-			var omega: float = TAU / rot_period
-			var r: Vector3 = _ship.global_position - current_planet.global_position
-			# omega × r (rotation around Y axis): cross(0, omega, 0, r) = (omega*r.z, 0, -omega*r.x)
-			var tangent := Vector3(omega * r.z, 0.0, -omega * r.x)
-			# Smooth blend over 100km → 10km altitude (full coupling at EXTERIOR)
-			var t: float = 1.0 - clampf(
-				(current_altitude - ZONE_EXTERIOR) / (ZONE_APPROACH - ZONE_EXTERIOR), 0.0, 1.0)
-			_ship.planetary_rotation_velocity = tangent * t
-		else:
-			_ship.planetary_rotation_velocity = Vector3.ZERO
-	else:
-		_ship.planetary_rotation_velocity = Vector3.ZERO
+	# Frame-dragging disabled — planet orbit is frozen when player is nearby,
+	# so no orbital velocity compensation is needed.
+	_ship.planetary_orbit_velocity = Vector3.ZERO
 
 
 func _apply_to_camera() -> void:
@@ -254,6 +238,9 @@ func is_cruise_blocked() -> bool:
 
 ## Hard reset (leaving system).
 func reset() -> void:
+	# Unfreeze any frozen planet orbit
+	if current_planet and current_planet.entity_id != "":
+		EntityRegistry.unfreeze_orbit(current_planet.entity_id)
 	current_zone = Zone.SPACE
 	current_planet = null
 	current_altitude = INF

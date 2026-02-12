@@ -151,7 +151,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func remove_remote_player(peer_id: int) -> void:
 	if remote_players.has(peer_id):
-		var remote: RemotePlayerShip = remote_players[peer_id]
+		var remote = remote_players[peer_id]
 		if lod_manager:
 			lod_manager.unregister_ship(StringName("RemotePlayer_%d" % peer_id))
 		EntityRegistry.unregister("remote_player_%d" % peer_id)
@@ -187,7 +187,7 @@ func _on_state_received(peer_id: int, state: NetworkState) -> void:
 		map_ent["extra"]["hidden"] = state.is_docked or state.is_dead
 
 	if remote_players.has(peer_id):
-		var remote: RemotePlayerShip = remote_players[peer_id]
+		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.receive_state(state)
 
@@ -372,7 +372,7 @@ func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: St
 func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
 	if not remote_players.has(peer_id):
 		return
-	var remote: RemotePlayerShip = remote_players[peer_id]
+	var remote = remote_players[peer_id]
 	if not is_instance_valid(remote):
 		return
 
@@ -564,7 +564,7 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 
 func _on_remote_player_died(peer_id: int, _death_pos: Array) -> void:
 	if remote_players.has(peer_id):
-		var remote: RemotePlayerShip = remote_players[peer_id]
+		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.show_death_explosion()
 
@@ -575,7 +575,7 @@ func _on_remote_player_respawned(_peer_id: int, _system_id: int) -> void:
 
 func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> void:
 	if remote_players.has(peer_id):
-		var remote: RemotePlayerShip = remote_players[peer_id]
+		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.change_ship_model(new_ship_id)
 
@@ -587,7 +587,7 @@ func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> vo
 func _on_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array) -> void:
 	if not remote_players.has(peer_id):
 		return
-	var remote: RemotePlayerShip = remote_players[peer_id]
+	var remote = remote_players[peer_id]
 	if not is_instance_valid(remote):
 		return
 	if is_active:
