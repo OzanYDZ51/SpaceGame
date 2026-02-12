@@ -63,13 +63,16 @@ void fragment() {
 	float z_pos = UV.y;
 	float radial = abs(UV.x - 0.5) * 2.0;
 
-	// Z-gradient: very bright at nozzle, holds intensity longer, then fades
-	float z_fade = 1.0 - smoothstep(0.1, 0.95, z_pos);
-	float z_core = pow(max(1.0 - z_pos, 0.0), 1.8);
+	// Z-gradient: very bright at nozzle, fades aggressively toward tip
+	float z_fade = pow(max(1.0 - smoothstep(0.0, 0.9, z_pos), 0.0), 1.2);
+	float z_core = pow(max(1.0 - z_pos, 0.0), 2.2);
 
-	// Radial: thick center, softer edges — less aggressive falloff for fat plume
-	float r_fade = 1.0 - smoothstep(0.0, 0.95, radial);
-	float r_core = pow(max(1.0 - radial, 0.0), 2.0);
+	// Radial: bright fat center near nozzle, tighter at tip
+	// Radial tolerance shrinks along Z = natural taper in the shader too
+	float radial_width = mix(1.0, 0.4, z_pos);  // Nozzle=full width, tip=40%
+	float r_norm = radial / radial_width;
+	float r_fade = 1.0 - smoothstep(0.0, 1.0, r_norm);
+	float r_core = pow(max(1.0 - r_norm, 0.0), 2.5);
 
 	// Noise flicker — bigger turbulence cells for chunky look
 	float flicker_t = TIME * flicker_speed;

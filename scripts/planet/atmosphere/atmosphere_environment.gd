@@ -14,7 +14,7 @@ var _atmo_config: AtmosphereConfig = null
 # Saved space values (restored when leaving)
 var _space_fog_enabled: bool = false
 var _space_fog_density: float = 0.0
-var _space_ambient_source: int = 0
+var _space_ambient_source: Environment.AmbientSource = Environment.AMBIENT_SOURCE_BG
 var _space_ambient_energy: float = 0.0
 var _space_light_energy: float = 1.0
 var _space_light_color: Color = Color.WHITE

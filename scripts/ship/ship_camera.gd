@@ -62,6 +62,13 @@ const VIBRATION_FREQ_X: float = 7.3
 const VIBRATION_FREQ_Y: float = 5.1
 const VIBRATION_FREQ_Z: float = 9.7
 
+## Free look: orbit camera around ship during cruise (mouse redirected from ship rotation)
+var _free_look_yaw: float = 0.0
+var _free_look_pitch: float = 0.0
+const FREE_LOOK_SENSITIVITY: float = 0.15
+const FREE_LOOK_PITCH_MAX: float = 80.0
+const FREE_LOOK_RETURN_SPEED: float = 4.0
+
 
 func _ready() -> void:
 	_ship = get_parent() as ShipController
@@ -148,6 +155,25 @@ func _update_third_person(delta: float) -> void:
 	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	# =========================================================================
+	# FREE LOOK (cruise mode: mouse orbits camera; otherwise smooth return)
+	# =========================================================================
+	var is_free_looking: bool = false
+	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+		var md: Vector2 = _ship.cruise_look_delta
+		_free_look_yaw += md.x * FREE_LOOK_SENSITIVITY
+		_free_look_pitch += md.y * FREE_LOOK_SENSITIVITY
+		_free_look_pitch = clampf(_free_look_pitch, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
+		is_free_looking = absf(_free_look_yaw) > 0.5 or absf(_free_look_pitch) > 0.5
+	else:
+		_free_look_yaw = lerpf(_free_look_yaw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
+		_free_look_pitch = lerpf(_free_look_pitch, 0.0, FREE_LOOK_RETURN_SPEED * delta)
+		if absf(_free_look_yaw) < 0.1:
+			_free_look_yaw = 0.0
+		if absf(_free_look_pitch) < 0.1:
+			_free_look_pitch = 0.0
+		is_free_looking = absf(_free_look_yaw) > 0.5 or absf(_free_look_pitch) > 0.5
+
+	# =========================================================================
 	# DYNAMIC DISTANCE (fixed — no speed pull-back in any mode)
 	# =========================================================================
 	current_distance = lerpf(current_distance, target_distance, 3.0 * delta)
@@ -156,6 +182,10 @@ func _update_third_person(delta: float) -> void:
 	# CAMERA POSITION (behind and above the ship)
 	# =========================================================================
 	var cam_offset: Vector3 = Vector3(0.0, cam_height, current_distance)
+	if is_free_looking:
+		var fl_basis := Basis(Vector3.UP, deg_to_rad(-_free_look_yaw))
+		fl_basis = fl_basis * Basis(Vector3.RIGHT, deg_to_rad(-_free_look_pitch))
+		cam_offset = fl_basis * cam_offset
 	var desired_pos: Vector3 = ship_pos + ship_basis * cam_offset
 
 	# Weapon fire shake
@@ -191,11 +221,15 @@ func _update_third_person(delta: float) -> void:
 	global_position = global_position.lerp(desired_pos, follow)
 
 	# =========================================================================
-	# LOOK TARGET (far ahead along ship forward to minimize aim offset)
-	# Ship appears in the lower portion of the screen; crosshair area is clear.
+	# LOOK TARGET
+	# Free look: look at the ship. Normal: look far ahead along ship forward.
 	# =========================================================================
-	var look_ahead: float = 50.0 + minf(_ship.current_speed * 0.1, 100.0)
-	var look_target: Vector3 = ship_pos + ship_basis * Vector3(0.0, cam_look_ahead_y, -look_ahead)
+	var look_target: Vector3
+	if is_free_looking:
+		look_target = ship_pos
+	else:
+		var look_ahead: float = 50.0 + minf(_ship.current_speed * 0.1, 100.0)
+		look_target = ship_pos + ship_basis * Vector3(0.0, cam_look_ahead_y, -look_ahead)
 
 	# =========================================================================
 	# SMOOTH ROTATION

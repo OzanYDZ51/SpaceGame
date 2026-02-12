@@ -154,11 +154,6 @@ func _spawn_body(planet: Dictionary) -> void:
 	body.entity_id = planet["entity_id"]
 	body.setup(pd, planet["index"], pos[0], pos[1], pos[2], planet["system_seed"])
 
-	# Sync rotation angle from impostor (if it was rotating)
-	var impostor: PlanetImpostor = planet["impostor"]
-	if impostor and is_instance_valid(impostor) and impostor._mesh_instance:
-		body._rotation_angle = impostor._mesh_instance.rotation.y
-
 	# Add to Universe node (gets shifted by FloatingOrigin)
 	var universe := GameManager.universe_node
 	if universe:
@@ -174,9 +169,6 @@ func _spawn_body(planet: Dictionary) -> void:
 		float(pos[1]) - float(FloatingOrigin.origin_offset_y),
 		float(pos[2]) - float(FloatingOrigin.origin_offset_z)
 	)
-	if body._rotation_angle != 0.0:
-		body.rotation.y = body._rotation_angle
-
 	# Start HIDDEN — LOD manager will make it visible when terrain chunks are ready
 	body._is_active = true
 	body.visible = false

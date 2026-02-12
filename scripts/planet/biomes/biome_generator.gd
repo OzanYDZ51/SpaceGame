@@ -131,7 +131,7 @@ func _classify_temperate(sp: Vector3, height: float) -> BiomeTypes.Biome:
 		return BiomeTypes.Biome.SNOW
 
 
-func _classify_lava(sp: Vector3, height: float) -> BiomeTypes.Biome:
+func _classify_lava(_sp: Vector3, height: float) -> BiomeTypes.Biome:
 	var norm_h: float = height / maxf(_terrain_amplitude, 0.001)
 	if norm_h < 0.2:
 		return BiomeTypes.Biome.VOLCANIC

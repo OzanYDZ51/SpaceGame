@@ -110,11 +110,11 @@ static func build_chunk(
 			else:
 				# Interpolate from 4 diagonal even neighbors
 				var tl: int = (gy - 1) * GRID_SIZE + (gx - 1)
-				var tr: int = (gy - 1) * GRID_SIZE + (gx + 1)
+				var top_r: int = (gy - 1) * GRID_SIZE + (gx + 1)
 				var bl: int = (gy + 1) * GRID_SIZE + (gx - 1)
 				var br: int = (gy + 1) * GRID_SIZE + (gx + 1)
-				pos_deltas[idx] = vertices[idx] - (vertices[tl] + vertices[tr] + vertices[bl] + vertices[br]) * 0.25
-				nrm_deltas[idx] = normals_arr[idx] - (normals_arr[tl] + normals_arr[tr] + normals_arr[bl] + normals_arr[br]).normalized()
+				pos_deltas[idx] = vertices[idx] - (vertices[tl] + vertices[top_r] + vertices[bl] + vertices[br]) * 0.25
+				nrm_deltas[idx] = normals_arr[idx] - (normals_arr[tl] + normals_arr[top_r] + normals_arr[bl] + normals_arr[br]).normalized()
 
 	# Build triangles
 	for gy in GRID_SIZE - 1:

@@ -60,14 +60,15 @@ func compute_morph_factor(cam_pos: Vector3, planet_center: Vector3, planet_radiu
 
 
 ## Update the quadtree: split or merge based on camera distance.
+## can_split=false prevents new splits (budget exceeded), merging still happens.
 ## Returns number of chunks that need rebuilding.
-func update(cam_pos: Vector3, planet_center: Vector3, planet_radius: float) -> int:
+func update(cam_pos: Vector3, planet_center: Vector3, planet_radius: float, can_split: bool = true) -> int:
 	var error: float = compute_screen_error(cam_pos, planet_center, planet_radius)
 	var rebuilds: int = 0
 
 	if is_leaf():
 		# Should we split?
-		if error > SPLIT_THRESHOLD and depth < MAX_DEPTH:
+		if error > SPLIT_THRESHOLD and depth < MAX_DEPTH and can_split:
 			_split()
 			# Do NOT recursively update children — they'll be processed next cycle.
 			# This prevents cascading splits (depth 0→14 in one frame).
@@ -89,7 +90,7 @@ func update(cam_pos: Vector3, planet_center: Vector3, planet_radius: float) -> i
 
 	# Recurse into children
 	for child in children:
-		rebuilds += child.update(cam_pos, planet_center, planet_radius)
+		rebuilds += child.update(cam_pos, planet_center, planet_radius, can_split)
 	return rebuilds
 
 

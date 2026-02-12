@@ -102,7 +102,7 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 
 
 # =============================================================================
-# LAYER 1: CORE CONE — Fat, nearly cylindrical shader mesh
+# LAYER 1: CORE CONE — Fat at nozzle, tapers to fine point
 # =============================================================================
 
 func _create_core_cone(parent: Node3D) -> MeshInstance3D:
@@ -110,12 +110,11 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 	mesh_inst.name = "ExhaustCore"
 	var ms := _model_scale
 
-	# Nearly cylindrical — tip is 40% of base, NOT a thin point
-	# This creates the thick "block" silhouette
+	# Fat base that tapers aggressively to a fine point — teardrop shape
 	var cone := CylinderMesh.new()
-	var base_radius := 1.4 * ms
-	var tip_radius := 0.5 * ms
-	var length := 10.0 * ms
+	var base_radius := 1.8 * ms
+	var tip_radius := 0.06 * ms
+	var length := 12.0 * ms
 	cone.top_radius = tip_radius
 	cone.bottom_radius = base_radius
 	cone.height = length
@@ -164,7 +163,7 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 
 
 # =============================================================================
-# LAYER 2: VOLUME FILL — Large overlapping soft quads for "solid block" look
+# LAYER 2: VOLUME FILL — Dense near nozzle, tapers to wispy trail
 # =============================================================================
 
 func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
@@ -173,37 +172,37 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	var ms := _model_scale
 
 	var mat := ParticleProcessMaterial.new()
-	# Emit from a wide ring (not just center) for width
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 0.8 * ms
+	mat.emission_sphere_radius = 1.0 * ms
 	mat.direction = Vector3(0.0, 0.0, 1.0)
-	mat.spread = 10.0
-	mat.initial_velocity_min = 12.0 * ms
-	mat.initial_velocity_max = 30.0 * ms
+	mat.spread = 6.0  # Tight spread = tapers naturally
+	mat.initial_velocity_min = 15.0 * ms
+	mat.initial_velocity_max = 35.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 1.0
-	mat.damping_max = 3.0
-	# BIG particles that overlap = solid mass
-	mat.scale_min = 2.5 * ms
-	mat.scale_max = 4.5 * ms
+	mat.damping_min = 2.0
+	mat.damping_max = 5.0
+	# Start BIG, shrink to nothing = fat-to-thin taper
+	mat.scale_min = 3.0 * ms
+	mat.scale_max = 5.0 * ms
 	mat.color_ramp = _make_gradient([
-		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.5)],
-		[0.1, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.4)],
-		[0.3, Color(_engine_color.r * 0.8, _engine_color.g * 0.7, _engine_color.b * 0.8, 0.25)],
-		[0.6, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.12)],
+		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.55)],
+		[0.08, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.45)],
+		[0.25, Color(_engine_color.r * 0.8, _engine_color.g * 0.7, _engine_color.b * 0.8, 0.25)],
+		[0.5, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.1)],
 		[1.0, Color(_engine_color.r * 0.2, _engine_color.g * 0.15, _engine_color.b * 0.3, 0.0)],
 	])
-	mat.scale_curve = _make_scale_curve(0.4, 1.0, 0.6)
+	# KEY: scale 1.0 at birth → 0.08 at death = realistic taper
+	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.7, 0.2, 0.04)
 
 	p.process_material = mat
-	p.amount = 40
-	p.lifetime = 0.6
+	p.amount = 48
+	p.lifetime = 0.65
 	p.local_coords = true
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(1.8, 1.8) * ms
-	mesh.material = _make_particle_material(_engine_color, 3.0)
+	mesh.material = _make_particle_material(_engine_color, 3.5)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -257,24 +256,25 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 
 	var mat := ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 0.5 * ms
+	mat.emission_sphere_radius = 0.6 * ms
 	mat.direction = Vector3(0.0, 0.0, 1.0)
-	mat.spread = 8.0
-	mat.initial_velocity_min = 25.0 * ms
-	mat.initial_velocity_max = 60.0 * ms
+	mat.spread = 5.0  # Tight = follows the cone taper
+	mat.initial_velocity_min = 30.0 * ms
+	mat.initial_velocity_max = 65.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 2.0
-	mat.damping_max = 5.0
-	mat.scale_min = 0.8 * ms
-	mat.scale_max = 1.8 * ms
+	mat.damping_min = 2.5
+	mat.damping_max = 6.0
+	mat.scale_min = 1.2 * ms
+	mat.scale_max = 2.2 * ms
 	mat.color_ramp = _make_gradient([
 		[0.0, Color(1.0, 0.98, 0.95, 1.0)],
 		[0.05, Color(1.0, 0.95, 0.88, 0.9)],
-		[0.2, Color(_engine_color.r * 1.3, _engine_color.g * 1.2, _engine_color.b * 1.1, 0.65)],
-		[0.5, Color(_engine_color.r, _engine_color.g * 0.8, _engine_color.b * 0.9, 0.3)],
+		[0.15, Color(_engine_color.r * 1.3, _engine_color.g * 1.2, _engine_color.b * 1.1, 0.65)],
+		[0.4, Color(_engine_color.r, _engine_color.g * 0.8, _engine_color.b * 0.9, 0.25)],
 		[1.0, Color(_engine_color.r * 0.3, _engine_color.g * 0.2, _engine_color.b * 0.4, 0.0)],
 	])
-	mat.scale_curve = _make_scale_curve(0.35, 1.0, 0.1)
+	# Big at nozzle → tiny at end
+	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.6, 0.15, 0.02)
 
 	p.process_material = mat
 	p.amount = 40
@@ -303,24 +303,25 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 
 	var mat := ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 0.7 * ms
+	mat.emission_sphere_radius = 0.8 * ms
 	mat.direction = Vector3(0.0, 0.0, 1.0)
-	mat.spread = 18.0
-	mat.initial_velocity_min = 15.0 * ms
-	mat.initial_velocity_max = 40.0 * ms
+	mat.spread = 12.0  # Moderate spread — forms the envelope
+	mat.initial_velocity_min = 18.0 * ms
+	mat.initial_velocity_max = 45.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 1.5
-	mat.damping_max = 4.0
-	mat.scale_min = 1.5 * ms
-	mat.scale_max = 3.5 * ms
+	mat.damping_min = 2.0
+	mat.damping_max = 5.0
+	mat.scale_min = 2.0 * ms
+	mat.scale_max = 4.0 * ms
 	mat.color_ramp = _make_gradient([
-		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.6)],
-		[0.12, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.5)],
-		[0.35, Color(_engine_color.r * 0.7, _engine_color.g * 0.6, _engine_color.b * 0.8, 0.3)],
-		[0.65, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.12)],
+		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.55)],
+		[0.1, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.4)],
+		[0.3, Color(_engine_color.r * 0.7, _engine_color.g * 0.6, _engine_color.b * 0.8, 0.2)],
+		[0.6, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.06)],
 		[1.0, Color(_engine_color.r * 0.1, _engine_color.g * 0.08, _engine_color.b * 0.2, 0.0)],
 	])
-	mat.scale_curve = _make_scale_curve(0.25, 1.0, 0.3)
+	# Big → thin trail
+	mat.scale_curve = _make_scale_curve_4pt(0.9, 0.5, 0.12, 0.02)
 
 	p.process_material = mat
 	p.amount = 56
@@ -475,18 +476,17 @@ func _update_volume_fill(nozzle: Dictionary, t: float, idle: float) -> void:
 	if p == null:
 		return
 	var effective_t := maxf(t, idle)
-	# Volume fill is the "body" of the plume — always present, scales massively
 	p.amount_ratio = 0.04 + effective_t * 0.96
-	p.speed_scale = 0.3 + effective_t * 1.0 + _boost_blend * 1.5 + _cruise_blend * 2.5
+	# Boost/cruise = faster particles = longer trail before they shrink to nothing
+	p.speed_scale = 0.3 + effective_t * 1.2 + _boost_blend * 1.8 + _cruise_blend * 3.0
 	p.emitting = effective_t > 0.01
 
-	# Boost: more particles move faster = thicker, longer plume
+	# Boost: bigger initial size = fatter base, but same taper to thin
 	var pmat := p.process_material as ParticleProcessMaterial
 	if pmat:
-		# Dynamically adjust scale for boost/cruise — bigger quads = fatter plume
-		var scale_mult := 1.0 + _boost_blend * 0.8 + _cruise_blend * 1.2
-		pmat.scale_min = 2.5 * _model_scale * scale_mult
-		pmat.scale_max = 4.5 * _model_scale * scale_mult
+		var scale_mult := 1.0 + _boost_blend * 0.6 + _cruise_blend * 0.9
+		pmat.scale_min = 3.0 * _model_scale * scale_mult
+		pmat.scale_max = 5.0 * _model_scale * scale_mult
 
 
 func _update_afterburner(nozzle: Dictionary, t: float) -> void:
@@ -538,10 +538,10 @@ func _update_outer_flame(nozzle: Dictionary, t: float, idle: float) -> void:
 	p.speed_scale = 0.25 + effective_t * 1.3 + _boost_blend * 1.2 + _cruise_blend * 2.0
 	p.emitting = effective_t > 0.01
 
-	# Boost/cruise: widen the plume spread dynamically
+	# Boost/cruise: slightly wider base spread, taper does the rest
 	var pmat := p.process_material as ParticleProcessMaterial
 	if pmat:
-		pmat.spread = 18.0 + _boost_blend * 8.0 + _cruise_blend * 5.0
+		pmat.spread = 12.0 + _boost_blend * 4.0 + _cruise_blend * 3.0
 
 
 func _update_sparks(nozzle: Dictionary, t: float) -> void:
@@ -638,5 +638,17 @@ func _make_scale_curve(start: float, peak: float, end_val: float) -> CurveTextur
 	curve.add_point(Vector2(0.0, start))
 	curve.add_point(Vector2(0.1, peak))
 	curve.add_point(Vector2(1.0, end_val))
+	tex.curve = curve
+	return tex
+
+
+func _make_scale_curve_4pt(birth: float, early: float, mid: float, death: float) -> CurveTexture:
+	## Creates a 4-point scale curve for realistic taper: big at birth → tiny at death.
+	var tex := CurveTexture.new()
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, birth))
+	curve.add_point(Vector2(0.15, early))
+	curve.add_point(Vector2(0.5, mid))
+	curve.add_point(Vector2(1.0, death))
 	tex.curve = curve
 	return tex

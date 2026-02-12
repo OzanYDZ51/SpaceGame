@@ -13,6 +13,11 @@ const AVOIDANCE_BRAKE_THRESHOLD: float = 300.0 # Brake if obstacle closer than 3
 const APPROACH_OFFSET_AMOUNT: float = 150.0    # Lateral offset for intercept approach
 const ORBIT_ANGULAR_SPEED: float = 0.8         # Orbit speed in combat (rad/s)
 
+# --- Cruise mode for long-distance travel ---
+const CRUISE_ENGAGE_DIST: float = 5000.0       # 5km min to consider cruise
+const CRUISE_DISENGAGE_DIST: float = 3000.0    # 3km — exit cruise and decelerate
+const CRUISE_ALIGN_THRESHOLD: float = 0.95     # Dot product to engage cruise
+
 var _ship: ShipController = null
 var _cached_wm: WeaponManager = null
 var _cached_targeting: TargetingSystem = null
@@ -105,6 +110,8 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 
 	if dist < arrival_dist:
 		_ship.set_throttle(Vector3.ZERO)
+		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+			_ship._exit_cruise()
 		return
 
 	# --- Obstacle avoidance ---
@@ -161,6 +168,9 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 
 	_ship.set_throttle(Vector3(strafe.x, strafe.y, fwd_throttle))
 
+	# --- Cruise mode for long-distance travel ---
+	_update_cruise(dist, alignment)
+
 
 func face_target(target_pos: Vector3) -> void:
 	if _ship == null:
@@ -184,6 +194,32 @@ func face_target(target_pos: Vector3) -> void:
 	var yaw_rate: float = clampf(yaw_error * 4.0, -yaw_speed, yaw_speed)
 
 	_ship.set_rotation_target(pitch_rate, yaw_rate, 0.0)
+
+
+# =============================================================================
+# CRUISE
+# =============================================================================
+
+func _update_cruise(dist: float, alignment: float) -> void:
+	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+		# Exit cruise: close to target, badly misaligned, or approaching warp phase
+		# Cap AI cruise to phase 1 only (15x) — phase 2 punch (3000x) would overshoot
+		var near_punch := _ship.cruise_time > (ShipController.CRUISE_SPOOL_DURATION - 1.0)
+		if dist < CRUISE_DISENGAGE_DIST or alignment < 0.5 or near_punch:
+			_ship._exit_cruise()
+	else:
+		# Engage cruise: far away, well aligned, not in combat
+		# Check _last_combat_time directly (combat_locked is only updated for player ships)
+		var in_combat := (Time.get_ticks_msec() * 0.001 - _ship._last_combat_time) < ShipController.COMBAT_LOCK_DURATION
+		if dist > CRUISE_ENGAGE_DIST and alignment > CRUISE_ALIGN_THRESHOLD and not in_combat:
+			_ship.speed_mode = Constants.SpeedMode.CRUISE
+			_ship.cruise_time = 0.0
+			_ship._cruise_punched = false
+
+
+func disengage_cruise() -> void:
+	if _ship and _ship.speed_mode == Constants.SpeedMode.CRUISE:
+		_ship._exit_cruise()
 
 
 # =============================================================================

@@ -167,7 +167,7 @@ func _load_cell(key: Vector2i, cell_sp: Vector3) -> void:
 	_loaded_cells[key] = cell
 
 
-func _make_instance(cell_key: Vector2i, cell_sp: Vector3, cell_surface: Vector3,
+func _make_instance(cell_key: Vector2i, _cell_sp: Vector3, cell_surface: Vector3,
 		rng: RandomNumberGenerator, vtype: int) -> Transform3D:
 	var off_lat := rng.randf_range(-0.5, 0.5) * _angular_cell
 	var off_lon := rng.randf_range(-0.5, 0.5) * _angular_cell
@@ -189,8 +189,8 @@ func _make_instance(cell_key: Vector2i, cell_sp: Vector3, cell_surface: Vector3,
 	if right.length_squared() < 0.01:
 		right = up.cross(Vector3.FORWARD).normalized()
 	var forward := right.cross(up)
-	var basis := Basis(right, up, forward)
-	basis = basis * Basis(Vector3.UP, rng.randf() * TAU)
+	var b := Basis(right, up, forward)
+	b = b * Basis(Vector3.UP, rng.randf() * TAU)
 
 	# Scale: trees/bushes big, rocks small
 	var s_min := 1.2
@@ -202,9 +202,9 @@ func _make_instance(cell_key: Vector2i, cell_sp: Vector3, cell_surface: Vector3,
 	elif vtype == _VT.ROCK:
 		s_min = 0.3; s_max = 1.0
 	var s := rng.randf_range(s_min, s_max)
-	basis = basis.scaled(Vector3(s, s, s))
+	b = b.scaled(Vector3(s, s, s))
 
-	return Transform3D(basis, local_pos)
+	return Transform3D(b, local_pos)
 
 
 # =========================================================================

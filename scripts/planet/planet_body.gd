@@ -35,9 +35,8 @@ var _city_lights: CityLightsLayer = null
 var _cached_atmo_config: AtmosphereConfig = null
 
 var _update_timer: float = 0.0
-var _chunk_debug_timer: float = 0.0
 var _is_active: bool = false
-var _rotation_angle: float = 0.0  # Accumulated axial rotation (radians)
+var _last_total_chunks: int = 0  # Previous frame's chunk count for budget enforcement
 
 
 func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float, system_seed: int) -> void:
@@ -178,13 +177,19 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 	var total_chunks: int = 0
 
 	# Distribute global rebuild budget evenly across faces (2 per face by default)
-	var per_face: int = maxi(1, GLOBAL_REBUILD_BUDGET / 6)
+	var per_face: int = maxi(1, int(GLOBAL_REBUILD_BUDGET / 6.0))
 	for face in _faces:
 		face.max_rebuilds_per_frame = per_face
 
+	# Hard budget enforcement: disable splitting if last frame exceeded budget.
+	# Merging still runs, so count will decrease until budget is respected again.
+	var allow_split: bool = _last_total_chunks < MAX_TOTAL_CHUNKS
+
 	for face in _faces:
-		var count: int = face.update(cam_pos, Vector3.ZERO)
+		var count: int = face.update(cam_pos, Vector3.ZERO, allow_split)
 		total_chunks += count
+
+	_last_total_chunks = total_chunks
 
 	# Altitude: distance from local origin minus radius (rotation-invariant)
 	var altitude: float = cam_pos.length() - planet_radius
@@ -201,9 +206,6 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 			if col_budget <= 0:
 				break
 			col_budget -= face.update_collision(cam_pos, Vector3.ZERO, col_budget)
-
-	if total_chunks > MAX_TOTAL_CHUNKS:
-		push_warning("PlanetBody: %d chunks exceeds budget %d" % [total_chunks, MAX_TOTAL_CHUNKS])
 
 
 # =========================================================================

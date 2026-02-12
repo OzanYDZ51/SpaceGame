@@ -110,6 +110,12 @@ func switch_to_view(view: int) -> void:
 
 
 func _on_opened() -> void:
+	# Ensure galaxy fleet panel has the current fleet reference (may have been
+	# replaced after backend state load or deserialization)
+	if _galaxy_fleet_panel:
+		var current_fleet: PlayerFleet = GameManager.player_fleet
+		if current_fleet and _galaxy_fleet_panel._fleet != current_fleet:
+			_galaxy_fleet_panel.set_fleet(current_fleet)
 	current_view = _requested_view
 	if current_view == ViewMode.SYSTEM:
 		_activate_system_view()

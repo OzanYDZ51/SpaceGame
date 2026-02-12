@@ -37,8 +37,9 @@ func setup(p_face: int, p_radius: float, p_heightmap: HeightmapGenerator, p_mate
 
 
 ## Update quadtree LOD and process pending chunk rebuilds.
+## can_split=false prevents new splits (global budget exceeded).
 ## Returns number of active chunks on this face.
-func update(cam_pos: Vector3, planet_center: Vector3) -> int:
+func update(cam_pos: Vector3, planet_center: Vector3, can_split: bool = true) -> int:
 	if root == null:
 		return 0
 
@@ -46,7 +47,7 @@ func update(cam_pos: Vector3, planet_center: Vector3) -> int:
 	_last_planet_center = planet_center
 
 	# Update quadtree structure (split/merge)
-	root.update(cam_pos, planet_center, planet_radius)
+	root.update(cam_pos, planet_center, planet_radius, can_split)
 
 	# Collect leaves that need chunks (cached for per-frame morph updates)
 	_active_leaves.clear()

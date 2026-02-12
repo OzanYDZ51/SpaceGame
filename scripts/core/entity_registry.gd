@@ -141,7 +141,6 @@ func _process(delta: float) -> void:
 	_sync_timer -= delta
 	if _sync_timer > 0.0:
 		return
-	var elapsed: float = _accumulated_delta
 	_accumulated_delta = 0.0
 	_sync_timer = SYNC_INTERVAL
 

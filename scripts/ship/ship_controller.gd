@@ -82,6 +82,7 @@ var _current_roll_rate: float = 0.0
 
 # --- Mouse ---
 var _mouse_delta: Vector2 = Vector2.ZERO
+var cruise_look_delta: Vector2 = Vector2.ZERO  ## Mouse delta redirected to camera during cruise free look
 
 # --- Cached refs ---
 var _cached_energy_sys: EnergySystem = null
@@ -143,6 +144,31 @@ func _cache_refs() -> void:
 		health.damage_taken.connect(_on_combat_damage)
 
 
+func _notification(what: int) -> void:
+	if not is_player_controlled:
+		return
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		# Window lost focus — zero all input so _integrate_forces doesn't
+		# keep accelerating with stale throttle while _process is paused.
+		throttle_input = Vector3.ZERO
+		_target_pitch_rate = 0.0
+		_target_yaw_rate = 0.0
+		_target_roll_rate = 0.0
+		_mouse_delta = Vector2.ZERO
+		cruise_look_delta = Vector2.ZERO
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
+		# Window regained focus — clear residual rotation smoothing
+		throttle_input = Vector3.ZERO
+		_target_pitch_rate = 0.0
+		_target_yaw_rate = 0.0
+		_target_roll_rate = 0.0
+		_current_pitch_rate = 0.0
+		_current_yaw_rate = 0.0
+		_current_roll_rate = 0.0
+		_mouse_delta = Vector2.ZERO
+		cruise_look_delta = Vector2.ZERO
+
+
 func _input(event: InputEvent) -> void:
 	if not is_player_controlled:
 		return
@@ -174,8 +200,10 @@ func _read_input() -> void:
 			return
 		# Only manual flight input cancels autopilot (not combat lock — cruise is blocked separately)
 		var has_manual_input := false
-		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and _mouse_delta.length_squared() > 4.0:
-			has_manual_input = true
+		# In cruise, mouse is free look (camera orbit) — not manual flight input
+		if speed_mode != Constants.SpeedMode.CRUISE:
+			if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and _mouse_delta.length_squared() > 4.0:
+				has_manual_input = true
 		for act in ["move_forward", "move_backward", "strafe_left", "strafe_right", "strafe_up", "strafe_down"]:
 			if Input.is_action_pressed(act):
 				has_manual_input = true
@@ -185,6 +213,11 @@ func _read_input() -> void:
 			autopilot_disengaged_by_player.emit()
 		else:
 			_run_autopilot()
+			# In cruise, redirect mouse to free look camera before clearing
+			if speed_mode == Constants.SpeedMode.CRUISE:
+				cruise_look_delta = _mouse_delta
+			else:
+				cruise_look_delta = Vector2.ZERO
 			_mouse_delta = Vector2.ZERO
 			return
 
@@ -216,11 +249,19 @@ func _read_input() -> void:
 	throttle_input = thrust
 
 	# === ROTATION from mouse ===
-	var pitch_speed := (ship_data.rotation_pitch_speed if ship_data else Constants.ROTATION_PITCH_SPEED) * engine_rotation_mult
-	var yaw_speed := (ship_data.rotation_yaw_speed if ship_data else Constants.ROTATION_YAW_SPEED) * engine_rotation_mult
-	_target_pitch_rate = -_mouse_delta.y * Constants.MOUSE_SENSITIVITY * pitch_speed
-	_target_yaw_rate = -_mouse_delta.x * Constants.MOUSE_SENSITIVITY * yaw_speed
-	_mouse_delta = Vector2.ZERO
+	if speed_mode == Constants.SpeedMode.CRUISE:
+		# Free look: redirect mouse delta to camera, ship flies straight
+		cruise_look_delta = _mouse_delta
+		_mouse_delta = Vector2.ZERO
+		_target_pitch_rate = 0.0
+		_target_yaw_rate = 0.0
+	else:
+		cruise_look_delta = Vector2.ZERO
+		var pitch_speed := (ship_data.rotation_pitch_speed if ship_data else Constants.ROTATION_PITCH_SPEED) * engine_rotation_mult
+		var yaw_speed := (ship_data.rotation_yaw_speed if ship_data else Constants.ROTATION_YAW_SPEED) * engine_rotation_mult
+		_target_pitch_rate = -_mouse_delta.y * Constants.MOUSE_SENSITIVITY * pitch_speed
+		_target_yaw_rate = -_mouse_delta.x * Constants.MOUSE_SENSITIVITY * yaw_speed
+		_mouse_delta = Vector2.ZERO
 
 	# Roll from keyboard
 	var roll_speed := (ship_data.rotation_roll_speed if ship_data else Constants.ROTATION_ROLL_SPEED) * engine_rotation_mult
@@ -563,9 +604,6 @@ func _check_planet_collision(delta: float) -> void:
 	planet_avoidance_active = false
 
 	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
-	var nearest_dist: float = INF
-	var nearest_rr: float = 0.0
-	var nearest_center := Vector3.ZERO
 
 	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
 		var is_autopilot_target: bool = autopilot_active and ent.get("id", "") == autopilot_target_id
@@ -577,12 +615,6 @@ func _check_planet_collision(delta: float) -> void:
 		var dz: float = ent["pos_z"] - upos[2]
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 		var alt: float = dist - rr
-
-		# Track nearest planet for proximity guard (safety net)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest_rr = rr
-			nearest_center = global_position + Vector3(float(dx), float(dy), float(dz))
 
 		# Cruise exit at fixed 30km above surface (not speed-dependent)
 		var cruise_exit_alt: float = PLANET_CRUISE_EXIT_MARGIN
@@ -706,6 +738,7 @@ func reset_flight_state() -> void:
 	_current_yaw_rate = 0.0
 	_current_roll_rate = 0.0
 	_mouse_delta = Vector2.ZERO
+	cruise_look_delta = Vector2.ZERO
 
 
 func _run_autopilot() -> void:

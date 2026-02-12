@@ -82,9 +82,9 @@ static func _try_load_glb_mesh(vtype: int, _lod: int) -> Mesh:
 	if not _has_glb(vtype) and vtype == VegType.BUSH:
 		var conifer_path: String = GLB_PATHS.get(VegType.CONIFER, "")
 		if ResourceLoader.exists(conifer_path):
-			var entries := _get_glb_meshes(conifer_path)
-			if entries.size() >= 2:
-				return entries[1]["mesh"]  # Second biggest = small plant
+			var bush_entries := _get_glb_meshes(conifer_path)
+			if bush_entries.size() >= 2:
+				return bush_entries[1]["mesh"]  # Second biggest = small plant
 		return null
 
 	if path == "" or not ResourceLoader.exists(path):

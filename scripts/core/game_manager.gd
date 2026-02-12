@@ -219,6 +219,18 @@ func _setup_ui_managers() -> void:
 			ui_layer.add_child(overlay)
 
 
+## Re-set fleet reference on map panels (after backend replaces the fleet via deserialize).
+func _refresh_fleet_on_maps() -> void:
+	if player_fleet == null or _galaxy == null:
+		return
+	if _stellar_map:
+		_stellar_map.set_fleet(player_fleet, _galaxy)
+	if _screen_manager:
+		var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
+		if map_screen:
+			map_screen.set_fleet(player_fleet, _galaxy)
+
+
 func _initialize_game() -> void:
 	var scene := get_tree().current_scene
 	if not scene is Node3D:
@@ -665,6 +677,8 @@ func _load_backend_state() -> void:
 	if not state.is_empty() and not state.has("error"):
 		SaveManager.apply_state(state)
 		_backend_state_loaded = true
+		# Fleet reference was replaced by deserialize — reconnect map panels
+		_refresh_fleet_on_maps()
 
 
 func _notification(what: int) -> void:

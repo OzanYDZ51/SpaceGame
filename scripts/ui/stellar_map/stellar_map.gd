@@ -203,6 +203,12 @@ func open() -> void:
 	visible = true
 	_dirty = true
 
+	# Ensure fleet panel has the current fleet reference (may have been
+	# replaced after backend state load or deserialization)
+	var current_fleet: PlayerFleet = GameManager.player_fleet
+	if current_fleet and _fleet_panel._fleet != current_fleet:
+		_fleet_panel.set_fleet(current_fleet)
+
 	# Release mouse for map interaction
 	_was_mouse_captured = Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)

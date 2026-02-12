@@ -880,12 +880,16 @@ func _draw_route_line(entities: Dictionary) -> void:
 		var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
 		_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
 	# Destination marker (small diamond) — drawn once
+	# Use draw_primitive instead of draw_colored_polygon to avoid triangulation errors
+	# when the point is at extreme coordinates (far off-screen)
 	var ds: float = 5.0
+	var marker_col := Color(base_col.r, base_col.g, base_col.b, 0.6)
 	var diamond := PackedVector2Array([
 		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),
 		to_sp + Vector2(0, ds), to_sp + Vector2(-ds, 0),
 	])
-	draw_colored_polygon(diamond, Color(base_col.r, base_col.g, base_col.b, 0.6))
+	var colors := PackedColorArray([marker_col, marker_col, marker_col, marker_col])
+	draw_primitive(diamond, colors, PackedVector2Array())
 
 
 func _draw_waypoint_flash() -> void:
