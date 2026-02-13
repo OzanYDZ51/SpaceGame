@@ -11,8 +11,13 @@ signal dock_unavailable()
 signal docked(station_name: String)
 signal undocked()
 
-@export var dock_range: float = 5000.0    ## Max distance to dock (meters)
-@export var dock_max_speed: float = 350.0 ## Max speed to allow docking (m/s)
+const DEFAULT_DOCK_RANGE: float = 5000.0      ## Max distance to dock (meters)
+const DEFAULT_DOCK_MAX_SPEED: float = 350.0   ## Max speed to allow docking (m/s)
+const DEFAULT_DOCK_MIN_FACING: float = 0.5    ## Min dot product ship→station (0.5 ≈ 60° cone)
+
+@export var dock_range: float = DEFAULT_DOCK_RANGE
+@export var dock_max_speed: float = DEFAULT_DOCK_MAX_SPEED
+@export var dock_min_facing: float = DEFAULT_DOCK_MIN_FACING
 @export var scan_interval: float = 0.25   ## Seconds between station scans
 
 var is_docked: bool = false
@@ -75,7 +80,11 @@ func _scan_stations() -> void:
 		var speed: float = 0.0
 		if _ship is RigidBody3D:
 			speed = (_ship as RigidBody3D).linear_velocity.length()
-		can_dock = speed < dock_max_speed
+		# Must face the station (ship forward is -Z)
+		var to_station := (best_node.global_position - _ship.global_position).normalized()
+		var forward := -_ship.global_basis.z.normalized()
+		var facing := forward.dot(to_station) > dock_min_facing
+		can_dock = speed < dock_max_speed and facing
 		nearest_station_node = best_node
 		nearest_station_name = best_name
 		if can_dock and not was_available:

@@ -145,8 +145,18 @@ func get_nearest_minable_asteroid(pos: Vector3, radius: float) -> AsteroidData:
 	var results := _grid.query_nearest(pos, radius, 10)
 	for entry in results:
 		var asteroid: AsteroidData = _all_asteroids.get(entry["id"])
-		if asteroid and not asteroid.is_depleted:
+		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
 			return asteroid
+	return null
+
+
+func get_nearest_minable_asteroid_filtered(pos: Vector3, radius: float, resource_filter: Array) -> AsteroidData:
+	var results := _grid.query_nearest(pos, radius, 20)
+	for entry in results:
+		var asteroid: AsteroidData = _all_asteroids.get(entry["id"])
+		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
+			if asteroid.primary_resource in resource_filter:
+				return asteroid
 	return null
 
 

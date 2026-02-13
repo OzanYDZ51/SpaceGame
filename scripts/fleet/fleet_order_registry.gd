@@ -104,5 +104,6 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 			return {
 				"center_x": context.get("universe_x", 0.0),
 				"center_z": context.get("universe_z", 0.0),
+				"resource_filter": context.get("resource_filter", []),
 			}
 	return {}

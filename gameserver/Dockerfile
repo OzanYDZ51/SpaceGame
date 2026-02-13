@@ -35,8 +35,8 @@ COPY assets/ assets/
 # so we allow failure but log output for debugging.
 RUN godot --headless --import 2>&1 || echo "Import step returned non-zero (expected in headless mode)"
 
-# Railway sets PORT env var dynamically; our NetworkManager reads it
-EXPOSE 7777
+# Railway sets PORT env var dynamically; NetworkManager reads it.
+# Do NOT hardcode EXPOSE — Railway assigns PORT at runtime.
 
 # Run as headless dedicated server
 # NetworkManager._check_dedicated_server() detects headless → is_dedicated_server = true

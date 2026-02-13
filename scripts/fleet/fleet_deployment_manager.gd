@@ -175,11 +175,15 @@ func retrieve_ship(fleet_index: int) -> bool:
 	if sq_mgr:
 		sq_mgr.on_ship_retrieved(fleet_index)
 
-	# Despawn NPC
+	# Despawn NPC and update docked station from FleetAIBridge target
 	if _deployed_ships.has(fleet_index):
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
 			var npc: ShipController = npc_ref
+			# Update docked_station_id from bridge (ship may have been sent to a different station)
+			var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+			if bridge and bridge._station_id != "":
+				fs.docked_station_id = bridge._station_id
 			EntityRegistry.unregister(npc.name)
 			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 			if lod_mgr:

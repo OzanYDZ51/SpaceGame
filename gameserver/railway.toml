@@ -4,3 +4,5 @@ dockerfilePath = "./gameserver/Dockerfile"
 
 [deploy]
 restartPolicyType = "on_failure"
+healthcheckTimeout = 300
+sleepApplication = false

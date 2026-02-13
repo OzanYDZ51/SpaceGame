@@ -10,7 +10,7 @@ extends Node
 # Supports physical asteroids (near player) and virtual mining (far from player).
 # =============================================================================
 
-enum MiningState { SEARCHING, NAVIGATING, POSITIONING, EXTRACTING, COOLING, RETURNING, DOCKED, DEPARTING }
+enum MiningState { SEARCHING, SCANNING, NAVIGATING, POSITIONING, EXTRACTING, COOLING, RETURNING, DOCKED, DEPARTING }
 
 var fleet_index: int = -1
 var fleet_ship: FleetShip = null
@@ -39,6 +39,14 @@ var is_overheated: bool = false
 var _beam: MiningLaserBeam = null
 var _beam_visible: bool = false
 const BEAM_VISIBILITY_DIST: float = 2000.0
+
+# Scan cooldown (logical scan, no visual pulse)
+var _scan_cooldown: float = 0.0
+const SCAN_COOLDOWN: float = 8.0
+const SCAN_RADIUS: float = 3000.0
+
+# Resource filter (empty = mine everything)
+var _resource_filter: Array = []
 
 # Timers
 var _search_timer: float = 0.0
@@ -98,11 +106,12 @@ func _ready() -> void:
 			_resource_capacity = ship_data.cargo_capacity
 		_home_station_id = fleet_ship.docked_station_id
 
-	# Read belt center from FleetAIBridge sibling
+	# Read belt center + resource filter from FleetAIBridge sibling
 	var bridge := _ship.get_node_or_null("FleetAIBridge") as FleetAIBridge
 	if bridge:
 		_belt_center_x = bridge.command_params.get("center_x", 0.0)
 		_belt_center_z = bridge.command_params.get("center_z", 0.0)
+		_resource_filter = bridge.command_params.get("resource_filter", [])
 
 	# Listen to origin shifts for virtual target position correction
 	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
@@ -134,12 +143,18 @@ func _process(delta: float) -> void:
 		_stop_beam()
 		return
 
+	# Scan cooldown tick
+	if _scan_cooldown > 0.0:
+		_scan_cooldown = maxf(0.0, _scan_cooldown - delta)
+
 	# Heat system (always ticks)
 	_update_heat(delta)
 
 	match _state:
 		MiningState.SEARCHING:
 			_tick_searching(delta)
+		MiningState.SCANNING:
+			_tick_scanning(delta)
 		MiningState.NAVIGATING:
 			_tick_navigating()
 		MiningState.POSITIONING:
@@ -166,6 +181,14 @@ func _tick_searching(delta: float) -> void:
 		return
 	_search_timer = 0.0
 
+	# If scan cooldown is ready, do a logical scan first to reveal nearby asteroids
+	if _scan_cooldown <= 0.0 and _asteroid_mgr:
+		_scan_cooldown = SCAN_COOLDOWN
+		_asteroid_mgr.reveal_asteroids_in_radius(_ship.global_position, SCAN_RADIUS)
+		_state = MiningState.SCANNING
+		_search_timer = 0.0
+		return
+
 	# Try physical asteroid first (near player, cells loaded)
 	var asteroid := _find_physical_asteroid()
 	if asteroid:
@@ -181,6 +204,33 @@ func _tick_searching(delta: float) -> void:
 		_mining_target = null
 		_state = MiningState.NAVIGATING
 		return
+
+
+func _tick_scanning(delta: float) -> void:
+	# Brief pause after scan to let reveal settle, then search among scanned asteroids
+	_search_timer += delta
+	if _search_timer < 0.5:
+		return
+	_search_timer = 0.0
+
+	# Try physical asteroid (now with revealed scan data)
+	var asteroid := _find_physical_asteroid()
+	if asteroid:
+		_mining_target = asteroid
+		_virtual_target = {}
+		_state = MiningState.NAVIGATING
+		return
+
+	# Try virtual mining
+	var vt := _generate_virtual_target()
+	if not vt.is_empty():
+		_virtual_target = vt
+		_mining_target = null
+		_state = MiningState.NAVIGATING
+		return
+
+	# Nothing found after scan — go back to SEARCHING
+	_state = MiningState.SEARCHING
 
 
 func _tick_navigating() -> void:
@@ -372,6 +422,13 @@ func _do_physical_mining_tick() -> void:
 		_state = MiningState.SEARCHING
 		return
 
+	# Safety net: skip sterile asteroids
+	if not _mining_target.has_resource:
+		_stop_beam()
+		_mining_target = null
+		_state = MiningState.SEARCHING
+		return
+
 	var res := MiningRegistry.get_resource(_mining_target.primary_resource)
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
@@ -436,6 +493,8 @@ func _store_yield(yield_data: Dictionary) -> void:
 	if fleet_ship == null:
 		return
 	var resource_id: StringName = yield_data["resource_id"]
+	if resource_id == &"":
+		return
 	var qty: int = yield_data["quantity"]
 	fleet_ship.add_resource(resource_id, qty)
 
@@ -469,7 +528,10 @@ func _update_heat(delta: float) -> void:
 func _find_physical_asteroid() -> AsteroidData:
 	if _asteroid_mgr == null:
 		return null
-	return _asteroid_mgr.get_nearest_minable_asteroid(_ship.global_position, SEARCH_RADIUS)
+	if _resource_filter.is_empty():
+		return _asteroid_mgr.get_nearest_minable_asteroid(_ship.global_position, SEARCH_RADIUS)
+	# Filtered search: get multiple candidates and pick the first matching the filter
+	return _asteroid_mgr.get_nearest_minable_asteroid_filtered(_ship.global_position, SEARCH_RADIUS, _resource_filter)
 
 
 func _generate_virtual_target() -> Dictionary:
@@ -500,6 +562,10 @@ func _generate_virtual_target() -> Dictionary:
 		resource_id = field.secondary_resource
 	else:
 		resource_id = field.rare_resource
+
+	# Apply resource filter — skip if resource not in filter
+	if not _resource_filter.is_empty() and not (resource_id in _resource_filter):
+		return {}
 
 	# Size distribution: 60% small, 30% medium, 10% large
 	var size_roll: float = _virtual_rng.randf()

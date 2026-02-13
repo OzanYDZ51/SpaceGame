@@ -127,6 +127,12 @@ const LAYER_ASTEROIDS: int = 4
 const LAYER_PROJECTILES: int = 8
 const LAYER_TERRAIN: int = 16
 
+# --- AI ---
+const AI_TICK_INTERVAL: float = 0.1              # 10Hz — base AI tick rate
+const AI_DETECTION_RANGE: float = 3000.0         # NPC threat detection radius
+const AI_ENGAGEMENT_RANGE: float = 1500.0        # Preferred combat distance (also used for combat bridge, defend range)
+const AI_DISENGAGE_RANGE: float = 4000.0         # Break off combat beyond this distance
+
 # --- Speed Modes ---
 enum SpeedMode { NORMAL, BOOST, CRUISE }
 

@@ -83,12 +83,18 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	if health == null or health.is_dead():
 		return
 
-	# Distance check
+	# System check — sender must be in the same system as the structure
 	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
-	if sender_state:
-		var sender_pos := FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
-		if sender_pos.distance_to(node.global_position) > 5000.0:
-			return
+	if sender_state == null:
+		return
+	var struct_sys: int = entry.get("system_id", -1)
+	if sender_state.system_id != struct_sys:
+		return
+
+	# Distance check
+	var sender_pos := FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
+	if sender_pos.distance_to(node.global_position) > 5000.0:
+		return
 
 	# Damage tolerance check (±50%)
 	# We accept reasonable values — prevents obvious cheats

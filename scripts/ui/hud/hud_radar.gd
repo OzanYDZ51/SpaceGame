@@ -201,6 +201,26 @@ func _draw_radar(ctrl: Control) -> void:
 				blip_col = Color(ast_data.resource_color.r, ast_data.resource_color.g, ast_data.resource_color.b, 0.7)
 			ctrl.draw_circle(center + radar_pos, 1.5, blip_col)
 
+	# Scanner pulse rings on radar
+	var scanner := GameManager.get_node_or_null("AsteroidScanner") as AsteroidScanner
+	if scanner:
+		var pulses := scanner.get_active_pulses_info()
+		var scan_col := Color(0.0, 0.85, 0.95, 0.6)
+		for pinfo in pulses:
+			var pulse_pos: Vector3 = pinfo["position"]
+			var pulse_r: float = pinfo["radius"]
+			# Pulse center relative to ship
+			var rel: Vector3 = pulse_pos - ship.global_position
+			var lx: float = rel.dot(ship_basis.x)
+			var lz: float = rel.dot(ship_basis.z)
+			var radar_center := center + Vector2(lx, lz) * scale_factor
+			# Radius in radar pixels
+			var radar_pulse_r: float = pulse_r * scale_factor
+			if radar_pulse_r > 1.0:
+				var ring_alpha: float = 0.6 * (1.0 - clampf(pulse_r / 5000.0, 0.0, 1.0) * 0.5)
+				var col := Color(scan_col.r, scan_col.g, scan_col.b, ring_alpha)
+				ctrl.draw_arc(radar_center, minf(radar_pulse_r, radar_r), 0.0, TAU, 64, col, 1.5, true)
+
 	# Player icon
 	var tri_sz := 5.0
 	ctrl.draw_colored_polygon(PackedVector2Array([

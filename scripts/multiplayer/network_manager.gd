@@ -168,7 +168,11 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	# Railway sets PORT env var dynamically
 	var env_port: String = OS.get_environment("PORT")
 	if env_port != "":
-		port = env_port.to_int()
+		var parsed_port := env_port.to_int()
+		if parsed_port > 0 and parsed_port <= 65535:
+			port = parsed_port
+		else:
+			push_warning("NetworkManager: Invalid PORT env '%s', using default %d" % [env_port, port])
 	_server_port = port
 	_peer = WebSocketMultiplayerPeer.new()
 	var err := _peer.create_server(port)
@@ -182,6 +186,9 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	local_peer_id = 1
 	is_host = true
 	is_dedicated_server = true
+	print("========================================")
+	print("  DEDICATED SERVER LISTENING ON PORT %d" % port)
+	print("========================================")
 	connection_succeeded.emit()
 	return OK
 
@@ -336,7 +343,7 @@ func _on_server_disconnected() -> void:
 	for pid in peer_ids:
 		peer_disconnected.emit(pid)
 	player_list_updated.emit()
-	_reconnect_attempts = 1
+	_reconnect_attempts += 1
 	_reconnect_timer = RECONNECT_DELAY
 	connection_failed.emit("Serveur déconnecté. Reconnexion...")
 
@@ -348,6 +355,8 @@ func _attempt_reconnect() -> void:
 		return
 	if _server_url != "":
 		connect_to_server(_server_url)
+	elif Constants.NET_GAME_SERVER_URL != "":
+		connect_to_server(Constants.NET_GAME_SERVER_URL)
 	else:
 		connect_to_server("127.0.0.1", _server_port)
 
@@ -658,9 +667,11 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 	var target_pos := Vector3(target_state.pos_x, target_state.pos_y, target_state.pos_z)
 	if sender_pos.distance_to(target_pos) > 3000.0:
 		return
-	# Weapon damage bounds
+	# Weapon damage bounds — reject unknown weapons entirely
 	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
-	if weapon and damage_val > weapon.damage_per_hit * 1.5:
+	if weapon == null:
+		return
+	if damage_val > weapon.damage_per_hit * 1.5:
 		return
 	# Relay damage to target player
 	if target_pid == 1 and not is_dedicated_server:
@@ -806,7 +817,12 @@ func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: S
 	var sender_id := multiplayer.get_remote_sender_id()
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 	if npc_auth:
-		npc_auth.handle_fleet_deploy_request(sender_id, fleet_index, StringName(cmd_str), JSON.parse_string(params_json) if params_json != "" else {})
+		var params: Dictionary = {}
+		if params_json != "":
+			var parsed = JSON.parse_string(params_json)
+			if parsed is Dictionary:
+				params = parsed
+		npc_auth.handle_fleet_deploy_request(sender_id, fleet_index, StringName(cmd_str), params)
 
 
 ## Client -> Server: Request to retrieve a fleet ship.
@@ -828,7 +844,12 @@ func _rpc_request_fleet_command(fleet_index: int, cmd_str: String, params_json: 
 	var sender_id := multiplayer.get_remote_sender_id()
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 	if npc_auth:
-		npc_auth.handle_fleet_command_request(sender_id, fleet_index, StringName(cmd_str), JSON.parse_string(params_json) if params_json != "" else {})
+		var params: Dictionary = {}
+		if params_json != "":
+			var parsed = JSON.parse_string(params_json)
+			if parsed is Dictionary:
+				params = parsed
+		npc_auth.handle_fleet_command_request(sender_id, fleet_index, StringName(cmd_str), params)
 
 
 ## Server -> Client: A fleet ship has been deployed.
@@ -899,6 +920,14 @@ func _rpc_structure_hit_claim(target_id: String, weapon: String, damage: float, 
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
+	# Basic validation: sender must exist and damage must be in bounds
+	if not peers.has(sender_id):
+		return
+	if damage < 0.0 or damage > 500.0:
+		return
+	# Reject unknown weapons
+	if WeaponRegistry.get_weapon(StringName(weapon)) == null:
+		return
 	structure_hit_claimed.emit(sender_id, target_id, weapon, damage, hit_dir)
 
 

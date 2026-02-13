@@ -425,11 +425,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			var t := cruise_time / CRUISE_SPOOL_DURATION
 			cruise_mult = lerpf(1.0, 15.0, t * t)
 		else:
-			# Phase 2: explosive punch — emit signal on first frame
+			# Phase 2: explosive punch
 			if not _cruise_punched:
 				_cruise_punched = true
-				cruise_punch_triggered.emit()
-				_enter_cruise_warp()
+				if is_player_controlled:
+					cruise_punch_triggered.emit()
+					_enter_cruise_warp()
 			var t2 := clampf((cruise_time - CRUISE_SPOOL_DURATION) / CRUISE_PUNCH_DURATION, 0.0, 1.0)
 			cruise_mult = lerpf(50.0, 3000.0, t2)
 		accel_fwd *= cruise_mult

@@ -9,6 +9,7 @@ var docking_system: DockingSystem = null
 var loot_pickup: LootPickupSystem = null
 var system_transition: SystemTransition = null
 var asteroid_scanner: AsteroidScanner = null
+var mining_system: MiningSystem = null
 var pulse_t: float = 0.0
 var can_build: bool = false
 var build_target_name: String = ""
@@ -89,7 +90,7 @@ func update_visibility() -> void:
 			_build_prompt.queue_redraw()
 
 	if _scan_prompt:
-		var show_scan: bool = asteroid_scanner != null and asteroid_scanner.can_scan() and _is_in_belt()
+		var show_scan: bool = asteroid_scanner != null and asteroid_scanner.can_scan() and _is_in_belt() and mining_system != null and mining_system.has_mining_laser()
 		_scan_prompt.visible = show_scan
 		if show_scan:
 			_scan_prompt.queue_redraw()

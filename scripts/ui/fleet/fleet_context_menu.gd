@@ -15,6 +15,7 @@ var _orders: Array[Dictionary] = []
 var _context: Dictionary = {}
 var _hovered_index: int = -1
 var _item_offsets: PackedFloat32Array = []  # cumulative Y offsets per item
+var _mining_submenu: FleetMiningSubmenu = null
 
 const ITEM_H: float = 28.0
 const HEADER_H: float = 22.0
@@ -26,6 +27,10 @@ const CORNER_LEN: float = 6.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	z_index = 100
+
+
+func _exit_tree() -> void:
+	_close_mining_submenu()
 
 
 func show_menu(pos: Vector2, orders: Array[Dictionary], context: Dictionary) -> void:
@@ -116,12 +121,15 @@ func _gui_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if _hovered_index >= 0 and _hovered_index < _orders.size():
 				var order: Dictionary = _orders[_hovered_index]
-				var params: Dictionary = {}
-				var id_str := String(order["id"])
-				# Squadron and construction orders don't use FleetOrderRegistry params
-				if not id_str.begins_with("sq_") and not id_str.begins_with("build_"):
-					params = FleetOrderRegistry.build_default_params(order["id"], _context)
-				order_selected.emit(order["id"], params)
+				# "mine" opens the resource submenu instead of emitting directly
+				if order["id"] == &"mine":
+					_open_mining_submenu()
+				else:
+					var params: Dictionary = {}
+					var id_str := String(order["id"])
+					if not id_str.begins_with("sq_") and not id_str.begins_with("build_"):
+						params = FleetOrderRegistry.build_default_params(order["id"], _context)
+					order_selected.emit(order["id"], params)
 			else:
 				cancelled.emit()
 			accept_event()
@@ -145,6 +153,9 @@ func _index_at_y(mouse_y: float) -> int:
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
+	# Don't close if mining submenu is handling input
+	if _mining_submenu and _mining_submenu.visible:
+		return
 	# Escape closes menu
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
 		cancelled.emit()
@@ -158,3 +169,32 @@ func _input(event: InputEvent) -> void:
 			# Right-click outside: let event propagate to StellarMap for new order
 			if event.button_index != MOUSE_BUTTON_RIGHT:
 				get_viewport().set_input_as_handled()
+
+
+func _open_mining_submenu() -> void:
+	_close_mining_submenu()
+	_mining_submenu = FleetMiningSubmenu.new()
+	_mining_submenu.name = "MiningSubmenu"
+	get_parent().add_child(_mining_submenu)
+	_mining_submenu.confirmed.connect(_on_mining_submenu_confirmed)
+	_mining_submenu.cancelled.connect(_on_mining_submenu_cancelled)
+	# Position to the right of this menu
+	var sub_pos := global_position + Vector2(MENU_W + 4, 0)
+	_mining_submenu.show_at(sub_pos)
+
+
+func _close_mining_submenu() -> void:
+	if _mining_submenu and is_instance_valid(_mining_submenu):
+		_mining_submenu.queue_free()
+		_mining_submenu = null
+
+
+func _on_mining_submenu_confirmed(resource_filter: Array) -> void:
+	_close_mining_submenu()
+	_context["resource_filter"] = resource_filter
+	var params := FleetOrderRegistry.build_default_params(&"mine", _context)
+	order_selected.emit(&"mine", params)
+
+
+func _on_mining_submenu_cancelled() -> void:
+	_close_mining_submenu()

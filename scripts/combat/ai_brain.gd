@@ -26,10 +26,10 @@ var formation_discipline: float = 0.8
 var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 
-# Detection
-const DETECTION_RANGE: float = 3000.0
-const ENGAGEMENT_RANGE: float = 1500.0
-const DISENGAGE_RANGE: float = 4000.0
+# Detection — references Constants for single source of truth
+const DETECTION_RANGE: float = Constants.AI_DETECTION_RANGE
+const ENGAGEMENT_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
+const DISENGAGE_RANGE: float = Constants.AI_DISENGAGE_RANGE
 
 # Patrol
 var _waypoints: Array[Vector3] = []
@@ -51,7 +51,7 @@ var _cached_asteroid_mgr: AsteroidFieldManager = null
 
 # AI tick
 var _tick_timer: float = 0.0
-const TICK_INTERVAL: float = 0.1  # 10Hz
+const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 
 var _ship: ShipController = null
 var _pilot: AIPilot = null

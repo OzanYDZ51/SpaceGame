@@ -67,7 +67,9 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.npc_batch_received.connect(_on_npc_batch_received)
 	NetworkManager.npc_spawned.connect(_on_npc_spawned)
 	NetworkManager.npc_died.connect(_on_npc_died)
+	NetworkManager.fleet_ship_deployed.connect(_on_remote_fleet_deployed)
 	NetworkManager.fleet_ship_retrieved.connect(_on_remote_fleet_retrieved)
+	NetworkManager.fleet_command_changed.connect(_on_remote_fleet_command_changed)
 	NetworkManager.remote_fire_received.connect(_on_remote_fire_received)
 	NetworkManager.player_damage_received.connect(_on_player_damage_received)
 	NetworkManager.npc_fire_received.connect(_on_npc_fire_received)
@@ -353,6 +355,12 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 			universe_node.add_child(crate)
 
 
+func _on_remote_fleet_deployed(_owner_pid: int, _fleet_idx: int, _npc_id_str: String, spawn_data: Dictionary) -> void:
+	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
+		return
+	_on_npc_spawned(spawn_data)
+
+
 func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: String) -> void:
 	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
 		return
@@ -363,6 +371,10 @@ func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: St
 			lod_data.node_ref.queue_free()
 		lod_manager.unregister_ship(npc_id)
 	remote_npcs.erase(npc_id)
+
+
+func _on_remote_fleet_command_changed(_owner_pid: int, _fleet_idx: int, _npc_id_str: String, _cmd: String, _params: Dictionary) -> void:
+	pass
 
 
 # =============================================================================
@@ -578,6 +590,16 @@ func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> vo
 		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.change_ship_model(new_ship_id)
+	# Update LOD data with new ship info
+	if lod_manager:
+		var rid := StringName("RemotePlayer_%d" % peer_id)
+		var rdata := lod_manager.get_ship_data(rid)
+		if rdata:
+			rdata.ship_id = new_ship_id
+			var sdata := ShipRegistry.get_ship_data(new_ship_id)
+			if sdata:
+				rdata.ship_class = sdata.ship_class
+				rdata.model_scale = sdata.model_scale
 
 
 # =============================================================================

@@ -35,6 +35,9 @@ func _process(delta: float) -> void:
 		return
 
 	# Poll TCP status
+	if _tcp == null:
+		_connected = false
+		return
 	_tcp.poll()
 	if _tcp.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		_connected = false
@@ -106,7 +109,7 @@ func update_from_game_state(game_state: int) -> void:
 		2: set_state("En pause")
 		3: set_state("Menu")
 		4: set_state("Mort")
-		5: set_state("Docke")
+		5: set_state("Docké")
 
 
 func cleanup() -> void:

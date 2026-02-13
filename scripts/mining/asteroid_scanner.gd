@@ -2,15 +2,16 @@ class_name AsteroidScanner
 extends Node
 
 # =============================================================================
-# Asteroid Scanner — Sends a pulse wave to reveal asteroid resources
-# Triggered by H key. Cooldown 15s, range 5km, reveal lasts 30s.
+# Asteroid Scanner — Sends expanding ring pulses to reveal asteroid resources
+# Triggered by H key. Cooldown 8s, range 5km, reveal lasts 30s.
+# Multiple pulses can coexist — each is independent.
 # =============================================================================
 
 signal scan_triggered
 signal scan_cooldown_changed(remaining: float, total: float)
 signal scan_results(count: int)
 
-const SCAN_COOLDOWN: float = 15.0
+const SCAN_COOLDOWN: float = 8.0
 const SCAN_RANGE: float = 5000.0
 
 var _asteroid_mgr: AsteroidFieldManager = null
@@ -18,11 +19,10 @@ var _ship: RigidBody3D = null
 var _universe_node: Node3D = null
 
 var _cooldown: float = 0.0
-var _is_scanning: bool = false
-var _pulse: ScannerPulseEffect = null
-var _last_reveal_radius: float = 0.0
-var _total_revealed: int = 0
 var _notif: NotificationService = null
+
+# Each active pulse tracks its own reveal count
+var _active_pulses: Array[Dictionary] = []  # [{pulse, revealed}]
 
 
 func initialize(mgr: AsteroidFieldManager, ship: RigidBody3D, universe: Node3D) -> void:
@@ -36,7 +36,17 @@ func set_notification_service(notif: NotificationService) -> void:
 
 
 func can_scan() -> bool:
-	return _cooldown <= 0.0 and not _is_scanning
+	return _cooldown <= 0.0
+
+
+## Returns array of {position: Vector3, radius: float} for each active pulse (for radar).
+func get_active_pulses_info() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for data in _active_pulses:
+		var pulse: ScannerPulseEffect = data["pulse"]
+		if is_instance_valid(pulse):
+			result.append({"position": pulse.global_position, "radius": pulse._current_radius})
+	return result
 
 
 func trigger_scan() -> void:
@@ -45,18 +55,19 @@ func trigger_scan() -> void:
 	if _ship == null or _universe_node == null or _asteroid_mgr == null:
 		return
 
-	_is_scanning = true
 	_cooldown = SCAN_COOLDOWN
-	_last_reveal_radius = 0.0
-	_total_revealed = 0
 
 	# Spawn pulse effect at ship position (in Universe node so it shifts with origin)
-	_pulse = ScannerPulseEffect.new()
-	_pulse.name = "ScannerPulse"
-	_pulse.position = _ship.global_position
-	_universe_node.add_child(_pulse)
-	_pulse.scan_radius_updated.connect(_on_pulse_radius_updated)
-	_pulse.scan_completed.connect(_on_pulse_completed)
+	var pulse := ScannerPulseEffect.new()
+	pulse.name = "ScannerPulse_%d" % Time.get_ticks_msec()
+	pulse.position = _ship.global_position
+	_universe_node.add_child(pulse)
+
+	var pulse_data := {"pulse": pulse, "revealed": 0}
+	_active_pulses.append(pulse_data)
+
+	pulse.scan_radius_updated.connect(_on_pulse_radius_updated.bind(pulse_data))
+	pulse.scan_completed.connect(_on_pulse_completed.bind(pulse_data))
 
 	scan_triggered.emit()
 
@@ -67,22 +78,24 @@ func _process(delta: float) -> void:
 		scan_cooldown_changed.emit(_cooldown, SCAN_COOLDOWN)
 
 
-func _on_pulse_radius_updated(radius: float) -> void:
-	if _asteroid_mgr == null or _pulse == null:
+func _on_pulse_radius_updated(radius: float, data: Dictionary) -> void:
+	if _asteroid_mgr == null:
 		return
-	# Reveal asteroids in the annular ring between last radius and current radius
-	var center: Vector3 = _pulse.global_position
+	var pulse: ScannerPulseEffect = data["pulse"]
+	if not is_instance_valid(pulse):
+		return
+	var center: Vector3 = pulse.global_position
 	var count: int = _asteroid_mgr.reveal_asteroids_in_radius(center, radius)
-	_total_revealed += count
+	data["revealed"] += count
 
 
-func _on_pulse_completed() -> void:
-	_is_scanning = false
-	_pulse = null
-	scan_results.emit(_total_revealed)
+func _on_pulse_completed(data: Dictionary) -> void:
+	var revealed: int = data["revealed"]
+	_active_pulses.erase(data)
+	scan_results.emit(revealed)
 
 	if _notif:
-		if _total_revealed > 0:
-			_notif.toast("%d GISEMENT%s DETECTE%s" % [_total_revealed, "S" if _total_revealed > 1 else "", "S" if _total_revealed > 1 else ""], UIToast.ToastType.SUCCESS, 3.0)
+		if revealed > 0:
+			_notif.toast("%d GISEMENT%s DETECTE%s" % [revealed, "S" if revealed > 1 else "", "S" if revealed > 1 else ""], UIToast.ToastType.SUCCESS, 3.0)
 		else:
 			_notif.toast("AUCUN GISEMENT DETECTE", UIToast.ToastType.WARNING, 3.0)

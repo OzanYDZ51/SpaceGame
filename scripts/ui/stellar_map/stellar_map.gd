@@ -470,6 +470,8 @@ func _input(event: InputEvent) -> void:
 					_fleet_selected_indices.clear()
 					_fleet_panel.clear_selection()
 					_select_entity("")
+					_camera.follow_entity_id = _player_id
+					_camera.follow_enabled = true
 					get_viewport().set_input_as_handled()
 					return
 
@@ -495,6 +497,12 @@ func _input(event: InputEvent) -> void:
 						else:
 							_select_entity(hit_id)
 							_sync_fleet_selection_from_entity(hit_id)
+							# Follow moving entities (fleet ships, player)
+							var hit_ent := EntityRegistry.get_entity(hit_id)
+							var hit_type: int = hit_ent.get("type", -1)
+							if hit_id == _player_id or hit_type == EntityRegistrySystem.EntityType.SHIP_FLEET:
+								_camera.follow_entity_id = hit_id
+								_camera.follow_enabled = true
 							_last_click_id = hit_id
 							_last_click_time = now
 				else:
@@ -525,6 +533,7 @@ func _input(event: InputEvent) -> void:
 							if not fleet_ids.is_empty():
 								_fleet_selected_indices = fleet_ids
 								_fleet_panel.set_selected_fleet_indices(fleet_ids)
+								_restore_route_for_fleet_selection()
 						else:
 							_select_entity("")
 					else:
@@ -615,9 +624,16 @@ func _input(event: InputEvent) -> void:
 								fleet_order_requested.emit(idx, &"move_to", params)
 							_show_waypoint(universe_x, universe_z)
 							_set_route_lines(effective_indices, universe_x, universe_z)
+					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.STATION:
+						# Right-click on a station → dock at that station
+						_select_entity(target_id)
+						var params := {"station_id": target_id}
+						for idx in effective_indices:
+							fleet_order_requested.emit(idx, &"return_to_station", params)
+						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
+						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 					elif not target_ent.is_empty():
-						# Right-click on a known entity (gate, station, planet...) → move to it
-						# Don't sync fleet selection from target — right-click is a command, not a selection change
+						# Right-click on a known entity (gate, planet...) → move to it
 						_select_entity(target_id)
 						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
 						for idx in effective_indices:
@@ -707,6 +723,7 @@ func _sync_fleet_selection_from_entity(id: String) -> void:
 		var idx: int = _fleet_panel._fleet.active_index
 		_fleet_selected_indices = [idx]
 		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
+		_restore_route_for_fleet_selection()
 		return
 	# Fleet NPC → fleet_index from entity extra
 	var ent := EntityRegistry.get_entity(id)
@@ -742,6 +759,18 @@ func _center_on_entity(id: String) -> void:
 	_camera.center_x = ent["pos_x"]
 	_camera.center_z = ent["pos_z"]
 	_camera.follow_enabled = false
+	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+	_select_entity(id)
+
+
+func _follow_entity(id: String) -> void:
+	var ent: Dictionary = EntityRegistry.get_entity(id)
+	if ent.is_empty():
+		return
+	_camera.center_x = ent["pos_x"]
+	_camera.center_z = ent["pos_z"]
+	_camera.follow_entity_id = id
+	_camera.follow_enabled = true
 	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
 	_select_entity(id)
 
@@ -789,24 +818,24 @@ func set_fleet(fleet: PlayerFleet, galaxy: GalaxyData) -> void:
 
 
 func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
-	# Center map on the ship entity and select it
+	# Center map on the ship entity and follow it
 	if _fleet_panel._fleet == null:
 		return
 	var fs := _fleet_panel._fleet.ships[fleet_index]
 
-	# Active ship = select the player entity on the map
+	# Active ship = follow the player entity
 	if fleet_index == _fleet_panel._fleet.active_index and _player_id != "":
-		_center_on_entity(_player_id)
-		_restore_route_for_fleet_selection()
+		_follow_entity(_player_id)
+		_restore_route_for_fleet_selection(fleet_index)
 		return
-	# Deployed ship = select the NPC entity
+	# Deployed ship = follow the NPC entity (moving target)
 	if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
 		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
 		if not ent.is_empty():
-			_center_on_entity(String(fs.deployed_npc_id))
-			_restore_route_for_fleet_selection()
+			_follow_entity(String(fs.deployed_npc_id))
+			_restore_route_for_fleet_selection(fleet_index)
 			return
-	# Docked ship = center on its station
+	# Docked ship = center on its station (static, no follow needed)
 	if fs.docked_station_id != "":
 		var ent := EntityRegistry.get_entity(fs.docked_station_id)
 		if not ent.is_empty():
@@ -818,6 +847,7 @@ func _on_fleet_selection_changed(fleet_indices: Array) -> void:
 	_fleet_selected_indices.clear()
 	for idx in fleet_indices:
 		_fleet_selected_indices.append(idx)
+	_restore_route_for_fleet_selection()
 	_dirty = true
 
 
@@ -1168,13 +1198,22 @@ func _clear_route_line() -> void:
 
 
 ## Restores route lines from fleet ship command data (e.g. after map reopen).
-func _restore_route_for_fleet_selection() -> void:
-	if _fleet_panel._fleet == null or _fleet_selected_indices.is_empty():
+## If override_index >= 0, uses that index instead of _fleet_selected_indices
+## (needed because ship_selected fires before selection_changed updates the array).
+func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
+	if _fleet_panel._fleet == null:
+		return
+	var source_indices: Array[int] = []
+	if override_index >= 0:
+		source_indices = [override_index]
+	else:
+		source_indices = _fleet_selected_indices
+	if source_indices.is_empty():
 		return
 	# Find first deployed ship with a target destination
 	var first_fs: FleetShip = null
 	var restore_indices: Array[int] = []
-	for idx in _fleet_selected_indices:
+	for idx in source_indices:
 		if idx < 0 or idx >= _fleet_panel._fleet.ships.size():
 			continue
 		var fs := _fleet_panel._fleet.ships[idx]

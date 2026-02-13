@@ -454,7 +454,6 @@ func _initialize_game() -> void:
 	_asteroid_scanner.initialize(_asteroid_field_mgr, player_ship, universe_node)
 	if _notif:
 		_asteroid_scanner.set_notification_service(_notif)
-	_input_router.scanner_pulse_requested.connect(_asteroid_scanner.trigger_scan)
 	var hud_scan := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
 	if hud_scan:
 		hud_scan.set_asteroid_scanner(_asteroid_scanner)
@@ -674,6 +673,8 @@ func _initialize_game() -> void:
 	_input_router.loot_pickup_requested.connect(_loot_mgr.open_loot_screen)
 	_input_router.build_requested.connect(_on_build_requested)
 	_input_router.construction_proximity_check = func() -> bool: return _build_available
+	if _asteroid_scanner:
+		_input_router.scanner_pulse_requested.connect(_asteroid_scanner.trigger_scan)
 
 	current_state = GameState.PLAYING
 	if _discord_rpc:

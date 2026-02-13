@@ -17,9 +17,9 @@ var _brain: AIBrain = null
 var _bridge: FleetAIBridge = null
 var _tick_timer: float = 0.0
 
-const TICK_INTERVAL: float = 0.1  # 10Hz
+const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 const THREAT_SCAN_RANGE: float = 2000.0
-const DEFEND_RANGE: float = 1500.0
+const DEFEND_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
 
 
 func _ready() -> void:

@@ -114,11 +114,11 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 
 	# Fat base that tapers aggressively to a fine point — teardrop shape
 	var cone := CylinderMesh.new()
-	var base_radius := 1.8 * ms
+	var base_radius := 1.1 * ms
 	var tip_radius := 0.06 * ms
 	var length := 12.0 * ms
-	cone.top_radius = tip_radius
-	cone.bottom_radius = base_radius
+	cone.top_radius = base_radius
+	cone.bottom_radius = tip_radius
 	cone.height = length
 	cone.radial_segments = 16
 	cone.rings = 10
@@ -142,9 +142,9 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 		mat.set_shader_parameter("throttle", 0.0)
 		mat.set_shader_parameter("flame_length", 1.0)
 		mat.set_shader_parameter("flicker_speed", 8.0)
-		mat.set_shader_parameter("flicker_strength", 0.35)
+		mat.set_shader_parameter("flicker_strength", 0.7)
 		mat.set_shader_parameter("pulse_speed", 2.5)
-		mat.set_shader_parameter("pulse_amount", 0.15)
+		mat.set_shader_parameter("pulse_amount", 0.04)
 		mat.set_shader_parameter("boost_glow", 0.0)
 		mesh_inst.material_override = mat
 	else:
@@ -156,7 +156,7 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 		mat.emission_energy_multiplier = 10.0
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		mat.no_depth_test = true
+		mat.no_depth_test = false
 		mesh_inst.material_override = mat
 
 	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -183,18 +183,17 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 0.2
 	mat.damping_max = 0.5
-	mat.particle_flag_align_y = true
-	# Start BIG, shrink to nothing = fat-to-thin taper
-	mat.scale_min = 3.0 * ms
-	mat.scale_max = 5.0 * ms
+	# Round soft blobs, NOT elongated rectangles
+	mat.scale_min = 1.5 * ms
+	mat.scale_max = 2.5 * ms
 	mat.color_ramp = _make_gradient([
-		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.55)],
-		[0.08, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.45)],
-		[0.25, Color(_engine_color.r * 0.8, _engine_color.g * 0.7, _engine_color.b * 0.8, 0.25)],
-		[0.5, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.07)],
+		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.3)],
+		[0.08, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.22)],
+		[0.25, Color(_engine_color.r * 0.8, _engine_color.g * 0.7, _engine_color.b * 0.8, 0.12)],
+		[0.5, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.04)],
 		[1.0, Color(_engine_color.r * 0.2, _engine_color.g * 0.15, _engine_color.b * 0.3, 0.0)],
 	])
-	# KEY: scale 1.0 at birth → 0.08 at death = realistic taper
+	# Scale 1.0 at birth → 0.08 at death = realistic taper
 	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.7, 0.2, 0.04)
 
 	p.process_material = mat
@@ -204,8 +203,8 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1.0, 2.2) * ms
-	mesh.material = _make_particle_material(_engine_color, 3.5)
+	mesh.size = Vector2(1.2, 1.2) * ms
+	mesh.material = _make_particle_material(_engine_color, 1.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -235,7 +234,7 @@ func _create_afterburner_disc(parent: Node3D) -> MeshInstance3D:
 	mat.emission_energy_multiplier = 0.0
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.no_depth_test = true
+	mat.no_depth_test = false
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.render_priority = 2
@@ -267,14 +266,13 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 2.5
 	mat.damping_max = 6.0
-	mat.particle_flag_align_y = true
-	mat.scale_min = 1.2 * ms
-	mat.scale_max = 2.2 * ms
+	mat.scale_min = 0.6 * ms
+	mat.scale_max = 1.2 * ms
 	mat.color_ramp = _make_gradient([
-		[0.0, Color(1.0, 0.98, 0.95, 1.0)],
-		[0.05, Color(1.0, 0.95, 0.88, 0.9)],
-		[0.15, Color(_engine_color.r * 1.3, _engine_color.g * 1.2, _engine_color.b * 1.1, 0.65)],
-		[0.4, Color(_engine_color.r, _engine_color.g * 0.8, _engine_color.b * 0.9, 0.25)],
+		[0.0, Color(1.0, 0.98, 0.95, 0.7)],
+		[0.05, Color(1.0, 0.95, 0.88, 0.5)],
+		[0.15, Color(_engine_color.r * 1.3, _engine_color.g * 1.2, _engine_color.b * 1.1, 0.35)],
+		[0.4, Color(_engine_color.r, _engine_color.g * 0.8, _engine_color.b * 0.9, 0.12)],
 		[1.0, Color(_engine_color.r * 0.3, _engine_color.g * 0.2, _engine_color.b * 0.4, 0.0)],
 	])
 	# Big at nozzle → tiny at end
@@ -287,8 +285,8 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(0.5, 0.8) * ms
-	mesh.material = _make_particle_material(_engine_color, 12.0)
+	mesh.size = Vector2(0.4, 0.4) * ms
+	mesh.material = _make_particle_material(_engine_color, 3.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -315,14 +313,13 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 0.1
 	mat.damping_max = 0.3
-	mat.particle_flag_align_y = true
-	mat.scale_min = 2.0 * ms
-	mat.scale_max = 4.0 * ms
+	mat.scale_min = 0.8 * ms
+	mat.scale_max = 1.5 * ms
 	mat.color_ramp = _make_gradient([
-		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.55)],
-		[0.1, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.4)],
-		[0.3, Color(_engine_color.r * 0.7, _engine_color.g * 0.6, _engine_color.b * 0.8, 0.2)],
-		[0.6, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.045)],
+		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.3)],
+		[0.1, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.2)],
+		[0.3, Color(_engine_color.r * 0.7, _engine_color.g * 0.6, _engine_color.b * 0.8, 0.1)],
+		[0.6, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.03)],
 		[1.0, Color(_engine_color.r * 0.1, _engine_color.g * 0.08, _engine_color.b * 0.2, 0.0)],
 	])
 	# Big → thin trail
@@ -335,8 +332,8 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(0.7, 1.8) * ms
-	mesh.material = _make_particle_material(_engine_color, 4.0)
+	mesh.size = Vector2(1.0, 1.0) * ms
+	mesh.material = _make_particle_material(_engine_color, 1.5)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -429,16 +426,16 @@ func _update_cone(nozzle: Dictionary, t: float, idle: float) -> void:
 	var mode_flicker := 0.35
 	var mode_boost_glow := 0.0
 
-	# Boost: MUCH longer, very intense
-	mode_intensity = lerpf(mode_intensity, 18.0, _boost_blend)
-	mode_length = lerpf(mode_length, 3.5, _boost_blend)
-	mode_flicker = lerpf(mode_flicker, 0.55, _boost_blend)
+	# Boost: brighter, subtle radial swell only
+	mode_intensity = lerpf(mode_intensity, 14.0, _boost_blend)
+	mode_length = lerpf(mode_length, 1.15, _boost_blend)
+	mode_flicker = lerpf(mode_flicker, 0.8, _boost_blend)
 	mode_boost_glow = _boost_blend
 
-	# Cruise: extreme
-	mode_intensity = lerpf(mode_intensity, 24.0, _cruise_blend)
-	mode_length = lerpf(mode_length, 5.0, _cruise_blend)
-	mode_flicker = lerpf(mode_flicker, 0.2, _cruise_blend)
+	# Cruise: intense glow, minimal radial swell
+	mode_intensity = lerpf(mode_intensity, 18.0, _cruise_blend)
+	mode_length = lerpf(mode_length, 1.25, _cruise_blend)
+	mode_flicker = lerpf(mode_flicker, 0.5, _cruise_blend)
 	mode_boost_glow = maxf(mode_boost_glow, _cruise_blend * 0.7)
 
 	if mat is ShaderMaterial:
@@ -489,13 +486,6 @@ func _update_volume_fill(nozzle: Dictionary, t: float, idle: float) -> void:
 	# Dynamic lifetime: longer trail at higher speed
 	p.lifetime = 0.9 + _ship_speed_ratio * 0.5
 
-	# Boost: bigger initial size = fatter base, but same taper to thin
-	var pmat := p.process_material as ParticleProcessMaterial
-	if pmat:
-		var scale_mult := 1.0 + _boost_blend * 0.6 + _cruise_blend * 0.9
-		pmat.scale_min = 3.0 * _model_scale * scale_mult
-		pmat.scale_max = 5.0 * _model_scale * scale_mult
-
 
 func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 	var disc: MeshInstance3D = nozzle["afterburner"]
@@ -517,13 +507,13 @@ func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 
 	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 9.0) * 0.12 + sin(_pulse_time * 14.0) * 0.06
-	var disc_size := (3.0 + _boost_blend * 2.5 + _cruise_blend * 1.5) * _model_scale * pulse
+	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * _model_scale * pulse
 	disc.mesh.size = Vector2(disc_size, disc_size)
 
 	# Orange for boost, blue-white for cruise
 	var col := Color(1.0, 0.75, 0.4).lerp(Color(0.7, 0.85, 1.0), _cruise_blend)
 	mat.emission = col
-	mat.emission_energy_multiplier = ab_t * (15.0 + _boost_blend * 20.0 + _cruise_blend * 8.0)
+	mat.emission_energy_multiplier = ab_t * (15.0 + _boost_blend * 10.0 + _cruise_blend * 8.0)
 	mat.albedo_color = Color(col.r, col.g, col.b, ab_t * 0.85)
 
 
@@ -605,7 +595,7 @@ func _make_particle_material(emit_color: Color, emit_energy: float) -> StandardM
 	mat.emission_energy_multiplier = emit_energy
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.no_depth_test = true
+	mat.no_depth_test = false
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.render_priority = 1
 	return mat

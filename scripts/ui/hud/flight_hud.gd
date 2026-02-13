@@ -163,6 +163,7 @@ func set_system_transition(st: SystemTransition) -> void:
 
 func set_mining_system(ms: MiningSystem) -> void:
 	_mining.mining_system = ms
+	_prompts.mining_system = ms
 
 
 func set_planet_approach_manager(pam: PlanetApproachManager) -> void:

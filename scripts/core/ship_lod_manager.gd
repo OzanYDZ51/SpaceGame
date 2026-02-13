@@ -17,7 +17,7 @@ const LOD2_DISTANCE: float = 4000.0
 const LOD0_MAX: int = 50
 const LOD1_MAX: int = 200
 const LOD_EVAL_INTERVAL: float = 0.2
-const COMBAT_BRIDGE_RANGE: float = 1500.0
+const COMBAT_BRIDGE_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
 const COMBAT_BRIDGE_INTERVAL: float = 0.2
 const MAX_PROMOTIONS_PER_TICK: int = 10
 
@@ -342,6 +342,10 @@ func _evaluate_lod_levels() -> void:
 			target_lod = ShipLODData.LODLevel.LOD2
 		else:
 			target_lod = ShipLODData.LODLevel.LOD3
+
+		# Fleet ships: never demote below LOD1 — they need full AI (cruise, FleetAIBridge)
+		if data.fleet_index >= 0 and target_lod > ShipLODData.LODLevel.LOD1:
+			target_lod = ShipLODData.LODLevel.LOD1
 
 		if target_lod != data.current_lod:
 			var is_promotion := target_lod < data.current_lod

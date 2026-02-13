@@ -74,11 +74,16 @@ void fragment() {
 	float r_fade = 1.0 - smoothstep(0.0, 1.0, r_norm);
 	float r_core = pow(max(1.0 - r_norm, 0.0), 2.5);
 
-	// Noise flicker — bigger turbulence cells for chunky look
+	// Turbulence noise — breaks the silhouette, creates flame-like wisps
 	float flicker_t = TIME * flicker_speed;
-	float n1 = fbm(vec2(z_pos * 3.0, radial * 1.5), flicker_t);
-	float n2 = fbm(vec2(z_pos * 6.0 + 5.0, radial * 3.0 + 3.0), flicker_t * 1.3);
-	float flicker = mix(1.0, 0.55 + n1 * 0.45 + n2 * 0.25, flicker_strength);
+	float n1 = fbm(vec2(z_pos * 4.0, radial * 2.0), flicker_t);
+	float n2 = fbm(vec2(z_pos * 8.0 + 5.0, radial * 4.0 + 3.0), flicker_t * 1.5);
+	// Large-scale wisps that carve holes in the flame
+	float n3 = fbm(vec2(z_pos * 2.0 + 10.0, radial * 1.0), flicker_t * 0.7);
+	float flicker = mix(1.0, n1 * 0.6 + n2 * 0.2 + n3 * 0.2, flicker_strength);
+	// Noise-driven alpha cutout — erodes edges, creates wispy tongues
+	float edge_erode = smoothstep(0.3, 0.7, n1 * 0.5 + n3 * 0.5);
+	float alpha_noise = mix(1.0, edge_erode, flicker_strength * (0.5 + z_pos * 0.5));
 
 	// Color temperature
 	vec3 col;
@@ -92,17 +97,17 @@ void fragment() {
 
 	// Hot nozzle ring
 	float nozzle_ring = pow(max(1.0 - z_pos * 6.0, 0.0), 2.5) * r_fade;
-	float ring_boost = nozzle_ring * (1.0 + boost_glow * 5.0);
+	float ring_boost = nozzle_ring * (1.0 + boost_glow * 3.0);
 
-	float alpha = z_fade * r_fade * flicker * throttle;
-	float core_boost = z_core * r_core * 3.0;
+	float alpha = z_fade * r_fade * flicker * alpha_noise * throttle;
+	float core_boost = z_core * r_core * 2.0;
 
 	float final_intensity = intensity * throttle;
 	vec3 emission = col * (alpha + core_boost + ring_boost) * final_intensity;
 
 	// White-hot punch at nozzle during boost
-	emission += vec3(1.0, 0.95, 0.9) * ring_boost * boost_glow * intensity * 0.6;
+	emission += vec3(1.0, 0.95, 0.9) * ring_boost * boost_glow * intensity * 0.4;
 
 	ALBEDO = emission;
-	ALPHA = clamp((alpha + ring_boost * 0.4) * throttle, 0.0, 1.0);
+	ALPHA = clamp((alpha + ring_boost * 0.3) * throttle, 0.0, 1.0);
 }

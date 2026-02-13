@@ -22,7 +22,6 @@ var _returning: bool = false
 var _arrived: bool = false
 var _attack_target_id: String = ""
 
-const RETURN_ARRIVE_DIST: float = 500.0
 const MOVE_ARRIVE_DIST: float = 200.0
 
 var _initialized: bool = false
@@ -142,14 +141,14 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 				if not ent.is_empty():
 					var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					var dist: float = _ship.global_position.distance_to(station_pos)
-					if dist > RETURN_ARRIVE_DIST:
-						_brain.set_patrol_area(station_pos, 50.0)
-						_brain.current_state = AIBrain.State.PATROL
-					else:
-						# Already close — retrieve immediately
+					if dist < DockingSystem.DEFAULT_DOCK_RANGE and _ship.linear_velocity.length() < DockingSystem.DEFAULT_DOCK_MAX_SPEED:
+						# Already in dock range and slow enough — retrieve immediately
 						var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
 						if fdm:
 							fdm.retrieve_ship(fleet_index)
+					else:
+						_brain.set_patrol_area(station_pos, 50.0)
+						_brain.current_state = AIBrain.State.PATROL
 
 
 func _process(_delta: float) -> void:
@@ -162,17 +161,22 @@ func _process(_delta: float) -> void:
 	if _brain == null:
 		return
 
-	# Monitor return_to_station arrival
+	# Monitor return_to_station — same docking rules as player (range + speed + facing)
 	if _returning and _station_id != "":
 		var ent := EntityRegistry.get_entity(_station_id)
 		if not ent.is_empty():
 			var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			var dist: float = _ship.global_position.distance_to(station_pos)
-			if dist < RETURN_ARRIVE_DIST:
-				var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
-				if fdm:
-					fdm.retrieve_ship(fleet_index)
-				return
+			if dist < DockingSystem.DEFAULT_DOCK_RANGE:
+				var speed: float = _ship.linear_velocity.length()
+				var to_station := (station_pos - _ship.global_position).normalized()
+				var forward := -_ship.global_basis.z.normalized()
+				var facing_dot := forward.dot(to_station)
+				if speed < DockingSystem.DEFAULT_DOCK_MAX_SPEED and facing_dot > DockingSystem.DEFAULT_DOCK_MIN_FACING:
+					var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+					if fdm:
+						fdm.retrieve_ship(fleet_index)
+					return
 			# Keep brain patrolling toward station (position updates with floating origin)
 			if _brain.current_state == AIBrain.State.IDLE:
 				_brain.set_patrol_area(station_pos, 50.0)
