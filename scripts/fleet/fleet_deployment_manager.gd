@@ -230,6 +230,8 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
+	update_entity_extra(fleet_index, "command", String(cmd))
+	update_entity_extra(fleet_index, "arrived", false)
 	_fleet.fleet_changed.emit()
 	return true
 

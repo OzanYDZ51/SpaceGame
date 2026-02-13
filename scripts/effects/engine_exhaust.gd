@@ -28,6 +28,7 @@ var _throttle_smooth: float = 0.0
 var _boost_blend: float = 0.0
 var _cruise_blend: float = 0.0
 var _pulse_time: float = 0.0
+var _ship_speed_ratio: float = 0.0
 
 # Shared resources
 var _soft_circle_tex: GradientTexture2D = null
@@ -53,8 +54,9 @@ func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = [
 		_create_nozzle(pt["position"], pt.get("direction", Vector3.BACK))
 
 
-func update_intensity(throttle: float, speed_mode: int = 0) -> void:
+func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 0.0) -> void:
 	_throttle_smooth = lerpf(_throttle_smooth, throttle, 0.12)
+	_ship_speed_ratio = clampf(ship_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
 
 	var target_boost: float = 1.0 if speed_mode == Constants.SpeedMode.BOOST else 0.0
 	_boost_blend = lerpf(_boost_blend, target_boost, 0.08)

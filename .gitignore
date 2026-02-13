@@ -1,7 +1,5 @@
 # Godot
 .godot/
-*.import
-*.uid
 
 # Build output
 build/

@@ -535,6 +535,8 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 			"construction":
 				var arrived: bool = extra.get("arrived", false)
 				status_tag = "[CONSTRUCTION]" if arrived else "[LIVRAISON]"
+			"mine":
+				status_tag = "[MINAGE]"
 		if status_tag != "":
 			label_text += " " + status_tag
 		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x

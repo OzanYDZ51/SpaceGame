@@ -168,7 +168,7 @@ func _process(_delta: float) -> void:
 
 	# Update engine exhaust (throttle + speed mode aware)
 	if _engine_exhaust and is_instance_valid(_engine_exhaust):
-		_engine_exhaust.update_intensity(throttle, _ship.speed_mode)
+		_engine_exhaust.update_intensity(throttle, _ship.speed_mode, _ship.current_speed)
 
 	# Update motion blur intensity based on ship speed
 	if _motion_blur and is_instance_valid(_motion_blur):

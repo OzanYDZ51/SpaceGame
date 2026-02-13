@@ -5,8 +5,9 @@ FROM ubuntu:22.04 AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget unzip ca-certificates \
-    fontconfig libfontconfig1 libfreetype6 \
+    fontconfig libfontconfig1 libfreetype6 fonts-dejavu-core \
     libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
+    && fc-cache -fv \
     && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 

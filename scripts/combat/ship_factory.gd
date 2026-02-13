@@ -254,8 +254,12 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	ship.add_child(sensor)
 
 	# Connect destruction
-	# Safety net: unregister on tree exit
-	ship.tree_exiting.connect(func(): EntityRegistry.unregister(ship.name))
+	# Safety net: unregister on tree exit (skip if LOD system already nulled node ref)
+	ship.tree_exiting.connect(func():
+		var ent := EntityRegistry.get_entity(ship.name)
+		if ent.is_empty() or ent.get("node") == ship:
+			EntityRegistry.unregister(ship.name)
+	)
 
 	health.ship_destroyed.connect(func():
 		var death_pos: Vector3 = ship.global_position

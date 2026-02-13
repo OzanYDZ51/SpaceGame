@@ -513,6 +513,18 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 	var ent := EntityRegistry.get_entity(String(id))
 	if not ent.is_empty():
 		ent["node"] = node
+		# Restore fleet entity type (spawn_npc_ship re-registered as SHIP_NPC)
+		if data.fleet_index >= 0:
+			ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
+			ent["extra"]["fleet_index"] = data.fleet_index
+			ent["extra"]["owner_name"] = "Player"
+			if GameManager.player_data and GameManager.player_data.fleet:
+				var fleet := GameManager.player_data.fleet
+				if data.fleet_index < fleet.ships.size():
+					var fs := fleet.ships[data.fleet_index]
+					ent["extra"]["command"] = String(fs.deployed_command)
+					ent["extra"]["arrived"] = false
+					ent["name"] = fs.custom_name if fs.custom_name != "" else data.display_name
 
 
 func _promote_to_lod0(id: StringName, data: ShipLODData) -> void:
