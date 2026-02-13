@@ -716,6 +716,7 @@ func _sync_fleet_selection_from_entity(id: String) -> void:
 			var idx: int = extra["fleet_index"]
 			_fleet_selected_indices = [idx]
 			_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
+			_restore_route_for_fleet_selection()
 			return
 	# Non-fleet entity: clear fleet selection
 	_fleet_selected_indices.clear()
@@ -796,12 +797,14 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 	# Active ship = select the player entity on the map
 	if fleet_index == _fleet_panel._fleet.active_index and _player_id != "":
 		_center_on_entity(_player_id)
+		_restore_route_for_fleet_selection()
 		return
 	# Deployed ship = select the NPC entity
 	if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
 		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
 		if not ent.is_empty():
 			_center_on_entity(String(fs.deployed_npc_id))
+			_restore_route_for_fleet_selection()
 			return
 	# Docked ship = center on its station
 	if fs.docked_station_id != "":
@@ -1162,3 +1165,30 @@ func _clear_route_line() -> void:
 	_entity_layer.route_ship_ids.clear()
 	_entity_layer.route_target_entity_id = ""
 	_dirty = true
+
+
+## Restores route lines from fleet ship command data (e.g. after map reopen).
+func _restore_route_for_fleet_selection() -> void:
+	if _fleet_panel._fleet == null or _fleet_selected_indices.is_empty():
+		return
+	# Find first deployed ship with a target destination
+	var first_fs: FleetShip = null
+	var restore_indices: Array[int] = []
+	for idx in _fleet_selected_indices:
+		if idx < 0 or idx >= _fleet_panel._fleet.ships.size():
+			continue
+		var fs := _fleet_panel._fleet.ships[idx]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_command != &"":
+			restore_indices.append(idx)
+			if first_fs == null:
+				first_fs = fs
+	if first_fs == null or restore_indices.is_empty():
+		return
+	var params := first_fs.deployed_command_params
+	var tx: float = params.get("target_x", params.get("center_x", 0.0))
+	var tz: float = params.get("target_z", params.get("center_z", 0.0))
+	if tx == 0.0 and tz == 0.0:
+		return
+	_set_route_lines(restore_indices, tx, tz)
+	if first_fs.deployed_command == &"attack":
+		_entity_layer.route_target_entity_id = params.get("target_entity_id", "")

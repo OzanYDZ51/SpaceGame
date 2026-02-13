@@ -8,6 +8,7 @@ extends Control
 var docking_system: DockingSystem = null
 var loot_pickup: LootPickupSystem = null
 var system_transition: SystemTransition = null
+var asteroid_scanner: AsteroidScanner = null
 var pulse_t: float = 0.0
 var can_build: bool = false
 var build_target_name: String = ""
@@ -17,8 +18,10 @@ var _loot_prompt: Control = null
 var _gate_prompt: Control = null
 var _wormhole_prompt: Control = null
 var _build_prompt: Control = null
+var _scan_prompt: Control = null
 
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
+const SCAN_COL: Color = Color(0.0, 0.85, 0.95)
 
 
 func _ready() -> void:
@@ -48,6 +51,11 @@ func _ready() -> void:
 	_build_prompt.draw.connect(_draw_build_prompt.bind(_build_prompt))
 	_build_prompt.visible = false
 	add_child(_build_prompt)
+
+	_scan_prompt = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -110, 255, 110, 290)
+	_scan_prompt.draw.connect(_draw_scan_prompt.bind(_scan_prompt))
+	_scan_prompt.visible = false
+	add_child(_scan_prompt)
 
 
 func update_visibility() -> void:
@@ -79,6 +87,12 @@ func update_visibility() -> void:
 		_build_prompt.visible = can_build
 		if can_build:
 			_build_prompt.queue_redraw()
+
+	if _scan_prompt:
+		var show_scan: bool = asteroid_scanner != null and asteroid_scanner.can_scan() and _is_in_belt()
+		_scan_prompt.visible = show_scan
+		if show_scan:
+			_scan_prompt.queue_redraw()
 
 
 # --- Dock ---
@@ -211,3 +225,36 @@ func _draw_build_prompt(ctrl: Control) -> void:
 	var dy: float = 24.0
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+# --- Scan ---
+func _draw_scan_prompt(ctrl: Control) -> void:
+	var s := ctrl.size
+	var font := UITheme.get_font_medium()
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
+
+	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.06, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(SCAN_COL.r, SCAN_COL.g, SCAN_COL.b, 0.3 * pulse), false, 1.0)
+
+	var text_col := Color(SCAN_COL.r, SCAN_COL.g, SCAN_COL.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 22), "SCAN  [H]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+
+	var tw: float = font.get_string_size("SCAN  [H]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var dy: float = 18.0
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+
+
+func _is_in_belt() -> bool:
+	var ship := GameManager.player_ship
+	if ship == null:
+		return false
+	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	if asteroid_mgr == null:
+		return false
+	var uni_x: float = ship.global_position.x + FloatingOrigin.origin_offset_x
+	var uni_z: float = ship.global_position.z + FloatingOrigin.origin_offset_z
+	return asteroid_mgr.get_belt_at_position(uni_x, uni_z) != ""

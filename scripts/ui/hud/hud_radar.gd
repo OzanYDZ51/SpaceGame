@@ -184,11 +184,11 @@ func _draw_radar(ctrl: Control) -> void:
 			else:
 				_draw_radar_blip(ctrl, center, radar_r, scale_factor, ship_basis, rel, col, 3.0, false)
 
-	# Nearby asteroid blips
+	# Nearby asteroid blips (scanned = resource color, unscanned = neutral tan)
 	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
 	if asteroid_mgr:
 		var nearby_asteroids := asteroid_mgr.get_asteroids_in_radius(ship.global_position, RADAR_RANGE)
-		var ast_col := Color(NAV_COL_BELT.r, NAV_COL_BELT.g, NAV_COL_BELT.b, 0.45)
+		var unscanned_col := Color(NAV_COL_BELT.r, NAV_COL_BELT.g, NAV_COL_BELT.b, 0.35)
 		for ast_data in nearby_asteroids:
 			var rel: Vector3 = ast_data.position - ship.global_position
 			var lx: float = rel.dot(ship_basis.x)
@@ -196,7 +196,10 @@ func _draw_radar(ctrl: Control) -> void:
 			var radar_pos := Vector2(lx, lz) * scale_factor
 			if radar_pos.length() > radar_r - 4:
 				radar_pos = radar_pos.normalized() * (radar_r - 4)
-			ctrl.draw_circle(center + radar_pos, 1.5, ast_col)
+			var blip_col: Color = unscanned_col
+			if ast_data.is_scanned and ast_data.has_resource:
+				blip_col = Color(ast_data.resource_color.r, ast_data.resource_color.g, ast_data.resource_color.b, 0.7)
+			ctrl.draw_circle(center + radar_pos, 1.5, blip_col)
 
 	# Player icon
 	var tri_sz := 5.0

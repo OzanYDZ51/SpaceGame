@@ -202,11 +202,14 @@ func face_target(target_pos: Vector3) -> void:
 
 func _update_cruise(dist: float, alignment: float) -> void:
 	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-		# Exit cruise: close to target, badly misaligned, or approaching warp phase
-		# Cap AI cruise to phase 1 only (15x) — phase 2 punch (3000x) would overshoot
-		var near_punch := _ship.cruise_time > (ShipController.CRUISE_SPOOL_DURATION - 1.0)
-		if dist < CRUISE_DISENGAGE_DIST or alignment < 0.5 or near_punch:
+		# Exit cruise: close to target or badly misaligned
+		if dist < CRUISE_DISENGAGE_DIST or alignment < 0.5:
 			_ship._exit_cruise()
+		else:
+			# Cap AI cruise to phase 1 only (15x) — prevent phase 2 punch (3000x) overshoot
+			var max_phase1 := ShipController.CRUISE_SPOOL_DURATION - 0.1
+			if _ship.cruise_time > max_phase1:
+				_ship.cruise_time = max_phase1
 	else:
 		# Engage cruise: far away, well aligned, not in combat
 		# Check _last_combat_time directly (combat_locked is only updated for player ships)

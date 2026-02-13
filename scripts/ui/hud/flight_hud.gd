@@ -174,6 +174,10 @@ func set_build_state(available: bool, target_name: String) -> void:
 	_prompts.build_target_name = target_name
 
 
+func set_asteroid_scanner(scanner: AsteroidScanner) -> void:
+	_prompts.asteroid_scanner = scanner
+
+
 ## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.
 func rewire_to_ship(ship: ShipController) -> void:
 	set_ship(ship)

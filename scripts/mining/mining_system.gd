@@ -225,8 +225,12 @@ func _start_extraction(asteroid: AsteroidData) -> void:
 	mining_target = asteroid
 	_mining_tick_timer = 0.0
 
-	# Show scan label
-	if asteroid.node_ref and is_instance_valid(asteroid.node_ref):
+	# Auto-reveal asteroid on mining (no scanner needed)
+	if not asteroid.is_scanned and asteroid.has_resource and _asteroid_mgr:
+		_asteroid_mgr.reveal_single_asteroid(asteroid)
+
+	# Show scan label if it has a resource
+	if asteroid.has_resource and asteroid.node_ref and is_instance_valid(asteroid.node_ref):
 		(asteroid.node_ref as AsteroidNode).show_scan_info()
 
 	mining_started.emit(mining_target)
@@ -250,7 +254,10 @@ func _do_mining_tick() -> void:
 		_stop_extraction()
 		return
 
-	var res := MiningRegistry.get_resource(mining_target.primary_resource)
+	# Barren asteroids: take damage but yield nothing
+	var is_barren: bool = not mining_target.has_resource
+
+	var res := MiningRegistry.get_resource(mining_target.primary_resource) if not is_barren else null
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = mining_dps * MINING_TICK_INTERVAL / difficulty
 
@@ -269,7 +276,8 @@ func _do_mining_tick() -> void:
 			"quantity": mining_target.get_yield_per_hit(),
 		}
 
-	if not yield_data.is_empty() and yield_data.get("quantity", 0) > 0:
+	# Only give resources if the asteroid has them
+	if not is_barren and not yield_data.is_empty() and yield_data.get("quantity", 0) > 0:
 		var resource_id: StringName = yield_data["resource_id"]
 		var qty: int = yield_data["quantity"]
 		var mining_res := MiningRegistry.get_resource(resource_id)
@@ -277,7 +285,7 @@ func _do_mining_tick() -> void:
 			GameManager.player_data.add_active_ship_resource(resource_id, qty)
 			mining_progress.emit(mining_res.display_name, qty)
 
-	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
+	if not is_barren and mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
 		(mining_target.node_ref as AsteroidNode)._update_label_text()
 
 	if mining_target and mining_target.is_depleted:

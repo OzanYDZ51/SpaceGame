@@ -39,18 +39,18 @@ func setup(p_data: AsteroidData) -> void:
 	_mesh_instance.mesh = sphere
 	_mesh_instance.scale = data.scale_distort
 
-	# Material
+	# Material — starts neutral (scan reveals true color)
 	var mat := StandardMaterial3D.new()
-	var res := MiningRegistry.get_resource(data.primary_resource)
-	var base_col: Color = data.color_tint if data.color_tint != Color.GRAY else (res.color if res else Color.GRAY)
-	mat.albedo_color = base_col
+	mat.albedo_color = data.color_tint
 	mat.roughness = 0.85
 	mat.metallic = 0.15
-	# Subtle emission based on resource rarity
-	if res and res.rarity >= MiningResource.Rarity.RARE:
-		mat.emission_enabled = true
-		mat.emission = base_col * 0.3
-		mat.emission_energy_multiplier = 0.5
+	# Only show emission if already scanned with rare resource
+	if data.is_scanned and data.has_resource:
+		var res := MiningRegistry.get_resource(data.primary_resource)
+		if res and res.rarity >= MiningResource.Rarity.RARE:
+			mat.emission_enabled = true
+			mat.emission = data.resource_color * 0.3
+			mat.emission_energy_multiplier = 0.5
 	_mesh_instance.material_override = mat
 	add_child(_mesh_instance)
 
@@ -98,18 +98,63 @@ func respawn() -> void:
 	data.is_depleted = false
 	data.health_current = data.health_max
 	data.respawn_timer = 0.0
-	# Restore visuals
+	# Restore visuals — neutral unless currently scanned
 	if _mesh_instance:
 		_mesh_instance.scale = data.scale_distort
 		if _mesh_instance.material_override:
 			var mat: StandardMaterial3D = _mesh_instance.material_override
-			var res := MiningRegistry.get_resource(data.primary_resource)
-			mat.albedo_color = data.color_tint if data.color_tint != Color.GRAY else (res.color if res else Color.GRAY)
+			mat.albedo_color = data.color_tint
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-			if res and res.rarity >= MiningResource.Rarity.RARE:
-				mat.emission_enabled = true
-				mat.emission = mat.albedo_color * 0.3
-				mat.emission_energy_multiplier = 0.5
+			mat.emission_enabled = false
+			if data.is_scanned and data.has_resource:
+				var res := MiningRegistry.get_resource(data.primary_resource)
+				if res and res.rarity >= MiningResource.Rarity.RARE:
+					mat.emission_enabled = true
+					mat.emission = data.resource_color * 0.3
+					mat.emission_energy_multiplier = 0.5
+
+
+func apply_scan_reveal(ast_data: AsteroidData) -> void:
+	if _mesh_instance == null or _mesh_instance.material_override == null:
+		return
+	var mat: StandardMaterial3D = _mesh_instance.material_override
+	var target_col: Color = ast_data.resource_color
+	# Tween albedo to resource color
+	var tw := create_tween()
+	tw.tween_property(mat, "albedo_color", target_col, 0.5).set_ease(Tween.EASE_OUT)
+	# Emission pulse for rare+
+	var res := MiningRegistry.get_resource(ast_data.primary_resource)
+	if res and res.rarity >= MiningResource.Rarity.RARE:
+		mat.emission_enabled = true
+		mat.emission = target_col * 0.5
+		mat.emission_energy_multiplier = 1.5
+		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.5, 1.0).set_delay(0.3)
+	show_scan_info()
+
+
+func apply_scan_expire() -> void:
+	if _mesh_instance == null or _mesh_instance.material_override == null:
+		return
+	var mat: StandardMaterial3D = _mesh_instance.material_override
+	var neutral := Color(0.35, 0.33, 0.3)
+	var tw := create_tween()
+	tw.tween_property(mat, "albedo_color", neutral, 1.0).set_ease(Tween.EASE_IN)
+	if mat.emission_enabled:
+		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, 0.8)
+		tw.tween_callback(func(): mat.emission_enabled = false)
+	hide_scan_info()
+
+
+func flash_barren() -> void:
+	if _mesh_instance == null or _mesh_instance.material_override == null:
+		return
+	var mat: StandardMaterial3D = _mesh_instance.material_override
+	mat.emission_enabled = true
+	mat.emission = Color(0.4, 0.1, 0.05)
+	mat.emission_energy_multiplier = 0.8
+	var tw := create_tween()
+	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.6).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): mat.emission_enabled = false)
 
 
 func show_scan_info() -> void:

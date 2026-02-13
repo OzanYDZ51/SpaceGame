@@ -76,6 +76,7 @@ var _structure_auth: StructureAuthority = null
 var _construction_mgr: ConstructionManager = null
 var _planet_lod_mgr: PlanetLODManager = null
 var _planet_approach_mgr: PlanetApproachManager = null
+var _asteroid_scanner: AsteroidScanner = null
 var _build_available: bool = false
 var _build_beacon_name: String = ""
 var _build_marker_id: int = -1
@@ -445,6 +446,18 @@ func _initialize_game() -> void:
 	# Wire mining system to asteroid field manager
 	if _mining_system:
 		_mining_system.set_asteroid_manager(_asteroid_field_mgr)
+
+	# Asteroid Scanner
+	_asteroid_scanner = AsteroidScanner.new()
+	_asteroid_scanner.name = "AsteroidScanner"
+	add_child(_asteroid_scanner)
+	_asteroid_scanner.initialize(_asteroid_field_mgr, player_ship, universe_node)
+	if _notif:
+		_asteroid_scanner.set_notification_service(_notif)
+	_input_router.scanner_pulse_requested.connect(_asteroid_scanner.trigger_scan)
+	var hud_scan := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	if hud_scan:
+		hud_scan.set_asteroid_scanner(_asteroid_scanner)
 
 	# Route Manager (multi-system autopilot)
 	_route_manager = RouteManager.new()

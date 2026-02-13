@@ -14,6 +14,7 @@ signal screen_toggled(screen_name: String)
 signal terminal_requested
 signal undock_requested
 signal build_requested
+signal scanner_pulse_requested
 
 # Injected refs
 var screen_manager: UIScreenManager = null
@@ -58,6 +59,7 @@ func _setup_input_actions() -> void:
 		"gate_jump": KEY_J,
 		"wormhole_jump": KEY_W,
 		"build": KEY_B,
+		"scanner_pulse": KEY_H,
 		"toggle_weapon_1": KEY_1,
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
@@ -180,6 +182,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			build_requested.emit()
 			get_viewport().set_input_as_handled()
 			return
+
+	if event.is_action_pressed("scanner_pulse") and state == GameManagerSystem.GameState.PLAYING:
+		scanner_pulse_requested.emit()
+		get_viewport().set_input_as_handled()
+		return
 
 	# DEBUG: F9 = teleport near nearest planet
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F9:

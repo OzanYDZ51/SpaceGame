@@ -26,6 +26,10 @@ const CELL_EVAL_INTERVAL: float = 0.5  # Check cells every 0.5s
 const ASTEROIDS_PER_CELL_MIN: int = 3
 const ASTEROIDS_PER_CELL_MAX: int = 6
 const VERTICAL_SPREAD: float = 400.0   # ±200 m vertical spread
+const SCAN_NEUTRAL_COLOR := Color(0.35, 0.33, 0.3)
+const SCAN_BARREN_RATE: float = 0.60
+const SCAN_REVEAL_DURATION: float = 30.0  # seconds before scan expires
+const SCAN_EXPIRY_CHECK_INTERVAL: float = 2.0
 
 enum AsteroidLOD { FULL, SIMPLIFIED, DOT, DATA_ONLY }
 
@@ -53,6 +57,7 @@ var _universe_node: Node3D = null
 var _lod_timer: float = 0.0
 var _cell_timer: float = 0.0
 var _respawn_timer: float = 0.0
+var _scan_expiry_timer: float = 0.0
 var _dots_dirty: bool = false
 
 
@@ -199,6 +204,12 @@ func _process(delta: float) -> void:
 		_respawn_timer -= RESPAWN_CHECK_INTERVAL
 		_tick_respawns()
 
+	# Scan expiry check (throttled)
+	_scan_expiry_timer += delta
+	if _scan_expiry_timer >= SCAN_EXPIRY_CHECK_INTERVAL:
+		_scan_expiry_timer -= SCAN_EXPIRY_CHECK_INTERVAL
+		_tick_scan_expiry()
+
 
 # === Cell Generation ===
 
@@ -316,23 +327,35 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 			rng.randf_range(0.7, 1.3),
 		)
 
+		# Barren roll: 60% of asteroids have no resource
+		var barren_roll: float = rng.randf()
+		if barren_roll < SCAN_BARREN_RATE:
+			asteroid.has_resource = false
+			asteroid.primary_resource = &""
+
 		# Resource distribution: 60% dominant, 25% secondary, 15% rare
 		var res_roll: float = rng.randf()
-		if res_roll < 0.60:
-			asteroid.primary_resource = field.dominant_resource
-		elif res_roll < 0.85:
-			asteroid.primary_resource = field.secondary_resource
-		else:
-			asteroid.primary_resource = field.rare_resource
+		if asteroid.has_resource:
+			if res_roll < 0.60:
+				asteroid.primary_resource = field.dominant_resource
+			elif res_roll < 0.85:
+				asteroid.primary_resource = field.secondary_resource
+			else:
+				asteroid.primary_resource = field.rare_resource
 
-		# Color tint from resource
-		var res := MiningRegistry.get_resource(asteroid.primary_resource)
+		# Color: compute true resource_color but display neutral until scanned
+		var res := MiningRegistry.get_resource(asteroid.primary_resource) if asteroid.has_resource else null
 		if res:
-			asteroid.color_tint = Color(
+			asteroid.resource_color = Color(
 				res.color.r + rng.randf_range(-0.08, 0.08),
 				res.color.g + rng.randf_range(-0.08, 0.08),
 				res.color.b + rng.randf_range(-0.08, 0.08),
 			).clamp()
+		else:
+			# Consume the 3 RNG draws for barren asteroids to keep determinism
+			rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08)
+			asteroid.resource_color = SCAN_NEUTRAL_COLOR
+		asteroid.color_tint = SCAN_NEUTRAL_COLOR
 
 		_all_asteroids[id] = asteroid
 		_lod_levels[id] = AsteroidLOD.DATA_ONLY
@@ -350,6 +373,7 @@ func _consume_rng_draws(rng: RandomNumberGenerator) -> void:
 	rng.randf_range(0.02, 0.15)            # rotation speed
 	rng.randf()                             # size
 	rng.randf_range(0.7, 1.3); rng.randf_range(0.6, 1.2); rng.randf_range(0.7, 1.3)  # scale
+	rng.randf()                             # barren roll
 	rng.randf()                             # resource
 	rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08)  # color
 
@@ -474,7 +498,9 @@ func _spawn_full(id: StringName, asteroid: AsteroidData) -> void:
 	_full_nodes[id] = node
 	# Connect depleted signal for persistence across cell loads
 	node.depleted.connect(_on_node_depleted)
-	node.show_scan_info()
+	# Show scan info only if already scanned
+	if asteroid.is_scanned and asteroid.has_resource:
+		node.show_scan_info()
 
 
 func _spawn_simplified(id: StringName, asteroid: AsteroidData) -> void:
@@ -578,3 +604,86 @@ func _on_origin_shifted(shift: Vector3) -> void:
 
 	# Rebuild multimesh with shifted positions
 	_rebuild_multimesh()
+
+
+# === Scanner Reveal ===
+
+## Reveals asteroids within radius of center. Returns count of resource-bearing asteroids found.
+func reveal_asteroids_in_radius(center: Vector3, radius: float) -> int:
+	var ids := _grid.query_radius(center, radius)
+	var revealed_count: int = 0
+	var now: float = Time.get_ticks_msec() / 1000.0
+
+	for id: StringName in ids:
+		var ast: AsteroidData = _all_asteroids.get(id)
+		if ast == null or ast.is_depleted or ast.is_scanned:
+			continue
+
+		ast.is_scanned = true
+		ast.scan_expire_time = now + SCAN_REVEAL_DURATION
+
+		if ast.has_resource:
+			ast.color_tint = ast.resource_color
+			revealed_count += 1
+			_update_asteroid_visual(ast, true)
+		else:
+			_flash_barren_asteroid(ast)
+
+	if revealed_count > 0:
+		_dots_dirty = true
+	return revealed_count
+
+
+## Reveal a single asteroid (e.g. when mining it).
+func reveal_single_asteroid(ast: AsteroidData) -> void:
+	if ast.is_scanned:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	ast.is_scanned = true
+	ast.scan_expire_time = now + SCAN_REVEAL_DURATION
+	if ast.has_resource:
+		ast.color_tint = ast.resource_color
+		_update_asteroid_visual(ast, true)
+		_dots_dirty = true
+
+
+func _update_asteroid_visual(ast: AsteroidData, reveal: bool) -> void:
+	# FULL LOD — tween the color on the AsteroidNode
+	if ast.node_ref and is_instance_valid(ast.node_ref):
+		var node := ast.node_ref as AsteroidNode
+		if reveal:
+			node.apply_scan_reveal(ast)
+		else:
+			node.apply_scan_expire()
+	# SIMPLIFIED LOD — update material directly
+	if _simplified_meshes.has(ast.id):
+		var mesh: MeshInstance3D = _simplified_meshes[ast.id]
+		if is_instance_valid(mesh) and mesh.material_override:
+			var mat: StandardMaterial3D = mesh.material_override
+			var col: Color = ast.color_tint
+			mat.albedo_color = Color(col.r * 0.4, col.g * 0.4, col.b * 0.4)
+
+
+func _flash_barren_asteroid(ast: AsteroidData) -> void:
+	if ast.node_ref and is_instance_valid(ast.node_ref):
+		var node := ast.node_ref as AsteroidNode
+		node.flash_barren()
+
+
+func _tick_scan_expiry() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var any_expired: bool = false
+
+	for id: StringName in _all_asteroids:
+		var ast: AsteroidData = _all_asteroids[id]
+		if not ast.is_scanned:
+			continue
+		if ast.scan_expire_time > 0.0 and now >= ast.scan_expire_time:
+			ast.is_scanned = false
+			ast.scan_expire_time = 0.0
+			ast.color_tint = SCAN_NEUTRAL_COLOR
+			_update_asteroid_visual(ast, false)
+			any_expired = true
+
+	if any_expired:
+		_dots_dirty = true

@@ -21,6 +21,10 @@ var respawn_timer: float = 0.0
 var visual_radius: float = 10.0
 var color_tint: Color = Color.GRAY
 var scale_distort: Vector3 = Vector3.ONE  # Non-uniform scale for rocky look
+var has_resource: bool = true       # false = barren rock (no yield)
+var is_scanned: bool = false        # true = resource revealed by scanner
+var scan_expire_time: float = 0.0   # Time.get_ticks_msec() when scan expires
+var resource_color: Color = Color.GRAY  # True resource color (hidden until scanned)
 
 # Runtime references (null when data-only / LOD3+)
 var node_ref: Node3D = null

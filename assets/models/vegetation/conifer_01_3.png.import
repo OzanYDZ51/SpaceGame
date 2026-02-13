@@ -2,14 +2,11 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b6h8fxm2efdc7"
+uid="uid://d0d3nmjp7hj3s"
 path.s3tc="res://.godot/imported/conifer_01_3.png-7c6779619bcdc1175411ccfc78653f6d.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
-}
-generator_parameters={
-"md5": "0b9b392c8ac4b1ce89570a9258b4b3e5"
 }
 
 [deps]

@@ -181,8 +181,9 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	mat.initial_velocity_min = 15.0 * ms
 	mat.initial_velocity_max = 35.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 2.0
-	mat.damping_max = 5.0
+	mat.damping_min = 0.2
+	mat.damping_max = 0.5
+	mat.particle_flag_align_y = true
 	# Start BIG, shrink to nothing = fat-to-thin taper
 	mat.scale_min = 3.0 * ms
 	mat.scale_max = 5.0 * ms
@@ -190,20 +191,20 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.55)],
 		[0.08, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.45)],
 		[0.25, Color(_engine_color.r * 0.8, _engine_color.g * 0.7, _engine_color.b * 0.8, 0.25)],
-		[0.5, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.1)],
+		[0.5, Color(_engine_color.r * 0.5, _engine_color.g * 0.4, _engine_color.b * 0.6, 0.07)],
 		[1.0, Color(_engine_color.r * 0.2, _engine_color.g * 0.15, _engine_color.b * 0.3, 0.0)],
 	])
 	# KEY: scale 1.0 at birth → 0.08 at death = realistic taper
 	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.7, 0.2, 0.04)
 
 	p.process_material = mat
-	p.amount = 48
-	p.lifetime = 0.65
-	p.local_coords = true
+	p.amount = 40
+	p.lifetime = 0.9
+	p.local_coords = false
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1.8, 1.8) * ms
+	mesh.size = Vector2(1.0, 2.2) * ms
 	mesh.material = _make_particle_material(_engine_color, 3.5)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -266,6 +267,7 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 2.5
 	mat.damping_max = 6.0
+	mat.particle_flag_align_y = true
 	mat.scale_min = 1.2 * ms
 	mat.scale_max = 2.2 * ms
 	mat.color_ramp = _make_gradient([
@@ -285,7 +287,7 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(0.6, 0.6) * ms
+	mesh.size = Vector2(0.5, 0.8) * ms
 	mesh.material = _make_particle_material(_engine_color, 12.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -311,15 +313,16 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	mat.initial_velocity_min = 18.0 * ms
 	mat.initial_velocity_max = 45.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 2.0
-	mat.damping_max = 5.0
+	mat.damping_min = 0.1
+	mat.damping_max = 0.3
+	mat.particle_flag_align_y = true
 	mat.scale_min = 2.0 * ms
 	mat.scale_max = 4.0 * ms
 	mat.color_ramp = _make_gradient([
 		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.55)],
 		[0.1, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.4)],
 		[0.3, Color(_engine_color.r * 0.7, _engine_color.g * 0.6, _engine_color.b * 0.8, 0.2)],
-		[0.6, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.06)],
+		[0.6, Color(_engine_color.r * 0.35, _engine_color.g * 0.3, _engine_color.b * 0.5, 0.045)],
 		[1.0, Color(_engine_color.r * 0.1, _engine_color.g * 0.08, _engine_color.b * 0.2, 0.0)],
 	])
 	# Big → thin trail
@@ -327,12 +330,12 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 
 	p.process_material = mat
 	p.amount = 56
-	p.lifetime = 0.8
-	p.local_coords = true
+	p.lifetime = 1.1
+	p.local_coords = false
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1.2, 1.2) * ms
+	mesh.size = Vector2(0.7, 1.8) * ms
 	mesh.material = _make_particle_material(_engine_color, 4.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -358,8 +361,8 @@ func _create_sparks(parent: Node3D) -> GPUParticles3D:
 	mat.initial_velocity_min = 30.0 * ms
 	mat.initial_velocity_max = 80.0 * ms
 	mat.gravity = Vector3.ZERO
-	mat.damping_min = 3.0
-	mat.damping_max = 8.0
+	mat.damping_min = 0.0
+	mat.damping_max = 0.3
 	mat.scale_min = 0.15 * ms
 	mat.scale_max = 0.35 * ms
 
@@ -376,7 +379,7 @@ func _create_sparks(parent: Node3D) -> GPUParticles3D:
 	p.process_material = mat
 	p.amount = 28
 	p.lifetime = 0.55
-	p.local_coords = true
+	p.local_coords = false
 	p.emitting = false
 	p.amount_ratio = 0.0
 
@@ -483,6 +486,9 @@ func _update_volume_fill(nozzle: Dictionary, t: float, idle: float) -> void:
 	p.speed_scale = 0.3 + effective_t * 1.2 + _boost_blend * 1.8 + _cruise_blend * 3.0
 	p.emitting = effective_t > 0.01
 
+	# Dynamic lifetime: longer trail at higher speed
+	p.lifetime = 0.9 + _ship_speed_ratio * 0.5
+
 	# Boost: bigger initial size = fatter base, but same taper to thin
 	var pmat := p.process_material as ParticleProcessMaterial
 	if pmat:
@@ -511,13 +517,13 @@ func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 
 	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 9.0) * 0.12 + sin(_pulse_time * 14.0) * 0.06
-	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * _model_scale * pulse
+	var disc_size := (3.0 + _boost_blend * 2.5 + _cruise_blend * 1.5) * _model_scale * pulse
 	disc.mesh.size = Vector2(disc_size, disc_size)
 
 	# Orange for boost, blue-white for cruise
 	var col := Color(1.0, 0.75, 0.4).lerp(Color(0.7, 0.85, 1.0), _cruise_blend)
 	mat.emission = col
-	mat.emission_energy_multiplier = ab_t * (15.0 + _boost_blend * 10.0 + _cruise_blend * 8.0)
+	mat.emission_energy_multiplier = ab_t * (15.0 + _boost_blend * 20.0 + _cruise_blend * 8.0)
 	mat.albedo_color = Color(col.r, col.g, col.b, ab_t * 0.85)
 
 
@@ -539,6 +545,8 @@ func _update_outer_flame(nozzle: Dictionary, t: float, idle: float) -> void:
 	p.amount_ratio = 0.03 + effective_t * 0.97
 	p.speed_scale = 0.25 + effective_t * 1.3 + _boost_blend * 1.2 + _cruise_blend * 2.0
 	p.emitting = effective_t > 0.01
+	# Dynamic lifetime: longer trail at higher speed
+	p.lifetime = 1.1 + _ship_speed_ratio * 0.6
 
 	# Boost/cruise: slightly wider base spread, taper does the rest
 	var pmat := p.process_material as ParticleProcessMaterial
@@ -556,6 +564,8 @@ func _update_sparks(nozzle: Dictionary, t: float) -> void:
 	p.amount_ratio = clampf(spark_t, 0.0, 1.0)
 	p.speed_scale = 0.5 + spark_t * 2.5
 	p.emitting = spark_t > 0.05
+	# Dynamic lifetime: longer trail at higher speed
+	p.lifetime = 0.55 + _ship_speed_ratio * 0.4
 
 
 func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
