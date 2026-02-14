@@ -43,6 +43,10 @@ static func get_resource_price(resource_id: StringName) -> int:
 	return r.base_value if r else 0
 
 
+static func get_refined_price(item_id: StringName) -> int:
+	return RefineryRegistry.get_item_value(item_id)
+
+
 static func get_sell_price(buy_price: int) -> int:
 	return int(buy_price * 0.5)
 

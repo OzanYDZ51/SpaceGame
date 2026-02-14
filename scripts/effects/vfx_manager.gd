@@ -110,7 +110,7 @@ func _create_engine_exhaust() -> void:
 	_engine_exhaust = EngineExhaust.new()
 	_engine_exhaust.name = "EngineExhaust"
 	model.add_child(_engine_exhaust)
-	_engine_exhaust.setup(model.model_scale, model.engine_light_color, vfx_pts)
+	_engine_exhaust.setup(model.model_scale, model.engine_light_color, vfx_pts, _ship.ship_data)
 
 
 func _create_motion_blur() -> void:

@@ -17,12 +17,18 @@ var command_params: Dictionary = {}
 
 var _ship: ShipController = null
 var _brain: AIBrain = null
+var _pilot: AIPilot = null
 var _station_id: String = ""
 var _returning: bool = false
 var _arrived: bool = false
 var _attack_target_id: String = ""
 
 const MOVE_ARRIVE_DIST: float = 200.0
+
+# --- Dock approach ---
+const DOCK_APPROACH_DIST: float = 1200.0   # Switch from patrol to direct flight
+const DOCK_FINAL_DIST: float = 200.0       # Close enough to complete docking
+const DOCK_MAX_SPEED: float = 80.0         # Must be this slow to dock
 
 var _initialized: bool = false
 
@@ -46,6 +52,7 @@ func _do_init() -> void:
 		return
 	_initialized = true
 	_brain = _ship.get_node_or_null("AIBrain") as AIBrain if _ship else null
+	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot if _ship else null
 
 	if _brain:
 		# Fleet ships on mission don't react to enemies (no wasted time fighting)
@@ -141,8 +148,8 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 				if not ent.is_empty():
 					var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					var dist: float = _ship.global_position.distance_to(station_pos)
-					if dist < DockingSystem.DEFAULT_DOCK_RANGE and _ship.linear_velocity.length() < DockingSystem.DEFAULT_DOCK_MAX_SPEED:
-						# Already in dock range and slow enough — retrieve immediately
+					if dist < DOCK_FINAL_DIST and _ship.linear_velocity.length() < DOCK_MAX_SPEED:
+						# Already at station and slow — retrieve immediately
 						var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
 						if fdm:
 							fdm.retrieve_ship(fleet_index)
@@ -161,23 +168,32 @@ func _process(_delta: float) -> void:
 	if _brain == null:
 		return
 
-	# Monitor return_to_station — same docking rules as player (range + speed + facing)
+	# Monitor return_to_station — direct dock approach when close
 	if _returning and _station_id != "":
 		var ent := EntityRegistry.get_entity(_station_id)
 		if not ent.is_empty():
 			var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			var dist: float = _ship.global_position.distance_to(station_pos)
-			if dist < DockingSystem.DEFAULT_DOCK_RANGE:
+
+			if dist < DOCK_APPROACH_DIST:
+				# --- DOCK APPROACH: bypass patrol, fly directly to station ---
+				if _brain.current_state != AIBrain.State.IDLE:
+					_brain.current_state = AIBrain.State.IDLE
+				# Exit cruise for final approach
+				if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+					_ship._exit_cruise()
+				# Fly straight to station (arrival_dist=50 → decel zone ~150m)
+				if _pilot:
+					_pilot.fly_toward(station_pos, 50.0)
+				# Complete docking when close and slow
 				var speed: float = _ship.linear_velocity.length()
-				var to_station := (station_pos - _ship.global_position).normalized()
-				var forward := -_ship.global_basis.z.normalized()
-				var facing_dot := forward.dot(to_station)
-				if speed < DockingSystem.DEFAULT_DOCK_MAX_SPEED and facing_dot > DockingSystem.DEFAULT_DOCK_MIN_FACING:
+				if dist < DOCK_FINAL_DIST and speed < DOCK_MAX_SPEED:
 					var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
 					if fdm:
 						fdm.retrieve_ship(fleet_index)
-					return
-			# Keep brain patrolling toward station (position updates with floating origin)
+				return
+
+			# Long range: keep brain navigating via patrol
 			if _brain.current_state == AIBrain.State.IDLE:
 				_brain.set_patrol_area(station_pos, 50.0)
 				_brain.current_state = AIBrain.State.PATROL
@@ -261,7 +277,8 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
 		&"return_to_station":
-			if _station_id != "":
+			# During dock approach (brain=IDLE), no patrol waypoints to refresh
+			if _station_id != "" and _brain.current_state == AIBrain.State.PATROL:
 				var ent := EntityRegistry.get_entity(_station_id)
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)

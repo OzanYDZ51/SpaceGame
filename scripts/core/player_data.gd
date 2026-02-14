@@ -17,6 +17,7 @@ var cargo: PlayerCargo:
 		return null
 var fleet: PlayerFleet = null
 var station_services: StationServices = null
+var refinery_manager: RefineryManager = null
 
 
 func initialize(galaxy: GalaxyData) -> void:
@@ -59,6 +60,9 @@ func initialize(galaxy: GalaxyData) -> void:
 	station_services = StationServices.new()
 	if galaxy:
 		station_services.init_center_systems(galaxy)
+
+	# Refinery manager (station storage + queues)
+	refinery_manager = RefineryManager.new()
 
 
 # =========================================================================
@@ -185,6 +189,12 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 		state["squadrons"] = sq_arr
 		state["next_squadron_id"] = fleet._next_squadron_id
 
+	# Refinery (station storages + queues)
+	if refinery_manager:
+		var ref_data := refinery_manager.serialize()
+		if not ref_data.is_empty():
+			state["refinery"] = ref_data
+
 	return state
 
 
@@ -287,6 +297,11 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 	# Re-initialize squadron manager if fleet was replaced
 	if squadron_mgr and fleet:
 		squadron_mgr.initialize(fleet, fleet_deployment_mgr)
+
+	# Refinery
+	var refinery_data: Dictionary = state.get("refinery", {})
+	if not refinery_data.is_empty() and refinery_manager:
+		refinery_manager.deserialize(refinery_data)
 
 	# Migration: old saves stored cargo/resources at top-level — migrate to active ship
 	var old_cargo: Array = state.get("cargo", [])

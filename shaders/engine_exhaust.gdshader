@@ -63,13 +63,13 @@ void fragment() {
 	float z_pos = UV.y;
 	float radial = abs(UV.x - 0.5) * 2.0;
 
-	// Z-gradient: very bright at nozzle, fades aggressively toward tip
-	float z_fade = pow(max(1.0 - smoothstep(0.0, 0.9, z_pos), 0.0), 1.2);
-	float z_core = pow(max(1.0 - z_pos, 0.0), 2.2);
+	// Z-gradient: bright at nozzle, dissolves toward tip
+	float z_fade = pow(max(1.0 - smoothstep(0.0, 0.6, z_pos), 0.0), 1.5);
+	float z_core = pow(max(1.0 - z_pos, 0.0), 2.5);
 
-	// Radial: bright fat center near nozzle, tighter at tip
-	// Radial tolerance shrinks along Z = natural taper in the shader too
-	float radial_width = mix(1.0, 0.4, z_pos);  // Nozzle=full width, tip=40%
+	// Radial: bright fat center near nozzle, very tight at tip
+	// Radial tolerance shrinks aggressively = cone dissolves before mesh edge
+	float radial_width = mix(1.0, 0.15, z_pos);  // Nozzle=full width, tip=15%
 	float r_norm = radial / radial_width;
 	float r_fade = 1.0 - smoothstep(0.0, 1.0, r_norm);
 	float r_core = pow(max(1.0 - r_norm, 0.0), 2.5);
@@ -81,9 +81,11 @@ void fragment() {
 	// Large-scale wisps that carve holes in the flame
 	float n3 = fbm(vec2(z_pos * 2.0 + 10.0, radial * 1.0), flicker_t * 0.7);
 	float flicker = mix(1.0, n1 * 0.6 + n2 * 0.2 + n3 * 0.2, flicker_strength);
-	// Noise-driven alpha cutout — erodes edges, creates wispy tongues
+	// Noise-driven alpha cutout — erodes edges, dissolves tip into wisps
 	float edge_erode = smoothstep(0.3, 0.7, n1 * 0.5 + n3 * 0.5);
-	float alpha_noise = mix(1.0, edge_erode, flicker_strength * (0.5 + z_pos * 0.5));
+	// Erosion ramps up strongly toward tip: nearly solid at nozzle, fully dissolved at end
+	float tip_dissolve = z_pos * z_pos;  // Quadratic = gentle near nozzle, aggressive at tip
+	float alpha_noise = mix(1.0, edge_erode, flicker_strength * (0.3 + tip_dissolve * 0.7));
 
 	// Color temperature
 	vec3 col;

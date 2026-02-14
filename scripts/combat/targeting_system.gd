@@ -9,7 +9,7 @@ signal target_changed(new_target: Node3D)
 signal target_lost()
 
 var current_target: Node3D = null
-var target_lock_range: float = 5000.0
+var target_lock_range: float = Constants.TARGET_LOCK_RANGE
 
 var _targetable_ships: Array[Node3D] = []
 var _scan_timer: float = 0.0
@@ -18,6 +18,12 @@ const RETICLE_RADIUS: float = 150.0  # Pixels around crosshair to consider "in r
 var _current_target_index: int = -1
 var _cached_target_health: HealthSystem = null
 var _cached_target_ref: Node3D = null  # tracks which target the cached health belongs to
+
+
+func _ready() -> void:
+	var ship := get_parent() as ShipController
+	if ship and ship.ship_data:
+		target_lock_range = ship.ship_data.sensor_range
 
 
 func _process(delta: float) -> void:

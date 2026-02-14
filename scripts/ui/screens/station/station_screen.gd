@@ -12,6 +12,7 @@ signal equipment_requested
 signal commerce_requested
 signal repair_requested
 signal shipyard_requested
+signal refinery_requested
 signal station_equipment_requested
 signal administration_requested
 
@@ -40,6 +41,7 @@ const SERVICE_ORDER: Array[int] = [
 	StationServices.Service.REPAIR,
 	StationServices.Service.EQUIPMENT,
 	StationServices.Service.SHIPYARD,
+	StationServices.Service.REFINERY,
 ]
 
 const SERVICE_DESCRIPTIONS: Dictionary = {
@@ -47,6 +49,7 @@ const SERVICE_DESCRIPTIONS: Dictionary = {
 	StationServices.Service.REPAIR: "Réparer la coque et les boucliers",
 	StationServices.Service.EQUIPMENT: "Modifier l'armement du vaisseau",
 	StationServices.Service.SHIPYARD: "Acheter et vendre des vaisseaux",
+	StationServices.Service.REFINERY: "Raffiner les minerais en materiaux",
 }
 
 
@@ -134,6 +137,8 @@ func _on_service_pressed(button_index: int) -> void:
 				equipment_requested.emit()
 			StationServices.Service.SHIPYARD:
 				shipyard_requested.emit()
+			StationServices.Service.REFINERY:
+				refinery_requested.emit()
 	else:
 		_try_unlock(svc)
 

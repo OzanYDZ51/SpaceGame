@@ -22,6 +22,8 @@ var _nozzles: Array[Dictionary] = []
 
 var _engine_color: Color = Color(0.3, 0.6, 1.0)
 var _model_scale: float = 1.0
+var _exhaust_scale: float = 1.0
+var _max_speed_boost: float = 600.0
 
 # Smooth state
 var _throttle_smooth: float = 0.0
@@ -35,9 +37,15 @@ var _soft_circle_tex: GradientTexture2D = null
 var _exhaust_shader: Shader = null
 
 
-func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = []) -> void:
+func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = [], ship_data: ShipData = null) -> void:
 	_model_scale = p_model_scale
 	_engine_color = color
+	if ship_data:
+		_exhaust_scale = ship_data.exhaust_scale
+		_max_speed_boost = ship_data.max_speed_boost
+	else:
+		_exhaust_scale = p_model_scale
+		_max_speed_boost = Constants.MAX_SPEED_BOOST
 	_soft_circle_tex = _create_soft_circle(64)
 	_exhaust_shader = load("res://shaders/engine_exhaust.gdshader") as Shader
 
@@ -56,7 +64,7 @@ func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = [
 
 func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 0.0) -> void:
 	_throttle_smooth = lerpf(_throttle_smooth, throttle, 0.12)
-	_ship_speed_ratio = clampf(ship_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
+	_ship_speed_ratio = clampf(ship_speed / maxf(_max_speed_boost, 1.0), 0.0, 1.0)
 
 	var target_boost: float = 1.0 if speed_mode == Constants.SpeedMode.BOOST else 0.0
 	_boost_blend = lerpf(_boost_blend, target_boost, 0.08)
@@ -73,7 +81,6 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 		_update_afterburner(nozzle, t)
 		_update_inner_flame(nozzle, t, idle)
 		_update_outer_flame(nozzle, t, idle)
-		_update_sparks(nozzle, t)
 		_update_light(nozzle, t, idle)
 
 
@@ -97,7 +104,6 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 	nozzle["afterburner"] = _create_afterburner_disc(nozzle_root)
 	nozzle["inner"] = _create_inner_flame(nozzle_root)
 	nozzle["outer"] = _create_outer_flame(nozzle_root)
-	nozzle["sparks"] = _create_sparks(nozzle_root)
 	nozzle["light"] = _create_dynamic_light(nozzle_root)
 	nozzle["root"] = nozzle_root
 	_nozzles.append(nozzle)
@@ -110,13 +116,13 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 	var mesh_inst := MeshInstance3D.new()
 	mesh_inst.name = "ExhaustCore"
-	var ms := _model_scale
+	var es := _exhaust_scale
 
 	# Fat base that tapers aggressively to a fine point — teardrop shape
 	var cone := CylinderMesh.new()
-	var base_radius := 1.1 * ms
-	var tip_radius := 0.06 * ms
-	var length := 12.0 * ms
+	var base_radius := 1.1 * es
+	var tip_radius := 0.06 * es
+	var length := 12.0 * es
 	cone.top_radius = base_radius
 	cone.bottom_radius = tip_radius
 	cone.height = length
@@ -171,21 +177,21 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "VolumeFill"
-	var ms := _model_scale
+	var es := _exhaust_scale
 
 	var mat := ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 1.0 * ms
+	mat.emission_sphere_radius = 1.0 * es
 	mat.direction = Vector3(0.0, 0.0, 1.0)
 	mat.spread = 6.0  # Tight spread = tapers naturally
-	mat.initial_velocity_min = 15.0 * ms
-	mat.initial_velocity_max = 35.0 * ms
+	mat.initial_velocity_min = 15.0 * es
+	mat.initial_velocity_max = 35.0 * es
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 0.2
 	mat.damping_max = 0.5
 	# Round soft blobs, NOT elongated rectangles
-	mat.scale_min = 1.5 * ms
-	mat.scale_max = 2.5 * ms
+	mat.scale_min = 1.5 * es
+	mat.scale_max = 2.5 * es
 	mat.color_ramp = _make_gradient([
 		[0.0, Color(_engine_color.r * 1.1, _engine_color.g * 1.0, _engine_color.b * 0.9, 0.3)],
 		[0.08, Color(_engine_color.r, _engine_color.g * 0.9, _engine_color.b * 0.85, 0.22)],
@@ -203,7 +209,7 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1.2, 1.2) * ms
+	mesh.size = Vector2(1.2, 1.2) * es
 	mesh.material = _make_particle_material(_engine_color, 1.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -221,7 +227,7 @@ func _create_afterburner_disc(parent: Node3D) -> MeshInstance3D:
 	mesh_inst.name = "AfterburnerDisc"
 
 	var quad := QuadMesh.new()
-	var disc_size := 3.0 * _model_scale
+	var disc_size := 3.0 * _exhaust_scale
 	quad.size = Vector2(disc_size, disc_size)
 	mesh_inst.mesh = quad
 
@@ -254,20 +260,20 @@ func _create_afterburner_disc(parent: Node3D) -> MeshInstance3D:
 func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "InnerFlame"
-	var ms := _model_scale
+	var es := _exhaust_scale
 
 	var mat := ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 0.6 * ms
+	mat.emission_sphere_radius = 0.6 * es
 	mat.direction = Vector3(0.0, 0.0, 1.0)
 	mat.spread = 5.0  # Tight = follows the cone taper
-	mat.initial_velocity_min = 30.0 * ms
-	mat.initial_velocity_max = 65.0 * ms
+	mat.initial_velocity_min = 30.0 * es
+	mat.initial_velocity_max = 65.0 * es
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 2.5
 	mat.damping_max = 6.0
-	mat.scale_min = 0.6 * ms
-	mat.scale_max = 1.2 * ms
+	mat.scale_min = 0.6 * es
+	mat.scale_max = 1.2 * es
 	mat.color_ramp = _make_gradient([
 		[0.0, Color(1.0, 0.98, 0.95, 0.7)],
 		[0.05, Color(1.0, 0.95, 0.88, 0.5)],
@@ -285,7 +291,7 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(0.4, 0.4) * ms
+	mesh.size = Vector2(0.4, 0.4) * es
 	mesh.material = _make_particle_material(_engine_color, 3.0)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -301,20 +307,20 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "OuterFlame"
-	var ms := _model_scale
+	var es := _exhaust_scale
 
 	var mat := ParticleProcessMaterial.new()
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	mat.emission_sphere_radius = 0.8 * ms
+	mat.emission_sphere_radius = 0.8 * es
 	mat.direction = Vector3(0.0, 0.0, 1.0)
 	mat.spread = 12.0  # Moderate spread — forms the envelope
-	mat.initial_velocity_min = 18.0 * ms
-	mat.initial_velocity_max = 45.0 * ms
+	mat.initial_velocity_min = 18.0 * es
+	mat.initial_velocity_max = 45.0 * es
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 0.1
 	mat.damping_max = 0.3
-	mat.scale_min = 0.8 * ms
-	mat.scale_max = 1.5 * ms
+	mat.scale_min = 0.8 * es
+	mat.scale_max = 1.5 * es
 	mat.color_ramp = _make_gradient([
 		[0.0, Color(_engine_color.r * 1.2, _engine_color.g * 1.1, _engine_color.b, 0.3)],
 		[0.1, Color(_engine_color.r, _engine_color.g, _engine_color.b * 0.95, 0.2)],
@@ -332,7 +338,7 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	p.emitting = true
 
 	var mesh := QuadMesh.new()
-	mesh.size = Vector2(1.0, 1.0) * ms
+	mesh.size = Vector2(1.0, 1.0) * es
 	mesh.material = _make_particle_material(_engine_color, 1.5)
 	p.draw_pass_1 = mesh
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -399,10 +405,10 @@ func _create_dynamic_light(parent: Node3D) -> OmniLight3D:
 	light.name = "ExhaustLight"
 	light.light_color = _engine_color
 	light.light_energy = 0.0
-	light.omni_range = 10.0 * _model_scale
+	light.omni_range = 10.0 * _exhaust_scale
 	light.omni_attenuation = 1.5
 	light.shadow_enabled = false
-	light.position = Vector3(0.0, 0.0, 3.0 * _model_scale)
+	light.position = Vector3(0.0, 0.0, 3.0 * _exhaust_scale)
 	parent.add_child(light)
 	return light
 
@@ -507,7 +513,7 @@ func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 
 	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 9.0) * 0.12 + sin(_pulse_time * 14.0) * 0.06
-	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * _model_scale * pulse
+	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * _exhaust_scale * pulse
 	disc.mesh.size = Vector2(disc_size, disc_size)
 
 	# Orange for boost, blue-white for cruise
@@ -577,7 +583,7 @@ func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
 	col = col.lerp(Color(0.6, 0.8, 1.0), _cruise_blend * 0.4)
 	light.light_color = col
 
-	light.omni_range = (10.0 + _boost_blend * 8.0 + _cruise_blend * 12.0) * _model_scale
+	light.omni_range = (10.0 + _boost_blend * 8.0 + _cruise_blend * 12.0) * _exhaust_scale
 
 
 # =============================================================================

@@ -29,6 +29,11 @@ var hull_ratio: float = 1.0
 var shield_ratio: float = 1.0
 var is_dead: bool = false
 
+# --- Per-ship AI ranges (from ShipData) ---
+var sensor_range: float = Constants.AI_DETECTION_RANGE
+var engagement_range: float = Constants.AI_ENGAGEMENT_RANGE
+var disengage_range: float = Constants.AI_DISENGAGE_RANGE
+
 # --- Simplified AI ---
 var ai_state: int = 0  # Maps to AIBrain.State
 var ai_target_id: StringName = &""
@@ -109,5 +114,9 @@ func capture_from_node(ship: Node3D) -> void:
 	if ship is ShipController:
 		faction = (ship as ShipController).faction
 		if (ship as ShipController).ship_data:
-			ship_id = (ship as ShipController).ship_data.ship_id
-			ship_class = (ship as ShipController).ship_data.ship_class
+			var sd: ShipData = (ship as ShipController).ship_data
+			ship_id = sd.ship_id
+			ship_class = sd.ship_class
+			sensor_range = sd.sensor_range
+			engagement_range = sd.engagement_range
+			disengage_range = sd.disengage_range

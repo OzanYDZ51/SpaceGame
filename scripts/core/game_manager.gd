@@ -58,6 +58,8 @@ var station_services: StationServices:
 			player_data.station_services = value
 var _equipment_screen: EquipmentScreen = null
 var _shipyard_screen: ShipyardScreen = null
+var _refinery_screen: RefineryScreen = null
+var _refinery_manager: RefineryManager = null
 var _loot_screen: LootScreen = null
 var _loot_pickup: LootPickupSystem = null
 var _lod_manager: ShipLODManager = null
@@ -186,6 +188,11 @@ func _setup_ui_managers() -> void:
 	_admin_screen = StationAdminScreen.new()
 	_admin_screen.name = "StationAdminScreen"
 	_screen_manager.register_screen("admin", _admin_screen)
+
+	# Register Refinery screen
+	_refinery_screen = RefineryScreen.new()
+	_refinery_screen.name = "RefineryScreen"
+	_screen_manager.register_screen("refinery", _refinery_screen)
 
 	# Register Multiplayer connection screen
 	var mp_screen := MultiplayerMenuScreen.new()
@@ -325,6 +332,9 @@ func _initialize_game() -> void:
 	_commerce_manager.player_inventory = player_inventory
 	_commerce_manager.player_fleet = player_fleet
 	_commerce_manager.player_data = player_data
+
+	# Refinery manager (lives in player_data for save/load, GameManager keeps ref for tick)
+	_refinery_manager = player_data.refinery_manager
 
 	# Wire economy to HUD (must be after player_data creation)
 	if hud:
@@ -612,6 +622,7 @@ func _initialize_game() -> void:
 	_docking_mgr.shipyard_screen = _shipyard_screen
 	_docking_mgr.station_screen = _station_screen
 	_docking_mgr.admin_screen = _admin_screen
+	_docking_mgr.refinery_screen = _refinery_screen
 	_docking_mgr.system_transition = _system_transition
 	_docking_mgr.route_manager = _route_manager
 	_docking_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
@@ -633,11 +644,13 @@ func _initialize_game() -> void:
 	_station_screen.shipyard_requested.connect(_docking_mgr.handle_shipyard_requested)
 	_station_screen.station_equipment_requested.connect(_docking_mgr.handle_station_equipment_requested)
 	_station_screen.administration_requested.connect(_docking_mgr.handle_administration_requested)
+	_station_screen.refinery_requested.connect(_docking_mgr.handle_refinery_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
 	_shipyard_screen.shipyard_closed.connect(_docking_mgr.handle_shipyard_closed)
 	_admin_screen.closed.connect(_docking_mgr.handle_admin_closed)
 	_admin_screen.station_renamed.connect(_on_station_renamed)
+	_refinery_screen.refinery_closed.connect(_docking_mgr.handle_refinery_closed)
 	_docking_mgr.docked.connect(func(_sn: String):
 		current_state = GameState.DOCKED
 		if _discord_rpc:
@@ -958,6 +971,10 @@ func _handle_map_toggle(view: int) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Tick refinery queues (processes jobs in real-time)
+	if _refinery_manager:
+		_refinery_manager.tick()
+
 	# Sync hangar prompt visibility with screen state
 	if current_state == GameState.DOCKED and _dock_instance and _dock_instance.hangar_scene and _screen_manager:
 		_dock_instance.hangar_scene.terminal_open = _screen_manager.is_any_screen_open()

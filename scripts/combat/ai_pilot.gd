@@ -14,8 +14,8 @@ const APPROACH_OFFSET_AMOUNT: float = 150.0    # Lateral offset for intercept ap
 const ORBIT_ANGULAR_SPEED: float = 0.8         # Orbit speed in combat (rad/s)
 
 # --- Cruise mode for long-distance travel ---
-const CRUISE_ENGAGE_DIST: float = 5000.0       # 5km min to consider cruise
-const CRUISE_DISENGAGE_DIST: float = 3000.0    # 3km — exit cruise and decelerate
+var cruise_engage_dist: float = 5000.0          # Overridden per-ship in _ready()
+var cruise_disengage_dist: float = 3000.0       # Overridden per-ship in _ready()
 const CRUISE_ALIGN_THRESHOLD: float = 0.95     # Dot product to engage cruise
 
 var _ship: ShipController = null
@@ -46,6 +46,9 @@ func _ready() -> void:
 	_ship = get_parent() as ShipController
 	if _ship:
 		_cache_refs.call_deferred()
+		if _ship.ship_data:
+			cruise_engage_dist = _ship.ship_data.sensor_range * 1.5
+			cruise_disengage_dist = _ship.ship_data.engagement_range * 2.0
 
 
 func _cache_refs() -> void:
@@ -204,14 +207,14 @@ func _update_cruise(dist: float, alignment: float) -> void:
 	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 		# Exit cruise: speed-adaptive disengage distance (faster = brake earlier)
 		var speed := _ship.linear_velocity.length()
-		var adaptive_disengage := maxf(CRUISE_DISENGAGE_DIST, speed * 3.0)
+		var adaptive_disengage := maxf(cruise_disengage_dist, speed * 3.0)
 		if dist < adaptive_disengage or alignment < 0.5:
 			_ship._exit_cruise()
 	else:
 		# Engage cruise: far away, well aligned, not in combat
 		# Check _last_combat_time directly (combat_locked is only updated for player ships)
 		var in_combat := (Time.get_ticks_msec() * 0.001 - _ship._last_combat_time) < ShipController.COMBAT_LOCK_DURATION
-		if dist > CRUISE_ENGAGE_DIST and alignment > CRUISE_ALIGN_THRESHOLD and not in_combat:
+		if dist > cruise_engage_dist and alignment > CRUISE_ALIGN_THRESHOLD and not in_combat:
 			_ship.speed_mode = Constants.SpeedMode.CRUISE
 			_ship.cruise_time = 0.0
 			_ship._cruise_punched = false

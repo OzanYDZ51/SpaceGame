@@ -15,6 +15,7 @@ extends Resource
 # --- Model ---
 @export var model_path: String = "res://assets/models/tie.glb"
 @export var model_scale: float = 2.0
+@export var exhaust_scale: float = 1.0  ## Visual scale of engine exhaust (independent of model_scale)
 @export var ship_scene_path: String = ""  # Path to .tscn with model + HardpointSlots + CollisionShape3D
 
 # --- Default Loadout ---
@@ -65,6 +66,11 @@ extends Resource
 
 # --- Cargo ---
 @export var cargo_capacity: int = 50
+
+# --- AI / Sensor ---
+@export var sensor_range: float = 3000.0          # Threat detection radius
+@export var engagement_range: float = 1500.0      # Preferred max combat distance
+@export var disengage_range: float = 4000.0       # Break off combat beyond this
 
 # --- Utility ---
 @export var utility_slot_count: int = 0

@@ -26,10 +26,10 @@ var formation_discipline: float = 0.8
 var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 
-# Detection — references Constants for single source of truth
-const DETECTION_RANGE: float = Constants.AI_DETECTION_RANGE
-const ENGAGEMENT_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
-const DISENGAGE_RANGE: float = Constants.AI_DISENGAGE_RANGE
+# Detection — per-ship from ShipData, fallback to Constants
+var detection_range: float = Constants.AI_DETECTION_RANGE
+var engagement_range: float = Constants.AI_ENGAGEMENT_RANGE
+var disengage_range: float = Constants.AI_DISENGAGE_RANGE
 
 # Patrol
 var _waypoints: Array[Vector3] = []
@@ -91,6 +91,12 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot if _ship else null
 	_health = _ship.get_node_or_null("HealthSystem") as HealthSystem if _ship else null
+
+	# Read per-ship AI ranges from ShipData (same data for player & NPC)
+	if _ship and _ship.ship_data:
+		detection_range = _ship.ship_data.sensor_range
+		engagement_range = _ship.ship_data.engagement_range
+		disengage_range = _ship.ship_data.disengage_range
 
 	# React to damage: if patrolling/idle and get shot, immediately pursue the attacker
 	if _health:
@@ -289,7 +295,7 @@ func _tick_pursue() -> void:
 		return
 
 	# Disengage if too far
-	if dist > DISENGAGE_RANGE:
+	if dist > disengage_range:
 		target = _get_highest_threat()
 		if target == null:
 			current_state = State.PATROL
@@ -304,7 +310,7 @@ func _tick_pursue() -> void:
 	_pilot.fly_intercept(target, preferred_range)
 
 	# Start shooting while pursuing if close enough
-	if dist < ENGAGEMENT_RANGE and weapons_enabled:
+	if dist < engagement_range and weapons_enabled:
 		_pilot.fire_at_target(target, accuracy * 0.6)
 
 
@@ -337,7 +343,7 @@ func _tick_attack(_delta: float) -> void:
 		return
 
 	# Disengage if too far
-	if dist > DISENGAGE_RANGE:
+	if dist > disengage_range:
 		target = _get_highest_threat()
 		if target == null:
 			current_state = State.PATROL
@@ -394,7 +400,7 @@ func _tick_flee() -> void:
 
 	# If we get far enough, re-engage or patrol
 	var dist: float = _pilot.get_distance_to(target.global_position)
-	if dist > DISENGAGE_RANGE:
+	if dist > disengage_range:
 		current_state = State.PATROL
 		target = null
 
@@ -433,9 +439,9 @@ func _detect_threats() -> void:
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
 	if _cached_lod_mgr:
 		var self_id := StringName(_ship.name)
-		var results := _cached_lod_mgr.get_nearest_ships(_ship.global_position, DETECTION_RANGE, 5, self_id)
+		var results := _cached_lod_mgr.get_nearest_ships(_ship.global_position, detection_range, 5, self_id)
 		var nearest_threat: Node3D = null
-		var nearest_dist: float = DETECTION_RANGE
+		var nearest_dist: float = detection_range
 		for entry in results:
 			var data := _cached_lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
@@ -463,7 +469,7 @@ func _detect_threats() -> void:
 	# Legacy fallback
 	var all_ships := get_tree().get_nodes_in_group("ships")
 	var fallback_threat: Node3D = null
-	var fallback_dist: float = DETECTION_RANGE
+	var fallback_dist: float = detection_range
 
 	for node in all_ships:
 		if node == _ship:

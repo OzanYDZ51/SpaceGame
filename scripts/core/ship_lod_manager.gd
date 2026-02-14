@@ -17,7 +17,6 @@ const LOD2_DISTANCE: float = 4000.0
 const LOD0_MAX: int = 50
 const LOD1_MAX: int = 200
 const LOD_EVAL_INTERVAL: float = 0.2
-const COMBAT_BRIDGE_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
 const COMBAT_BRIDGE_INTERVAL: float = 0.2
 const MAX_PROMOTIONS_PER_TICK: int = 10
 
@@ -42,7 +41,7 @@ var _lod_eval_timer: float = 0.0
 var _combat_bridge_timer: float = 0.0
 var _ai_tick_timer: float = 0.0
 var _multimesh_tick_timer: float = 0.0
-const AI_TICK_INTERVAL: float = 0.1
+const AI_TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 const MULTIMESH_TICK_INTERVAL: float = 0.05
 
 # --- References ---
@@ -646,7 +645,7 @@ func _tick_combat_bridge() -> void:
 		if data.is_dead or data.is_remote_player or data.is_server_npc:
 			continue
 
-		var nearby := _grid.query_radius(data.position, COMBAT_BRIDGE_RANGE)
+		var nearby := _grid.query_radius(data.position, data.engagement_range)
 		var best_id: StringName = &""
 		var best_dist_sq: float = INF
 		for other_id in nearby:

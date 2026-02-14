@@ -69,6 +69,7 @@ static func _build_fighter_mk1() -> ShipData:
 	d.ship_class = &"Fighter"
 	d.model_path = "res://assets/models/tie.glb"
 	d.model_scale = 2.0
+	d.exhaust_scale = 0.8
 	d.default_loadout = [&"Laser Mk1", &"Laser Mk1"]
 	d.hull_hp = 1000.0; d.shield_hp = 500.0; d.shield_regen_rate = 15.0; d.shield_regen_delay = 4.0
 	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 5.0
@@ -82,6 +83,7 @@ static func _build_fighter_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/fighter_mk1.tscn"
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
 	d.module_slots = ["S", "S"] as Array[String]
+	d.sensor_range = 3000.0; d.engagement_range = 1500.0; d.disengage_range = 4000.0
 	d.price = 30000
 	d.cargo_capacity = 30
 	return d
@@ -94,6 +96,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.ship_class = &"Frigate"
 	d.model_path = "res://assets/models/frigate_mk1.glb"
 	d.model_scale = 1.0
+	d.exhaust_scale = 2.0
 	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1"]
 	d.hull_hp = 5000.0; d.shield_hp = 2500.0; d.shield_regen_rate = 30.0; d.shield_regen_delay = 6.0
 	d.shield_damage_bleedthrough = 0.05; d.armor_rating = 20.0
@@ -107,6 +110,7 @@ static func _build_frigate_mk1() -> ShipData:
 	d.ship_scene_path = "res://scenes/ships/frigate_mk1.tscn"
 	d.shield_slot_size = "L"; d.engine_slot_size = "L"
 	d.module_slots = ["S", "M", "M", "L"] as Array[String]
+	d.sensor_range = 4000.0; d.engagement_range = 2000.0; d.disengage_range = 5000.0
 	d.price = 350000
 	d.cargo_capacity = 100
 	return d

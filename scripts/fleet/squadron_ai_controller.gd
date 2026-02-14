@@ -18,8 +18,6 @@ var _bridge: FleetAIBridge = null
 var _tick_timer: float = 0.0
 
 const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
-const THREAT_SCAN_RANGE: float = 2000.0
-const DEFEND_RANGE: float = Constants.AI_ENGAGEMENT_RANGE
 
 
 func _ready() -> void:
@@ -186,7 +184,8 @@ func _find_nearest_threat() -> Node3D:
 	if lod_mgr == null:
 		return null
 	var self_id := StringName(_ship.name)
-	var results := lod_mgr.get_nearest_ships(_ship.global_position, THREAT_SCAN_RANGE, 5, self_id)
+	var scan_range: float = _brain.detection_range if _brain else Constants.AI_DETECTION_RANGE
+	var results := lod_mgr.get_nearest_ships(_ship.global_position, scan_range, 5, self_id)
 	for entry in results:
 		var node: Node3D = entry.get("node")
 		if node and is_instance_valid(node) and _is_hostile(node):
@@ -200,7 +199,8 @@ func _find_attacker_of(target: Node3D) -> Node3D:
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 	if lod_mgr == null:
 		return null
-	var results := lod_mgr.get_nearest_ships(target.global_position, DEFEND_RANGE, 5, StringName(target.name))
+	var defend_range: float = _brain.engagement_range if _brain else Constants.AI_ENGAGEMENT_RANGE
+	var results := lod_mgr.get_nearest_ships(target.global_position, defend_range, 5, StringName(target.name))
 	for entry in results:
 		var node: Node3D = entry.get("node")
 		if node and is_instance_valid(node) and _is_hostile(node):
