@@ -15,7 +15,7 @@ const ORBIT_ANGULAR_SPEED: float = 0.8         # Orbit speed in combat (rad/s)
 
 # --- Cruise mode for long-distance travel ---
 var cruise_engage_dist: float = 5000.0          # Overridden per-ship in _ready()
-var cruise_disengage_dist: float = 3000.0       # Overridden per-ship in _ready()
+var cruise_disengage_dist: float = 5000.0       # Fixed decel distance (like player autopilot)
 const CRUISE_ALIGN_THRESHOLD: float = 0.95     # Dot product to engage cruise
 
 var _ship: ShipController = null
@@ -48,7 +48,9 @@ func _ready() -> void:
 		_cache_refs.call_deferred()
 		if _ship.ship_data:
 			cruise_engage_dist = _ship.ship_data.sensor_range * 1.5
-			cruise_disengage_dist = _ship.ship_data.engagement_range * 2.0
+			# Fixed decel distance: proportional to max cruise speed but capped
+			# Player autopilot uses 5km for gates — AI uses similar approach
+			cruise_disengage_dist = clampf(_ship.ship_data.max_speed_cruise * 0.006, 5000.0, 15000.0)
 
 
 func _cache_refs() -> void:
@@ -146,7 +148,9 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 		fwd_throttle = 0.0  # Facing away: just turn
 
 	# --- Progressive deceleration near target ---
-	var decel_zone := arrival_dist * DECEL_START_FACTOR
+	# Scale decel zone with speed: at high post-cruise speeds, need more room to brake
+	var speed := _ship.linear_velocity.length()
+	var decel_zone := maxf(arrival_dist * DECEL_START_FACTOR, speed * 1.5)
 	if dist < decel_zone:
 		var decel_t := clampf(dist / decel_zone, 0.0, 1.0)
 		fwd_throttle *= decel_t  # Linear ramp-down to zero at arrival
@@ -205,10 +209,10 @@ func face_target(target_pos: Vector3) -> void:
 
 func _update_cruise(dist: float, alignment: float) -> void:
 	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-		# Exit cruise: speed-adaptive disengage distance (faster = brake earlier)
-		var speed := _ship.linear_velocity.length()
-		var adaptive_disengage := maxf(cruise_disengage_dist, speed * 3.0)
-		if dist < adaptive_disengage or alignment < 0.5:
+		# Exit cruise at fixed distance (like player autopilot, NOT speed-dependent)
+		# Old formula "speed * 3.0" caused premature exit at cruise phase 2 speeds
+		# (e.g. 50km/s → disengage at 150km, ship crawls for minutes)
+		if dist < cruise_disengage_dist or alignment < 0.5:
 			_ship._exit_cruise()
 	else:
 		# Engage cruise: far away, well aligned, not in combat

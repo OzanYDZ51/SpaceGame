@@ -43,6 +43,9 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	if _ship and is_instance_valid(_ship):
+		_ship.ai_navigation_active = false
+		_ship._gate_approach_speed_cap = 0.0
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
 
@@ -168,6 +171,9 @@ func _process(_delta: float) -> void:
 	if _brain == null:
 		return
 
+	# --- Navigation speed boost: enable 3km/s approach when far from target ---
+	_update_navigation_boost()
+
 	# Monitor return_to_station — direct dock approach when close
 	if _returning and _station_id != "":
 		var ent := EntityRegistry.get_entity(_station_id)
@@ -245,6 +251,9 @@ func _process(_delta: float) -> void:
 
 func _mark_arrived(target_pos: Vector3) -> void:
 	_arrived = true
+	if _ship:
+		_ship.ai_navigation_active = false
+		_ship._gate_approach_speed_cap = 0.0
 	if _brain:
 		_brain.set_patrol_area(target_pos, 50.0)
 	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
@@ -282,3 +291,68 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 				var ent := EntityRegistry.get_entity(_station_id)
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
+
+
+const NAV_BOOST_MIN_DIST: float = 500.0    # Keep 3 km/s boost until this close
+const NAV_APPROACH_RAMP_DIST: float = 5000.0 # Start progressive speed cap at 5 km
+const NAV_APPROACH_MIN_SPEED: float = 50.0   # Minimum approach speed near target
+
+func _update_navigation_boost() -> void:
+	## Enable 3km/s approach speed when fleet ship is far from its command target.
+	## Progressive speed cap over last 5 km prevents overshoot (mirrors player autopilot).
+	if _arrived or command == &"":
+		_ship.ai_navigation_active = false
+		_ship._gate_approach_speed_cap = 0.0
+		return
+
+	var target_pos: Vector3
+	match command:
+		&"move_to", &"construction":
+			var tx: float = command_params.get("target_x", 0.0)
+			var tz: float = command_params.get("target_z", 0.0)
+			target_pos = FloatingOrigin.to_local_pos([tx, 0.0, tz])
+		&"mine":
+			var cx: float = command_params.get("center_x", 0.0)
+			var cz: float = command_params.get("center_z", 0.0)
+			target_pos = FloatingOrigin.to_local_pos([cx, 0.0, cz])
+		&"return_to_station":
+			if _station_id == "":
+				_ship.ai_navigation_active = false
+				_ship._gate_approach_speed_cap = 0.0
+				return
+			var ent := EntityRegistry.get_entity(_station_id)
+			if ent.is_empty():
+				_ship.ai_navigation_active = false
+				_ship._gate_approach_speed_cap = 0.0
+				return
+			target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+		&"attack":
+			if _attack_target_id != "":
+				var ent := EntityRegistry.get_entity(_attack_target_id)
+				if not ent.is_empty():
+					target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+				else:
+					_ship.ai_navigation_active = false
+					_ship._gate_approach_speed_cap = 0.0
+					return
+			else:
+				_ship.ai_navigation_active = false
+				_ship._gate_approach_speed_cap = 0.0
+				return
+		_:
+			_ship.ai_navigation_active = false
+			_ship._gate_approach_speed_cap = 0.0
+			return
+
+	var dist: float = _ship.global_position.distance_to(target_pos)
+
+	# Keep navigation boost until close — speed cap handles the deceleration
+	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
+
+	# Progressive speed cap: quadratic ramp from 3000 m/s at 5 km to 50 m/s near target
+	# This forces the velocity clamp in _integrate_forces to actively brake the ship
+	if dist < NAV_APPROACH_RAMP_DIST:
+		var t: float = clampf(dist / NAV_APPROACH_RAMP_DIST, 0.0, 1.0)
+		_ship._gate_approach_speed_cap = lerpf(NAV_APPROACH_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
+	else:
+		_ship._gate_approach_speed_cap = 0.0

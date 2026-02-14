@@ -58,8 +58,12 @@ func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = [
 		positions.append({"position": Vector3(-1.5, 0.0, 5.0) * p_model_scale, "direction": Vector3.BACK})
 		positions.append({"position": Vector3(1.5, 0.0, 5.0) * p_model_scale, "direction": Vector3.BACK})
 
+	var default_es: float = _exhaust_scale
 	for pt in positions:
+		var nozzle_es: float = pt.get("nozzle_size", 0.0)
+		_exhaust_scale = nozzle_es if nozzle_es > 0.0 else default_es
 		_create_nozzle(pt["position"], pt.get("direction", Vector3.BACK))
+	_exhaust_scale = default_es
 
 
 func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 0.0) -> void:
@@ -99,6 +103,7 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 		nozzle_root.look_at_from_position(pos, pos - dir, up)
 	add_child(nozzle_root)
 
+	nozzle["es"] = _exhaust_scale
 	nozzle["cone"] = _create_core_cone(nozzle_root)
 	nozzle["volume"] = _create_volume_fill(nozzle_root)
 	nozzle["afterburner"] = _create_afterburner_disc(nozzle_root)
@@ -513,7 +518,8 @@ func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 
 	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 9.0) * 0.12 + sin(_pulse_time * 14.0) * 0.06
-	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * _exhaust_scale * pulse
+	var es: float = nozzle.get("es", _exhaust_scale)
+	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * es * pulse
 	disc.mesh.size = Vector2(disc_size, disc_size)
 
 	# Orange for boost, blue-white for cruise
@@ -583,7 +589,8 @@ func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
 	col = col.lerp(Color(0.6, 0.8, 1.0), _cruise_blend * 0.4)
 	light.light_color = col
 
-	light.omni_range = (10.0 + _boost_blend * 8.0 + _cruise_blend * 12.0) * _exhaust_scale
+	var es: float = nozzle.get("es", _exhaust_scale)
+	light.omni_range = (10.0 + _boost_blend * 8.0 + _cruise_blend * 12.0) * es
 
 
 # =============================================================================

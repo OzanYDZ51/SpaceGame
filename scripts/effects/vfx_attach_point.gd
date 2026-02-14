@@ -17,6 +17,7 @@ extends Marker3D
 enum PointType { ENGINE, RCS, BOOST }
 
 @export var point_type: PointType = PointType.ENGINE
+@export var nozzle_size: float = 0.0  ## Runtime exhaust scale for this nozzle (0 = use ship default)
 
 var _gizmo_mesh: MeshInstance3D = null
 var _label: Label3D = null
@@ -51,6 +52,7 @@ func get_config() -> Dictionary:
 		"type": _type_name(),
 		"position": position,
 		"direction": -basis.z,
+		"nozzle_size": nozzle_size,
 	}
 
 

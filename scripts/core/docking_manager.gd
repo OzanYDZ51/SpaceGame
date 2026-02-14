@@ -23,6 +23,7 @@ var shipyard_screen: ShipyardScreen = null
 var station_screen: StationScreen = null
 var admin_screen: StationAdminScreen = null
 var refinery_screen: Control = null  # RefineryScreen (UIScreen)
+var storage_screen: Control = null   # StorageScreen (UIScreen)
 var system_transition: SystemTransition = null
 var route_manager: RouteManager = null
 var fleet_deployment_mgr: FleetDeploymentManager = null
@@ -343,6 +344,25 @@ func handle_refinery_requested() -> void:
 
 
 func handle_refinery_closed() -> void:
+	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
+	if state_val != GameManagerSystem.GameState.DOCKED:
+		return
+	open_station_terminal()
+
+
+func handle_storage_requested() -> void:
+	if storage_screen == null or screen_manager == null or player_data == null:
+		return
+	var sname: String = dock_instance.station_name if dock_instance else "STATION"
+	var sys_id: int = system_transition.current_system_id if system_transition else 0
+	var station_key: String = RefineryManager.make_key(sys_id, docked_station_idx)
+	storage_screen.setup(player_data, station_key, sname)
+	screen_manager.close_screen("station")
+	await get_tree().process_frame
+	screen_manager.open_screen("storage")
+
+
+func handle_storage_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != GameManagerSystem.GameState.DOCKED:
 		return

@@ -221,9 +221,12 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 		bridge.apply_command(cmd, params)
 
 	# Manage AIMiningBehavior lifecycle
-	var existing_mining := npc.get_node_or_null("AIMiningBehavior")
+	var existing_mining := npc.get_node_or_null("AIMiningBehavior") as AIMiningBehavior
 	if cmd == &"mine":
-		if existing_mining == null:
+		if existing_mining:
+			# Mine→Mine: update existing behavior with new params (new belt, new filter)
+			existing_mining.update_params(params)
+		else:
 			var mining_behavior := AIMiningBehavior.new()
 			mining_behavior.name = "AIMiningBehavior"
 			mining_behavior.fleet_index = fleet_index

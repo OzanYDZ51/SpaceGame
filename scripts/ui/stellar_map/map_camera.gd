@@ -80,6 +80,7 @@ func pan(screen_delta: Vector2) -> void:
 	center_x -= screen_delta.x / zoom
 	center_z -= screen_delta.y / zoom
 	follow_enabled = false
+	_anchored = false  # Break zoom anchor so pan + zoom can coexist
 	clamp_center()
 
 

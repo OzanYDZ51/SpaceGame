@@ -34,6 +34,12 @@ var _saved_system_name: String = ""
 # Pan state
 var _is_panning: bool = false
 var _pan_start: Vector2 = Vector2.ZERO
+var _pan_velocity: Vector2 = Vector2.ZERO  # screen px/sec, smooth WASD + inertia
+
+# Pan tuning
+const PAN_ACCEL: float = 5.0         # ease-in rate (higher = snappier)
+const PAN_FRICTION: float = 4.5      # ease-out rate (higher = stops faster)
+const PAN_BASE_SPEED: float = 900.0  # max WASD speed in screen px/sec
 
 # Marquee selection
 var _marquee: MarqueeSelect = MarqueeSelect.new()
@@ -254,6 +260,7 @@ func close() -> void:
 	_is_open = false
 	visible = false
 	_is_panning = false
+	_pan_velocity = Vector2.ZERO
 	_fleet_selected_indices.clear()
 	_fleet_panel.clear_selection()
 	_close_context_menu()
@@ -265,6 +272,35 @@ func close() -> void:
 	# Restore mouse capture (skip when managed — UIScreenManager handles it)
 	if _was_mouse_captured and not managed_externally:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+## GUI input fallback — ensures middle mouse pan works even if _input() doesn't catch it.
+func _gui_input(event: InputEvent) -> void:
+	if not _is_open:
+		return
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			_is_panning = event.pressed
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			if not _fleet_panel.handle_scroll(event.position, 1):
+				_camera.zoom_at(event.position, MapCamera.ZOOM_STEP)
+				_dirty = true
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if not _fleet_panel.handle_scroll(event.position, -1):
+				_camera.zoom_at(event.position, 1.0 / MapCamera.ZOOM_STEP)
+				_dirty = true
+			accept_event()
+			return
+	if event is InputEventMouseMotion and _is_panning:
+		_camera.pan(event.relative)
+		_dirty = true
+		accept_event()
+		return
+	accept_event()
 
 
 func _update_system_radius() -> void:
@@ -286,9 +322,39 @@ func _process(delta: float) -> void:
 	if not _is_open:
 		return
 
+	# --- Smooth WASD pan with acceleration / inertia ---
+	var input_dir := Vector2.ZERO
+	if Input.is_action_pressed("strafe_right"):
+		input_dir.x += 1.0
+	if Input.is_action_pressed("strafe_left"):
+		input_dir.x -= 1.0
+	if Input.is_action_pressed("move_backward"):
+		input_dir.y += 1.0
+	if Input.is_action_pressed("move_forward"):
+		input_dir.y -= 1.0
+
+	if input_dir != Vector2.ZERO:
+		var target_vel := input_dir.normalized() * PAN_BASE_SPEED
+		_pan_velocity = _pan_velocity.lerp(target_vel, 1.0 - exp(-PAN_ACCEL * delta))
+	else:
+		_pan_velocity = _pan_velocity.lerp(Vector2.ZERO, 1.0 - exp(-PAN_FRICTION * delta))
+		if _pan_velocity.length_squared() < 1.0:
+			_pan_velocity = Vector2.ZERO
+
 	_camera.screen_size = size
 	var zoom_before: float = _camera.zoom
 	_camera.update(delta)
+
+	# Apply WASD pan AFTER camera.update() so zoom anchor doesn't overwrite it
+	if _pan_velocity != Vector2.ZERO:
+		# Break zoom anchor so pan and zoom can coexist
+		_camera._anchored = false
+		# velocity is in screen px/sec → convert to universe coords via zoom
+		_camera.center_x += _pan_velocity.x * delta / maxf(_camera.zoom, 1e-10)
+		_camera.center_z += _pan_velocity.y * delta / maxf(_camera.zoom, 1e-10)
+		_camera.follow_enabled = false
+		_camera.clamp_center()
+		_dirty = true
 
 	if _camera.zoom != zoom_before:
 		_dirty = true
@@ -470,8 +536,6 @@ func _input(event: InputEvent) -> void:
 					_fleet_selected_indices.clear()
 					_fleet_panel.clear_selection()
 					_select_entity("")
-					_camera.follow_entity_id = _player_id
-					_camera.follow_enabled = true
 					get_viewport().set_input_as_handled()
 					return
 

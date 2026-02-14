@@ -25,6 +25,15 @@ var _cam_center: Vector2 = Vector2.ZERO
 var _cam_zoom: float = 1.0
 var _cam_target_zoom: float = 1.0
 var _is_panning: bool = false
+var _pan_velocity: Vector2 = Vector2.ZERO  # galaxy units/sec, smooth WASD + inertia
+var _zoom_anchor_galaxy: Vector2 = Vector2.ZERO  # galaxy point that stays fixed during zoom
+var _zoom_anchor_screen: Vector2 = Vector2.ZERO   # screen position of that anchor
+var _zoom_anchored: bool = false
+
+# Pan tuning
+const PAN_ACCEL: float = 5.0         # ease-in rate
+const PAN_FRICTION: float = 4.5      # ease-out rate
+const PAN_BASE_SPEED: float = 900.0  # max WASD speed in screen px/sec (converted via zoom)
 
 # --- Galaxy selection ---
 var _selected_system: int = -1
@@ -127,6 +136,7 @@ func _activate_system_view() -> void:
 	current_view = ViewMode.SYSTEM
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_is_panning = false
+	_pan_velocity = Vector2.ZERO
 	if _galaxy_fleet_panel:
 		_galaxy_fleet_panel.visible = false
 	# Force redraw to clear stale galaxy rendering (opaque background)
@@ -156,6 +166,7 @@ func _activate_galaxy_view() -> void:
 	# Reset galaxy selection
 	_hovered_system = -1
 	_is_panning = false
+	_pan_velocity = Vector2.ZERO
 	# If returning from preview, keep that system selected and center on it
 	if was_previewing >= 0 and galaxy:
 		_selected_system = was_previewing
@@ -198,6 +209,7 @@ func close() -> void:
 			stellar_map.close()
 	_preview_system_id = -1
 	_is_panning = false
+	_pan_velocity = Vector2.ZERO
 	_is_open = false
 	visible = false
 	_on_closed()
@@ -206,6 +218,38 @@ func close() -> void:
 
 func _on_closed() -> void:
 	_is_panning = false
+	_pan_velocity = Vector2.ZERO
+
+
+## GUI input fallback — ensures middle mouse pan works even if _input() doesn't catch it.
+func _gui_input(event: InputEvent) -> void:
+	if current_view != ViewMode.GALAXY:
+		super._gui_input(event)
+		return
+
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			_is_panning = event.pressed
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			if not (_galaxy_fleet_panel and _galaxy_fleet_panel.handle_scroll(event.position, 1)):
+				_zoom_at(event.position, ZOOM_STEP)
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if not (_galaxy_fleet_panel and _galaxy_fleet_panel.handle_scroll(event.position, -1)):
+				_zoom_at(event.position, 1.0 / ZOOM_STEP)
+			accept_event()
+			return
+	if event is InputEventMouseMotion and _is_panning:
+		_zoom_anchored = false  # Break anchor so drag + zoom coexist
+		_cam_center -= event.relative / _cam_zoom
+		_galaxy_dirty = true
+		accept_event()
+		return
+	# Consume all other events to prevent game input
+	accept_event()
 
 
 ## Override: skip UIScreen transition. Handle galaxy zoom smoothing.
@@ -214,12 +258,46 @@ func _process(delta: float) -> void:
 		return
 
 	if current_view == ViewMode.GALAXY:
-		# Smooth zoom
+		# --- Smooth WASD pan with acceleration / inertia ---
+		var input_dir := Vector2.ZERO
+		if Input.is_action_pressed("strafe_right"):
+			input_dir.x += 1.0
+		if Input.is_action_pressed("strafe_left"):
+			input_dir.x -= 1.0
+		if Input.is_action_pressed("move_backward"):
+			input_dir.y += 1.0
+		if Input.is_action_pressed("move_forward"):
+			input_dir.y -= 1.0
+
+		if input_dir != Vector2.ZERO:
+			var target_vel := input_dir.normalized() * PAN_BASE_SPEED
+			_pan_velocity = _pan_velocity.lerp(target_vel, 1.0 - exp(-PAN_ACCEL * delta))
+		else:
+			_pan_velocity = _pan_velocity.lerp(Vector2.ZERO, 1.0 - exp(-PAN_FRICTION * delta))
+			if _pan_velocity.length_squared() < 1.0:
+				_pan_velocity = Vector2.ZERO
+
+		if _pan_velocity != Vector2.ZERO:
+			# Break zoom anchor so pan + zoom coexist
+			_zoom_anchored = false
+			# velocity is in screen px/sec → convert to galaxy coords via zoom
+			_cam_center += _pan_velocity * delta / maxf(_cam_zoom, 0.01)
+			_galaxy_dirty = true
+
+		# Smooth zoom with anchor (keeps point under cursor fixed)
 		if not is_equal_approx(_cam_zoom, _cam_target_zoom):
 			_cam_zoom = lerpf(_cam_zoom, _cam_target_zoom, delta * ZOOM_SMOOTH)
 			if absf(_cam_zoom - _cam_target_zoom) < 0.001:
 				_cam_zoom = _cam_target_zoom
+			# Recalculate center to keep anchor fixed at its screen position
+			if _zoom_anchored:
+				var cx: float = size.x * 0.5
+				var cy: float = size.y * 0.5
+				_cam_center.x = _zoom_anchor_galaxy.x - (_zoom_anchor_screen.x - cx) / _cam_zoom
+				_cam_center.y = _zoom_anchor_galaxy.y - (_zoom_anchor_screen.y - cy) / _cam_zoom
 			_galaxy_dirty = true
+		else:
+			_zoom_anchored = false
 
 	# Full opacity, no transition
 	modulate.a = 1.0
@@ -826,6 +904,7 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 	# Mouse motion
 	if event is InputEventMouseMotion:
 		if _is_panning:
+			_zoom_anchored = false  # Break anchor so drag + zoom coexist
 			_cam_center -= event.relative / _cam_zoom
 			_galaxy_dirty = true
 		else:
@@ -840,11 +919,11 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 func _zoom_at(screen_pos: Vector2, factor: float) -> void:
 	var cx: float = size.x * 0.5
 	var cy: float = size.y * 0.5
-	var galaxy_pos := _screen_to_galaxy(screen_pos.x, screen_pos.y, cx, cy)
+	# Record anchor: galaxy point under cursor must stay fixed during smooth zoom
+	_zoom_anchor_galaxy = _screen_to_galaxy(screen_pos.x, screen_pos.y, cx, cy)
+	_zoom_anchor_screen = screen_pos
+	_zoom_anchored = true
 	_cam_target_zoom = clampf(_cam_target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
-	var new_screen_pos := _galaxy_to_screen(galaxy_pos.x, galaxy_pos.y, cx, cy)
-	var diff := screen_pos - new_screen_pos
-	_cam_center -= diff / _cam_target_zoom
 	_galaxy_dirty = true
 
 
@@ -1105,9 +1184,3 @@ func _on_galaxy_fleet_ship_selected(_fleet_index: int, system_id: int) -> void:
 	_info_visible = true
 	_resolve_system_data(system_id)
 	_galaxy_dirty = true
-
-
-## Override _gui_input — galaxy uses _input() instead, system mode uses StellarMap.
-func _gui_input(_event: InputEvent) -> void:
-	if current_view == ViewMode.GALAXY:
-		accept_event()

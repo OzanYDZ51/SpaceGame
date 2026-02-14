@@ -2,8 +2,8 @@ class_name RefineryScreen
 extends UIScreen
 
 # =============================================================================
-# Refinery Screen — Hub with sidebar (3 tabs) + content area.
-# Tabs: RECETTES (recipe browser), FILE (queue), STOCKAGE (transfer)
+# Refinery Screen — Hub with sidebar (2 tabs) + content area.
+# Tabs: RECETTES (recipe browser), FILE (queue)
 # =============================================================================
 
 signal refinery_closed
@@ -17,7 +17,6 @@ var _back_btn: UIButton = null
 var _active_view: Control = null
 var _recipe_view: RecipeBrowserView = null
 var _queue_view: QueueView = null
-var _storage_view: StorageTransferView = null
 var _current_tab: int = -1
 
 const SIDEBAR_W := 160.0
@@ -26,7 +25,6 @@ const BOTTOM_H := 50.0
 const TABS: Array[Array] = [
 	["RECETTES", "Parcourir et lancer des recettes"],
 	["FILE", "Jobs en cours et completes"],
-	["STOCKAGE", "Transfert vaisseau / station"],
 ]
 
 
@@ -58,10 +56,6 @@ func _ready() -> void:
 	_queue_view.visible = false
 	add_child(_queue_view)
 
-	_storage_view = StorageTransferView.new()
-	_storage_view.visible = false
-	add_child(_storage_view)
-
 
 func setup(pdata: PlayerData, station_key: String, sname: String) -> void:
 	_player_data = pdata
@@ -73,8 +67,6 @@ func setup(pdata: PlayerData, station_key: String, sname: String) -> void:
 		_recipe_view.setup(mgr, station_key, pdata)
 	if _queue_view:
 		_queue_view.setup(mgr, station_key)
-	if _storage_view:
-		_storage_view.setup(mgr, station_key, pdata)
 
 
 func _on_opened() -> void:
@@ -117,10 +109,6 @@ func _switch_to_tab(idx: int) -> void:
 			_queue_view.visible = true
 			_active_view = _queue_view
 			_queue_view.refresh()
-		2:
-			_storage_view.visible = true
-			_active_view = _storage_view
-			_storage_view.refresh()
 	queue_redraw()
 
 
@@ -129,8 +117,6 @@ func _hide_all_views() -> void:
 		_recipe_view.visible = false
 	if _queue_view:
 		_queue_view.visible = false
-	if _storage_view:
-		_storage_view.visible = false
 	_active_view = null
 
 
@@ -155,9 +141,6 @@ func _layout_controls() -> void:
 	if _queue_view:
 		_queue_view.position = content_rect.position
 		_queue_view.size = content_rect.size
-	if _storage_view:
-		_storage_view.position = content_rect.position
-		_storage_view.size = content_rect.size
 
 
 func _draw() -> void:

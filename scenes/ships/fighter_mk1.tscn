@@ -28,8 +28,9 @@ slot_id = 1
 preview_weapon_scene = "uid://bc351fksvydyb"
 
 [node name="VFX_Engine_C" type="Marker3D" parent="." unique_id=1887269768]
-transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, -0.17226934, 14.701163, -3)
+transform = Transform3D(50, 0, 0, 0, 50, 0, 0, 0, 50, -0.17226934, 15.184415, -3)
 script = ExtResource("3_vfx")
+nozzle_size = 2.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=702473366]
 transform = Transform3D(1, 0, 0, 0, 0.34202015, 0.9396926, 0, -0.9396926, 0.34202015, -3.1354443e-07, 48.673046, 13.586531)

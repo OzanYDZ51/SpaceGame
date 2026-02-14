@@ -87,6 +87,91 @@ func transfer_to_ship(station_key: String, item_id: StringName, qty: int, player
 	return removed
 
 
+## Transfer resources from a specific fleet ship to station storage.
+func transfer_to_storage_from_ship(station_key: String, item_id: StringName, qty: int, fleet_ship: FleetShip, player_data: PlayerData) -> int:
+	if fleet_ship == null:
+		return 0
+	var available: int = fleet_ship.get_resource(item_id)
+	var actual: int = mini(qty, available)
+	if actual <= 0:
+		return 0
+	var storage := get_storage(station_key)
+	var stored: int = storage.add(item_id, actual)
+	if stored > 0:
+		fleet_ship.spend_resource(item_id, stored)
+		# Sync economy mirror if this is the active ship
+		if player_data and player_data.fleet and fleet_ship == player_data.fleet.get_active():
+			if player_data.economy:
+				player_data.economy.add_resource(item_id, -stored)
+	return stored
+
+
+## Transfer resources from station storage to a specific fleet ship.
+func transfer_to_ship_from_storage(station_key: String, item_id: StringName, qty: int, fleet_ship: FleetShip, player_data: PlayerData) -> int:
+	if fleet_ship == null:
+		return 0
+	var storage := get_storage(station_key)
+	var available: int = storage.get_amount(item_id)
+	var actual: int = mini(qty, available)
+	if actual <= 0:
+		return 0
+	var removed: int = storage.remove(item_id, actual)
+	if removed > 0:
+		fleet_ship.add_resource(item_id, removed)
+		if player_data and player_data.fleet and fleet_ship == player_data.fleet.get_active():
+			if player_data.economy:
+				player_data.economy.add_resource(item_id, removed)
+	return removed
+
+
+## Transfer cargo items from a fleet ship to station storage.
+func transfer_cargo_to_storage(station_key: String, item_name: String, qty: int, fleet_ship: FleetShip) -> int:
+	if fleet_ship == null or fleet_ship.cargo == null:
+		return 0
+	var cargo_items := fleet_ship.cargo.get_all()
+	var found: Dictionary = {}
+	for ci in cargo_items:
+		if ci.get("name", "") == item_name:
+			found = ci
+			break
+	if found.is_empty():
+		return 0
+	var available: int = found.get("quantity", 0)
+	var actual: int = mini(qty, available)
+	if actual <= 0:
+		return 0
+	var storage := get_storage(station_key)
+	var item_id := StringName(item_name)
+	var stored: int = storage.add(item_id, actual)
+	if stored > 0:
+		fleet_ship.cargo.remove_item(item_name, stored)
+	return stored
+
+
+## Transfer cargo items from station storage to a fleet ship.
+func transfer_cargo_to_ship(station_key: String, item_id: StringName, qty: int, fleet_ship: FleetShip) -> int:
+	if fleet_ship == null or fleet_ship.cargo == null:
+		return 0
+	var storage := get_storage(station_key)
+	var available: int = storage.get_amount(item_id)
+	var actual: int = mini(qty, available)
+	if actual <= 0:
+		return 0
+	if not fleet_ship.cargo.can_add(actual):
+		actual = fleet_ship.cargo.get_remaining_capacity()
+		if actual <= 0:
+			return 0
+	var removed: int = storage.remove(item_id, actual)
+	if removed > 0:
+		fleet_ship.cargo.add_item({
+			"name": String(item_id),
+			"type": "material",
+			"quantity": removed,
+			"icon_color": "",
+		})
+	return removed
+
+
 ## Tick all active queues (call each frame from GameManager).
 func tick() -> void:
 	for key in _queues:

@@ -59,6 +59,7 @@ var station_services: StationServices:
 var _equipment_screen: EquipmentScreen = null
 var _shipyard_screen: ShipyardScreen = null
 var _refinery_screen: RefineryScreen = null
+var _storage_screen: Control = null  # StorageScreen
 var _refinery_manager: RefineryManager = null
 var _loot_screen: LootScreen = null
 var _loot_pickup: LootPickupSystem = null
@@ -93,6 +94,11 @@ func _ready() -> void:
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
 	# Authentication is REQUIRED — the launcher handles login/register.
 	_read_auth_token_from_cli()
+
+	# Editor dev auto-login: when running from F5 without launcher, auto-authenticate
+	if not AuthManager.is_authenticated and OS.has_feature("editor"):
+		await _dev_auto_login()
+
 	_initialize_game()
 
 	if AuthManager.is_authenticated:
@@ -111,6 +117,43 @@ func _read_auth_token_from_cli() -> void:
 	# Set multiplayer display name from authenticated username
 	if AuthManager.is_authenticated and AuthManager.username != "":
 		NetworkManager.local_player_name = AuthManager.username
+
+
+## Auto-login with a dev account when running from the Godot editor (F5).
+## Tries login first, then register if the account doesn't exist yet.
+func _dev_auto_login() -> void:
+	const DEV_USER: String = "dev"
+	const DEV_EMAIL: String = "dev@local.dev"
+	const DEV_PASS: String = "dev123"
+
+	print("GameManager: [DEV] Auto-login attempt against %s ..." % ApiClient.base_url)
+
+	# Try login
+	var result := await ApiClient.post_async("/api/v1/auth/login", {
+		"username": DEV_USER, "password": DEV_PASS,
+	}, false)
+	var status: int = result.get("_status_code", 0)
+
+	# Account doesn't exist yet — register it
+	if status != 200 and status != 201:
+		print("GameManager: [DEV] Login failed (%d), trying register..." % status)
+		result = await ApiClient.post_async("/api/v1/auth/register", {
+			"username": DEV_USER, "email": DEV_EMAIL, "password": DEV_PASS,
+		}, false)
+		status = result.get("_status_code", 0)
+
+	if (status == 200 or status == 201) and result.has("access_token"):
+		var token: String = result.get("access_token", "")
+		AuthManager.set_token_from_launcher(token)
+		# Save refresh token so next editor run restores the session instantly
+		var refresh: String = result.get("refresh_token", "")
+		if refresh != "":
+			AuthManager._refresh_token = refresh
+			AuthManager._save_tokens()
+		NetworkManager.local_player_name = AuthManager.username
+		print("GameManager: [DEV] Logged in as '%s' (id=%s)" % [AuthManager.username, AuthManager.player_id])
+	else:
+		push_warning("GameManager: [DEV] Auto-login failed: %s" % result.get("error", "backend unreachable?"))
 
 
 func _setup_ui_managers() -> void:
@@ -193,6 +236,12 @@ func _setup_ui_managers() -> void:
 	_refinery_screen = RefineryScreen.new()
 	_refinery_screen.name = "RefineryScreen"
 	_screen_manager.register_screen("refinery", _refinery_screen)
+
+	# Register Storage screen (ENTREPOT)
+	var StorageScreenClass := load("res://scripts/ui/screens/station/storage/storage_screen.gd")
+	_storage_screen = StorageScreenClass.new()
+	_storage_screen.name = "StorageScreen"
+	_screen_manager.register_screen("storage", _storage_screen)
 
 	# Register Multiplayer connection screen
 	var mp_screen := MultiplayerMenuScreen.new()
@@ -592,8 +641,8 @@ func _initialize_game() -> void:
 	)
 
 	# Spawn initial NPCs (deferred from system load — NpcAuthority needed first).
-	# Server only — clients receive NPCs via NpcAuthority sync.
-	if NetworkManager.is_server():
+	# Server/offline spawns locally; clients receive NPCs via NpcAuthority sync.
+	if not NetworkManager.is_connected_to_server() or NetworkManager.is_server():
 		if _encounter_manager:
 			_encounter_manager.spawn_deferred()
 	# Now that network is set up, inject ship_net_sync into ShipChangeManager + LOD
@@ -623,6 +672,7 @@ func _initialize_game() -> void:
 	_docking_mgr.station_screen = _station_screen
 	_docking_mgr.admin_screen = _admin_screen
 	_docking_mgr.refinery_screen = _refinery_screen
+	_docking_mgr.storage_screen = _storage_screen
 	_docking_mgr.system_transition = _system_transition
 	_docking_mgr.route_manager = _route_manager
 	_docking_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
@@ -645,12 +695,14 @@ func _initialize_game() -> void:
 	_station_screen.station_equipment_requested.connect(_docking_mgr.handle_station_equipment_requested)
 	_station_screen.administration_requested.connect(_docking_mgr.handle_administration_requested)
 	_station_screen.refinery_requested.connect(_docking_mgr.handle_refinery_requested)
+	_station_screen.storage_requested.connect(_docking_mgr.handle_storage_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
 	_shipyard_screen.shipyard_closed.connect(_docking_mgr.handle_shipyard_closed)
 	_admin_screen.closed.connect(_docking_mgr.handle_admin_closed)
 	_admin_screen.station_renamed.connect(_on_station_renamed)
 	_refinery_screen.refinery_closed.connect(_docking_mgr.handle_refinery_closed)
+	_storage_screen.storage_closed.connect(_docking_mgr.handle_storage_closed)
 	_docking_mgr.docked.connect(func(_sn: String):
 		current_state = GameState.DOCKED
 		if _discord_rpc:

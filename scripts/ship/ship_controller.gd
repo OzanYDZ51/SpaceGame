@@ -59,13 +59,14 @@ var _gate_approach_speed_cap: float = 0.0
 
 # --- Autopilot ---
 var autopilot_active: bool = false
+var ai_navigation_active: bool = false  # Fleet AI: enables approach speed boost (3 km/s)
 var autopilot_target_id: String = ""
 var autopilot_target_name: String = ""
 var autopilot_is_gate: bool = false  # True when navigating to a jump gate (closer approach)
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
-const AUTOPILOT_ARRIVAL_DIST: float = 10000.0        # 10 km — disengage autopilot (general)
+const AUTOPILOT_ARRIVAL_DIST: float = 200.0           # 200m — disengage autopilot (stations/general)
 const AUTOPILOT_GATE_ARRIVAL_DIST: float = 30.0      # 30m — inside 40m gate trigger sphere
-const AUTOPILOT_DECEL_DIST: float = 30000.0          # 30 km — drop cruise, approach at 3 km/s
+const AUTOPILOT_DECEL_DIST: float = 5000.0           # 5 km — drop cruise, start decelerating
 const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
 const AUTOPILOT_APPROACH_SPEED: float = 3000.0        # 3 km/s — fast final approach during autopilot
@@ -190,6 +191,9 @@ func _read_input() -> void:
 	# === COMBAT LOCK UPDATE (always runs) ===
 	combat_locked = (Time.get_ticks_msec() * 0.001 - _last_combat_time) < COMBAT_LOCK_DURATION
 
+	# === UI SCREEN CHECK — block all ship input when a UI screen is open ===
+	var _ui_blocking: bool = (GameManager._screen_manager != null and GameManager._screen_manager.is_any_screen_open()) or get_viewport().gui_get_focus_owner() != null
+
 	# === AUTOPILOT (runs even when GUI has focus, e.g. during screen close transition) ===
 	if autopilot_active:
 		# Grace period: ignore mouse input right after engage (mouse recapture generates spurious motion)
@@ -200,14 +204,15 @@ func _read_input() -> void:
 			return
 		# Only manual flight input cancels autopilot (not combat lock — cruise is blocked separately)
 		var has_manual_input := false
-		# In cruise, mouse is free look (camera orbit) — not manual flight input
-		if speed_mode != Constants.SpeedMode.CRUISE:
-			if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and _mouse_delta.length_squared() > 4.0:
-				has_manual_input = true
-		for act in ["move_forward", "move_backward", "strafe_left", "strafe_right", "strafe_up", "strafe_down"]:
-			if Input.is_action_pressed(act):
-				has_manual_input = true
-				break
+		if not _ui_blocking:
+			# In cruise, mouse is free look (camera orbit) — not manual flight input
+			if speed_mode != Constants.SpeedMode.CRUISE:
+				if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and _mouse_delta.length_squared() > 4.0:
+					has_manual_input = true
+			for act in ["move_forward", "move_backward", "strafe_left", "strafe_right", "strafe_up", "strafe_down"]:
+				if Input.is_action_pressed(act):
+					has_manual_input = true
+					break
 		if has_manual_input:
 			disengage_autopilot()
 			autopilot_disengaged_by_player.emit()
@@ -221,8 +226,8 @@ func _read_input() -> void:
 			_mouse_delta = Vector2.ZERO
 			return
 
-	# === GUI FOCUS CHECK (only for manual flight, not autopilot) ===
-	if get_viewport().gui_get_focus_owner() != null:
+	# === GUI FOCUS CHECK — block manual flight when UI is active ===
+	if _ui_blocking:
 		throttle_input = Vector3.ZERO
 		_target_pitch_rate = 0.0
 		_target_yaw_rate = 0.0
@@ -529,8 +534,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	else:
 		max_speed_fwd = Constants.get_max_speed(speed_mode)
 
-	# Autopilot approach: use higher speed limit so final approach doesn't crawl
-	if autopilot_active and speed_mode == Constants.SpeedMode.NORMAL:
+	# Autopilot / AI navigation approach: use higher speed limit so final approach doesn't crawl
+	if (autopilot_active or ai_navigation_active) and speed_mode == Constants.SpeedMode.NORMAL:
 		max_speed_fwd = maxf(max_speed_fwd, AUTOPILOT_APPROACH_SPEED)
 
 	# Planetary speed cap (atmosphere/surface limit)
@@ -699,6 +704,11 @@ func disengage_autopilot() -> void:
 	autopilot_target_name = ""
 	autopilot_is_gate = false
 	_gate_approach_speed_cap = 0.0
+	# Zero rotation rates and throttle to prevent lingering spin after disengage
+	_target_pitch_rate = 0.0
+	_target_yaw_rate = 0.0
+	_target_roll_rate = 0.0
+	throttle_input = Vector3.ZERO
 	if speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
 	# Planet arrival: kill velocity to prevent drifting into the planet
@@ -803,32 +813,35 @@ func _run_autopilot() -> void:
 	_target_yaw_rate = clampf(-local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
 	_target_roll_rate = 0.0
 
-	# Throttle: full forward once reasonably aligned, gentle near gate/planet approach
+	# Throttle: full forward once reasonably aligned, gentle final approach
+	var is_planet: bool = ent.get("type") == EntityRegistrySystem.EntityType.PLANET
 	if dot > 0.5:
-		if autopilot_is_gate and dist < 500.0:
-			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
-			throttle_input = Vector3(0, 0, -approach_factor)
-		elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET and dist < arrival_dist + 50_000.0:
-			# Active braking: if going too fast for this distance, cut throttle entirely
+		if is_planet and dist < arrival_dist + 50_000.0:
 			if _gate_approach_speed_cap > 0.0 and current_speed > _gate_approach_speed_cap * 1.2:
 				throttle_input = Vector3.ZERO
 			else:
 				var approach_factor: float = clampf((dist - arrival_dist) / 50_000.0, 0.05, 1.0)
 				throttle_input = Vector3(0, 0, -approach_factor)
+		elif dist < 500.0:
+			# Final approach (gates + stations): reduce throttle to land precisely
+			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
+			throttle_input = Vector3(0, 0, -approach_factor)
 		else:
+			# Full throttle — go as fast as possible toward destination
 			throttle_input = Vector3(0, 0, -1)
 	else:
 		throttle_input = Vector3.ZERO
 
-	# Approach speed cap to avoid overshooting target (gates + planets)
-	if autopilot_is_gate and dist < 2000.0:
-		_gate_approach_speed_cap = lerpf(80.0, 500.0, clampf(dist / 2000.0, 0.0, 1.0))
-	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+	# Approach speed cap to avoid overshooting target (last 2 km)
+	if is_planet:
 		var margin: float = dist - arrival_dist
 		if margin < 100_000.0:
 			_gate_approach_speed_cap = lerpf(50.0, 5000.0, clampf(margin / 100_000.0, 0.0, 1.0))
 		else:
 			_gate_approach_speed_cap = 0.0
+	elif dist < 2000.0:
+		# Gates + stations: decel in last 2 km to stop precisely at destination
+		_gate_approach_speed_cap = lerpf(80.0, 500.0, clampf(dist / 2000.0, 0.0, 1.0))
 	else:
 		_gate_approach_speed_cap = 0.0
 
