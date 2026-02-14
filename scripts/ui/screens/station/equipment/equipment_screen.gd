@@ -149,7 +149,10 @@ func _on_opened() -> void:
 	else:
 		screen_title = "FLOTTE — EQUIPEMENT"
 
-	_selected_fleet_index = player_fleet.active_index if player_fleet and not _is_station_mode() else 0
+	if player_fleet and not _is_station_mode():
+		_selected_fleet_index = player_fleet.active_index
+	else:
+		_selected_fleet_index = 0
 	_create_adapter()
 
 	_viewer.setup(_adapter, _ship_model_path, _ship_model_scale, _ship_center_offset,

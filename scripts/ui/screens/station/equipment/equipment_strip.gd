@@ -27,6 +27,7 @@ var _fleet_hovered_index: int = -1
 var _hp_hovered_index: int = -1
 var _module_hovered_index: int = -1
 var _is_station_mode: bool = false
+var _current_station_id: String = ""
 
 
 func setup(adapter: RefCounted, fleet: PlayerFleet, fleet_index: int, is_station: bool) -> void:
@@ -38,6 +39,22 @@ func setup(adapter: RefCounted, fleet: PlayerFleet, fleet_index: int, is_station
 	_fleet_hovered_index = -1
 	_hp_hovered_index = -1
 	_module_hovered_index = -1
+	# Resolve current station ID from active fleet ship
+	if fleet and fleet.get_active():
+		_current_station_id = fleet.get_active().docked_station_id
+	else:
+		_current_station_id = ""
+
+
+## Returns true if this fleet ship is available for equipment editing at the current station.
+func _is_ship_available(index: int, fs: FleetShip) -> bool:
+	if _fleet and index == _fleet.active_index:
+		return true  # Active ship is always editable
+	if fs.deployment_state != FleetShip.DeploymentState.DOCKED:
+		return false
+	if _current_station_id != "" and fs.docked_station_id != _current_station_id:
+		return false
+	return true
 
 
 func set_tab(tab: int) -> void:
@@ -78,7 +95,7 @@ func handle_fleet_input(event: InputEvent, screen_size: Vector2) -> bool:
 		if event.position.y >= EC.FLEET_STRIP_TOP and event.position.y <= fleet_strip_bottom:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				var idx := _get_fleet_card_at(event.position.x, screen_size)
-				if idx >= 0:
+				if idx >= 0 and idx < _fleet.ships.size() and _is_ship_available(idx, _fleet.ships[idx]):
 					fleet_ship_selected.emit(idx)
 				return true
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -211,6 +228,7 @@ func _draw_fleet_card(parent: Control, font: Font, cx: float, cy: float,
 	var is_selected := index == _fleet_index
 	var is_hovered := index == _fleet_hovered_index
 	var is_active := _fleet != null and index == _fleet.active_index
+	var available := _is_ship_available(index, fs)
 
 	if is_selected:
 		var pulse := UITheme.get_pulse(1.0)
@@ -218,6 +236,9 @@ func _draw_fleet_card(parent: Control, font: Font, cx: float, cy: float,
 		parent.draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, sel_a))
 		parent.draw_rect(card_rect, UITheme.BORDER_ACTIVE, false, 1.5)
 		parent.draw_rect(Rect2(cx, cy, 3, EC.FLEET_CARD_H), UITheme.PRIMARY)
+	elif not available:
+		parent.draw_rect(card_rect, Color(0.02, 0.02, 0.04, 0.6))
+		parent.draw_rect(card_rect, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.3), false, 1.0)
 	elif is_hovered:
 		parent.draw_rect(card_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
 		parent.draw_rect(card_rect, UITheme.BORDER, false, 1.0)
@@ -231,7 +252,13 @@ func _draw_fleet_card(parent: Control, font: Font, cx: float, cy: float,
 		return
 
 	var display_name: String = fs.custom_name if fs.custom_name != "" else String(sd.ship_name)
-	var name_col := UITheme.TEXT if not is_selected else UITheme.PRIMARY
+	var name_col: Color
+	if is_selected:
+		name_col = UITheme.PRIMARY
+	elif not available:
+		name_col = UITheme.TEXT_DIM
+	else:
+		name_col = UITheme.TEXT
 	parent.draw_string(font, Vector2(cx + 6, cy + 13), display_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, EC.FLEET_CARD_W - 46, UITheme.FONT_SIZE_BODY, name_col)
 
@@ -292,15 +319,36 @@ func _draw_fleet_card(parent: Control, font: Font, cx: float, cy: float,
 		var fill_col := UITheme.PRIMARY if fill_ratio < 1.0 else UITheme.ACCENT
 		parent.draw_rect(Rect2(fill_x, fill_y, fill_w * fill_ratio, fill_h), fill_col)
 
+	# Status badge
+	var badge_w := 52.0
+	var badge_h := 13.0
+	var badge_x := cx + EC.FLEET_CARD_W - badge_w - 4
+	var badge_y := cy + EC.FLEET_CARD_H - badge_h - 4
 	if is_active:
-		var badge_w := 36.0
-		var badge_h := 13.0
-		var badge_x := cx + EC.FLEET_CARD_W - badge_w - 4
-		var badge_y := cy + EC.FLEET_CARD_H - badge_h - 4
+		badge_w = 36.0
+		badge_x = cx + EC.FLEET_CARD_W - badge_w - 4
 		var badge_col := UITheme.ACCENT
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
 		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "ACTIF",
+			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
+	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+		var badge_col := Color(0.2, 0.6, 1.0)
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "DEPLOYE",
+			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
+	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+		var badge_col := Color(1.0, 0.3, 0.2)
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "DETRUIT",
+			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
+	elif _current_station_id != "" and fs.docked_station_id != _current_station_id:
+		var badge_col := UITheme.TEXT_DIM
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.1))
+		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "AILLEURS",
 			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
 
 

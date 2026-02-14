@@ -136,11 +136,19 @@ func _rebuild_fleet_dropdown() -> void:
 	if _player_data == null or _player_data.fleet == null:
 		return
 	var fleet := _player_data.fleet
+	var current_station_id: String = ""
+	var active_fs := fleet.get_active()
+	if active_fs:
+		current_station_id = active_fs.docked_station_id
 	var dropdown_sel: int = 0
 	for i in fleet.ships.size():
 		var fs: FleetShip = fleet.ships[i]
-		if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
-			continue
+		# Only show ships docked at this station (+ active ship)
+		if i != fleet.active_index:
+			if fs.deployment_state != FleetShip.DeploymentState.DOCKED:
+				continue
+			if current_station_id != "" and fs.docked_station_id != current_station_id:
+				continue
 		var label: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
 		if i == fleet.active_index:
 			label += " (ACTIF)"
