@@ -862,8 +862,28 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 			_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
 			push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-		# Change command on already deployed ship (local NPCs — always execute locally)
-		_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
+		# Check if the NPC actually exists (may be missing after save/load)
+		var has_npc: bool = _fleet_deployment_mgr.get_deployed_npc(fleet_index) != null
+		if has_npc:
+			# Change command on already deployed ship (local NPCs — always execute locally)
+			_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
+		else:
+			# NPC is gone (save/load, system change) — reset to DOCKED and redeploy
+			fs.deployment_state = FleetShip.DeploymentState.DOCKED
+			fs.deployed_npc_id = &""
+			if fs.docked_system_id != current_system_id_safe():
+				# Ship was in a different system — dock it here so it can deploy
+				fs.docked_system_id = current_system_id_safe()
+			if _fleet_deployment_mgr.can_deploy(fleet_index):
+				var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
+				if success:
+					_notif.fleet.deployed(fs.custom_name)
+					if _stellar_map:
+						_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
+				else:
+					_notif.fleet.deploy_failed("REDÉPLOIEMENT ÉCHOUÉ")
+			else:
+				_notif.fleet.deploy_failed("REDÉPLOIEMENT IMPOSSIBLE")
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:
