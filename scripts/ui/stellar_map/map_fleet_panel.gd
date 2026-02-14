@@ -41,6 +41,8 @@ var _hover_fleet_index: int = -1
 # Double-click header tracking
 var _last_header_click_sq: int = -1
 var _last_header_click_time: float = 0.0
+var _last_ship_click_index: int = -1
+var _last_ship_click_time: float = 0.0
 
 
 func _ready() -> void:
@@ -177,8 +179,14 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 
 	var hit_index: int = _get_fleet_index_at(pos)
 	if hit_index >= 0:
-		# Always emit ship_selected for zoom/center on entity
-		ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
+		# Double-click = zoom/center on entity
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if hit_index == _last_ship_click_index and (now - _last_ship_click_time) < 0.4:
+			ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
+			_last_ship_click_index = -1
+		else:
+			_last_ship_click_index = hit_index
+			_last_ship_click_time = now
 		if ctrl_pressed:
 			# Ctrl+click = toggle in multi-select
 			var idx: int = _selected_fleet_indices.find(hit_index)
