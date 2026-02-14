@@ -77,15 +77,11 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 	_cruise_blend = lerpf(_cruise_blend, target_cruise, 0.06)
 
 	var t := _throttle_smooth
-	var idle := 0.06
 
 	for nozzle in _nozzles:
-		_update_cone(nozzle, t, idle)
-		_update_volume_fill(nozzle, t, idle)
+		_update_cone(nozzle, t, 0.0)
 		_update_afterburner(nozzle, t)
-		_update_inner_flame(nozzle, t, idle)
-		_update_outer_flame(nozzle, t, idle)
-		_update_light(nozzle, t, idle)
+		_update_light(nozzle, t, 0.0)
 
 
 # =============================================================================
@@ -105,10 +101,7 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 
 	nozzle["es"] = _exhaust_scale
 	nozzle["cone"] = _create_core_cone(nozzle_root)
-	nozzle["volume"] = _create_volume_fill(nozzle_root)
 	nozzle["afterburner"] = _create_afterburner_disc(nozzle_root)
-	nozzle["inner"] = _create_inner_flame(nozzle_root)
-	nozzle["outer"] = _create_outer_flame(nozzle_root)
 	nozzle["light"] = _create_dynamic_light(nozzle_root)
 	nozzle["root"] = nozzle_root
 	_nozzles.append(nozzle)
@@ -410,10 +403,11 @@ func _create_dynamic_light(parent: Node3D) -> OmniLight3D:
 	light.name = "ExhaustLight"
 	light.light_color = _engine_color
 	light.light_energy = 0.0
-	light.omni_range = 10.0 * _exhaust_scale
-	light.omni_attenuation = 1.5
+	# Push light well behind the nozzle so it doesn't bleed through the hull
+	light.omni_range = 6.0 * _exhaust_scale
+	light.omni_attenuation = 2.0
 	light.shadow_enabled = false
-	light.position = Vector3(0.0, 0.0, 3.0 * _exhaust_scale)
+	light.position = Vector3(0.0, 0.0, 5.0 * _exhaust_scale)
 	parent.add_child(light)
 	return light
 
@@ -590,7 +584,7 @@ func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
 	light.light_color = col
 
 	var es: float = nozzle.get("es", _exhaust_scale)
-	light.omni_range = (10.0 + _boost_blend * 8.0 + _cruise_blend * 12.0) * es
+	light.omni_range = (6.0 + _boost_blend * 4.0 + _cruise_blend * 6.0) * es
 
 
 # =============================================================================

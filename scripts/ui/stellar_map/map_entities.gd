@@ -536,7 +536,15 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 				var arrived: bool = extra.get("arrived", false)
 				status_tag = "[CONSTRUCTION]" if arrived else "[LIVRAISON]"
 			"mine":
-				status_tag = "[MINAGE]"
+				var mining_state: String = extra.get("mining_state", "")
+				if mining_state == "returning":
+					status_tag = "[VENTE]"
+				elif mining_state == "docked":
+					status_tag = "[DOCKE]"
+				elif mining_state == "departing":
+					status_tag = "[RETOUR MINE]"
+				else:
+					status_tag = "[MINAGE]"
 		if status_tag != "":
 			label_text += " " + status_tag
 		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
@@ -855,22 +863,22 @@ func _draw_route_line(entities: Dictionary) -> void:
 	if route_ship_ids.is_empty() or camera == null:
 		return
 	# Track moving target if attack order
-	var dest_ux: float = route_dest_ux
-	var dest_uz: float = route_dest_uz
+	var default_dest_ux: float = route_dest_ux
+	var default_dest_uz: float = route_dest_uz
 	if route_target_entity_id != "":
 		var target_ent := EntityRegistry.get_entity(route_target_entity_id)
 		if not target_ent.is_empty():
-			dest_ux = target_ent["pos_x"]
-			dest_uz = target_ent["pos_z"]
+			default_dest_ux = target_ent["pos_x"]
+			default_dest_uz = target_ent["pos_z"]
 		else:
 			# Target dead — clear route
 			route_ship_ids.clear()
 			route_target_entity_id = ""
 			return
-	var to_sp := camera.universe_to_screen(dest_ux, dest_uz)
 	var is_attack: bool = route_target_entity_id != ""
 	var base_col: Color = Color(1.0, 0.2, 0.15) if is_attack else UITheme.PRIMARY
 	var col := Color(base_col.r, base_col.g, base_col.b, 0.5)
+	var last_dest_sp := camera.universe_to_screen(default_dest_ux, default_dest_uz)
 	for ship_id in route_ship_ids:
 		var ship_ent: Dictionary = {}
 		if entities.has(ship_id):
@@ -880,15 +888,25 @@ func _draw_route_line(entities: Dictionary) -> void:
 		if ship_ent.is_empty():
 			continue
 		var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
+		# Per-ship destination override (mining autonomous travel)
+		var ship_dux := default_dest_ux
+		var ship_duz := default_dest_uz
+		var extra: Dictionary = ship_ent.get("extra", {})
+		var ms: String = extra.get("mining_state", "")
+		if ms == "docked":
+			continue  # No route line while docked at station
+		if ms != "":
+			ship_dux = extra.get("active_dest_ux", default_dest_ux)
+			ship_duz = extra.get("active_dest_uz", default_dest_uz)
+		var to_sp := camera.universe_to_screen(ship_dux, ship_duz)
 		_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
-	# Destination marker (small diamond) — drawn once
-	# Use draw_primitive instead of draw_colored_polygon to avoid triangulation errors
-	# when the point is at extreme coordinates (far off-screen)
+		last_dest_sp = to_sp
+	# Destination marker (small diamond)
 	var ds: float = 5.0
 	var marker_col := Color(base_col.r, base_col.g, base_col.b, 0.6)
 	var diamond := PackedVector2Array([
-		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),
-		to_sp + Vector2(0, ds), to_sp + Vector2(-ds, 0),
+		last_dest_sp + Vector2(0, -ds), last_dest_sp + Vector2(ds, 0),
+		last_dest_sp + Vector2(0, ds), last_dest_sp + Vector2(-ds, 0),
 	])
 	var colors := PackedColorArray([marker_col, marker_col, marker_col, marker_col])
 	draw_primitive(diamond, colors, PackedVector2Array())

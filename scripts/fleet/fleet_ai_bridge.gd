@@ -300,6 +300,9 @@ const NAV_APPROACH_MIN_SPEED: float = 50.0   # Minimum approach speed near targe
 func _update_navigation_boost() -> void:
 	## Enable 3km/s approach speed when fleet ship is far from its command target.
 	## Progressive speed cap over last 5 km prevents overshoot (mirrors player autopilot).
+	if command == &"mine" and _arrived:
+		# AIMiningBehavior manages nav boost autonomously during travel states
+		return
 	if _arrived or command == &"":
 		_ship.ai_navigation_active = false
 		_ship._gate_approach_speed_cap = 0.0

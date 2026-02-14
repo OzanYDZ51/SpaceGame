@@ -304,8 +304,8 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 		refinery_manager.deserialize(refinery_data)
 
 	# Migration: old saves stored cargo/resources at top-level — migrate to active ship
-	var old_cargo: Array = state.get("cargo", [])
-	var old_resources: Array = state.get("resources", [])
+	var old_cargo: Array = state.get("cargo", []) if state.get("cargo") is Array else []
+	var old_resources: Array = state.get("resources", []) if state.get("resources") is Array else []
 	if fleet:
 		var active_fs := fleet.get_active()
 		if active_fs:

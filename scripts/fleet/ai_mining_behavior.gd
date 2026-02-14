@@ -83,6 +83,11 @@ var _dock_sold: bool = false
 var _saved_collision_layer: int = 0
 var _saved_collision_mask: int = 0
 
+# Navigation boost for autonomous travel (RETURNING / DEPARTING)
+const NAV_BOOST_MIN_DIST: float = 500.0
+const NAV_BOOST_RAMP_DIST: float = 5000.0
+const NAV_BOOST_MIN_SPEED: float = 50.0
+
 
 func _ready() -> void:
 	_ship = get_parent() as ShipController
@@ -138,11 +143,17 @@ func _ready() -> void:
 	# Listen to origin shifts for virtual target position correction
 	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
 
+	# Set initial entity destination to belt center for map display
+	_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
+
 
 func _exit_tree() -> void:
-	# Restore ship if removed while docked (e.g. player gives another order)
-	if _state == MiningState.DOCKED and _ship and is_instance_valid(_ship):
-		_exit_dock()
+	if _ship and is_instance_valid(_ship):
+		# Restore ship if removed while docked (e.g. player gives another order)
+		if _state == MiningState.DOCKED:
+			_exit_dock()
+		_clear_nav_boost()
+	_clear_entity_mining_data()
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
 	if _beam and _beam._active:
@@ -410,10 +421,12 @@ func _tick_cooling() -> void:
 
 func _tick_returning() -> void:
 	if _home_station_id == "":
+		_clear_nav_boost()
 		_state = MiningState.SEARCHING
 		return
 	var ent := EntityRegistry.get_entity(_home_station_id)
 	if ent.is_empty():
+		_clear_nav_boost()
 		_state = MiningState.SEARCHING
 		return
 	var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
@@ -421,10 +434,13 @@ func _tick_returning() -> void:
 	if dist < STATION_ARRIVE_DIST:
 		_enter_dock()
 		return
+	_update_nav_boost(station_pos)
 	_pilot.fly_toward(station_pos, STATION_ARRIVE_DIST)
 
 
 func _enter_dock() -> void:
+	_clear_nav_boost()
+
 	# Stop the ship
 	_ship.set_throttle(Vector3.ZERO)
 	_ship.linear_velocity = Vector3.ZERO
@@ -440,6 +456,7 @@ func _enter_dock() -> void:
 	_dock_timer = 0.0
 	_dock_sold = false
 	_state = MiningState.DOCKED
+	_update_entity_destination(0.0, 0.0, "docked")
 
 
 func _exit_dock() -> void:
@@ -466,6 +483,7 @@ func _tick_docked(delta: float) -> void:
 	if _dock_sold and _dock_timer >= DOCK_SELL_DELAY + DOCK_UNDOCK_DELAY:
 		_exit_dock()
 		_state = MiningState.DEPARTING
+		_update_entity_destination(_belt_center_x, _belt_center_z, "departing")
 
 
 func _do_sell_resources() -> void:
@@ -527,8 +545,11 @@ func _tick_departing() -> void:
 	var belt_pos := FloatingOrigin.to_local_pos([_belt_center_x, 0.0, _belt_center_z])
 	var dist := _ship.global_position.distance_to(belt_pos)
 	if dist < BELT_ARRIVE_DIST:
+		_clear_nav_boost()
+		_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
 		_state = MiningState.SEARCHING
 		return
+	_update_nav_boost(belt_pos)
 	_pilot.fly_toward(belt_pos, BELT_ARRIVE_DIST)
 
 
@@ -639,6 +660,10 @@ func _store_yield(yield_data: Dictionary) -> void:
 		_mining_target = null
 		_virtual_target = {}
 		_state = MiningState.RETURNING
+		# Update map destination to station
+		var station_ent := EntityRegistry.get_entity(_home_station_id)
+		if not station_ent.is_empty():
+			_update_entity_destination(station_ent["pos_x"], station_ent["pos_z"], "returning")
 
 
 # =========================================================================
@@ -814,6 +839,49 @@ func _spawn_scan_pulse() -> void:
 	pulse.name = "AIScanPulse_%d" % fleet_index
 	pulse.position = _ship.global_position
 	universe.add_child(pulse)
+
+
+# =========================================================================
+# Navigation boost for autonomous travel
+# =========================================================================
+
+func _update_nav_boost(target_pos: Vector3) -> void:
+	var dist := _ship.global_position.distance_to(target_pos)
+	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
+	if dist < NAV_BOOST_RAMP_DIST:
+		var t := clampf(dist / NAV_BOOST_RAMP_DIST, 0.0, 1.0)
+		_ship._gate_approach_speed_cap = lerpf(NAV_BOOST_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
+	else:
+		_ship._gate_approach_speed_cap = 0.0
+
+
+func _clear_nav_boost() -> void:
+	if _ship and is_instance_valid(_ship):
+		_ship.ai_navigation_active = false
+		_ship._gate_approach_speed_cap = 0.0
+
+
+# =========================================================================
+# Entity destination update (for map route lines + status display)
+# =========================================================================
+
+func _update_entity_destination(dest_ux: float, dest_uz: float, state_str: String) -> void:
+	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+	if fdm == null:
+		return
+	fdm.update_entity_extra(fleet_index, "mining_state", state_str)
+	fdm.update_entity_extra(fleet_index, "active_dest_ux", dest_ux)
+	fdm.update_entity_extra(fleet_index, "active_dest_uz", dest_uz)
+
+
+func _clear_entity_mining_data() -> void:
+	if fleet_ship == null or fleet_ship.deployed_npc_id == &"":
+		return
+	var ent := EntityRegistry.get_entity(String(fleet_ship.deployed_npc_id))
+	if not ent.is_empty() and ent.has("extra"):
+		ent["extra"].erase("active_dest_ux")
+		ent["extra"].erase("active_dest_uz")
+		ent["extra"].erase("mining_state")
 
 
 # =========================================================================

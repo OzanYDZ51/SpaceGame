@@ -63,6 +63,7 @@ var ai_navigation_active: bool = false  # Fleet AI: enables approach speed boost
 var autopilot_target_id: String = ""
 var autopilot_target_name: String = ""
 var autopilot_is_gate: bool = false  # True when navigating to a jump gate (closer approach)
+var _autopilot_aligned: bool = false  # True when ship faces target (dot > 0.5) — gates speed boost
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
 const AUTOPILOT_ARRIVAL_DIST: float = 200.0           # 200m — disengage autopilot (stations/general)
 const AUTOPILOT_GATE_ARRIVAL_DIST: float = 30.0      # 30m — inside 40m gate trigger sphere
@@ -534,9 +535,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	else:
 		max_speed_fwd = Constants.get_max_speed(speed_mode)
 
-	# Autopilot / AI navigation approach: use higher speed limit so final approach doesn't crawl
+	# Autopilot / AI navigation approach: use higher speed limit ONLY when aligned with target
+	# When not aligned, keep normal max so rot_damp_factor allows full rotation to realign
 	if (autopilot_active or ai_navigation_active) and speed_mode == Constants.SpeedMode.NORMAL:
-		max_speed_fwd = maxf(max_speed_fwd, AUTOPILOT_APPROACH_SPEED)
+		if not autopilot_active or _autopilot_aligned:
+			max_speed_fwd = maxf(max_speed_fwd, AUTOPILOT_APPROACH_SPEED)
 
 	# Planetary speed cap (atmosphere/surface limit)
 	if planetary_max_speed_override > 0.0:
@@ -703,6 +706,7 @@ func disengage_autopilot() -> void:
 	autopilot_target_id = ""
 	autopilot_target_name = ""
 	autopilot_is_gate = false
+	_autopilot_aligned = false
 	_gate_approach_speed_cap = 0.0
 	# Zero rotation rates and throttle to prevent lingering spin after disengage
 	_target_pitch_rate = 0.0
@@ -813,9 +817,16 @@ func _run_autopilot() -> void:
 	_target_yaw_rate = clampf(-local_dir.x * 3.0, -1.0, 1.0) * yaw_speed
 	_target_roll_rate = 0.0
 
-	# Throttle: full forward once reasonably aligned, gentle final approach
+	# Track alignment for speed boost decision in _integrate_forces
+	_autopilot_aligned = dot > 0.5
+
+	# Not aligned: exit cruise and actively brake so the ship can turn
+	if not _autopilot_aligned and speed_mode == Constants.SpeedMode.CRUISE:
+		_exit_cruise()
+
+	# Throttle: full forward once aligned, active brake when misaligned
 	var is_planet: bool = ent.get("type") == EntityRegistrySystem.EntityType.PLANET
-	if dot > 0.5:
+	if _autopilot_aligned:
 		if is_planet and dist < arrival_dist + 50_000.0:
 			if _gate_approach_speed_cap > 0.0 and current_speed > _gate_approach_speed_cap * 1.2:
 				throttle_input = Vector3.ZERO
@@ -830,7 +841,13 @@ func _run_autopilot() -> void:
 			# Full throttle — go as fast as possible toward destination
 			throttle_input = Vector3(0, 0, -1)
 	else:
-		throttle_input = Vector3.ZERO
+		# Target is to the side/behind: actively brake to allow turning
+		# The faster we go, the harder we brake (reverse throttle proportional to speed)
+		var max_normal: float = ship_data.max_speed_normal if ship_data else 300.0
+		if current_speed > max_normal * 0.5:
+			throttle_input = Vector3(0, 0, 1)  # Reverse throttle = active braking
+		else:
+			throttle_input = Vector3.ZERO  # Slow enough to turn, just stop thrusting
 
 	# Approach speed cap to avoid overshooting target (last 2 km)
 	if is_planet:

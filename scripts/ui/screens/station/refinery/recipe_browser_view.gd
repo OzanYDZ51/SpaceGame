@@ -118,10 +118,10 @@ func _populate_list() -> void:
 
 
 func _update_detail_visibility() -> void:
-	var show: bool = _selected_recipe != null
-	_launch_btn.visible = show
-	_qty_up_btn.visible = show
-	_qty_down_btn.visible = show
+	var vis: bool = _selected_recipe != null
+	_launch_btn.visible = vis
+	_qty_up_btn.visible = vis
+	_qty_down_btn.visible = vis
 
 
 func _layout() -> void:
@@ -228,7 +228,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
-func _draw_recipe_row(ctrl: Control, idx: int, rect: Rect2, item: Variant) -> void:
+func _draw_recipe_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void:
 	var r := item as RefineryRecipe
 	if r == null:
 		return
