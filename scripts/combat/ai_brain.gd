@@ -270,7 +270,10 @@ func _tick_patrol() -> void:
 		return
 
 	# Wider arrival distance in asteroid belt to avoid getting stuck
+	# Cap to patrol radius so waypoints don't overlap in small patrol areas
 	var arrival := 150.0 if _in_asteroid_belt else 80.0
+	if _patrol_radius < arrival:
+		arrival = maxf(_patrol_radius * 0.6, 15.0)
 
 	var wp: Vector3 = _waypoints[_current_waypoint]
 	_pilot.fly_toward(wp, arrival)

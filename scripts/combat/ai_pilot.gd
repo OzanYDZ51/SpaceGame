@@ -114,7 +114,13 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 	var dist: float = to_target.length()
 
 	if dist < arrival_dist:
-		_ship.set_throttle(Vector3.ZERO)
+		# Apply reverse braking if still moving toward target (prevents coasting past)
+		var closing: float = _ship.linear_velocity.dot(to_target.normalized()) if to_target.length_squared() > 0.1 else 0.0
+		if closing > 10.0:
+			var brake_z: float = clampf(closing / 50.0, 0.2, 1.0)
+			_ship.set_throttle(Vector3(0, 0, brake_z))
+		else:
+			_ship.set_throttle(Vector3.ZERO)
 		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 			_ship._exit_cruise()
 		return
@@ -172,6 +178,17 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
 		strafe.x = clampf(local_avoid.x * 0.6, -0.6, 0.6)
 		strafe.y = clampf(local_avoid.y * 0.4, -0.4, 0.4)
+
+	# --- Active braking: apply reverse thrust when coasting would overshoot ---
+	# FA_LINEAR_BRAKE ≈ 1.0 → coast distance ≈ speed meters.
+	# If that exceeds remaining distance, reverse thrust triggers FA_COUNTER_BRAKE (2.5x).
+	if dist < decel_zone:
+		var approach_vel: float = _ship.linear_velocity.dot(to_target.normalized())
+		if approach_vel > 10.0:
+			var coast_dist: float = approach_vel * 1.2  # Pessimistic FA coast estimate
+			if coast_dist > dist:
+				var brake := clampf(1.0 - dist / coast_dist, 0.0, 0.8)
+				fwd_throttle = maxf(fwd_throttle, brake)
 
 	_ship.set_throttle(Vector3(strafe.x, strafe.y, fwd_throttle))
 

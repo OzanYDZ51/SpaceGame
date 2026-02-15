@@ -253,9 +253,10 @@ func _mark_arrived(target_pos: Vector3) -> void:
 	_arrived = true
 	if _ship:
 		_ship.ai_navigation_active = false
-		_ship._gate_approach_speed_cap = 0.0
+		_ship.set_throttle(Vector3.ZERO)
+		# Speed cap handled by _update_navigation_boost (keeps low cap until settled)
 	if _brain:
-		_brain.set_patrol_area(target_pos, 50.0)
+		_brain.set_patrol_area(target_pos, 30.0)  # Tight holding pattern
 	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
@@ -305,7 +306,11 @@ func _update_navigation_boost() -> void:
 		return
 	if _arrived or command == &"":
 		_ship.ai_navigation_active = false
-		_ship._gate_approach_speed_cap = 0.0
+		# Keep a low speed cap until ship has settled (prevents coasting past target)
+		if _ship.linear_velocity.length() > NAV_APPROACH_MIN_SPEED:
+			_ship._gate_approach_speed_cap = NAV_APPROACH_MIN_SPEED
+		else:
+			_ship._gate_approach_speed_cap = 0.0
 		return
 
 	var target_pos: Vector3
