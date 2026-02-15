@@ -357,14 +357,50 @@ func _draw() -> void:
 		UITheme.PRIMARY, false, 1.0)
 	draw_string(font, Vector2(stats_x + 10, y + 20), price_text,
 		HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_HEADER, PlayerEconomy.CREDITS_COLOR)
+	y += 38.0
+
+	# Resource cost section
+	var missing_resources := false
+	if not data.resource_cost.is_empty():
+		var active_ship = null
+		if _commerce_manager and _commerce_manager.player_data and _commerce_manager.player_data.fleet:
+			active_ship = _commerce_manager.player_data.fleet.get_active()
+		draw_rect(Rect2(stats_x + 10, y, 2, 10), UITheme.PRIMARY)
+		draw_string(font, Vector2(stats_x + 16, y + 9), "RESSOURCES",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_HEADER)
+		y += 16.0
+		for res_id in data.resource_cost:
+			var required: int = int(data.resource_cost[res_id])
+			var available: int = active_ship.get_resource(res_id) if active_ship else 0
+			var res_def: Dictionary = PlayerEconomy.RESOURCE_DEFS.get(res_id, {})
+			var res_name: String = res_def.get("name", String(res_id).to_upper())
+			var res_color: Color = res_def.get("color", UITheme.TEXT)
+			var has_enough: bool = available >= required
+			if not has_enough:
+				missing_resources = true
+			# Color dot + resource name
+			draw_rect(Rect2(stats_x + 16, y + 3, 6, 6), res_color)
+			draw_string(font, Vector2(stats_x + 26, y + 10), res_name,
+				HORIZONTAL_ALIGNMENT_LEFT, 70, UITheme.FONT_SIZE_SMALL, res_color)
+			# Required / available
+			var qty_text := "%d / %d" % [required, available]
+			var qty_color: Color = UITheme.DANGER if not has_enough else UITheme.LABEL_VALUE
+			draw_string(font, Vector2(stats_x + 100, y + 10), qty_text,
+				HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 110, UITheme.FONT_SIZE_LABEL, qty_color)
+			y += 16.0
+		y += 6.0
 
 	# Afford indicator + button state
 	if _commerce_manager and _commerce_manager.player_economy:
-		var can_buy: bool = _commerce_manager.player_economy.credits >= data.price
+		var credits_ok: bool = _commerce_manager.player_economy.credits >= data.price
+		var can_buy: bool = credits_ok and not missing_resources
 		if _configure_btn:
 			_configure_btn.enabled = can_buy
-		if not can_buy:
-			draw_string(font, Vector2(stats_x + 10, y + 44), "CREDITS INSUFFISANTS",
+		if not credits_ok:
+			draw_string(font, Vector2(stats_x + 10, y), "CREDITS INSUFFISANTS",
+				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
+		elif missing_resources:
+			draw_string(font, Vector2(stats_x + 10, y), "RESSOURCES INSUFFISANTES",
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 
 

@@ -27,7 +27,24 @@ func buy_ship(ship_id: StringName) -> bool:
 	if not can_afford(ship_data.price):
 		purchase_failed.emit("Credits insuffisants")
 		return false
+	# Check resource cost on active ship
+	var active_ship = player_data.fleet.get_active() if player_data and player_data.fleet else null
+	for res_id in ship_data.resource_cost:
+		var required: int = int(ship_data.resource_cost[res_id])
+		var available: int = active_ship.get_resource(res_id) if active_ship else 0
+		if available < required:
+			purchase_failed.emit("Ressources insuffisantes")
+			return false
+	# Deduct credits
 	player_economy.spend_credits(ship_data.price)
+	# Deduct resources from active ship
+	for res_id in ship_data.resource_cost:
+		var qty: int = int(ship_data.resource_cost[res_id])
+		if active_ship:
+			active_ship.spend_resource(res_id, qty)
+	# Sync economy mirror after resource deduction
+	if player_data:
+		player_data._sync_economy_resources()
 	var bare_ship =FleetShip.create_bare(ship_id)
 	bare_ship.docked_system_id = GameManager.current_system_id_safe()
 	# Resolve current docked station ID from dock instance
@@ -42,6 +59,26 @@ func buy_ship(ship_id: StringName) -> bool:
 	purchase_completed.emit("ship", ship_id)
 	SaveManager.trigger_save("ship_purchase")
 	return true
+
+
+func can_afford_ship(ship_id: StringName) -> Dictionary:
+	var result := { "can_buy": false, "missing_credits": 0, "missing_resources": {} }
+	var ship_data =ShipRegistry.get_ship_data(ship_id)
+	if ship_data == null:
+		return result
+	var credits_ok: bool = player_economy.credits >= ship_data.price
+	if not credits_ok:
+		result["missing_credits"] = ship_data.price - player_economy.credits
+	var active_ship = player_data.fleet.get_active() if player_data and player_data.fleet else null
+	var resources_ok := true
+	for res_id in ship_data.resource_cost:
+		var required: int = int(ship_data.resource_cost[res_id])
+		var available: int = active_ship.get_resource(res_id) if active_ship else 0
+		if available < required:
+			resources_ok = false
+			result["missing_resources"][res_id] = required - available
+	result["can_buy"] = credits_ok and resources_ok
+	return result
 
 
 func buy_weapon(weapon_name: StringName) -> bool:

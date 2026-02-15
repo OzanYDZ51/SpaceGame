@@ -247,6 +247,8 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 		if bolt:
 			bolt._pool = pool
 	if bolt == null:
+		if _projectile_scene == null:
+			return null
 		bolt = _projectile_scene.instantiate()
 		if bolt == null:
 			return null

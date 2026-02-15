@@ -54,3 +54,10 @@ loot_weapon_part_chance = 0.25
 lod_combat_dps = 65.0
 npc_tier = 2
 sold_at_station_types = Array[StringName]([&"repair", &"military"])
+resource_cost = {
+&"iron": 200,
+&"copper": 80,
+&"titanium": 50,
+&"gold": 20,
+&"crystal": 10
+}

@@ -145,7 +145,6 @@ func collect_save_state(player_ship, system_transition) -> Dictionary:
 		state["pos_x"] = abs_pos[0]
 		state["pos_y"] = abs_pos[1]
 		state["pos_z"] = abs_pos[2]
-		print("[SAVE] pos local=%s origin=(%.1f, %.1f, %.1f) → abs=(%.1f, %.1f, %.1f) system=%s" % [player_ship.global_position, FloatingOrigin.origin_offset_x, FloatingOrigin.origin_offset_y, FloatingOrigin.origin_offset_z, abs_pos[0], abs_pos[1], abs_pos[2], state.get("system_id", "?")])
 
 	# Rotation
 	if player_ship:
@@ -213,18 +212,32 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	if system_transition and sys_id != system_transition.current_system_id:
 		system_transition.jump_to_system(sys_id)
 
-	# Position (floating origin absolute → local)
-	if player_ship and state.has("pos_x"):
+	# Position — place near the closest station (by orbital radius) instead of
+	# restoring absolute coords. Stations orbit in real-time (unix timestamp),
+	# so between sessions they drift to different positions, making saved
+	# absolute coordinates produce 100km+ offsets from any landmark.
+	if player_ship and state.has("pos_x") and system_transition and system_transition.current_system_data:
 		var abs_x: float = float(state.get("pos_x", 0.0))
-		var abs_y: float = float(state.get("pos_y", 0.0))
 		var abs_z: float = float(state.get("pos_z", 0.0))
-		print("[LOAD] abs from backend=(%.1f, %.1f, %.1f) origin=(%.1f, %.1f, %.1f) system=%d ship_pos_before=%s" % [abs_x, abs_y, abs_z, FloatingOrigin.origin_offset_x, FloatingOrigin.origin_offset_y, FloatingOrigin.origin_offset_z, sys_id, player_ship.global_position])
-		if abs_x != 0.0 or abs_y != 0.0 or abs_z != 0.0:
-			var local_pos: Vector3 = FloatingOrigin.to_local_pos([abs_x, abs_y, abs_z])
-			print("[LOAD] → local_pos=%s" % local_pos)
-			player_ship.global_position = local_pos
-		else:
-			print("[LOAD] abs is (0,0,0) — skipping position restore!")
+		var stations = system_transition.current_system_data.stations
+		if stations.size() > 0:
+			# Match saved distance-from-center to station orbital radii (constant over time)
+			var best_idx: int = 0
+			if abs_x != 0.0 or abs_z != 0.0:
+				var saved_dist: float = sqrt(abs_x * abs_x + abs_z * abs_z)
+				var best_diff: float = absf(stations[0].orbital_radius - saved_dist)
+				for i in range(1, stations.size()):
+					var diff: float = absf(stations[i].orbital_radius - saved_dist)
+					if diff < best_diff:
+						best_diff = diff
+						best_idx = i
+			# Place near this station's current orbital position
+			var st: StationData = stations[best_idx]
+			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
+			var st_x: float = cos(angle) * st.orbital_radius
+			var st_z: float = sin(angle) * st.orbital_radius
+			var st_local: Vector3 = FloatingOrigin.to_local_pos([st_x, 0.0, st_z])
+			player_ship.global_position = st_local + Vector3(0, 100, 500)
 
 	# Rotation
 	if player_ship and state.has("rotation_x"):

@@ -2,9 +2,8 @@ class_name StationScreen
 extends UIScreen
 
 # =============================================================================
-# Station Screen - Docked station interior UI
-# Holographic station terminal with unlockable services.
-# Central systems (danger <= 1) are pre-unlocked. Others require credits.
+# Station Screen — Grid-based service terminal with category tiles, icons,
+# and locked/unlocked card states. Locked services show price, unlocked glow.
 # =============================================================================
 
 signal undock_requested
@@ -17,49 +16,52 @@ signal storage_requested
 signal station_equipment_requested
 signal administration_requested
 
-@export_group("Layout")
-@export var button_width: float = 280.0
-@export var button_height: float = 30.0
-@export var button_gap: float = 4.0
+# --- Card grid constants ---
+const CARD_W: float = 150.0
+const CARD_H: float = 118.0
+const CARD_GAP: float = 12.0
 
+# --- State ---
 var _station_name: String = "STATION"
-var _service_buttons: Array[UIButton] = []
-var _station_equip_button: UIButton = null
-var _admin_button: UIButton = null
-var _undock_button: UIButton = null
 var _emblem_pulse: float = 0.0
-
-# Service unlock state
 var _services = null
 var _system_id: int = -1
 var _station_idx: int = 0
 var _economy = null
 
-# Service order: COMMERCE, RÉPARATIONS, ÉQUIPEMENT, CHANTIER NAVAL
-const SERVICE_ORDER: Array[int] = [
-	StationServices.Service.COMMERCE,
-	StationServices.Service.REPAIR,
-	StationServices.Service.EQUIPMENT,
-	StationServices.Service.SHIPYARD,
-	StationServices.Service.REFINERY,
-	StationServices.Service.ENTREPOT,
-]
+# Interaction
+var _hovered_card: int = -1
+var _flash: Dictionary = {}
+var _undock_hovered: bool = false
+var _undock_flash: float = 0.0
 
-const SERVICE_DESCRIPTIONS: Dictionary = {
-	StationServices.Service.COMMERCE: "Acheter et vendre des marchandises",
-	StationServices.Service.REPAIR: "Réparer la coque et les boucliers",
-	StationServices.Service.EQUIPMENT: "Modifier l'armement du vaisseau",
-	StationServices.Service.SHIPYARD: "Acheter et vendre des vaisseaux",
-	StationServices.Service.REFINERY: "Raffiner les minerais en materiaux",
-	StationServices.Service.ENTREPOT: "Stocker des ressources et du cargo",
-}
+# Computed layout
+var _card_rects: Array[Rect2] = []
+var _cat_header_y: PackedFloat32Array = PackedFloat32Array()
+var _undock_rect: Rect2 = Rect2()
+
+# Card data
+var _cards: Array[Dictionary] = []
+var _cat_labels: PackedStringArray = PackedStringArray()
+
+enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMIN }
 
 
 func _ready() -> void:
 	screen_title = "STATION"
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
-	_create_buttons()
+	_cat_labels = PackedStringArray(["NÉGOCE", "TECHNIQUE", "STATION"])
+	_cards = [
+		{"svc": StationServices.Service.COMMERCE, "label": "COMMERCE", "icon": ICO.COMMERCE, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.SHIPYARD, "label": "CHANTIER NAVAL", "icon": ICO.SHIPYARD, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.ENTREPOT, "label": "ENTREPÔT", "icon": ICO.STORAGE, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.REPAIR, "label": "RÉPARATIONS", "icon": ICO.REPAIR, "cat": 1, "special": ""},
+		{"svc": StationServices.Service.EQUIPMENT, "label": "ÉQUIPEMENT", "icon": ICO.EQUIP, "cat": 1, "special": ""},
+		{"svc": StationServices.Service.REFINERY, "label": "RAFFINERIE", "icon": ICO.REFINERY, "cat": 1, "special": ""},
+		{"svc": -1, "label": "ÉQUIP. STATION", "icon": ICO.STN_EQUIP, "cat": 2, "special": "station_equip"},
+		{"svc": -1, "label": "ADMINISTRATION", "icon": ICO.ADMIN, "cat": 2, "special": "admin"},
+	]
 
 
 func set_station_name(sname: String) -> void:
@@ -72,77 +74,356 @@ func setup(services, system_id: int, station_idx: int, economy) -> void:
 	_system_id = system_id
 	_station_idx = station_idx
 	_economy = economy
-	_refresh_buttons()
 	queue_redraw()
 
 
-func _create_buttons() -> void:
-	for i in SERVICE_ORDER.size():
-		var svc: int = SERVICE_ORDER[i]
-		var btn =UIButton.new()
-		btn.text = StationServices.SERVICE_LABELS[svc]
-		btn.enabled = false
-		btn.visible = false
-		add_child(btn)
-		_service_buttons.append(btn)
-		btn.pressed.connect(_on_service_pressed.bind(i))
-
-	_station_equip_button = UIButton.new()
-	_station_equip_button.text = "EQUIPEMENT STATION"
-	_station_equip_button.accent_color = Color(0.4, 0.7, 1.0)
-	_station_equip_button.visible = false
-	_station_equip_button.pressed.connect(_on_station_equip_pressed)
-	add_child(_station_equip_button)
-
-	_admin_button = UIButton.new()
-	_admin_button.text = "ADMINISTRATION"
-	_admin_button.accent_color = Color(0.6, 0.4, 1.0)
-	_admin_button.visible = false
-	_admin_button.pressed.connect(_on_admin_pressed)
-	add_child(_admin_button)
-
-	_undock_button = UIButton.new()
-	_undock_button.text = "QUITTER LE DOCK"
-	_undock_button.accent_color = UITheme.WARNING
-	_undock_button.visible = false
-	_undock_button.pressed.connect(_on_undock_pressed)
-	add_child(_undock_button)
-
-
-func _refresh_buttons() -> void:
-	for i in SERVICE_ORDER.size():
-		var svc: int = SERVICE_ORDER[i]
-		var btn: UIButton = _service_buttons[i]
-		var unlocked: bool = _services != null and _services.is_unlocked(_system_id, _station_idx, svc)
-		btn.enabled = true  # Always clickable
-		if unlocked:
-			btn.text = StationServices.SERVICE_LABELS[svc]
-			btn.accent_color = UITheme.PRIMARY
-		else:
-			var price: int = StationServices.SERVICE_PRICES[svc]
-			btn.text = "%s — %s CR" % [StationServices.SERVICE_LABELS[svc], PlayerEconomy.format_credits(price)]
-			btn.accent_color = UITheme.TEXT_DIM
+func _on_opened() -> void:
+	_hovered_card = -1
+	_undock_hovered = false
 	queue_redraw()
 
 
-func _on_service_pressed(button_index: int) -> void:
-	var svc: int = SERVICE_ORDER[button_index]
-	var unlocked: bool = _services != null and _services.is_unlocked(_system_id, _station_idx, svc)
+func _on_closed() -> void:
+	_hovered_card = -1
+	_undock_hovered = false
 
+
+func _process(delta: float) -> void:
+	_emblem_pulse += delta
+	var dirty: bool = false
+	for key in _flash.keys():
+		_flash[key] = maxf(0.0, _flash[key] - delta / 0.12)
+		if _flash[key] <= 0.0:
+			_flash.erase(key)
+		dirty = true
+	if _undock_flash > 0.0:
+		_undock_flash = maxf(0.0, _undock_flash - delta / 0.12)
+		dirty = true
+	if dirty:
+		queue_redraw()
+
+
+func _is_unlocked(card: Dictionary) -> bool:
+	if card["special"] != "":
+		return true
+	return _services != null and _services.is_unlocked(_system_id, _station_idx, card["svc"])
+
+
+# =============================================================================
+# LAYOUT
+# =============================================================================
+
+func _compute_layout() -> void:
+	var s: Vector2 = size
+	var cx: float = s.x * 0.5
+	_card_rects.resize(_cards.size())
+	_cat_header_y.resize(_cat_labels.size())
+
+	var y: float = 148.0
+	var current_cat: int = -1
+	var row_start: int = 0
+
+	for i in _cards.size():
+		var cat: int = _cards[i]["cat"]
+		if cat != current_cat:
+			if i > row_start:
+				_place_row(row_start, i, cx, y)
+				y += CARD_H + 14.0
+			_cat_header_y[cat] = y
+			y += 26.0
+			current_cat = cat
+			row_start = i
+
+	if _cards.size() > row_start:
+		_place_row(row_start, _cards.size(), cx, y)
+		y += CARD_H
+
+	var btn_w: float = minf(CARD_W * 3.0 + CARD_GAP * 2.0, s.x - 100.0)
+	_undock_rect = Rect2(cx - btn_w * 0.5, y + 24.0, btn_w, 34.0)
+
+
+func _place_row(from: int, to: int, cx: float, y: float) -> void:
+	var count: int = to - from
+	var total_w: float = count * CARD_W + (count - 1) * CARD_GAP
+	var sx: float = cx - total_w * 0.5
+	for j in count:
+		_card_rects[from + j] = Rect2(sx + j * (CARD_W + CARD_GAP), y, CARD_W, CARD_H)
+
+
+# =============================================================================
+# DRAWING
+# =============================================================================
+
+func _draw() -> void:
+	var s: Vector2 = size
+	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
+	draw_rect(Rect2(0, 0, s.x, 50), Color(0.0, 0.0, 0.02, 0.5))
+	draw_rect(Rect2(0, s.y - 40, s.x, 40), Color(0.0, 0.0, 0.02, 0.5))
+	_draw_title(s)
+
+	if not _is_open:
+		return
+
+	_compute_layout()
+	var font: Font = UITheme.get_font()
+	var cx: float = s.x * 0.5
+
+	# --- Station emblem + name ---
+	_draw_station_emblem(Vector2(cx, 85.0), 20.0)
+	draw_string(font, Vector2(0, 121), _station_name.to_upper(),
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
+	var unlocked_count: int = _services.get_unlocked_count(_system_id, _station_idx) if _services else 0
+	draw_string(font, Vector2(0, 139), "Terminal · %d/6 services" % unlocked_count,
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
+	# --- Category headers ---
+	var grid_w: float = CARD_W * 3.0 + CARD_GAP * 2.0
+	var grid_x: float = cx - grid_w * 0.5
+	for ci in _cat_labels.size():
+		draw_section_header(grid_x, _cat_header_y[ci], grid_w, _cat_labels[ci])
+
+	# --- Cards ---
+	for i in _cards.size():
+		_draw_card(_card_rects[i], _cards[i], i)
+
+	# --- Separator + undock ---
+	var sep_y: float = _undock_rect.position.y - 12.0
+	draw_line(Vector2(grid_x, sep_y), Vector2(grid_x + grid_w, sep_y), UITheme.BORDER, 1.0)
+	_draw_undock()
+
+	# --- Screen corners + scanline ---
+	draw_corners(Rect2(30, 30, s.x - 60, s.y - 60), 20.0, UITheme.CORNER)
+	var scan_y: float = fmod(UITheme.scanline_y, s.y)
+	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y),
+		Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03), 1.0)
+
+
+func _draw_card(rect: Rect2, card: Dictionary, idx: int) -> void:
+	var unlocked: bool = _is_unlocked(card)
+	var hovered: bool = _hovered_card == idx
+	var flash_v: float = _flash.get(idx, 0.0)
+	var is_special: bool = card["special"] != ""
+
+	# Background
+	var bg: Color
 	if unlocked:
+		bg = Color(0.015, 0.04, 0.08, 0.88) if not hovered else Color(0.025, 0.06, 0.12, 0.92)
+	else:
+		bg = Color(0.01, 0.015, 0.03, 0.6) if not hovered else Color(0.02, 0.03, 0.06, 0.72)
+	draw_rect(rect, bg)
+
+	if flash_v > 0.0:
+		draw_rect(rect, Color(1, 1, 1, flash_v * 0.2))
+
+	# Border
+	var bcol: Color
+	if is_special:
+		bcol = Color(0.5, 0.6, 1.0, 0.8) if hovered else Color(0.4, 0.5, 0.8, 0.5)
+	elif unlocked:
+		bcol = UITheme.BORDER_ACTIVE if hovered else UITheme.PRIMARY_DIM
+	else:
+		bcol = UITheme.BORDER_HOVER if hovered else UITheme.BORDER
+	draw_rect(rect, bcol, false, 1.0)
+
+	# Top glow line (unlocked/special only)
+	if unlocked:
+		var ga: float = 0.25 if hovered else 0.12
+		var gc: Color = Color(0.4, 0.5, 1.0, ga) if is_special else Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, ga)
+		draw_line(Vector2(rect.position.x + 1, rect.position.y), Vector2(rect.end.x - 1, rect.position.y), gc, 2.0)
+
+	# Mini corner accents
+	draw_corners(rect, 8.0, bcol)
+
+	# Icon
+	var ic: Vector2 = Vector2(rect.position.x + rect.size.x * 0.5, rect.position.y + 38.0)
+	var icol: Color
+	if is_special:
+		icol = Color(0.5, 0.6, 1.0, 0.9)
+	elif unlocked:
+		icol = UITheme.PRIMARY
+	else:
+		icol = Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.45)
+	_draw_icon(ic, card["icon"], icol)
+
+	# Lock badge (top-right)
+	if not unlocked:
+		_draw_lock(Vector2(rect.end.x - 14, rect.position.y + 14), UITheme.WARNING)
+
+	# Label
+	var font: Font = UITheme.get_font()
+	var lcol: Color = UITheme.TEXT if unlocked else UITheme.TEXT_DIM
+	draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 74),
+		card["label"], HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8, UITheme.FONT_SIZE_SMALL, lcol)
+
+	# Status / price
+	if is_special:
+		draw_string(font, Vector2(rect.position.x, rect.end.y - 10), "DISPONIBLE",
+			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_TINY, Color(0.5, 0.6, 1.0, 0.6))
+	elif unlocked:
+		# Small green dot + ACTIF
+		draw_circle(Vector2(rect.position.x + rect.size.x * 0.5 - 24, rect.end.y - 15), 3.0, UITheme.ACCENT)
+		draw_string(font, Vector2(rect.position.x + 8, rect.end.y - 10), "ACTIF",
+			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 16, UITheme.FONT_SIZE_TINY, UITheme.ACCENT)
+	else:
+		var price: int = StationServices.SERVICE_PRICES[card["svc"]]
+		draw_string(font, Vector2(rect.position.x, rect.end.y - 10),
+			PlayerEconomy.format_credits(price) + " CR",
+			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_TINY, UITheme.WARNING)
+
+
+func _draw_icon(c: Vector2, icon: int, col: Color) -> void:
+	var r: float = 13.0
+	match icon:
+		ICO.COMMERCE:
+			# Diamond (trade)
+			var d: PackedVector2Array = [c + Vector2(0, -r), c + Vector2(r, 0), c + Vector2(0, r), c + Vector2(-r, 0), c + Vector2(0, -r)]
+			draw_polyline(d, col, 1.5)
+			draw_line(c + Vector2(-r * 0.5, 0), c + Vector2(r * 0.5, 0), col, 1.0)
+		ICO.SHIPYARD:
+			# Ship chevron
+			draw_line(c + Vector2(0, -r), c + Vector2(-r * 0.8, r * 0.6), col, 1.5)
+			draw_line(c + Vector2(0, -r), c + Vector2(r * 0.8, r * 0.6), col, 1.5)
+			draw_line(c + Vector2(-r * 0.8, r * 0.6), c + Vector2(0, r * 0.15), col, 1.5)
+			draw_line(c + Vector2(r * 0.8, r * 0.6), c + Vector2(0, r * 0.15), col, 1.5)
+		ICO.STORAGE:
+			# Crate with shelves
+			draw_rect(Rect2(c.x - r * 0.7, c.y - r * 0.8, r * 1.4, r * 1.6), col, false, 1.5)
+			draw_line(c + Vector2(-r * 0.7, -r * 0.1), c + Vector2(r * 0.7, -r * 0.1), col, 1.0)
+			draw_line(c + Vector2(-r * 0.7, r * 0.5), c + Vector2(r * 0.7, r * 0.5), col, 1.0)
+		ICO.REPAIR:
+			# Wrench
+			draw_line(c + Vector2(-r * 0.6, r * 0.6), c + Vector2(r * 0.3, -r * 0.3), col, 2.0)
+			draw_arc(c + Vector2(r * 0.45, -r * 0.45), r * 0.35, -PI * 0.75, PI * 0.75, 10, col, 1.5)
+		ICO.EQUIP:
+			# Crosshair
+			draw_arc(c, r * 0.65, 0, TAU, 20, col, 1.5)
+			draw_line(c + Vector2(0, -r), c + Vector2(0, -r * 0.3), col, 1.0)
+			draw_line(c + Vector2(0, r), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(-r, 0), c + Vector2(-r * 0.3, 0), col, 1.0)
+			draw_line(c + Vector2(r, 0), c + Vector2(r * 0.3, 0), col, 1.0)
+			draw_circle(c, 2.0, col)
+		ICO.REFINERY:
+			# Flask
+			draw_line(c + Vector2(-4, -r), c + Vector2(4, -r), col, 1.5)
+			draw_line(c + Vector2(-4, -r), c + Vector2(-r * 0.7, r * 0.7), col, 1.5)
+			draw_line(c + Vector2(4, -r), c + Vector2(r * 0.7, r * 0.7), col, 1.5)
+			draw_line(c + Vector2(-r * 0.7, r * 0.7), c + Vector2(r * 0.7, r * 0.7), col, 1.5)
+			draw_line(c + Vector2(-r * 0.35, r * 0.15), c + Vector2(r * 0.35, r * 0.15),
+				Color(col.r, col.g, col.b, col.a * 0.4), 1.0)
+		ICO.STN_EQUIP:
+			# Gear (hexagon + hub)
+			var pts: PackedVector2Array = []
+			for k in 7:
+				var a: float = TAU * float(k) / 6.0 - PI * 0.5
+				pts.append(c + Vector2(cos(a), sin(a)) * r * 0.8)
+			draw_polyline(pts, col, 1.5)
+			draw_arc(c, r * 0.3, 0, TAU, 10, col, 1.5)
+		ICO.ADMIN:
+			# Document with lines
+			var hw: float = r * 0.55
+			var hh: float = r * 0.75
+			draw_rect(Rect2(c.x - hw, c.y - hh, hw * 2, hh * 2), col, false, 1.5)
+			draw_line(c + Vector2(hw - 5, -hh), c + Vector2(hw, -hh + 5), col, 1.0)
+			draw_line(c + Vector2(-hw * 0.5, -hh * 0.3), c + Vector2(hw * 0.5, -hh * 0.3), col, 1.0)
+			draw_line(c + Vector2(-hw * 0.5, hh * 0.1), c + Vector2(hw * 0.5, hh * 0.1), col, 1.0)
+			draw_line(c + Vector2(-hw * 0.5, hh * 0.5), c + Vector2(hw * 0.15, hh * 0.5), col, 1.0)
+
+
+func _draw_lock(pos: Vector2, col: Color) -> void:
+	draw_arc(pos + Vector2(0, -3), 4.0, PI, TAU, 8, col, 1.5)
+	draw_rect(Rect2(pos.x - 5, pos.y, 10, 7), col, false, 1.5)
+	draw_circle(pos + Vector2(0, 3.5), 1.0, col)
+
+
+func _draw_undock() -> void:
+	var r: Rect2 = _undock_rect
+	var hov: bool = _undock_hovered
+	draw_rect(r, Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.18 if hov else 0.08))
+	if _undock_flash > 0.0:
+		draw_rect(r, Color(1, 1, 1, _undock_flash * 0.2))
+	var bc: Color = UITheme.WARNING if hov else Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.45)
+	draw_rect(r, bc, false, 1.0)
+	draw_rect(Rect2(r.position.x, r.position.y + 2, 3, r.size.y - 4), UITheme.WARNING)
+	draw_corners(r, 6.0, bc)
+	var font: Font = UITheme.get_font()
+	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
+	draw_string(font, Vector2(r.position.x, ty), "QUITTER LE DOCK",
+		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+
+
+func _draw_station_emblem(center: Vector2, radius: float) -> void:
+	var pts: PackedVector2Array = []
+	for i in 7:
+		var a: float = TAU * float(i) / 6.0 - PI * 0.5
+		pts.append(center + Vector2(cos(a), sin(a)) * radius)
+	var ga: float = 0.1 + sin(_emblem_pulse * 1.5) * 0.06
+	var gcol: Color = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, ga)
+	for i in 6:
+		var a1: float = TAU * float(i) / 6.0 - PI * 0.5
+		var a2: float = TAU * float(i + 1) / 6.0 - PI * 0.5
+		draw_line(center + Vector2(cos(a1), sin(a1)) * (radius + 4),
+			center + Vector2(cos(a2), sin(a2)) * (radius + 4), gcol, 1.0)
+	draw_polyline(pts, UITheme.PRIMARY, 1.0)
+	var ir: float = radius * 0.4
+	var inner: PackedVector2Array = [
+		center + Vector2(0, -ir), center + Vector2(ir, 0),
+		center + Vector2(0, ir), center + Vector2(-ir, 0), center + Vector2(0, -ir)]
+	draw_polyline(inner, UITheme.PRIMARY_DIM, 1.0)
+	draw_circle(center, 2.0, UITheme.PRIMARY)
+
+
+# =============================================================================
+# INTERACTION
+# =============================================================================
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var old_h: int = _hovered_card
+		var old_u: bool = _undock_hovered
+		_hovered_card = -1
+		_undock_hovered = false
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position):
+				_hovered_card = i
+				break
+		_undock_hovered = _undock_rect.has_point(event.position)
+		if _hovered_card != old_h or _undock_hovered != old_u:
+			queue_redraw()
+
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position):
+				_flash[i] = 1.0
+				_on_card_clicked(i)
+				accept_event()
+				return
+		if _undock_rect.has_point(event.position):
+			_undock_flash = 1.0
+			undock_requested.emit()
+			accept_event()
+			return
+
+	super._gui_input(event)
+
+
+func _on_card_clicked(idx: int) -> void:
+	var card: Dictionary = _cards[idx]
+	if card["special"] == "station_equip":
+		station_equipment_requested.emit()
+		return
+	if card["special"] == "admin":
+		administration_requested.emit()
+		return
+
+	var svc: int = card["svc"]
+	if _is_unlocked(card):
 		match svc:
-			StationServices.Service.COMMERCE:
-				commerce_requested.emit()
-			StationServices.Service.REPAIR:
-				repair_requested.emit()
-			StationServices.Service.EQUIPMENT:
-				equipment_requested.emit()
-			StationServices.Service.SHIPYARD:
-				shipyard_requested.emit()
-			StationServices.Service.REFINERY:
-				refinery_requested.emit()
-			StationServices.Service.ENTREPOT:
-				storage_requested.emit()
+			StationServices.Service.COMMERCE: commerce_requested.emit()
+			StationServices.Service.REPAIR: repair_requested.emit()
+			StationServices.Service.EQUIPMENT: equipment_requested.emit()
+			StationServices.Service.SHIPYARD: shipyard_requested.emit()
+			StationServices.Service.REFINERY: refinery_requested.emit()
+			StationServices.Service.ENTREPOT: storage_requested.emit()
 	else:
 		_try_unlock(svc)
 
@@ -150,217 +431,12 @@ func _on_service_pressed(button_index: int) -> void:
 func _try_unlock(svc: int) -> void:
 	if _services == null or _economy == null:
 		return
-
 	var price: int = StationServices.SERVICE_PRICES[svc]
 	if _economy.credits < price:
 		if GameManager._notif:
 			GameManager._notif.general.insufficient_credits(PlayerEconomy.format_credits(price))
 		return
-
 	if _services.unlock(_system_id, _station_idx, svc, _economy):
-		_refresh_buttons()
 		if GameManager._notif:
 			GameManager._notif.general.service_unlocked(StationServices.SERVICE_LABELS[svc])
-
-
-func _on_opened() -> void:
-	_refresh_buttons()
-	_layout_buttons()
-	for btn in _service_buttons:
-		btn.visible = true
-	_station_equip_button.visible = true
-	_admin_button.visible = true
-	_undock_button.visible = true
-
-
-func _on_closed() -> void:
-	for btn in _service_buttons:
-		btn.visible = false
-	_station_equip_button.visible = false
-	_admin_button.visible = false
-	_undock_button.visible = false
-
-
-func _on_undock_pressed() -> void:
-	undock_requested.emit()
-
-
-func _on_station_equip_pressed() -> void:
-	station_equipment_requested.emit()
-
-
-func _on_admin_pressed() -> void:
-	administration_requested.emit()
-
-
-func _get_info_panel_bottom() -> float:
-	var emblem_y: float = 90.0
-	var emblem_r: float = 22.0
-	var info_y: float = emblem_y + emblem_r + 48.0 + 14.0  # After first divider line
-	info_y += UITheme.ROW_HEIGHT * 3.0 + 8.0  # 3 info rows + bottom spacing
-	return info_y
-
-
-func _get_services_start_y() -> float:
-	return _get_info_panel_bottom() + 12.0 + 22.0  # gap + header height + gap
-
-
-func _layout_buttons() -> void:
-	var s: Vector2 = size
-	var cx: float = s.x * 0.5
-	var svc_start_y: float = _get_services_start_y()
-
-	for i in _service_buttons.size():
-		var btn: UIButton = _service_buttons[i]
-		btn.position = Vector2(cx - button_width * 0.5, svc_start_y + i * (button_height + button_gap))
-		btn.size = Vector2(button_width, button_height)
-
-	# Station equipment button — after service buttons
-	var station_equip_y: float = svc_start_y + _service_buttons.size() * (button_height + button_gap) + 12
-	_station_equip_button.position = Vector2(cx - button_width * 0.5, station_equip_y)
-	_station_equip_button.size = Vector2(button_width, button_height)
-
-	# Administration button — after station equipment
-	var admin_y: float = station_equip_y + button_height + button_gap
-	_admin_button.position = Vector2(cx - button_width * 0.5, admin_y)
-	_admin_button.size = Vector2(button_width, button_height)
-
-	_undock_button.position = Vector2(cx - button_width * 0.5, s.y - 72)
-	_undock_button.size = Vector2(button_width, button_height)
-
-
-func _process(delta: float) -> void:
-	_emblem_pulse += delta
-
-
-func _draw() -> void:
-	var s: Vector2 = size
-	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
-
-	var edge_col =Color(0.0, 0.0, 0.02, 0.5)
-	draw_rect(Rect2(0, 0, s.x, 50), edge_col)
-	draw_rect(Rect2(0, s.y - 40, s.x, 40), edge_col)
-
-	_draw_title(s)
-
-	if not _is_open:
-		return
-
-	var font: Font = UITheme.get_font()
-	var cx: float = s.x * 0.5
-
-	# =========================================================================
-	# STATION EMBLEM
-	# =========================================================================
-	var emblem_y: float = 90.0
-	var emblem_r: float = 22.0
-	_draw_station_emblem(Vector2(cx, emblem_y), emblem_r)
-
-	draw_string(font, Vector2(0, emblem_y + emblem_r + 18), _station_name.to_upper(),
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
-
-	draw_string(font, Vector2(0, emblem_y + emblem_r + 40), "TERMINAL DE STATION",
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
-
-	# =========================================================================
-	# INFO PANEL
-	# =========================================================================
-	var info_x: float = cx - 140.0
-	var info_y: float = emblem_y + emblem_r + 48
-	var info_w: float = 280.0
-
-	draw_line(Vector2(info_x, info_y), Vector2(info_x + info_w, info_y), UITheme.BORDER, 1.0)
-	info_y += 14
-
-	_draw_info_row(font, info_x, info_y, info_w, "TYPE", "Station orbitale")
-	info_y += UITheme.ROW_HEIGHT
-	_draw_info_row(font, info_x, info_y, info_w, "FACTION", "Neutre")
-	info_y += UITheme.ROW_HEIGHT
-
-	# Services count
-	var unlocked_count: int = 0
-	if _services:
-		unlocked_count = _services.get_unlocked_count(_system_id, _station_idx)
-	_draw_info_row(font, info_x, info_y, info_w, "SERVICES", "%d / %d actifs" % [unlocked_count, SERVICE_ORDER.size()])
-	info_y += UITheme.ROW_HEIGHT + 8
-
-	draw_line(Vector2(info_x, info_y), Vector2(info_x + info_w, info_y), UITheme.BORDER, 1.0)
-
-	# =========================================================================
-	# SERVICE SECTION HEADER
-	# =========================================================================
-	var svc_header_y: float = _get_info_panel_bottom() + 12.0
-	var header_x: float = cx - 140.0
-	draw_rect(Rect2(header_x, svc_header_y, 2, 12), UITheme.PRIMARY)
-	draw_string(font, Vector2(header_x + 8, svc_header_y + 10), "SERVICES",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
-	var header_text_w: float = font.get_string_size("SERVICES", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL).x
-	draw_line(
-		Vector2(header_x + 12 + header_text_w, svc_header_y + 5),
-		Vector2(cx + 140.0, svc_header_y + 5),
-		UITheme.BORDER, 1.0
-	)
-
-	# =========================================================================
-	# UNDOCK SECTION
-	# =========================================================================
-	var undock_y: float = s.y - 100.0
-	draw_line(Vector2(cx - 140, undock_y), Vector2(cx + 140, undock_y), UITheme.BORDER, 1.0)
-
-	# =========================================================================
-	# CORNER DECORATIONS
-	# =========================================================================
-	var m: float = 30.0
-	var cl: float = 20.0
-	var cc: Color = UITheme.CORNER
-	draw_line(Vector2(m, m), Vector2(m + cl, m), cc, 1.5)
-	draw_line(Vector2(m, m), Vector2(m, m + cl), cc, 1.5)
-	draw_line(Vector2(s.x - m, m), Vector2(s.x - m - cl, m), cc, 1.5)
-	draw_line(Vector2(s.x - m, m), Vector2(s.x - m, m + cl), cc, 1.5)
-	draw_line(Vector2(m, s.y - m), Vector2(m + cl, s.y - m), cc, 1.5)
-	draw_line(Vector2(m, s.y - m), Vector2(m, s.y - m - cl), cc, 1.5)
-	draw_line(Vector2(s.x - m, s.y - m), Vector2(s.x - m - cl, s.y - m), cc, 1.5)
-	draw_line(Vector2(s.x - m, s.y - m), Vector2(s.x - m, s.y - m - cl), cc, 1.5)
-
-	# =========================================================================
-	# SCANLINE
-	# =========================================================================
-	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
-	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
-
-
-func _draw_station_emblem(center: Vector2, radius: float) -> void:
-	var points: PackedVector2Array = PackedVector2Array()
-	for i in 7:
-		var angle: float = TAU * float(i) / 6.0 - PI * 0.5
-		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-
-	var glow_alpha: float = 0.1 + sin(_emblem_pulse * 1.5) * 0.06
-	var glow_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, glow_alpha)
-	for i in 6:
-		var angle: float = TAU * float(i) / 6.0 - PI * 0.5
-		var outer: Vector2 = center + Vector2(cos(angle), sin(angle)) * (radius + 4)
-		var angle2: float = TAU * float(i + 1) / 6.0 - PI * 0.5
-		var outer2: Vector2 = center + Vector2(cos(angle2), sin(angle2)) * (radius + 4)
-		draw_line(outer, outer2, glow_col, 1.0)
-
-	draw_polyline(points, UITheme.PRIMARY, 1.0)
-
-	var ir: float = radius * 0.4
-	var inner_pts: PackedVector2Array = PackedVector2Array()
-	inner_pts.append(center + Vector2(0, -ir))
-	inner_pts.append(center + Vector2(ir, 0))
-	inner_pts.append(center + Vector2(0, ir))
-	inner_pts.append(center + Vector2(-ir, 0))
-	inner_pts.append(center + Vector2(0, -ir))
-	draw_polyline(inner_pts, UITheme.PRIMARY_DIM, 1.0)
-
-	draw_circle(center, 2.0, UITheme.PRIMARY)
-
-
-func _draw_info_row(font: Font, x: float, y: float, w: float, key: String, value: String) -> void:
-	draw_string(font, Vector2(x, y), key, HORIZONTAL_ALIGNMENT_LEFT, -1,
-		UITheme.FONT_SIZE_TINY, UITheme.LABEL_KEY)
-	draw_string(font, Vector2(x + 80, y), value, HORIZONTAL_ALIGNMENT_LEFT, int(w - 80),
-		UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+		queue_redraw()

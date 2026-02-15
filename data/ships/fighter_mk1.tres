@@ -54,3 +54,7 @@ loot_weapon_part_chance = 0.0
 lod_combat_dps = 18.0
 npc_tier = 0
 sold_at_station_types = Array[StringName]([&"repair", &"military", &"mining"])
+resource_cost = {
+&"iron": 30,
+&"copper": 15
+}

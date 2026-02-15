@@ -100,3 +100,4 @@ extends Resource
 # --- Commerce (which station types sell this ship) ---
 @export_group("Commerce")
 @export var sold_at_station_types: Array[StringName] = []
+@export var resource_cost: Dictionary = {}  # StringName -> int (e.g. { &"iron": 50 })
