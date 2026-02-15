@@ -18,6 +18,9 @@ Thumbs.db
 # Local tooling
 .mcp.json
 
+# Secrets
+backend/discord.json
+
 # Editor
 *.swp
 *.swo
