@@ -8,15 +8,15 @@ extends UIScreen
 
 signal equipment_closed
 
-const EC := preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
+const EC =preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
 
-var player_inventory: PlayerInventory = null
-var weapon_manager: WeaponManager = null
-var equipment_manager: EquipmentManager = null
-var player_fleet: PlayerFleet = null
+var player_inventory = null
+var weapon_manager = null
+var equipment_manager = null
+var player_fleet = null
 
 # --- Station mode (set externally before opening) ---
-var station_equip_adapter: StationEquipAdapter = null
+var station_equip_adapter = null
 
 # --- Adapter ---
 var _adapter: RefCounted = null
@@ -144,7 +144,7 @@ func _on_opened() -> void:
 
 	if _is_station_mode():
 		screen_title = "STATION — EQUIPEMENT"
-		var station_center := StationHardpointConfig.get_station_center()
+		var station_center =StationHardpointConfig.get_station_center()
 		setup_ship_viewer("res://assets/models/space_station.glb", 1.0, station_center, Vector3.ZERO, Basis.IDENTITY)
 	else:
 		screen_title = "FLOTTE — EQUIPEMENT"
@@ -219,9 +219,9 @@ func _gui_input(event: InputEvent) -> void:
 
 	# Close [X] button
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var close_x := size.x - UITheme.MARGIN_SCREEN - 28
-		var close_y := UITheme.MARGIN_SCREEN
-		var close_rect := Rect2(close_x, close_y, 32, 28)
+		var close_x =size.x - UITheme.MARGIN_SCREEN - 28
+		var close_y =UITheme.MARGIN_SCREEN
+		var close_rect =Rect2(close_x, close_y, 32, 28)
 		if close_rect.has_point(event.position):
 			close()
 			accept_event()
@@ -241,8 +241,8 @@ func _gui_input(event: InputEvent) -> void:
 		return
 
 	# 3D viewer area (orbit camera)
-	var viewer_w := size.x * EC.VIEWER_RATIO
-	var strip_top := size.y - EC.HP_STRIP_H - 50
+	var viewer_w =size.x * EC.VIEWER_RATIO
+	var strip_top =size.y - EC.HP_STRIP_H - 50
 	if _current_tab == 0:
 		if _viewer.handle_input(event, viewer_w, strip_top):
 			accept_event()
@@ -260,31 +260,31 @@ func _gui_input(event: InputEvent) -> void:
 # LAYOUT
 # =============================================================================
 func _layout_controls() -> void:
-	var s := size
-	var viewer_w := s.x * EC.VIEWER_RATIO
-	var sidebar_x := viewer_w
-	var sidebar_w := s.x * EC.SIDEBAR_RATIO
-	var sidebar_pad := 16.0
+	var s =size
+	var viewer_w =s.x * EC.VIEWER_RATIO
+	var sidebar_x =viewer_w
+	var sidebar_w =s.x * EC.SIDEBAR_RATIO
+	var sidebar_pad =16.0
 
 	# Viewer
 	_viewer.layout(Vector2(0, EC.CONTENT_TOP), Vector2(viewer_w, s.y - EC.CONTENT_TOP - EC.HP_STRIP_H - 20))
 
 	# Tab bar
-	var tab_y := EC.CONTENT_TOP + 6.0
+	var tab_y =EC.CONTENT_TOP + 6.0
 	_tab_bar.position = Vector2(sidebar_x + sidebar_pad, tab_y)
 	_tab_bar.size = Vector2(sidebar_w - sidebar_pad * 2, EC.TAB_H)
 
 	# Arsenal list
-	var arsenal_top := tab_y + EC.TAB_H + 28.0
-	var list_top := arsenal_top + 16.0
-	var list_bottom := s.y - EC.COMPARE_H - 100
+	var arsenal_top =tab_y + EC.TAB_H + 28.0
+	var list_top =arsenal_top + 16.0
+	var list_bottom =s.y - EC.COMPARE_H - 100
 	_sidebar.layout_list(Vector2(sidebar_x + sidebar_pad + 4, list_top),
 		Vector2(sidebar_w - sidebar_pad * 2 - 8, list_bottom - list_top))
 
 	# Buttons
-	var btn_y := s.y - 62
-	var btn_total := EC.BTN_W * 3 + 20
-	var btn_x := sidebar_x + (sidebar_w - btn_total) * 0.5
+	var btn_y =s.y - 62
+	var btn_total =EC.BTN_W * 3 + 20
+	var btn_x =sidebar_x + (sidebar_w - btn_total) * 0.5
 	_equip_btn.position = Vector2(btn_x, btn_y)
 	_equip_btn.size = Vector2(EC.BTN_W, EC.BTN_H)
 	_remove_btn.position = Vector2(btn_x + EC.BTN_W + 10, btn_y)
@@ -297,7 +297,7 @@ func _layout_controls() -> void:
 # DRAW
 # =============================================================================
 func _draw() -> void:
-	var s := size
+	var s =size
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.55))
 	draw_rect(Rect2(0, 0, s.x, 44), Color(0.0, 0.0, 0.02, 0.5))
 	draw_rect(Rect2(0, s.y - 34, s.x, 34), Color(0.0, 0.0, 0.02, 0.5))
@@ -308,10 +308,10 @@ func _draw() -> void:
 		return
 
 	var font: Font = UITheme.get_font()
-	var viewer_w := s.x * EC.VIEWER_RATIO
-	var sidebar_x := viewer_w
-	var sidebar_w := s.x * EC.SIDEBAR_RATIO
-	var sidebar_pad := 16.0
+	var viewer_w =s.x * EC.VIEWER_RATIO
+	var sidebar_x =viewer_w
+	var sidebar_w =s.x * EC.SIDEBAR_RATIO
+	var sidebar_pad =16.0
 
 	# Fleet strip
 	_strip.draw_fleet_strip(self, font, s)
@@ -327,44 +327,44 @@ func _draw() -> void:
 		_viewer.draw_projected_labels(self, font, viewer_w, s.y - EC.CONTENT_TOP - EC.HP_STRIP_H - 20, _selected_hardpoint)
 
 	# Sidebar background
-	var tab_y := EC.CONTENT_TOP + 6.0
-	var arsenal_header_y := tab_y + EC.TAB_H + 8.0
-	var sb_top := arsenal_header_y - 4.0
-	var sb_bottom := s.y - 72.0
-	var sb_rect := Rect2(sidebar_x + sidebar_pad - 2, sb_top,
+	var tab_y =EC.CONTENT_TOP + 6.0
+	var arsenal_header_y =tab_y + EC.TAB_H + 8.0
+	var sb_top =arsenal_header_y - 4.0
+	var sb_bottom =s.y - 72.0
+	var sb_rect =Rect2(sidebar_x + sidebar_pad - 2, sb_top,
 		sidebar_w - sidebar_pad * 2 + 4, sb_bottom - sb_top)
 	draw_panel_bg(sb_rect)
 
 	# Arsenal header
-	var header_names := ["ARSENAL", "MODULES DISPO.", "BOUCLIERS DISPO.", "MOTEURS DISPO."]
+	var header_names =["ARSENAL", "MODULES DISPO.", "BOUCLIERS DISPO.", "MOTEURS DISPO."]
 	draw_section_header(sidebar_x + sidebar_pad + 4, arsenal_header_y, sidebar_w - sidebar_pad * 2 - 8, header_names[_current_tab])
 
 	# Stock count
 	if _actions:
-		var total := _actions.get_current_stock_count(_current_tab)
-		var inv_str := "%d en stock" % total
+		var total =_actions.get_current_stock_count(_current_tab)
+		var inv_str ="%d en stock" % total
 		draw_string(font, Vector2(sidebar_x + sidebar_w - sidebar_pad - 4, arsenal_header_y + 11),
 			inv_str, HORIZONTAL_ALIGNMENT_RIGHT, sidebar_w * 0.4, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Comparison panel
-	var compare_y := s.y - EC.COMPARE_H - 76
-	var compare_rect := Rect2(sidebar_x + sidebar_pad - 2, compare_y,
+	var compare_y =s.y - EC.COMPARE_H - 76
+	var compare_rect =Rect2(sidebar_x + sidebar_pad - 2, compare_y,
 		sidebar_w - sidebar_pad * 2 + 4, EC.COMPARE_H)
 	draw_panel_bg(compare_rect)
-	var cmp_header_y := draw_section_header(sidebar_x + sidebar_pad + 4, compare_y + 5,
+	var cmp_header_y =draw_section_header(sidebar_x + sidebar_pad + 4, compare_y + 5,
 		sidebar_w - sidebar_pad * 2 - 8, "COMPARAISON")
 	_sidebar.draw_comparison(self, font, sidebar_x + sidebar_pad, cmp_header_y, sidebar_w - sidebar_pad * 2,
 		_selected_weapon, _selected_shield, _selected_engine, _selected_module)
 
 	# Button separator
-	var btn_sep_y := s.y - 72
+	var btn_sep_y =s.y - 72
 	draw_line(Vector2(sidebar_x + sidebar_pad, btn_sep_y),
 		Vector2(sidebar_x + sidebar_w - sidebar_pad, btn_sep_y), UITheme.BORDER, 1.0)
 
 	# Corner decorations
-	var m := 28.0
-	var cl := 28.0
-	var cc := UITheme.CORNER
+	var m =28.0
+	var cl =28.0
+	var cc =UITheme.CORNER
 	draw_line(Vector2(m, m), Vector2(m + cl, m), cc, 1.5)
 	draw_line(Vector2(m, m), Vector2(m, m + cl), cc, 1.5)
 	draw_line(Vector2(s.x - m, m), Vector2(s.x - m - cl, m), cc, 1.5)
@@ -375,7 +375,7 @@ func _draw() -> void:
 	draw_line(Vector2(s.x - m, s.y - m), Vector2(s.x - m, s.y - m - cl), cc, 1.5)
 
 	# Scanline
-	var scan_y := fmod(UITheme.scanline_y, s.y)
+	var scan_y =fmod(UITheme.scanline_y, s.y)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y),
 		Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03), 1.0)
 
@@ -619,7 +619,7 @@ func _create_adapter() -> void:
 
 	if player_fleet == null:
 		return
-	var fs: FleetShip = player_fleet.ships[_selected_fleet_index] if _selected_fleet_index < player_fleet.ships.size() else null
+	var fs = player_fleet.ships[_selected_fleet_index] if _selected_fleet_index < player_fleet.ships.size() else null
 	if fs == null:
 		return
 	if _is_live_mode() and weapon_manager and equipment_manager:
@@ -633,8 +633,8 @@ func _create_adapter() -> void:
 func _reload_ship_viewer_for_fleet_ship() -> void:
 	if player_fleet == null or _selected_fleet_index >= player_fleet.ships.size():
 		return
-	var fs: FleetShip = player_fleet.ships[_selected_fleet_index]
-	var sd := ShipRegistry.get_ship_data(fs.ship_id)
+	var fs = player_fleet.ships[_selected_fleet_index]
+	var sd =ShipRegistry.get_ship_data(fs.ship_id)
 	if sd == null:
 		return
 

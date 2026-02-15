@@ -7,7 +7,7 @@ extends Control
 # Right: Detail panel with stats + price + buy button
 # =============================================================================
 
-var _commerce_manager: CommerceManager = null
+var _commerce_manager = null
 var _station_type: int = 0
 var _initial_tab: int = 0
 
@@ -19,8 +19,8 @@ var _available_items: Array[StringName] = []
 var _selected_index: int = -1
 
 const TAB_NAMES: Array[String] = ["ARMEMENT", "BOUCLIERS", "MOTEURS", "MODULES"]
-const DETAIL_W := 240.0
-const ROW_H := 48.0
+const DETAIL_W =240.0
+const ROW_H =48.0
 
 
 func _ready() -> void:
@@ -49,7 +49,7 @@ func _ready() -> void:
 	add_child(_buy_btn)
 
 
-func setup(mgr: CommerceManager, stype: int) -> void:
+func setup(mgr, stype: int) -> void:
 	_commerce_manager = mgr
 	_station_type = stype
 
@@ -69,7 +69,7 @@ func refresh() -> void:
 
 
 func _layout() -> void:
-	var s := size
+	var s =size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_tab_bar.position = Vector2(0, 0)
 	_tab_bar.size = Vector2(list_w, 28)
@@ -130,16 +130,16 @@ func _do_buy() -> void:
 			var price: int = 0
 			match _current_tab:
 				0:
-					var w := WeaponRegistry.get_weapon(item_name)
+					var w =WeaponRegistry.get_weapon(item_name)
 					if w: price = w.price
 				1:
-					var sh := ShieldRegistry.get_shield(item_name)
+					var sh =ShieldRegistry.get_shield(item_name)
 					if sh: price = sh.price
 				2:
-					var en := EngineRegistry.get_engine(item_name)
+					var en =EngineRegistry.get_engine(item_name)
 					if en: price = en.price
 				3:
-					var mo := ModuleRegistry.get_module(item_name)
+					var mo =ModuleRegistry.get_module(item_name)
 					if mo: price = mo.price
 			GameManager._notif.commerce.bought(String(item_name), price)
 	queue_redraw()
@@ -154,7 +154,7 @@ func _process(_delta: float) -> void:
 # DRAWING
 # =========================================================================
 func _draw() -> void:
-	var s := size
+	var s =size
 	var font: Font = UITheme.get_font()
 	var detail_x: float = s.x - DETAIL_W
 
@@ -192,7 +192,7 @@ func _draw() -> void:
 
 
 func _draw_weapon_detail(font: Font, x: float, y: float, wn: StringName) -> float:
-	var w := WeaponRegistry.get_weapon(wn)
+	var w =WeaponRegistry.get_weapon(wn)
 	if w == null: return y
 
 	# Name
@@ -218,7 +218,7 @@ func _draw_weapon_detail(font: Font, x: float, y: float, wn: StringName) -> floa
 
 
 func _draw_shield_detail(font: Font, x: float, y: float, sn: StringName) -> float:
-	var sh := ShieldRegistry.get_shield(sn)
+	var sh =ShieldRegistry.get_shield(sn)
 	if sh == null: return y
 
 	draw_string(font, Vector2(x + 10, y + 14), String(sn).to_upper(),
@@ -239,7 +239,7 @@ func _draw_shield_detail(font: Font, x: float, y: float, sn: StringName) -> floa
 
 
 func _draw_engine_detail(font: Font, x: float, y: float, en: StringName) -> float:
-	var e := EngineRegistry.get_engine(en)
+	var e =EngineRegistry.get_engine(en)
 	if e == null: return y
 
 	draw_string(font, Vector2(x + 10, y + 14), String(en).to_upper(),
@@ -260,7 +260,7 @@ func _draw_engine_detail(font: Font, x: float, y: float, en: StringName) -> floa
 
 
 func _draw_module_detail(font: Font, x: float, y: float, mn: StringName) -> float:
-	var m := ModuleRegistry.get_module(mn)
+	var m =ModuleRegistry.get_module(mn)
 	if m == null: return y
 
 	draw_string(font, Vector2(x + 10, y + 14), String(mn).to_upper(),
@@ -268,7 +268,7 @@ func _draw_module_detail(font: Font, x: float, y: float, mn: StringName) -> floa
 	y += 24.0
 
 	var rows: Array = [["Taille", ["S", "M", "L"][m.slot_size]]]
-	var bonuses := m.get_bonuses_text()
+	var bonuses =m.get_bonuses_text()
 	for bonus in bonuses:
 		rows.append(["Bonus", bonus])
 	y = _draw_detail_rows(font, x, y, rows)
@@ -315,35 +315,35 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	if is_sel:
 		ci.draw_rect(rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
 
-	var name_str := String(item_name)
-	var size_str := ""
-	var stat_str := ""
+	var name_str =String(item_name)
+	var size_str =""
+	var stat_str =""
 	var price: int = 0
 
 	match _current_tab:
 		0:  # Weapons
-			var w := WeaponRegistry.get_weapon(item_name)
+			var w =WeaponRegistry.get_weapon(item_name)
 			if w:
 				size_str = ["S", "M", "L"][w.slot_size]
 				stat_str = "DPS: %.0f" % (w.damage_per_hit * w.fire_rate)
 				price = w.price
 		1:  # Shields
-			var sh := ShieldRegistry.get_shield(item_name)
+			var sh =ShieldRegistry.get_shield(item_name)
 			if sh:
 				size_str = ["S", "M", "L"][sh.slot_size]
 				stat_str = "%.0f PV/face" % sh.shield_hp_per_facing
 				price = sh.price
 		2:  # Engines
-			var en := EngineRegistry.get_engine(item_name)
+			var en =EngineRegistry.get_engine(item_name)
 			if en:
 				size_str = ["S", "M", "L"][en.slot_size]
 				stat_str = "x%.2f accel" % en.accel_mult
 				price = en.price
 		3:  # Modules
-			var mo := ModuleRegistry.get_module(item_name)
+			var mo =ModuleRegistry.get_module(item_name)
 			if mo:
 				size_str = ["S", "M", "L"][mo.slot_size]
-				var bonuses := mo.get_bonuses_text()
+				var bonuses =mo.get_bonuses_text()
 				stat_str = bonuses[0] if bonuses.size() > 0 else ""
 				price = mo.price
 

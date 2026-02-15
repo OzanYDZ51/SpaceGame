@@ -12,12 +12,12 @@ extends GPUParticles3D
 #   - nebula_intensity → overall opacity (invisible in empty systems)
 # =============================================================================
 
-const WISP_SHADER_PATH := "res://shaders/nebula_wisp.gdshader"
+const WISP_SHADER_PATH ="res://shaders/nebula_wisp.gdshader"
 
 # --- Config ---
 const PARTICLE_COUNT: int = 50
 const PARTICLE_LIFETIME: float = 10.0
-const EMISSION_EXTENTS := Vector3(100.0, 50.0, 100.0)
+const EMISSION_EXTENTS =Vector3(100.0, 50.0, 100.0)
 const WISP_SIZE_MIN: float = 20.0
 const WISP_SIZE_MAX: float = 40.0
 const DRIFT_SPEED_MIN: float = 0.5
@@ -26,7 +26,7 @@ const BASE_ALPHA: float = 0.015  # Extremely faint — subtle depth, not bright 
 
 # --- Internal refs ---
 var _camera: Camera3D = null
-var _ship: ShipController = null
+var _ship = null
 var _mat: ParticleProcessMaterial = null
 var _shader_mat: ShaderMaterial = null
 var _nebula_intensity: float = 0.35
@@ -49,7 +49,7 @@ func set_camera(cam: Camera3D) -> void:
 	_camera = cam
 
 
-func set_ship(ship: ShipController) -> void:
+func set_ship(ship) -> void:
 	_ship = ship
 
 
@@ -67,7 +67,7 @@ func configure_for_environment(env_data: SystemEnvironmentData) -> void:
 	var cool: Color = env_data.nebula_cool
 	var accent: Color = env_data.nebula_accent
 	# Weighted blend: warm 40%, cool 35%, accent 25% — accent is the pop color
-	var blended := Color(
+	var blended =Color(
 		warm.r * 0.4 + cool.r * 0.35 + accent.r * 0.25,
 		warm.g * 0.4 + cool.g * 0.35 + accent.g * 0.25,
 		warm.b * 0.4 + cool.b * 0.35 + accent.b * 0.25,
@@ -110,7 +110,7 @@ func _process(_delta: float) -> void:
 
 
 func _setup_process_material() -> void:
-	var mat := ParticleProcessMaterial.new()
+	var mat =ParticleProcessMaterial.new()
 
 	# Large box emission centered on camera
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -136,8 +136,8 @@ func _setup_process_material() -> void:
 	mat.scale_max = WISP_SIZE_MAX
 
 	# Scale curve: wisps grow from 60% to 100% over lifetime (gas expansion)
-	var scale_curve := CurveTexture.new()
-	var curve := Curve.new()
+	var scale_curve =CurveTexture.new()
+	var curve =Curve.new()
 	curve.add_point(Vector2(0.0, 0.6))
 	curve.add_point(Vector2(0.4, 0.85))
 	curve.add_point(Vector2(1.0, 1.0))
@@ -157,7 +157,7 @@ func _setup_process_material() -> void:
 
 func _setup_draw_pass() -> void:
 	# Load the custom wisp shader
-	var shader := load(WISP_SHADER_PATH) as Shader
+	var shader =load(WISP_SHADER_PATH) as Shader
 	if shader == null:
 		push_warning("NebulaWisps: Could not load shader at %s" % WISP_SHADER_PATH)
 		_setup_draw_pass_fallback()
@@ -168,7 +168,7 @@ func _setup_draw_pass() -> void:
 	_shader_mat.set_shader_parameter("wisp_color", _wisp_color)
 	_shader_mat.set_shader_parameter("softness", 3.0)
 
-	var mesh := QuadMesh.new()
+	var mesh =QuadMesh.new()
 	mesh.size = Vector2(1.0, 1.0)  # Scale is handled by ParticleProcessMaterial
 	mesh.material = _shader_mat
 	draw_pass_1 = mesh
@@ -176,11 +176,11 @@ func _setup_draw_pass() -> void:
 
 ## Fallback if shader fails to load — uses StandardMaterial3D like SpaceDust
 func _setup_draw_pass_fallback() -> void:
-	var soft_tex := _create_soft_circle(32)
+	var soft_tex =_create_soft_circle(32)
 
-	var mesh := QuadMesh.new()
+	var mesh =QuadMesh.new()
 	mesh.size = Vector2(1.0, 1.0)
-	var mesh_mat := StandardMaterial3D.new()
+	var mesh_mat =StandardMaterial3D.new()
 	mesh_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.vertex_color_use_as_albedo = true
@@ -202,11 +202,11 @@ func _update_color_ramp() -> void:
 
 
 func _update_color_ramp_on_mat(mat: ParticleProcessMaterial) -> void:
-	var c := _wisp_color
+	var c =_wisp_color
 	# Intensity-scaled alpha for the hold phase
 	var hold_alpha: float = clampf(_nebula_intensity * 0.8, 0.05, 0.3)
 
-	var grad := Gradient.new()
+	var grad =Gradient.new()
 	grad.colors = PackedColorArray([
 		Color(c.r, c.g, c.b, 0.0),        # Fade in from invisible
 		Color(c.r, c.g, c.b, hold_alpha),  # Ramp up
@@ -214,7 +214,7 @@ func _update_color_ramp_on_mat(mat: ParticleProcessMaterial) -> void:
 		Color(c.r, c.g, c.b, 0.0),        # Fade out
 	])
 	grad.offsets = PackedFloat32Array([0.0, 0.15, 0.75, 1.0])
-	var grad_tex := GradientTexture1D.new()
+	var grad_tex =GradientTexture1D.new()
 	grad_tex.gradient = grad
 	mat.color_ramp = grad_tex
 
@@ -232,13 +232,13 @@ func _update_visibility() -> void:
 
 
 func _create_soft_circle(tex_size: int = 32) -> GradientTexture2D:
-	var tex := GradientTexture2D.new()
+	var tex =GradientTexture2D.new()
 	tex.width = tex_size
 	tex.height = tex_size
 	tex.fill = GradientTexture2D.FILL_RADIAL
 	tex.fill_from = Vector2(0.5, 0.5)
 	tex.fill_to = Vector2(0.5, 0.0)
-	var grad := Gradient.new()
+	var grad =Gradient.new()
 	grad.colors = PackedColorArray([
 		Color(1.0, 1.0, 1.0, 0.8),
 		Color(1.0, 1.0, 1.0, 0.3),

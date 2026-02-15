@@ -13,7 +13,7 @@ enum Channel { GLOBAL, SYSTEM, CLAN, TRADE, PRIVATE }
 var _current_channel: int = Channel.GLOBAL
 
 # Colors per channel
-const CHANNEL_COLORS := {
+const CHANNEL_COLORS ={
 	Channel.GLOBAL: Color(0.7, 0.92, 1.0),
 	Channel.SYSTEM: Color(1.0, 0.85, 0.3),
 	Channel.CLAN: Color(0.4, 1.0, 0.5),
@@ -21,7 +21,7 @@ const CHANNEL_COLORS := {
 	Channel.PRIVATE: Color(0.85, 0.5, 1.0),
 }
 
-const CHANNEL_NAMES := {
+const CHANNEL_NAMES ={
 	Channel.GLOBAL: "GÉNÉRAL",
 	Channel.SYSTEM: "SYSTÈME",
 	Channel.CLAN: "CLAN",
@@ -29,7 +29,7 @@ const CHANNEL_NAMES := {
 	Channel.PRIVATE: "MP",
 }
 
-const CHANNEL_PREFIXES := {
+const CHANNEL_PREFIXES ={
 	Channel.GLOBAL: "[G]",
 	Channel.SYSTEM: "[S]",
 	Channel.CLAN: "[C]",
@@ -38,18 +38,18 @@ const CHANNEL_PREFIXES := {
 }
 
 # Theme colors
-const COL_BG := Color(0.0, 0.02, 0.05, 0.7)
-const COL_BG_DARKER := Color(0.0, 0.01, 0.03, 0.85)
-const COL_BORDER := Color(0.06, 0.25, 0.4, 0.5)
-const COL_BORDER_ACTIVE := Color(0.1, 0.6, 0.9, 0.7)
-const COL_TAB_BG := Color(0.0, 0.03, 0.08, 0.6)
-const COL_TAB_ACTIVE := Color(0.02, 0.08, 0.15, 0.9)
-const COL_TAB_HOVER := Color(0.03, 0.06, 0.12, 0.7)
-const COL_INPUT_BG := Color(0.0, 0.02, 0.05, 0.9)
-const COL_TEXT_DIM := Color(0.35, 0.5, 0.6, 0.7)
-const COL_TIMESTAMP := Color(0.3, 0.4, 0.5, 0.5)
-const COL_SCROLLBAR := Color(0.1, 0.4, 0.6, 0.3)
-const COL_CORNER := Color(0.1, 0.5, 0.7, 0.4)
+const COL_BG =Color(0.0, 0.02, 0.05, 0.7)
+const COL_BG_DARKER =Color(0.0, 0.01, 0.03, 0.85)
+const COL_BORDER =Color(0.06, 0.25, 0.4, 0.5)
+const COL_BORDER_ACTIVE =Color(0.1, 0.6, 0.9, 0.7)
+const COL_TAB_BG =Color(0.0, 0.03, 0.08, 0.6)
+const COL_TAB_ACTIVE =Color(0.02, 0.08, 0.15, 0.9)
+const COL_TAB_HOVER =Color(0.03, 0.06, 0.12, 0.7)
+const COL_INPUT_BG =Color(0.0, 0.02, 0.05, 0.9)
+const COL_TEXT_DIM =Color(0.35, 0.5, 0.6, 0.7)
+const COL_TIMESTAMP =Color(0.3, 0.4, 0.5, 0.5)
+const COL_SCROLLBAR =Color(0.1, 0.4, 0.6, 0.3)
+const COL_CORNER =Color(0.1, 0.5, 0.7, 0.4)
 
 # UI refs
 var _tab_container: HBoxContainer = null
@@ -108,7 +108,7 @@ func _build_chat() -> void:
 	add_child(_panel_bg)
 
 	# === Tab bar ===
-	var tab_bar := Control.new()
+	var tab_bar =Control.new()
 	tab_bar.anchor_right = 1.0
 	tab_bar.offset_top = 2
 	tab_bar.offset_bottom = 26
@@ -125,7 +125,7 @@ func _build_chat() -> void:
 	tab_bar.add_child(_tab_container)
 
 	for ch in Channel.values():
-		var btn := Button.new()
+		var btn =Button.new()
 		btn.text = CHANNEL_NAMES[ch]
 		btn.toggle_mode = true
 		btn.button_pressed = (ch == _current_channel)
@@ -134,7 +134,7 @@ func _build_chat() -> void:
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
 		# Style the button
-		var normal_style := StyleBoxFlat.new()
+		var normal_style =StyleBoxFlat.new()
 		normal_style.bg_color = COL_TAB_BG
 		normal_style.border_color = COL_BORDER
 		normal_style.border_width_bottom = 1
@@ -146,7 +146,7 @@ func _build_chat() -> void:
 		normal_style.content_margin_bottom = 2
 		btn.add_theme_stylebox_override("normal", normal_style)
 
-		var pressed_style := StyleBoxFlat.new()
+		var pressed_style =StyleBoxFlat.new()
 		pressed_style.bg_color = COL_TAB_ACTIVE
 		pressed_style.border_color = COL_BORDER_ACTIVE
 		pressed_style.border_width_bottom = 2
@@ -158,7 +158,7 @@ func _build_chat() -> void:
 		pressed_style.content_margin_bottom = 2
 		btn.add_theme_stylebox_override("pressed", pressed_style)
 
-		var hover_style := StyleBoxFlat.new()
+		var hover_style =StyleBoxFlat.new()
 		hover_style.bg_color = COL_TAB_HOVER
 		hover_style.border_color = COL_BORDER
 		hover_style.border_width_bottom = 1
@@ -190,7 +190,7 @@ func _build_chat() -> void:
 	_message_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Scrollbar style
-	var sb_style := StyleBoxFlat.new()
+	var sb_style =StyleBoxFlat.new()
 	sb_style.bg_color = COL_SCROLLBAR
 	sb_style.corner_radius_top_left = 2
 	sb_style.corner_radius_top_right = 2
@@ -223,7 +223,7 @@ func _build_chat() -> void:
 	_input_field.add_theme_color_override("caret_color", Color(0.2, 0.8, 1.0))
 	_input_field.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var input_style := StyleBoxFlat.new()
+	var input_style =StyleBoxFlat.new()
 	input_style.bg_color = COL_INPUT_BG
 	input_style.border_color = COL_BORDER
 	input_style.border_width_top = 1
@@ -240,7 +240,7 @@ func _build_chat() -> void:
 	input_style.content_margin_bottom = 2
 	_input_field.add_theme_stylebox_override("normal", input_style)
 
-	var input_focus := input_style.duplicate()
+	var input_focus =input_style.duplicate()
 	input_focus.border_color = COL_BORDER_ACTIVE
 	_input_field.add_theme_stylebox_override("focus", input_focus)
 
@@ -366,8 +366,8 @@ func _on_message_submitted(text: String) -> void:
 
 
 func add_message(channel: int, author: String, text: String, author_color: Color = Color.WHITE) -> void:
-	var timestamp := Time.get_time_string_from_system().substr(0, 5)  # HH:MM
-	var msg := {
+	var timestamp =Time.get_time_string_from_system().substr(0, 5)  # HH:MM
+	var msg ={
 		"author": author,
 		"text": text,
 		"time": timestamp,
@@ -384,7 +384,7 @@ func add_message(channel: int, author: String, text: String, author_color: Color
 	if channel != _current_channel:
 		_unread_indicators[channel] += 1
 		# Update tab appearance
-		var idx := channel
+		var idx =channel
 		if idx < _tab_buttons.size():
 			_tab_buttons[idx].add_theme_color_override("font_color", CHANNEL_COLORS[channel])
 			_tab_buttons[idx].text = CHANNEL_NAMES[channel] + " (%d)" % _unread_indicators[channel]
@@ -410,7 +410,7 @@ func _refresh_messages() -> void:
 	# Add messages for current channel
 	var msgs: Array = _messages[_current_channel]
 	for msg in msgs:
-		var line := _create_message_label(msg)
+		var line =_create_message_label(msg)
 		_message_list.add_child(line)
 
 	# Scroll to bottom next frame (use a deferred call instead of await to avoid race conditions)
@@ -423,7 +423,7 @@ func _scroll_to_bottom() -> void:
 
 
 func _create_message_label(msg: Dictionary) -> RichTextLabel:
-	var rtl := RichTextLabel.new()
+	var rtl =RichTextLabel.new()
 	rtl.bbcode_enabled = true
 	rtl.fit_content = true
 	rtl.scroll_active = false
@@ -431,13 +431,13 @@ func _create_message_label(msg: Dictionary) -> RichTextLabel:
 	rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rtl.add_theme_font_size_override("normal_font_size", 13)
 
-	var time_hex := COL_TIMESTAMP.to_html(false)
+	var time_hex =COL_TIMESTAMP.to_html(false)
 	var chan_col: Color = CHANNEL_COLORS.get(msg["channel"], Color.WHITE)
-	var chan_hex := chan_col.to_html(false)
+	var chan_hex =chan_col.to_html(false)
 	var author_hex: String = msg["color"].to_html(false)
 	var prefix: String = CHANNEL_PREFIXES.get(msg["channel"], "")
 
-	var bbcode := "[color=#%s]%s[/color] [color=#%s]%s[/color] [color=#%s]%s:[/color] %s" % [
+	var bbcode ="[color=#%s]%s[/color] [color=#%s]%s[/color] [color=#%s]%s:[/color] %s" % [
 		time_hex, msg["time"],
 		chan_hex, prefix,
 		author_hex, msg["author"],
@@ -448,7 +448,7 @@ func _create_message_label(msg: Dictionary) -> RichTextLabel:
 
 
 func _draw_panel_bg(ctrl: Control) -> void:
-	var rect := Rect2(Vector2.ZERO, ctrl.size)
+	var rect =Rect2(Vector2.ZERO, ctrl.size)
 
 	# Main background
 	ctrl.draw_rect(rect, COL_BG)
@@ -460,7 +460,7 @@ func _draw_panel_bg(ctrl: Control) -> void:
 	ctrl.draw_rect(rect, COL_BORDER, false, 1.0)
 
 	# Corner accents
-	var cl := 12.0
+	var cl =12.0
 	ctrl.draw_line(Vector2(0, 0), Vector2(cl, 0), COL_CORNER, 1.5)
 	ctrl.draw_line(Vector2(0, 0), Vector2(0, cl), COL_CORNER, 1.5)
 	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x - cl, 0), COL_CORNER, 1.5)
@@ -471,7 +471,7 @@ func _draw_panel_bg(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(ctrl.size.x, ctrl.size.y), Vector2(ctrl.size.x, ctrl.size.y - cl), COL_CORNER, 1.5)
 
 	# Subtle scan line
-	var scan_y := fmod(Time.get_ticks_msec() / 30.0, ctrl.size.y)
+	var scan_y =fmod(Time.get_ticks_msec() / 30.0, ctrl.size.y)
 	ctrl.draw_line(Vector2(0, scan_y), Vector2(ctrl.size.x, scan_y), Color(0.1, 0.5, 0.7, 0.02), 1.0)
 
 
@@ -494,7 +494,7 @@ func set_private_target(player_name: String) -> void:
 
 
 func _handle_command(text: String) -> void:
-	var parts := text.strip_edges().split(" ", false)
+	var parts =text.strip_edges().split(" ", false)
 	if parts.is_empty():
 		return
 	var cmd: String = parts[0].to_lower()
@@ -517,7 +517,7 @@ func _handle_command(text: String) -> void:
 		"/joueurs", "/players":
 			var names: PackedStringArray = []
 			for pid in NetworkManager.peers:
-				var state: NetworkState = NetworkManager.peers[pid]
+				var state = NetworkManager.peers[pid]
 				names.append(state.player_name)
 			if names.is_empty():
 				add_system_message("Aucun autre joueur dans le secteur.")
@@ -569,7 +569,7 @@ func load_history(history: Array) -> void:
 			color = Color(1.0, 0.85, 0.3)
 		elif ch == Channel.PRIVATE:
 			color = Color(0.85, 0.5, 1.0)
-		var msg := {
+		var msg ={
 			"author": author,
 			"text": entry.get("t", ""),
 			"time": entry.get("ts", "--:--"),

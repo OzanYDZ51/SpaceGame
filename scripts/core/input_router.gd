@@ -17,10 +17,10 @@ signal build_requested
 signal scanner_pulse_requested
 
 # Injected refs
-var screen_manager: UIScreenManager = null
-var docking_system: DockingSystem = null
+var screen_manager = null
+var docking_system = null
 var loot_pickup: LootPickupSystem = null
-var system_transition: SystemTransition = null
+var system_transition = null
 var get_game_state: Callable  # () -> GameState
 var construction_proximity_check: Callable  # () -> bool
 
@@ -30,7 +30,7 @@ func _ready() -> void:
 
 
 func _setup_input_actions() -> void:
-	var actions := {
+	var actions ={
 		"move_forward": KEY_W,
 		"move_backward": KEY_S,
 		"strafe_left": KEY_A,
@@ -66,7 +66,7 @@ func _setup_input_actions() -> void:
 		"toggle_weapon_4": KEY_4,
 	}
 
-	var mouse_actions := {
+	var mouse_actions ={
 		"fire_primary": MOUSE_BUTTON_LEFT,
 		"fire_secondary": MOUSE_BUTTON_RIGHT,
 	}
@@ -74,7 +74,7 @@ func _setup_input_actions() -> void:
 		if InputMap.has_action(action_name):
 			InputMap.erase_action(action_name)
 		InputMap.add_action(action_name)
-		var mouse_event := InputEventMouseButton.new()
+		var mouse_event =InputEventMouseButton.new()
 		mouse_event.button_index = mouse_actions[action_name]
 		InputMap.action_add_event(action_name, mouse_event)
 
@@ -82,7 +82,7 @@ func _setup_input_actions() -> void:
 		if InputMap.has_action(action_name):
 			InputMap.erase_action(action_name)
 		InputMap.add_action(action_name)
-		var event := InputEventKey.new()
+		var event =InputEventKey.new()
 		event.physical_keycode = actions[action_name]
 		InputMap.action_add_event(action_name, event)
 
@@ -110,7 +110,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Multiplayer screen (P)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_P:
 		if screen_manager:
-			var top := screen_manager.get_top_screen()
+			var top =screen_manager.get_top_screen()
 			if top == null or top == screen_manager._screens.get("multiplayer"):
 				screen_toggled.emit("multiplayer")
 				get_viewport().set_input_as_handled()
@@ -119,7 +119,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Bug report screen (F12)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F12:
 		if screen_manager:
-			var top := screen_manager.get_top_screen()
+			var top =screen_manager.get_top_screen()
 			if top == null or top == screen_manager._screens.get("bug_report"):
 				screen_toggled.emit("bug_report")
 				get_viewport().set_input_as_handled()
@@ -128,7 +128,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Clan screen (N)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_N:
 		if screen_manager:
-			var top := screen_manager.get_top_screen()
+			var top =screen_manager.get_top_screen()
 			if top == null or top == screen_manager._screens.get("clan"):
 				screen_toggled.emit("clan")
 				get_viewport().set_input_as_handled()
@@ -159,7 +159,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_X:
 		if loot_pickup and loot_pickup.can_pickup and state == Constants.GameState.PLAYING:
-			var crate := loot_pickup.request_pickup()
+			var crate =loot_pickup.request_pickup()
 			if crate:
 				loot_pickup_requested.emit(crate)
 			get_viewport().set_input_as_handled()
@@ -208,7 +208,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _debug_teleport_to_planet() -> void:
 	# Find nearest planet in EntityRegistry and teleport player 200km from surface
-	var ship := GameManager.player_ship as ShipController
+	var ship = GameManager.player_ship
 	if ship == null:
 		return
 

@@ -8,7 +8,7 @@ extends UIScreen
 
 signal station_renamed(new_name: String)
 
-var _station_node: SpaceStation = null
+var _station_node = null
 var _station_entity_id: String = ""
 var _name_input: UITextInput = null
 var _rename_btn: UIButton = null
@@ -16,13 +16,13 @@ var _close_btn: UIButton = null
 var _current_name: String = ""
 var _pulse_time: float = 0.0
 
-const PANEL_W := 480.0
-const INPUT_W := 260.0
-const INPUT_H := 32.0
-const BTN_W := 120.0
-const BTN_H := 32.0
-const MAX_NAME_LENGTH := 40
-const NAME_PREFIX := "Station "
+const PANEL_W =480.0
+const INPUT_W =260.0
+const INPUT_H =32.0
+const BTN_W =120.0
+const BTN_H =32.0
+const MAX_NAME_LENGTH =40
+const NAME_PREFIX ="Station "
 
 
 func _ready() -> void:
@@ -50,7 +50,7 @@ func _ready() -> void:
 	add_child(_close_btn)
 
 
-func setup(station_node: SpaceStation, entity_id: String) -> void:
+func setup(station_node, entity_id: String) -> void:
 	_station_node = station_node
 	_station_entity_id = entity_id
 	_current_name = station_node.station_name if station_node else "Station"
@@ -111,13 +111,13 @@ func _process(delta: float) -> void:
 
 
 func _layout_controls() -> void:
-	var s := size
-	var cx := s.x * 0.5
-	var panel_x := cx - PANEL_W * 0.5
+	var s =size
+	var cx =s.x * 0.5
+	var panel_x =cx - PANEL_W * 0.5
 
 	# Input + Rename button row (y ~ 160)
-	var row_y := 160.0
-	var prefix_w := 70.0  # width reserved for "Station " label
+	var row_y =160.0
+	var prefix_w =70.0  # width reserved for "Station " label
 	_name_input.position = Vector2(panel_x + prefix_w + 8, row_y)
 	_name_input.size = Vector2(INPUT_W, INPUT_H)
 
@@ -133,10 +133,10 @@ func _layout_controls() -> void:
 # DRAW
 # =============================================================================
 func _draw() -> void:
-	var s := size
-	var cx := s.x * 0.5
-	var font := UITheme.get_font_medium()
-	var font_bold := UITheme.get_font_bold()
+	var s =size
+	var cx =s.x * 0.5
+	var font =UITheme.get_font_medium()
+	var font_bold =UITheme.get_font_bold()
 
 	# Background (OVERLAY)
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.7))
@@ -149,7 +149,7 @@ func _draw() -> void:
 		return
 
 	# Title
-	var title_text := "ADMINISTRATION — %s" % _current_name.to_upper()
+	var title_text ="ADMINISTRATION — %s" % _current_name.to_upper()
 	draw_string(font_bold, Vector2(0, 38), title_text,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 20, UITheme.PRIMARY)
 
@@ -165,16 +165,16 @@ func _draw() -> void:
 		Vector2(s.x - UITheme.MARGIN_SCREEN, 48), UITheme.BORDER, 1.0)
 
 	# Panel area
-	var panel_x := cx - PANEL_W * 0.5
+	var panel_x =cx - PANEL_W * 0.5
 
 	# =========================================================================
 	# SECTION: RENOMMER LA STATION
 	# =========================================================================
-	var section_y := 90.0
+	var section_y =90.0
 	draw_rect(Rect2(panel_x, section_y, 2, 12), UITheme.PRIMARY)
 	draw_string(font, Vector2(panel_x + 8, section_y + 10), "RENOMMER LA STATION",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
-	var header_w := font.get_string_size("RENOMMER LA STATION", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL).x
+	var header_w =font.get_string_size("RENOMMER LA STATION", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL).x
 	draw_line(
 		Vector2(panel_x + 12 + header_w, section_y + 5),
 		Vector2(panel_x + PANEL_W, section_y + 5),
@@ -182,18 +182,18 @@ func _draw() -> void:
 	)
 
 	# Subsection background
-	var sub_rect := Rect2(panel_x, 120, PANEL_W, 90)
+	var sub_rect =Rect2(panel_x, 120, PANEL_W, 90)
 	draw_rect(sub_rect, Color(0.0, 0.02, 0.06, 0.4))
 	draw_rect(sub_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12), false, 1.0)
 
 	# "Station " prefix label (left of input)
-	var prefix_x := panel_x + 12
-	var row_y := 174.0
+	var prefix_x =panel_x + 12
+	var row_y =174.0
 	draw_string(font_bold, Vector2(prefix_x, row_y), "Station",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 	# Current name label
-	var current_label_y := 200.0
+	var current_label_y =200.0
 	draw_string(font, Vector2(panel_x + 12, current_label_y), "Nom actuel:",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	draw_string(font, Vector2(panel_x + 90, current_label_y), _current_name,
@@ -202,8 +202,8 @@ func _draw() -> void:
 	# =========================================================================
 	# CORNER DECORATIONS
 	# =========================================================================
-	var accent := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)
-	var corner_len := 20.0
+	var accent =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)
+	var corner_len =20.0
 	# Top-left
 	draw_line(Vector2(panel_x, 120), Vector2(panel_x + corner_len, 120), accent, 1.0)
 	draw_line(Vector2(panel_x, 120), Vector2(panel_x, 120 + corner_len), accent, 1.0)
@@ -214,12 +214,12 @@ func _draw() -> void:
 	# =========================================================================
 	# CLOSE SECTION SEPARATOR
 	# =========================================================================
-	var undock_y := s.y - 110.0
+	var undock_y =s.y - 110.0
 	draw_line(Vector2(cx - 100, undock_y), Vector2(cx + 100, undock_y), UITheme.BORDER, 1.0)
 
 	# =========================================================================
 	# SCANLINE
 	# =========================================================================
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)

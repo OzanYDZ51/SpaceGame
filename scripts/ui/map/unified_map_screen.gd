@@ -11,8 +11,8 @@ extends UIScreen
 enum ViewMode { SYSTEM, GALAXY }
 
 var stellar_map: StellarMap = null
-var galaxy: GalaxyData = null
-var system_transition: SystemTransition = null
+var galaxy = null
+var system_transition = null
 
 # Fleet panel for galaxy view (independent scroll state from system view)
 var _galaxy_fleet_panel: MapFleetPanel = null
@@ -65,7 +65,7 @@ const DOT_SELECTED_RADIUS: float = 8.0
 const CONNECTION_WIDTH: float = 1.0
 const HIT_RADIUS: float = 12.0
 
-const SPECTRAL_COLORS := {
+const SPECTRAL_COLORS ={
 	"O": Color(0.6, 0.7, 1.0),
 	"B": Color(0.7, 0.8, 1.0),
 	"A": Color(0.85, 0.88, 1.0),
@@ -75,7 +75,7 @@ const SPECTRAL_COLORS := {
 	"M": Color(1.0, 0.6, 0.4),
 }
 
-const FACTION_COLORS := {
+const FACTION_COLORS ={
 	&"neutral": Color(0.3, 0.5, 0.7, 0.08),
 	&"hostile": Color(0.7, 0.2, 0.2, 0.08),
 	&"friendly": Color(0.2, 0.7, 0.3, 0.08),
@@ -122,7 +122,7 @@ func _on_opened() -> void:
 	# Ensure galaxy fleet panel has the current fleet reference (may have been
 	# replaced after backend state load or deserialization)
 	if _galaxy_fleet_panel:
-		var current_fleet: PlayerFleet = GameManager.player_fleet
+		var current_fleet = GameManager.player_fleet
 		if current_fleet and _galaxy_fleet_panel._fleet != current_fleet:
 			_galaxy_fleet_panel.set_fleet(current_fleet)
 	current_view = _requested_view
@@ -259,7 +259,7 @@ func _process(delta: float) -> void:
 
 	if current_view == ViewMode.GALAXY:
 		# --- Smooth WASD pan with acceleration / inertia ---
-		var input_dir := Vector2.ZERO
+		var input_dir =Vector2.ZERO
 		if Input.is_action_pressed("strafe_right"):
 			input_dir.x += 1.0
 		if Input.is_action_pressed("strafe_left"):
@@ -270,7 +270,7 @@ func _process(delta: float) -> void:
 			input_dir.y -= 1.0
 
 		if input_dir != Vector2.ZERO:
-			var target_vel := input_dir.normalized() * PAN_BASE_SPEED
+			var target_vel =input_dir.normalized() * PAN_BASE_SPEED
 			_pan_velocity = _pan_velocity.lerp(target_vel, 1.0 - exp(-PAN_ACCEL * delta))
 		else:
 			_pan_velocity = _pan_velocity.lerp(Vector2.ZERO, 1.0 - exp(-PAN_FRICTION * delta))
@@ -326,7 +326,7 @@ func _draw_galaxy() -> void:
 	if galaxy == null:
 		return
 
-	var s := size
+	var s =size
 	var font: Font = UITheme.get_font()
 	var cx: float = s.x * 0.5
 	var cy: float = s.y * 0.5
@@ -366,7 +366,7 @@ func _draw_galaxy() -> void:
 func _draw_galaxy_title(s: Vector2, font: Font) -> void:
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = UITheme.MARGIN_SCREEN + fsize
-	var title_text := "GALAXY MAP"
+	var title_text ="GALAXY MAP"
 	var vp_left: float = MapLayout.viewport_left()
 	var vp_right: float = MapLayout.viewport_right(s.x)
 	var vp_w: float = vp_right - vp_left
@@ -388,21 +388,21 @@ func _draw_galaxy_title(s: Vector2, font: Font) -> void:
 
 
 func _draw_view_indicator() -> void:
-	var font := UITheme.get_font()
-	var s := size
+	var font =UITheme.get_font()
+	var s =size
 	var y: float = s.y - 24.0
 	var cx: float = s.x * 0.5
 
 	# Background bar
 	var bar_w: float = 300.0
 	var bar_h: float = 30.0
-	var bar_rect := Rect2(cx - bar_w * 0.5, y - bar_h * 0.5, bar_w, bar_h)
+	var bar_rect =Rect2(cx - bar_w * 0.5, y - bar_h * 0.5, bar_w, bar_h)
 	draw_rect(bar_rect, Color(0.0, 0.02, 0.05, 0.85))
 	draw_rect(bar_rect, UITheme.BORDER, false, 1.0)
 
 	# Corner accents
 	var cl: float = 8.0
-	var cc := UITheme.PRIMARY
+	var cc =UITheme.PRIMARY
 	var bx: float = bar_rect.position.x
 	var by: float = bar_rect.position.y
 	var bw: float = bar_rect.size.x
@@ -464,7 +464,7 @@ func _draw_connections(cx: float, cy: float) -> void:
 	var drawn: Dictionary = {}
 	for sys in galaxy.systems:
 		var a_id: int = sys["id"]
-		var a_pos := _galaxy_to_screen(sys["x"], sys["y"], cx, cy)
+		var a_pos =_galaxy_to_screen(sys["x"], sys["y"], cx, cy)
 		for b_id in sys["connections"]:
 			var key: String = "%d_%d" % [mini(a_id, b_id), maxi(a_id, b_id)]
 			if drawn.has(key):
@@ -473,8 +473,8 @@ func _draw_connections(cx: float, cy: float) -> void:
 			var b_sys: Dictionary = galaxy.get_system(b_id)
 			if b_sys.is_empty():
 				continue
-			var b_pos := _galaxy_to_screen(b_sys["x"], b_sys["y"], cx, cy)
-			var line_color := Color(0.15, 0.4, 0.6, 0.2)
+			var b_pos =_galaxy_to_screen(b_sys["x"], b_sys["y"], cx, cy)
+			var line_color =Color(0.15, 0.4, 0.6, 0.2)
 			if a_id == _selected_system or b_id == _selected_system:
 				line_color = Color(0.2, 0.7, 1.0, 0.5)
 			draw_line(a_pos, b_pos, line_color, CONNECTION_WIDTH)
@@ -484,7 +484,7 @@ func _draw_faction_territories(cx: float, cy: float) -> void:
 	for sys in galaxy.systems:
 		var faction: StringName = sys["faction"]
 		var col: Color = FACTION_COLORS.get(faction, FACTION_COLORS[&"neutral"])
-		var pos := _galaxy_to_screen(sys["x"], sys["y"], cx, cy)
+		var pos =_galaxy_to_screen(sys["x"], sys["y"], cx, cy)
 		var radius: float = 30.0 * _cam_zoom
 		draw_circle(pos, radius, col)
 
@@ -492,7 +492,7 @@ func _draw_faction_territories(cx: float, cy: float) -> void:
 func _draw_systems(s: Vector2, cx: float, cy: float, font: Font) -> void:
 	var current_id: int = system_transition.current_system_id if system_transition else -1
 	for sys in galaxy.systems:
-		var pos := _galaxy_to_screen(sys["x"], sys["y"], cx, cy)
+		var pos =_galaxy_to_screen(sys["x"], sys["y"], cx, cy)
 		# Cull off-screen
 		if pos.x < -20 or pos.x > s.x + 20 or pos.y < -20 or pos.y > s.y + 20:
 			continue
@@ -501,7 +501,7 @@ func _draw_systems(s: Vector2, cx: float, cy: float, font: Font) -> void:
 		var spectral: String = sys["spectral_class"]
 		var base_color: Color = SPECTRAL_COLORS.get(spectral, Color.WHITE)
 		var radius: float = DOT_RADIUS
-		var draw_col := base_color
+		var draw_col =base_color
 
 		# Visited indicator
 		var visited: bool = system_transition != null and system_transition.has_visited(sys_id)
@@ -527,7 +527,7 @@ func _draw_systems(s: Vector2, cx: float, cy: float, font: Font) -> void:
 
 		# Name at sufficient zoom
 		if _cam_zoom > 1.5:
-			var name_col := Color(0.6, 0.8, 0.9, 0.6)
+			var name_col =Color(0.6, 0.8, 0.9, 0.6)
 			if sys_id == _hovered_system or sys_id == _selected_system:
 				name_col.a = 0.9
 			draw_string(font, pos + Vector2(radius + 4, 4), sys["name"], HORIZONTAL_ALIGNMENT_LEFT, 200, UITheme.FONT_SIZE_SMALL, name_col)
@@ -540,12 +540,12 @@ func _draw_current_system_marker(cx: float, cy: float) -> void:
 	var sys: Dictionary = galaxy.get_system(current_id)
 	if sys.is_empty():
 		return
-	var pos := _galaxy_to_screen(sys["x"], sys["y"], cx, cy)
+	var pos =_galaxy_to_screen(sys["x"], sys["y"], cx, cy)
 
 	# Pulsing ring
 	var pulse: float = UITheme.get_pulse(0.8)
 	var ring_radius: float = DOT_SELECTED_RADIUS + 4.0 + pulse * 3.0
-	var ring_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5 + pulse * 0.3)
+	var ring_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5 + pulse * 0.3)
 	draw_arc(pos, ring_radius, 0, TAU, 24, ring_col, 2.0)
 
 	# "ICI" marker
@@ -554,13 +554,13 @@ func _draw_current_system_marker(cx: float, cy: float) -> void:
 
 
 func _draw_route_path(cx: float, cy: float) -> void:
-	var rm: RouteManager = GameManager._route_manager
+	var rm = GameManager._route_manager
 	if rm == null or rm.route.is_empty():
 		return
 
 	var pulse: float = UITheme.get_pulse(0.6)
-	var route_col := Color(0.0, 0.9, 1.0, 0.6 + pulse * 0.3)
-	var completed_col := Color(0.0, 0.6, 0.8, 0.25)
+	var route_col =Color(0.0, 0.9, 1.0, 0.6 + pulse * 0.3)
+	var completed_col =Color(0.0, 0.6, 0.8, 0.25)
 
 	for i in rm.route.size() - 1:
 		var a_id: int = rm.route[i]
@@ -569,8 +569,8 @@ func _draw_route_path(cx: float, cy: float) -> void:
 		var b_sys: Dictionary = galaxy.get_system(b_id)
 		if a_sys.is_empty() or b_sys.is_empty():
 			continue
-		var a_pos := _galaxy_to_screen(a_sys["x"], a_sys["y"], cx, cy)
-		var b_pos := _galaxy_to_screen(b_sys["x"], b_sys["y"], cx, cy)
+		var a_pos =_galaxy_to_screen(a_sys["x"], a_sys["y"], cx, cy)
+		var b_pos =_galaxy_to_screen(b_sys["x"], b_sys["y"], cx, cy)
 
 		var col: Color = completed_col if i < rm.route_index else route_col
 		draw_line(a_pos, b_pos, col, 3.0)
@@ -580,7 +580,7 @@ func _draw_route_path(cx: float, cy: float) -> void:
 		var dest_id: int = rm.route[rm.route.size() - 1]
 		var dest_sys: Dictionary = galaxy.get_system(dest_id)
 		if not dest_sys.is_empty():
-			var dest_pos := _galaxy_to_screen(dest_sys["x"], dest_sys["y"], cx, cy)
+			var dest_pos =_galaxy_to_screen(dest_sys["x"], dest_sys["y"], cx, cy)
 			var ring_r: float = DOT_SELECTED_RADIUS + 6.0 + pulse * 3.0
 			draw_arc(dest_pos, ring_r, 0, TAU, 24, Color(1.0, 0.8, 0.0, 0.5 + pulse * 0.3), 2.0)
 
@@ -616,7 +616,7 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 		row_count += 1  # Autopilot hint
 
 	var panel_h: float = 50.0 + row_count * line_h
-	var rect := Rect2(panel_x, panel_y, panel_w, panel_h)
+	var rect =Rect2(panel_x, panel_y, panel_w, panel_h)
 
 	# Background + border
 	draw_rect(rect, UITheme.BG_PANEL)
@@ -624,7 +624,7 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 
 	# Corner accents
 	var cl: float = 10.0
-	var cc := MapColors.CORNER
+	var cc =MapColors.CORNER
 	draw_line(Vector2(panel_x, panel_y), Vector2(panel_x + cl, panel_y), cc, 1.5)
 	draw_line(Vector2(panel_x, panel_y), Vector2(panel_x, panel_y + cl), cc, 1.5)
 	draw_line(Vector2(panel_x + panel_w, panel_y), Vector2(panel_x + panel_w - cl, panel_y), cc, 1.5)
@@ -672,12 +672,12 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 
 	# Fleet ships in this system
 	if GameManager.player_fleet:
-		var fleet_indices := GameManager.player_fleet.get_ships_in_system(sys_id)
+		var fleet_indices =GameManager.player_fleet.get_ships_in_system(sys_id)
 		if not fleet_indices.is_empty():
 			var docked_count: int = 0
 			var deployed_count: int = 0
 			for fi in fleet_indices:
-				var fs := GameManager.player_fleet.ships[fi]
+				var fs =GameManager.player_fleet.ships[fi]
 				if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 					docked_count += 1
 				elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
@@ -740,7 +740,7 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 		for conn_id in connections:
 			var conn_name: String = galaxy.get_system_name(conn_id)
 			if conn_name != "":
-				var conn_col := UITheme.LABEL_VALUE
+				var conn_col =UITheme.LABEL_VALUE
 				if conn_id == current_id:
 					conn_col = UITheme.PRIMARY
 				draw_string(font, Vector2(x + 8, y), conn_name, HORIZONTAL_ALIGNMENT_LEFT, kv_w - 8, UITheme.FONT_SIZE_SMALL, conn_col)
@@ -908,7 +908,7 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 			_cam_center -= event.relative / _cam_zoom
 			_galaxy_dirty = true
 		else:
-			var old_hover := _hovered_system
+			var old_hover =_hovered_system
 			_update_hover(event.position)
 			if _hovered_system != old_hover:
 				_galaxy_dirty = true
@@ -961,7 +961,7 @@ func _resolve_system_data(system_id: int) -> void:
 	if system_id == _resolved_system_id and _resolved_data != null:
 		return
 	# Check override first
-	var override := SystemDataRegistry.get_override(system_id)
+	var override =SystemDataRegistry.get_override(system_id)
 	if override:
 		_resolved_data = override
 		_resolved_system_id = system_id
@@ -1016,7 +1016,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	var entities: Dictionary = {}
 
 	# Star at origin
-	var star_id := "star_0"
+	var star_id ="star_0"
 	entities[star_id] = {
 		"id": star_id,
 		"name": data.star_name,
@@ -1040,7 +1040,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	# Planets
 	for i in data.planets.size():
 		var pd: PlanetData = data.planets[i]
-		var ent_id := "planet_%d" % i
+		var ent_id ="planet_%d" % i
 		var angle: float = EntityRegistrySystem.compute_orbital_angle(pd.orbital_angle, pd.orbital_period)
 		var px: float = cos(angle) * pd.orbital_radius
 		var pz: float = sin(angle) * pd.orbital_radius
@@ -1066,7 +1066,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	# Stations
 	for i in data.stations.size():
 		var sd: StationData = data.stations[i]
-		var ent_id := "station_%d" % i
+		var ent_id ="station_%d" % i
 		var angle: float = EntityRegistrySystem.compute_orbital_angle(sd.orbital_angle, sd.orbital_period)
 		var sx: float = cos(angle) * sd.orbital_radius
 		var sz: float = sin(angle) * sd.orbital_radius
@@ -1091,7 +1091,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	# Asteroid belts
 	for i in data.asteroid_belts.size():
 		var bd: AsteroidBeltData = data.asteroid_belts[i]
-		var ent_id := "asteroid_belt_%d" % i
+		var ent_id ="asteroid_belt_%d" % i
 		entities[ent_id] = {
 			"id": ent_id,
 			"name": bd.belt_name,
@@ -1118,7 +1118,7 @@ func _build_preview_entities(data: StarSystemData, _sys: Dictionary) -> Dictiona
 	# Jump gates
 	for i in data.jump_gates.size():
 		var gd: JumpGateData = data.jump_gates[i]
-		var ent_id := "jump_gate_%d" % i
+		var ent_id ="jump_gate_%d" % i
 		entities[ent_id] = {
 			"id": ent_id,
 			"name": gd.gate_name,
@@ -1149,7 +1149,7 @@ func _get_system_at(screen_pos: Vector2) -> int:
 	var best_id: int = -1
 	var best_dist: float = HIT_RADIUS
 	for sys in galaxy.systems:
-		var pos := _galaxy_to_screen(sys["x"], sys["y"], cx, cy)
+		var pos =_galaxy_to_screen(sys["x"], sys["y"], cx, cy)
 		var dist: float = screen_pos.distance_to(pos)
 		if dist < best_dist:
 			best_dist = dist
@@ -1165,7 +1165,7 @@ func _start_route_to_selected() -> void:
 	close()
 
 
-func set_fleet(fleet: PlayerFleet, gal: GalaxyData) -> void:
+func set_fleet(fleet, gal) -> void:
 	if _galaxy_fleet_panel:
 		_galaxy_fleet_panel.set_fleet(fleet)
 		_galaxy_fleet_panel.set_galaxy(gal)

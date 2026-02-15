@@ -6,7 +6,7 @@ extends Control
 # Same layout as EquipmentShopView: Tab bar + list + detail panel + sell button
 # =============================================================================
 
-var _commerce_manager: CommerceManager = null
+var _commerce_manager = null
 
 var _tab_bar: UITabBar = null
 var _item_list: UIScrollList = null
@@ -16,8 +16,8 @@ var _available_items: Array[StringName] = []
 var _selected_index: int = -1
 
 const TAB_NAMES: Array[String] = ["ARMES", "BOUCLIERS", "MOTEURS", "MODULES"]
-const DETAIL_W := 240.0
-const ROW_H := 48.0
+const DETAIL_W =240.0
+const ROW_H =48.0
 
 
 func _ready() -> void:
@@ -47,7 +47,7 @@ func _ready() -> void:
 	add_child(_sell_btn)
 
 
-func setup(mgr: CommerceManager) -> void:
+func setup(mgr) -> void:
 	_commerce_manager = mgr
 
 
@@ -61,7 +61,7 @@ func refresh() -> void:
 
 
 func _layout() -> void:
-	var s := size
+	var s =size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_tab_bar.position = Vector2(0, 0)
 	_tab_bar.size = Vector2(list_w, 28)
@@ -83,7 +83,7 @@ func _refresh_items() -> void:
 	if _commerce_manager == null or _commerce_manager.player_inventory == null:
 		_item_list.items = []
 		return
-	var inv := _commerce_manager.player_inventory
+	var inv = _commerce_manager.player_inventory
 	match _current_tab:
 		0: _available_items.assign(inv.get_all_weapons())
 		1: _available_items.assign(inv.get_all_shields())
@@ -128,16 +128,16 @@ func _do_sell() -> void:
 			var sell_price: int = 0
 			match _current_tab:
 				0:
-					var w := WeaponRegistry.get_weapon(item_name)
+					var w =WeaponRegistry.get_weapon(item_name)
 					if w: sell_price = PriceCatalog.get_sell_price(w.price)
 				1:
-					var sh := ShieldRegistry.get_shield(item_name)
+					var sh =ShieldRegistry.get_shield(item_name)
 					if sh: sell_price = PriceCatalog.get_sell_price(sh.price)
 				2:
-					var en := EngineRegistry.get_engine(item_name)
+					var en =EngineRegistry.get_engine(item_name)
 					if en: sell_price = PriceCatalog.get_sell_price(en.price)
 				3:
-					var mo := ModuleRegistry.get_module(item_name)
+					var mo =ModuleRegistry.get_module(item_name)
 					if mo: sell_price = PriceCatalog.get_sell_price(mo.price)
 			GameManager._notif.commerce.sold(String(item_name), sell_price)
 		_refresh_items()
@@ -153,7 +153,7 @@ func _process(_delta: float) -> void:
 # DRAWING
 # =========================================================================
 func _draw() -> void:
-	var s := size
+	var s =size
 	var font: Font = UITheme.get_font()
 	var detail_x: float = s.x - DETAIL_W
 
@@ -172,7 +172,7 @@ func _draw() -> void:
 
 	match _current_tab:
 		0:
-			var w := WeaponRegistry.get_weapon(item_name)
+			var w =WeaponRegistry.get_weapon(item_name)
 			if w:
 				sell_price = PriceCatalog.get_sell_price(w.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -183,7 +183,7 @@ func _draw() -> void:
 					["DPS", "%.0f" % (w.damage_per_hit * w.fire_rate)],
 				])
 		1:
-			var sh := ShieldRegistry.get_shield(item_name)
+			var sh =ShieldRegistry.get_shield(item_name)
 			if sh:
 				sell_price = PriceCatalog.get_sell_price(sh.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -193,7 +193,7 @@ func _draw() -> void:
 					["Regen", "%.0f/s" % sh.regen_rate],
 				])
 		2:
-			var e := EngineRegistry.get_engine(item_name)
+			var e =EngineRegistry.get_engine(item_name)
 			if e:
 				sell_price = PriceCatalog.get_sell_price(e.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -203,7 +203,7 @@ func _draw() -> void:
 					["Vitesse", "x%.2f" % e.speed_mult],
 				])
 		3:
-			var m := ModuleRegistry.get_module(item_name)
+			var m =ModuleRegistry.get_module(item_name)
 			if m:
 				sell_price = PriceCatalog.get_sell_price(m.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -266,33 +266,33 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	if is_sel:
 		ci.draw_rect(rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
 
-	var name_str := String(item_name)
-	var size_str := ""
+	var name_str =String(item_name)
+	var size_str =""
 	var sell_price: int = 0
 	var count: int = 0
-	var inv := _commerce_manager.player_inventory if _commerce_manager else null
+	var inv = _commerce_manager.player_inventory if _commerce_manager else null
 
 	match _current_tab:
 		0:
-			var w := WeaponRegistry.get_weapon(item_name)
+			var w =WeaponRegistry.get_weapon(item_name)
 			if w:
 				size_str = ["S", "M", "L"][w.slot_size]
 				sell_price = PriceCatalog.get_sell_price(w.price)
 			if inv: count = inv.get_weapon_count(item_name)
 		1:
-			var sh := ShieldRegistry.get_shield(item_name)
+			var sh =ShieldRegistry.get_shield(item_name)
 			if sh:
 				size_str = ["S", "M", "L"][sh.slot_size]
 				sell_price = PriceCatalog.get_sell_price(sh.price)
 			if inv: count = inv.get_shield_count(item_name)
 		2:
-			var en := EngineRegistry.get_engine(item_name)
+			var en =EngineRegistry.get_engine(item_name)
 			if en:
 				size_str = ["S", "M", "L"][en.slot_size]
 				sell_price = PriceCatalog.get_sell_price(en.price)
 			if inv: count = inv.get_engine_count(item_name)
 		3:
-			var mo := ModuleRegistry.get_module(item_name)
+			var mo =ModuleRegistry.get_module(item_name)
 			if mo:
 				size_str = ["S", "M", "L"][mo.slot_size]
 				sell_price = PriceCatalog.get_sell_price(mo.price)
@@ -305,7 +305,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 		size_str, HORIZONTAL_ALIGNMENT_CENTER, 24, UITheme.FONT_SIZE_TINY, badge_col)
 
 	# Name + count
-	var label := name_str
+	var label =name_str
 	if count > 1:
 		label += " x%d" % count
 	ci.draw_string(font, Vector2(rect.position.x + 34, rect.position.y + 16),

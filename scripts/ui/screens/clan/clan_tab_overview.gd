@@ -5,15 +5,15 @@ extends UIComponent
 # Clan Tab: Overview - Rich holographic layout with emblem, stats, MOTD
 # =============================================================================
 
-var _cm: ClanManager = null
+var _cm = null
 var _emblem: ClanEmblem = null
 var _btn_motd: UIButton = null
 var _btn_leave: UIButton = null
 var _btn_recruit: UIButton = null
 
-const LEFT_W := 300.0
-const RIGHT_W := 300.0
-const GAP := 16.0
+const LEFT_W =300.0
+const RIGHT_W =300.0
+const GAP =16.0
 
 
 func _ready() -> void:
@@ -40,7 +40,7 @@ func _ready() -> void:
 	add_child(_btn_recruit)
 
 
-func refresh(cm: ClanManager) -> void:
+func refresh(cm) -> void:
 	_cm = cm
 	if _cm == null or not _cm.has_clan():
 		return
@@ -56,7 +56,7 @@ func _process(_delta: float) -> void:
 		return
 	var m: float = 12.0
 	var right_x: float = size.x - RIGHT_W
-	var bot := size.y - 48
+	var bot =size.y - 48
 
 	_emblem.position = Vector2((LEFT_W - 120) * 0.5, m + 8)
 	_emblem.size = Vector2(120, 120)
@@ -82,11 +82,11 @@ func _draw() -> void:
 	var center_w: float = size.x - LEFT_W - RIGHT_W - GAP * 2
 	var right_x: float = size.x - RIGHT_W
 	var bot: float = size.y - 48
-	var cd := _cm.clan_data
+	var cd = _cm.clan_data
 	var pulse: float = UITheme.get_pulse(0.5)
 
 	# ─── LEFT COLUMN: Identity ──────────────────────────────────────────
-	var left_rect := Rect2(0, 0, LEFT_W, bot - 8)
+	var left_rect =Rect2(0, 0, LEFT_W, bot - 8)
 	draw_panel_bg(left_rect)
 
 	# Clan name (large) — pushed below emblem child (ends at y=140)
@@ -95,12 +95,12 @@ func _draw() -> void:
 
 	# Tag with bracket decoration
 	var tag_y: float = name_y + 24
-	var tag_str := "[%s]" % cd.clan_tag
+	var tag_str ="[%s]" % cd.clan_tag
 	draw_string(font, Vector2(m, tag_y), tag_str, HORIZONTAL_ALIGNMENT_CENTER, LEFT_W - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.PRIMARY)
 	# Small accent lines around tag
 	var tag_w: float = font.get_string_size(tag_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_HEADER).x
 	var tag_cx: float = LEFT_W * 0.5
-	var tag_line_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)
+	var tag_line_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)
 	draw_line(Vector2(tag_cx - tag_w * 0.5 - 30, tag_y - 5), Vector2(tag_cx - tag_w * 0.5 - 4, tag_y - 5), tag_line_col, 1.0)
 	draw_line(Vector2(tag_cx + tag_w * 0.5 + 4, tag_y - 5), Vector2(tag_cx + tag_w * 0.5 + 30, tag_y - 5), tag_line_col, 1.0)
 
@@ -109,17 +109,17 @@ func _draw() -> void:
 	draw_string(font, Vector2(m + 4, motto_y), "\"%s\"" % cd.motto, HORIZONTAL_ALIGNMENT_CENTER, LEFT_W - m * 2 - 8, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# ─── Description section ─────
-	var desc_y := _draw_rich_header(m, motto_y + 24, LEFT_W - m * 2, "DESCRIPTION")
-	var desc_lines := _wrap_text(cd.description, font, UITheme.FONT_SIZE_BODY, LEFT_W - m * 2 - 16)
+	var desc_y =_draw_rich_header(m, motto_y + 24, LEFT_W - m * 2, "DESCRIPTION")
+	var desc_lines =_wrap_text(cd.description, font, UITheme.FONT_SIZE_BODY, LEFT_W - m * 2 - 16)
 	for line in desc_lines:
 		draw_string(font, Vector2(m + 8, desc_y + UITheme.FONT_SIZE_BODY + 2), line, HORIZONTAL_ALIGNMENT_LEFT, LEFT_W - m * 2 - 16, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 		desc_y += 18
 
 	# ─── CENTER COLUMN: Stats ───────────────────────────────────────────
-	var center_rect := Rect2(center_x, 0, center_w, bot - 8)
+	var center_rect =Rect2(center_x, 0, center_w, bot - 8)
 	draw_panel_bg(center_rect)
 
-	var sy := _draw_rich_header(center_x + m, m, center_w - m * 2, "STATISTIQUES DU CLAN")
+	var sy =_draw_rich_header(center_x + m, m, center_w - m * 2, "STATISTIQUES DU CLAN")
 
 	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "Membres", "%d / %d" % [_cm.members.size(), cd.max_members], float(_cm.members.size()) / float(cd.max_members), UITheme.PRIMARY)
 	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "En ligne", str(_cm.get_online_count()), float(_cm.get_online_count()) / maxf(1.0, float(_cm.members.size())), UITheme.ACCENT)
@@ -138,8 +138,8 @@ func _draw() -> void:
 	sy += 10
 	sy = _draw_rich_header(center_x + m, sy, center_w - m * 2, "COMBAT")
 
-	var total_k := 0
-	var total_d := 0
+	var total_k =0
+	var total_d =0
 	for member in _cm.members:
 		total_k += member.kills
 		total_d += member.deaths
@@ -149,18 +149,18 @@ func _draw() -> void:
 	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "Morts total", str(total_d), UITheme.DANGER)
 
 	# ─── RIGHT COLUMN: MOTD ─────────────────────────────────────────────
-	var right_rect := Rect2(right_x, 0, RIGHT_W, bot - 8)
+	var right_rect =Rect2(right_x, 0, RIGHT_W, bot - 8)
 	draw_panel_bg(right_rect)
 
-	var motd_y := _draw_rich_header(right_x + m, m, RIGHT_W - m * 2, "MESSAGE DU JOUR")
+	var motd_y =_draw_rich_header(right_x + m, m, RIGHT_W - m * 2, "MESSAGE DU JOUR")
 
 	# MOTD background panel
-	var motd_panel := Rect2(right_x + m - 2, motd_y, RIGHT_W - m * 2 + 4, bot - motd_y - 56)
+	var motd_panel =Rect2(right_x + m - 2, motd_y, RIGHT_W - m * 2 + 4, bot - motd_y - 56)
 	draw_rect(motd_panel, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03))
 	draw_rect(motd_panel, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.3), false, 1.0)
 
 	# MOTD text
-	var motd_lines := _wrap_text(cd.motd, font, UITheme.FONT_SIZE_BODY, RIGHT_W - m * 2 - 16)
+	var motd_lines =_wrap_text(cd.motd, font, UITheme.FONT_SIZE_BODY, RIGHT_W - m * 2 - 16)
 	var my: float = motd_y + 6
 	for line in motd_lines:
 		draw_string(font, Vector2(right_x + m + 6, my + UITheme.FONT_SIZE_BODY + 2), line, HORIZONTAL_ALIGNMENT_LEFT, RIGHT_W - m * 2 - 16, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
@@ -168,7 +168,7 @@ func _draw() -> void:
 
 	# ─── Bottom separator + buttons area ────────────────────────────────
 	draw_line(Vector2(0, bot - 2), Vector2(size.x, bot - 2), UITheme.BORDER, 1.0)
-	var glow := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06 + pulse * 0.04)
+	var glow =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06 + pulse * 0.04)
 	draw_line(Vector2(0, bot - 1), Vector2(size.x, bot - 1), glow, 2.0)
 
 
@@ -228,10 +228,10 @@ func _draw_kv_big(x: float, y: float, w: float, key: String, value: String, val_
 
 func _wrap_text(text: String, font: Font, fsize: int, max_w: float) -> Array[String]:
 	var lines: Array[String] = []
-	var words := text.split(" ")
-	var current := ""
+	var words =text.split(" ")
+	var current =""
 	for word in words:
-		var test := (current + " " + word).strip_edges()
+		var test =(current + " " + word).strip_edges()
 		if font.get_string_size(test, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x > max_w and current != "":
 			lines.append(current)
 			current = word
@@ -243,10 +243,10 @@ func _wrap_text(text: String, font: Font, fsize: int, max_w: float) -> Array[Str
 
 
 func _format_num(val: float) -> String:
-	var i := int(val)
-	var s := str(i)
-	var result := ""
-	var count := 0
+	var i =int(val)
+	var s =str(i)
+	var result =""
+	var count =0
 	for idx in range(s.length() - 1, -1, -1):
 		if count > 0 and count % 3 == 0:
 			result = " " + result

@@ -12,7 +12,7 @@ signal station_respawned(station_name: String)
 const RESPAWN_TIME: float = 300.0  # 5 minutes
 
 var _station: Node3D = null
-var _health: StructureHealth = null
+var _health = null
 var _respawn_timer: float = -1.0
 var _collision_shapes: Array[CollisionShape3D] = []
 
@@ -21,7 +21,7 @@ func _ready() -> void:
 	_station = get_parent() as Node3D
 	if _station == null:
 		return
-	_health = _station.get_node_or_null("StructureHealth") as StructureHealth
+	_health = _station.get_node_or_null("StructureHealth")
 	if _health:
 		_health.structure_destroyed.connect(_on_destroyed)
 
@@ -107,20 +107,20 @@ func _drop_loot() -> void:
 		return
 
 	# Spawn a cargo crate at station position
-	var crate := CargoCrate.new()
+	var crate =CargoCrate.new()
 	crate.global_position = _station.global_position + Vector3(0, 50, 0)
 	crate.contents = drops
-	var universe := GameManager.universe_node
+	var universe =GameManager.universe_node
 	if universe:
 		universe.add_child(crate)
 
 
 func _spawn_explosion() -> void:
 	# Large explosion effect at station position
-	var scene_root := get_tree().current_scene
+	var scene_root =get_tree().current_scene
 	if scene_root == null:
 		return
-	var effect := HullHitEffect.new()
+	var effect =HullHitEffect.new()
 	scene_root.add_child(effect)
 	effect.global_position = _station.global_position
 	effect.setup(Vector3.UP, 8.0)  # Large intensity

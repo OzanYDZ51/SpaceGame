@@ -14,7 +14,7 @@ signal scan_results(count: int)
 const SCAN_COOLDOWN: float = 8.0
 const SCAN_RANGE: float = 5000.0
 
-var _asteroid_mgr: AsteroidFieldManager = null
+var _asteroid_mgr = null
 var _ship: RigidBody3D = null
 var _universe_node: Node3D = null
 
@@ -25,7 +25,7 @@ var _notif: NotificationService = null
 var _active_pulses: Array[Dictionary] = []  # [{pulse, revealed}]
 
 
-func initialize(mgr: AsteroidFieldManager, ship: RigidBody3D, universe: Node3D) -> void:
+func initialize(mgr, ship: RigidBody3D, universe: Node3D) -> void:
 	_asteroid_mgr = mgr
 	_ship = ship
 	_universe_node = universe
@@ -58,12 +58,12 @@ func trigger_scan() -> void:
 	_cooldown = SCAN_COOLDOWN
 
 	# Spawn pulse effect at ship position (in Universe node so it shifts with origin)
-	var pulse := ScannerPulseEffect.new()
+	var pulse =ScannerPulseEffect.new()
 	pulse.name = "ScannerPulse_%d" % Time.get_ticks_msec()
 	pulse.position = _ship.global_position
 	_universe_node.add_child(pulse)
 
-	var pulse_data := {"pulse": pulse, "revealed": 0}
+	var pulse_data ={"pulse": pulse, "revealed": 0}
 	_active_pulses.append(pulse_data)
 
 	pulse.scan_radius_updated.connect(_on_pulse_radius_updated.bind(pulse_data))

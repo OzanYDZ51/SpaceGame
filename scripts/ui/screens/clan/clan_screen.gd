@@ -8,9 +8,9 @@ extends UIScreen
 
 var _tab_bar: UITabBar = null
 var _tabs: Array[UIComponent] = []
-var _clan_manager: ClanManager = null
+var _clan_manager = null
 
-const TAB_NAMES := ["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Tresor", "Log"]
+const TAB_NAMES =["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Tresor", "Log"]
 
 
 func _ready() -> void:
@@ -25,12 +25,12 @@ func _ready() -> void:
 	add_child(_tab_bar)
 
 	# Create the 6 tab panels
-	var overview := ClanTabOverview.new()
-	var members_tab := ClanTabMembers.new()
-	var ranks := ClanTabRanks.new()
-	var diplo := ClanTabDiplomacy.new()
-	var treasury := ClanTabTreasury.new()
-	var log_tab := ClanTabLog.new()
+	var overview =ClanTabOverview.new()
+	var members_tab =ClanTabMembers.new()
+	var ranks =ClanTabRanks.new()
+	var diplo =ClanTabDiplomacy.new()
+	var treasury =ClanTabTreasury.new()
+	var log_tab =ClanTabLog.new()
 
 	_tabs = [overview, members_tab, ranks, diplo, treasury, log_tab]
 	for tab in _tabs:
@@ -40,7 +40,7 @@ func _ready() -> void:
 
 
 func _on_opened() -> void:
-	_clan_manager = GameManager.get_node_or_null("ClanManager") as ClanManager
+	_clan_manager = GameManager.get_node_or_null("ClanManager")
 	if _clan_manager == null:
 		push_warning("ClanScreen: ClanManager not found")
 		return
@@ -81,18 +81,18 @@ func _draw() -> void:
 	var margin: float = UITheme.MARGIN_SCREEN + 8
 	var tab_y: float = margin + UITheme.FONT_SIZE_TITLE + 20
 	var content_y: float = tab_y + 40
-	var content_rect := Rect2(margin - 2, content_y - 2, size.x - (margin - 2) * 2, size.y - content_y - margin + 4)
+	var content_rect =Rect2(margin - 2, content_y - 2, size.x - (margin - 2) * 2, size.y - content_y - margin + 4)
 
 	# Content area outer frame
 	draw_rect(content_rect, UITheme.BORDER, false, 1.0)
 	draw_corners(content_rect, 16.0, UITheme.PRIMARY)
 
 	# Subtle glow line under tab bar
-	var glow_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12)
+	var glow_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12)
 	draw_rect(Rect2(margin, content_y - 2, size.x - margin * 2, 2), glow_col)
 
 	# Outer frame glow (faint)
-	var outer := Rect2(margin - 6, tab_y - 4, size.x - (margin - 6) * 2, size.y - tab_y - margin + 8)
+	var outer =Rect2(margin - 6, tab_y - 4, size.x - (margin - 6) * 2, size.y - tab_y - margin + 8)
 	var pulse: float = UITheme.get_pulse(0.5)
-	var outer_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03 + pulse * 0.02)
+	var outer_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03 + pulse * 0.02)
 	draw_rect(outer, outer_col, false, 2.0)

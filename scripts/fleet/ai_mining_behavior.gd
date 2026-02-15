@@ -13,16 +13,16 @@ extends Node
 enum MiningState { SEARCHING, SCANNING, ROAMING, NAVIGATING, POSITIONING, EXTRACTING, COOLING, RETURNING, DOCKED, DEPARTING }
 
 var fleet_index: int = -1
-var fleet_ship: FleetShip = null
+var fleet_ship = null
 
 var _state: MiningState = MiningState.SEARCHING
-var _ship: ShipController = null
-var _brain: AIBrain = null
-var _pilot: AIPilot = null
-var _asteroid_mgr: AsteroidFieldManager = null
+var _ship = null
+var _brain = null
+var _pilot = null
+var _asteroid_mgr = null
 
 # Physical mining target (when near player — real AsteroidData from AsteroidFieldManager)
-var _mining_target: AsteroidData = null
+var _mining_target = null
 
 # Virtual mining target (when far from player — simulated asteroid)
 var _virtual_target: Dictionary = {}  # { resource_id, health, yield_per_hit, position }
@@ -36,7 +36,7 @@ var heat: float = 0.0
 var is_overheated: bool = false
 
 # Beam visual (only when near player)
-var _beam: MiningLaserBeam = null
+var _beam = null
 var _beam_visible: bool = false
 const BEAM_VISIBILITY_DIST: float = 2000.0
 
@@ -90,16 +90,16 @@ const NAV_BOOST_MIN_SPEED: float = 50.0
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
+	_ship = get_parent()
 	if _ship == null:
 		return
 
 	await get_tree().process_frame
-	_brain = _ship.get_node_or_null("AIBrain") as AIBrain
-	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot
+	_brain = _ship.get_node_or_null("AIBrain")
+	_pilot = _ship.get_node_or_null("AIPilot")
 
 	# Find AsteroidFieldManager (child of GameManager)
-	_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 
 	# Read mining DPS from equipped mining laser
 	_update_mining_dps()
@@ -115,14 +115,14 @@ func _ready() -> void:
 
 	# Read cargo capacity + sensor range from ship data
 	if fleet_ship:
-		var ship_data := ShipRegistry.get_ship_data(fleet_ship.ship_id)
+		var ship_data =ShipRegistry.get_ship_data(fleet_ship.ship_id)
 		if ship_data:
 			_resource_capacity = ship_data.cargo_capacity
 			_scan_radius = ship_data.sensor_range
 		_home_station_id = fleet_ship.docked_station_id
 
 	# Read belt center + resource filter from FleetAIBridge sibling
-	var bridge := _ship.get_node_or_null("FleetAIBridge") as FleetAIBridge
+	var bridge = _ship.get_node_or_null("FleetAIBridge")
 	if bridge:
 		_belt_center_x = bridge.command_params.get("center_x", 0.0)
 		_belt_center_z = bridge.command_params.get("center_z", 0.0)
@@ -134,7 +134,7 @@ func _ready() -> void:
 
 	# Identify belt field for roaming within it
 	if _asteroid_mgr:
-		var target_dist := sqrt(_belt_center_x * _belt_center_x + _belt_center_z * _belt_center_z)
+		var target_dist =sqrt(_belt_center_x * _belt_center_x + _belt_center_z * _belt_center_z)
 		for f in _asteroid_mgr._fields:
 			if absf(target_dist - f.orbital_radius) < f.width * 0.5:
 				_belt_field = f
@@ -157,7 +157,7 @@ func _ready() -> void:
 				_belt_center_x = lkp_x
 				_belt_center_z = lkp_z
 		elif _ship:
-			var upos := FloatingOrigin.local_to_universe(_ship.global_position)
+			var upos =FloatingOrigin.local_to_universe(_ship.global_position)
 			if absf(upos[0]) > 1.0 or absf(upos[2]) > 1.0:
 				_belt_center_x = upos[0]
 				_belt_center_z = upos[2]
@@ -167,7 +167,7 @@ func _ready() -> void:
 
 	# Set initial entity destination to belt center for map display
 	if _state == MiningState.RETURNING:
-		var station_ent := EntityRegistry.get_entity(_home_station_id)
+		var station_ent =EntityRegistry.get_entity(_home_station_id)
 		if not station_ent.is_empty():
 			_update_entity_destination(station_ent["pos_x"], station_ent["pos_z"], "returning")
 		else:
@@ -192,10 +192,10 @@ func _exit_tree() -> void:
 
 
 func _update_mining_dps() -> void:
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm == null:
 		return
-	var mining_hps := wm.get_mining_hardpoints_in_group(0)
+	var mining_hps = wm.get_mining_hardpoints_in_group(0)
 	if not mining_hps.is_empty() and mining_hps[0].mounted_weapon:
 		_mining_dps = mining_hps[0].mounted_weapon.damage_per_hit
 
@@ -227,7 +227,7 @@ func update_params(params: Dictionary) -> void:
 	# Re-identify belt field for roaming
 	_belt_field = null
 	if _asteroid_mgr:
-		var target_dist := sqrt(_belt_center_x * _belt_center_x + _belt_center_z * _belt_center_z)
+		var target_dist =sqrt(_belt_center_x * _belt_center_x + _belt_center_z * _belt_center_z)
 		for f in _asteroid_mgr._fields:
 			if absf(target_dist - f.orbital_radius) < f.width * 0.5:
 				_belt_field = f
@@ -240,7 +240,7 @@ func update_params(params: Dictionary) -> void:
 
 ## Find the nearest station (by universe coords) to use as home base for sell runs.
 func _find_nearest_station(uni_x: float, uni_z: float) -> String:
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	var best_id: String = ""
 	var best_dist_sq: float = INF
 	for ent in stations:
@@ -307,11 +307,11 @@ func _validate_home_station() -> void:
 	if _home_station_id == "":
 		_home_station_id = _find_nearest_station(_belt_center_x, _belt_center_z)
 		return
-	var ent := EntityRegistry.get_entity(_home_station_id)
+	var ent =EntityRegistry.get_entity(_home_station_id)
 	if not ent.is_empty():
 		return  # Station still exists
 	# Station gone — find nearest replacement
-	var new_id := _find_nearest_station(_belt_center_x, _belt_center_z)
+	var new_id =_find_nearest_station(_belt_center_x, _belt_center_z)
 	if new_id != "":
 		print("AIMining[%d]: Home station '%s' lost, rerouting to '%s'" % [fleet_index, _home_station_id, new_id])
 		_home_station_id = new_id
@@ -377,7 +377,7 @@ func _tick_searching(delta: float) -> void:
 		return
 
 	# Try physical asteroid first (near player, cells loaded)
-	var asteroid := _find_physical_asteroid()
+	var asteroid =_find_physical_asteroid()
 	if asteroid:
 		_mining_target = asteroid
 		_virtual_target = {}
@@ -386,7 +386,7 @@ func _tick_searching(delta: float) -> void:
 		return
 
 	# Try virtual mining (check if we're in a belt)
-	var vt := _generate_virtual_target()
+	var vt =_generate_virtual_target()
 	if not vt.is_empty():
 		_virtual_target = vt
 		_mining_target = null
@@ -410,7 +410,7 @@ func _tick_scanning(delta: float) -> void:
 	_search_timer = 0.0
 
 	# Try physical asteroid (now with revealed scan data)
-	var asteroid := _find_physical_asteroid()
+	var asteroid =_find_physical_asteroid()
 	if asteroid:
 		_mining_target = asteroid
 		_virtual_target = {}
@@ -419,7 +419,7 @@ func _tick_scanning(delta: float) -> void:
 		return
 
 	# Try virtual mining
-	var vt := _generate_virtual_target()
+	var vt =_generate_virtual_target()
 	if not vt.is_empty():
 		_virtual_target = vt
 		_mining_target = null
@@ -438,12 +438,12 @@ func _tick_scanning(delta: float) -> void:
 
 
 func _tick_navigating() -> void:
-	var target_pos := _get_target_position()
+	var target_pos =_get_target_position()
 	if target_pos == Vector3.ZERO:
 		_state = MiningState.SEARCHING
 		return
 
-	var dist := _pilot.get_distance_to(target_pos)
+	var dist = _pilot.get_distance_to(target_pos)
 	if dist < NAVIGATE_ARRIVE_DIST:
 		_state = MiningState.POSITIONING
 		return
@@ -452,7 +452,7 @@ func _tick_navigating() -> void:
 
 
 func _tick_positioning() -> void:
-	var target_pos := _get_target_position()
+	var target_pos =_get_target_position()
 	if target_pos == Vector3.ZERO:
 		_state = MiningState.SEARCHING
 		return
@@ -469,8 +469,8 @@ func _tick_positioning() -> void:
 	_ship.set_throttle(Vector3.ZERO)
 
 	# Check alignment
-	var to_target := (target_pos - _ship.global_position).normalized()
-	var forward := -_ship.global_transform.basis.z
+	var to_target =(target_pos - _ship.global_position).normalized()
+	var forward =-_ship.global_transform.basis.z
 	if forward.dot(to_target) > POSITIONING_DOT_THRESHOLD:
 		_mining_tick_timer = 0.0
 		_state = MiningState.EXTRACTING
@@ -482,7 +482,7 @@ func _tick_extracting(delta: float) -> void:
 		_state = MiningState.COOLING
 		return
 
-	var target_pos := _get_target_position()
+	var target_pos =_get_target_position()
 	if target_pos == Vector3.ZERO:
 		_stop_beam()
 		_state = MiningState.SEARCHING
@@ -522,13 +522,13 @@ func _tick_returning() -> void:
 		_clear_nav_boost()
 		_state = MiningState.SEARCHING
 		return
-	var ent := EntityRegistry.get_entity(_home_station_id)
+	var ent =EntityRegistry.get_entity(_home_station_id)
 	if ent.is_empty():
 		# Station registered but entity not loaded yet — wait
 		_clear_nav_boost()
 		return
-	var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-	var dist := _ship.global_position.distance_to(station_pos)
+	var station_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+	var dist = _ship.global_position.distance_to(station_pos)
 	if dist < STATION_ARRIVE_DIST:
 		_enter_dock()
 		return
@@ -596,7 +596,7 @@ func _do_sell_resources() -> void:
 	if fleet_ship == null:
 		return
 
-	var commerce: CommerceManager = GameManager._commerce_manager
+	var commerce = GameManager._commerce_manager
 	var total_credits: int = 0
 	var res_keys: Array = fleet_ship.ship_resources.keys()
 
@@ -605,7 +605,7 @@ func _do_sell_resources() -> void:
 		if qty <= 0:
 			continue
 
-		var unit_price := PriceCatalog.get_resource_price(res_id)
+		var unit_price =PriceCatalog.get_resource_price(res_id)
 		if unit_price > 0 and commerce.sell_resource_from_ship(res_id, qty, fleet_ship):
 			total_credits += unit_price * qty
 
@@ -617,7 +617,7 @@ func _tick_roaming() -> void:
 	# Fly to a new spot within the belt to search for matching resources
 	if _roam_target == Vector3.ZERO:
 		_roam_target = _pick_roam_position()
-	var dist := _ship.global_position.distance_to(_roam_target)
+	var dist = _ship.global_position.distance_to(_roam_target)
 	if dist < ROAM_ARRIVE_DIST:
 		_roam_target = Vector3.ZERO
 		_state = MiningState.SEARCHING
@@ -629,21 +629,21 @@ func _pick_roam_position() -> Vector3:
 	# Pick a nearby point along the belt arc (~3-5km away)
 	if _belt_field == null:
 		# Fallback: random offset from current position
-		var angle := randf() * TAU
-		var offset := Vector3(cos(angle) * 3000.0, 0.0, sin(angle) * 3000.0)
+		var angle =randf() * TAU
+		var offset =Vector3(cos(angle) * 3000.0, 0.0, sin(angle) * 3000.0)
 		return _ship.global_position + offset
 
 	var upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
-	var current_angle := atan2(float(upos[2]), float(upos[0]))
+	var current_angle =atan2(float(upos[2]), float(upos[0]))
 
 	# Move 3-5km along the belt arc
-	var arc_dist := randf_range(3000.0, 5000.0)
+	var arc_dist =randf_range(3000.0, 5000.0)
 	var angular_offset: float = arc_dist / _belt_field.orbital_radius
 	if randf() < 0.5:
 		angular_offset = -angular_offset
 
-	var new_angle := current_angle + angular_offset
-	var radius_offset := randf_range(-_belt_field.width * 0.25, _belt_field.width * 0.25)
+	var new_angle =current_angle + angular_offset
+	var radius_offset =randf_range(-_belt_field.width * 0.25, _belt_field.width * 0.25)
 	var new_radius: float = _belt_field.orbital_radius + radius_offset
 
 	var uni_x: float = cos(new_angle) * new_radius
@@ -652,8 +652,8 @@ func _pick_roam_position() -> Vector3:
 
 
 func _tick_departing() -> void:
-	var belt_pos := FloatingOrigin.to_local_pos([_belt_center_x, 0.0, _belt_center_z])
-	var dist := _ship.global_position.distance_to(belt_pos)
+	var belt_pos =FloatingOrigin.to_local_pos([_belt_center_x, 0.0, _belt_center_z])
+	var dist = _ship.global_position.distance_to(belt_pos)
 	if dist < BELT_ARRIVE_DIST:
 		_clear_nav_boost()
 		_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
@@ -695,13 +695,13 @@ func _do_physical_mining_tick() -> void:
 		_state = MiningState.SEARCHING
 		return
 
-	var res := MiningRegistry.get_resource(_mining_target.primary_resource)
+	var res =MiningRegistry.get_resource(_mining_target.primary_resource)
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
 
 	var yield_data: Dictionary
 	if _mining_target.node_ref and is_instance_valid(_mining_target.node_ref):
-		var node := _mining_target.node_ref as AsteroidNode
+		var node = _mining_target.node_ref
 		yield_data = node.take_mining_damage(damage)
 	else:
 		_mining_target.health_current -= damage
@@ -733,13 +733,13 @@ func _do_virtual_mining_tick() -> void:
 		return
 
 	var resource_id: StringName = _virtual_target["resource_id"]
-	var res := MiningRegistry.get_resource(resource_id)
+	var res =MiningRegistry.get_resource(resource_id)
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
 
 	_virtual_target["health"] -= damage
 
-	var yield_data := {
+	var yield_data ={
 		"resource_id": resource_id,
 		"quantity": int(_virtual_target["yield_per_hit"]),
 	}
@@ -771,7 +771,7 @@ func _store_yield(yield_data: Dictionary) -> void:
 		_virtual_target = {}
 		_state = MiningState.RETURNING
 		# Update map destination to station
-		var station_ent := EntityRegistry.get_entity(_home_station_id)
+		var station_ent =EntityRegistry.get_entity(_home_station_id)
 		if not station_ent.is_empty():
 			_update_entity_destination(station_ent["pos_x"], station_ent["pos_z"], "returning")
 
@@ -810,7 +810,7 @@ func _generate_virtual_target() -> Dictionary:
 
 	# Check if ship is inside a belt (using universe coords)
 	var upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
-	var belt_name := _asteroid_mgr.get_belt_at_position(upos[0], upos[2])
+	var belt_name = _asteroid_mgr.get_belt_at_position(upos[0], upos[2])
 	if belt_name == "":
 		return {}
 
@@ -873,7 +873,7 @@ func _generate_virtual_target() -> Dictionary:
 	# Virtual position: nearby random offset from ship
 	var angle: float = _virtual_rng.randf() * TAU
 	var dist: float = _virtual_rng.randf_range(80.0, 200.0)
-	var offset := Vector3(cos(angle) * dist, _virtual_rng.randf_range(-20.0, 20.0), sin(angle) * dist)
+	var offset =Vector3(cos(angle) * dist, _virtual_rng.randf_range(-20.0, 20.0), sin(angle) * dist)
 
 	return {
 		"resource_id": resource_id,
@@ -898,18 +898,18 @@ func _get_target_position() -> Vector3:
 # =========================================================================
 
 func _update_beam_visual(target_pos: Vector3) -> void:
-	var player := GameManager.player_ship
+	var player =GameManager.player_ship
 	if player == null or not is_instance_valid(player):
 		_stop_beam()
 		return
 
-	var dist_to_player := _ship.global_position.distance_to(player.global_position)
+	var dist_to_player = _ship.global_position.distance_to(player.global_position)
 	if dist_to_player > BEAM_VISIBILITY_DIST:
 		_stop_beam()
 		return
 
 	# Get beam source position from mining hardpoint
-	var source_pos := _get_beam_source()
+	var source_pos =_get_beam_source()
 
 	if not _beam._active:
 		_beam.activate(source_pos, target_pos)
@@ -918,9 +918,9 @@ func _update_beam_visual(target_pos: Vector3) -> void:
 
 
 func _get_beam_source() -> Vector3:
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm:
-		var mining_hps := wm.get_mining_hardpoints_in_group(0)
+		var mining_hps = wm.get_mining_hardpoints_in_group(0)
 		if not mining_hps.is_empty():
 			return mining_hps[0].get_muzzle_transform_stable().origin
 	return _ship.global_position
@@ -935,17 +935,17 @@ func _stop_beam() -> void:
 func _spawn_scan_pulse() -> void:
 	# Same visual effect as player AsteroidScanner — expanding sonar bubble
 	# Only spawn if player is nearby (performance)
-	var player := GameManager.player_ship
+	var player =GameManager.player_ship
 	if player == null or not is_instance_valid(player):
 		return
 	if _ship.global_position.distance_to(player.global_position) > SCAN_PULSE_VISIBILITY:
 		return
 
-	var universe := GameManager.get_node_or_null("Universe") as Node3D
+	var universe = GameManager.get_node_or_null("Universe")
 	if universe == null:
 		return
 
-	var pulse := ScannerPulseEffect.new()
+	var pulse =ScannerPulseEffect.new()
 	pulse.name = "AIScanPulse_%d" % fleet_index
 	pulse.position = _ship.global_position
 	universe.add_child(pulse)
@@ -956,10 +956,10 @@ func _spawn_scan_pulse() -> void:
 # =========================================================================
 
 func _update_nav_boost(target_pos: Vector3) -> void:
-	var dist := _ship.global_position.distance_to(target_pos)
+	var dist = _ship.global_position.distance_to(target_pos)
 	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
 	if dist < NAV_BOOST_RAMP_DIST:
-		var t := clampf(dist / NAV_BOOST_RAMP_DIST, 0.0, 1.0)
+		var t =clampf(dist / NAV_BOOST_RAMP_DIST, 0.0, 1.0)
 		_ship._gate_approach_speed_cap = lerpf(NAV_BOOST_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
 	else:
 		_ship._gate_approach_speed_cap = 0.0
@@ -976,7 +976,7 @@ func _clear_nav_boost() -> void:
 # =========================================================================
 
 func _update_entity_destination(dest_ux: float, dest_uz: float, state_str: String) -> void:
-	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm == null:
 		return
 	fdm.update_entity_extra(fleet_index, "mining_state", state_str)
@@ -987,7 +987,7 @@ func _update_entity_destination(dest_ux: float, dest_uz: float, state_str: Strin
 func _clear_entity_mining_data() -> void:
 	if fleet_ship == null or fleet_ship.deployed_npc_id == &"":
 		return
-	var ent := EntityRegistry.get_entity(String(fleet_ship.deployed_npc_id))
+	var ent =EntityRegistry.get_entity(String(fleet_ship.deployed_npc_id))
 	if not ent.is_empty() and ent.has("extra"):
 		ent["extra"].erase("active_dest_ux")
 		ent["extra"].erase("active_dest_uz")

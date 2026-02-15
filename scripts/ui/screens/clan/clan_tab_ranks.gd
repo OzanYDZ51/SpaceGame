@@ -6,7 +6,7 @@ extends UIComponent
 # Rich panels with header bars and visual indicators
 # =============================================================================
 
-var _cm: ClanManager = null
+var _cm = null
 var _rank_list: UIScrollList = null
 var _perm_toggles: Array[UIToggleButton] = []
 var _name_input: UITextInput = null
@@ -20,8 +20,8 @@ var _perm_bits: Array[int] = [
 	ClanRank.PERM_EDIT_MOTD, ClanRank.PERM_WITHDRAW, ClanRank.PERM_DIPLOMACY, ClanRank.PERM_MANAGE_RANKS,
 ]
 
-const LEFT_W := 270.0
-const GAP := 16.0
+const LEFT_W =270.0
+const GAP =16.0
 
 
 func _ready() -> void:
@@ -35,7 +35,7 @@ func _ready() -> void:
 	add_child(_rank_list)
 
 	for bit in _perm_bits:
-		var toggle := UIToggleButton.new()
+		var toggle =UIToggleButton.new()
 		toggle.text = ClanRank.PERM_NAMES.get(bit, "???")
 		toggle.visible = false
 		add_child(toggle)
@@ -66,7 +66,7 @@ func _ready() -> void:
 	add_child(_btn_remove)
 
 
-func refresh(cm: ClanManager) -> void:
+func refresh(cm) -> void:
 	_cm = cm
 	_selected_rank_index = -1
 	_hide_editor()
@@ -93,14 +93,14 @@ func _draw_rank_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> 
 	var rank: ClanRank = _cm.clan_data.ranks[rank_idx]
 
 	# Priority badge background
-	var badge_rect := Rect2(rect.end.x - 36, rect.position.y + 6, 28, rect.size.y - 12)
-	var badge_col := UITheme.PRIMARY if rank_idx == 0 else UITheme.PRIMARY_DIM
+	var badge_rect =Rect2(rect.end.x - 36, rect.position.y + 6, 28, rect.size.y - 12)
+	var badge_col =UITheme.PRIMARY if rank_idx == 0 else UITheme.PRIMARY_DIM
 	ctrl.draw_rect(badge_rect, Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
 	ctrl.draw_rect(badge_rect, Color(badge_col.r, badge_col.g, badge_col.b, 0.3), false, 1.0)
 	ctrl.draw_string(font, Vector2(badge_rect.position.x + 2, rect.position.y + rect.size.y - 8), str(rank.priority), HORIZONTAL_ALIGNMENT_CENTER, 24, UITheme.FONT_SIZE_BODY, badge_col)
 
 	# Rank name
-	var name_col := UITheme.TEXT_HEADER if rank_idx == 0 else UITheme.TEXT
+	var name_col =UITheme.TEXT_HEADER if rank_idx == 0 else UITheme.TEXT
 	ctrl.draw_string(font, Vector2(rect.position.x + 14, rect.position.y + rect.size.y - 10), rank.rank_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 54, UITheme.FONT_SIZE_BODY, name_col)
 
 	# Leader indicator
@@ -120,12 +120,12 @@ func _on_rank_selected(index: int) -> void:
 	_name_input.set_text(rank.rank_name)
 	_btn_save.visible = true
 
-	var is_leader := (index == 0)
+	var is_leader =(index == 0)
 	var can_manage: bool = _cm.player_has_permission(ClanRank.PERM_MANAGE_RANKS)
 	var editable: bool = not is_leader and can_manage
 
 	for i in _perm_toggles.size():
-		var toggle := _perm_toggles[i]
+		var toggle =_perm_toggles[i]
 		toggle.visible = true
 		toggle.is_on = rank.has_permission(_perm_bits[i])
 		toggle.enabled = editable
@@ -149,10 +149,10 @@ func _hide_editor() -> void:
 func _on_save() -> void:
 	if _cm == null or _selected_rank_index < 0:
 		return
-	var new_name := _name_input.get_text().strip_edges()
+	var new_name =_name_input.get_text().strip_edges()
 	if new_name == "":
 		return
-	var perms := 0
+	var perms =0
 	for i in _perm_toggles.size():
 		if _perm_toggles[i].is_on:
 			perms |= _perm_bits[i]
@@ -236,11 +236,11 @@ func _draw() -> void:
 		draw_line(Vector2(rx, 28), Vector2(rx + rw, 28), UITheme.BORDER, 1.0)
 
 		# Permission count
-		var perm_count := 0
+		var perm_count =0
 		for toggle in _perm_toggles:
 			if toggle.is_on:
 				perm_count += 1
-		var perm_str := "%d / 8 permissions actives" % perm_count
+		var perm_str ="%d / 8 permissions actives" % perm_count
 		draw_string(font, Vector2(rx + rw - 200, 18), perm_str, HORIZONTAL_ALIGNMENT_RIGHT, 190, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 	else:
 		# Empty state

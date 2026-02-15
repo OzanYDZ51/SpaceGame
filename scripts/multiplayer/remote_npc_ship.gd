@@ -16,7 +16,7 @@ var _snapshots: Array[Dictionary] = []
 const MAX_SNAPSHOTS: int = 20
 
 # Visual
-var _ship_model: ShipModel = null
+var _ship_model = null
 var _name_label: Label3D = null
 
 
@@ -28,7 +28,7 @@ func _ready() -> void:
 
 
 func _setup_model() -> void:
-	var data := ShipRegistry.get_ship_data(ship_id)
+	var data =ShipRegistry.get_ship_data(ship_id)
 	_ship_model = ShipModel.new()
 	_ship_model.name = "ShipModel"
 	if data:
@@ -57,7 +57,7 @@ func _setup_model() -> void:
 
 
 func _setup_name_label() -> void:
-	var data := ShipRegistry.get_ship_data(ship_id)
+	var data =ShipRegistry.get_ship_data(ship_id)
 	var display_name: String = String(data.ship_name) if data else String(ship_id)
 	if faction == &"player_fleet":
 		display_name += " [FLOTTE]"
@@ -88,7 +88,7 @@ func receive_state(state_dict: Dictionary) -> void:
 	# Stamp with LOCAL arrival time — server's timestamp is from a different clock
 	# (each Godot process has its own Time.get_ticks_msec starting at 0).
 	# Using local time ensures render_time and snapshot times share the same clock.
-	var snapshot := {
+	var snapshot ={
 		"pos": [state_dict.get("px", 0.0), state_dict.get("py", 0.0), state_dict.get("pz", 0.0)],
 		"vel": Vector3(state_dict.get("vx", 0.0), state_dict.get("vy", 0.0), state_dict.get("vz", 0.0)),
 		"rot": Vector3(state_dict.get("rx", 0.0), state_dict.get("ry", 0.0), state_dict.get("rz", 0.0)),
@@ -132,8 +132,8 @@ func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) 
 	var t_range: float = to["time"] - from["time"]
 	var t: float = clampf((render_time - from["time"]) / t_range, 0.0, 1.0) if t_range > 0.001 else 1.0
 
-	var pos_from := from["pos"] as Array
-	var pos_to := to["pos"] as Array
+	var pos_from =from["pos"] as Array
+	var pos_to =to["pos"] as Array
 	var interp_pos: Array = [
 		lerpf(pos_from[0], pos_to[0], t),
 		lerpf(pos_from[1], pos_to[1], t),
@@ -174,11 +174,11 @@ func _update_engine_glow(throttle_amount: float) -> void:
 ## Play death animation and clean up.
 func play_death() -> void:
 	# Spawn explosion effect
-	var explosion := ExplosionEffect.new()
+	var explosion =ExplosionEffect.new()
 	get_tree().current_scene.add_child(explosion)
 	explosion.global_position = global_position
 
 	# Scale down and free
-	var tween := create_tween()
+	var tween =create_tween()
 	tween.tween_property(self, "scale", Vector3.ZERO, 0.5)
 	tween.tween_callback(queue_free)

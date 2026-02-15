@@ -15,7 +15,7 @@ var damage_type: StringName = &"thermal"
 var owner_ship: Node3D = null  # Prevents self-hit
 var max_lifetime: float = 3.0
 var _lifetime: float = 0.0
-var _pool: ProjectilePool = null  # Set by pool on acquire
+var _pool = null  # Set by pool on acquire
 
 
 func _ready() -> void:
@@ -31,22 +31,22 @@ func _physics_process(delta: float) -> void:
 	if not visible:
 		return
 
-	var move := velocity * delta
+	var move =velocity * delta
 
 	# Sweep raycast to prevent tunneling through thin geometry (stations, asteroids)
 	if move.length_squared() > 1.0:
-		var space := get_world_3d().direct_space_state
+		var space =get_world_3d().direct_space_state
 		if space:
-			var query := PhysicsRayQueryParameters3D.create(global_position, global_position + move)
+			var query =PhysicsRayQueryParameters3D.create(global_position, global_position + move)
 			query.collision_mask = collision_mask
 			query.collide_with_areas = false
 			query.collide_with_bodies = true
 			if owner_ship and is_instance_valid(owner_ship):
 				query.exclude = [owner_ship.get_rid()]
-			var hit := space.intersect_ray(query)
+			var hit =space.intersect_ray(query)
 			if not hit.is_empty():
 				global_position = hit["position"]
-				var body := hit["collider"] as Node3D
+				var body =hit["collider"] as Node3D
 				if body and body != owner_ship:
 					_on_body_hit(body)
 					return
@@ -78,12 +78,12 @@ func _on_body_hit(body: Node3D) -> void:
 	# Multiplayer: send hit claims to server for validation
 	if NetworkManager.is_connected_to_server():
 		# Remote player hit: body is HitBody child of RemotePlayerShip
-		var remote_player := _get_remote_player_parent(body)
+		var remote_player = _get_remote_player_parent(body)
 		if remote_player:
 			# Don't hit ourselves
 			if remote_player == owner_ship:
 				return
-			var hit_dir := (body.global_position - global_position).normalized()
+			var hit_dir =(body.global_position - global_position).normalized()
 			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():
 				# Host: relay damage directly to target client (no self-RPC)
@@ -91,7 +91,7 @@ func _on_body_hit(body: Node3D) -> void:
 					remote_player.peer_id, 1, String(weapon_name), damage,
 					hit_dir_arr)
 				# Broadcast hit effect to other observers
-				var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 				if npc_auth:
 					npc_auth.broadcast_hit_effect("player_%d" % remote_player.peer_id, 1, hit_dir_arr, false, GameManager.current_system_id_safe())
 			else:
@@ -105,16 +105,16 @@ func _on_body_hit(body: Node3D) -> void:
 
 		if not NetworkManager.is_server():
 			if body.is_in_group("ships"):
-				var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+				var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 				if lod_mgr:
 					var lod_data: ShipLODData = lod_mgr.get_ship_data(StringName(body.name))
 					if lod_data and lod_data.is_server_npc:
-						var hit_dir := (body.global_position - global_position).normalized()
+						var hit_dir =(body.global_position - global_position).normalized()
 						NetworkManager._rpc_hit_claim.rpc_id(1,
 							body.name, String(weapon_name), damage,
 							[hit_dir.x, hit_dir.y, hit_dir.z])
 						# Predict shield state from synced lod data
-						var predicted_info := {
+						var predicted_info ={
 							"shield_absorbed": lod_data.shield_ratio > 0.05,
 							"shield_ratio": lod_data.shield_ratio,
 						}
@@ -124,7 +124,7 @@ func _on_body_hit(body: Node3D) -> void:
 						return
 			# Structure hit claim (station) — clients only
 			if body.is_in_group("structures"):
-				var hit_dir := (body.global_position - global_position).normalized()
+				var hit_dir =(body.global_position - global_position).normalized()
 				NetworkManager._rpc_structure_hit_claim.rpc_id(1,
 					body.name, String(weapon_name), damage,
 					[hit_dir.x, hit_dir.y, hit_dir.z])
@@ -132,7 +132,7 @@ func _on_body_hit(body: Node3D) -> void:
 				_return_to_pool()
 				return
 
-	var hit_info := _apply_damage_to(body)
+	var hit_info =_apply_damage_to(body)
 	_spawn_hit_effect(body, hit_info)
 	_report_hit_to_owner(body, hit_info)
 	_return_to_pool()
@@ -146,13 +146,13 @@ func _on_area_hit(_area: Area3D) -> void:
 
 
 func _apply_damage_to(body: Node3D) -> Dictionary:
-	var health := body.get_node_or_null("HealthSystem") as HealthSystem
+	var health = body.get_node_or_null("HealthSystem")
 	if health:
 		var hit_dir: Vector3 = (body.global_position - global_position).normalized()
 		var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
 		return health.apply_damage(damage, damage_type, hit_dir, attacker)
 	# Structure health (stations)
-	var struct_health := body.get_node_or_null("StructureHealth") as StructureHealth
+	var struct_health = body.get_node_or_null("StructureHealth")
 	if struct_health:
 		var hit_dir: Vector3 = (body.global_position - global_position).normalized()
 		var attacker: Node3D = owner_ship if is_instance_valid(owner_ship) else null
@@ -161,20 +161,20 @@ func _apply_damage_to(body: Node3D) -> Dictionary:
 
 
 func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
-	var scene_root := get_tree().current_scene
-	var intensity := clampf(damage / 25.0, 0.5, 3.0)
+	var scene_root =get_tree().current_scene
+	var intensity =clampf(damage / 25.0, 0.5, 3.0)
 
 	if hit_info.get("shield_absorbed", false) and body != null:
 		# Shield absorbed the hit — energy bubble on ship
-		var effect := ShieldHitEffect.new()
+		var effect =ShieldHitEffect.new()
 		body.add_child(effect)
 		effect.setup(global_position, body, hit_info.get("shield_ratio", 0.0), intensity)
 	else:
 		# Hull hit or non-ship target — sparks, debris, scorch
-		var effect := HullHitEffect.new()
+		var effect =HullHitEffect.new()
 		scene_root.add_child(effect)
 		effect.global_position = global_position
-		var hit_normal := Vector3.UP
+		var hit_normal =Vector3.UP
 		if body:
 			hit_normal = (global_position - body.global_position).normalized()
 		elif velocity.length_squared() > 0.01:
@@ -185,25 +185,25 @@ func _spawn_hit_effect(body: Node3D = null, hit_info: Dictionary = {}) -> void:
 func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
 	if not is_instance_valid(owner_ship):
 		return
-	var wm := owner_ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = owner_ship.get_node_or_null("WeaponManager")
 	if wm == null:
 		return
-	var killed := false
-	var health := body.get_node_or_null("HealthSystem") as HealthSystem
+	var killed =false
+	var health = body.get_node_or_null("HealthSystem")
 	if health and health.is_dead():
 		killed = true
 	else:
-		var struct_health := body.get_node_or_null("StructureHealth") as StructureHealth
+		var struct_health = body.get_node_or_null("StructureHealth")
 		if struct_health and struct_health.is_dead():
 			killed = true
 	wm._on_projectile_hit(hit_info, damage, killed)
 
 
 ## Check if body is a child of a RemotePlayerShip (e.g. the HitBody StaticBody3D).
-func _get_remote_player_parent(body: Node3D) -> RemotePlayerShip:
-	var parent := body.get_parent()
-	if parent is RemotePlayerShip:
-		return parent as RemotePlayerShip
+func _get_remote_player_parent(body: Node3D):
+	var parent =body.get_parent()
+	if parent.get("peer_id") != null:
+		return parent
 	return null
 
 
@@ -215,14 +215,14 @@ func _return_to_pool() -> void:
 
 
 func _spawn_dissipate_effect() -> void:
-	var scene_root := get_tree().current_scene
+	var scene_root =get_tree().current_scene
 	if scene_root == null:
 		return
-	var effect := _DissipateEffect.new()
+	var effect =_DissipateEffect.new()
 	scene_root.add_child(effect)
 	effect.global_position = global_position
-	var dir := velocity.normalized() if velocity.length_squared() > 0.01 else Vector3.FORWARD
-	var color := Color(0.5, 0.7, 1.0)
+	var dir =velocity.normalized() if velocity.length_squared() > 0.01 else Vector3.FORWARD
+	var color =Color(0.5, 0.7, 1.0)
 	if damage_type == &"thermal":
 		color = Color(0.3, 0.6, 1.0)
 	elif damage_type == &"kinetic":

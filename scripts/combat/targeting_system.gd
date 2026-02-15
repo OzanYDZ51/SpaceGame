@@ -16,13 +16,13 @@ var _scan_timer: float = 0.0
 const SCAN_INTERVAL: float = 0.5
 const RETICLE_RADIUS: float = 150.0  # Pixels around crosshair to consider "in reticle"
 var _current_target_index: int = -1
-var _cached_target_health: HealthSystem = null
+var _cached_target_health = null
 var _cached_target_ref: Node3D = null  # tracks which target the cached health belongs to
 
 
 func _ready() -> void:
-	var ship := get_parent() as ShipController
-	if ship and ship.ship_data:
+	var ship = get_parent()
+	if ship and ship.get("ship_data"):
 		target_lock_range = ship.ship_data.sensor_range
 
 
@@ -40,18 +40,18 @@ func _process(delta: float) -> void:
 		# Check if target has a health system and is dead (cached)
 		if _cached_target_ref != current_target:
 			_cached_target_ref = current_target
-			_cached_target_health = current_target.get_node_or_null("HealthSystem") as HealthSystem
+			_cached_target_health = current_target.get_node_or_null("HealthSystem")
 		if _cached_target_health and _cached_target_health.is_dead():
 			clear_target()
 			return
 		# Also check StructureHealth (stations)
 		if _cached_target_health == null:
-			var sh := current_target.get_node_or_null("StructureHealth") as StructureHealth
+			var sh = current_target.get_node_or_null("StructureHealth")
 			if sh and sh.is_dead():
 				clear_target()
 				return
 		# Check range
-		var ship := get_parent() as Node3D
+		var ship =get_parent() as Node3D
 		if ship and ship.global_position.distance_to(current_target.global_position) > target_lock_range * 1.5:
 			clear_target()
 
@@ -66,7 +66,7 @@ func cycle_target_forward() -> void:
 
 func target_nearest_hostile() -> void:
 	# T key — target nearest hostile only (skip allies)
-	var ship := get_parent() as Node3D
+	var ship =get_parent() as Node3D
 	if ship == null:
 		return
 	var own_faction: StringName = ship.faction if "faction" in ship else &"neutral"
@@ -85,17 +85,17 @@ func target_nearest_to_crosshair() -> void:
 
 
 func _target_nearest_to_crosshair_from(candidates: Array[Node3D]) -> void:
-	var ship := get_parent() as Node3D
+	var ship =get_parent() as Node3D
 	if ship == null:
 		return
-	var cam := ship.get_viewport().get_camera_3d()
+	var cam =ship.get_viewport().get_camera_3d()
 	if cam == null:
 		return
 	if candidates.is_empty():
 		clear_target()
 		return
 
-	var screen_center := ship.get_viewport().get_visible_rect().size / 2.0
+	var screen_center =ship.get_viewport().get_visible_rect().size / 2.0
 	var in_reticle: Array[Node3D] = []
 	var in_reticle_dist: Array[float] = []  # screen distance for sorting
 	var out_of_reticle: Array[Node3D] = []  # already sorted by 3D distance from _gather
@@ -108,7 +108,7 @@ func _target_nearest_to_crosshair_from(candidates: Array[Node3D]) -> void:
 		if to_target.dot(cam_fwd) <= 0.0:
 			continue  # Behind camera
 
-		var screen_pos := cam.unproject_position(t.global_position)
+		var screen_pos =cam.unproject_position(t.global_position)
 		var dist_to_center: float = screen_pos.distance_to(screen_center)
 
 		if dist_to_center <= RETICLE_RADIUS:
@@ -119,7 +119,7 @@ func _target_nearest_to_crosshair_from(candidates: Array[Node3D]) -> void:
 
 	# Sort in_reticle by screen distance (closest to crosshair first)
 	if in_reticle.size() > 1:
-		var indices := range(in_reticle.size())
+		var indices =range(in_reticle.size())
 		indices.sort_custom(func(a: int, b: int) -> bool:
 			return in_reticle_dist[a] < in_reticle_dist[b]
 		)
@@ -139,8 +139,8 @@ func _target_nearest_to_crosshair_from(candidates: Array[Node3D]) -> void:
 
 	# Cycle: if current target is in the list, pick the next one
 	if current_target and current_target in ordered:
-		var idx := ordered.find(current_target)
-		var next_idx := (idx + 1) % ordered.size()
+		var idx =ordered.find(current_target)
+		var next_idx =(idx + 1) % ordered.size()
 		_set_target(ordered[next_idx])
 		_current_target_index = _targetable_ships.find(ordered[next_idx])
 	else:
@@ -159,23 +159,23 @@ func clear_target() -> void:
 
 func get_lead_indicator_position() -> Vector3:
 	if current_target == null or not is_instance_valid(current_target):
-		var parent_ship := get_parent() as Node3D
+		var parent_ship =get_parent() as Node3D
 		if parent_ship:
 			return parent_ship.global_position + parent_ship.global_transform.basis * Vector3.FORWARD * 1000.0
 		return Vector3.ZERO
 
-	var ship := get_parent() as RigidBody3D
+	var ship =get_parent() as RigidBody3D
 	if ship == null:
 		return _get_target_center()
 
 	# Get weapon speed (use first mounted weapon or default)
-	var projectile_speed := 800.0
-	var wm := ship.get_node_or_null("WeaponManager") as WeaponManager  # Called rarely (only when target exists)
+	var projectile_speed =800.0
+	var wm = ship.get_node_or_null("WeaponManager")  # Called rarely (only when target exists)
 	if wm and not wm.hardpoints.is_empty() and wm.hardpoints[0].mounted_weapon:
 		projectile_speed = wm.hardpoints[0].mounted_weapon.projectile_speed
 
 	var target_pos: Vector3 = _get_target_center()
-	var target_vel := Vector3.ZERO
+	var target_vel =Vector3.ZERO
 	if current_target is RigidBody3D:
 		target_vel = (current_target as RigidBody3D).linear_velocity
 
@@ -219,7 +219,7 @@ func get_lead_indicator_position() -> Vector3:
 func get_target_distance() -> float:
 	if current_target == null or not is_instance_valid(current_target):
 		return -1.0
-	var ship := get_parent() as Node3D
+	var ship =get_parent() as Node3D
 	if ship == null:
 		return -1.0
 	return ship.global_position.distance_to(_get_target_center())
@@ -236,8 +236,8 @@ static func get_ship_center(node: Node3D) -> Vector3:
 	# so the visual center differs from the node origin.
 	# Remote ships (RemotePlayerShip, RemoteNPCShip) load from .glb and auto-center
 	# the AABB at origin, so their visual center is already at global_position.
-	if node is ShipController:
-		var offset: Vector3 = (node as ShipController).center_offset
+	if node.get("center_offset") != null:
+		var offset: Vector3 = node.center_offset
 		if offset != Vector3.ZERO:
 			return node.global_position + node.global_transform.basis * offset
 	return node.global_position
@@ -250,7 +250,7 @@ func _set_target(new_target: Node3D) -> void:
 
 func _gather_targetable_ships() -> void:
 	_targetable_ships.clear()
-	var ship := get_parent() as Node3D
+	var ship =get_parent() as Node3D
 	if ship == null:
 		return
 
@@ -259,12 +259,12 @@ func _gather_targetable_ships() -> void:
 	var is_player: bool = ship.is_player_controlled if "is_player_controlled" in ship else false
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
-		var self_id := StringName(ship.name)
-		var results := lod_mgr.get_nearest_ships(ship.global_position, target_lock_range, 50, self_id)
+		var self_id =StringName(ship.name)
+		var results = lod_mgr.get_nearest_ships(ship.global_position, target_lock_range, 50, self_id)
 		for entry in results:
-			var data := lod_mgr.get_ship_data(entry["id"])
+			var data = lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
 				continue
 			# NPC ships skip allied targets (friendly fire prevention)
@@ -276,7 +276,7 @@ func _gather_targetable_ships() -> void:
 					_targetable_ships.append(data.node_ref)
 	else:
 		# Legacy fallback: scan group
-		var all_ships := get_tree().get_nodes_in_group("ships")
+		var all_ships =get_tree().get_nodes_in_group("ships")
 		for node in all_ships:
 			if node == ship:
 				continue
@@ -290,13 +290,13 @@ func _gather_targetable_ships() -> void:
 					continue
 				var dist: float = ship.global_position.distance_to((node as Node3D).global_position)
 				if dist <= target_lock_range:
-					var health := node.get_node_or_null("HealthSystem") as HealthSystem
+					var health = node.get_node_or_null("HealthSystem")
 					if health and health.is_dead():
 						continue
 					_targetable_ships.append(node as Node3D)
 
 	# Also gather targetable structures (stations)
-	var structures := StructureTargetProvider.gather_targetable(ship.global_position, target_lock_range)
+	var structures =StructureTargetProvider.gather_targetable(ship.global_position, target_lock_range)
 	_targetable_ships.append_array(structures)
 
 	# Sort by distance

@@ -7,14 +7,14 @@ extends StaticBody3D
 
 signal depleted(asteroid_id: StringName)
 
-var data: AsteroidData = null
+var data = null
 var _mesh_instance: MeshInstance3D = null
 var _collision: CollisionShape3D = null
 var _label: Label3D = null
 var _label_visible: bool = false
 
 
-func setup(p_data: AsteroidData) -> void:
+func setup(p_data) -> void:
 	data = p_data
 	data.node_ref = self
 	name = String(data.id)
@@ -22,7 +22,7 @@ func setup(p_data: AsteroidData) -> void:
 
 	# Collision
 	_collision = CollisionShape3D.new()
-	var shape := SphereShape3D.new()
+	var shape =SphereShape3D.new()
 	shape.radius = data.visual_radius
 	_collision.shape = shape
 	add_child(_collision)
@@ -31,7 +31,7 @@ func setup(p_data: AsteroidData) -> void:
 
 	# Mesh: low-poly sphere with non-uniform scale for rocky look
 	_mesh_instance = MeshInstance3D.new()
-	var sphere := SphereMesh.new()
+	var sphere =SphereMesh.new()
 	sphere.radius = data.visual_radius
 	sphere.height = data.visual_radius * 2.0
 	sphere.radial_segments = 8
@@ -40,13 +40,13 @@ func setup(p_data: AsteroidData) -> void:
 	_mesh_instance.scale = data.scale_distort
 
 	# Material — starts neutral (scan reveals true color)
-	var mat := StandardMaterial3D.new()
+	var mat =StandardMaterial3D.new()
 	mat.albedo_color = data.color_tint
 	mat.roughness = 0.85
 	mat.metallic = 0.15
 	# Only show emission if already scanned with rare resource
 	if data.is_scanned and data.has_resource:
-		var res := MiningRegistry.get_resource(data.primary_resource)
+		var res =MiningRegistry.get_resource(data.primary_resource)
 		if res and res.rarity >= MiningResource.Rarity.RARE:
 			mat.emission_enabled = true
 			mat.emission = data.resource_color * 0.3
@@ -90,7 +90,7 @@ func _on_depleted() -> void:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.emission_enabled = false
 	# Shrink slightly
-	var tw := create_tween()
+	var tw =create_tween()
 	tw.tween_property(_mesh_instance, "scale", data.scale_distort * 0.6, 0.5)
 
 
@@ -107,23 +107,23 @@ func respawn() -> void:
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 			mat.emission_enabled = false
 			if data.is_scanned and data.has_resource:
-				var res := MiningRegistry.get_resource(data.primary_resource)
+				var res =MiningRegistry.get_resource(data.primary_resource)
 				if res and res.rarity >= MiningResource.Rarity.RARE:
 					mat.emission_enabled = true
 					mat.emission = data.resource_color * 0.3
 					mat.emission_energy_multiplier = 0.5
 
 
-func apply_scan_reveal(ast_data: AsteroidData) -> void:
+func apply_scan_reveal(ast_data) -> void:
 	if _mesh_instance == null or _mesh_instance.material_override == null:
 		return
 	var mat: StandardMaterial3D = _mesh_instance.material_override
 	var target_col: Color = ast_data.resource_color
 	# Tween albedo to resource color
-	var tw := create_tween()
+	var tw =create_tween()
 	tw.tween_property(mat, "albedo_color", target_col, 0.5).set_ease(Tween.EASE_OUT)
 	# Emission pulse for rare+
-	var res := MiningRegistry.get_resource(ast_data.primary_resource)
+	var res =MiningRegistry.get_resource(ast_data.primary_resource)
 	if res and res.rarity >= MiningResource.Rarity.RARE:
 		mat.emission_enabled = true
 		mat.emission = target_col * 0.5
@@ -136,8 +136,8 @@ func apply_scan_expire() -> void:
 	if _mesh_instance == null or _mesh_instance.material_override == null:
 		return
 	var mat: StandardMaterial3D = _mesh_instance.material_override
-	var neutral := Color(0.35, 0.33, 0.3)
-	var tw := create_tween()
+	var neutral =Color(0.35, 0.33, 0.3)
+	var tw =create_tween()
 	tw.tween_property(mat, "albedo_color", neutral, 1.0).set_ease(Tween.EASE_IN)
 	if mat.emission_enabled:
 		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, 0.8)
@@ -152,7 +152,7 @@ func flash_barren() -> void:
 	mat.emission_enabled = true
 	mat.emission = Color(0.4, 0.1, 0.05)
 	mat.emission_energy_multiplier = 0.8
-	var tw := create_tween()
+	var tw =create_tween()
 	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): mat.emission_enabled = false)
 
@@ -184,7 +184,7 @@ func hide_scan_info() -> void:
 func _update_label_text() -> void:
 	if _label == null or data == null:
 		return
-	var res := MiningRegistry.get_resource(data.primary_resource)
+	var res =MiningRegistry.get_resource(data.primary_resource)
 	var res_name: String = res.display_name if res else "?"
 	var size_name: String
 	match data.size:

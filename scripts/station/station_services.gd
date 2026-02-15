@@ -51,31 +51,31 @@ func _get_or_create(key: String) -> Dictionary:
 
 
 func is_unlocked(system_id: int, station_idx: int, service: Service) -> bool:
-	var key := _make_key(system_id, station_idx)
+	var key =_make_key(system_id, station_idx)
 	if not _states.has(key):
 		return false
 	return _states[key].get(SERVICE_NAMES[service], false)
 
 
-func unlock(system_id: int, station_idx: int, service: Service, economy: PlayerEconomy) -> bool:
+func unlock(system_id: int, station_idx: int, service: Service, economy) -> bool:
 	var price: int = SERVICE_PRICES[service]
 	if economy.credits < price:
 		return false
 	if not economy.spend_credits(price):
 		return false
-	var key := _make_key(system_id, station_idx)
-	var state := _get_or_create(key)
+	var key =_make_key(system_id, station_idx)
+	var state =_get_or_create(key)
 	state[SERVICE_NAMES[service]] = true
 	return true
 
 
 func unlock_all(system_id: int, station_idx: int) -> void:
-	var key := _make_key(system_id, station_idx)
+	var key =_make_key(system_id, station_idx)
 	_states[key] = { "commerce": true, "equipment": true, "repair": true, "shipyard": true, "refinery": true, "entrepot": true }
 
 
 func get_unlocked_count(system_id: int, station_idx: int) -> int:
-	var key := _make_key(system_id, station_idx)
+	var key =_make_key(system_id, station_idx)
 	if not _states.has(key):
 		return 0
 	var count: int = 0
@@ -86,7 +86,7 @@ func get_unlocked_count(system_id: int, station_idx: int) -> int:
 	return count
 
 
-func init_center_systems(galaxy: GalaxyData) -> void:
+func init_center_systems(galaxy) -> void:
 	for sys in galaxy.systems:
 		var sys_id: int = sys.get("id", -1)
 		var danger: int = sys.get("danger_level", 5)

@@ -6,21 +6,21 @@ extends RefCounted
 # Owned by GameManager. Provides collect/apply for SaveManager.
 # =============================================================================
 
-var economy: PlayerEconomy = null
-var inventory: PlayerInventory = null
-var cargo: PlayerCargo:
+var economy = null
+var inventory = null
+var cargo:
 	get:
 		if fleet:
-			var active := fleet.get_active()
+			var active = fleet.get_active()
 			if active and active.cargo:
 				return active.cargo
 		return null
-var fleet: PlayerFleet = null
-var station_services: StationServices = null
-var refinery_manager: RefineryManager = null
+var fleet = null
+var station_services = null
+var refinery_manager = null
 
 
-func initialize(galaxy: GalaxyData) -> void:
+func initialize(galaxy) -> void:
 	# Economy (hardcoded starting values for testing)
 	economy = PlayerEconomy.new()
 	economy.add_credits(1000000)
@@ -40,7 +40,7 @@ func initialize(galaxy: GalaxyData) -> void:
 
 	# Fleet (starts with one ship — cargo lives on the ship)
 	fleet = PlayerFleet.new()
-	var starting_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(Constants.DEFAULT_SHIP_ID))
+	var starting_ship =FleetShip.from_ship_data(ShipRegistry.get_ship_data(Constants.DEFAULT_SHIP_ID))
 	# Starting resources on the ship (generous for testing)
 	starting_ship.add_resource(&"ice", 50)
 	starting_ship.add_resource(&"iron", 100)
@@ -71,7 +71,7 @@ func initialize(galaxy: GalaxyData) -> void:
 
 func add_active_ship_resource(resource_id: StringName, amount: int) -> void:
 	if fleet:
-		var active := fleet.get_active()
+		var active = fleet.get_active()
 		if active:
 			active.add_resource(resource_id, amount)
 			# Mirror to economy for HUD display
@@ -85,7 +85,7 @@ func add_active_ship_resource(resource_id: StringName, amount: int) -> void:
 
 func spend_active_ship_resource(resource_id: StringName, amount: int) -> bool:
 	if fleet:
-		var active := fleet.get_active()
+		var active = fleet.get_active()
 		if active:
 			if not active.spend_resource(resource_id, amount):
 				return false
@@ -98,7 +98,7 @@ func spend_active_ship_resource(resource_id: StringName, amount: int) -> bool:
 
 func get_active_ship_resource(resource_id: StringName) -> int:
 	if fleet:
-		var active := fleet.get_active()
+		var active = fleet.get_active()
 		if active:
 			return active.get_resource(resource_id)
 	return 0
@@ -108,7 +108,7 @@ func get_active_ship_resource(resource_id: StringName) -> int:
 func _sync_economy_resources() -> void:
 	if economy == null:
 		return
-	var active: FleetShip = fleet.get_active() if fleet else null
+	var active = fleet.get_active() if fleet else null
 	for res_id in PlayerEconomy.RESOURCE_DEFS:
 		var ship_qty: int = active.get_resource(res_id) if active else 0
 		var eco_qty: int = economy.resources.get(res_id, 0)
@@ -117,17 +117,17 @@ func _sync_economy_resources() -> void:
 			economy.resources_changed.emit(res_id, ship_qty)
 
 
-func _on_active_ship_changed(_ship: FleetShip) -> void:
+func _on_active_ship_changed(_ship) -> void:
 	_sync_economy_resources()
 
 
-func get_starting_fleet_ship() -> FleetShip:
+func get_starting_fleet_ship():
 	if fleet and fleet.ships.size() > 0:
 		return fleet.ships[0]
 	return null
 
 
-func collect_save_state(player_ship: ShipController, system_transition: SystemTransition) -> Dictionary:
+func collect_save_state(player_ship, system_transition) -> Dictionary:
 	var state: Dictionary = {}
 
 	# Ship ID
@@ -169,7 +169,7 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 
 	# Equipment
 	if player_ship:
-		var em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+		var em = player_ship.get_node_or_null("EquipmentManager")
 		if em:
 			state["equipment"] = em.serialize()
 
@@ -191,14 +191,14 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 
 	# Refinery (station storages + queues)
 	if refinery_manager:
-		var ref_data := refinery_manager.serialize()
+		var ref_data =refinery_manager.serialize()
 		if not ref_data.is_empty():
 			state["refinery"] = ref_data
 
 	return state
 
 
-func apply_save_state(state: Dictionary, player_ship: ShipController, system_transition: SystemTransition, _galaxy: GalaxyData, fleet_deployment_mgr: FleetDeploymentManager, commerce_manager: CommerceManager, squadron_mgr: Variant = null) -> void:
+func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy, fleet_deployment_mgr, commerce_manager, squadron_mgr = null) -> void:
 	if state.is_empty():
 		return
 
@@ -230,7 +230,7 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 		var items: Array = state.get("inventory", [])
 		for item in items:
 			var category: String = item.get("category", "")
-			var item_name := StringName(str(item.get("item_name", "")))
+			var item_name =StringName(str(item.get("item_name", "")))
 			var qty: int = int(item.get("quantity", 1))
 			match category:
 				"weapon": inventory.add_weapon(item_name, qty)
@@ -241,16 +241,16 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 	# Equipment
 	var equipment: Dictionary = state.get("equipment", {})
 	if not equipment.is_empty() and player_ship:
-		var em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+		var em = player_ship.get_node_or_null("EquipmentManager")
 		if em:
 			var shield_name = equipment.get("shield_name", null)
 			if shield_name != null and str(shield_name) != "":
-				var shield_res := ShieldRegistry.get_shield(StringName(str(shield_name)))
+				var shield_res =ShieldRegistry.get_shield(StringName(str(shield_name)))
 				if shield_res:
 					em.equip_shield(shield_res)
 			var engine_name = equipment.get("engine_name", null)
 			if engine_name != null and str(engine_name) != "":
-				var engine_res := EngineRegistry.get_engine(StringName(str(engine_name)))
+				var engine_res =EngineRegistry.get_engine(StringName(str(engine_name)))
 				if engine_res:
 					em.equip_engine(engine_res)
 			var saved_modules: Array = equipment.get("modules", [])
@@ -259,10 +259,10 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 					break
 				var mod_name: String = str(saved_modules[i])
 				if mod_name != "":
-					var mod_res := ModuleRegistry.get_module(StringName(mod_name))
+					var mod_res =ModuleRegistry.get_module(StringName(mod_name))
 					if mod_res:
 						em.equip_module(i, mod_res)
-		var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+		var wm = player_ship.get_node_or_null("WeaponManager")
 		if wm:
 			var hardpoints: Array = equipment.get("hardpoints", [])
 			var weapon_names: Array[StringName] = []
@@ -307,7 +307,7 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 	var old_cargo: Array = state.get("cargo", []) if state.get("cargo") is Array else []
 	var old_resources: Array = state.get("resources", []) if state.get("resources") is Array else []
 	if fleet:
-		var active_fs := fleet.get_active()
+		var active_fs = fleet.get_active()
 		if active_fs:
 			# Migrate top-level cargo items if ship has no per-ship cargo
 			if not old_cargo.is_empty() and active_fs.cargo and active_fs.cargo.get_all().is_empty():
@@ -327,7 +327,7 @@ func apply_save_state(state: Dictionary, player_ship: ShipController, system_tra
 						break
 				if not has_any:
 					for res in old_resources:
-						var res_id := StringName(str(res.get("resource_id", "")))
+						var res_id =StringName(str(res.get("resource_id", "")))
 						var qty: int = int(res.get("quantity", 0))
 						if res_id != &"" and qty > 0:
 							active_fs.add_resource(res_id, qty)

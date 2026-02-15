@@ -5,7 +5,7 @@ extends UIComponent
 # Clan Tab: Diplomacy - Rich relation list with colored status + action panel
 # =============================================================================
 
-var _cm: ClanManager = null
+var _cm = null
 var _clan_list: UIScrollList = null
 var _btn_ally: UIButton = null
 var _btn_war: UIButton = null
@@ -14,20 +14,20 @@ var _btn_neutral: UIButton = null
 var _selected_clan_id: String = ""
 var _clan_ids: Array[String] = []
 
-const RELATION_COLORS := {
+const RELATION_COLORS ={
 	"ALLIE": Color(0.0, 1.0, 0.6, 0.9),
 	"ENNEMI": Color(1.0, 0.2, 0.15, 0.9),
 	"NEUTRE": Color(0.45, 0.65, 0.78, 0.7),
 }
 
-const RELATION_LABELS := {
+const RELATION_LABELS ={
 	"ALLIE": "ALLIANCE",
 	"ENNEMI": "EN GUERRE",
 	"NEUTRE": "NEUTRE",
 }
 
-const LEFT_W := 300.0
-const GAP := 16.0
+const LEFT_W =300.0
+const GAP =16.0
 
 
 func _ready() -> void:
@@ -61,7 +61,7 @@ func _ready() -> void:
 	add_child(_btn_neutral)
 
 
-func refresh(cm: ClanManager) -> void:
+func refresh(cm) -> void:
 	_cm = cm
 	_selected_clan_id = ""
 	_clan_ids.clear()
@@ -101,7 +101,7 @@ func _draw_clan_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> 
 	var badge_w: float = 80.0
 	var badge_x: float = rect.position.x + 16
 	var badge_y: float = rect.position.y + 26
-	var badge_rect := Rect2(badge_x, badge_y, badge_w, 16)
+	var badge_rect =Rect2(badge_x, badge_y, badge_w, 16)
 	ctrl.draw_rect(badge_rect, Color(rel_col.r, rel_col.g, rel_col.b, 0.15))
 	ctrl.draw_rect(badge_rect, Color(rel_col.r, rel_col.g, rel_col.b, 0.4), false, 1.0)
 
@@ -190,7 +190,7 @@ func _draw() -> void:
 		y += 24
 
 		# Big colored status bar
-		var status_rect := Rect2(rx + m, y, rw - m * 2, 28)
+		var status_rect =Rect2(rx + m, y, rw - m * 2, 28)
 		draw_rect(status_rect, Color(rel_col.r, rel_col.g, rel_col.b, 0.1))
 		draw_rect(status_rect, Color(rel_col.r, rel_col.g, rel_col.b, 0.4), false, 1.0)
 		draw_rect(Rect2(rx + m, y, 4, 28), rel_col)
@@ -200,8 +200,8 @@ func _draw() -> void:
 
 		# Time since
 		var since: int = info.get("since", 0)
-		var now := int(Time.get_unix_time_from_system())
-		var days := int((now - since) / 86400.0)
+		var now =int(Time.get_unix_time_from_system())
+		var days =int((now - since) / 86400.0)
 		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), "Depuis:", HORIZONTAL_ALIGNMENT_LEFT, rw * 0.4, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), "%d jours" % days, HORIZONTAL_ALIGNMENT_RIGHT, rw - m * 2, UITheme.FONT_SIZE_BODY, UITheme.LABEL_VALUE)
 		y += 28

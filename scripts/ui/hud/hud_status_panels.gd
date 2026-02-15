@@ -6,10 +6,10 @@ extends Control
 # Shield diamond replaced by 3D holographic ship model with directional shields.
 # =============================================================================
 
-var ship: ShipController = null
-var health_system: HealthSystem = null
-var energy_system: EnergySystem = null
-var player_economy: PlayerEconomy = null
+var ship = null
+var health_system = null
+var energy_system = null
+var player_economy = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
 
@@ -24,7 +24,7 @@ var _eco_bg_target: float = 0.0
 var _vp_container: SubViewportContainer = null
 var _vp: SubViewport = null
 var _holo_camera: Camera3D = null
-var _holo_model: ShipModel = null
+var _holo_model = null
 var _holo_pivot: Node3D = null
 var _shield_mesh: MeshInstance3D = null
 var _shield_mat: ShaderMaterial = null
@@ -119,38 +119,38 @@ func invalidate_cache() -> void:
 # =============================================================================
 func _draw_left_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y, _left_bg_alpha)
-	var font := UITheme.get_font_medium()
-	var x := 12.0
-	var w := ctrl.size.x - 24.0
-	var y := 22.0
+	var font =UITheme.get_font_medium()
+	var x =12.0
+	var w =ctrl.size.x - 24.0
+	var y =22.0
 
 	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "SYSTÈMES")
 	y += 2
 
 	# Hull
-	var hull_r := health_system.get_hull_ratio() if health_system else 1.0
-	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+	var hull_r =health_system.get_hull_ratio() if health_system else 1.0
+	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
 	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var hp := "%d%%" % int(hull_r * 100)
+	var hp ="%d%%" % int(hull_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
 	y += 20
 
 	# Shield
-	var shd_r := health_system.get_total_shield_ratio() if health_system else 0.85
+	var shd_r =health_system.get_total_shield_ratio() if health_system else 0.85
 	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var sp := "%d%%" % int(shd_r * 100)
+	var sp ="%d%%" % int(shd_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, shd_r, UITheme.SHIELD)
 	y += 20
 
 	# Energy
-	var nrg_r := energy_system.get_energy_ratio() if energy_system else 0.7
-	var nrg_c := Color(0.2, 0.6, 1.0, 0.9)
+	var nrg_r =energy_system.get_energy_ratio() if energy_system else 0.7
+	var nrg_c =Color(0.2, 0.6, 1.0, 0.9)
 	ctrl.draw_string(font, Vector2(x, y), "ÉNERGIE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var np := "%d%%" % int(nrg_r * 100)
+	var np ="%d%%" % int(nrg_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, nrg_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, nrg_r, nrg_c)
@@ -191,25 +191,25 @@ func _setup_shield_holo() -> void:
 	_vp_container.add_child(_vp)
 
 	# Environment — transparent bg with subtle blue ambient
-	var env := Environment.new()
+	var env =Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0, 0, 0, 0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.1, 0.3, 0.5)
 	env.ambient_light_energy = 0.3
-	var world_env := WorldEnvironment.new()
+	var world_env =WorldEnvironment.new()
 	world_env.environment = env
 	_vp.add_child(world_env)
 
 	# Key light — blue-cyan from above-left
-	var dir_light := DirectionalLight3D.new()
+	var dir_light =DirectionalLight3D.new()
 	dir_light.light_color = Color(0.3, 0.6, 0.9)
 	dir_light.light_energy = 1.5
 	dir_light.rotation_degrees = Vector3(-45, 30, 0)
 	_vp.add_child(dir_light)
 
 	# Rim light — warm amber from behind-right
-	var rim_light := OmniLight3D.new()
+	var rim_light =OmniLight3D.new()
 	rim_light.light_color = Color(0.9, 0.6, 0.2)
 	rim_light.light_energy = 1.0
 	rim_light.omni_range = 50.0
@@ -218,7 +218,7 @@ func _setup_shield_holo() -> void:
 
 	# Camera — from EquipmentCamera data or fallback top-down
 	_holo_camera = Camera3D.new()
-	var cam_data := ShipFactory.get_equipment_camera_data(ship.ship_data.ship_id)
+	var cam_data =ShipFactory.get_equipment_camera_data(ship.ship_data.ship_id)
 	if not cam_data.is_empty():
 		_holo_camera.position = cam_data["position"]
 		_holo_camera.transform.basis = cam_data["basis"]
@@ -279,8 +279,8 @@ func _cleanup_shield_holo() -> void:
 	_hit_flash_light = null
 
 
-func _apply_holo_material(model: ShipModel) -> void:
-	var mat := StandardMaterial3D.new()
+func _apply_holo_material(model) -> void:
+	var mat =StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.albedo_color = Color(0.15, 0.45, 0.9, 0.15)
@@ -296,12 +296,12 @@ func _create_shield_mesh() -> void:
 	if _holo_model == null or _holo_pivot == null:
 		return
 
-	var aabb := _holo_model.get_visual_aabb()
+	var aabb =_holo_model.get_visual_aabb()
 	_shield_half_extents = aabb.size * 0.5 * 1.3
 	_shield_center = aabb.get_center()
 	_shield_half_extents = _shield_half_extents.clamp(Vector3.ONE * 2.0, Vector3.ONE * 200.0)
 
-	var shader := load("res://shaders/hud_shield_holo.gdshader") as Shader
+	var shader =load("res://shaders/hud_shield_holo.gdshader") as Shader
 	if shader == null:
 		push_warning("HudStatusPanels: shield hologram shader not found")
 		return
@@ -314,7 +314,7 @@ func _create_shield_mesh() -> void:
 	_shield_mat.set_shader_parameter("hit_time", 1.0)
 
 	_shield_mesh = MeshInstance3D.new()
-	var sphere := SphereMesh.new()
+	var sphere =SphereMesh.new()
 	sphere.radius = 1.0
 	sphere.height = 2.0
 	sphere.radial_segments = 32
@@ -338,7 +338,7 @@ func _trigger_hit_flash(facing: int) -> void:
 		3: dir = Vector3(_shield_half_extents.x, 0, 0)
 		_: dir = Vector3.ZERO
 	_hit_flash_light.position = _shield_center + dir
-	var ratio := health_system.get_shield_ratio(facing) if health_system else 1.0
+	var ratio =health_system.get_shield_ratio(facing) if health_system else 1.0
 	_hit_flash_light.light_color = Color(0.12, 0.35, 1.0) if ratio > 0.3 else Color(1.0, 0.3, 0.08)
 	_hit_flash_light.light_energy = 3.0
 
@@ -351,8 +351,8 @@ func _trigger_hit_flash(facing: int) -> void:
 func _draw_economy_panel(ctrl: Control) -> void:
 	if player_economy == null:
 		return
-	var font := UITheme.get_font_medium()
-	var w := ctrl.size.x
+	var font =UITheme.get_font_medium()
+	var w =ctrl.size.x
 
 	# Collect resources with qty > 0
 	var active_resources: Array[Dictionary] = []
@@ -367,7 +367,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 			})
 
 	# Calculate panel height dynamically
-	var row_h := 18.0
+	var row_h =18.0
 	var res_rows: int = ceili(active_resources.size() / 2.0)
 	var panel_h: float = 16.0 + 28.0 + 8.0 + res_rows * row_h + 10.0  # top + credits + sep + resources + bottom
 	ctrl.custom_minimum_size.y = panel_h
@@ -375,27 +375,27 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 	# --- Panel background (fade in on hover) ---
 	if _eco_bg_alpha > 0.001:
-		var bg := Rect2(Vector2.ZERO, Vector2(w, panel_h))
+		var bg =Rect2(Vector2.ZERO, Vector2(w, panel_h))
 		ctrl.draw_rect(bg, Color(0.0, 0.02, 0.05, 0.6 * _eco_bg_alpha))
-		var pd := UITheme.PRIMARY_DIM
+		var pd =UITheme.PRIMARY_DIM
 		ctrl.draw_line(Vector2(0, 0), Vector2(w, 0), Color(pd.r, pd.g, pd.b, pd.a * _eco_bg_alpha), 1.0)
-		var p := UITheme.PRIMARY
+		var p =UITheme.PRIMARY
 		ctrl.draw_line(Vector2(0, 0), Vector2(0, 10), Color(p.r, p.g, p.b, p.a * _eco_bg_alpha), 1.5)
-		var pf := UITheme.PRIMARY_FAINT
+		var pf =UITheme.PRIMARY_FAINT
 		ctrl.draw_line(Vector2(4, panel_h - 1), Vector2(w - 4, panel_h - 1), Color(pf.r, pf.g, pf.b, pf.a * _eco_bg_alpha), 1.0)
 
-	var x := 10.0
-	var y := 16.0
+	var x =10.0
+	var y =16.0
 
 	# --- Credits (prominent, golden) ---
-	var cr_col := PlayerEconomy.CREDITS_COLOR
+	var cr_col =PlayerEconomy.CREDITS_COLOR
 	# Diamond icon
 	HudDrawHelpers.draw_diamond(ctrl, Vector2(x + 5, y - 3), 5.0, cr_col)
 	# Amount
-	var cr_amount := PlayerEconomy.format_credits(player_economy.credits)
+	var cr_amount =PlayerEconomy.format_credits(player_economy.credits)
 	ctrl.draw_string(font, Vector2(x + 16, y), cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, cr_col)
 	# "CR" label dimmer, to the right
-	var amt_w := font.get_string_size(cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+	var amt_w =font.get_string_size(cr_amount, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 	ctrl.draw_string(font, Vector2(x + 18 + amt_w, y), "CR", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(cr_col.r, cr_col.g, cr_col.b, 0.5))
 
 	y += 14.0
@@ -423,15 +423,15 @@ func _draw_economy_panel(ctrl: Control) -> void:
 			ctrl.draw_rect(Rect2(rx, ry, 8, 8), Color(rc.r, rc.g, rc.b, 0.35), false, 1.0)
 
 			# Quantity (bright)
-			var qty_str := str(res["qty"])
+			var qty_str =str(res["qty"])
 			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.95))
 
 			# Name (dimmer, after quantity)
-			var qty_w := font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			var qty_w =font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.45))
 
 	# Scanline
 	if _eco_bg_alpha > 0.001:
-		var sl := UITheme.SCANLINE
+		var sl =UITheme.SCANLINE
 		var sy: float = fmod(scan_line_y, panel_h)
 		ctrl.draw_line(Vector2(0, sy), Vector2(w, sy), Color(sl.r, sl.g, sl.b, sl.a * _eco_bg_alpha), 1.0)

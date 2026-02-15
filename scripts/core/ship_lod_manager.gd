@@ -61,9 +61,9 @@ func initialize(universe: Node3D) -> void:
 
 func _setup_multimesh() -> void:
 	# Billboard dot mesh — proper per-instance color support for LOD3 distant ships
-	var dot_mesh := QuadMesh.new()
+	var dot_mesh =QuadMesh.new()
 	dot_mesh.size = Vector2(8.0, 8.0)  # 8m billboard — visible as a dot at 4km+
-	var dot_mat := StandardMaterial3D.new()
+	var dot_mat =StandardMaterial3D.new()
 	dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	dot_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	dot_mat.vertex_color_use_as_albedo = true
@@ -91,9 +91,9 @@ func _setup_multimesh() -> void:
 # PUBLIC API
 # =============================================================================
 
-func register_ship(id: StringName, data: ShipLODData) -> void:
+func register_ship(id: StringName, data) -> void:
 	if _ships.has(id):
-		var existing: ShipLODData = _ships[id]
+		var existing = _ships[id]
 		if existing.is_promoting:
 			existing.node_ref = data.node_ref
 			return
@@ -107,7 +107,7 @@ func register_ship(id: StringName, data: ShipLODData) -> void:
 func unregister_ship(id: StringName) -> void:
 	if not _ships.has(id):
 		return
-	var data: ShipLODData = _ships[id]
+	var data = _ships[id]
 	if data.node_ref and is_instance_valid(data.node_ref):
 		if id != _player_id:
 			data.node_ref.queue_free()
@@ -122,8 +122,8 @@ func set_player_id(id: StringName) -> void:
 	_player_id = id
 
 
-func get_ship_data(id: StringName) -> ShipLODData:
-	return _ships.get(id) as ShipLODData
+func get_ship_data(id: StringName):
+	return _ships.get(id)
 
 
 func get_ships_in_radius(center: Vector3, radius: float) -> Array[StringName]:
@@ -131,7 +131,7 @@ func get_ships_in_radius(center: Vector3, radius: float) -> Array[StringName]:
 
 
 func get_nearest_ships(center: Vector3, radius: float, count: int, exclude_id: StringName = &"") -> Array[Dictionary]:
-	var results := _grid.query_nearest(center, radius, count + 1)
+	var results =_grid.query_nearest(center, radius, count + 1)
 	if exclude_id != &"":
 		var filtered: Array[Dictionary] = []
 		for r in results:
@@ -147,7 +147,7 @@ func get_nearest_ships(center: Vector3, radius: float, count: int, exclude_id: S
 
 func get_ship_position(id: StringName) -> Vector3:
 	if _ships.has(id):
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if data.node_ref and is_instance_valid(data.node_ref):
 			return data.node_ref.global_position
 		return data.position
@@ -156,13 +156,13 @@ func get_ship_position(id: StringName) -> Vector3:
 
 func get_ship_faction(id: StringName) -> StringName:
 	if _ships.has(id):
-		return (_ships[id] as ShipLODData).faction
+		return _ships[id].faction
 	return &""
 
 
 func is_ship_alive(id: StringName) -> bool:
 	if _ships.has(id):
-		return not (_ships[id] as ShipLODData).is_dead
+		return not _ships[id].is_dead
 	return false
 
 
@@ -179,7 +179,7 @@ func get_ship_count() -> int:
 
 func clear_all() -> void:
 	for id: StringName in _ships:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if id == _player_id:
 			continue
 		if data.node_ref and is_instance_valid(data.node_ref):
@@ -195,7 +195,7 @@ func clear_all() -> void:
 		_multimesh.instance_count = 0
 
 
-func _set_lod_set(id: StringName, lod: ShipLODData.LODLevel) -> void:
+func _set_lod_set(id: StringName, lod: int) -> void:
 	_lod0_ids.erase(id)
 	_lod1_ids.erase(id)
 	_lod2_ids.erase(id)
@@ -223,10 +223,10 @@ func _remove_from_lod_sets(id: StringName) -> void:
 	_node_ids.erase(id)
 
 
-func _ensure_entity_registered(id: StringName, data: ShipLODData) -> void:
+func _ensure_entity_registered(id: StringName, data) -> void:
 	if id == _player_id:
 		return
-	var sid := String(id)
+	var sid =String(id)
 	if not EntityRegistry.get_entity(sid).is_empty():
 		return
 	var ent_type: int = EntityRegistrySystem.EntityType.SHIP_NPC
@@ -293,7 +293,7 @@ func _physics_process(delta: float) -> void:
 
 func _sync_node_positions() -> void:
 	for id: StringName in _node_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if data.node_ref and is_instance_valid(data.node_ref):
 			data.position = data.node_ref.global_position
 			_grid.update_position(id, data.position)
@@ -304,19 +304,19 @@ var _sorted_ids: Array[StringName] = []
 func _evaluate_lod_levels() -> void:
 	if _camera == null:
 		return
-	var cam_pos := _camera.global_position
+	var cam_pos =_camera.global_position
 
 	_sorted_ids.resize(_ships.size())
 	var idx: int = 0
 	for id: StringName in _ships:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		data.distance_to_camera = cam_pos.distance_to(data.position)
 		_sorted_ids[idx] = id
 		idx += 1
 	if idx < _sorted_ids.size():
 		_sorted_ids.resize(idx)
 
-	var ships_ref := _ships
+	var ships_ref =_ships
 	_sorted_ids.sort_custom(func(a: StringName, b: StringName) -> bool:
 		return ships_ref[a].distance_to_camera < ships_ref[b].distance_to_camera)
 
@@ -325,14 +325,14 @@ func _evaluate_lod_levels() -> void:
 	var promotions_this_tick: int = 0
 
 	for id in _sorted_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 
 		if id == _player_id:
 			if data.current_lod != ShipLODData.LODLevel.LOD0:
 				_promote_to_lod0(id, data)
 			continue
 
-		var target_lod: ShipLODData.LODLevel
+		var target_lod: int
 		if data.distance_to_camera < LOD0_DISTANCE and lod0_count < LOD0_MAX:
 			target_lod = ShipLODData.LODLevel.LOD0
 		elif data.distance_to_camera < LOD1_DISTANCE and lod1_count < LOD1_MAX:
@@ -347,7 +347,7 @@ func _evaluate_lod_levels() -> void:
 			target_lod = ShipLODData.LODLevel.LOD1
 
 		if target_lod != data.current_lod:
-			var is_promotion := target_lod < data.current_lod
+			var is_promotion =target_lod < data.current_lod
 			if is_promotion and promotions_this_tick >= MAX_PROMOTIONS_PER_TICK:
 				pass
 			else:
@@ -360,9 +360,9 @@ func _evaluate_lod_levels() -> void:
 			ShipLODData.LODLevel.LOD1: lod1_count += 1
 
 
-func _transition_lod(id: StringName, data: ShipLODData, target: ShipLODData.LODLevel) -> void:
-	var cur := data.current_lod
-	var tgt := target
+func _transition_lod(id: StringName, data, target: int) -> void:
+	var cur =data.current_lod
+	var tgt =target
 
 	if cur < tgt:
 		while cur < tgt:
@@ -394,24 +394,26 @@ func _transition_lod(id: StringName, data: ShipLODData, target: ShipLODData.LODL
 # LOD TRANSITIONS
 # =============================================================================
 
-func _demote_lod0_to_lod1(id: StringName, data: ShipLODData) -> void:
-	var node := data.node_ref
+func _demote_lod0_to_lod1(id: StringName, data) -> void:
+	var node =data.node_ref
 	if node == null or not is_instance_valid(node):
 		data.current_lod = ShipLODData.LODLevel.LOD1
 		_set_lod_set(id, ShipLODData.LODLevel.LOD1)
 		return
 
-	var model := node.get_node_or_null("ShipModel") as ShipModel
+	var model = node.get_node_or_null("ShipModel")
 	if model:
 		for light: OmniLight3D in model._engine_lights:
-			light.visible = false
+			# Dim engine lights instead of hiding — fleets in combat stay visible
+			light.omni_range *= 0.5
+			light.light_energy *= 0.6
 
 	if node is RigidBody3D:
-		var rb := node as RigidBody3D
+		var rb =node as RigidBody3D
 		rb.collision_layer = Constants.LAYER_SHIPS
 		rb.collision_mask = 0
 
-	var brain := node.get_node_or_null("AIBrain") as AIBrain
+	var brain = node.get_node_or_null("AIBrain")
 	if brain:
 		brain.weapons_enabled = true
 
@@ -419,12 +421,12 @@ func _demote_lod0_to_lod1(id: StringName, data: ShipLODData) -> void:
 	_set_lod_set(id, ShipLODData.LODLevel.LOD1)
 
 
-func _demote_lod1_to_lod2(id: StringName, data: ShipLODData) -> void:
-	var node := data.node_ref
+func _demote_lod1_to_lod2(id: StringName, data) -> void:
+	var node =data.node_ref
 	if node and is_instance_valid(node):
 		data.capture_from_node(node)
 		# Keep EntityRegistry entry (map needs it for all ship types), just null the node ref
-		var ent := EntityRegistry.get_entity(String(node.name))
+		var ent =EntityRegistry.get_entity(String(node.name))
 		if not ent.is_empty():
 			ent["node"] = null
 		node.queue_free()
@@ -433,17 +435,17 @@ func _demote_lod1_to_lod2(id: StringName, data: ShipLODData) -> void:
 	_set_lod_set(id, ShipLODData.LODLevel.LOD2)
 
 
-func _demote_lod2_to_lod3(id: StringName, data: ShipLODData) -> void:
+func _demote_lod2_to_lod3(id: StringName, data) -> void:
 	data.current_lod = ShipLODData.LODLevel.LOD3
 	_set_lod_set(id, ShipLODData.LODLevel.LOD3)
 
 
-func _promote_lod3_to_lod2(id: StringName, data: ShipLODData) -> void:
+func _promote_lod3_to_lod2(id: StringName, data) -> void:
 	data.current_lod = ShipLODData.LODLevel.LOD2
 	_set_lod_set(id, ShipLODData.LODLevel.LOD2)
 
 
-func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
+func _promote_lod2_to_lod1(id: StringName, data) -> void:
 	if data.is_dead:
 		return
 
@@ -451,20 +453,20 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 
 	var node: Node3D = null
 	if data.is_remote_player:
-		var remote := RemotePlayerShip.new()
+		var remote =RemotePlayerShip.new()
 		remote.peer_id = data.peer_id
 		remote.set_player_name(data.display_name)
 		remote.name = String(id)
 		node = remote
 	elif data.is_server_npc:
-		var remote_npc := RemoteNPCShip.new()
+		var remote_npc =RemoteNPCShip.new()
 		remote_npc.npc_id = id
 		remote_npc.ship_id = data.ship_id
 		remote_npc.faction = data.faction
 		remote_npc.name = String(id)
 		node = remote_npc
 	else:
-		var parent := _universe_node if _universe_node else get_tree().current_scene
+		var parent =_universe_node if _universe_node else get_tree().current_scene
 		var spawn_id: StringName = data.ship_id if data.ship_id != &"" else data.ship_class
 		var is_fleet: bool = data.fleet_index >= 0
 		node = ShipFactory.spawn_npc_ship(
@@ -487,16 +489,18 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 		(node as RigidBody3D).linear_velocity = data.velocity
 
 	if node is RigidBody3D:
-		var rb := node as RigidBody3D
+		var rb =node as RigidBody3D
 		rb.collision_layer = Constants.LAYER_SHIPS
 		rb.collision_mask = 0
 
-	var model := node.get_node_or_null("ShipModel") as ShipModel
+	var model = node.get_node_or_null("ShipModel")
 	if model:
 		for light: OmniLight3D in model._engine_lights:
-			light.visible = false
+			# Dim engine lights at LOD1 — visible but reduced cost
+			light.omni_range *= 0.5
+			light.light_energy *= 0.6
 
-	var brain := node.get_node_or_null("AIBrain") as AIBrain
+	var brain = node.get_node_or_null("AIBrain")
 	if brain:
 		brain.weapons_enabled = true
 		brain.set_patrol_area(data.ai_patrol_center, data.ai_patrol_radius)
@@ -508,12 +512,12 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 
 	# Connect NPC fire relay on server when promoted to full node
 	if not data.is_remote_player and not data.is_server_npc and NetworkManager.is_server():
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.connect_npc_fire_relay(id, node)
 
 	# Restore EntityRegistry node ref (entity was kept during demotion)
-	var ent := EntityRegistry.get_entity(String(id))
+	var ent =EntityRegistry.get_entity(String(id))
 	if not ent.is_empty():
 		ent["node"] = node
 		# Restore fleet entity type (spawn_npc_ship re-registered as SHIP_NPC)
@@ -522,30 +526,33 @@ func _promote_lod2_to_lod1(id: StringName, data: ShipLODData) -> void:
 			ent["extra"]["fleet_index"] = data.fleet_index
 			ent["extra"]["owner_name"] = "Player"
 			if GameManager.player_data and GameManager.player_data.fleet:
-				var fleet := GameManager.player_data.fleet
+				var fleet =GameManager.player_data.fleet
 				if data.fleet_index < fleet.ships.size():
-					var fs := fleet.ships[data.fleet_index]
+					var fs =fleet.ships[data.fleet_index]
 					ent["extra"]["command"] = String(fs.deployed_command)
 					ent["extra"]["arrived"] = false
 					ent["name"] = fs.custom_name if fs.custom_name != "" else data.display_name
 
 
-func _promote_to_lod0(id: StringName, data: ShipLODData) -> void:
-	var node := data.node_ref
+func _promote_to_lod0(id: StringName, data) -> void:
+	var node =data.node_ref
 	if node == null or not is_instance_valid(node):
 		return
 
-	var model := node.get_node_or_null("ShipModel") as ShipModel
+	var model = node.get_node_or_null("ShipModel")
 	if model:
 		for light: OmniLight3D in model._engine_lights:
 			light.visible = true
+			# Restore full range/energy from LOD1 dimming (×0.5/×0.6)
+			light.omni_range /= 0.5
+			light.light_energy /= 0.6
 
 	if node is RigidBody3D:
-		var rb := node as RigidBody3D
+		var rb =node as RigidBody3D
 		rb.collision_layer = Constants.LAYER_SHIPS
 		rb.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
 
-	var brain := node.get_node_or_null("AIBrain") as AIBrain
+	var brain = node.get_node_or_null("AIBrain")
 	if brain:
 		brain.set_process(true)
 		brain.weapons_enabled = true
@@ -565,7 +572,7 @@ func _update_multimesh() -> void:
 	var count: int = 0
 	# First pass: count alive LOD3
 	for id: StringName in _lod3_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if not data.is_dead:
 			count += 1
 
@@ -575,11 +582,11 @@ func _update_multimesh() -> void:
 
 	var idx: int = 0
 	for id: StringName in _lod3_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if data.is_dead:
 			continue
 		# Billboard dot — position only, no rotation/scale needed
-		var xform := Transform3D(Basis.IDENTITY, data.position)
+		var xform =Transform3D(Basis.IDENTITY, data.position)
 		_multimesh.set_instance_transform(idx, xform)
 		_multimesh.set_instance_color(idx, data.color_tint)
 		idx += 1
@@ -591,21 +598,21 @@ func _update_multimesh() -> void:
 
 func _tick_data_only_ai(delta: float) -> void:
 	for id: StringName in _lod2_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 		_sync_entity_registry_position(id, data)
 	for id: StringName in _lod3_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		if not data.is_remote_player and not data.is_server_npc:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 		_sync_entity_registry_position(id, data)
 
 
-func _sync_entity_registry_position(id: StringName, data: ShipLODData) -> void:
-	var ent := EntityRegistry.get_entity(String(id))
+func _sync_entity_registry_position(id: StringName, data) -> void:
+	var ent =EntityRegistry.get_entity(String(id))
 	if ent.is_empty():
 		return
 	var upos: Array = FloatingOrigin.to_universe_pos(data.position)
@@ -634,24 +641,24 @@ func _tick_combat_bridge() -> void:
 		combatant_ids.append(id)
 
 	for id: StringName in combatant_ids:
-		var data: ShipLODData = _ships.get(id)
+		var data = _ships.get(id)
 		if data == null:
 			continue
 		if data.is_dead or data.is_remote_player or data.is_server_npc:
 			continue
 
-		var nearby := _grid.query_radius(data.position, data.engagement_range)
+		var nearby =_grid.query_radius(data.position, data.engagement_range)
 		var best_id: StringName = &""
 		var best_dist_sq: float = INF
 		for other_id in nearby:
 			if other_id == id or other_id == _player_id:
 				continue
-			var other: ShipLODData = _ships.get(other_id)
+			var other = _ships.get(other_id)
 			if other == null or other.is_dead:
 				continue
 			if other.faction == data.faction:
 				continue
-			var d_sq := data.position.distance_squared_to(other.position)
+			var d_sq =data.position.distance_squared_to(other.position)
 			if d_sq < best_dist_sq:
 				best_dist_sq = d_sq
 				best_id = other_id
@@ -659,20 +666,20 @@ func _tick_combat_bridge() -> void:
 		if best_id == &"":
 			continue
 
-		var target_data: ShipLODData = _ships.get(best_id)
+		var target_data = _ships.get(best_id)
 		if target_data == null:
 			continue
 
-		var to_target := target_data.position - data.position
+		var to_target =target_data.position - data.position
 		if to_target.length_squared() > 100.0:
 			data.velocity = data.velocity.lerp(to_target.normalized() * 60.0, COMBAT_BRIDGE_INTERVAL * 0.5)
 
 		if target_data.current_lod == ShipLODData.LODLevel.LOD0 or target_data.current_lod == ShipLODData.LODLevel.LOD1:
 			continue
 
-		var ship_res: ShipData = ShipRegistry.get_ship_data(data.ship_id)
+		var ship_res = ShipRegistry.get_ship_data(data.ship_id)
 		var dps: float = ship_res.lod_combat_dps if ship_res else 15.0
-		var damage_this_tick := dps * COMBAT_BRIDGE_INTERVAL
+		var damage_this_tick =dps * COMBAT_BRIDGE_INTERVAL
 		if target_data.shield_ratio > 0.0:
 			target_data.shield_ratio = maxf(target_data.shield_ratio - damage_this_tick * 0.008, 0.0)
 		else:
@@ -691,41 +698,41 @@ func _tick_combat_bridge() -> void:
 # FLEET SHIP RE-EQUIPMENT (after LOD re-promotion)
 # =============================================================================
 
-func _reequip_fleet_ship(npc: ShipController, fleet_index: int) -> void:
-	var fleet: PlayerFleet = GameManager.player_data.fleet if GameManager.player_data else null
+func _reequip_fleet_ship(npc, fleet_index: int) -> void:
+	var fleet = GameManager.player_data.fleet if GameManager.player_data else null
 	if fleet == null or fleet_index < 0 or fleet_index >= fleet.ships.size():
 		return
-	var fs: FleetShip = fleet.ships[fleet_index]
+	var fs = fleet.ships[fleet_index]
 
 	# Weapons
-	var wm := npc.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = npc.get_node_or_null("WeaponManager")
 	if wm:
 		wm.equip_weapons(fs.weapons)
 
 	# Shield / Engine / Modules
-	var em := npc.get_node_or_null("EquipmentManager") as EquipmentManager
+	var em = npc.get_node_or_null("EquipmentManager")
 	if em == null:
 		em = EquipmentManager.new()
 		em.name = "EquipmentManager"
 		npc.add_child(em)
 		em.setup(npc.ship_data)
 	if fs.shield_name != &"":
-		var shield_res := ShieldRegistry.get_shield(fs.shield_name)
+		var shield_res =ShieldRegistry.get_shield(fs.shield_name)
 		if shield_res:
 			em.equip_shield(shield_res)
 	if fs.engine_name != &"":
-		var engine_res := EngineRegistry.get_engine(fs.engine_name)
+		var engine_res =EngineRegistry.get_engine(fs.engine_name)
 		if engine_res:
 			em.equip_engine(engine_res)
 	for i in fs.modules.size():
 		if fs.modules[i] != &"":
-			var mod_res := ModuleRegistry.get_module(fs.modules[i])
+			var mod_res =ModuleRegistry.get_module(fs.modules[i])
 			if mod_res:
 				em.equip_module(i, mod_res)
 
 	# Re-attach FleetAIBridge + AIMiningBehavior
 	if npc.get_node_or_null("FleetAIBridge") == null:
-		var bridge := FleetAIBridge.new()
+		var bridge =FleetAIBridge.new()
 		bridge.name = "FleetAIBridge"
 		bridge.fleet_index = fleet_index
 		bridge.command = fs.deployed_command
@@ -734,15 +741,15 @@ func _reequip_fleet_ship(npc: ShipController, fleet_index: int) -> void:
 		npc.add_child(bridge)
 
 	if fs.deployed_command == &"mine" and npc.get_node_or_null("AIMiningBehavior") == null:
-		var mining_behavior := AIMiningBehavior.new()
+		var mining_behavior =AIMiningBehavior.new()
 		mining_behavior.name = "AIMiningBehavior"
 		mining_behavior.fleet_index = fleet_index
 		mining_behavior.fleet_ship = fs
 		npc.add_child(mining_behavior)
 
 	# Re-connect death signal
-	var health := npc.get_node_or_null("HealthSystem") as HealthSystem
-	var fdm := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	var health = npc.get_node_or_null("HealthSystem")
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if health and fdm:
 		if not health.ship_destroyed.is_connected(fdm._on_fleet_npc_died):
 			health.ship_destroyed.connect(fdm._on_fleet_npc_died.bind(fleet_index, npc))
@@ -758,11 +765,11 @@ func _reequip_fleet_ship(npc: ShipController, fleet_index: int) -> void:
 
 func _on_origin_shifted(shift: Vector3) -> void:
 	for id: StringName in _lod2_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		data.position -= shift
 		data.ai_patrol_center -= shift
 	for id: StringName in _lod3_ids:
-		var data: ShipLODData = _ships[id]
+		var data = _ships[id]
 		data.position -= shift
 		data.ai_patrol_center -= shift
 

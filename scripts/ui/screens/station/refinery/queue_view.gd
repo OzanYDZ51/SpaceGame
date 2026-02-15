@@ -5,7 +5,7 @@ extends Control
 # Queue View — shows active job progress, pending jobs, completed jobs.
 # =============================================================================
 
-var _manager: RefineryManager = null
+var _manager = null
 var _station_key: String = ""
 
 var _job_list: UIScrollList = null
@@ -20,7 +20,7 @@ func _ready() -> void:
 	add_child(_job_list)
 
 
-func setup(mgr: RefineryManager, station_key: String) -> void:
+func setup(mgr, station_key: String) -> void:
 	_manager = mgr
 	_station_key = station_key
 
@@ -35,7 +35,7 @@ func _rebuild_list() -> void:
 	if _manager == null:
 		_job_list.items = []
 		return
-	var queue := _manager.get_queue(_station_key)
+	var queue =_manager.get_queue(_station_key)
 	# Show all non-collected jobs
 	var visible_jobs: Array = []
 	for j in queue.jobs:
@@ -93,7 +93,7 @@ func _draw() -> void:
 
 
 func _draw_job_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void:
-	var job := item as RefineryJob
+	var job =item as RefineryJob
 	if job == null:
 		return
 	var font: Font = UITheme.get_font()
@@ -102,7 +102,7 @@ func _draw_job_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void
 	var w: float = rect.size.x - 16
 	var h: float = rect.size.y
 
-	var recipe := RefineryRegistry.get_recipe(job.recipe_id)
+	var recipe =RefineryRegistry.get_recipe(job.recipe_id)
 	var rname: String = recipe.display_name if recipe else str(job.recipe_id)
 	var col: Color = recipe.icon_color if recipe else UITheme.TEXT
 

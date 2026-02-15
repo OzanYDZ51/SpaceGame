@@ -10,13 +10,13 @@ const SPAWN_OFFSET_MIN: float = 1800.0
 const SPAWN_OFFSET_MAX: float = 2200.0
 const FLEET_FACTION: StringName = &"player_fleet"
 
-var _fleet: PlayerFleet = null
+var _fleet = null
 var _deployed_ships: Dictionary = {}  # fleet_index (int) -> ShipController node
 var _pos_sync_timer: float = 0.0
 const POS_SYNC_INTERVAL: float = 10.0
 
 
-func initialize(fleet: PlayerFleet) -> void:
+func initialize(fleet) -> void:
 	_fleet = fleet
 
 
@@ -32,14 +32,14 @@ func _sync_deployed_positions() -> void:
 	if _fleet == null:
 		return
 	for fleet_index in _deployed_ships:
-		var npc: ShipController = _deployed_ships[fleet_index]
+		var npc = _deployed_ships[fleet_index]
 		if not is_instance_valid(npc):
 			continue
 		if fleet_index >= 0 and fleet_index < _fleet.ships.size():
-			var fs := _fleet.ships[fleet_index]
+			var fs = _fleet.ships[fleet_index]
 			fs.last_known_pos = FloatingOrigin.to_universe_pos(npc.global_position)
 			# Save AI state (mining phase, home station, heat, etc.)
-			var mining_ai := npc.get_node_or_null("AIMiningBehavior") as AIMiningBehavior
+			var mining_ai = npc.get_node_or_null("AIMiningBehavior")
 			if mining_ai:
 				fs.ai_state = mining_ai.save_state()
 
@@ -47,7 +47,7 @@ func _sync_deployed_positions() -> void:
 func can_deploy(fleet_index: int) -> bool:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return false
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	# Can't deploy active ship
 	if fleet_index == _fleet.active_index:
 		return false
@@ -66,23 +66,23 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 		push_warning("FleetDeploy: can_deploy FAILED for index %d" % fleet_index)
 		return false
 
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	var universe: Node3D = GameManager.universe_node
 	if universe == null:
 		push_warning("FleetDeploy: universe_node is null!")
 		return false
 
 	var spawn_pos: Vector3
-	var offset := Vector3.ZERO
+	var offset =Vector3.ZERO
 	if override_pos is Vector3:
 		# Use exact position (reconnect / reload with saved position)
 		spawn_pos = override_pos
 	else:
 		# Resolve spawn position from station + random offset
-		var station_local_pos := Vector3.ZERO
+		var station_local_pos =Vector3.ZERO
 		var station_id: String = fs.docked_station_id
 		if station_id != "":
-			var ent := EntityRegistry.get_entity(station_id)
+			var ent =EntityRegistry.get_entity(station_id)
 			if not ent.is_empty():
 				station_local_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 
@@ -92,7 +92,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 		spawn_pos = station_local_pos + offset
 
 	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
-	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION, false, true)
+	var npc = ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION, false, true)
 	if npc == null:
 		push_error("FleetDeploy: spawn_npc_ship FAILED for ship_id '%s'" % fs.ship_id)
 		return false
@@ -102,37 +102,37 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 
 	# Orient ship facing away from station (Godot forward = -Z)
 	if offset.length_squared() > 1.0:
-		var away_dir := offset.normalized()
+		var away_dir =offset.normalized()
 		npc.look_at_from_position(spawn_pos, spawn_pos + away_dir, Vector3.UP)
 
 	# Equip weapons from FleetShip loadout (hardpoints are bare thanks to skip_default_loadout)
-	var wm := npc.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = npc.get_node_or_null("WeaponManager")
 	if wm:
 		wm.equip_weapons(fs.weapons)
 
 	# Equip shield/engine/modules from FleetShip loadout
-	var em := npc.get_node_or_null("EquipmentManager") as EquipmentManager
+	var em = npc.get_node_or_null("EquipmentManager")
 	if em == null:
 		em = EquipmentManager.new()
 		em.name = "EquipmentManager"
 		npc.add_child(em)
 		em.setup(npc.ship_data)
 	if fs.shield_name != &"":
-		var shield_res := ShieldRegistry.get_shield(fs.shield_name)
+		var shield_res =ShieldRegistry.get_shield(fs.shield_name)
 		if shield_res:
 			em.equip_shield(shield_res)
 	if fs.engine_name != &"":
-		var engine_res := EngineRegistry.get_engine(fs.engine_name)
+		var engine_res =EngineRegistry.get_engine(fs.engine_name)
 		if engine_res:
 			em.equip_engine(engine_res)
 	for i in fs.modules.size():
 		if fs.modules[i] != &"":
-			var mod_res := ModuleRegistry.get_module(fs.modules[i])
+			var mod_res =ModuleRegistry.get_module(fs.modules[i])
 			if mod_res:
 				em.equip_module(i, mod_res)
 
 	# Attach FleetAIBridge
-	var bridge := FleetAIBridge.new()
+	var bridge =FleetAIBridge.new()
 	bridge.name = "FleetAIBridge"
 	bridge.fleet_index = fleet_index
 	bridge.command = cmd
@@ -142,21 +142,21 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 
 	# Attach AIMiningBehavior if mining order
 	if cmd == &"mine":
-		var mining_behavior := AIMiningBehavior.new()
+		var mining_behavior =AIMiningBehavior.new()
 		mining_behavior.name = "AIMiningBehavior"
 		mining_behavior.fleet_index = fleet_index
 		mining_behavior.fleet_ship = fs
 		npc.add_child(mining_behavior)
 
 	# Connect death signal
-	var health := npc.get_node_or_null("HealthSystem") as HealthSystem
+	var health = npc.get_node_or_null("HealthSystem")
 	if health:
 		health.ship_destroyed.connect(_on_fleet_npc_died.bind(fleet_index, npc))
 
 	# Register / update as fleet entity in EntityRegistry
-	var npc_id := StringName(npc.name)
+	var npc_id =StringName(npc.name)
 	var upos: Array = FloatingOrigin.to_universe_pos(spawn_pos)
-	var existing_ent := EntityRegistry.get_entity(npc.name)
+	var existing_ent =EntityRegistry.get_entity(npc.name)
 	if existing_ent.is_empty():
 		# Entity wasn't registered yet (LOD skip, timing) — register now
 		EntityRegistry.register(npc.name, {
@@ -193,9 +193,9 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 	fs.last_known_pos = FloatingOrigin.to_universe_pos(spawn_pos)
 
 	# Tag ShipLODData so LOD re-promotion re-equips custom loadout
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
-		var lod_data := lod_mgr.get_ship_data(npc_id)
+		var lod_data = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			lod_data.fleet_index = fleet_index
 
@@ -203,7 +203,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 	_fleet.fleet_changed.emit()
 
 	# Notify squadron manager
-	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	var sq_mgr = GameManager.get_node_or_null("SquadronManager")
 	if sq_mgr:
 		sq_mgr.on_ship_deployed(fleet_index, npc)
 
@@ -213,12 +213,12 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 func retrieve_ship(fleet_index: int) -> bool:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return false
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	if fs.deployment_state != FleetShip.DeploymentState.DEPLOYED:
 		return false
 
 	# Notify squadron manager while NPC still valid
-	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	var sq_mgr = GameManager.get_node_or_null("SquadronManager")
 	if sq_mgr:
 		sq_mgr.on_ship_retrieved(fleet_index)
 
@@ -226,13 +226,13 @@ func retrieve_ship(fleet_index: int) -> bool:
 	if _deployed_ships.has(fleet_index):
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
-			var npc: ShipController = npc_ref
+			var npc = npc_ref
 			# Update docked_station_id from bridge (ship may have been sent to a different station)
-			var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+			var bridge = npc.get_node_or_null("FleetAIBridge")
 			if bridge and bridge._station_id != "":
 				fs.docked_station_id = bridge._station_id
 			EntityRegistry.unregister(npc.name)
-			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 			if lod_mgr:
 				lod_mgr.unregister_ship(StringName(npc.name))
 			npc.queue_free()
@@ -251,7 +251,7 @@ func retrieve_ship(fleet_index: int) -> bool:
 func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> bool:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return false
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	if fs.deployment_state != FleetShip.DeploymentState.DEPLOYED:
 		return false
 	if not _deployed_ships.has(fleet_index):
@@ -261,20 +261,20 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 	if not is_instance_valid(npc_ref):
 		_deployed_ships.erase(fleet_index)
 		return false
-	var npc: ShipController = npc_ref
+	var npc = npc_ref
 
-	var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+	var bridge = npc.get_node_or_null("FleetAIBridge")
 	if bridge:
 		bridge.apply_command(cmd, params)
 
 	# Manage AIMiningBehavior lifecycle
-	var existing_mining := npc.get_node_or_null("AIMiningBehavior") as AIMiningBehavior
+	var existing_mining = npc.get_node_or_null("AIMiningBehavior")
 	if cmd == &"mine":
 		if existing_mining:
 			# Mine→Mine: update existing behavior with new params (new belt, new filter)
 			existing_mining.update_params(params)
 		else:
-			var mining_behavior := AIMiningBehavior.new()
+			var mining_behavior =AIMiningBehavior.new()
 			mining_behavior.name = "AIMiningBehavior"
 			mining_behavior.fleet_index = fleet_index
 			mining_behavior.fleet_ship = fs
@@ -293,7 +293,7 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 func auto_retrieve_all() -> void:
 	if _fleet == null:
 		return
-	var indices := _deployed_ships.keys().duplicate()
+	var indices =_deployed_ships.keys().duplicate()
 	for idx in indices:
 		retrieve_ship(idx)
 
@@ -313,9 +313,9 @@ func release_scene_nodes() -> void:
 	for fleet_index in _deployed_ships.keys():
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
-			var npc: ShipController = npc_ref
+			var npc = npc_ref
 			EntityRegistry.unregister(npc.name)
-			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 			if lod_mgr:
 				lod_mgr.unregister_ship(StringName(npc.name))
 			npc.queue_free()
@@ -335,7 +335,7 @@ func redeploy_saved_ships() -> void:
 		return  # Server manages fleet NPCs, client sees them via LOD
 	var current_sys: int = GameManager.current_system_id_safe()
 	for i in _fleet.ships.size():
-		var fs := _fleet.ships[i]
+		var fs = _fleet.ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.docked_system_id == current_sys:
 			if i == _fleet.active_index:
 				continue
@@ -348,10 +348,10 @@ func redeploy_saved_ships() -> void:
 			deploy_ship(i, fs.deployed_command, fs.deployed_command_params, saved_pos)
 
 
-func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
+func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 	fs.deployed_npc_id = &""
 	fs.deployed_command = &""
@@ -361,7 +361,7 @@ func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 	_fleet.fleet_changed.emit()
 
 	# Notify squadron manager
-	var sq_mgr := GameManager.get_node_or_null("SquadronManager") as SquadronManager
+	var sq_mgr = GameManager.get_node_or_null("SquadronManager")
 	if sq_mgr:
 		sq_mgr.on_member_destroyed(fleet_index)
 
@@ -374,19 +374,19 @@ func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
 func update_entity_extra(fleet_index: int, key: String, value: Variant) -> void:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return
-	var fs := _fleet.ships[fleet_index]
+	var fs = _fleet.ships[fleet_index]
 	if fs.deployed_npc_id == &"":
 		return
-	var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+	var ent =EntityRegistry.get_entity(String(fs.deployed_npc_id))
 	if not ent.is_empty():
 		ent["extra"][key] = value
 
 
-func get_deployed_npc(fleet_index: int) -> ShipController:
+func get_deployed_npc(fleet_index: int):
 	if _deployed_ships.has(fleet_index):
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
-			return npc_ref as ShipController
+			return npc_ref
 		_deployed_ships.erase(fleet_index)
 	return null
 
@@ -399,11 +399,11 @@ func get_deployed_npc(fleet_index: int) -> ShipController:
 
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
-		var params_json := JSON.stringify(params) if not params.is_empty() else ""
+		var params_json =JSON.stringify(params) if not params.is_empty() else ""
 		NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json)
 	else:
 		# Server: go through NpcAuthority for proper broadcasting
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.handle_fleet_deploy_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
 		else:
@@ -415,7 +415,7 @@ func request_retrieve(fleet_index: int) -> void:
 		NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
 	else:
 		# Server: go through NpcAuthority for proper broadcasting
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.handle_fleet_retrieve_request(NetworkManager.local_peer_id, fleet_index)
 		else:
@@ -424,11 +424,11 @@ func request_retrieve(fleet_index: int) -> void:
 
 func request_change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
-		var params_json := JSON.stringify(params) if not params.is_empty() else ""
+		var params_json =JSON.stringify(params) if not params.is_empty() else ""
 		NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
 	else:
 		# Server: go through NpcAuthority for proper broadcasting
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.handle_fleet_command_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
 		else:
@@ -449,7 +449,7 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 	for death in deaths:
 		var fi: int = int(death.get("fleet_index", -1))
 		if fi >= 0 and fi < _fleet.ships.size():
-			var fs := _fleet.ships[fi]
+			var fs = _fleet.ships[fi]
 			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 				fs.deployed_npc_id = &""

@@ -24,8 +24,8 @@ var _pending_jump_target_id: int = -1
 const MAX_JUMP_RETRIES: int = 8
 
 # External references (set by GameManager)
-var system_transition: SystemTransition = null
-var galaxy_data: GalaxyData = null
+var system_transition = null
+var galaxy_data = null
 
 
 func start_route(from_id: int, to_id: int) -> bool:
@@ -55,7 +55,7 @@ func cancel_route() -> void:
 		return
 
 	# Disengage ship autopilot if active
-	var ship := GameManager.player_ship as ShipController
+	var ship = GameManager.player_ship
 	if ship and ship.autopilot_active:
 		ship.disengage_autopilot()
 
@@ -152,7 +152,7 @@ func _advance_to_next_step() -> void:
 		cancel_route()
 		return
 
-	var ship := GameManager.player_ship as ShipController
+	var ship = GameManager.player_ship
 	if ship:
 		ship.engage_autopilot(next_gate_entity_id, ent["name"], true)
 
@@ -197,7 +197,7 @@ func _auto_jump() -> void:
 			return
 		# Re-engage autopilot to fly back to the gate if we drifted out
 		if _jump_retry_count >= 3 and next_gate_entity_id != "":
-			var ship := GameManager.player_ship as ShipController
+			var ship = GameManager.player_ship
 			if ship and not ship.autopilot_active:
 				var ent: Dictionary = EntityRegistry.get_entity(next_gate_entity_id)
 				if not ent.is_empty():

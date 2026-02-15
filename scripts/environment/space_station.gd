@@ -10,10 +10,10 @@ extends StaticBody3D
 @export var station_name: String = "Alpha Station"
 @export var station_type: int = 0  # StationData.StationType value
 
-var structure_health: StructureHealth = null
-var weapon_manager: WeaponManager = null
-var station_equipment: StationEquipment = null
-var defense_ai: StationDefenseAI = null
+var structure_health = null
+var weapon_manager = null
+var station_equipment = null
+var defense_ai = null
 
 
 func _ready() -> void:
@@ -28,7 +28,7 @@ func _ready() -> void:
 	add_child(structure_health)
 
 	# Death handler
-	var death_handler := StructureDeathHandler.new()
+	var death_handler =StructureDeathHandler.new()
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
 
@@ -69,16 +69,16 @@ func _create_trimesh_collision(mesh_instance: MeshInstance3D) -> void:
 	var rel_transform: Transform3D = global_transform.affine_inverse() * mesh_instance.global_transform
 
 	# Transform every vertex to station-local space
-	var transformed_faces := PackedVector3Array()
+	var transformed_faces =PackedVector3Array()
 	transformed_faces.resize(faces.size())
 	for i in range(faces.size()):
 		transformed_faces[i] = rel_transform * faces[i]
 
-	var shape := ConcavePolygonShape3D.new()
+	var shape =ConcavePolygonShape3D.new()
 	shape.backface_collision = true
 	shape.set_faces(transformed_faces)
 
-	var col := CollisionShape3D.new()
+	var col =CollisionShape3D.new()
 	col.shape = shape
 	add_child(col)
 
@@ -92,17 +92,17 @@ func _get_all_children(node: Node) -> Array[Node]:
 
 
 func _build_fallback() -> void:
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
+	var mesh =MeshInstance3D.new()
+	var box =BoxMesh.new()
 	box.size = Vector3(50, 20, 50)
 	mesh.mesh = box
-	var mat := StandardMaterial3D.new()
+	var mat =StandardMaterial3D.new()
 	mat.albedo_color = Color(0.3, 0.35, 0.4)
 	mat.metallic = 0.7
 	mesh.material_override = mat
 	add_child(mesh)
-	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
+	var col =CollisionShape3D.new()
+	var shape =BoxShape3D.new()
 	shape.size = box.size
 	col.shape = shape
 	add_child(col)

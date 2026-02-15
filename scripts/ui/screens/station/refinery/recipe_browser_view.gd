@@ -5,9 +5,9 @@ extends Control
 # Recipe Browser View — tier tabs + recipe list + detail panel + LANCER button.
 # =============================================================================
 
-var _manager: RefineryManager = null
+var _manager = null
 var _station_key: String = ""
-var _player_data: PlayerData = null
+var _player_data = null
 
 var _tab_bar: UITabBar = null
 var _recipe_list: UIScrollList = null
@@ -18,8 +18,8 @@ var _selected_recipe: RefineryRecipe = null
 var _current_tier: int = 1
 var _quantity: int = 1
 
-const DETAIL_W := 260.0
-const LIST_TOP := 32.0
+const DETAIL_W =260.0
+const LIST_TOP =32.0
 
 
 func _ready() -> void:
@@ -55,7 +55,7 @@ func _ready() -> void:
 	add_child(_launch_btn)
 
 
-func setup(mgr: RefineryManager, station_key: String, pdata: PlayerData) -> void:
+func setup(mgr, station_key: String, pdata) -> void:
 	_manager = mgr
 	_station_key = station_key
 	_player_data = pdata
@@ -99,7 +99,7 @@ func _set_quantity(q: int) -> void:
 func _on_launch() -> void:
 	if _selected_recipe == null or _manager == null:
 		return
-	var job := _manager.submit_job(_station_key, _selected_recipe.recipe_id, _quantity)
+	var job =_manager.submit_job(_station_key, _selected_recipe.recipe_id, _quantity)
 	if job:
 		if GameManager._notif:
 			GameManager._notif.general.service_unlocked("Raffinage: %s x%d" % [_selected_recipe.display_name, _quantity])
@@ -111,7 +111,7 @@ func _on_launch() -> void:
 
 
 func _populate_list() -> void:
-	var recipes := RefineryRegistry.get_by_tier(_current_tier)
+	var recipes =RefineryRegistry.get_by_tier(_current_tier)
 	_recipe_list.items = recipes
 	_recipe_list.selected_index = -1
 	_recipe_list.queue_redraw()
@@ -229,7 +229,7 @@ func _draw() -> void:
 
 
 func _draw_recipe_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void:
-	var r := item as RefineryRecipe
+	var r =item as RefineryRecipe
 	if r == null:
 		return
 	var font: Font = UITheme.get_font()

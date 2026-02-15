@@ -7,13 +7,13 @@ extends Control
 
 signal hardpoint_selected(idx: int)
 
-const EC := preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
+const EC =preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
 
 # --- 3D scene ---
 var _viewport_container: SubViewportContainer = null
 var _viewport: SubViewport = null
 var _viewer_camera: Camera3D = null
-var _ship_model: ShipModel = null
+var _ship_model = null
 var _hp_markers: Array[Dictionary] = []  # {mesh: MeshInstance3D, body: StaticBody3D, index: int}
 
 # --- Model config (set via setup()) ---
@@ -36,7 +36,7 @@ var _pulse_time: float = 0.0
 
 # --- References (set by parent) ---
 var adapter: RefCounted = null
-var weapon_manager: WeaponManager = null
+var weapon_manager = null
 var is_live_mode: bool = false
 
 
@@ -57,7 +57,7 @@ func _process(delta: float) -> void:
 # =============================================================================
 func setup(p_adapter: RefCounted, model_path: String, model_scale: float,
 		center_offset: Vector3, model_rotation: Vector3, root_basis: Basis,
-		p_weapon_manager: WeaponManager, p_is_live: bool, p_is_station: bool) -> void:
+		p_weapon_manager, p_is_live: bool, p_is_station: bool) -> void:
 	adapter = p_adapter
 	weapon_manager = p_weapon_manager
 	is_live_mode = p_is_live
@@ -94,7 +94,7 @@ func refresh_weapons() -> void:
 			weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
 		_ship_model.apply_equipment(hp_configs, weapon_names, _root_basis)
 	elif _is_station and adapter:
-		var sta: StationEquipAdapter = adapter as StationEquipAdapter
+		var sta = adapter
 		if sta:
 			var hp_configs: Array[Dictionary] = sta._hp_configs
 			var weapon_names: Array[StringName] = []
@@ -102,7 +102,7 @@ func refresh_weapons() -> void:
 				weapon_names.append(sta.get_mounted_weapon_name(i))
 			_ship_model.apply_equipment(hp_configs, weapon_names, Basis.IDENTITY)
 	elif adapter:
-		var sd: ShipData = adapter.get_ship_data()
+		var sd = adapter.get_ship_data()
 		if sd == null:
 			return
 		var hp_configs: Array[Dictionary] = []
@@ -128,17 +128,17 @@ func update_marker_visuals(selected_hardpoint: int) -> void:
 
 		if idx == selected_hardpoint:
 			mesh.visible = true
-			var type_col := _get_marker_color_for(mounted)
+			var type_col =_get_marker_color_for(mounted)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
-			var pulse := 1.0 + sin(_pulse_time * 4.0) * 0.5
+			var pulse =1.0 + sin(_pulse_time * 4.0) * 0.5
 			mat.emission_energy_multiplier = pulse
 		elif has_weapon_model:
 			mesh.visible = false
 		elif mounted:
 			mesh.visible = true
-			var type_col := _get_marker_color_for(mounted)
+			var type_col =_get_marker_color_for(mounted)
 			mat.albedo_color = type_col
 			mat.emission_enabled = true
 			mat.emission = type_col
@@ -165,27 +165,27 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 	if _viewer_camera == null or adapter == null or _viewport == null:
 		return
 
-	var cam_fwd := -_viewer_camera.global_transform.basis.z
+	var cam_fwd =-_viewer_camera.global_transform.basis.z
 	var hp_count: int = adapter.get_hardpoint_count()
 
 	for i in hp_count:
-		var world_pos := Vector3.ZERO
+		var world_pos =Vector3.ZERO
 		if is_live_mode and weapon_manager and i < weapon_manager.hardpoints.size():
 			world_pos = _root_basis * weapon_manager.hardpoints[i].position
 		elif i < _hp_markers.size():
 			world_pos = _hp_markers[i].mesh.position
 
-		var to_marker := (world_pos - _viewer_camera.global_position).normalized()
+		var to_marker =(world_pos - _viewer_camera.global_position).normalized()
 		if cam_fwd.dot(to_marker) < 0.1:
 			continue
 
 		if not _viewer_camera.is_position_behind(world_pos):
-			var screen_pos := _viewer_camera.unproject_position(world_pos)
-			var vp_size := Vector2(_viewport.size)
+			var screen_pos =_viewer_camera.unproject_position(world_pos)
+			var vp_size =Vector2(_viewport.size)
 			if vp_size.x <= 0 or vp_size.y <= 0:
 				continue
-			var label_x := screen_pos.x / vp_size.x * viewer_w
-			var label_y := screen_pos.y / vp_size.y * viewer_h + EC.CONTENT_TOP
+			var label_x =screen_pos.x / vp_size.x * viewer_w
+			var label_y =screen_pos.y / vp_size.y * viewer_h + EC.CONTENT_TOP
 
 			label_x = clampf(label_x, 10.0, viewer_w - 80.0)
 			label_y = clampf(label_y, EC.CONTENT_TOP + 10, EC.CONTENT_TOP + viewer_h - 20)
@@ -193,19 +193,19 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 			var slot_size: String = adapter.get_hardpoint_slot_size(i)
 			var is_turret: bool = adapter.is_hardpoint_turret(i)
 			var mounted: WeaponResource = adapter.get_mounted_weapon(i)
-			var label_text := "%s%d" % [slot_size, i + 1]
+			var label_text ="%s%d" % [slot_size, i + 1]
 			if is_turret:
 				label_text += " T"
 			if mounted:
 				label_text += ": " + str(mounted.weapon_name)
 
-			var col := UITheme.TEXT_DIM
+			var col =UITheme.TEXT_DIM
 			if i == selected_hardpoint:
 				col = UITheme.PRIMARY
 			elif mounted:
 				col = EC.TYPE_COLORS.get(mounted.weapon_type, UITheme.TEXT_DIM)
 
-			var tw := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+			var tw =font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 			parent.draw_rect(Rect2(label_x + 8, label_y - 10, tw + 8, 14), Color(0, 0, 0, 0.5))
 			parent.draw_string(font, Vector2(label_x + 12, label_y), label_text,
 				HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, col)
@@ -217,7 +217,7 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 # INPUT (orbit drag, zoom, marker click)
 # =============================================================================
 func handle_input(event: InputEvent, viewer_w: float, strip_top: float) -> bool:
-	var in_viewer := false
+	var in_viewer =false
 	if "position" in event:
 		in_viewer = event.position.x < viewer_w and event.position.y > EC.CONTENT_TOP and event.position.y < strip_top
 
@@ -232,7 +232,7 @@ func handle_input(event: InputEvent, viewer_w: float, strip_top: float) -> bool:
 					_try_select_marker(event.position, viewer_w, strip_top)
 			return true
 
-		var zoom_step := orbit_distance * 0.08
+		var zoom_step =orbit_distance * 0.08
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			orbit_distance = maxf(_orbit_min_dist, orbit_distance - zoom_step)
 			_last_input_time = 0.0
@@ -274,32 +274,32 @@ func _rebuild_viewport() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_viewport_container.add_child(_viewport)
 
-	var env := Environment.new()
+	var env =Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.0, 0.0, 0.0, 0.0)
 	env.ambient_light_color = Color(0.15, 0.2, 0.25)
 	env.ambient_light_energy = 0.3
-	var world_env := WorldEnvironment.new()
+	var world_env =WorldEnvironment.new()
 	world_env.environment = env
 	_viewport.add_child(world_env)
 
-	var key_light := DirectionalLight3D.new()
+	var key_light =DirectionalLight3D.new()
 	key_light.light_color = Color(1.0, 0.95, 0.9)
 	key_light.light_energy = 1.2
 	key_light.rotation_degrees = Vector3(-45, 30, 0)
 	_viewport.add_child(key_light)
 
-	var light_scale := maxf(1.0, _model_scale)
+	var light_scale =maxf(1.0, _model_scale)
 	if _is_station:
 		light_scale = 5.0
-	var fill_light := OmniLight3D.new()
+	var fill_light =OmniLight3D.new()
 	fill_light.light_color = Color(0.8, 0.85, 0.9)
 	fill_light.light_energy = 0.6
 	fill_light.omni_range = 30.0 * light_scale
 	fill_light.position = Vector3(-6, 2, -4) * light_scale
 	_viewport.add_child(fill_light)
 
-	var rim_light := OmniLight3D.new()
+	var rim_light =OmniLight3D.new()
 	rim_light.light_color = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b)
 	rim_light.light_energy = 0.4
 	rim_light.omni_range = 30.0 * light_scale
@@ -308,7 +308,7 @@ func _rebuild_viewport() -> void:
 
 	_viewer_camera = Camera3D.new()
 	if _is_station:
-		var cam_data := StationHardpointConfig.get_equipment_camera_data()
+		var cam_data =StationHardpointConfig.get_equipment_camera_data()
 		_viewer_camera.fov = cam_data.get("fov", 45.0)
 	else:
 		_viewer_camera.fov = 40.0
@@ -333,7 +333,7 @@ func _rebuild_viewport() -> void:
 func _auto_fit_camera() -> void:
 	var max_radius: float = 2.0
 	if _ship_model:
-		var aabb := _ship_model.get_visual_aabb()
+		var aabb =_ship_model.get_visual_aabb()
 		for i in 8:
 			var corner: Vector3 = aabb.get_endpoint(i) - _center_offset
 			max_radius = maxf(max_radius, corner.length())
@@ -343,14 +343,14 @@ func _auto_fit_camera() -> void:
 			var pos: Vector3 = _root_basis * hp.position - _center_offset
 			max_radius = maxf(max_radius, pos.length())
 	elif _is_station and adapter:
-		var sta: StationEquipAdapter = adapter as StationEquipAdapter
+		var sta = adapter
 		if sta:
 			for cfg in sta._hp_configs:
 				var pos: Vector3 = cfg.get("position", Vector3.ZERO) - _center_offset
 				max_radius = maxf(max_radius, pos.length())
 
-	var half_fov := deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
-	var ideal := max_radius / tan(half_fov) * 1.3
+	var half_fov =deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
+	var ideal =max_radius / tan(half_fov) * 1.3
 	orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
 	_orbit_max_dist = ideal * 3.0
@@ -362,9 +362,9 @@ func _auto_fit_camera() -> void:
 func _update_orbit_camera() -> void:
 	if _viewer_camera == null:
 		return
-	var yaw_rad := deg_to_rad(orbit_yaw)
-	var pitch_rad := deg_to_rad(orbit_pitch)
-	var offset := Vector3(
+	var yaw_rad =deg_to_rad(orbit_yaw)
+	var pitch_rad =deg_to_rad(orbit_pitch)
+	var offset =Vector3(
 		sin(yaw_rad) * cos(pitch_rad),
 		sin(pitch_rad),
 		cos(yaw_rad) * cos(pitch_rad)
@@ -388,7 +388,7 @@ func _create_hardpoint_markers() -> void:
 			hp_positions.append(hp.position)
 			hp_turrets.append(hp.is_turret)
 	elif _is_station and adapter:
-		var sta: StationEquipAdapter = adapter as StationEquipAdapter
+		var sta = adapter
 		if sta:
 			hp_count = sta.get_hardpoint_count()
 			for j in hp_count:
@@ -398,10 +398,10 @@ func _create_hardpoint_markers() -> void:
 					hp_positions.append(Vector3.ZERO)
 				hp_turrets.append(sta.is_hardpoint_turret(j))
 	elif adapter:
-		var sd: ShipData = adapter.get_ship_data()
+		var sd = adapter.get_ship_data()
 		if sd:
 			hp_count = sd.hardpoints.size()
-			var configs := ShipFactory.get_hardpoint_configs(adapter.fleet_ship.ship_id)
+			var configs =ShipFactory.get_hardpoint_configs(adapter.fleet_ship.ship_id)
 			for j in sd.hardpoints.size():
 				if j < configs.size():
 					hp_positions.append(configs[j].get("position", Vector3.ZERO))
@@ -415,21 +415,21 @@ func _create_hardpoint_markers() -> void:
 
 	for i in hp_count:
 		var is_turret: bool = hp_turrets[i] if i < hp_turrets.size() else false
-		var mesh_inst := MeshInstance3D.new()
+		var mesh_inst =MeshInstance3D.new()
 		if is_turret:
-			var box := BoxMesh.new()
+			var box =BoxMesh.new()
 			box.size = Vector3(marker_sz, marker_sz, marker_sz)
 			mesh_inst.mesh = box
 			mesh_inst.rotation_degrees = Vector3(0, 45, 0)
 		else:
-			var sphere := SphereMesh.new()
+			var sphere =SphereMesh.new()
 			sphere.radius = marker_sz * 0.83
 			sphere.height = marker_sz * 1.67
 			sphere.radial_segments = 12
 			sphere.rings = 6
 			mesh_inst.mesh = sphere
 
-		var mat := StandardMaterial3D.new()
+		var mat =StandardMaterial3D.new()
 		mat.albedo_color = Color(0.3, 0.3, 0.3)
 		mat.emission_enabled = false
 		mat.no_depth_test = true
@@ -439,10 +439,10 @@ func _create_hardpoint_markers() -> void:
 		mesh_inst.position = _root_basis * pos
 		_viewport.add_child(mesh_inst)
 
-		var body := StaticBody3D.new()
+		var body =StaticBody3D.new()
 		body.position = _root_basis * pos
-		var col_shape := CollisionShape3D.new()
-		var shape := SphereShape3D.new()
+		var col_shape =CollisionShape3D.new()
+		var shape =SphereShape3D.new()
 		shape.radius = marker_sz * 1.67
 		col_shape.shape = shape
 		body.add_child(col_shape)
@@ -456,28 +456,28 @@ func _try_select_marker(mouse_pos: Vector2, viewer_w: float, strip_top: float) -
 	if _viewport == null or _viewer_camera == null or adapter == null:
 		return
 
-	var viewer_h := strip_top - EC.CONTENT_TOP
+	var viewer_h =strip_top - EC.CONTENT_TOP
 	if viewer_w <= 0 or viewer_h <= 0:
 		return
 
-	var local_x := mouse_pos.x / viewer_w
-	var local_y := (mouse_pos.y - EC.CONTENT_TOP) / viewer_h
+	var local_x =mouse_pos.x / viewer_w
+	var local_y =(mouse_pos.y - EC.CONTENT_TOP) / viewer_h
 	if local_x < 0 or local_x > 1 or local_y < 0 or local_y > 1:
 		return
 
-	var vp_size := _viewport.size
-	var vp_pos := Vector2(local_x * vp_size.x, local_y * vp_size.y)
-	var from := _viewer_camera.project_ray_origin(vp_pos)
-	var dir := _viewer_camera.project_ray_normal(vp_pos)
+	var vp_size =_viewport.size
+	var vp_pos =Vector2(local_x * vp_size.x, local_y * vp_size.y)
+	var from =_viewer_camera.project_ray_origin(vp_pos)
+	var dir =_viewer_camera.project_ray_normal(vp_pos)
 
 	if _viewport.world_3d == null:
 		return
-	var space := _viewport.world_3d.direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
-	var result := space.intersect_ray(query)
+	var space =_viewport.world_3d.direct_space_state
+	var query =PhysicsRayQueryParameters3D.create(from, from + dir * 100.0)
+	var result =space.intersect_ray(query)
 
 	if result and result.collider:
-		var collider := result.collider as Node3D
+		var collider =result.collider as Node3D
 		if collider.has_meta("hp_index"):
 			var idx: int = collider.get_meta("hp_index")
 			hardpoint_selected.emit(idx)

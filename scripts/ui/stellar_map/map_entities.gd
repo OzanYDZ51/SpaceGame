@@ -6,7 +6,7 @@ extends Control
 # All custom-drawn for holographic aesthetic
 # =============================================================================
 
-var camera: MapCamera = null
+var camera = null
 var selected_id: String = ""
 var selected_ids: Array[String] = []
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
@@ -18,7 +18,7 @@ var trails: MapTrails = null
 var marquee: MarqueeSelect = null
 
 # Squadron refs (set by StellarMap)
-var _squadron_fleet: PlayerFleet = null
+var _squadron_fleet = null
 var _squadron_list: Array = []  # Array[Squadron]
 
 # Construction markers (set by StellarMap)
@@ -100,7 +100,7 @@ func _draw() -> void:
 
 	# Marquee rectangle (on top of everything)
 	if marquee and marquee.active and marquee.is_drag():
-		var rect := marquee.get_rect()
+		var rect =marquee.get_rect()
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.08), true)
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6), false, 1.0)
 
@@ -162,7 +162,7 @@ func _draw_entity(ent: Dictionary, font: Font) -> void:
 	# Selection ring
 	if is_selected:
 		var pulse: float = sin(_pulse_t * 3.0) * 0.3 + 0.7
-		var ring_col := Color(MapColors.SELECTION_RING.r, MapColors.SELECTION_RING.g, MapColors.SELECTION_RING.b, pulse)
+		var ring_col =Color(MapColors.SELECTION_RING.r, MapColors.SELECTION_RING.g, MapColors.SELECTION_RING.b, pulse)
 		draw_arc(screen_pos, 18.0, 0, TAU, 32, ring_col, 1.5, true)
 
 	# Hover highlight
@@ -183,7 +183,7 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 		var t: float = float(layer_i) / 4.0  # 0..1
 		var r: float = base_radius * lerpf(6.0, 2.0, t) * corona_pulse
 		var a: float = lerpf(0.02, 0.06, t)
-		var lc := Color(col.r, col.g, col.b, a)
+		var lc =Color(col.r, col.g, col.b, a)
 		draw_circle(pos, r, lc)
 
 	# Inner glow ring (brighter corona edge)
@@ -201,19 +201,19 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 	# Primary cross rays (4 cardinal, slow rotate)
 	var ray_len: float = base_radius * 3.5
 	var ray_alpha: float = 0.18 + sin(_pulse_t * 1.5) * 0.04
-	var ray_col := Color(col.r, col.g, col.b, ray_alpha)
+	var ray_col =Color(col.r, col.g, col.b, ray_alpha)
 	for i in 4:
 		var angle: float = (PI / 2.0) * float(i) + _pulse_t * 0.05
 		var p_start: Vector2 = pos + Vector2(cos(angle), sin(angle)) * base_radius * 0.6
 		var p_end: Vector2 = pos + Vector2(cos(angle), sin(angle)) * ray_len
 		draw_line(p_start, p_end, ray_col, 1.5)
 		# Thin secondary line beside each ray for "thickness"
-		var perp := Vector2(-sin(angle), cos(angle)) * 1.0
+		var perp =Vector2(-sin(angle), cos(angle)) * 1.0
 		draw_line(p_start + perp, p_end * 0.7 + pos * 0.3 + perp, Color(col.r, col.g, col.b, ray_alpha * 0.4), 1.0)
 
 	# Secondary diagonal rays (4, offset 45deg, shorter, counter-rotate)
 	var ray2_len: float = base_radius * 2.0
-	var ray2_col := Color(col.r, col.g, col.b, ray_alpha * 0.5)
+	var ray2_col =Color(col.r, col.g, col.b, ray_alpha * 0.5)
 	for i in 4:
 		var angle: float = (PI / 2.0) * float(i) + PI / 4.0 - _pulse_t * 0.03
 		var p_start: Vector2 = pos + Vector2(cos(angle), sin(angle)) * base_radius * 0.7
@@ -237,7 +237,7 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 
 	# Atmosphere glow derived from planet's actual color (coherent with 3D)
 	var atmo_alpha: float = 0.12
-	var atmo_col := Color(
+	var atmo_col =Color(
 		lerpf(col.r, 1.0, 0.3),
 		lerpf(col.g, 1.0, 0.3),
 		lerpf(col.b, 1.0, 0.3),
@@ -263,7 +263,7 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 				var by: float = lerpf(-0.6, 0.6, float(b + 1) / float(band_count + 1))
 				var band_y: float = pos.y + by * base_radius
 				var band_half_w: float = sqrt(maxf(0.0, 1.0 - by * by)) * base_radius * 0.9
-				var band_col := Color(col.r * 0.8, col.g * 0.85, col.b * 0.7, 0.2)
+				var band_col =Color(col.r * 0.8, col.g * 0.85, col.b * 0.7, 0.2)
 				draw_line(
 					Vector2(pos.x - band_half_w, band_y),
 					Vector2(pos.x + band_half_w, band_y),
@@ -283,18 +283,18 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 			draw_circle(pos + Vector2(0, -base_radius * 0.55), base_radius * 0.35, Color(0.9, 0.95, 1.0, 0.2))
 
 	# Specular highlight (top-left light source)
-	var highlight := Color(1, 1, 1, 0.2)
+	var highlight =Color(1, 1, 1, 0.2)
 	draw_circle(pos + Vector2(-base_radius * 0.25, -base_radius * 0.25), base_radius * 0.4, highlight)
 
 	# Shadow (bottom-right terminator)
-	var shadow := Color(0, 0, 0, 0.15)
+	var shadow =Color(0, 0, 0, 0.15)
 	draw_arc(pos, base_radius, 0.5, PI + 0.5, 16, shadow, maxf(1.5, base_radius * 0.2), true)
 
 	# Rings if applicable
 	if ent["extra"].get("has_rings", false):
 		# Multi-layer rings
-		var ring_col1 := Color(col.r * 0.9, col.g * 0.85, col.b * 0.7, 0.25)
-		var ring_col2 := Color(col.r * 0.7, col.g * 0.65, col.b * 0.5, 0.15)
+		var ring_col1 =Color(col.r * 0.9, col.g * 0.85, col.b * 0.7, 0.25)
+		var ring_col2 =Color(col.r * 0.7, col.g * 0.65, col.b * 0.5, 0.15)
 		draw_arc(pos, base_radius * 1.6, -0.35, PI + 0.35, 32, ring_col1, 1.5, true)
 		draw_arc(pos, base_radius * 1.9, -0.3, PI + 0.3, 32, ring_col2, 1.0, true)
 		draw_arc(pos, base_radius * 2.15, -0.25, PI + 0.25, 24, Color(ring_col2.r, ring_col2.g, ring_col2.b, 0.08), 1.0, true)
@@ -307,7 +307,7 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 		var label_y: float = base_radius + 14.0
 		if ent["extra"].get("has_rings", false):
 			label_y = base_radius * 2.2 + 8.0
-		var label_col := Color(col.r, col.g, col.b, 0.7)
+		var label_col =Color(col.r, col.g, col.b, 0.7)
 		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
 
@@ -328,7 +328,7 @@ func _draw_station(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font
 	draw_circle(pos, s * 2.2, Color(col.r, col.g, col.b, 0.06))
 
 	# Diamond body
-	var points := PackedVector2Array([
+	var points =PackedVector2Array([
 		pos + Vector2(0, -s),
 		pos + Vector2(s, 0),
 		pos + Vector2(0, s),
@@ -338,7 +338,7 @@ func _draw_station(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font
 
 	# Inner bright center
 	var inner_s: float = s * 0.4
-	var inner_points := PackedVector2Array([
+	var inner_points =PackedVector2Array([
 		pos + Vector2(0, -inner_s),
 		pos + Vector2(inner_s, 0),
 		pos + Vector2(0, inner_s),
@@ -347,7 +347,7 @@ func _draw_station(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font
 	draw_colored_polygon(inner_points, Color(1.0, 1.0, 1.0, 0.3))
 
 	# Border
-	var border_points := PackedVector2Array([
+	var border_points =PackedVector2Array([
 		pos + Vector2(0, -s - 1),
 		pos + Vector2(s + 1, 0),
 		pos + Vector2(0, s + 1),
@@ -366,19 +366,19 @@ func _draw_station(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font
 # JUMP GATE (ring icon at system edge)
 # =============================================================================
 func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font) -> void:
-	var col := Color(0.15, 0.6, 1.0, 0.9)
+	var col =Color(0.15, 0.6, 1.0, 0.9)
 	var s: float = 6.0
 
 	# Check if this is the route gate
 	var is_route_gate: bool = false
-	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	var rm = GameManager._route_manager if GameManager else null
 	if rm and rm.is_route_active() and ent["id"] == rm.next_gate_entity_id:
 		is_route_gate = true
 
 	# Route gate highlight: pulsing gold ring
 	if is_route_gate:
 		var route_pulse: float = sin(_pulse_t * 3.0) * 0.3 + 0.7
-		var route_col := Color(1.0, 0.8, 0.0, route_pulse * 0.6)
+		var route_col =Color(1.0, 0.8, 0.0, route_pulse * 0.6)
 		draw_arc(pos, s + 6.0 + route_pulse * 3.0, 0, TAU, 24, route_col, 2.5, true)
 		draw_arc(pos, s + 2.0, 0, TAU, 20, Color(1.0, 0.8, 0.0, 0.3), 1.5, true)
 
@@ -393,12 +393,12 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var target_name: String = ent.get("extra", {}).get("target_system_name", ent["name"])
 	var name_text: String = target_name if target_name.length() < 30 else ent["name"]
 	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var label_col := Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else Color(col.r, col.g, col.b, 0.7)
+	var label_col =Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else Color(col.r, col.g, col.b, 0.7)
 	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
 	# Route label
 	if is_route_gate:
-		var route_label := "PROCHAIN SAUT"
+		var route_label ="PROCHAIN SAUT"
 		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.8, 0.0, 0.8))
 
@@ -428,7 +428,7 @@ func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font)
 	# Pulsing ring (local player only)
 	if is_local:
 		var pulse: float = sin(_pulse_t * 2.0) * 0.3 + 0.7
-		var ring_col := Color(col.r, col.g, col.b, pulse * 0.4)
+		var ring_col =Color(col.r, col.g, col.b, pulse * 0.4)
 		draw_arc(pos, 14.0, 0, TAU, 24, ring_col, 1.0, true)
 
 	# Velocity vector
@@ -488,7 +488,7 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 	draw_circle(pos, s * 2.5, Color(col.r, col.g, col.b, 0.06 * pulse))
 
 	# Diamond shape
-	var points := PackedVector2Array([
+	var points =PackedVector2Array([
 		pos + Vector2(0, -s),
 		pos + Vector2(s * 0.8, 0),
 		pos + Vector2(0, s),
@@ -498,7 +498,7 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 
 	# Inner bright center
 	var inner_s: float = s * 0.35
-	var inner_points := PackedVector2Array([
+	var inner_points =PackedVector2Array([
 		pos + Vector2(0, -inner_s),
 		pos + Vector2(inner_s, 0),
 		pos + Vector2(0, inner_s),
@@ -507,7 +507,7 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 	draw_colored_polygon(inner_points, Color(0.8, 0.9, 1.0, 0.4))
 
 	# Border
-	var border_points := PackedVector2Array([
+	var border_points =PackedVector2Array([
 		pos + Vector2(0, -s - 1),
 		pos + Vector2(s * 0.8 + 1, 0),
 		pos + Vector2(0, s + 1),
@@ -764,7 +764,7 @@ func get_construction_marker_at(screen_pos: Vector2) -> Dictionary:
 
 
 func update_hover(screen_pos: Vector2) -> bool:
-	var new_id := get_entity_at(screen_pos)
+	var new_id =get_entity_at(screen_pos)
 	if new_id == _hover_id:
 		return false
 	_hover_id = new_id
@@ -821,7 +821,7 @@ func _draw_trails(entities: Dictionary) -> void:
 func _draw_galaxy_route_line(entities: Dictionary) -> void:
 	if camera == null or _player_id == "":
 		return
-	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	var rm = GameManager._route_manager if GameManager else null
 	if rm == null or not rm.is_route_active() or rm.next_gate_entity_id == "":
 		return
 
@@ -831,7 +831,7 @@ func _draw_galaxy_route_line(entities: Dictionary) -> void:
 		player_ent = EntityRegistry.get_entity(_player_id)
 	if player_ent.is_empty():
 		return
-	var from_sp := camera.universe_to_screen(player_ent["pos_x"], player_ent["pos_z"])
+	var from_sp =camera.universe_to_screen(player_ent["pos_x"], player_ent["pos_z"])
 
 	# Get gate screen position
 	var gate_ent: Dictionary = entities.get(rm.next_gate_entity_id, {})
@@ -839,11 +839,11 @@ func _draw_galaxy_route_line(entities: Dictionary) -> void:
 		gate_ent = EntityRegistry.get_entity(rm.next_gate_entity_id)
 	if gate_ent.is_empty():
 		return
-	var to_sp := camera.universe_to_screen(gate_ent["pos_x"], gate_ent["pos_z"])
+	var to_sp =camera.universe_to_screen(gate_ent["pos_x"], gate_ent["pos_z"])
 
 	# Dashed cyan line
 	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
-	var col := Color(0.0, 0.9, 1.0, 0.4 * pulse)
+	var col =Color(0.0, 0.9, 1.0, 0.4 * pulse)
 	_draw_dashed_line(from_sp, to_sp, col, 2.0, 10.0, 6.0)
 
 	# Destination label near the gate
@@ -851,9 +851,9 @@ func _draw_galaxy_route_line(entities: Dictionary) -> void:
 	var dest_name: String = rm.target_system_name
 	if dest_name.length() > 20:
 		dest_name = dest_name.substr(0, 18) + ".."
-	var label := "→ " + dest_name
+	var label ="→ " + dest_name
 	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	var label_pos := to_sp + Vector2(-tw * 0.5, -22)
+	var label_pos =to_sp + Vector2(-tw * 0.5, -22)
 	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))
 
 
@@ -867,7 +867,7 @@ func _draw_route_line(entities: Dictionary) -> void:
 	var default_dest_ux: float = route_dest_ux
 	var default_dest_uz: float = route_dest_uz
 	if route_target_entity_id != "":
-		var target_ent := EntityRegistry.get_entity(route_target_entity_id)
+		var target_ent =EntityRegistry.get_entity(route_target_entity_id)
 		if not target_ent.is_empty():
 			default_dest_ux = target_ent["pos_x"]
 			default_dest_uz = target_ent["pos_z"]
@@ -884,8 +884,8 @@ func _draw_route_line(entities: Dictionary) -> void:
 		base_col = Color(1.0, 0.2, 0.15)  # Red for attack
 	else:
 		base_col = UITheme.PRIMARY
-	var col := Color(base_col.r, base_col.g, base_col.b, 0.5)
-	var last_dest_sp := camera.universe_to_screen(default_dest_ux, default_dest_uz)
+	var col =Color(base_col.r, base_col.g, base_col.b, 0.5)
+	var last_dest_sp =camera.universe_to_screen(default_dest_ux, default_dest_uz)
 	for ship_id in route_ship_ids:
 		var ship_ent: Dictionary = {}
 		if entities.has(ship_id):
@@ -894,10 +894,10 @@ func _draw_route_line(entities: Dictionary) -> void:
 			ship_ent = EntityRegistry.get_entity(ship_id)
 		if ship_ent.is_empty():
 			continue
-		var from_sp := camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
+		var from_sp =camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
 		# Per-ship destination override (mining autonomous travel)
-		var ship_dux := default_dest_ux
-		var ship_duz := default_dest_uz
+		var ship_dux =default_dest_ux
+		var ship_duz =default_dest_uz
 		var extra: Dictionary = ship_ent.get("extra", {})
 		var ms: String = extra.get("mining_state", "")
 		if ms == "docked":
@@ -905,34 +905,34 @@ func _draw_route_line(entities: Dictionary) -> void:
 		if ms != "":
 			ship_dux = extra.get("active_dest_ux", default_dest_ux)
 			ship_duz = extra.get("active_dest_uz", default_dest_uz)
-		var to_sp := camera.universe_to_screen(ship_dux, ship_duz)
+		var to_sp =camera.universe_to_screen(ship_dux, ship_duz)
 		_draw_dashed_line(from_sp, to_sp, col, 1.5, 8.0, 6.0)
 		last_dest_sp = to_sp
 	# Destination marker (small diamond)
 	var ds: float = 5.0
-	var marker_col := Color(base_col.r, base_col.g, base_col.b, 0.6)
-	var diamond := PackedVector2Array([
+	var marker_col =Color(base_col.r, base_col.g, base_col.b, 0.6)
+	var diamond =PackedVector2Array([
 		last_dest_sp + Vector2(0, -ds), last_dest_sp + Vector2(ds, 0),
 		last_dest_sp + Vector2(0, ds), last_dest_sp + Vector2(-ds, 0),
 	])
-	var colors := PackedColorArray([marker_col, marker_col, marker_col, marker_col])
+	var colors =PackedColorArray([marker_col, marker_col, marker_col, marker_col])
 	draw_primitive(diamond, colors, PackedVector2Array())
 
 
 func _draw_waypoint_flash() -> void:
 	if waypoint_timer <= 0.0 or camera == null:
 		return
-	var sp := camera.universe_to_screen(waypoint_ux, waypoint_uz)
+	var sp =camera.universe_to_screen(waypoint_ux, waypoint_uz)
 	var wf_alpha: float = waypoint_timer / WAYPOINT_DURATION
 	var wf_pulse: float = sin(Time.get_ticks_msec() / 200.0) * 0.3 + 0.7
 	var wf_radius: float = 8.0 + (1.0 - wf_alpha) * 20.0
-	var wf_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, wf_alpha * wf_pulse * 0.6)
+	var wf_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, wf_alpha * wf_pulse * 0.6)
 	draw_arc(sp, wf_radius, 0, TAU, 24, wf_col, 2.0, true)
 	draw_circle(sp, 3.0, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, wf_alpha * 0.8))
 
 
 func _draw_hint_text(font: Font) -> void:
-	var hint := "Clic droit = Deplacer | Maintenir = Ordres/Construction"
+	var hint ="Clic droit = Deplacer | Maintenir = Ordres/Construction"
 	var hint_y: float = size.y - 60.0
 	var hint_x: float = size.x * 0.5
 	var tw: float = font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
@@ -948,8 +948,8 @@ func _draw_construction_markers() -> void:
 	if construction_markers.is_empty() or camera == null:
 		return
 	var font: Font = UITheme.get_font()
-	var col := MapColors.CONSTRUCTION_STATION
-	var ghost_col := MapColors.CONSTRUCTION_GHOST
+	var col =MapColors.CONSTRUCTION_STATION
+	var ghost_col =MapColors.CONSTRUCTION_GHOST
 
 	for marker in construction_markers:
 		var sp: Vector2 = camera.universe_to_screen(marker["pos_x"], marker["pos_z"])
@@ -986,17 +986,17 @@ func _draw_construction_markers() -> void:
 		draw_string(font, sp + Vector2(-tw * 0.5, 30), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 		# Tag: [CONSTRUCTION]
-		var tag := "[CONSTRUCTION]"
+		var tag ="[CONSTRUCTION]"
 		var tag_w: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 		draw_string(font, sp + Vector2(-tag_w * 0.5, 43), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(col.r, col.g, col.b, 0.6))
 
 
 func _draw_dashed_line(from: Vector2, to: Vector2, col: Color, width: float, dash_len: float, gap_len: float) -> void:
-	var dir := (to - from)
+	var dir =(to - from)
 	var total_len: float = dir.length()
 	if total_len < 1.0:
 		return
-	var unit := dir / total_len
+	var unit =dir / total_len
 	var pos: float = 0.0
 	while pos < total_len:
 		var seg_end: float = minf(pos + dash_len, total_len)

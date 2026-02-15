@@ -7,7 +7,7 @@ extends Control
 # Left: UIScrollList of ores (qty > 0), Right: detail + sell buttons
 # =============================================================================
 
-var _commerce_manager: CommerceManager = null
+var _commerce_manager = null
 var _station_id: String = ""
 
 var _ship_dropdown: UIDropdown = null
@@ -21,9 +21,9 @@ var _selected_index: int = -1
 var _docked_ships: Array[FleetShip] = []
 var _filter_ship_index: int = 0  # 0 = TOUS
 
-const DETAIL_W := 240.0
-const ROW_H := 44.0
-const DROPDOWN_H := 32.0
+const DETAIL_W =240.0
+const ROW_H =44.0
+const DROPDOWN_H =32.0
 
 
 func _ready() -> void:
@@ -64,7 +64,7 @@ func _ready() -> void:
 	add_child(_sell_all_btn)
 
 
-func setup(mgr: CommerceManager, station_id: String = "") -> void:
+func setup(mgr, station_id: String = "") -> void:
 	_commerce_manager = mgr
 	_station_id = station_id
 
@@ -84,17 +84,17 @@ func _rebuild_docked_ships() -> void:
 	_docked_ships.clear()
 	if _commerce_manager == null or _commerce_manager.player_data == null:
 		return
-	var pd := _commerce_manager.player_data
+	var pd = _commerce_manager.player_data
 	if pd.fleet == null:
 		return
-	var fleet := pd.fleet
-	var active := fleet.get_active()
+	var fleet = pd.fleet
+	var active = fleet.get_active()
 	if active:
 		_docked_ships.append(active)
 	if _station_id != "":
-		var docked_indices := fleet.get_ships_at_station(_station_id)
+		var docked_indices = fleet.get_ships_at_station(_station_id)
 		for idx in docked_indices:
-			var fs := fleet.ships[idx]
+			var fs = fleet.ships[idx]
 			if fs != active:
 				_docked_ships.append(fs)
 	var opts: Array[String] = []
@@ -113,7 +113,7 @@ func _on_ship_filter_changed(_idx: int) -> void:
 
 
 func _layout() -> void:
-	var s := size
+	var s =size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_ship_dropdown.position = Vector2(0, 0)
 	if _ship_dropdown._expanded:
@@ -184,7 +184,7 @@ func _on_sell_all() -> void:
 	if _selected_index < 0 or _selected_index >= _resource_ids.size(): return
 	if _commerce_manager == null: return
 	var res_id: StringName = _resource_ids[_selected_index]
-	var ship: FleetShip = _resource_ship[_selected_index]
+	var ship = _resource_ship[_selected_index]
 	var qty: int = ship.get_resource(res_id)
 	if qty > 0:
 		_do_sell(qty)
@@ -194,15 +194,15 @@ func _do_sell(qty: int) -> void:
 	if _commerce_manager == null: return
 	if _selected_index < 0 or _selected_index >= _resource_ids.size(): return
 	var res_id: StringName = _resource_ids[_selected_index]
-	var ship: FleetShip = _resource_ship[_selected_index]
+	var ship = _resource_ship[_selected_index]
 	var available: int = ship.get_resource(res_id)
 	qty = mini(qty, available)
 	if qty <= 0: return
 	if _commerce_manager.sell_resource_from_ship(res_id, qty, ship):
 		if GameManager._notif:
-			var total := PriceCatalog.get_resource_price(res_id) * qty
-			var res_data := MiningRegistry.get_resource(res_id)
-			var rname := res_data.display_name if res_data else String(res_id)
+			var total =PriceCatalog.get_resource_price(res_id) * qty
+			var res_data =MiningRegistry.get_resource(res_id)
+			var rname =res_data.display_name if res_data else String(res_id)
 			GameManager._notif.commerce.sold_qty(rname, qty, total)
 		_refresh_items()
 	queue_redraw()
@@ -217,7 +217,7 @@ func _process(_delta: float) -> void:
 # DRAWING
 # =========================================================================
 func _draw() -> void:
-	var s := size
+	var s =size
 	var font: Font = UITheme.get_font()
 	var detail_x: float = s.x - DETAIL_W
 
@@ -236,11 +236,11 @@ func _draw() -> void:
 		return
 
 	var res_id: StringName = _resource_ids[_selected_index]
-	var res_data := MiningRegistry.get_resource(res_id)
+	var res_data =MiningRegistry.get_resource(res_id)
 	if res_data == null: return
-	var ship: FleetShip = _resource_ship[_selected_index]
+	var ship = _resource_ship[_selected_index]
 	var qty: int = ship.get_resource(res_id)
-	var unit_price := res_data.base_value
+	var unit_price =res_data.base_value
 
 	var y: float = 10.0
 
@@ -284,7 +284,7 @@ func _draw() -> void:
 	y += 24.0
 
 	# Total value box
-	var total_price := unit_price * qty
+	var total_price =unit_price * qty
 	y += 4.0
 	draw_rect(Rect2(detail_x + 10, y, DETAIL_W - 20, 28),
 		Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.1))
@@ -297,7 +297,7 @@ func _draw() -> void:
 func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> void:
 	if idx < 0 or idx >= _resource_ids.size(): return
 	var res_id: StringName = _resource_ids[idx]
-	var res_data := MiningRegistry.get_resource(res_id)
+	var res_data =MiningRegistry.get_resource(res_id)
 	if res_data == null: return
 	var font: Font = UITheme.get_font()
 
@@ -305,7 +305,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 	if is_sel:
 		ci.draw_rect(rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
 
-	var ship: FleetShip = _resource_ship[idx]
+	var ship = _resource_ship[idx]
 	var qty: int = ship.get_resource(res_id)
 
 	# Color badge
@@ -317,7 +317,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 		prefix = ship.custom_name.substr(0, 8) + " | "
 
 	# Name + quantity
-	var label := "%s%s x%d" % [prefix, res_data.display_name, qty]
+	var label ="%s%s x%d" % [prefix, res_data.display_name, qty]
 	ci.draw_string(font, Vector2(rect.position.x + 24, rect.position.y + 18),
 		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
 		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)

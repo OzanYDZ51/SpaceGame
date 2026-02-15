@@ -15,7 +15,7 @@ var engine_name: StringName = &""
 var modules: Array[StringName] = []     # per slot (empty = &"")
 
 # Per-ship cargo and resources
-var cargo: PlayerCargo = null
+var cargo = null
 var ship_resources: Dictionary = {}  # StringName -> int
 
 # Deployment tracking
@@ -33,12 +33,12 @@ var squadron_id: int = -1
 var squadron_role: StringName = &""
 
 
-static func create_bare(sid: StringName) -> FleetShip:
-	var data := ShipRegistry.get_ship_data(sid)
+static func create_bare(sid: StringName):
+	var data =ShipRegistry.get_ship_data(sid)
 	if data == null:
 		push_error("FleetShip.create_bare: unknown ship_id '%s'" % sid)
 		return null
-	var fs := FleetShip.new()
+	var fs =FleetShip.new()
 	fs.ship_id = sid
 	fs.custom_name = String(data.ship_name)
 	fs.weapons.resize(data.hardpoints.size())
@@ -53,8 +53,8 @@ static func create_bare(sid: StringName) -> FleetShip:
 	return fs
 
 
-static func from_ship_data(data: ShipData) -> FleetShip:
-	var fs := FleetShip.new()
+static func from_ship_data(data):
+	var fs =FleetShip.new()
 	fs.ship_id = data.ship_id
 	fs.custom_name = String(data.ship_name)
 	# Copy default weapon loadout
@@ -106,23 +106,23 @@ func get_total_equipment_value() -> int:
 	var total: int = 0
 	for wn in weapons:
 		if wn != &"":
-			var w := WeaponRegistry.get_weapon(wn)
+			var w =WeaponRegistry.get_weapon(wn)
 			if w: total += w.price
 	if shield_name != &"":
-		var s := ShieldRegistry.get_shield(shield_name)
+		var s =ShieldRegistry.get_shield(shield_name)
 		if s: total += s.price
 	if engine_name != &"":
-		var e := EngineRegistry.get_engine(engine_name)
+		var e =EngineRegistry.get_engine(engine_name)
 		if e: total += e.price
 	for mn in modules:
 		if mn != &"":
-			var m := ModuleRegistry.get_module(mn)
+			var m =ModuleRegistry.get_module(mn)
 			if m: total += m.price
 	return total
 
 
 func serialize() -> Dictionary:
-	var d := {
+	var d ={
 		"ship_id": String(ship_id),
 		"custom_name": custom_name,
 		"weapons": weapons.map(func(w): return String(w)),
@@ -153,15 +153,15 @@ func serialize() -> Dictionary:
 	return d
 
 
-static func deserialize(data: Dictionary) -> FleetShip:
-	var fs := FleetShip.new()
+static func deserialize(data: Dictionary):
+	var fs =FleetShip.new()
 	fs.ship_id = StringName(data.get("ship_id", ""))
 	fs.custom_name = data.get("custom_name", "")
 
 	# Safety net: if ship_id was removed from game, replace with default
-	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	var ship_data =ShipRegistry.get_ship_data(fs.ship_id)
 	if ship_data == null:
-		var old_id := fs.ship_id
+		var old_id =fs.ship_id
 		fs.ship_id = Constants.DEFAULT_SHIP_ID
 		ship_data = ShipRegistry.get_ship_data(fs.ship_id)
 		push_warning("FleetShip.deserialize: ship '%s' retired, replaced with '%s'" % [old_id, fs.ship_id])
@@ -222,7 +222,7 @@ static func deserialize(data: Dictionary) -> FleetShip:
 		})
 	var saved_res: Dictionary = data.get("ship_resources", {})
 	for res_key in saved_res:
-		var res_id := StringName(str(res_key))
+		var res_id =StringName(str(res_key))
 		var qty: int = int(saved_res[res_key])
 		if qty > 0:
 			fs.ship_resources[res_id] = qty

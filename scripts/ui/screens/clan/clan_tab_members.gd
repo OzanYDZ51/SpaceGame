@@ -6,7 +6,7 @@ extends UIComponent
 # Bigger row heights, richer drawing, colored status indicators
 # =============================================================================
 
-var _cm: ClanManager = null
+var _cm = null
 var _search: UITextInput = null
 var _filter_dropdown: UIDropdown = null
 var _table: UIDataTable = null
@@ -68,7 +68,7 @@ func _ready() -> void:
 	add_child(_btn_kick)
 
 
-func refresh(cm: ClanManager) -> void:
+func refresh(cm) -> void:
 	_cm = cm
 	_selected_member = null
 	_btn_promote.visible = false
@@ -91,8 +91,8 @@ func _rebuild_table() -> void:
 	if _cm == null:
 		return
 
-	var search_text := _search.get_text().to_lower()
-	var filter_rank := _filter_dropdown.selected_index - 1
+	var search_text =_search.get_text().to_lower()
+	var filter_rank =_filter_dropdown.selected_index - 1
 
 	_filtered_members.clear()
 	for m in _cm.members:
@@ -109,8 +109,8 @@ func _rebuild_table() -> void:
 	for m in _filtered_members:
 		var rank_name: String = _cm.clan_data.ranks[m.rank_index].rank_name if m.rank_index < _cm.clan_data.ranks.size() else "?"
 		var status: String = "EN LIGNE" if m.is_online else "HORS LIGNE"
-		var contrib_str := _format_num(m.contribution_total)
-		var vu := _format_last_seen(m)
+		var contrib_str =_format_num(m.contribution_total)
+		var vu =_format_last_seen(m)
 		_table.rows.append([m.display_name, rank_name, status, contrib_str, str(m.kills), vu])
 
 	_table.selected_row = -1
@@ -190,8 +190,8 @@ func _hide_actions() -> void:
 func _format_last_seen(m: ClanMember) -> String:
 	if m.is_online:
 		return "Maintenant"
-	var now := int(Time.get_unix_time_from_system())
-	var diff := now - m.last_online_timestamp
+	var now =int(Time.get_unix_time_from_system())
+	var diff =now - m.last_online_timestamp
 	if diff < 3600:
 		return "Il y a %d min" % int(diff / 60.0)
 	if diff < 86400:
@@ -200,10 +200,10 @@ func _format_last_seen(m: ClanMember) -> String:
 
 
 func _format_num(val: float) -> String:
-	var i := int(val)
-	var s := str(i)
-	var result := ""
-	var count := 0
+	var i =int(val)
+	var s =str(i)
+	var result =""
+	var count =0
 	for idx in range(s.length() - 1, -1, -1):
 		if count > 0 and count % 3 == 0:
 			result = " " + result
@@ -257,5 +257,5 @@ func _draw() -> void:
 		# Selected member info
 		if _selected_member:
 			var font: Font = UITheme.get_font()
-			var info_str := "Selectionne: %s" % _selected_member.display_name
+			var info_str ="Selectionne: %s" % _selected_member.display_name
 			draw_string(font, Vector2(size.x - 260, size.y - 16), info_str, HORIZONTAL_ALIGNMENT_RIGHT, 250, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)

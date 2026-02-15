@@ -17,9 +17,9 @@ var equipped_engine: EngineResource = null
 var equipped_modules: Array = []  # Array of ModuleResource|null
 
 # Cached refs (from parent ShipController)
-var _health_sys: HealthSystem = null
-var _energy_sys: EnergySystem = null
-var _ship_controller: ShipController = null
+var _health_sys = null
+var _energy_sys = null
+var _ship_controller = null
 
 
 func setup(data: ShipData) -> void:
@@ -31,14 +31,14 @@ func setup(data: ShipData) -> void:
 
 
 func _cache_refs() -> void:
-	var parent := get_parent()
-	_ship_controller = parent as ShipController
-	_health_sys = parent.get_node_or_null("HealthSystem") as HealthSystem
-	_energy_sys = parent.get_node_or_null("EnergySystem") as EnergySystem
+	var parent =get_parent()
+	_ship_controller = parent
+	_health_sys = parent.get_node_or_null("HealthSystem")
+	_energy_sys = parent.get_node_or_null("EnergySystem")
 
 
 func equip_shield(shield: ShieldResource) -> ShieldResource:
-	var old := equipped_shield
+	var old =equipped_shield
 	equipped_shield = shield
 	_apply_all_stats()
 	shield_equipped.emit(shield)
@@ -47,7 +47,7 @@ func equip_shield(shield: ShieldResource) -> ShieldResource:
 
 
 func remove_shield() -> ShieldResource:
-	var old := equipped_shield
+	var old =equipped_shield
 	equipped_shield = null
 	_apply_all_stats()
 	equipment_changed.emit()
@@ -55,7 +55,7 @@ func remove_shield() -> ShieldResource:
 
 
 func equip_engine(engine: EngineResource) -> EngineResource:
-	var old := equipped_engine
+	var old =equipped_engine
 	equipped_engine = engine
 	_apply_all_stats()
 	engine_equipped.emit(engine)
@@ -64,7 +64,7 @@ func equip_engine(engine: EngineResource) -> EngineResource:
 
 
 func remove_engine() -> EngineResource:
-	var old := equipped_engine
+	var old =equipped_engine
 	equipped_engine = null
 	_apply_all_stats()
 	equipment_changed.emit()
@@ -112,8 +112,8 @@ func _apply_shield_stats() -> void:
 		return
 
 	# Gather module multipliers
-	var cap_mult := 1.0
-	var regen_mult := 1.0
+	var cap_mult =1.0
+	var regen_mult =1.0
 	for mod in equipped_modules:
 		if mod is ModuleResource:
 			cap_mult *= mod.shield_cap_mult
@@ -160,12 +160,12 @@ func _apply_module_stats() -> void:
 		return
 
 	# Accumulate additive bonuses from all modules
-	var hull_bonus := 0.0
-	var armor_bonus := 0.0
-	var energy_cap_bonus := 0.0
-	var energy_regen_bonus := 0.0
-	var w_energy_mult := 1.0
-	var w_range_mult := 1.0
+	var hull_bonus =0.0
+	var armor_bonus =0.0
+	var energy_cap_bonus =0.0
+	var energy_regen_bonus =0.0
+	var w_energy_mult =1.0
+	var w_range_mult =1.0
 
 	for mod in equipped_modules:
 		if mod is ModuleResource:
@@ -191,7 +191,7 @@ func _apply_module_stats() -> void:
 		_energy_sys.energy_changed.emit(_energy_sys.energy_current, _energy_sys.energy_max)
 
 	# Apply weapon multipliers to WeaponManager
-	var wm := get_parent().get_node_or_null("WeaponManager") as WeaponManager
+	var wm = get_parent().get_node_or_null("WeaponManager")
 	if wm:
 		wm.apply_module_multipliers(w_energy_mult, w_range_mult)
 
@@ -203,7 +203,7 @@ func serialize() -> Dictionary:
 	var data: Dictionary = {}
 
 	# Hardpoints (from WeaponManager sibling)
-	var wm := get_parent().get_node_or_null("WeaponManager") as WeaponManager
+	var wm = get_parent().get_node_or_null("WeaponManager")
 	if wm:
 		var hp_names: Array = []
 		for hp in wm.hardpoints:

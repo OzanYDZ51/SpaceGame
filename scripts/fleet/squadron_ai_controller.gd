@@ -8,22 +8,22 @@ extends Node
 # =============================================================================
 
 var fleet_index: int = -1
-var squadron: Squadron = null
+var squadron = null
 var leader_node: Node3D = null
 
-var _ship: ShipController = null
-var _brain: AIBrain = null
-var _bridge: FleetAIBridge = null
+var _ship = null
+var _brain = null
+var _bridge = null
 var _tick_timer: float = 0.0
 
 const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
+	_ship = get_parent()
 	if _ship:
-		_brain = _ship.get_node_or_null("AIBrain") as AIBrain
-		_bridge = _ship.get_node_or_null("FleetAIBridge") as FleetAIBridge
+		_brain = _ship.get_node_or_null("AIBrain")
+		_bridge = _ship.get_node_or_null("FleetAIBridge")
 
 
 func _process(delta: float) -> void:
@@ -54,7 +54,7 @@ func _process(delta: float) -> void:
 	var member_idx: int = squadron.get_member_index(fleet_index)
 	if member_idx < 0:
 		return
-	var offset := SquadronFormation.get_offset(
+	var offset =SquadronFormation.get_offset(
 		squadron.formation_type, member_idx, squadron.member_fleet_indices.size()
 	)
 

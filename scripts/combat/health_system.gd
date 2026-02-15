@@ -34,7 +34,7 @@ const SUBSYSTEM_DAMAGE_CHANCE: float = 0.1
 const SUBSYSTEM_DAMAGE_AMOUNT: float = 0.15
 
 var _is_dead: bool = false
-var _cached_energy_sys: EnergySystem = null
+var _cached_energy_sys = null
 var _energy_sys_checked: bool = false
 
 
@@ -67,8 +67,8 @@ func _regen_shields(delta: float) -> void:
 		if _shield_regen_timers[i] > 0.0:
 			continue
 		# Shield regen multiplied by parent's energy system if available
-		var regen_mult := 1.0
-		var energy_sys := _get_energy_system()
+		var regen_mult =1.0
+		var energy_sys = _get_energy_system()
 		if energy_sys:
 			regen_mult = energy_sys.get_shield_multiplier()
 		shield_current[i] = minf(shield_current[i] + shield_regen_rate * regen_mult * delta, shield_max_per_facing)
@@ -82,12 +82,12 @@ func apply_damage(amount: float, damage_type: StringName, hit_direction: Vector3
 	if attacker:
 		damage_taken.emit(attacker, amount)
 
-	var facing := _direction_to_facing(hit_direction)
-	var shield_absorbed := false
+	var facing =_direction_to_facing(hit_direction)
+	var shield_absorbed =false
 
 	# Shield absorption
-	var shield_damage := amount
-	var hull_damage := 0.0
+	var shield_damage =amount
+	var hull_damage =0.0
 
 	if shield_current[facing] > 0.0:
 		shield_absorbed = true
@@ -137,7 +137,7 @@ func apply_damage(amount: float, damage_type: StringName, hit_direction: Vector3
 func _direction_to_facing(hit_dir: Vector3) -> int:
 	# hit_dir is in local space of the ship being hit
 	# Determine which shield quadrant was hit
-	var ship_node := get_parent() as Node3D
+	var ship_node =get_parent() as Node3D
 	if ship_node == null:
 		return ShieldFacing.FRONT
 
@@ -159,7 +159,7 @@ func get_shield_ratio(facing: int) -> float:
 
 
 func get_total_shield_ratio() -> float:
-	var total := 0.0
+	var total =0.0
 	for i in 4:
 		total += shield_current[i]
 	return total / (shield_max_per_facing * 4.0) if shield_max_per_facing > 0.0 else 0.0
@@ -181,10 +181,10 @@ func is_dead() -> bool:
 	return _is_dead
 
 
-func _get_energy_system() -> EnergySystem:
+func _get_energy_system():
 	if not _energy_sys_checked:
 		_energy_sys_checked = true
-		var parent := get_parent()
+		var parent =get_parent()
 		if parent:
-			_cached_energy_sys = parent.get_node_or_null("EnergySystem") as EnergySystem
+			_cached_energy_sys = parent.get_node_or_null("EnergySystem")
 	return _cached_energy_sys

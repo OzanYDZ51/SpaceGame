@@ -106,7 +106,7 @@ func _build_components() -> void:
 # =============================================================================
 # SETTERS — same API as before, routes to components
 # =============================================================================
-func set_ship(s: ShipController) -> void:
+func set_ship(s) -> void:
 	_gauges.ship = s
 	_status_panels.ship = s
 	_status_panels.invalidate_cache()
@@ -118,37 +118,37 @@ func set_ship(s: ShipController) -> void:
 	_cockpit.ship = s
 
 
-func set_health_system(h: HealthSystem) -> void:
+func set_health_system(h) -> void:
 	_gauges.health_system = h
 	_status_panels.health_system = h
 	_status_panels.invalidate_cache()
 	_cockpit.health_system = h
 
 
-func set_energy_system(e: EnergySystem) -> void:
+func set_energy_system(e) -> void:
 	_status_panels.energy_system = e
 	_weapon_panel.energy_system = e
 	_cockpit.energy_system = e
 
 
-func set_targeting_system(t: TargetingSystem) -> void:
+func set_targeting_system(t) -> void:
 	_gauges.targeting_system = t
 	_targeting.targeting_system = t
 	_cockpit.targeting_system = t
 
 
-func set_weapon_manager(w: WeaponManager) -> void:
+func set_weapon_manager(w) -> void:
 	_damage_feedback.set_weapon_manager(w)
 	_weapon_panel.weapon_manager = w
 	_weapon_panel.invalidate_cache()
 	_cockpit.weapon_manager = w
 
 
-func set_player_economy(pe: PlayerEconomy) -> void:
+func set_player_economy(pe) -> void:
 	_status_panels.player_economy = pe
 
 
-func set_docking_system(d: DockingSystem) -> void:
+func set_docking_system(d) -> void:
 	_prompts.docking_system = d
 
 
@@ -156,17 +156,17 @@ func set_loot_pickup_system(lps: LootPickupSystem) -> void:
 	_prompts.loot_pickup = lps
 
 
-func set_system_transition(st: SystemTransition) -> void:
+func set_system_transition(st) -> void:
 	_prompts.system_transition = st
 	_gauges.system_transition = st
 
 
-func set_mining_system(ms: MiningSystem) -> void:
+func set_mining_system(ms) -> void:
 	_mining.mining_system = ms
 	_prompts.mining_system = ms
 
 
-func set_planet_approach_manager(pam: PlanetApproachManager) -> void:
+func set_planet_approach_manager(pam) -> void:
 	_planetary.planet_approach_mgr = pam
 
 
@@ -180,12 +180,12 @@ func set_asteroid_scanner(scanner: AsteroidScanner) -> void:
 
 
 ## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.
-func rewire_to_ship(ship: ShipController) -> void:
+func rewire_to_ship(ship) -> void:
 	set_ship(ship)
-	set_health_system(ship.get_node_or_null("HealthSystem") as HealthSystem)
-	set_energy_system(ship.get_node_or_null("EnergySystem") as EnergySystem)
-	set_targeting_system(ship.get_node_or_null("TargetingSystem") as TargetingSystem)
-	set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+	set_health_system(ship.get_node_or_null("HealthSystem"))
+	set_energy_system(ship.get_node_or_null("EnergySystem"))
+	set_targeting_system(ship.get_node_or_null("TargetingSystem"))
+	set_weapon_manager(ship.get_node_or_null("WeaponManager"))
 
 
 # =============================================================================
@@ -230,8 +230,8 @@ func _process(delta: float) -> void:
 	_route.pulse_t = _pulse_t
 
 	# Detect cockpit mode
-	var cam := get_viewport().get_camera_3d()
-	var is_cockpit: bool = cam is ShipCamera and (cam as ShipCamera).camera_mode == ShipCamera.CameraMode.COCKPIT
+	var cam =get_viewport().get_camera_3d()
+	var is_cockpit: bool = cam is Camera3D and cam.get("camera_mode") != null and cam.camera_mode == 1
 
 	# Toggle HUD layers based on mode
 	_gauges.set_cockpit_mode(is_cockpit)

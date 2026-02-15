@@ -65,7 +65,7 @@ func _scan_stations() -> void:
 			continue
 		var node: Node3D = node_ref
 		# Can't dock at a destroyed station
-		var sh := node.get_node_or_null("StructureHealth") as StructureHealth
+		var sh = node.get_node_or_null("StructureHealth")
 		if sh and sh.is_dead():
 			continue
 		var dist: float = _ship.global_position.distance_to(node.global_position)
@@ -81,9 +81,9 @@ func _scan_stations() -> void:
 		if _ship is RigidBody3D:
 			speed = (_ship as RigidBody3D).linear_velocity.length()
 		# Must face the station (ship forward is -Z)
-		var to_station := (best_node.global_position - _ship.global_position).normalized()
-		var forward := -_ship.global_basis.z.normalized()
-		var facing := forward.dot(to_station) > dock_min_facing
+		var to_station =(best_node.global_position - _ship.global_position).normalized()
+		var forward =-_ship.global_basis.z.normalized()
+		var facing =forward.dot(to_station) > dock_min_facing
 		can_dock = speed < dock_max_speed and facing
 		nearest_station_node = best_node
 		nearest_station_name = best_name

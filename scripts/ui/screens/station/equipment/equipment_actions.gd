@@ -7,11 +7,11 @@ extends RefCounted
 
 
 var _adapter: RefCounted = null
-var _inventory: PlayerInventory = null
+var _inventory = null
 
 
-static func create(adapter: RefCounted, inventory: PlayerInventory) -> EquipmentActions:
-	var a := EquipmentActions.new()
+static func create(adapter: RefCounted, inventory):
+	var a =EquipmentActions.new()
 	a._adapter = adapter
 	a._inventory = inventory
 	return a
@@ -121,7 +121,7 @@ func get_remove_enabled(tab: int, selected_hardpoint: int, selected_module_slot:
 func get_current_stock_count(tab: int) -> int:
 	if _inventory == null:
 		return 0
-	var total := 0
+	var total =0
 	match tab:
 		0:
 			for wn in _inventory.get_all_weapons():

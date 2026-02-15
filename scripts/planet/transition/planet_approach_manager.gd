@@ -25,8 +25,8 @@ var current_planet: PlanetBody = null
 var current_altitude: float = INF
 var current_planet_name: String = ""
 
-var _planet_lod_mgr: PlanetLODManager = null
-var _ship: ShipController = null
+var _planet_lod_mgr = null
+var _ship = null
 var _atmo_env: AtmosphereEnvironment = null
 var _update_timer: float = 0.0
 const UPDATE_INTERVAL: float = 0.05  # 20 Hz (faster to reduce frame-dragging staleness)
@@ -39,10 +39,10 @@ var max_speed_override: float = 0.0   # 0 = no override
 
 
 func _ready() -> void:
-	_planet_lod_mgr = get_parent().get_node_or_null("PlanetLODManager") as PlanetLODManager
+	_planet_lod_mgr = get_parent().get_node_or_null("PlanetLODManager")
 
 
-func set_ship(ship: ShipController) -> void:
+func set_ship(ship) -> void:
 	_ship = ship
 
 
@@ -63,7 +63,7 @@ func _process(delta: float) -> void:
 	_update_timer = 0.0
 
 	# Find nearest active planet body
-	var body := _planet_lod_mgr.get_nearest_body(_ship.global_position)
+	var body =_planet_lod_mgr.get_nearest_body(_ship.global_position)
 
 	if body == null:
 		# Unfreeze previous planet orbit if we had one
@@ -119,7 +119,7 @@ func _process(delta: float) -> void:
 
 
 func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
-	var old_zone := current_zone
+	var old_zone =current_zone
 	current_zone = new_zone
 
 	if body:
@@ -188,11 +188,11 @@ func _apply_to_ship() -> void:
 func _apply_to_camera() -> void:
 	if _ship == null:
 		return
-	var cam := _ship.get_node_or_null("ShipCamera") as ShipCamera
+	var cam = _ship.get_node_or_null("ShipCamera")
 	if cam == null:
-		var viewport := _ship.get_viewport()
+		var viewport = _ship.get_viewport()
 		if viewport:
-			cam = viewport.get_camera_3d() as ShipCamera
+			cam = viewport.get_camera_3d()
 	if cam == null:
 		return
 
@@ -215,7 +215,7 @@ func _update_atmosphere_env(body: PlanetBody, zone: int) -> void:
 		return
 
 	# Configure for this planet's atmosphere
-	var atmo_cfg := body.get_atmosphere_config()
+	var atmo_cfg =body.get_atmosphere_config()
 	if atmo_cfg:
 		_atmo_env.configure_for_planet(atmo_cfg)
 

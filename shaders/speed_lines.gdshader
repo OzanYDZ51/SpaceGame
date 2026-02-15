@@ -82,5 +82,15 @@ void fragment() {
 	vec3 grade = mix(vec3(1.0), vec3(0.95, 0.96, 1.05), quantum_intensity * 0.25);
 	col *= grade;
 
+	// === AMBIENT VIGNETTE (always active — cinematic frame) ===
+	float ambient_vig = smoothstep(0.3, 1.0, dist) * 0.12;
+	col *= 1.0 - ambient_vig;
+
+	// === AMBIENT CHROMATIC ABERRATION (subtle, edge-weighted, always active) ===
+	float ambient_ca = 0.0008 * dist * dist;
+	vec2 ca_dir = normalize(center + vec2(0.0001)) * ambient_ca;
+	col.r = mix(col.r, texture(screen_texture, uv + ca_dir).r, 0.5);
+	col.b = mix(col.b, texture(screen_texture, uv - ca_dir).b, 0.5);
+
 	COLOR = vec4(col, 1.0);
 }

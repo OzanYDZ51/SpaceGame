@@ -14,8 +14,8 @@ signal transition_started
 signal transition_finished
 
 var current_system_id: int = -1
-var current_system_data: StarSystemData = null
-var galaxy: GalaxyData = null
+var current_system_data = null
+var galaxy = null
 var _is_transitioning: bool = false
 
 # Persistence: per-system state (visited, NPC kills, etc.)
@@ -132,7 +132,7 @@ func _execute_transition() -> void:
 	# 2. Clear gate proximity + autopilot (old entities about to be destroyed)
 	_active_gate_target_id = -1
 	_active_gate_target_name = ""
-	var ship := GameManager.player_ship as ShipController
+	var ship = GameManager.player_ship
 	if ship:
 		ship.reset_flight_state()
 
@@ -144,11 +144,11 @@ func _execute_transition() -> void:
 
 	# 5. Resolve system data: override .tres > procedural
 	var galaxy_sys: Dictionary = galaxy.get_system(_pending_target_id)
-	var override_data := SystemDataRegistry.get_override(_pending_target_id)
+	var override_data =SystemDataRegistry.get_override(_pending_target_id)
 	if override_data:
 		current_system_data = override_data
 	else:
-		var connections := _build_connection_list(_pending_target_id)
+		var connections =_build_connection_list(_pending_target_id)
 		current_system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
 		# Override names with galaxy-consistent names
 		current_system_data.system_name = galaxy_sys["name"]
@@ -181,12 +181,12 @@ func _execute_transition() -> void:
 
 
 func _cleanup_current_system() -> void:
-	var universe := GameManager.universe_node
+	var universe =GameManager.universe_node
 	if universe == null:
 		return
 
 	# Clean up asteroid fields
-	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	var asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 	if asteroid_mgr:
 		asteroid_mgr.clear_all()
 
@@ -196,12 +196,12 @@ func _cleanup_current_system() -> void:
 		_active_star = null
 
 	# Clean up planet LOD manager (before impostors — frees PlanetBody nodes)
-	var planet_lod_mgr := GameManager.get_node_or_null("PlanetLODManager") as PlanetLODManager
+	var planet_lod_mgr = GameManager.get_node_or_null("PlanetLODManager")
 	if planet_lod_mgr:
 		planet_lod_mgr.clear_all()
 
 	# Reset atmosphere environment (restore space fog/light/sky)
-	var planet_approach := GameManager.get_node_or_null("PlanetApproachManager") as PlanetApproachManager
+	var planet_approach = GameManager.get_node_or_null("PlanetApproachManager")
 	if planet_approach:
 		planet_approach.reset()
 
@@ -212,12 +212,12 @@ func _cleanup_current_system() -> void:
 	_active_planet_impostors.clear()
 
 	# Clear LOD system (frees LOD0/1 nodes, clears LOD2 data, resets MultiMesh)
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
 		lod_mgr.clear_all()
 		# Re-register player in LOD system
 		if GameManager.player_ship:
-			var player_lod := ShipLODData.new()
+			var player_lod =ShipLODData.new()
 			player_lod.id = &"player_ship"
 			player_lod.ship_id = GameManager.player_ship.ship_data.ship_id if GameManager.player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 			player_lod.ship_class = GameManager.player_ship.ship_data.ship_class if GameManager.player_ship.ship_data else &"Fighter"
@@ -235,12 +235,12 @@ func _cleanup_current_system() -> void:
 		child.queue_free()
 
 	# Clear NPCs via encounter manager
-	var encounter_mgr := _get_encounter_manager()
+	var encounter_mgr = _get_encounter_manager()
 	if encounter_mgr:
 		encounter_mgr.clear_all_npcs()
 
 	# Clear structure authority
-	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	var struct_auth = GameManager.get_node_or_null("StructureAuthority")
 	if struct_auth:
 		struct_auth.clear_all()
 
@@ -283,20 +283,20 @@ func _build_connection_list(system_id: int) -> Array[Dictionary]:
 
 
 func _populate_system() -> void:
-	var universe := GameManager.universe_node
+	var universe =GameManager.universe_node
 	if universe == null:
 		return
 
 	# Spawn stations
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
-		var station := SpaceStation.new()
+		var station =SpaceStation.new()
 		station.name = "Station_%d" % i
 		station.station_name = sd.station_name
 		station.station_type = sd.station_type  # Configures health preset
 
 		# Load or create station equipment (persistent across system changes)
-		var eq_key := "system_%d_station_%d" % [current_system_id, i]
+		var eq_key ="system_%d_station_%d" % [current_system_id, i]
 		if GameManager.station_equipments.has(eq_key):
 			station.station_equipment = GameManager.station_equipments[eq_key]
 		else:
@@ -314,7 +314,7 @@ func _populate_system() -> void:
 	# Spawn jump gates
 	for i in current_system_data.jump_gates.size():
 		var gd: JumpGateData = current_system_data.jump_gates[i]
-		var gate := JumpGate.new()
+		var gate =JumpGate.new()
 		gate.name = "JumpGate_%d" % i
 		gate.player_nearby.connect(_on_gate_player_nearby)
 		gate.player_left.connect(_on_gate_player_left)
@@ -328,7 +328,7 @@ func _populate_system() -> void:
 	if not galaxy_sys.is_empty() and galaxy_sys.has("wormhole_target"):
 		var wh_data: Dictionary = galaxy_sys["wormhole_target"]
 		if wh_data.has("seed"):
-			var wormhole := WormholeGate.new()
+			var wormhole =WormholeGate.new()
 			wormhole.name = "WormholeGate"
 			var sys_angle: float = atan2(galaxy_sys["y"], galaxy_sys["x"]) + PI
 			var gate_dist: float = 25_000_000.0
@@ -361,12 +361,12 @@ func _populate_system() -> void:
 			})
 
 	# Spawn asteroid fields
-	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	var asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 	if asteroid_mgr:
 		asteroid_mgr.set_system_seed(current_system_data.seed_value)
 		for i in current_system_data.asteroid_belts.size():
 			var belt: AsteroidBeltData = current_system_data.asteroid_belts[i]
-			var field := _generate_asteroid_field(belt, i)
+			var field =_generate_asteroid_field(belt, i)
 			asteroid_mgr.populate_field(field)
 
 	# Spawn star impostor (child of main_scene, NOT Universe)
@@ -419,11 +419,11 @@ func _populate_system() -> void:
 			},
 		})
 
-	var planet_lod_mgr := GameManager.get_node_or_null("PlanetLODManager") as PlanetLODManager
+	var planet_lod_mgr = GameManager.get_node_or_null("PlanetLODManager")
 	for i in current_system_data.planets.size():
 		var pd: PlanetData = current_system_data.planets[i]
 		var ent_id: String = "planet_%d" % i
-		var impostor := PlanetImpostor.new()
+		var impostor =PlanetImpostor.new()
 		impostor.name = "PlanetImpostor_%d" % i
 		impostor.setup(pd, i, ent_id)
 		GameManager.main_scene.add_child(impostor)
@@ -434,7 +434,7 @@ func _populate_system() -> void:
 
 
 func _position_player() -> void:
-	var ship := GameManager.player_ship
+	var ship =GameManager.player_ship
 	if ship == null:
 		return
 
@@ -443,13 +443,13 @@ func _position_player() -> void:
 	if _origin_system_id >= 0 and current_system_data:
 		for gd in current_system_data.jump_gates:
 			if gd.target_system_id == _origin_system_id:
-				var gate_pos := Vector3(gd.pos_x, gd.pos_y, gd.pos_z)
+				var gate_pos =Vector3(gd.pos_x, gd.pos_y, gd.pos_z)
 				# Spawn 500m behind gate (away from system center)
-				var dir_from_center := gate_pos.normalized()
+				var dir_from_center =gate_pos.normalized()
 				ship.global_position = gate_pos + dir_from_center * 500.0
 				# Orient toward system center
-				var look_target := Vector3.ZERO
-				var forward := (look_target - ship.global_position).normalized()
+				var look_target =Vector3.ZERO
+				var forward =(look_target - ship.global_position).normalized()
 				if forward.length_squared() > 0.001:
 					ship.look_at(look_target, Vector3.UP)
 				spawned_at_gate = true
@@ -463,8 +463,8 @@ func _position_player() -> void:
 			var st: StationData = current_system_data.stations[0]
 			var orbit_r: float = st.orbital_radius
 			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-			var station_pos := Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
-			var offset := Vector3(0, 100, 500)
+			var station_pos =Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
+			var offset =Vector3(0, 100, 500)
 			ship.global_position = station_pos + offset
 		else:
 			ship.global_position = Vector3(0, 0, 500)
@@ -476,7 +476,7 @@ func _position_player() -> void:
 
 func _configure_environment() -> void:
 	var main: Node3D = GameManager.main_scene
-	if main is SpaceEnvironment:
+	if main.get("world_env") != null:
 		main.configure_for_system(current_system_data, current_system_id)
 
 
@@ -485,8 +485,8 @@ func _register_system_entities() -> void:
 	# can read positions immediately. No need to re-register here.
 
 	# Stations
-	var universe := GameManager.universe_node
-	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	var universe =GameManager.universe_node
+	var struct_auth = GameManager.get_node_or_null("StructureAuthority")
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
 		var node: Node3D = universe.get_node_or_null("Station_%d" % i) if universe else null
@@ -550,17 +550,14 @@ func _register_system_entities() -> void:
 
 
 func _spawn_encounters(danger_level: int) -> void:
-	var encounter_mgr := _get_encounter_manager()
+	var encounter_mgr = _get_encounter_manager()
 	if encounter_mgr == null:
 		return
 	encounter_mgr.spawn_system_encounters(danger_level, current_system_data)
 
 
-func _get_encounter_manager() -> EncounterManager:
-	var mgr := GameManager.get_node_or_null("EncounterManager")
-	if mgr is EncounterManager:
-		return mgr as EncounterManager
-	return null
+func _get_encounter_manager():
+	return GameManager.get_node_or_null("EncounterManager")
 
 
 func _save_system_state() -> void:
@@ -632,7 +629,7 @@ func _on_wormhole_player_left() -> void:
 # ASTEROID FIELD GENERATION
 # =============================================================================
 func _generate_asteroid_field(belt: AsteroidBeltData, index: int) -> AsteroidFieldData:
-	var field := AsteroidFieldData.new()
+	var field =AsteroidFieldData.new()
 	field.field_name = belt.belt_name
 	field.field_id = belt.field_id if belt.field_id != &"" else StringName("belt_%d" % index)
 	field.orbital_radius = belt.orbital_radius

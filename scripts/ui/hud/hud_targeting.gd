@@ -5,19 +5,19 @@ extends Control
 # HUD Targeting — Target bracket, lead indicator, 3D holographic info panel
 # =============================================================================
 
-var targeting_system: TargetingSystem = null
-var ship: ShipController = null
+var targeting_system = null
+var ship = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
 
 var _target_shield_flash: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _target_hull_flash: float = 0.0
-var _connected_target_health: HealthSystem = null
+var _connected_target_health = null
 var _prev_target_shields: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var _prev_target_hull: float = 0.0
 var _last_tracked_target: Node3D = null
 
-var _connected_struct_health: StructureHealth = null
+var _connected_struct_health = null
 
 var _target_overlay: Control = null
 var _target_panel: Control = null
@@ -26,7 +26,7 @@ var _target_panel: Control = null
 var _target_vp_container: SubViewportContainer = null
 var _target_vp: SubViewport = null
 var _target_holo_camera: Camera3D = null
-var _target_holo_model: ShipModel = null
+var _target_holo_model = null
 var _target_holo_pivot: Node3D = null
 var _target_shield_mesh: MeshInstance3D = null
 var _target_shield_mat: ShaderMaterial = null
@@ -74,7 +74,7 @@ func update(delta: float, is_cockpit: bool) -> void:
 				_connected_target_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT),
 			))
 		elif _connected_struct_health:
-			var sr := _connected_struct_health.get_shield_ratio()
+			var sr =_connected_struct_health.get_shield_ratio()
 			_target_shield_mat.set_shader_parameter("shield_ratios", Vector4(sr, sr, sr, sr))
 		_target_shield_mat.set_shader_parameter("pulse_time", pulse_t)
 		_target_shield_mat.set_shader_parameter("hit_facing", _holo_hit_facing)
@@ -102,10 +102,10 @@ func _draw_target_overlay(ctrl: Control) -> void:
 		return
 	if targeting_system.current_target == null or not is_instance_valid(targeting_system.current_target):
 		return
-	var cam := get_viewport().get_camera_3d()
+	var cam =get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var target := targeting_system.current_target
+	var target =targeting_system.current_target
 	var cf: Vector3 = -cam.global_transform.basis.z
 
 	var target_pos: Vector3 = TargetingSystem.get_ship_center(target)
@@ -122,8 +122,8 @@ func _draw_target_overlay(ctrl: Control) -> void:
 
 
 func _draw_target_bracket(ctrl: Control, sp: Vector2) -> void:
-	var bk := 22.0
-	var bl := 10.0
+	var bk =22.0
+	var bl =10.0
 	for s in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
 		var corner: Vector2 = sp + s * bk
 		ctrl.draw_line(corner, corner + Vector2(-s.x * bl, 0), UITheme.TARGET, 1.5)
@@ -141,40 +141,39 @@ func _draw_lead_indicator(ctrl: Control, sp: Vector2) -> void:
 # =============================================================================
 func _draw_target_info_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_panel_bg(ctrl, scan_line_y)
-	var font := UITheme.get_font_medium()
-	var x := 12.0
-	var w := ctrl.size.x - 24.0
-	var cx := ctrl.size.x / 2.0
-	var y := 22.0
+	var font =UITheme.get_font_medium()
+	var x =12.0
+	var w =ctrl.size.x - 24.0
+	var cx =ctrl.size.x / 2.0
+	var y =22.0
 
 	if targeting_system == null or targeting_system.current_target == null:
 		return
 	if not is_instance_valid(targeting_system.current_target):
 		return
 
-	var target := targeting_system.current_target
-	var t_health := target.get_node_or_null("HealthSystem") as HealthSystem
-	var t_struct := target.get_node_or_null("StructureHealth") as StructureHealth
+	var target =targeting_system.current_target
+	var t_health = target.get_node_or_null("HealthSystem")
+	var t_struct = target.get_node_or_null("StructureHealth")
 
 	# Determine hostility
-	var is_hostile := false
-	if target is ShipController:
-		var sc := target as ShipController
-		is_hostile = sc.faction != &"player_fleet" and sc.faction != &"neutral" and sc.faction != &"friendly"
+	var is_hostile =false
+	if target.get("ship_data") != null:
+		is_hostile = target.faction != &"player_fleet" and target.faction != &"neutral" and target.faction != &"friendly"
 
 	# Hostile: red top accent line
 	if is_hostile:
-		var lock_pulse := sin(pulse_t * 3.0) * 0.2 + 0.5
+		var lock_pulse =sin(pulse_t * 3.0) * 0.2 + 0.5
 		ctrl.draw_line(Vector2(0, 0), Vector2(ctrl.size.x, 0), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, lock_pulse), 2.0)
 
 	# Header
 	if is_hostile:
-		var hdr_pulse := sin(pulse_t * 3.0) * 0.3 + 0.7
-		var hdr_col := Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, hdr_pulse)
+		var hdr_pulse =sin(pulse_t * 3.0) * 0.3 + 0.7
+		var hdr_col =Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, hdr_pulse)
 		ctrl.draw_rect(Rect2(x, y - 11, 3, 14), hdr_col)
 		ctrl.draw_string(font, Vector2(x + 9, y), "CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, hdr_col)
-		var tw := font.get_string_size("CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		var lx := x + 9 + tw + 8
+		var tw =font.get_string_size("CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var lx =x + 9 + tw + 8
 		if lx < x + w:
 			ctrl.draw_line(Vector2(lx, y - 4), Vector2(x + w, y - 4), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.3), 1.0)
 		y += 18
@@ -186,22 +185,22 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	var display_name: String = target.name
 	if "station_name" in target and target.station_name != "":
 		display_name = target.station_name
-	var name_col := UITheme.DANGER if is_hostile else UITheme.TARGET
+	var name_col =UITheme.DANGER if is_hostile else UITheme.TARGET
 	ctrl.draw_string(font, Vector2(x, y), display_name, HORIZONTAL_ALIGNMENT_LEFT, int(w), 16, name_col)
 	y += 20
 
 	# Class / type + distance
-	var class_text := ""
-	if target is ShipController and (target as ShipController).ship_data:
-		class_text = str((target as ShipController).ship_data.ship_class)
+	var class_text =""
+	if target.get("ship_data") != null and target.ship_data:
+		class_text = str(target.ship_data.ship_class)
 	elif t_struct:
 		class_text = "STATION"
 	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
-	var dist := targeting_system.get_target_distance()
+	var dist =targeting_system.get_target_distance()
 	if dist >= 0.0:
 		var dt: String = HudDrawHelpers.format_nav_distance(dist)
-		var dtw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
+		var dtw =font.get_string_size(dt, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
 		ctrl.draw_string(font, Vector2(x + w - dtw, y), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
 	y += 22
 
@@ -216,11 +215,11 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 		y += 110
 
 		if t_health:
-			var f_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.FRONT)
-			var r_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.REAR)
-			var l_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
-			var d_r := t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
-			var col_x2 := cx + 10
+			var f_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.FRONT)
+			var r_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.REAR)
+			var l_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
+			var d_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
+			var col_x2 =cx + 10
 			ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
 			ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
 			y += 14
@@ -233,10 +232,10 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 		# Separator before hull
 		ctrl.draw_line(Vector2(x, y - 6), Vector2(x + w, y - 6), UITheme.PRIMARY_FAINT, 1.0)
 
-		var hull_r := t_health.get_hull_ratio() if t_health else 0.0
-		var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+		var hull_r =t_health.get_hull_ratio() if t_health else 0.0
+		var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
 		ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-		var hp := "%d%%" % int(hull_r * 100)
+		var hp ="%d%%" % int(hull_r * 100)
 		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 		y += 8
 		HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
@@ -258,18 +257,17 @@ func _setup_target_holo(target: Node3D) -> void:
 	# Resolve ship_id and ship_data for any target type
 	var target_ship_id: StringName = &""
 	var target_ship_data: ShipData = null
-	var is_station := target is SpaceStation
-	if target is ShipController:
-		var sc := target as ShipController
-		if sc.ship_data == null:
+	var is_station =target.get("station_name") != null
+	if target.get("ship_data") != null:
+		if target.ship_data == null:
 			return
-		target_ship_id = sc.ship_data.ship_id
-		target_ship_data = sc.ship_data
-	elif target is RemotePlayerShip:
-		target_ship_id = (target as RemotePlayerShip).ship_id
+		target_ship_id = target.ship_data.ship_id
+		target_ship_data = target.ship_data
+	elif target.get("peer_id") != null:
+		target_ship_id = target.ship_id
 		target_ship_data = ShipRegistry.get_ship_data(target_ship_id)
-	elif target is RemoteNPCShip:
-		target_ship_id = (target as RemoteNPCShip).ship_id
+	elif target.get("npc_id") != null:
+		target_ship_id = target.ship_id
 		target_ship_data = ShipRegistry.get_ship_data(target_ship_id)
 	if target_ship_data == null and not is_station:
 		return
@@ -293,25 +291,25 @@ func _setup_target_holo(target: Node3D) -> void:
 	_target_vp_container.add_child(_target_vp)
 
 	# Environment — transparent bg with subtle blue ambient
-	var env := Environment.new()
+	var env =Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0, 0, 0, 0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.1, 0.3, 0.5)
 	env.ambient_light_energy = 0.3
-	var world_env := WorldEnvironment.new()
+	var world_env =WorldEnvironment.new()
 	world_env.environment = env
 	_target_vp.add_child(world_env)
 
 	# Key light — blue-cyan from above-left
-	var dir_light := DirectionalLight3D.new()
+	var dir_light =DirectionalLight3D.new()
 	dir_light.light_color = Color(0.3, 0.6, 0.9)
 	dir_light.light_energy = 1.5
 	dir_light.rotation_degrees = Vector3(-45, 30, 0)
 	_target_vp.add_child(dir_light)
 
 	# Rim light — warm amber from behind-right
-	var rim_light := OmniLight3D.new()
+	var rim_light =OmniLight3D.new()
 	rim_light.light_color = Color(0.9, 0.6, 0.2)
 	rim_light.light_energy = 1.0
 	rim_light.omni_range = 50.0
@@ -321,7 +319,7 @@ func _setup_target_holo(target: Node3D) -> void:
 	# Camera — positioned based on target type
 	_target_holo_camera = Camera3D.new()
 	if not is_station:
-		var cam_data := ShipFactory.get_equipment_camera_data(target_ship_id)
+		var cam_data =ShipFactory.get_equipment_camera_data(target_ship_id)
 		if not cam_data.is_empty():
 			_target_holo_camera.position = cam_data["position"]
 			_target_holo_camera.transform.basis = cam_data["basis"]
@@ -356,9 +354,9 @@ func _setup_target_holo(target: Node3D) -> void:
 
 	# Station camera: position based on actual model AABB after loading
 	if is_station:
-		var aabb := _target_holo_model.get_visual_aabb()
-		var center := aabb.get_center()
-		var max_dim := maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z))
+		var aabb =_target_holo_model.get_visual_aabb()
+		var center =aabb.get_center()
+		var max_dim =maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z))
 		if max_dim < 0.01:
 			max_dim = 2.0
 		_target_holo_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -393,8 +391,8 @@ func _cleanup_target_holo() -> void:
 	_target_hit_flash_light = null
 
 
-func _apply_target_holo_material(model: ShipModel) -> void:
-	var mat := StandardMaterial3D.new()
+func _apply_target_holo_material(model) -> void:
+	var mat =StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.albedo_color = Color(0.15, 0.45, 0.9, 0.15)
@@ -410,12 +408,12 @@ func _create_target_shield_mesh() -> void:
 	if _target_holo_model == null or _target_holo_pivot == null:
 		return
 
-	var aabb := _target_holo_model.get_visual_aabb()
+	var aabb =_target_holo_model.get_visual_aabb()
 	_target_shield_half = aabb.size * 0.5 * 1.3
 	_target_shield_center = aabb.get_center()
 	_target_shield_half = _target_shield_half.clamp(Vector3.ONE * 2.0, Vector3.ONE * 200.0)
 
-	var shader := load("res://shaders/hud_shield_holo.gdshader") as Shader
+	var shader =load("res://shaders/hud_shield_holo.gdshader") as Shader
 	if shader == null:
 		return
 
@@ -427,7 +425,7 @@ func _create_target_shield_mesh() -> void:
 	_target_shield_mat.set_shader_parameter("hit_time", 1.0)
 
 	_target_shield_mesh = MeshInstance3D.new()
-	var sphere := SphereMesh.new()
+	var sphere =SphereMesh.new()
 	sphere.radius = 1.0
 	sphere.height = 2.0
 	sphere.radial_segments = 32
@@ -451,7 +449,7 @@ func _trigger_target_hit_flash(facing: int) -> void:
 		3: dir = Vector3(_target_shield_half.x, 0, 0)
 		_: dir = Vector3.ZERO
 	_target_hit_flash_light.position = _target_shield_center + dir
-	var ratio := _connected_target_health.get_shield_ratio(facing) if _connected_target_health else 1.0
+	var ratio =_connected_target_health.get_shield_ratio(facing) if _connected_target_health else 1.0
 	_target_hit_flash_light.light_color = Color(0.12, 0.35, 1.0) if ratio > 0.3 else Color(1.0, 0.3, 0.08)
 	_target_hit_flash_light.light_energy = 3.0
 
@@ -459,12 +457,12 @@ func _trigger_target_hit_flash(facing: int) -> void:
 # =============================================================================
 # STRUCTURE HEALTH (stations — omnidirectional shield + hull bars)
 # =============================================================================
-func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: float, sh: StructureHealth) -> void:
+func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: float, sh) -> void:
 	# Shield bar
-	var shd_r := sh.get_shield_ratio()
-	var shd_c := _shield_ratio_color(shd_r)
+	var shd_r =sh.get_shield_ratio()
+	var shd_c =_shield_ratio_color(shd_r)
 	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var sp := "%d%%" % int(shd_r * 100)
+	var sp ="%d%%" % int(shd_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, shd_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, shd_r, shd_c)
@@ -477,10 +475,10 @@ func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: fl
 	y += 20
 
 	# Hull bar
-	var hull_r := sh.get_hull_ratio()
-	var hull_c := UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+	var hull_r =sh.get_hull_ratio()
+	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
 	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var hp := "%d%%" % int(hull_r * 100)
+	var hp ="%d%%" % int(hull_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
@@ -517,7 +515,7 @@ func _track_target(new_target: Node3D) -> void:
 
 
 func _connect_target_signals(target: Node3D) -> void:
-	var health := target.get_node_or_null("HealthSystem") as HealthSystem
+	var health = target.get_node_or_null("HealthSystem")
 	if health:
 		_connected_target_health = health
 		health.shield_changed.connect(_on_target_shield_hit)
@@ -527,7 +525,7 @@ func _connect_target_signals(target: Node3D) -> void:
 		_prev_target_hull = health.hull_current
 		return
 	# Structure health (stations)
-	var struct_health := target.get_node_or_null("StructureHealth") as StructureHealth
+	var struct_health = target.get_node_or_null("StructureHealth")
 	if struct_health:
 		_connected_struct_health = struct_health
 		struct_health.shield_changed.connect(_on_struct_shield_hit)

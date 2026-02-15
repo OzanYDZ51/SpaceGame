@@ -12,24 +12,24 @@ signal undocked
 # Injected refs
 var player_ship: RigidBody3D = null
 var main_scene: Node3D = null
-var docking_system: DockingSystem = null
-var dock_instance: DockInstance = null
-var screen_manager: UIScreenManager = null
-var player_data: PlayerData = null
-var commerce_manager: CommerceManager = null
-var commerce_screen: CommerceScreen = null
-var equipment_screen: EquipmentScreen = null
-var shipyard_screen: ShipyardScreen = null
-var station_screen: StationScreen = null
-var admin_screen: StationAdminScreen = null
+var docking_system = null
+var dock_instance = null
+var screen_manager = null
+var player_data = null
+var commerce_manager = null
+var commerce_screen = null
+var equipment_screen = null
+var shipyard_screen = null
+var station_screen = null
+var admin_screen = null
 var refinery_screen: Control = null  # RefineryScreen (UIScreen)
 var storage_screen: Control = null   # StorageScreen (UIScreen)
-var system_transition: SystemTransition = null
-var route_manager: RouteManager = null
-var fleet_deployment_mgr: FleetDeploymentManager = null
-var lod_manager: ShipLODManager = null
-var encounter_manager: EncounterManager = null
-var ship_net_sync: ShipNetworkSync = null
+var system_transition = null
+var route_manager = null
+var fleet_deployment_mgr = null
+var lod_manager = null
+var encounter_manager = null
+var ship_net_sync = null
 var discord_rpc: DiscordRPC = null
 var notif: NotificationService = null
 var get_game_state: Callable
@@ -42,7 +42,7 @@ func handle_docked(station_name: String) -> void:
 		route_manager.cancel_route()
 
 	# Stop ship controls + autopilot
-	var ship := player_ship as ShipController
+	var ship = player_ship
 	if ship:
 		ship.disengage_autopilot()
 		ship.is_player_controlled = false
@@ -57,7 +57,7 @@ func handle_docked(station_name: String) -> void:
 	# Resolve station index from EntityRegistry
 	docked_station_idx = 0
 	var resolved_station_id: String = ""
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == station_name:
 			var extra: Dictionary = ent.get("extra", {})
@@ -66,15 +66,15 @@ func handle_docked(station_name: String) -> void:
 			break
 
 	# Update active fleet ship's docking info
-	var fleet: PlayerFleet = player_data.fleet if player_data else null
+	var fleet = player_data.fleet if player_data else null
 	if fleet:
-		var active_fs := fleet.get_active()
+		var active_fs = fleet.get_active()
 		if active_fs:
 			active_fs.docked_station_id = resolved_station_id
 			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
 	# Hide flight HUD
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = false
 
@@ -100,7 +100,7 @@ func handle_undock() -> void:
 	dock_instance.leave(_build_dock_context(""))
 
 	# Re-enable ship controls
-	var ship := player_ship as ShipController
+	var ship = player_ship
 	if ship:
 		ship.is_player_controlled = true
 
@@ -108,7 +108,7 @@ func handle_undock() -> void:
 	_reposition_at_station()
 
 	# Show flight HUD
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = true
 
@@ -128,7 +128,7 @@ func _reposition_at_station() -> void:
 		return
 
 	# Resolve station position — prefer live node, fallback to EntityRegistry
-	var station_pos := Vector3.ZERO
+	var station_pos =Vector3.ZERO
 	var found: bool = false
 
 	if docking_system and docking_system.nearest_station_node != null and is_instance_valid(docking_system.nearest_station_node):
@@ -136,7 +136,7 @@ func _reposition_at_station() -> void:
 		found = true
 	else:
 		# Fallback: find station from EntityRegistry using docked_station_idx
-		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		for ent in stations:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.get("station_index", -1) == docked_station_idx:
@@ -150,7 +150,7 @@ func _reposition_at_station() -> void:
 	# Random direction on the XZ plane, ~2km from station
 	var angle: float = randf() * TAU
 	var dist: float = randf_range(UNDOCK_DISTANCE_MIN, UNDOCK_DISTANCE_MAX)
-	var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+	var offset =Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
 	var new_pos: Vector3 = station_pos + offset
 
 	player_ship.global_position = new_pos
@@ -164,7 +164,7 @@ func handle_commerce_requested() -> void:
 	var stype: int = 0
 	var sname: String = dock_instance.station_name if dock_instance else "STATION"
 	var resolved_station_id: String = ""
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == sname:
 			resolved_station_id = ent.get("id", "")
@@ -195,7 +195,7 @@ func handle_shipyard_requested() -> void:
 	var stype: int = 0
 	var sname: String = dock_instance.station_name if dock_instance else "STATION"
 	var resolved_station_id: String = ""
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == sname:
 			resolved_station_id = ent.get("id", "")
@@ -232,17 +232,17 @@ func handle_repair_requested() -> void:
 		dock_instance.repair_ship(player_ship)
 
 	# Recover destroyed fleet ships → DOCKED at this station
-	var fleet: PlayerFleet = player_data.fleet if player_data else null
+	var fleet = player_data.fleet if player_data else null
 	var recovered_count: int = 0
 	if fleet:
-		var active_fs := fleet.get_active()
+		var active_fs = fleet.get_active()
 		var station_id: String = active_fs.docked_station_id if active_fs else ""
 		var system_id: int = active_fs.docked_system_id if active_fs else -1
 
 		for i in fleet.ships.size():
 			if i == fleet.active_index:
 				continue
-			var fs := fleet.ships[i]
+			var fs =fleet.ships[i]
 			if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 				fs.deployment_state = FleetShip.DeploymentState.DOCKED
 				fs.docked_station_id = station_id
@@ -264,15 +264,15 @@ func handle_equipment_requested() -> void:
 		return
 	equipment_screen.player_inventory = player_data.inventory if player_data else null
 	equipment_screen.player_fleet = player_data.fleet if player_data else null
-	var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = player_ship.get_node_or_null("WeaponManager")
 	equipment_screen.weapon_manager = wm
-	var em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+	var em = player_ship.get_node_or_null("EquipmentManager")
 	equipment_screen.equipment_manager = em
-	var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
-	var ship_ctrl := player_ship as ShipController
-	var center_off := ship_ctrl.center_offset if ship_ctrl else Vector3.ZERO
+	var ship_model = player_ship.get_node_or_null("ShipModel")
+	var ship_ctrl = player_ship
+	var center_off =ship_ctrl.center_offset if ship_ctrl else Vector3.ZERO
 	var root_basis: Basis = Basis.IDENTITY
-	var hp_root := player_ship.get_node_or_null("HardpointRoot") as Node3D
+	var hp_root = player_ship.get_node_or_null("HardpointRoot")
 	if hp_root:
 		root_basis = hp_root.transform.basis
 	if ship_model:
@@ -286,10 +286,10 @@ func handle_station_equipment_requested() -> void:
 	if equipment_screen == null or screen_manager == null:
 		return
 	# Resolve docked station's StationEquipment
-	var station_eq: StationEquipment = _get_docked_station_equipment()
+	var station_eq = _get_docked_station_equipment()
 	if station_eq == null:
 		return
-	var adapter := StationEquipAdapter.create(station_eq, player_data.inventory if player_data else null)
+	var adapter =StationEquipAdapter.create(station_eq, player_data.inventory if player_data else null)
 	equipment_screen.station_equip_adapter = adapter
 	equipment_screen.player_inventory = player_data.inventory if player_data else null
 	equipment_screen.player_fleet = player_data.fleet if player_data else null
@@ -299,15 +299,15 @@ func handle_station_equipment_requested() -> void:
 
 
 func _get_docked_station_equipment() -> StationEquipment:
-	var universe := main_scene.get_node_or_null("Universe") if main_scene else null
+	var universe =main_scene.get_node_or_null("Universe") if main_scene else null
 	if universe == null:
 		return null
-	var station_node: SpaceStation = universe.get_node_or_null("Station_%d" % docked_station_idx) as SpaceStation
+	var station_node = universe.get_node_or_null("Station_%d" % docked_station_idx)
 	if station_node and station_node.station_equipment:
 		return station_node.station_equipment
 	# Fallback: create from GameManager cache
 	var sys_id: int = system_transition.current_system_id if system_transition else 0
-	var key := "system_%d_station_%d" % [sys_id, docked_station_idx]
+	var key ="system_%d_station_%d" % [sys_id, docked_station_idx]
 	if GameManager.station_equipments.has(key):
 		return GameManager.station_equipments[key]
 	return null
@@ -327,19 +327,19 @@ func handle_administration_requested() -> void:
 		return
 	# Resolve docked station node + entity ID
 	var sname: String = dock_instance.station_name if dock_instance else ""
-	var station_node: SpaceStation = null
+	var station_node = null
 	var entity_id: String = ""
-	var universe := main_scene.get_node_or_null("Universe") if main_scene else null
+	var universe =main_scene.get_node_or_null("Universe") if main_scene else null
 	if universe:
-		station_node = universe.get_node_or_null("Station_%d" % docked_station_idx) as SpaceStation
+		station_node = universe.get_node_or_null("Station_%d" % docked_station_idx)
 	# Search EntityRegistry for entity ID
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 	for ent in stations:
 		if ent.get("name", "") == sname:
 			entity_id = ent.get("id", "")
 			# If no node from Universe, try node ref from entity
 			if station_node == null:
-				station_node = ent.get("node") as SpaceStation
+				station_node = ent.get("node")
 			break
 	if station_node == null:
 		return
@@ -398,10 +398,10 @@ func _clear_npc_targets_on_player() -> void:
 	for npc in get_tree().get_nodes_in_group("ships"):
 		if npc == player_ship:
 			continue
-		var targeting := npc.get_node_or_null("TargetingSystem") as TargetingSystem
+		var targeting = npc.get_node_or_null("TargetingSystem")
 		if targeting and targeting.current_target == player_ship:
 			targeting.clear_target()
-		var brain := npc.get_node_or_null("AIBrain") as AIBrain
+		var brain = npc.get_node_or_null("AIBrain")
 		if brain:
 			brain.target = null
 

@@ -31,10 +31,10 @@ var _undock_button: UIButton = null
 var _emblem_pulse: float = 0.0
 
 # Service unlock state
-var _services: StationServices = null
+var _services = null
 var _system_id: int = -1
 var _station_idx: int = 0
-var _economy: PlayerEconomy = null
+var _economy = null
 
 # Service order: COMMERCE, RÉPARATIONS, ÉQUIPEMENT, CHANTIER NAVAL
 const SERVICE_ORDER: Array[int] = [
@@ -68,7 +68,7 @@ func set_station_name(sname: String) -> void:
 	screen_title = sname.to_upper()
 
 
-func setup(services: StationServices, system_id: int, station_idx: int, economy: PlayerEconomy) -> void:
+func setup(services, system_id: int, station_idx: int, economy) -> void:
 	_services = services
 	_system_id = system_id
 	_station_idx = station_idx
@@ -80,7 +80,7 @@ func setup(services: StationServices, system_id: int, station_idx: int, economy:
 func _create_buttons() -> void:
 	for i in SERVICE_ORDER.size():
 		var svc: int = SERVICE_ORDER[i]
-		var btn := UIButton.new()
+		var btn =UIButton.new()
 		btn.text = StationServices.SERVICE_LABELS[svc]
 		btn.enabled = false
 		btn.visible = false
@@ -225,7 +225,7 @@ func _draw() -> void:
 	var s: Vector2 = size
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
 
-	var edge_col := Color(0.0, 0.0, 0.02, 0.5)
+	var edge_col =Color(0.0, 0.0, 0.02, 0.5)
 	draw_rect(Rect2(0, 0, s.x, 50), edge_col)
 	draw_rect(Rect2(0, s.y - 40, s.x, 40), edge_col)
 
@@ -314,7 +314,7 @@ func _draw() -> void:
 	# SCANLINE
 	# =========================================================================
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
 
 
@@ -325,7 +325,7 @@ func _draw_station_emblem(center: Vector2, radius: float) -> void:
 		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
 
 	var glow_alpha: float = 0.1 + sin(_emblem_pulse * 1.5) * 0.06
-	var glow_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, glow_alpha)
+	var glow_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, glow_alpha)
 	for i in 6:
 		var angle: float = TAU * float(i) / 6.0 - PI * 0.5
 		var outer: Vector2 = center + Vector2(cos(angle), sin(angle)) * (radius + 4)

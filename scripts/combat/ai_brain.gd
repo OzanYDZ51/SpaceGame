@@ -47,19 +47,19 @@ var _in_asteroid_belt: bool = false
 var _near_station: bool = false
 var _station_scene_positions: Array[Vector3] = []
 var _env_timer: float = 0.0
-var _cached_asteroid_mgr: AsteroidFieldManager = null
+var _cached_asteroid_mgr = null
 
 # AI tick
 var _tick_timer: float = 0.0
 const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 
-var _ship: ShipController = null
-var _pilot: AIPilot = null
-var _health: HealthSystem = null
+var _ship = null
+var _pilot = null
+var _health = null
 var _evade_timer: float = 0.0
 var _debug_timer: float = 0.0
-var _cached_lod_mgr: ShipLODManager = null
-var _cached_target_health: HealthSystem = null
+var _cached_lod_mgr = null
+var _cached_target_health = null
 var _cached_target_ref: Node3D = null
 
 # Threat table: tracks accumulated damage from each attacker
@@ -86,11 +86,11 @@ func setup(behavior_name: StringName) -> void:
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
+	_ship = get_parent()
 	# Defer pilot/health lookup since they may not exist yet
 	await get_tree().process_frame
-	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot if _ship else null
-	_health = _ship.get_node_or_null("HealthSystem") as HealthSystem if _ship else null
+	_pilot = _ship.get_node_or_null("AIPilot") if _ship else null
+	_health = _ship.get_node_or_null("HealthSystem") if _ship else null
 
 	# Read per-ship AI ranges from ShipData (same data for player & NPC)
 	if _ship and _ship.ship_data:
@@ -103,8 +103,8 @@ func _ready() -> void:
 		_health.damage_taken.connect(_on_damage_taken)
 
 	# Cache LOD manager (autoload child, never changes)
-	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
-	_cached_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	_cached_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 
 	# Generate initial patrol waypoints
 	if _ship:
@@ -120,7 +120,7 @@ func _process(delta: float) -> void:
 		return
 
 	# Turrets track + auto-fire every frame, return to rest when no target
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm:
 		if target and is_instance_valid(target) and weapons_enabled and current_state in [State.ATTACK, State.PURSUE, State.EVADE]:
 			wm.update_turrets(target)
@@ -132,8 +132,8 @@ func _process(delta: float) -> void:
 		return
 
 	# AI LOD: reduce tick rate based on distance to player
-	var tick_rate := TICK_INTERVAL
-	var player := GameManager.player_ship
+	var tick_rate =TICK_INTERVAL
+	var player =GameManager.player_ship
 	if player and is_instance_valid(player):
 		var dist: float = _ship.global_position.distance_to(player.global_position)
 		if dist > 5000.0:
@@ -189,20 +189,20 @@ func _update_environment() -> void:
 	# Check if inside asteroid belt (uses universe coords)
 	_in_asteroid_belt = false
 	if _cached_asteroid_mgr:
-		var pos := _ship.global_position
+		var pos = _ship.global_position
 		var ux: float = FloatingOrigin.origin_offset_x + float(pos.x)
 		var uz: float = FloatingOrigin.origin_offset_z + float(pos.z)
-		var belt_name := _cached_asteroid_mgr.get_belt_at_position(ux, uz)
+		var belt_name = _cached_asteroid_mgr.get_belt_at_position(ux, uz)
 		_in_asteroid_belt = belt_name != ""
 
 	# Cache nearby station scene positions (universe → scene coords)
 	_station_scene_positions.clear()
 	_near_station = false
-	var stations := EntityRegistry.get_by_type(EntityRegistry.EntityType.STATION)
-	var ship_pos := _ship.global_position
+	var stations =EntityRegistry.get_by_type(EntityRegistry.EntityType.STATION)
+	var ship_pos = _ship.global_position
 	for st in stations:
-		var scene_pos := FloatingOrigin.to_local_pos([st["pos_x"], st["pos_y"], st["pos_z"]])
-		var dist := ship_pos.distance_to(scene_pos)
+		var scene_pos =FloatingOrigin.to_local_pos([st["pos_x"], st["pos_y"], st["pos_z"]])
+		var dist = ship_pos.distance_to(scene_pos)
 		if dist < STATION_CACHE_RANGE:
 			_station_scene_positions.append(scene_pos)
 			if dist < 800.0:
@@ -212,8 +212,8 @@ func _update_environment() -> void:
 func _push_away_from_stations(pos: Vector3) -> Vector3:
 	## Pushes a waypoint outside station exclusion zones. Returns adjusted position.
 	for st_pos in _station_scene_positions:
-		var to_wp := pos - st_pos
-		var dist := to_wp.length()
+		var to_wp =pos - st_pos
+		var dist =to_wp.length()
 		if dist < STATION_EXCLUSION_RADIUS:
 			if dist < 1.0:
 				# Overlapping — push in random horizontal direction
@@ -226,25 +226,25 @@ func _push_away_from_stations(pos: Vector3) -> Vector3:
 
 func _compute_safe_flee_direction(desired_dir: Vector3) -> Vector3:
 	## Adjusts flee direction to avoid stations and incorporate obstacle avoidance.
-	var result := desired_dir
+	var result =desired_dir
 
 	# Deviate if fleeing toward a station
 	for st_pos in _station_scene_positions:
-		var to_station := st_pos - _ship.global_position
-		var station_dist := to_station.length()
+		var to_station =st_pos - _ship.global_position
+		var station_dist =to_station.length()
 		if station_dist > STATION_CACHE_RANGE:
 			continue
-		var station_dir := to_station.normalized()
-		var dot := desired_dir.dot(station_dir)
+		var station_dir =to_station.normalized()
+		var dot =desired_dir.dot(station_dir)
 		if dot > 0.5 and station_dist < 1200.0:
 			# Fleeing toward station — deflect perpendicular
-			var perp := desired_dir.cross(Vector3.UP).normalized()
+			var perp =desired_dir.cross(Vector3.UP).normalized()
 			if perp.length_squared() < 0.5:
 				perp = desired_dir.cross(Vector3.RIGHT).normalized()
 			result = (result + perp * 0.8).normalized()
 
 	# Blend in obstacle sensor avoidance if available
-	var sensor := _ship.get_node_or_null("ObstacleSensor") as ObstacleSensor
+	var sensor = _ship.get_node_or_null("ObstacleSensor")
 	if sensor and sensor.avoidance_vector.length_squared() > 100.0:
 		result = (result + sensor.avoidance_vector.normalized() * 0.5).normalized()
 
@@ -271,7 +271,7 @@ func _tick_patrol() -> void:
 
 	# Wider arrival distance in asteroid belt to avoid getting stuck
 	# Cap to patrol radius so waypoints don't overlap in small patrol areas
-	var arrival := 150.0 if _in_asteroid_belt else 80.0
+	var arrival =150.0 if _in_asteroid_belt else 80.0
 	if _patrol_radius < arrival:
 		arrival = maxf(_patrol_radius * 0.6, 15.0)
 
@@ -293,7 +293,7 @@ func _tick_pursue() -> void:
 
 	# Emergency breakaway if dangerously close
 	if dist < MIN_SAFE_DIST:
-		var away := (_ship.global_position - target.global_position).normalized()
+		var away =(_ship.global_position - target.global_position).normalized()
 		_pilot.fly_toward(_ship.global_position + away * 300.0, 10.0)
 		return
 
@@ -305,7 +305,7 @@ func _tick_pursue() -> void:
 		return
 
 	# Engage when in range (wider threshold in belt)
-	var engage_mult := 2.0 if _in_asteroid_belt else 1.5
+	var engage_mult =2.0 if _in_asteroid_belt else 1.5
 	if dist <= preferred_range * engage_mult:
 		current_state = State.ATTACK
 		return
@@ -330,7 +330,7 @@ func _tick_attack(_delta: float) -> void:
 
 	# Emergency breakaway if dangerously close
 	if dist < MIN_SAFE_DIST:
-		var away := (_ship.global_position - target.global_position).normalized()
+		var away =(_ship.global_position - target.global_position).normalized()
 		_pilot.fly_toward(_ship.global_position + away * 300.0, 10.0)
 		return
 
@@ -362,11 +362,11 @@ func _tick_attack(_delta: float) -> void:
 		_pilot.fly_intercept(target, preferred_range)
 	else:
 		# Face lead position for aiming
-		var lead_pos := target.global_position
+		var lead_pos =target.global_position
 		if target is RigidBody3D:
 			var tvel: Vector3 = (target as RigidBody3D).linear_velocity
-			var closing := maxf(-(_ship.linear_velocity - tvel).dot((target.global_position - _ship.global_position).normalized()), 10.0)
-			var tti := clampf(dist / closing, 0.0, 3.0)
+			var closing =maxf(-(_ship.linear_velocity - tvel).dot((target.global_position - _ship.global_position).normalized()), 10.0)
+			var tti =clampf(dist / closing, 0.0, 3.0)
 			lead_pos += tvel * tti
 		_pilot.face_target(lead_pos)
 		_pilot.apply_attack_throttle(dist, preferred_range)
@@ -420,7 +420,7 @@ func _tick_formation() -> void:
 
 	# If leader is attacking, we attack too (only if we have weapons)
 	if weapons_enabled and formation_leader.has_node("AIBrain"):
-		var leader_brain := formation_leader.get_node("AIBrain") as AIBrain
+		var leader_brain = formation_leader.get_node("AIBrain")
 		if leader_brain and leader_brain.current_state == State.ATTACK and leader_brain.target:
 			target = leader_brain.target
 			current_state = State.ATTACK
@@ -441,12 +441,12 @@ func _detect_threats() -> void:
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
 	if _cached_lod_mgr:
-		var self_id := StringName(_ship.name)
-		var results := _cached_lod_mgr.get_nearest_ships(_ship.global_position, detection_range, 5, self_id)
+		var self_id =StringName(_ship.name)
+		var results = _cached_lod_mgr.get_nearest_ships(_ship.global_position, detection_range, 5, self_id)
 		var nearest_threat: Node3D = null
 		var nearest_dist: float = detection_range
 		for entry in results:
-			var data := _cached_lod_mgr.get_ship_data(entry["id"])
+			var data = _cached_lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
 				continue
 			if data.faction == _ship.faction:
@@ -470,15 +470,15 @@ func _detect_threats() -> void:
 		return
 
 	# Legacy fallback
-	var all_ships := get_tree().get_nodes_in_group("ships")
+	var all_ships =get_tree().get_nodes_in_group("ships")
 	var fallback_threat: Node3D = null
 	var fallback_dist: float = detection_range
 
 	for node in all_ships:
 		if node == _ship:
 			continue
-		if node is ShipController:
-			var other := node as ShipController
+		if node.get("ship_data") != null:
+			var other = node
 			if other.faction == _ship.faction:
 				continue
 			# Fleet ships and player don't target each other
@@ -488,7 +488,7 @@ func _detect_threats() -> void:
 				continue
 			var dist: float = _ship.global_position.distance_to(other.global_position)
 			if dist < fallback_dist:
-				var other_health := other.get_node_or_null("HealthSystem") as HealthSystem
+				var other_health = other.get_node_or_null("HealthSystem")
 				if other_health and other_health.is_dead():
 					continue
 				fallback_dist = dist
@@ -506,7 +506,7 @@ func _is_target_valid() -> bool:
 	# Cache target's HealthSystem (refresh when target changes)
 	if _cached_target_ref != target:
 		_cached_target_ref = target
-		_cached_target_health = target.get_node_or_null("HealthSystem") as HealthSystem
+		_cached_target_health = target.get_node_or_null("HealthSystem")
 	if _cached_target_health and _cached_target_health.is_dead():
 		return false
 	return true
@@ -516,7 +516,7 @@ func _generate_patrol_waypoints() -> void:
 	_waypoints.clear()
 	for i in 4:
 		var angle: float = (float(i) / 4.0) * TAU
-		var wp := _patrol_center + Vector3(
+		var wp =_patrol_center + Vector3(
 			cos(angle) * _patrol_radius,
 			randf_range(-50.0, 50.0),
 			sin(angle) * _patrol_radius,
@@ -583,7 +583,7 @@ func _update_threat_table(dt: float) -> void:
 
 func _maybe_switch_target() -> void:
 	if target == null or not is_instance_valid(target):
-		var best := _get_highest_threat()
+		var best =_get_highest_threat()
 		if best:
 			target = best
 		return

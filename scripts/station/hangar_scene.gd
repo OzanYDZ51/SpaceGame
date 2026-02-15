@@ -26,7 +26,7 @@ var _cam_base_pos: Vector3 = Vector3.ZERO
 var _cam_base_rot: Vector3 = Vector3.ZERO
 var _look_yaw: float = 0.0
 var _look_pitch: float = 0.0
-var _docked_ship: ShipModel = null
+var _docked_ship = null
 var _preview_local_pos: Vector3 = Vector3.ZERO
 var _preview_local_rot: Vector3 = Vector3.ZERO
 var _preview_local_scale: Vector3 = Vector3.ONE
@@ -52,9 +52,9 @@ func _ready() -> void:
 	_cam_base_rot = _camera.rotation_degrees
 
 	# Save ShipPreview transform from editor, then remove preview (replaced by display_ship)
-	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	var spawn_point =get_node_or_null("ShipSpawnPoint") as Marker3D
 	if spawn_point:
-		var preview := spawn_point.get_node_or_null("ShipPreview") as Node3D
+		var preview =spawn_point.get_node_or_null("ShipPreview") as Node3D
 		if preview:
 			_preview_local_pos = preview.position
 			_preview_local_rot = preview.rotation_degrees
@@ -80,9 +80,9 @@ func _draw_prompt() -> void:
 	if terminal_open:
 		return
 
-	var s := _prompt_ctrl.size
-	var font := UITheme.get_font_medium()
-	var pulse := sin(_cam_t * 2.5) * 0.15 + 0.85
+	var s =_prompt_ctrl.size
+	var font =UITheme.get_font_medium()
+	var pulse =sin(_cam_t * 2.5) * 0.15 + 0.85
 
 	# "HANGAR" title at top center — thin, understated
 	_prompt_ctrl.draw_string(font, Vector2(0, 32), "HANGAR",
@@ -95,27 +95,27 @@ func _draw_prompt() -> void:
 
 	# Ship selection prompt (above main prompt)
 	if _selection_active and _fleet_indices.size() > 1:
-		var sel_cy := s.y - 84.0
-		var sel_pill_w := 300.0
-		var sel_pill_h := 22.0
-		var sel_rect := Rect2((s.x - sel_pill_w) * 0.5, sel_cy - sel_pill_h * 0.5, sel_pill_w, sel_pill_h)
+		var sel_cy =s.y - 84.0
+		var sel_pill_w =300.0
+		var sel_pill_h =22.0
+		var sel_rect =Rect2((s.x - sel_pill_w) * 0.5, sel_cy - sel_pill_h * 0.5, sel_pill_w, sel_pill_h)
 		_prompt_ctrl.draw_rect(sel_rect, Color(0.0, 0.02, 0.06, 0.5))
 		_prompt_ctrl.draw_rect(sel_rect, Color(0.15, 0.6, 0.8, 0.15 * pulse), false, 1.0)
-		var sel_col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
+		var sel_col =Color(0.25, 0.8, 0.95, 0.7 * pulse)
 		_prompt_ctrl.draw_string(font, Vector2(0, sel_cy + 4),
 			"\u25C0  [A]   CHANGER DE VAISSEAU   [D]  \u25B6",
 			HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, sel_col)
 
 	# Main prompt pill
-	var cy := s.y - 52.0
-	var pill_w := 260.0
-	var pill_h := 24.0
-	var pill_rect := Rect2((s.x - pill_w) * 0.5, cy - pill_h * 0.5, pill_w, pill_h)
+	var cy =s.y - 52.0
+	var pill_w =260.0
+	var pill_h =24.0
+	var pill_rect =Rect2((s.x - pill_w) * 0.5, cy - pill_h * 0.5, pill_w, pill_h)
 	_prompt_ctrl.draw_rect(pill_rect, Color(0.0, 0.02, 0.06, 0.55))
 	_prompt_ctrl.draw_rect(pill_rect, Color(0.15, 0.6, 0.8, 0.18 * pulse), false, 1.0)
 
 	# Key prompts
-	var col := Color(0.25, 0.8, 0.95, 0.7 * pulse)
+	var col =Color(0.25, 0.8, 0.95, 0.7 * pulse)
 	_prompt_ctrl.draw_string(font, Vector2(0, cy + 4),
 		"TERMINAL  [F]        DÉCOLLER  [Échap]",
 		HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 12, col)
@@ -127,10 +127,10 @@ func _process(delta: float) -> void:
 		return
 
 	# Mouse parallax
-	var vp := get_viewport()
+	var vp =get_viewport()
 	if vp:
-		var mouse := vp.get_mouse_position()
-		var screen := vp.get_visible_rect().size
+		var mouse =vp.get_mouse_position()
+		var screen =vp.get_visible_rect().size
 		if screen.x > 0 and screen.y > 0:
 			var nx: float = clampf((mouse.x / screen.x - 0.5) * 2.0, -1.0, 1.0)
 			var ny: float = clampf((mouse.y / screen.y - 0.5) * 2.0, -1.0, 1.0)
@@ -167,7 +167,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed:
 		return
 
-	var changed := false
+	var changed =false
 	if event.physical_keycode == KEY_A:
 		_current_index = (_current_index - 1 + _fleet_indices.size()) % _fleet_indices.size()
 		changed = true
@@ -197,7 +197,7 @@ func display_ship(ship_model_path: String, ship_model_scale: float, hp_configs: 
 	_docked_ship.engine_light_color = Color(0.3, 0.5, 1.0)
 	_docked_ship.name = "DockedShip"
 
-	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	var spawn_point =get_node_or_null("ShipSpawnPoint") as Marker3D
 	if spawn_point:
 		spawn_point.add_child(_docked_ship)
 		_docked_ship.position = _preview_local_pos
@@ -226,10 +226,10 @@ func setup_ship_selection(active_fleet_index: int, fleet_indices: Array[int]) ->
 		_create_ship_labels()
 		# Set initial label text
 		if _current_index < _fleet_indices.size():
-			var fleet := GameManager.player_fleet
+			var fleet =GameManager.player_fleet
 			if fleet:
-				var fs := fleet.ships[_fleet_indices[_current_index]]
-				var data := ShipRegistry.get_ship_data(fs.ship_id)
+				var fs =fleet.ships[_fleet_indices[_current_index]]
+				var data =ShipRegistry.get_ship_data(fs.ship_id)
 				if data:
 					_update_ship_labels(data, fs.custom_name)
 
@@ -245,29 +245,29 @@ func refresh_ship_list(active_fleet_index: int, fleet_indices: Array[int]) -> vo
 
 ## Display a fleet ship in the hangar by fleet index.
 func _display_fleet_ship(fleet_idx: int) -> void:
-	var fleet := GameManager.player_fleet
+	var fleet =GameManager.player_fleet
 	if fleet == null or fleet_idx < 0 or fleet_idx >= fleet.ships.size():
 		return
-	var fs := fleet.ships[fleet_idx]
-	var ship_id := fs.ship_id
-	var data := ShipRegistry.get_ship_data(ship_id)
+	var fs =fleet.ships[fleet_idx]
+	var ship_id =fs.ship_id
+	var data =ShipRegistry.get_ship_data(ship_id)
 	if data == null:
 		return
-	var configs := ShipFactory.get_hardpoint_configs(ship_id)
-	var model_rot := ShipFactory.get_model_rotation(ship_id)
-	var rb := ShipFactory.get_root_basis(ship_id)
-	var sms := ShipFactory.get_scene_model_scale(ship_id)
+	var configs =ShipFactory.get_hardpoint_configs(ship_id)
+	var model_rot =ShipFactory.get_model_rotation(ship_id)
+	var rb =ShipFactory.get_root_basis(ship_id)
+	var sms =ShipFactory.get_scene_model_scale(ship_id)
 	# Show equipped weapons from FleetShip loadout (not defaults)
 	display_ship(data.model_path, sms, configs, fs.weapons, model_rot, rb)
 	_update_ship_labels(data, fs.custom_name)
 
 
 func _create_3d_arrows() -> void:
-	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	var spawn_point =get_node_or_null("ShipSpawnPoint") as Marker3D
 	if spawn_point == null:
 		return
 
-	var mat := StandardMaterial3D.new()
+	var mat =StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = Color(0.12, 0.7, 0.9, 0.6)
 	mat.emission_enabled = true
@@ -276,7 +276,7 @@ func _create_3d_arrows() -> void:
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 	# Left arrow (slim chevron)
-	var prism_left := PrismMesh.new()
+	var prism_left =PrismMesh.new()
 	prism_left.size = Vector3(0.35, 0.7, 0.12)
 	_arrow_left = MeshInstance3D.new()
 	_arrow_left.mesh = prism_left
@@ -287,7 +287,7 @@ func _create_3d_arrows() -> void:
 	_arrow_left.rotation_degrees = Vector3(0, 0, 90)  # Point left
 
 	# Right arrow (slim chevron)
-	var prism_right := PrismMesh.new()
+	var prism_right =PrismMesh.new()
 	prism_right.size = Vector3(0.35, 0.7, 0.12)
 	_arrow_right = MeshInstance3D.new()
 	_arrow_right.mesh = prism_right
@@ -299,7 +299,7 @@ func _create_3d_arrows() -> void:
 
 
 func _create_ship_labels() -> void:
-	var spawn_point := get_node_or_null("ShipSpawnPoint") as Marker3D
+	var spawn_point =get_node_or_null("ShipSpawnPoint") as Marker3D
 	if spawn_point == null:
 		return
 
@@ -334,7 +334,7 @@ func _create_ship_labels() -> void:
 
 func _update_ship_labels(data: ShipData, custom_name: String = "") -> void:
 	if _label_name:
-		var display_name := custom_name if custom_name != "" else String(data.ship_name)
+		var display_name =custom_name if custom_name != "" else String(data.ship_name)
 		_label_name.text = display_name.to_upper()
 	if _label_stats:
 		var weapons_count: int = data.hardpoints.size()

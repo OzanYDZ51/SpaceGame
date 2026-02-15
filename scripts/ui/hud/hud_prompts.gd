@@ -5,11 +5,11 @@ extends Control
 # HUD Action Prompts — Dock [F], Loot [X], Gate [J], Wormhole [W]
 # =============================================================================
 
-var docking_system: DockingSystem = null
+var docking_system = null
 var loot_pickup: LootPickupSystem = null
-var system_transition: SystemTransition = null
+var system_transition = null
 var asteroid_scanner: AsteroidScanner = null
-var mining_system: MiningSystem = null
+var mining_system = null
 var pulse_t: float = 0.0
 var can_build: bool = false
 var build_target_name: String = ""
@@ -98,12 +98,12 @@ func update_visibility() -> void:
 
 # --- Dock ---
 func _draw_dock_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.0, 0.02, 0.06, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3 * pulse), false, 1.0)
 
@@ -111,7 +111,7 @@ func _draw_dock_prompt(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, 13), docking_system.nearest_station_name.to_upper(),
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var dock_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse)
+	var dock_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "DOCKER  [F]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, dock_col)
 
@@ -123,13 +123,13 @@ func _draw_dock_prompt(ctrl: Control) -> void:
 
 # --- Loot ---
 func _draw_loot_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var loot_col := Color(1.0, 0.7, 0.2)
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var loot_col =Color(1.0, 0.7, 0.2)
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.06, 0.04, 0.0, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(loot_col.r, loot_col.g, loot_col.b, 0.3 * pulse), false, 1.0)
 
@@ -138,7 +138,7 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, 13), summary.to_upper(),
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var text_col := Color(loot_col.r, loot_col.g, loot_col.b, pulse)
+	var text_col =Color(loot_col.r, loot_col.g, loot_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "SOUTE  [X]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
@@ -150,13 +150,13 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 
 # --- Gate ---
 func _draw_gate_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var gate_col := NAV_COL_GATE
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var gate_col =NAV_COL_GATE
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.0, 0.02, 0.08, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(gate_col.r, gate_col.g, gate_col.b, 0.3 * pulse), false, 1.0)
 
@@ -165,7 +165,7 @@ func _draw_gate_prompt(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, 13), target_name,
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var text_col := Color(gate_col.r, gate_col.g, gate_col.b, pulse)
+	var text_col =Color(gate_col.r, gate_col.g, gate_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "SAUT  [J]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
@@ -177,13 +177,13 @@ func _draw_gate_prompt(ctrl: Control) -> void:
 
 # --- Wormhole ---
 func _draw_wormhole_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var wh_col := Color(0.7, 0.2, 1.0)
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var wh_col =Color(0.7, 0.2, 1.0)
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.06, 0.0, 0.08, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(wh_col.r, wh_col.g, wh_col.b, 0.3 * pulse), false, 1.0)
 
@@ -192,7 +192,7 @@ func _draw_wormhole_prompt(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, 13), target_name,
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var text_col := Color(wh_col.r, wh_col.g, wh_col.b, pulse)
+	var text_col =Color(wh_col.r, wh_col.g, wh_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "WORMHOLE  [W]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
@@ -204,13 +204,13 @@ func _draw_wormhole_prompt(ctrl: Control) -> void:
 
 # --- Build ---
 func _draw_build_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var build_col := Color(1.0, 0.6, 0.1)
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var build_col =Color(1.0, 0.6, 0.1)
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.06, 0.03, 0.0, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(build_col.r, build_col.g, build_col.b, 0.3 * pulse), false, 1.0)
 
@@ -218,7 +218,7 @@ func _draw_build_prompt(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, 13), build_target_name.to_upper(),
 			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var text_col := Color(build_col.r, build_col.g, build_col.b, pulse)
+	var text_col =Color(build_col.r, build_col.g, build_col.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 28), "CONSTRUIRE  [B]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
@@ -230,16 +230,16 @@ func _draw_build_prompt(ctrl: Control) -> void:
 
 # --- Scan ---
 func _draw_scan_prompt(ctrl: Control) -> void:
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.06, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(SCAN_COL.r, SCAN_COL.g, SCAN_COL.b, 0.3 * pulse), false, 1.0)
 
-	var text_col := Color(SCAN_COL.r, SCAN_COL.g, SCAN_COL.b, pulse)
+	var text_col =Color(SCAN_COL.r, SCAN_COL.g, SCAN_COL.b, pulse)
 	ctrl.draw_string(font, Vector2(0, 22), "SCAN  [H]",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
 
@@ -250,10 +250,10 @@ func _draw_scan_prompt(ctrl: Control) -> void:
 
 
 func _is_in_belt() -> bool:
-	var ship := GameManager.player_ship
+	var ship =GameManager.player_ship
 	if ship == null:
 		return false
-	var asteroid_mgr := GameManager.get_node_or_null("AsteroidFieldManager") as AsteroidFieldManager
+	var asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 	if asteroid_mgr == null:
 		return false
 	var uni_x: float = ship.global_position.x + FloatingOrigin.origin_offset_x

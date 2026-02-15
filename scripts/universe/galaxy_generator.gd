@@ -7,7 +7,7 @@ extends RefCounted
 # =============================================================================
 
 # Extended name pools for 120+ unique system names
-const PREFIXES := [
+const PREFIXES =[
 	"Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta",
 	"Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi",
 	"Rho", "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega",
@@ -16,14 +16,14 @@ const PREFIXES := [
 	"Aldebaran", "Betelgeuse", "Fomalhaut", "Arcturus", "Canopus", "Achernar",
 ]
 
-const SUFFIXES := [
+const SUFFIXES =[
 	"Centauri", "Eridani", "Cygni", "Draconis", "Orionis", "Lyrae", "Tauri",
 	"Aquilae", "Serpentis", "Crucis", "Leonis", "Ursae", "Persei", "Pegasi",
 	"Carinae", "Phoenicis", "Hydrae", "Virginis", "Scorpii", "Pavonis",
 ]
 
 # Spectral class weights (same distribution as SystemGenerator)
-const SPECTRAL_WEIGHTS := [
+const SPECTRAL_WEIGHTS =[
 	{ "class": "M", "weight": 76.0 },
 	{ "class": "K", "weight": 12.0 },
 	{ "class": "G", "weight": 7.5 },
@@ -36,31 +36,31 @@ const SPECTRAL_WEIGHTS := [
 const FACTIONS: Array[StringName] = [&"neutral", &"hostile", &"friendly", &"lawless"]
 
 
-static func generate(master_seed: int) -> GalaxyData:
-	var galaxy := GalaxyData.new()
+static func generate(master_seed: int):
+	var galaxy =GalaxyData.new()
 	galaxy.master_seed = master_seed
 
-	var rng := RandomNumberGenerator.new()
+	var rng =RandomNumberGenerator.new()
 	rng.seed = master_seed
 
 	var count: int = Constants.GALAXY_SYSTEM_COUNT
 	var radius: float = Constants.GALAXY_RADIUS
 
 	# 1. Distribute systems using rejection sampling with minimum distance
-	var positions := _distribute_systems(rng, count, radius)
+	var positions =_distribute_systems(rng, count, radius)
 
 	# 2. Create system entries
 	var used_names: Dictionary = {}
 	for i in positions.size():
 		var pos: Vector2 = positions[i]
 		var sys_seed: int = hash(master_seed + i * 7919)  # Deterministic per-system seed
-		var sys_rng := RandomNumberGenerator.new()
+		var sys_rng =RandomNumberGenerator.new()
 		sys_rng.seed = sys_seed
 
-		var sys_name := _generate_unique_name(sys_rng, used_names)
+		var sys_name =_generate_unique_name(sys_rng, used_names)
 		used_names[sys_name] = true
 
-		var spectral := _pick_spectral_class(sys_rng)
+		var spectral =_pick_spectral_class(sys_rng)
 		var dist_from_center: float = pos.length()
 		var norm_dist: float = dist_from_center / radius  # 0 = center, 1 = edge
 
@@ -111,10 +111,10 @@ static func _distribute_systems(rng: RandomNumberGenerator, count: int, radius: 
 		# Random point in circle
 		var angle: float = rng.randf() * TAU
 		var r: float = sqrt(rng.randf()) * radius  # sqrt for uniform distribution in circle
-		var candidate := Vector2(cos(angle) * r, sin(angle) * r)
+		var candidate =Vector2(cos(angle) * r, sin(angle) * r)
 
 		# Check minimum distance to all existing points
-		var too_close := false
+		var too_close =false
 		for p in points:
 			if candidate.distance_to(p) < min_dist:
 				too_close = true

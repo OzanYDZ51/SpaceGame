@@ -9,7 +9,7 @@ extends Node
 
 ## Emitted after ShipFactory rebuilds the player ship (init + ship change).
 ## Systems (HUD, MiningSystem, ShipNetworkSync) connect to self-rewire.
-signal player_ship_rebuilt(ship: ShipController)
+signal player_ship_rebuilt(ship)
 
 const GameState = Constants.GameState
 
@@ -39,19 +39,19 @@ var _net_sync_mgr = null
 var _discord_rpc: DiscordRPC:
 	get: return _net_sync_mgr.discord_rpc if _net_sync_mgr else null
 var _vfx_manager = null
-var player_data: PlayerData = null
-var player_inventory: PlayerInventory:
+var player_data = null
+var player_inventory:
 	get: return player_data.inventory if player_data else null
-var player_cargo: PlayerCargo:
+var player_cargo:
 	get: return player_data.cargo if player_data else null
-var player_economy: PlayerEconomy:
+var player_economy:
 	get: return player_data.economy if player_data else null
-var player_fleet: PlayerFleet:
+var player_fleet:
 	get: return player_data.fleet if player_data else null
 	set(value):
 		if player_data:
 			player_data.fleet = value
-var station_services: StationServices:
+var station_services:
 	get: return player_data.station_services if player_data else null
 	set(value):
 		if player_data:
@@ -108,7 +108,7 @@ func _ready() -> void:
 
 
 func _read_auth_token_from_cli() -> void:
-	var args := OS.get_cmdline_args()
+	var args =OS.get_cmdline_args()
 	for i in args.size():
 		if args[i] == "--auth-token" and i + 1 < args.size():
 			var token: String = args[i + 1]
@@ -129,7 +129,7 @@ func _dev_auto_login() -> void:
 	print("GameManager: [DEV] Auto-login attempt against %s ..." % ApiClient.base_url)
 
 	# Try login
-	var result := await ApiClient.post_async("/api/v1/auth/login", {
+	var result =await ApiClient.post_async("/api/v1/auth/login", {
 		"username": DEV_USER, "password": DEV_PASS,
 	}, false)
 	var status: int = result.get("_status_code", 0)
@@ -157,7 +157,7 @@ func _dev_auto_login() -> void:
 
 
 func _setup_ui_managers() -> void:
-	var ui_layer := main_scene.get_node_or_null("UI")
+	var ui_layer =main_scene.get_node_or_null("UI")
 	if ui_layer == null:
 		push_warning("GameManager: UI CanvasLayer not found, skipping UI managers")
 		return
@@ -170,7 +170,7 @@ func _setup_ui_managers() -> void:
 	# Register unified map screen (SYSTEM + GALAXY views)
 	if _stellar_map:
 		_stellar_map.managed_externally = true
-		var map_screen := UnifiedMapScreen.new()
+		var map_screen =UnifiedMapScreen.new()
 		map_screen.name = "UnifiedMapScreen"
 		map_screen.stellar_map = _stellar_map
 		map_screen.galaxy = _galaxy
@@ -192,7 +192,7 @@ func _setup_ui_managers() -> void:
 			_stellar_map.squadron_action_requested.connect(_on_squadron_action)
 
 	# Register Clan screen
-	var clan_screen := ClanScreen.new()
+	var clan_screen =ClanScreen.new()
 	clan_screen.name = "ClanScreen"
 	_screen_manager.register_screen("clan", clan_screen)
 
@@ -238,13 +238,13 @@ func _setup_ui_managers() -> void:
 	_screen_manager.register_screen("refinery", _refinery_screen)
 
 	# Register Storage screen (ENTREPOT)
-	var StorageScreenClass := load("res://scripts/ui/screens/station/storage/storage_screen.gd")
+	var StorageScreenClass =load("res://scripts/ui/screens/station/storage/storage_screen.gd")
 	_storage_screen = StorageScreenClass.new()
 	_storage_screen.name = "StorageScreen"
 	_screen_manager.register_screen("storage", _storage_screen)
 
 	# Register Multiplayer connection screen
-	var mp_screen := MultiplayerMenuScreen.new()
+	var mp_screen =MultiplayerMenuScreen.new()
 	mp_screen.name = "MultiplayerMenuScreen"
 	_screen_manager.register_screen("multiplayer", mp_screen)
 
@@ -283,13 +283,13 @@ func _refresh_fleet_on_maps() -> void:
 	if _stellar_map:
 		_stellar_map.set_fleet(player_fleet, _galaxy)
 	if _screen_manager:
-		var map_screen := _screen_manager._screens.get("map") as UnifiedMapScreen
+		var map_screen = _screen_manager._screens.get("map")
 		if map_screen:
 			map_screen.set_fleet(player_fleet, _galaxy)
 
 
 func _initialize_game() -> void:
-	var scene := get_tree().current_scene
+	var scene =get_tree().current_scene
 	if not scene is Node3D:
 		return
 	main_scene = scene
@@ -309,7 +309,7 @@ func _initialize_game() -> void:
 	FloatingOrigin.set_universe_node(universe_node)
 
 	# Setup player ship with combat systems
-	ShipFactory.setup_player_ship(Constants.DEFAULT_SHIP_ID, player_ship as ShipController)
+	ShipFactory.setup_player_ship(Constants.DEFAULT_SHIP_ID, player_ship)
 
 	# Generate galaxy (needed before PlayerData.initialize)
 	_galaxy = GalaxyGenerator.generate(Constants.galaxy_seed)
@@ -321,22 +321,22 @@ func _initialize_game() -> void:
 	# Equip starting loadout from fleet data
 	var starting_fleet_ship = player_data.get_starting_fleet_ship()
 	if starting_fleet_ship:
-		var start_wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+		var start_wm = player_ship.get_node_or_null("WeaponManager")
 		if start_wm:
 			start_wm.equip_weapons(starting_fleet_ship.weapons)
-		var start_em := player_ship.get_node_or_null("EquipmentManager") as EquipmentManager
+		var start_em = player_ship.get_node_or_null("EquipmentManager")
 		if start_em:
 			if starting_fleet_ship.shield_name != &"":
-				var shield_res := ShieldRegistry.get_shield(starting_fleet_ship.shield_name)
+				var shield_res =ShieldRegistry.get_shield(starting_fleet_ship.shield_name)
 				if shield_res:
 					start_em.equip_shield(shield_res)
 			if starting_fleet_ship.engine_name != &"":
-				var engine_res := EngineRegistry.get_engine(starting_fleet_ship.engine_name)
+				var engine_res =EngineRegistry.get_engine(starting_fleet_ship.engine_name)
 				if engine_res:
 					start_em.equip_engine(engine_res)
 			for i in starting_fleet_ship.modules.size():
 				if starting_fleet_ship.modules[i] != &"":
-					var mod_res := ModuleRegistry.get_module(starting_fleet_ship.modules[i])
+					var mod_res =ModuleRegistry.get_module(starting_fleet_ship.modules[i])
 					if mod_res:
 						start_em.equip_module(i, mod_res)
 	NetworkManager.local_ship_id = Constants.DEFAULT_SHIP_ID
@@ -348,7 +348,7 @@ func _initialize_game() -> void:
 	_docking_system.docked.connect(_on_docked)
 
 	# Ship activation controller (centralized deactivate/activate for dock, death, cruise warp)
-	var _activation_ctrl := ShipActivationController.new()
+	var _activation_ctrl =ShipActivationController.new()
 	_activation_ctrl.name = "ShipActivationController"
 	player_ship.add_child(_activation_ctrl)
 
@@ -359,7 +359,7 @@ func _initialize_game() -> void:
 	# ship_change_requested connected after _ship_change_mgr creation (see below)
 
 	# Wire docking system to HUD for dock prompt display
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud:
 		hud.set_docking_system(_docking_system)
 
@@ -417,7 +417,7 @@ func _initialize_game() -> void:
 	_ship_change_mgr.get_game_state = func() -> int: return current_state
 	_ship_change_mgr._on_destroyed_callback = _on_player_destroyed
 	_ship_change_mgr._on_autopilot_cancelled_callback = _on_autopilot_cancelled_by_player
-	_ship_change_mgr.ship_rebuilt.connect(func(ship: ShipController): player_ship_rebuilt.emit(ship))
+	_ship_change_mgr.ship_rebuilt.connect(func(ship): player_ship_rebuilt.emit(ship))
 	add_child(_ship_change_mgr)
 	_dock_instance.ship_change_requested.connect(_ship_change_mgr.handle_ship_change)
 
@@ -425,7 +425,7 @@ func _initialize_game() -> void:
 	_ship_change_mgr.rewire_ship_systems()
 
 	# Wire stellar map
-	_stellar_map = main_scene.get_node_or_null("UI/StellarMap") as StellarMap
+	_stellar_map = main_scene.get_node_or_null("UI/StellarMap")
 
 	# Construction Manager (shared between map and GameManager)
 	_construction_mgr = ConstructionManager.new()
@@ -442,7 +442,7 @@ func _initialize_game() -> void:
 	_system_transition.system_unloading.connect(_on_system_unloading)
 
 	# Wire system transition to HUD for gate prompt display
-	var hud_ref := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud_ref = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud_ref:
 		hud_ref.set_system_transition(_system_transition)
 
@@ -453,7 +453,7 @@ func _initialize_game() -> void:
 	_lod_manager.initialize(universe_node)
 
 	# Register player ship in LOD system (always LOD0)
-	var player_lod := ShipLODData.new()
+	var player_lod =ShipLODData.new()
 	player_lod.id = &"player_ship"
 	player_lod.ship_id = player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 	player_lod.ship_class = player_ship.ship_data.ship_class if player_ship.ship_data else &"Fighter"
@@ -466,7 +466,7 @@ func _initialize_game() -> void:
 	_lod_manager.set_player_id(&"player_ship")
 
 	# Create projectile pool under LOD manager
-	var proj_pool := ProjectilePool.new()
+	var proj_pool =ProjectilePool.new()
 	proj_pool.name = "ProjectilePool"
 	_lod_manager.add_child(proj_pool)
 	# Pre-warm pools for all projectile types to avoid runtime instantiation
@@ -490,15 +490,15 @@ func _initialize_game() -> void:
 	_planet_approach_mgr.set_ship(player_ship)
 
 	# Wire atmosphere environment transitions (fog, sky, light changes on planet surface)
-	if main_scene is SpaceEnvironment:
-		var space_env := main_scene as SpaceEnvironment
+	if main_scene.get("world_env") != null:
+		var space_env = main_scene
 		var env: Environment = space_env.world_env.environment if space_env.world_env else null
 		var dir_light: DirectionalLight3D = space_env.star_light
 		if env:
 			_planet_approach_mgr.setup_atmosphere_environment(env, dir_light)
 
 	# Wire planetary HUD
-	var hud_planet := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud_planet = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud_planet:
 		hud_planet.set_planet_approach_manager(_planet_approach_mgr)
 
@@ -513,7 +513,7 @@ func _initialize_game() -> void:
 	_asteroid_scanner.initialize(_asteroid_field_mgr, player_ship, universe_node)
 	if _notif:
 		_asteroid_scanner.set_notification_service(_notif)
-	var hud_scan := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud_scan = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud_scan:
 		hud_scan.set_asteroid_scanner(_asteroid_scanner)
 
@@ -579,7 +579,7 @@ func _initialize_game() -> void:
 	_wormhole_mgr.screen_manager = _screen_manager
 	_wormhole_mgr.player_data = player_data
 	add_child(_wormhole_mgr)
-	_wormhole_mgr.wormhole_jump_completed.connect(func(new_gal: GalaxyData, _spawn: int):
+	_wormhole_mgr.wormhole_jump_completed.connect(func(new_gal, _spawn: int):
 		_galaxy = new_gal
 	)
 
@@ -636,7 +636,7 @@ func _initialize_game() -> void:
 	_net_sync_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
 	add_child(_net_sync_mgr)
 	_net_sync_mgr.setup(player_ship, self)
-	_net_sync_mgr.server_galaxy_changed.connect(func(new_gal: GalaxyData):
+	_net_sync_mgr.server_galaxy_changed.connect(func(new_gal):
 		_galaxy = new_gal
 	)
 
@@ -782,8 +782,8 @@ func _setup_visual_effects() -> void:
 	_vfx_manager = VFXManager.new()
 	_vfx_manager.name = "VFXManager"
 	add_child(_vfx_manager)
-	var camera := player_ship.get_node_or_null("ShipCamera") as ShipCamera
-	_vfx_manager.initialize(player_ship as ShipController, camera, universe_node, main_scene)
+	var camera = player_ship.get_node_or_null("ShipCamera")
+	_vfx_manager.initialize(player_ship, camera, universe_node, main_scene)
 	player_ship_rebuilt.connect(_vfx_manager.on_ship_rebuilt)
 
 
@@ -825,8 +825,8 @@ func _on_system_loaded(system_id: int) -> void:
 	_respawn_construction_beacons(system_id)
 
 	# Update nebula wisps with new system's environment colors/opacity
-	if _vfx_manager and main_scene is SpaceEnvironment:
-		var space_env := main_scene as SpaceEnvironment
+	if _vfx_manager and main_scene.get("world_env") != null:
+		var space_env = main_scene
 		_vfx_manager.configure_nebula_environment(space_env._current_env_data)
 
 
@@ -946,7 +946,7 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 
 
 func _autopilot_player_to(params: Dictionary) -> void:
-	var ship := player_ship as ShipController
+	var ship = player_ship
 	if ship == null or current_state != GameState.PLAYING:
 		return
 	# Clean up previous temp waypoint
@@ -1031,7 +1031,7 @@ func _handle_map_toggle(view: int) -> void:
 	var screen: UIScreen = _screen_manager._screens.get("map")
 	if screen == null:
 		return
-	var map_screen := screen as UnifiedMapScreen
+	var map_screen = screen
 	if map_screen == null:
 		return
 	if screen in _screen_manager._screen_stack:
@@ -1092,7 +1092,7 @@ func _on_construction_marker_placed(marker: Dictionary) -> void:
 func _spawn_construction_beacon(marker: Dictionary) -> void:
 	if universe_node == null:
 		return
-	var beacon := ConstructionBeacon.new()
+	var beacon =ConstructionBeacon.new()
 	beacon.name = "ConstructionBeacon_%d" % marker["id"]
 	universe_node.add_child(beacon)
 	beacon.setup(marker)
@@ -1123,7 +1123,7 @@ func _on_beacon_player_nearby(marker_id: int, beacon_name: String) -> void:
 	_build_available = true
 	_build_beacon_name = beacon_name
 	_build_marker_id = marker_id
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud:
 		hud.set_build_state(true, beacon_name)
 
@@ -1132,7 +1132,7 @@ func _on_beacon_player_left() -> void:
 	_build_available = false
 	_build_beacon_name = ""
 	_build_marker_id = -1
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud:
 		hud.set_build_state(false, "")
 
@@ -1160,7 +1160,7 @@ func _on_construction_completed(marker_id: int) -> void:
 		return
 
 	# Spawn station at beacon position
-	var station := SpaceStation.new()
+	var station =SpaceStation.new()
 	station.station_name = marker.get("display_name", "Station")
 	station.station_type = 0  # REPAIR — dockable immediately
 	station.transform = Transform3D.IDENTITY
@@ -1170,14 +1170,14 @@ func _on_construction_completed(marker_id: int) -> void:
 
 	# Station equipment for persistence within session
 	var sys_id: int = _system_transition.current_system_id if _system_transition else 0
-	var eq_key := "system_%d_built_%d" % [sys_id, marker_id]
+	var eq_key ="system_%d_built_%d" % [sys_id, marker_id]
 	station.station_equipment = StationEquipment.create_empty(eq_key, 0)
 	station_equipments[eq_key] = station.station_equipment
 
 	universe_node.add_child(station)
 
 	# Register in EntityRegistry so DockingSystem can find it
-	var station_entity_id := "built_station_%d" % marker_id
+	var station_entity_id ="built_station_%d" % marker_id
 	EntityRegistry.register(station_entity_id, {
 		"name": station.station_name,
 		"type": EntityRegistrySystem.EntityType.STATION,
@@ -1189,8 +1189,8 @@ func _on_construction_completed(marker_id: int) -> void:
 	})
 
 	# Remove beacon
-	var beacon_entity_id := "construction_%d" % marker_id
-	var beacon_entity := EntityRegistry.get_entity(beacon_entity_id)
+	var beacon_entity_id ="construction_%d" % marker_id
+	var beacon_entity =EntityRegistry.get_entity(beacon_entity_id)
 	var beacon_node: Node = beacon_entity.get("node")
 	if beacon_node and is_instance_valid(beacon_node):
 		beacon_node.queue_free()
@@ -1201,7 +1201,7 @@ func _on_construction_completed(marker_id: int) -> void:
 	_build_available = false
 	_build_beacon_name = ""
 	_build_marker_id = -1
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as FlightHUD
+	var hud = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud:
 		hud.set_build_state(false, "")
 

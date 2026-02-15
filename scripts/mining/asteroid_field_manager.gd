@@ -26,7 +26,7 @@ const CELL_EVAL_INTERVAL: float = 0.5  # Check cells every 0.5s
 const ASTEROIDS_PER_CELL_MIN: int = 3
 const ASTEROIDS_PER_CELL_MAX: int = 6
 const VERTICAL_SPREAD: float = 400.0   # ±200 m vertical spread
-const SCAN_NEUTRAL_COLOR := Color(0.35, 0.33, 0.3)
+const SCAN_NEUTRAL_COLOR =Color(0.35, 0.33, 0.3)
 const SCAN_BARREN_RATE: float = 0.60
 const SCAN_REVEAL_DURATION: float = 30.0  # seconds before scan expires
 const SCAN_EXPIRY_CHECK_INTERVAL: float = 2.0
@@ -80,18 +80,18 @@ func _setup_multimesh() -> void:
 		return
 	_multimesh_instance = MultiMeshInstance3D.new()
 	_multimesh_instance.name = "AsteroidDots"
-	var mm := MultiMesh.new()
+	var mm =MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.instance_count = 0
-	var dot_mesh := SphereMesh.new()
+	var dot_mesh =SphereMesh.new()
 	dot_mesh.radius = 3.0
 	dot_mesh.height = 6.0
 	dot_mesh.radial_segments = 4
 	dot_mesh.rings = 2
 	mm.mesh = dot_mesh
 	_multimesh_instance.multimesh = mm
-	var mat := StandardMaterial3D.new()
+	var mat =StandardMaterial3D.new()
 	mat.albedo_color = Color(0.35, 0.33, 0.3)
 	mat.emission_enabled = false
 	mat.roughness = 0.95
@@ -107,7 +107,7 @@ func populate_field(field: AsteroidFieldData) -> void:
 func clear_all() -> void:
 	# Free all LOD nodes
 	for id in _full_nodes:
-		var node: AsteroidNode = _full_nodes[id]
+		var node = _full_nodes[id]
 		if is_instance_valid(node):
 			node.queue_free()
 	_full_nodes.clear()
@@ -134,7 +134,7 @@ func clear_all() -> void:
 # === Public API ===
 
 func get_nearest_asteroid(pos: Vector3, radius: float) -> AsteroidData:
-	var results := _grid.query_nearest(pos, radius, 1)
+	var results =_grid.query_nearest(pos, radius, 1)
 	if results.is_empty():
 		return null
 	var id: StringName = results[0]["id"]
@@ -142,18 +142,18 @@ func get_nearest_asteroid(pos: Vector3, radius: float) -> AsteroidData:
 
 
 func get_nearest_minable_asteroid(pos: Vector3, radius: float) -> AsteroidData:
-	var results := _grid.query_nearest(pos, radius, 10)
+	var results =_grid.query_nearest(pos, radius, 10)
 	for entry in results:
-		var asteroid: AsteroidData = _all_asteroids.get(entry["id"])
+		var asteroid =_all_asteroids.get(entry["id"])
 		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
 			return asteroid
 	return null
 
 
 func get_nearest_minable_asteroid_filtered(pos: Vector3, radius: float, resource_filter: Array) -> AsteroidData:
-	var results := _grid.query_nearest(pos, radius, 20)
+	var results =_grid.query_nearest(pos, radius, 20)
 	for entry in results:
-		var asteroid: AsteroidData = _all_asteroids.get(entry["id"])
+		var asteroid =_all_asteroids.get(entry["id"])
 		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
 			if asteroid.primary_resource in resource_filter:
 				return asteroid
@@ -166,10 +166,10 @@ func get_asteroid_data(id: StringName) -> AsteroidData:
 
 ## Returns asteroid data objects within radius of pos (for radar).
 func get_asteroids_in_radius(pos: Vector3, radius: float) -> Array[AsteroidData]:
-	var ids := _grid.query_radius(pos, radius)
+	var ids =_grid.query_radius(pos, radius)
 	var result: Array[AsteroidData] = []
 	for id in ids:
-		var ast: AsteroidData = _all_asteroids.get(id)
+		var ast =_all_asteroids.get(id)
 		if ast and not ast.is_depleted:
 			result.append(ast)
 	return result
@@ -224,11 +224,11 @@ func _process(delta: float) -> void:
 # === Cell Generation ===
 
 func _evaluate_cells() -> void:
-	var cam := get_viewport().get_camera_3d()
+	var cam =get_viewport().get_camera_3d()
 	if cam == null:
 		return
 
-	var cam_pos := cam.global_position
+	var cam_pos =cam.global_position
 	var universe_x: float = cam_pos.x + FloatingOrigin.origin_offset_x
 	var universe_z: float = cam_pos.z + FloatingOrigin.origin_offset_z
 
@@ -279,7 +279,7 @@ func _evaluate_cells() -> void:
 func _load_cell(cell: Vector2i, field_idx: int) -> void:
 	var field: AsteroidFieldData = _fields[field_idx]
 
-	var rng := RandomNumberGenerator.new()
+	var rng =RandomNumberGenerator.new()
 	# Deterministic seed from system_seed + field_index + cell coords
 	rng.seed = _hash_cell(field_idx, cell.x, cell.y)
 
@@ -287,7 +287,7 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 	var ids: Array[StringName] = []
 
 	for i in count:
-		var id := StringName("ast_%d_%d_%d_%d" % [field_idx, cell.x, cell.y, i])
+		var id =StringName("ast_%d_%d_%d_%d" % [field_idx, cell.x, cell.y, i])
 
 		# Skip depleted asteroids
 		if _depleted_ids.has(id):
@@ -295,7 +295,7 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 			_consume_rng_draws(rng)
 			continue
 
-		var asteroid := AsteroidData.new()
+		var asteroid =AsteroidData.new()
 		asteroid.id = id
 		asteroid.field_id = field.field_id
 
@@ -354,7 +354,7 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 				asteroid.primary_resource = field.rare_resource
 
 		# Color: compute true resource_color but display neutral until scanned
-		var res := MiningRegistry.get_resource(asteroid.primary_resource) if asteroid.has_resource else null
+		var res =MiningRegistry.get_resource(asteroid.primary_resource) if asteroid.has_resource else null
 		if res:
 			asteroid.resource_color = Color(
 				res.color.r + rng.randf_range(-0.08, 0.08),
@@ -403,8 +403,8 @@ func _unload_cell(cell: Vector2i) -> void:
 
 func _remove_lod_representation(id: StringName) -> void:
 	if _full_nodes.has(id):
-		var node: AsteroidNode = _full_nodes[id]
-		var asteroid: AsteroidData = _all_asteroids.get(id)
+		var node = _full_nodes[id]
+		var asteroid =_all_asteroids.get(id)
 		if asteroid:
 			asteroid.node_ref = null
 		if is_instance_valid(node):
@@ -425,8 +425,8 @@ func _hash_cell(field_idx: int, cx: int, cz: int) -> int:
 # === LOD ===
 
 func _evaluate_lod() -> void:
-	var cam_pos := Vector3.ZERO
-	var cam := get_viewport().get_camera_3d()
+	var cam_pos =Vector3.ZERO
+	var cam =get_viewport().get_camera_3d()
 	if cam:
 		cam_pos = cam.global_position
 
@@ -436,7 +436,7 @@ func _evaluate_lod() -> void:
 	var simplified_count: int = _simplified_meshes.size()
 
 	for id: StringName in _all_asteroids:
-		var asteroid: AsteroidData = _all_asteroids[id]
+		var asteroid =_all_asteroids[id]
 		var dist: float = cam_pos.distance_to(asteroid.position)
 		var current_lod: AsteroidLOD = _lod_levels.get(id, AsteroidLOD.DATA_ONLY)
 		var target_lod: AsteroidLOD
@@ -474,12 +474,12 @@ func _evaluate_lod() -> void:
 		_dots_dirty = false
 
 
-func _transition_lod(id: StringName, asteroid: AsteroidData, from: AsteroidLOD, to: AsteroidLOD) -> void:
+func _transition_lod(id: StringName, asteroid, from, to) -> void:
 	# Remove old representation
 	match from:
 		AsteroidLOD.FULL:
 			if _full_nodes.has(id):
-				var node: AsteroidNode = _full_nodes[id]
+				var node = _full_nodes[id]
 				asteroid.node_ref = null
 				if is_instance_valid(node):
 					node.queue_free()
@@ -499,10 +499,10 @@ func _transition_lod(id: StringName, asteroid: AsteroidData, from: AsteroidLOD, 
 			_spawn_simplified(id, asteroid)
 
 
-func _spawn_full(id: StringName, asteroid: AsteroidData) -> void:
+func _spawn_full(id: StringName, asteroid) -> void:
 	if _universe_node == null:
 		return
-	var node := AsteroidNode.new()
+	var node =AsteroidNode.new()
 	node.setup(asteroid)
 	_universe_node.add_child(node)
 	_full_nodes[id] = node
@@ -513,12 +513,12 @@ func _spawn_full(id: StringName, asteroid: AsteroidData) -> void:
 		node.show_scan_info()
 
 
-func _spawn_simplified(id: StringName, asteroid: AsteroidData) -> void:
+func _spawn_simplified(id: StringName, asteroid) -> void:
 	if _universe_node == null:
 		return
-	var mesh_inst := MeshInstance3D.new()
+	var mesh_inst =MeshInstance3D.new()
 	mesh_inst.name = "AsteroidSimp_" + String(id)
-	var sphere := SphereMesh.new()
+	var sphere =SphereMesh.new()
 	sphere.radius = asteroid.visual_radius
 	sphere.height = asteroid.visual_radius * 2.0
 	sphere.radial_segments = 6
@@ -526,7 +526,7 @@ func _spawn_simplified(id: StringName, asteroid: AsteroidData) -> void:
 	mesh_inst.mesh = sphere
 	mesh_inst.scale = asteroid.scale_distort
 
-	var mat := StandardMaterial3D.new()
+	var mat =StandardMaterial3D.new()
 	var base_col: Color = asteroid.color_tint if asteroid.color_tint != Color.GRAY else Color(0.35, 0.33, 0.3)
 	# Darken the color so simplified asteroids look like dark rocks, not bright blobs
 	mat.albedo_color = Color(base_col.r * 0.4, base_col.g * 0.4, base_col.b * 0.4)
@@ -543,16 +543,16 @@ func _spawn_simplified(id: StringName, asteroid: AsteroidData) -> void:
 func _rebuild_multimesh() -> void:
 	if _multimesh_instance == null or _multimesh_instance.multimesh == null:
 		return
-	var mm := _multimesh_instance.multimesh
+	var mm =_multimesh_instance.multimesh
 	var count: int = _dot_ids.size()
 	mm.instance_count = count
 
 	for i in count:
 		var id: StringName = _dot_ids[i]
-		var asteroid: AsteroidData = _all_asteroids.get(id)
+		var asteroid =_all_asteroids.get(id)
 		if asteroid == null:
 			continue
-		var t := Transform3D.IDENTITY
+		var t =Transform3D.IDENTITY
 		t = t.scaled(Vector3.ONE * (asteroid.visual_radius * 0.3))
 		t.origin = asteroid.position
 		mm.set_instance_transform(i, t)
@@ -575,7 +575,7 @@ func _tick_respawns() -> void:
 
 	# Respawn loaded depleted asteroids whose timer expired
 	for id: StringName in _all_asteroids:
-		var asteroid: AsteroidData = _all_asteroids[id]
+		var asteroid =_all_asteroids[id]
 		if not asteroid.is_depleted:
 			continue
 		if _depleted_ids.has(id):
@@ -584,7 +584,7 @@ func _tick_respawns() -> void:
 		asteroid.is_depleted = false
 		asteroid.health_current = asteroid.health_max
 		if _full_nodes.has(id):
-			var node: AsteroidNode = _full_nodes[id]
+			var node = _full_nodes[id]
 			if is_instance_valid(node):
 				node.respawn()
 
@@ -598,7 +598,7 @@ func _on_node_depleted(asteroid_id: StringName) -> void:
 func _on_origin_shifted(shift: Vector3) -> void:
 	# Shift all asteroid positions in data
 	for id: StringName in _all_asteroids:
-		var asteroid: AsteroidData = _all_asteroids[id]
+		var asteroid =_all_asteroids[id]
 		asteroid.position -= shift
 
 	# Rebuild spatial grid
@@ -608,7 +608,7 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	for id in _simplified_meshes:
 		var mesh: MeshInstance3D = _simplified_meshes[id]
 		if is_instance_valid(mesh):
-			var asteroid: AsteroidData = _all_asteroids.get(id)
+			var asteroid =_all_asteroids.get(id)
 			if asteroid:
 				mesh.position = asteroid.position
 
@@ -620,12 +620,12 @@ func _on_origin_shifted(shift: Vector3) -> void:
 
 ## Reveals asteroids within radius of center. Returns count of resource-bearing asteroids found.
 func reveal_asteroids_in_radius(center: Vector3, radius: float) -> int:
-	var ids := _grid.query_radius(center, radius)
+	var ids =_grid.query_radius(center, radius)
 	var revealed_count: int = 0
 	var now: float = Time.get_ticks_msec() / 1000.0
 
 	for id: StringName in ids:
-		var ast: AsteroidData = _all_asteroids.get(id)
+		var ast =_all_asteroids.get(id)
 		if ast == null or ast.is_depleted or ast.is_scanned:
 			continue
 
@@ -645,7 +645,7 @@ func reveal_asteroids_in_radius(center: Vector3, radius: float) -> int:
 
 
 ## Reveal a single asteroid (e.g. when mining it).
-func reveal_single_asteroid(ast: AsteroidData) -> void:
+func reveal_single_asteroid(ast) -> void:
 	if ast.is_scanned:
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
@@ -657,14 +657,13 @@ func reveal_single_asteroid(ast: AsteroidData) -> void:
 		_dots_dirty = true
 
 
-func _update_asteroid_visual(ast: AsteroidData, reveal: bool) -> void:
+func _update_asteroid_visual(ast, reveal: bool) -> void:
 	# FULL LOD — tween the color on the AsteroidNode
 	if ast.node_ref and is_instance_valid(ast.node_ref):
-		var node := ast.node_ref as AsteroidNode
 		if reveal:
-			node.apply_scan_reveal(ast)
+			ast.node_ref.apply_scan_reveal(ast)
 		else:
-			node.apply_scan_expire()
+			ast.node_ref.apply_scan_expire()
 	# SIMPLIFIED LOD — update material directly
 	if _simplified_meshes.has(ast.id):
 		var mesh: MeshInstance3D = _simplified_meshes[ast.id]
@@ -674,10 +673,9 @@ func _update_asteroid_visual(ast: AsteroidData, reveal: bool) -> void:
 			mat.albedo_color = Color(col.r * 0.4, col.g * 0.4, col.b * 0.4)
 
 
-func _flash_barren_asteroid(ast: AsteroidData) -> void:
+func _flash_barren_asteroid(ast) -> void:
 	if ast.node_ref and is_instance_valid(ast.node_ref):
-		var node := ast.node_ref as AsteroidNode
-		node.flash_barren()
+		ast.node_ref.flash_barren()
 
 
 func _tick_scan_expiry() -> void:
@@ -685,7 +683,7 @@ func _tick_scan_expiry() -> void:
 	var any_expired: bool = false
 
 	for id: StringName in _all_asteroids:
-		var ast: AsteroidData = _all_asteroids[id]
+		var ast =_all_asteroids[id]
 		if not ast.is_scanned:
 			continue
 		if ast.scan_expire_time > 0.0 and now >= ast.scan_expire_time:

@@ -13,7 +13,7 @@ extends CanvasLayer
 
 var _rect: ColorRect = null
 var _shader_mat: ShaderMaterial = null
-var _ship: ShipController = null
+var _ship = null
 
 var _cruise_warp: float = 0.0
 var _cruise_spool: float = 0.0    # Smooth spool-up visual intensity
@@ -24,7 +24,7 @@ var _prev_speed_mode: int = 0
 func _ready() -> void:
 	layer = 0
 
-	var shader := load("res://shaders/speed_lines.gdshader") as Shader
+	var shader =load("res://shaders/speed_lines.gdshader") as Shader
 	if shader == null:
 		push_warning("SpeedEffects: shader not found")
 		return
@@ -36,11 +36,11 @@ func _ready() -> void:
 	_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rect.material = _shader_mat
-	_rect.visible = false
+	_rect.visible = true  # Always visible for ambient vignette + CA
 	add_child(_rect)
 
 
-func set_ship(ship: ShipController) -> void:
+func set_ship(ship) -> void:
 	_ship = ship
 	_prev_speed_mode = ship.speed_mode
 
@@ -71,12 +71,7 @@ func _process(delta: float) -> void:
 	# Decay flashes
 	_quantum_engage = maxf(0.0, _quantum_engage - delta * 2.5)
 
-	# Hide when no effect active (zero GPU cost)
-	var any_effect: bool = flight_ratio > 0.01 or _cruise_spool > 0.01 or _cruise_warp > 0.01 or _quantum_engage > 0.01
-	_rect.visible = any_effect
-	if not any_effect:
-		return
-
+	# Rect stays visible always (ambient vignette + CA). Update uniforms every frame.
 	_shader_mat.set_shader_parameter("flight_ratio", flight_ratio)
 	_shader_mat.set_shader_parameter("cruise_spool", _cruise_spool)
 	_shader_mat.set_shader_parameter("cruise_warp", _cruise_warp)

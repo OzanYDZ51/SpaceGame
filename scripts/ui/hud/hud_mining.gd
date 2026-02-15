@@ -5,7 +5,7 @@ extends Control
 # HUD Mining — Heat bar + extraction progress
 # =============================================================================
 
-var mining_system: MiningSystem = null
+var mining_system = null
 var pulse_t: float = 0.0
 
 var _mining_heat: Control = null
@@ -43,8 +43,8 @@ func update_visibility() -> void:
 func _draw_mining_heat(ctrl: Control) -> void:
 	if mining_system == null:
 		return
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var heat_ratio: float = mining_system.heat
 	var overheated: bool = mining_system.is_overheated
 
@@ -58,7 +58,7 @@ func _draw_mining_heat(ctrl: Control) -> void:
 	if overheated:
 		pulse = 0.5 + sin(pulse_t * 8.0) * 0.5
 
-	var bg_rect := Rect2(Vector2(6, 0), Vector2(s.x - 12, s.y))
+	var bg_rect =Rect2(Vector2(6, 0), Vector2(s.x - 12, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.02, 0.02, 0.02, 0.6))
 	ctrl.draw_rect(bg_rect, Color(heat_col.r, heat_col.g, heat_col.b, 0.25 * pulse), false, 1.0)
 
@@ -73,7 +73,7 @@ func _draw_mining_heat(ctrl: Control) -> void:
 
 	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.08, 0.08, 0.08, 0.8))
 	var fill_w: float = (bar_w - 2) * heat_ratio
-	var fill_col := Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse)
+	var fill_col =Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse)
 	ctrl.draw_rect(Rect2(bar_x + 1, bar_y + 1, fill_w, bar_h - 2), fill_col)
 	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(heat_col.r, heat_col.g, heat_col.b, 0.4), false, 1.0)
 
@@ -87,18 +87,18 @@ func _draw_mining_heat(ctrl: Control) -> void:
 func _draw_mining_progress(ctrl: Control) -> void:
 	if mining_system == null or mining_system.mining_target == null:
 		return
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
-	var target := mining_system.mining_target
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
+	var target =mining_system.mining_target
 	var pulse: float = 0.8 + sin(pulse_t * 5.0) * 0.2
 
-	var mine_col := Color(0.2, 1.0, 0.5)
+	var mine_col =Color(0.2, 1.0, 0.5)
 
-	var bg_rect := Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
 	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.02, 0.7))
 	ctrl.draw_rect(bg_rect, Color(mine_col.r, mine_col.g, mine_col.b, 0.4 * pulse), false, 1.0)
 
-	var res := MiningRegistry.get_resource(target.primary_resource)
+	var res =MiningRegistry.get_resource(target.primary_resource)
 	var res_name: String = res.display_name if res else "?"
 	ctrl.draw_string(font, Vector2(0, 13), ("EXTRACTION: %s" % res_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
@@ -111,10 +111,10 @@ func _draw_mining_progress(ctrl: Control) -> void:
 	hp_ratio = clampf(hp_ratio, 0.0, 1.0)
 
 	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.1, 0.12, 0.1, 0.8))
-	var fill_col := mine_col * Color(1, 1, 1, pulse)
+	var fill_col =mine_col * Color(1, 1, 1, pulse)
 	ctrl.draw_rect(Rect2(bar_x + 1, bar_y + 1, (bar_w - 2) * hp_ratio, bar_h - 2), fill_col)
 	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(mine_col.r, mine_col.g, mine_col.b, 0.5), false, 1.0)
 
-	var hp_text := "%d%%" % int(hp_ratio * 100.0)
+	var hp_text ="%d%%" % int(hp_ratio * 100.0)
 	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 2), hp_text,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)

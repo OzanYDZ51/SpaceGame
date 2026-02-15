@@ -6,7 +6,7 @@ extends RefCounted
 # =============================================================================
 
 
-static func setup_station(station: SpaceStation, equipment: StationEquipment) -> void:
+static func setup_station(station, equipment) -> void:
 	station.station_equipment = equipment
 
 	var configs := StationHardpointConfig.get_configs(station.station_type)

@@ -10,7 +10,7 @@ extends CanvasLayer
 
 var _rect: ColorRect = null
 var _shader_mat: ShaderMaterial = null
-var _ship: ShipController = null
+var _ship = null
 
 var _prev_velocity: Vector3 = Vector3.ZERO
 var _smoothed_accel: Vector3 = Vector3.ZERO
@@ -27,7 +27,7 @@ const RECOVERY_SPEED: float = 2.5     # How fast effects fade
 func _ready() -> void:
 	layer = 1
 
-	var shader := load("res://shaders/gforce_overlay.gdshader") as Shader
+	var shader =load("res://shaders/gforce_overlay.gdshader") as Shader
 	if shader == null:
 		push_warning("GForceEffects: shader not found")
 		return
@@ -43,7 +43,7 @@ func _ready() -> void:
 	add_child(_rect)
 
 
-func set_ship(ship: ShipController) -> void:
+func set_ship(ship) -> void:
 	_ship = ship
 	_prev_velocity = ship.linear_velocity if ship else Vector3.ZERO
 	_smoothed_accel = Vector3.ZERO

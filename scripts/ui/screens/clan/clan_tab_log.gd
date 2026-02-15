@@ -5,7 +5,7 @@ extends UIComponent
 # Clan Tab: Activity Log - Rich filtered timeline with bigger items
 # =============================================================================
 
-var _cm: ClanManager = null
+var _cm = null
 var _filter_dropdown: UIDropdown = null
 var _btn_24h: UIButton = null
 var _btn_week: UIButton = null
@@ -50,7 +50,7 @@ func _ready() -> void:
 	add_child(_log_list)
 
 
-func refresh(cm: ClanManager) -> void:
+func refresh(cm) -> void:
 	_cm = cm
 	_rebuild_list()
 
@@ -64,7 +64,7 @@ func _on_type_filter_changed(index: int) -> void:
 	if index == 0:
 		_type_filter = -1
 	else:
-		var type_keys := ClanActivity.EVENT_LABELS.keys()
+		var type_keys =ClanActivity.EVENT_LABELS.keys()
 		if index - 1 < type_keys.size():
 			_type_filter = type_keys[index - 1]
 		else:
@@ -76,7 +76,7 @@ func _rebuild_list() -> void:
 	if _cm == null:
 		return
 
-	var now := int(Time.get_unix_time_from_system())
+	var now =int(Time.get_unix_time_from_system())
 	var cutoff: int = 0
 	match _time_filter:
 		0: cutoff = now - 86400
@@ -112,7 +112,7 @@ func _draw_log_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> v
 	var cy: float = rect.position.y + rect.size.y * 0.5
 
 	# ─── Timestamp ──────
-	var time_str := _format_timestamp(entry.timestamp)
+	var time_str =_format_timestamp(entry.timestamp)
 	ctrl.draw_string(font, Vector2(tx, cy + 5), time_str, HORIZONTAL_ALIGNMENT_LEFT, 74, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# ─── Badge (colored background + border + text) ──────
@@ -120,7 +120,7 @@ func _draw_log_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> v
 	var badge_w: float = 84.0
 	var badge_h: float = 22.0
 	var badge_y: float = cy - badge_h * 0.5
-	var badge_rect := Rect2(badge_x, badge_y, badge_w, badge_h)
+	var badge_rect =Rect2(badge_x, badge_y, badge_w, badge_h)
 
 	ctrl.draw_rect(badge_rect, Color(event_col.r, event_col.g, event_col.b, 0.12))
 	ctrl.draw_rect(badge_rect, Color(event_col.r, event_col.g, event_col.b, 0.45), false, 1.0)
@@ -133,13 +133,13 @@ func _draw_log_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> v
 	ctrl.draw_string(font, Vector2(detail_x, cy + 5), entry.details, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - detail_x - 10, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 	# ─── Bottom separator line ──────
-	var sep_col := Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.25)
+	var sep_col =Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.25)
 	ctrl.draw_line(Vector2(tx, rect.end.y - 1), Vector2(rect.end.x - 8, rect.end.y - 1), sep_col, 1.0)
 
 
 func _format_timestamp(ts: int) -> String:
-	var dt := Time.get_datetime_dict_from_unix_time(ts)
-	var now := Time.get_datetime_dict_from_system()
+	var dt =Time.get_datetime_dict_from_unix_time(ts)
+	var now =Time.get_datetime_dict_from_system()
 	var day_diff: int = now.get("day", 0) - dt.get("day", 0)
 	if day_diff == 0:
 		return "%02d:%02d" % [dt.get("hour", 0), dt.get("minute", 0)]

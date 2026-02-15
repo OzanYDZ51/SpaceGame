@@ -10,7 +10,7 @@ extends UIScreen
 
 signal commerce_closed
 
-var commerce_manager: CommerceManager = null
+var commerce_manager = null
 var station_type: int = 0  # StationData.StationType value
 var station_name: String = "STATION"
 var station_id: String = ""
@@ -24,11 +24,11 @@ var _sell_resource: SellResourceView = null
 var _back_btn: UIButton = null
 var _current_category: int = -1
 
-const SIDEBAR_W := 180.0
-const CONTENT_TOP := 65.0
-const BOTTOM_H := 50.0
-const BUY_COUNT := 2      # first 2 categories are buy
-const SECTION_HEADER_H := 22.0  # height reserved for section label
+const SIDEBAR_W =180.0
+const CONTENT_TOP =65.0
+const BOTTOM_H =50.0
+const BUY_COUNT =2      # first 2 categories are buy
+const SECTION_HEADER_H =22.0  # height reserved for section label
 const CATEGORIES: Array[Array] = [
 	["ARMURERIE", "Armes et tourelles"],
 	["EQUIPEMENTS", "Boucliers, moteurs, modules"],
@@ -45,7 +45,7 @@ func _ready() -> void:
 
 	# Category buttons
 	for i in CATEGORIES.size():
-		var btn := UIButton.new()
+		var btn =UIButton.new()
 		btn.text = CATEGORIES[i][0]
 		btn.visible = false
 		btn.pressed.connect(_on_category_pressed.bind(i))
@@ -78,7 +78,7 @@ func _ready() -> void:
 	add_child(_sell_resource)
 
 
-func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") -> void:
+func setup(mgr, stype: int, sname: String, sid: String = "") -> void:
 	commerce_manager = mgr
 	station_type = stype
 	station_name = sname
@@ -163,7 +163,7 @@ func _hide_all_views() -> void:
 
 
 func _layout_controls() -> void:
-	var s := size
+	var s =size
 	var sidebar_x: float = 30.0
 	var btn_w: float = SIDEBAR_W - 20.0
 	var btn_h: float = 28.0
@@ -196,7 +196,7 @@ func _layout_controls() -> void:
 
 func _layout_content_area() -> void:
 	if _active_view == null: return
-	var s := size
+	var s =size
 	var content_x: float = SIDEBAR_W + 10.0
 	var content_y: float = CONTENT_TOP + 5.0
 	var content_w: float = s.x - content_x - 20.0
@@ -206,7 +206,7 @@ func _layout_content_area() -> void:
 
 
 func _draw() -> void:
-	var s := size
+	var s =size
 	# Dark background
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.85))
 
@@ -234,7 +234,7 @@ func _draw() -> void:
 
 	# Credits display
 	if commerce_manager and commerce_manager.player_economy:
-		var credits_text := "Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
+		var credits_text ="Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
 		draw_string(font, Vector2(SIDEBAR_W + 20, s.y - 18),
 			credits_text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)
@@ -254,7 +254,7 @@ func _draw() -> void:
 
 	# Scanline
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
 
 
@@ -265,7 +265,7 @@ func _draw_section_headers(font: Font) -> void:
 	var rx: float = SIDEBAR_W - 2.0
 
 	# --- "ACHETER" header above first buy button ---
-	var buy_btn := _sidebar_buttons[0]
+	var buy_btn =_sidebar_buttons[0]
 	var buy_header_y: float = buy_btn.position.y - SECTION_HEADER_H + 2.0
 	# Accent bar
 	draw_rect(Rect2(lx, buy_header_y, 3, 12), UITheme.PRIMARY)
@@ -278,17 +278,17 @@ func _draw_section_headers(font: Font) -> void:
 		Vector2(rx, buy_header_y + 7),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.25), 1.0)
 	# Subtle glow bg behind buy section
-	var buy_last := _sidebar_buttons[BUY_COUNT - 1]
+	var buy_last =_sidebar_buttons[BUY_COUNT - 1]
 	var buy_section_bottom: float = buy_last.position.y + buy_last.size.y + 4
 	draw_rect(Rect2(22, buy_header_y - 2, SIDEBAR_W - 4, buy_section_bottom - buy_header_y + 4),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03))
 
 	# --- "VENDRE" header above first sell button ---
 	if BUY_COUNT < _sidebar_buttons.size():
-		var sell_btn := _sidebar_buttons[BUY_COUNT]
+		var sell_btn =_sidebar_buttons[BUY_COUNT]
 		var sell_header_y: float = sell_btn.position.y - SECTION_HEADER_H + 2.0
 		# Accent bar (red/danger for sell)
-		var sell_col := UITheme.WARNING
+		var sell_col =UITheme.WARNING
 		draw_rect(Rect2(lx, sell_header_y, 3, 12), sell_col)
 		# Label
 		draw_string(font, Vector2(lx + 8, sell_header_y + 11), "VENDRE",
@@ -299,7 +299,7 @@ func _draw_section_headers(font: Font) -> void:
 			Vector2(rx, sell_header_y + 7),
 			Color(sell_col.r, sell_col.g, sell_col.b, 0.25), 1.0)
 		# Subtle glow bg behind sell section
-		var sell_last := _sidebar_buttons[_sidebar_buttons.size() - 1]
+		var sell_last =_sidebar_buttons[_sidebar_buttons.size() - 1]
 		var sell_section_bottom: float = sell_last.position.y + sell_last.size.y + 4
 		draw_rect(Rect2(22, sell_header_y - 2, SIDEBAR_W - 4, sell_section_bottom - sell_header_y + 4),
 			Color(sell_col.r, sell_col.g, sell_col.b, 0.03))
@@ -310,7 +310,7 @@ func _draw_section_headers(font: Font) -> void:
 			Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.3), 1.0)
 		# Small diamond decoration at separator center
 		var cx: float = (lx + rx) * 0.5
-		var diamond := PackedVector2Array([
+		var diamond =PackedVector2Array([
 			Vector2(cx, sep_y - 3), Vector2(cx + 3, sep_y),
 			Vector2(cx, sep_y + 3), Vector2(cx - 3, sep_y)])
 		draw_colored_polygon(diamond, Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.4))

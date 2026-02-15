@@ -78,8 +78,8 @@ func tick_simple_ai(delta: float) -> void:
 
 	# Patrol: steer back hard toward center when drifting out
 	if ai_patrol_radius > 0.0:
-		var to_center := ai_patrol_center - position
-		var dist := to_center.length()
+		var to_center =ai_patrol_center - position
+		var dist =to_center.length()
 		if dist > ai_patrol_radius:
 			velocity = velocity.lerp(to_center.normalized() * 80.0, delta * 2.0)
 		elif dist > ai_patrol_radius * 0.8:
@@ -92,13 +92,13 @@ func capture_from_node(ship: Node3D) -> void:
 	if ship is RigidBody3D:
 		velocity = (ship as RigidBody3D).linear_velocity
 
-	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	var health = ship.get_node_or_null("HealthSystem")
 	if health:
 		hull_ratio = health.get_hull_ratio()
 		shield_ratio = health.get_total_shield_ratio()
 		is_dead = health.is_dead()
 
-	var brain := ship.get_node_or_null("AIBrain") as AIBrain
+	var brain = ship.get_node_or_null("AIBrain")
 	if brain:
 		ai_state = brain.current_state
 		ai_patrol_center = brain._patrol_center
@@ -106,15 +106,15 @@ func capture_from_node(ship: Node3D) -> void:
 		if brain.target and is_instance_valid(brain.target):
 			ai_target_id = StringName(brain.target.name)
 
-	var model := ship.get_node_or_null("ShipModel") as ShipModel
+	var model = ship.get_node_or_null("ShipModel")
 	if model:
 		color_tint = model.color_tint
 		model_scale = model.model_scale
 
-	if ship is ShipController:
-		faction = (ship as ShipController).faction
-		if (ship as ShipController).ship_data:
-			var sd: ShipData = (ship as ShipController).ship_data
+	if ship.has_method("get") and ship.get("ship_data") != null:
+		faction = ship.faction
+		if ship.ship_data:
+			var sd = ship.ship_data
 			ship_id = sd.ship_id
 			ship_class = sd.ship_class
 			sensor_range = sd.sensor_range

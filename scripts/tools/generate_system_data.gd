@@ -27,7 +27,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute("res://data/systems")
 
 	# Generate galaxy
-	var galaxy: GalaxyData = GalaxyGenerator.generate(GALAXY_SEED)
+	var galaxy = GalaxyGenerator.generate(GALAXY_SEED)
 	var total: int = galaxy.systems.size()
 	print("Galaxy generated with seed %d: %d systems" % [GALAXY_SEED, total])
 	print("")
@@ -66,7 +66,7 @@ func _run() -> void:
 
 		# Save as .tres
 		var path: String = "res://data/systems/system_%d.tres" % system_id
-		var err := ResourceSaver.save(data, path)
+		var err =ResourceSaver.save(data, path)
 		if err == OK:
 			count += 1
 			if count % 20 == 0:

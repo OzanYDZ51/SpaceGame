@@ -51,19 +51,19 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 			var target_id: String = context.get("target_entity_id", "")
 			if target_id == "":
 				return false
-			var ent := EntityRegistry.get_entity(target_id)
+			var ent =EntityRegistry.get_entity(target_id)
 			return ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC
 		&"return_to_station":
 			return is_deployed
 		&"construction":
 			return context.has("construction_marker")
 		&"mine":
-			var fleet_ship: FleetShip = context.get("fleet_ship")
+			var fleet_ship = context.get("fleet_ship")
 			if fleet_ship == null:
 				return false
 			for wn in fleet_ship.weapons:
 				if wn != &"":
-					var w := WeaponRegistry.get_weapon(wn)
+					var w =WeaponRegistry.get_weapon(wn)
 					if w and w.weapon_type == WeaponResource.WeaponType.MINING_LASER:
 						return true
 			return false
@@ -85,7 +85,7 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 			}
 		&"attack":
 			var target_id: String = context.get("target_entity_id", "")
-			var ent := EntityRegistry.get_entity(target_id)
+			var ent =EntityRegistry.get_entity(target_id)
 			return {
 				"target_entity_id": target_id,
 				"target_x": ent.get("pos_x", context.get("universe_x", 0.0)),

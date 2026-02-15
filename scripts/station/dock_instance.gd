@@ -13,7 +13,7 @@ signal ship_change_requested(fleet_index: int)
 
 var is_active: bool = false
 var station_name: String = ""
-var hangar_scene: HangarScene = null
+var hangar_scene = null
 
 
 func enter(ctx: Dictionary) -> void:
@@ -47,30 +47,30 @@ func enter(ctx: Dictionary) -> void:
 	if not is_instance_valid(net_sync):
 		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
 	if net_sync and is_instance_valid(net_sync):
-		if net_sync is ShipNetworkSync:
-			(net_sync as ShipNetworkSync).force_send_now()
+		if net_sync.has_method("force_send_now"):
+			net_sync.force_send_now()
 		net_sync.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# --- 2. DEACTIVATE PLAYER SHIP ---
-	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	var act_ctrl = player_ship.get_node_or_null("ShipActivationController")
 	if act_ctrl:
 		act_ctrl.deactivate(ShipActivationController.DeactivationMode.FULL)
 
 	# --- 3. HIDE SPACE LIGHTING ---
 	for node_name in ["StarLight", "SystemStar"]:
-		var node := main_scene.get_node_or_null(node_name) as Node3D
+		var node =main_scene.get_node_or_null(node_name) as Node3D
 		if node:
 			node.visible = false
 
 	# --- 4. LOAD HANGAR ---
 	var hangar_packed: PackedScene = load("res://scenes/station/hangar_interior.tscn")
-	hangar_scene = hangar_packed.instantiate() as HangarScene
+	hangar_scene = hangar_packed.instantiate()
 	main_scene.add_child(hangar_scene)
 	hangar_scene.activate()
 
 	# Display player ship model in hangar (with equipped weapons)
-	var ship_model := player_ship.get_node_or_null("ShipModel") as ShipModel
-	var wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
+	var ship_model = player_ship.get_node_or_null("ShipModel")
+	var wm = player_ship.get_node_or_null("WeaponManager")
 	if ship_model:
 		var hp_configs: Array[Dictionary] = []
 		var weapon_names: Array[StringName] = []
@@ -80,7 +80,7 @@ func enter(ctx: Dictionary) -> void:
 				weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
 		# Get root_basis from HardpointRoot node for correct weapon positioning
 		var root_basis: Basis = Basis.IDENTITY
-		var hp_root := player_ship.get_node_or_null("HardpointRoot") as Node3D
+		var hp_root =player_ship.get_node_or_null("HardpointRoot") as Node3D
 		if hp_root:
 			root_basis = hp_root.transform.basis
 
@@ -117,7 +117,7 @@ func leave(ctx: Dictionary) -> void:
 	# --- 2. RESTORE SPACE VISUALS ---
 	universe_node.visible = true
 	for node_name in ["StarLight", "SystemStar"]:
-		var node := main_scene.get_node_or_null(node_name) as Node3D
+		var node =main_scene.get_node_or_null(node_name) as Node3D
 		if node:
 			node.visible = true
 
@@ -135,16 +135,16 @@ func leave(ctx: Dictionary) -> void:
 		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
 	if net_sync and is_instance_valid(net_sync):
 		net_sync.process_mode = Node.PROCESS_MODE_INHERIT
-		if net_sync is ShipNetworkSync:
-			(net_sync as ShipNetworkSync).force_send_now()
+		if net_sync.has_method("force_send_now"):
+			net_sync.force_send_now()
 
 	# --- 4. RESTORE PLAYER SHIP ---
-	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	var act_ctrl = player_ship.get_node_or_null("ShipActivationController")
 	if act_ctrl:
 		act_ctrl.activate()
 
 	# --- 5. RESTORE CAMERA ---
-	var ship_cam := player_ship.get_node_or_null("ShipCamera") as Camera3D
+	var ship_cam =player_ship.get_node_or_null("ShipCamera") as Camera3D
 	if ship_cam:
 		ship_cam.current = true
 
@@ -175,11 +175,11 @@ func _get_switchable_fleet_indices() -> Array:
 		return result
 	# Only show ships docked at THIS station
 	var current_station_id: String = ""
-	var active_fs := GameManager.player_fleet.get_active()
+	var active_fs = GameManager.player_fleet.get_active()
 	if active_fs:
 		current_station_id = active_fs.docked_station_id
 	for i in GameManager.player_fleet.ships.size():
-		var fs := GameManager.player_fleet.ships[i]
+		var fs =GameManager.player_fleet.ships[i]
 		if i == GameManager.player_fleet.active_index:
 			result.append(i)  # Always include active ship
 		elif fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_station_id == current_station_id:
@@ -188,7 +188,7 @@ func _get_switchable_fleet_indices() -> Array:
 
 
 func repair_ship(ship: Node3D) -> void:
-	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	var health = ship.get_node_or_null("HealthSystem")
 	if health == null:
 		return
 	health.hull_current = health.hull_max

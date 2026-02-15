@@ -9,10 +9,10 @@ signal purchase_completed(item_type: String, item_id: StringName)
 signal purchase_failed(reason: String)
 signal sale_completed(item_type: String, item_id: StringName, total: int)
 
-var player_economy: PlayerEconomy
-var player_inventory: PlayerInventory
-var player_fleet: PlayerFleet
-var player_data: PlayerData
+var player_economy
+var player_inventory
+var player_fleet
+var player_data
 
 
 func can_afford(amount: int) -> bool:
@@ -20,7 +20,7 @@ func can_afford(amount: int) -> bool:
 
 
 func buy_ship(ship_id: StringName) -> bool:
-	var ship_data := ShipRegistry.get_ship_data(ship_id)
+	var ship_data =ShipRegistry.get_ship_data(ship_id)
 	if ship_data == null:
 		purchase_failed.emit("Vaisseau inconnu")
 		return false
@@ -28,12 +28,12 @@ func buy_ship(ship_id: StringName) -> bool:
 		purchase_failed.emit("Credits insuffisants")
 		return false
 	player_economy.spend_credits(ship_data.price)
-	var bare_ship := FleetShip.create_bare(ship_id)
+	var bare_ship =FleetShip.create_bare(ship_id)
 	bare_ship.docked_system_id = GameManager.current_system_id_safe()
 	# Resolve current docked station ID from dock instance
 	if GameManager._dock_instance:
 		var station_name: String = GameManager._dock_instance.station_name
-		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		for ent in stations:
 			if ent.get("name", "") == station_name:
 				bare_ship.docked_station_id = ent.get("id", "")
@@ -45,7 +45,7 @@ func buy_ship(ship_id: StringName) -> bool:
 
 
 func buy_weapon(weapon_name: StringName) -> bool:
-	var w := WeaponRegistry.get_weapon(weapon_name)
+	var w =WeaponRegistry.get_weapon(weapon_name)
 	if w == null:
 		purchase_failed.emit("Arme inconnue")
 		return false
@@ -60,7 +60,7 @@ func buy_weapon(weapon_name: StringName) -> bool:
 
 
 func buy_shield(shield_name: StringName) -> bool:
-	var s := ShieldRegistry.get_shield(shield_name)
+	var s =ShieldRegistry.get_shield(shield_name)
 	if s == null:
 		purchase_failed.emit("Bouclier inconnu")
 		return false
@@ -75,7 +75,7 @@ func buy_shield(shield_name: StringName) -> bool:
 
 
 func buy_engine(engine_name: StringName) -> bool:
-	var e := EngineRegistry.get_engine(engine_name)
+	var e =EngineRegistry.get_engine(engine_name)
 	if e == null:
 		purchase_failed.emit("Moteur inconnu")
 		return false
@@ -90,7 +90,7 @@ func buy_engine(engine_name: StringName) -> bool:
 
 
 func buy_module(module_name: StringName) -> bool:
-	var m := ModuleRegistry.get_module(module_name)
+	var m =ModuleRegistry.get_module(module_name)
 	if m == null:
 		purchase_failed.emit("Module inconnu")
 		return false
@@ -107,9 +107,9 @@ func buy_module(module_name: StringName) -> bool:
 func sell_weapon(weapon_name: StringName) -> bool:
 	if not player_inventory.has_weapon(weapon_name):
 		return false
-	var w := WeaponRegistry.get_weapon(weapon_name)
+	var w =WeaponRegistry.get_weapon(weapon_name)
 	if w == null: return false
-	var price := PriceCatalog.get_sell_price(w.price)
+	var price =PriceCatalog.get_sell_price(w.price)
 	player_inventory.remove_weapon(weapon_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("weapon", weapon_name, price)
@@ -120,9 +120,9 @@ func sell_weapon(weapon_name: StringName) -> bool:
 func sell_shield(shield_name: StringName) -> bool:
 	if not player_inventory.has_shield(shield_name):
 		return false
-	var s := ShieldRegistry.get_shield(shield_name)
+	var s =ShieldRegistry.get_shield(shield_name)
 	if s == null: return false
-	var price := PriceCatalog.get_sell_price(s.price)
+	var price =PriceCatalog.get_sell_price(s.price)
 	player_inventory.remove_shield(shield_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("shield", shield_name, price)
@@ -133,9 +133,9 @@ func sell_shield(shield_name: StringName) -> bool:
 func sell_engine(engine_name: StringName) -> bool:
 	if not player_inventory.has_engine(engine_name):
 		return false
-	var e := EngineRegistry.get_engine(engine_name)
+	var e =EngineRegistry.get_engine(engine_name)
 	if e == null: return false
-	var price := PriceCatalog.get_sell_price(e.price)
+	var price =PriceCatalog.get_sell_price(e.price)
 	player_inventory.remove_engine(engine_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("engine", engine_name, price)
@@ -146,9 +146,9 @@ func sell_engine(engine_name: StringName) -> bool:
 func sell_module(module_name: StringName) -> bool:
 	if not player_inventory.has_module(module_name):
 		return false
-	var m := ModuleRegistry.get_module(module_name)
+	var m =ModuleRegistry.get_module(module_name)
 	if m == null: return false
-	var price := PriceCatalog.get_sell_price(m.price)
+	var price =PriceCatalog.get_sell_price(m.price)
 	player_inventory.remove_module(module_name)
 	player_economy.add_credits(price)
 	sale_completed.emit("module", module_name, price)
@@ -165,13 +165,13 @@ func sell_ship(fleet_index: int) -> bool:
 		return false
 	if player_fleet.ships.size() <= 1:
 		return false
-	var fs := player_fleet.ships[fleet_index]
-	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	var fs =player_fleet.ships[fleet_index]
+	var ship_data =ShipRegistry.get_ship_data(fs.ship_id)
 	if ship_data == null:
 		return false
-	var hull_price := PriceCatalog.get_sell_price(ship_data.price)
-	var equip_price := PriceCatalog.get_sell_price(fs.get_total_equipment_value())
-	var total := hull_price + equip_price
+	var hull_price =PriceCatalog.get_sell_price(ship_data.price)
+	var equip_price =PriceCatalog.get_sell_price(fs.get_total_equipment_value())
+	var total =hull_price + equip_price
 	player_fleet.remove_ship(fleet_index)
 	player_economy.add_credits(total)
 	sale_completed.emit("ship", fs.ship_id, total)
@@ -179,10 +179,10 @@ func sell_ship(fleet_index: int) -> bool:
 	return true
 
 
-func get_ship_sell_price(fs: FleetShip) -> int:
+func get_ship_sell_price(fs) -> int:
 	if fs == null:
 		return 0
-	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	var ship_data =ShipRegistry.get_ship_data(fs.ship_id)
 	if ship_data == null:
 		return 0
 	return PriceCatalog.get_sell_price(ship_data.price) + PriceCatalog.get_sell_price(fs.get_total_equipment_value())
@@ -190,7 +190,7 @@ func get_ship_sell_price(fs: FleetShip) -> int:
 
 func sell_cargo(item_name: String, qty: int = 1) -> bool:
 	if player_data and player_data.fleet:
-		var active := player_data.fleet.get_active()
+		var active = player_data.fleet.get_active()
 		if active:
 			return sell_cargo_from_ship(item_name, qty, active)
 	return false
@@ -199,28 +199,28 @@ func sell_cargo(item_name: String, qty: int = 1) -> bool:
 func sell_resource(resource_id: StringName, qty: int = 1) -> bool:
 	# Default: sell from active ship via player_data
 	if player_data:
-		var active := player_data.fleet.get_active() if player_data.fleet else null
+		var active = player_data.fleet.get_active() if player_data.fleet else null
 		if active:
 			return sell_resource_from_ship(resource_id, qty, active)
 	# Fallback for old path
-	var unit_price := PriceCatalog.get_resource_price(resource_id)
+	var unit_price =PriceCatalog.get_resource_price(resource_id)
 	if unit_price <= 0: return false
 	if not player_economy.spend_resource(resource_id, qty):
 		return false
-	var total := unit_price * qty
+	var total =unit_price * qty
 	player_economy.add_credits(total)
 	sale_completed.emit("resource", resource_id, total)
 	SaveManager.mark_dirty()
 	return true
 
 
-func sell_cargo_from_ship(item_name: String, qty: int, ship: FleetShip) -> bool:
+func sell_cargo_from_ship(item_name: String, qty: int, ship) -> bool:
 	if ship == null or ship.cargo == null:
 		return false
-	var unit_price := PriceCatalog.get_cargo_price(item_name)
+	var unit_price =PriceCatalog.get_cargo_price(item_name)
 	if not ship.cargo.remove_item(item_name, qty):
 		return false
-	var total := unit_price * qty
+	var total =unit_price * qty
 	player_economy.add_credits(total)
 	sale_completed.emit("cargo", StringName(item_name), total)
 	# If this is the active ship, the cargo getter already points here
@@ -228,15 +228,15 @@ func sell_cargo_from_ship(item_name: String, qty: int, ship: FleetShip) -> bool:
 	return true
 
 
-func sell_resource_from_ship(resource_id: StringName, qty: int, ship: FleetShip) -> bool:
+func sell_resource_from_ship(resource_id: StringName, qty: int, ship) -> bool:
 	if ship == null:
 		return false
-	var unit_price := PriceCatalog.get_resource_price(resource_id)
+	var unit_price =PriceCatalog.get_resource_price(resource_id)
 	if unit_price <= 0:
 		return false
 	if not ship.spend_resource(resource_id, qty):
 		return false
-	var total := unit_price * qty
+	var total =unit_price * qty
 	player_economy.add_credits(total)
 	# Sync economy mirror if this is the active ship
 	if player_data:

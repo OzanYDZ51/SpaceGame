@@ -5,9 +5,9 @@ extends Control
 # HUD Weapon Panel — 3D holographic ship model with hardpoints + weapon list
 # =============================================================================
 
-var ship: ShipController = null
-var weapon_manager: WeaponManager = null
-var energy_system: EnergySystem = null
+var ship = null
+var weapon_manager = null
+var energy_system = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
 
@@ -22,7 +22,7 @@ var _bg_target: float = 0.0
 var _vp_container: SubViewportContainer = null
 var _vp: SubViewport = null
 var _holo_camera: Camera3D = null
-var _holo_model: ShipModel = null
+var _holo_model = null
 var _holo_ship_ref: Node3D = null
 
 
@@ -82,25 +82,25 @@ func _setup_holo_viewer() -> void:
 	_vp_container.add_child(_vp)
 
 	# Environment — transparent background with subtle ambient
-	var env := Environment.new()
+	var env =Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0, 0, 0, 0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.1, 0.3, 0.5)
 	env.ambient_light_energy = 0.3
-	var world_env := WorldEnvironment.new()
+	var world_env =WorldEnvironment.new()
 	world_env.environment = env
 	_vp.add_child(world_env)
 
 	# Key light — blue-cyan from above-left
-	var dir_light := DirectionalLight3D.new()
+	var dir_light =DirectionalLight3D.new()
 	dir_light.light_color = Color(0.3, 0.6, 0.9)
 	dir_light.light_energy = 1.5
 	dir_light.rotation_degrees = Vector3(-45, 30, 0)
 	_vp.add_child(dir_light)
 
 	# Rim light — warm orange/amber from behind-right
-	var rim_light := OmniLight3D.new()
+	var rim_light =OmniLight3D.new()
 	rim_light.light_color = Color(0.9, 0.6, 0.2)
 	rim_light.light_energy = 1.0
 	rim_light.omni_range = 50.0
@@ -109,7 +109,7 @@ func _setup_holo_viewer() -> void:
 
 	# Camera — positioned from EquipmentCamera data or fallback
 	_holo_camera = Camera3D.new()
-	var cam_data := ShipFactory.get_equipment_camera_data(ship.ship_data.ship_id)
+	var cam_data =ShipFactory.get_equipment_camera_data(ship.ship_data.ship_id)
 	if not cam_data.is_empty():
 		_holo_camera.position = cam_data["position"]
 		_holo_camera.transform.basis = cam_data["basis"]
@@ -151,19 +151,19 @@ func _cleanup_holo_viewer() -> void:
 func _layout_holo_viewer() -> void:
 	if _vp_container == null or _vp == null:
 		return
-	var s := _weapon_panel.size
-	var header_h := 20.0
-	var x := 6.0
-	var y := header_h + 2.0
-	var w := 132.0  # sil_area_w(140) - 2*margin
-	var h := maxf(s.y - y - 4.0, 10.0)
+	var s =_weapon_panel.size
+	var header_h =20.0
+	var x =6.0
+	var y =header_h + 2.0
+	var w =132.0  # sil_area_w(140) - 2*margin
+	var h =maxf(s.y - y - 4.0, 10.0)
 	_vp_container.position = Vector2(x, y)
 	_vp_container.size = Vector2(w, h)
 	_vp.size = Vector2i(int(w), int(h))
 
 
-func _apply_holographic_material(model: ShipModel) -> void:
-	var mat := StandardMaterial3D.new()
+func _apply_holographic_material(model) -> void:
+	var mat =StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.albedo_color = Color(0.15, 0.45, 0.9, 0.15)
@@ -184,30 +184,30 @@ func _rebuild_weapon_panel_cache(s: Vector2) -> void:
 
 	if weapon_manager == null or ship == null or ship.ship_data == null:
 		return
-	var hp_count := weapon_manager.get_hardpoint_count()
+	var hp_count =weapon_manager.get_hardpoint_count()
 	if hp_count == 0:
 		return
 
-	var sil_area_w := 140.0
-	var header_h := 20.0
-	var a_l := 6.0
-	var a_t := header_h + 2.0
-	var a_r := sil_area_w - 2.0
-	var a_b := s.y - 4.0
+	var sil_area_w =140.0
+	var header_h =20.0
+	var a_l =6.0
+	var a_t =header_h + 2.0
+	var a_r =sil_area_w - 2.0
+	var a_b =s.y - 4.0
 
 	if _holo_camera == null or _vp == null:
 		return
-	var vp_size := Vector2(_vp.size)
+	var vp_size =Vector2(_vp.size)
 	if vp_size.x < 1.0 or vp_size.y < 1.0:
 		return
 
 	# Project hardpoint 3D positions through the hologram camera — raw positions
-	var root_basis := ShipFactory.get_root_basis(ship.ship_data.ship_id)
+	var root_basis =ShipFactory.get_root_basis(ship.ship_data.ship_id)
 	for i in hp_count:
 		var world_pos: Vector3 = root_basis * weapon_manager.hardpoints[i].position
-		var screen_pos := _holo_camera.unproject_position(world_pos)
-		var hp_screen_x := a_l + screen_pos.x / vp_size.x * (a_r - a_l)
-		var hp_screen_y := a_t + screen_pos.y / vp_size.y * (a_b - a_t)
+		var screen_pos =_holo_camera.unproject_position(world_pos)
+		var hp_screen_x =a_l + screen_pos.x / vp_size.x * (a_r - a_l)
+		var hp_screen_y =a_t + screen_pos.y / vp_size.y * (a_b - a_t)
 		_cached_hp_screen.append(Vector2(hp_screen_x, hp_screen_y))
 
 
@@ -238,17 +238,17 @@ func _get_weapon_type_abbr(wtype: int) -> String:
 # DRAW WEAPON PANEL
 # =============================================================================
 func _draw_weapon_panel(ctrl: Control) -> void:
-	var font := UITheme.get_font_medium()
-	var s := ctrl.size
+	var font =UITheme.get_font_medium()
+	var s =ctrl.size
 
 	if _bg_alpha > 0.001:
 		ctrl.draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.02, 0.06, 0.45 * _bg_alpha))
-		var pd := UITheme.PRIMARY_DIM
+		var pd =UITheme.PRIMARY_DIM
 		ctrl.draw_line(Vector2(0, 0), Vector2(s.x, 0), Color(pd.r, pd.g, pd.b, pd.a * _bg_alpha), 1.0)
-		var p := UITheme.PRIMARY
+		var p =UITheme.PRIMARY
 		ctrl.draw_line(Vector2(0, 0), Vector2(0, 12), Color(p.r, p.g, p.b, p.a * _bg_alpha), 1.5)
 		ctrl.draw_line(Vector2(s.x, 0), Vector2(s.x, 12), Color(p.r, p.g, p.b, p.a * _bg_alpha), 1.5)
-		var sl := UITheme.SCANLINE
+		var sl =UITheme.SCANLINE
 		var sly: float = fmod(scan_line_y, s.y)
 		ctrl.draw_line(Vector2(0, sly), Vector2(s.x, sly), Color(sl.r, sl.g, sl.b, sl.a * _bg_alpha), 1.0)
 
@@ -256,7 +256,7 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "---", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 		return
 
-	var hp_count := weapon_manager.get_hardpoint_count()
+	var hp_count =weapon_manager.get_hardpoint_count()
 	if hp_count == 0:
 		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "AUCUNE ARME", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 		return
@@ -270,24 +270,24 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 
 	# Header
 	ctrl.draw_string(font, Vector2(8, 13), "ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADER)
-	var hdr_w := font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var hdr_w =font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	ctrl.draw_line(Vector2(8 + hdr_w + 6, 7), Vector2(s.x - 8, 7), UITheme.PRIMARY_DIM, 1.0)
 	var class_str: String = ship.ship_data.ship_class
 	if class_str == "":
 		class_str = "---"
-	var csw := font.get_string_size(class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var csw =font.get_string_size(class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	ctrl.draw_string(font, Vector2(s.x - csw - 8, 13), class_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
-	var sil_area_w := 140.0
-	var list_x := sil_area_w + 4.0
-	var list_w := s.x - list_x - 4.0
-	var header_h := 20.0
+	var sil_area_w =140.0
+	var list_x =sil_area_w + 4.0
+	var list_w =s.x - list_x - 4.0
+	var header_h =20.0
 
 	ctrl.draw_line(Vector2(sil_area_w, header_h), Vector2(sil_area_w, s.y), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15), 1.0)
 
 	# Hardpoint markers (drawn over the 3D hologram via show_behind_parent)
 	for i in _cached_hp_screen.size():
-		var status := weapon_manager.get_hardpoint_status(i)
+		var status =weapon_manager.get_hardpoint_status(i)
 		_draw_hardpoint_marker(ctrl, font, _cached_hp_screen[i], i, status)
 
 	_draw_weapon_list(ctrl, font, list_x, header_h + 2.0, list_w, hp_count)
@@ -306,7 +306,7 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 	var wtype: int = int(status.get("weapon_type", -1))
 	var armed: bool = wname != ""
 
-	var r := 5.0
+	var r =5.0
 	match ssize:
 		"M": r = 7.0
 		"L": r = 9.0
@@ -315,12 +315,12 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 	var is_missile: bool = wtype == 2
 
 	if is_on and armed:
-		var ga := sin(pulse_t * 2.0 + float(index) * 1.5) * 0.12 + 0.2
+		var ga =sin(pulse_t * 2.0 + float(index) * 1.5) * 0.12 + 0.2
 		ctrl.draw_arc(pos, r + 3, 0, TAU, 16, Color(type_col.r, type_col.g, type_col.b, ga), 2.0, true)
 
 		if is_missile:
-			var d := r * 0.85
-			var diamond := PackedVector2Array([
+			var d =r * 0.85
+			var diamond =PackedVector2Array([
 				pos + Vector2(0, -d), pos + Vector2(d, 0),
 				pos + Vector2(0, d), pos + Vector2(-d, 0),
 			])
@@ -328,7 +328,7 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 			diamond.append(diamond[0])
 			if cd > 0.01:
 				ctrl.draw_polyline(diamond, Color(type_col.r, type_col.g, type_col.b, 0.3), 1.5)
-				var sweep := (1.0 - cd) * TAU
+				var sweep =(1.0 - cd) * TAU
 				ctrl.draw_arc(pos, r + 1, -PI * 0.5, -PI * 0.5 + sweep, 20, type_col, 2.5, true)
 			else:
 				ctrl.draw_polyline(diamond, type_col, 2.0)
@@ -336,7 +336,7 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 			ctrl.draw_circle(pos, r, Color(type_col.r, type_col.g, type_col.b, 0.12))
 			if cd > 0.01:
 				ctrl.draw_arc(pos, r, 0, TAU, 20, Color(type_col.r, type_col.g, type_col.b, 0.25), 1.5, true)
-				var sweep := (1.0 - cd) * TAU
+				var sweep =(1.0 - cd) * TAU
 				ctrl.draw_arc(pos, r, -PI * 0.5, -PI * 0.5 + sweep, 20, type_col, 2.5, true)
 			else:
 				ctrl.draw_arc(pos, r, 0, TAU, 20, type_col, 2.0, true)
@@ -345,14 +345,14 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 	else:
 		ctrl.draw_circle(pos, r, Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.08))
 		ctrl.draw_arc(pos, r, 0, TAU, 16, Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.3), 1.5, true)
-		var xsz := r * 0.5
+		var xsz =r * 0.5
 		ctrl.draw_line(pos + Vector2(-xsz, -xsz), pos + Vector2(xsz, xsz), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5), 1.5)
 		ctrl.draw_line(pos + Vector2(xsz, -xsz), pos + Vector2(-xsz, xsz), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5), 1.5)
 
 	# Number label just above marker
 	var num_col: Color = type_col if (is_on and armed) else (UITheme.PRIMARY if is_on else Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4))
-	var num_str := str(index + 1)
-	var num_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+	var num_str =str(index + 1)
+	var num_w =font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
 	ctrl.draw_string(font, pos + Vector2(-num_w * 0.5, -r - 2.0), num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, num_col)
 
 
@@ -360,14 +360,14 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 # WEAPON LIST
 # =============================================================================
 func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, hp_count: int) -> void:
-	var line_h := 15.0
+	var line_h =15.0
 	var grp_colors: Array[Color] = [UITheme.PRIMARY, Color(1.0, 0.6, 0.1), Color(0.6, 0.3, 1.0)]
 
 	for i in hp_count:
-		var status := weapon_manager.get_hardpoint_status(i)
+		var status =weapon_manager.get_hardpoint_status(i)
 		if status.is_empty():
 			continue
-		var ly := y + i * line_h
+		var ly =y + i * line_h
 		var is_on: bool = status["enabled"]
 		var wname: String = str(status["weapon_name"])
 		var wtype: int = int(status.get("weapon_type", -1))
@@ -388,7 +388,7 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			ctrl.draw_string(font, Vector2(x + 12, ly + 10), "Vide", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
 			continue
 
-		var abbr := _get_weapon_type_abbr(wtype)
+		var abbr =_get_weapon_type_abbr(wtype)
 		var name_col: Color
 		if not is_on:
 			name_col = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.4)
@@ -396,26 +396,26 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			name_col = Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, 0.8)
 		ctrl.draw_string(font, Vector2(x + 12, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, name_col)
 
-		var short_name := wname.get_slice(" ", 0).left(5)
+		var short_name =wname.get_slice(" ", 0).left(5)
 		ctrl.draw_string(font, Vector2(x + 42, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6 if is_on else 0.3))
 
 		if not is_on:
-			var strike_y := ly + 6.0
+			var strike_y =ly + 6.0
 			ctrl.draw_line(Vector2(x + 8, strike_y), Vector2(x + w - 4, strike_y), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.35), 1.0)
 			continue
 
 		# Ready/cooldown indicator
-		var ind_x := x + w - 14.0
+		var ind_x =x + w - 14.0
 		if cd > 0.01:
-			var bar_w := 12.0
-			var bar_h := 3.0
-			var bar_y := ly + 5.0
+			var bar_w =12.0
+			var bar_h =3.0
+			var bar_y =ly + 5.0
 			ctrl.draw_rect(Rect2(ind_x, bar_y, bar_w, bar_h), Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.15))
-			var fill := (1.0 - cd) * bar_w
-			var type_c := _get_weapon_type_color(wtype)
+			var fill =(1.0 - cd) * bar_w
+			var type_c =_get_weapon_type_color(wtype)
 			ctrl.draw_rect(Rect2(ind_x, bar_y, fill, bar_h), Color(type_c.r, type_c.g, type_c.b, 0.7))
 		else:
-			var type_c := _get_weapon_type_color(wtype)
+			var type_c =_get_weapon_type_color(wtype)
 			ctrl.draw_circle(Vector2(ind_x + 6.0, ly + 6.5), 2.0, type_c)
 
 		if fire_grp >= 0 and fire_grp < grp_colors.size():

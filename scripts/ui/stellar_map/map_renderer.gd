@@ -10,7 +10,7 @@ extends Control
 signal filter_toggled(key: int)
 signal follow_toggled
 
-var camera: MapCamera = null
+var camera = null
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
 var follow_enabled: bool = true
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
@@ -81,7 +81,7 @@ func _get_toolbar_rects() -> Array[Rect2]:
 
 
 func handle_toolbar_click(pos: Vector2) -> bool:
-	var rects := _get_toolbar_rects()
+	var rects =_get_toolbar_rects()
 	for i in rects.size():
 		if rects[i].has_point(pos):
 			var key: int = TOOLBAR_BUTTONS[i]["key"]
@@ -94,9 +94,9 @@ func handle_toolbar_click(pos: Vector2) -> bool:
 
 
 func update_toolbar_hover(pos: Vector2) -> void:
-	var old := _toolbar_hovered
+	var old =_toolbar_hovered
 	_toolbar_hovered = -1
-	var rects := _get_toolbar_rects()
+	var rects =_get_toolbar_rects()
 	for i in rects.size():
 		if rects[i].has_point(pos):
 			_toolbar_hovered = i
@@ -107,7 +107,7 @@ func update_toolbar_hover(pos: Vector2) -> void:
 
 func _draw_toolbar() -> void:
 	var font: Font = UITheme.get_font()
-	var rects := _get_toolbar_rects()
+	var rects =_get_toolbar_rects()
 
 	for i in rects.size():
 		var r: Rect2 = rects[i]
@@ -311,7 +311,7 @@ func _draw_asteroid_belts() -> void:
 			var ent_id: String = ent["id"]
 			if not _belt_dot_cache.has(ent_id):
 				var new_dots: Array = []
-				var rng := RandomNumberGenerator.new()
+				var rng =RandomNumberGenerator.new()
 				rng.seed = hash(ent_id)
 				for i in 60:
 					var a: float = rng.randf() * TAU
@@ -334,7 +334,7 @@ func _draw_asteroid_belts() -> void:
 			if label_sp.x > 0 and label_sp.x < size.x and label_sp.y > 0 and label_sp.y < size.y:
 				var belt_name: String = ent["name"]
 				var tw: float = font.get_string_size(belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
-				var label_col := Color(MapColors.ASTEROID_BELT.r, MapColors.ASTEROID_BELT.g, MapColors.ASTEROID_BELT.b, 0.8)
+				var label_col =Color(MapColors.ASTEROID_BELT.r, MapColors.ASTEROID_BELT.g, MapColors.ASTEROID_BELT.b, 0.8)
 				draw_string(font, Vector2(label_sp.x - tw * 0.5, label_sp.y - 6), belt_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, label_col)
 
 
@@ -345,7 +345,7 @@ func _draw_scanline() -> void:
 	var vp_left: float = MapLayout.viewport_left()
 	var vp_right: float = MapLayout.viewport_right(size.x)
 	var alpha: float = 0.025 + sin(_pulse_t * 0.5) * 0.01
-	var col := Color(MapColors.SCANLINE.r, MapColors.SCANLINE.g, MapColors.SCANLINE.b, alpha)
+	var col =Color(MapColors.SCANLINE.r, MapColors.SCANLINE.g, MapColors.SCANLINE.b, alpha)
 	draw_line(Vector2(vp_left, _scan_line_y), Vector2(vp_right, _scan_line_y), col, 1.0)
 	for i in range(1, 4):
 		var ty: float = _scan_line_y - float(i) * 3.0

@@ -6,7 +6,7 @@ extends Node
 # Attached as a child of the local player's ShipController.
 # =============================================================================
 
-var _ship: ShipController = null
+var _ship = null
 var _send_timer: float = 0.0
 var _was_dead: bool = false
 var _mining_send_timer: float = 0.0
@@ -14,7 +14,7 @@ const MINING_BEAM_SEND_RATE: float = 0.1  # 10Hz
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
+	_ship = get_parent()
 	if _ship == null:
 		push_error("ShipNetworkSync: Parent must be ShipController")
 		set_process(false)
@@ -22,11 +22,11 @@ func _ready() -> void:
 		return
 
 	# Connect weapon fire signal for combat sync
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm:
 		wm.weapon_fired.connect(_on_weapon_fired)
 
-	GameManager.player_ship_rebuilt.connect(func(_ship_ref: ShipController): reconnect_weapon_signal())
+	GameManager.player_ship_rebuilt.connect(func(_ship_ref): reconnect_weapon_signal())
 
 
 ## Force an immediate state send (called after undock, respawn, etc.)
@@ -52,9 +52,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _send_state() -> void:
-	var universe_pos := FloatingOrigin.to_universe_pos(_ship.global_position)
+	var universe_pos =FloatingOrigin.to_universe_pos(_ship.global_position)
 
-	var state := NetworkState.new()
+	var state =NetworkState.new()
 	state.peer_id = NetworkManager.local_peer_id
 	state.pos_x = universe_pos[0]
 	state.pos_y = universe_pos[1]
@@ -78,9 +78,9 @@ func _send_state() -> void:
 	# Reliable death/respawn events (detect transitions)
 	if state.is_dead and not _was_dead:
 		_was_dead = true
-		var death_pos := FloatingOrigin.to_universe_pos(_ship.global_position)
+		var death_pos =FloatingOrigin.to_universe_pos(_ship.global_position)
 		if NetworkManager.is_host:
-			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 			if npc_auth:
 				# Host: relay death directly to peers in same system
 				for pid in NetworkManager.get_peers_in_system(state.system_id):
@@ -100,7 +100,7 @@ func _send_state() -> void:
 			NetworkManager._rpc_player_respawned.rpc_id(1, state.system_id)
 
 	# Combat state
-	var health := _ship.get_node_or_null("HealthSystem") as HealthSystem
+	var health = _ship.get_node_or_null("HealthSystem")
 	if health:
 		state.hull_ratio = health.hull_current / health.hull_max if health.hull_max > 0 else 1.0
 		state.shield_ratios = [
@@ -114,7 +114,7 @@ func _send_state() -> void:
 		# Host: update our own state directly in the peers dict
 		# (ServerAuthority will broadcast it to other clients)
 		if NetworkManager.peers.has(1):
-			var my_state: NetworkState = NetworkManager.peers[1]
+			var my_state = NetworkManager.peers[1]
 			my_state.from_dict(state.to_dict())
 			my_state.peer_id = 1
 	else:
@@ -126,7 +126,7 @@ func _send_state() -> void:
 func reconnect_weapon_signal() -> void:
 	if _ship == null:
 		return
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm and not wm.weapon_fired.is_connected(_on_weapon_fired):
 		wm.weapon_fired.connect(_on_weapon_fired)
 
@@ -135,25 +135,25 @@ func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
 
-	var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm == null or hardpoint_id >= wm.hardpoints.size():
 		return
 
 	var hp: Hardpoint = wm.hardpoints[hardpoint_id]
-	var muzzle := hp.get_muzzle_transform()
-	var fire_pos := FloatingOrigin.to_universe_pos(muzzle.origin)
+	var muzzle =hp.get_muzzle_transform()
+	var fire_pos =FloatingOrigin.to_universe_pos(muzzle.origin)
 	# Use actual aim direction (toward crosshair) matching local fire behavior
 	var fire_dir: Vector3
-	var aim_to_muzzle := _ship._aim_point - muzzle.origin
+	var aim_to_muzzle = _ship._aim_point - muzzle.origin
 	if aim_to_muzzle.length_squared() > 1.0:
 		fire_dir = aim_to_muzzle.normalized()
 	else:
 		fire_dir = (-muzzle.basis.z).normalized()
-	var ship_vel := _ship.linear_velocity
+	var ship_vel = _ship.linear_velocity
 
 	if NetworkManager.is_host:
 		# Host: relay directly via NpcAuthority
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.relay_fire_event(1, String(weapon_name_str), fire_pos,
 				[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
@@ -167,11 +167,11 @@ func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
 func _send_mining_state() -> void:
 	if _ship == null:
 		return
-	var mining := _ship.get_node_or_null("MiningSystem") as MiningSystem
+	var mining = _ship.get_node_or_null("MiningSystem")
 	if mining == null:
 		return
 
-	var beam: MiningLaserBeam = mining._beam
+	var beam = mining._beam
 	if beam == null:
 		return
 
@@ -190,7 +190,7 @@ func _send_mining_state() -> void:
 			target_pos = FloatingOrigin.to_universe_pos(beam._impact_light.global_position)
 
 	if NetworkManager.is_host:
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			npc_auth.relay_mining_beam(1, true, source_pos, target_pos)
 	else:
@@ -203,15 +203,15 @@ func _process(_delta: float) -> void:
 	if _ship == null or not NetworkManager.is_connected_to_server():
 		return
 	# Detect mining stop → send deactivation once
-	var mining := _ship.get_node_or_null("MiningSystem") as MiningSystem
+	var mining = _ship.get_node_or_null("MiningSystem")
 	if mining == null:
 		return
-	var beam: MiningLaserBeam = mining._beam
+	var beam = mining._beam
 	var currently_mining: bool = beam != null and beam._active
 	if _was_mining and not currently_mining:
 		var empty: Array = [0.0, 0.0, 0.0]
 		if NetworkManager.is_host:
-			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 			if npc_auth:
 				npc_auth.relay_mining_beam(1, false, empty, empty)
 		else:

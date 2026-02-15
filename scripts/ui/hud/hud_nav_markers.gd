@@ -5,7 +5,7 @@ extends Control
 # HUD Nav Markers — BSGO-style POI indicators with distance
 # =============================================================================
 
-var ship: ShipController = null
+var ship = null
 
 const NAV_EDGE_MARGIN: float = 40.0
 const NAV_NPC_RANGE: float = 4000.0
@@ -36,13 +36,13 @@ func redraw() -> void:
 
 
 func _draw_nav_markers(ctrl: Control) -> void:
-	var cam := get_viewport().get_camera_3d()
+	var cam =get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var screen_size := ctrl.size
+	var screen_size =ctrl.size
 	var cam_fwd: Vector3 = -cam.global_transform.basis.z
 	var cam_pos: Vector3 = cam.global_position
-	var font := UITheme.get_font_medium()
+	var font =UITheme.get_font_medium()
 
 	# Stations + Star + Jump Gates + Asteroid Belts
 	for ent in EntityRegistry.get_all().values():
@@ -91,9 +91,9 @@ func _draw_nav_markers(ctrl: Control) -> void:
 
 	# NPC ships
 	if ship:
-		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 		if lod_mgr:
-			var nearby := lod_mgr.get_ships_in_radius(cam_pos, NAV_NPC_RANGE)
+			var nearby = lod_mgr.get_ships_in_radius(cam_pos, NAV_NPC_RANGE)
 			var npc_drawn: int = 0
 			var _used_spots: Array[Vector2] = []
 			for npc_id in nearby:
@@ -101,17 +101,17 @@ func _draw_nav_markers(ctrl: Control) -> void:
 					continue
 				if npc_drawn >= 40:
 					break
-				var data := lod_mgr.get_ship_data(npc_id)
+				var data = lod_mgr.get_ship_data(npc_id)
 				if data == null or data.is_dead:
 					continue
 				var world_pos: Vector3 = data.position
 				var dist: float = cam_pos.distance_to(world_pos)
-				var to_ent := world_pos - cam_pos
+				var to_ent =world_pos - cam_pos
 				if to_ent.length() > 0.1:
 					var dot_fwd: float = cam_fwd.dot(to_ent.normalized())
 					if dot_fwd > 0.1:
-						var sp := cam.unproject_position(world_pos)
-						var too_close := false
+						var sp =cam.unproject_position(world_pos)
+						var too_close =false
 						for used in _used_spots:
 							if sp.distance_to(used) < 30.0:
 								too_close = true
@@ -119,10 +119,10 @@ func _draw_nav_markers(ctrl: Control) -> void:
 						if too_close:
 							continue
 						_used_spots.append(sp)
-				var nav_name := data.display_name if not data.display_name.is_empty() else String(data.ship_class)
+				var nav_name =data.display_name if not data.display_name.is_empty() else String(data.ship_class)
 				if data.faction == &"player_fleet":
 					nav_name += " [FLOTTE]"
-				var nav_col := _get_faction_nav_color(data.faction)
+				var nav_col =_get_faction_nav_color(data.faction)
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos, nav_name, dist, nav_col)
 				npc_drawn += 1
 		else:
@@ -138,7 +138,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 
 
 func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3, cam_pos: Vector3, screen_size: Vector2, world_pos: Vector3, ent_name: String, dist: float, col: Color) -> void:
-	var dist_str := HudDrawHelpers.format_nav_distance(dist)
+	var dist_str =HudDrawHelpers.format_nav_distance(dist)
 	var to_ent: Vector3 = world_pos - cam_pos
 	if to_ent.length() < 0.1:
 		return
@@ -154,13 +154,13 @@ func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3
 func _draw_nav_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name: String, dist_str: String, col: Color) -> void:
 	HudDrawHelpers.draw_diamond(ctrl, sp, 5.0, col)
 
-	var name_w := font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var name_pos := Vector2(sp.x - name_w * 0.5, sp.y - 18)
+	var name_w =font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var name_pos =Vector2(sp.x - name_w * 0.5, sp.y - 18)
 	ctrl.draw_rect(Rect2(name_pos.x - 4, name_pos.y - 10, name_w + 8, 14), Color(0.0, 0.02, 0.06, 0.5))
 	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
-	var dist_w := font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	var dist_pos := Vector2(sp.x - dist_w * 0.5, sp.y + 18)
+	var dist_w =font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var dist_pos =Vector2(sp.x - dist_w * 0.5, sp.y + 18)
 	ctrl.draw_rect(Rect2(dist_pos.x - 4, dist_pos.y - 11, dist_w + 8, 15), Color(0.0, 0.02, 0.06, 0.5))
 	ctrl.draw_string(font, dist_pos, dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 
@@ -169,16 +169,16 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 	var to_ent: Vector3 = (world_pos - cam_pos).normalized()
 	var right: Vector3 = cam.global_transform.basis.x
 	var up: Vector3 = cam.global_transform.basis.y
-	var screen_dir := Vector2(to_ent.dot(right), -to_ent.dot(up))
+	var screen_dir =Vector2(to_ent.dot(right), -to_ent.dot(up))
 	if screen_dir.length() < 0.001:
 		screen_dir = Vector2(0, -1)
 	screen_dir = screen_dir.normalized()
 
-	var center := screen_size * 0.5
-	var margin := NAV_EDGE_MARGIN
-	var half := center - Vector2(margin, margin)
+	var center =screen_size * 0.5
+	var margin =NAV_EDGE_MARGIN
+	var half =center - Vector2(margin, margin)
 
-	var edge_pos := center
+	var edge_pos =center
 	if abs(screen_dir.x) > 0.001:
 		var tx: float = half.x / abs(screen_dir.x)
 		var ty: float = half.y / abs(screen_dir.y) if abs(screen_dir.y) > 0.001 else 1e6
@@ -189,13 +189,13 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 		edge_pos = center + screen_dir * t
 
 	var arrow_sz: float = 8.0
-	var perp := Vector2(-screen_dir.y, screen_dir.x)
-	var tip := edge_pos + screen_dir * 4.0
+	var perp =Vector2(-screen_dir.y, screen_dir.x)
+	var tip =edge_pos + screen_dir * 4.0
 	ctrl.draw_line(tip, tip - screen_dir * arrow_sz + perp * arrow_sz * 0.5, col, 2.0)
 	ctrl.draw_line(tip, tip - screen_dir * arrow_sz - perp * arrow_sz * 0.5, col, 2.0)
 
-	var text_offset := -screen_dir * 20.0 + perp * 14.0
-	var text_pos := edge_pos + text_offset
+	var text_offset =-screen_dir * 20.0 + perp * 14.0
+	var text_pos =edge_pos + text_offset
 	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 120.0)
 	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
 

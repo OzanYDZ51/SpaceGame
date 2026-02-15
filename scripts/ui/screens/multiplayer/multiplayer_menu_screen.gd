@@ -77,15 +77,15 @@ func _draw() -> void:
 	y += 20
 
 	# --- Mode & IP info ---
-	var mode_label := "PRODUCTION" if Constants.NET_GAME_SERVER_URL != "" else "DÉVELOPPEMENT"
+	var mode_label ="PRODUCTION" if Constants.NET_GAME_SERVER_URL != "" else "DÉVELOPPEMENT"
 	if NetworkManager.is_connected_to_server():
-		var server_text := "CONNECTÉ À %s" % NetworkManager._server_url
+		var server_text ="CONNECTÉ À %s" % NetworkManager._server_url
 		draw_string(font, Vector2(0, y), server_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_HEADER, UITheme.ACCENT)
 		y += 18
-		var info_text := "MODE : %s  |  Peer ID : %d" % [mode_label, NetworkManager.local_peer_id]
+		var info_text ="MODE : %s  |  Peer ID : %d" % [mode_label, NetworkManager.local_peer_id]
 		draw_string(font, Vector2(0, y), info_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	else:
-		var target_url := Constants.NET_GAME_SERVER_URL if Constants.NET_GAME_SERVER_URL != "" else "ws://%s:%d" % [Constants.NET_PUBLIC_IP, Constants.NET_DEFAULT_PORT]
+		var target_url =Constants.NET_GAME_SERVER_URL if Constants.NET_GAME_SERVER_URL != "" else "ws://%s:%d" % [Constants.NET_PUBLIC_IP, Constants.NET_DEFAULT_PORT]
 		draw_string(font, Vector2(0, y), "Connexion à %s..." % target_url, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 		y += 16
 		draw_string(font, Vector2(0, y), "MODE : %s" % mode_label, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
@@ -104,8 +104,8 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 	var is_self: bool = (pid == NetworkManager.local_peer_id)
 	var is_hosting: bool = (pid == 1)
 
-	var col := UITheme.ACCENT if is_self else UITheme.TEXT
-	var suffix := ""
+	var col =UITheme.ACCENT if is_self else UITheme.TEXT
+	var suffix =""
 	if is_self:
 		suffix = " (toi)"
 	elif is_hosting:
@@ -137,7 +137,7 @@ func _refresh_player_list() -> void:
 		items.append({"name": NetworkManager.local_player_name, "pid": NetworkManager.local_peer_id})
 		# Add all remote peers
 		for pid in NetworkManager.peers:
-			var state: NetworkState = NetworkManager.peers[pid]
+			var state = NetworkManager.peers[pid]
 			if state.peer_id != NetworkManager.local_peer_id:
 				items.append({"name": state.player_name, "pid": state.peer_id})
 

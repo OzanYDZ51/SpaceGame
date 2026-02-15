@@ -10,7 +10,7 @@ extends UIScreen
 
 signal shipyard_closed
 
-var commerce_manager: CommerceManager = null
+var commerce_manager = null
 var station_type: int = 0
 var station_name: String = "STATION"
 var station_id: String = ""
@@ -22,10 +22,10 @@ var _sell_ship: SellShipView = null
 var _back_btn: UIButton = null
 var _current_tab: int = -1
 
-const SIDEBAR_W := 180.0
-const CONTENT_TOP := 65.0
-const BOTTOM_H := 50.0
-const SECTION_HEADER_H := 22.0
+const SIDEBAR_W =180.0
+const CONTENT_TOP =65.0
+const BOTTOM_H =50.0
+const SECTION_HEADER_H =22.0
 const TABS: Array[Array] = [
 	["ACHETER", "Acheter des vaisseaux"],
 	["VENDRE", "Vendre un vaisseau"],
@@ -38,7 +38,7 @@ func _ready() -> void:
 	super._ready()
 
 	for i in TABS.size():
-		var btn := UIButton.new()
+		var btn =UIButton.new()
 		btn.text = TABS[i][0]
 		btn.visible = false
 		btn.pressed.connect(_on_tab_pressed.bind(i))
@@ -62,7 +62,7 @@ func _ready() -> void:
 	add_child(_sell_ship)
 
 
-func setup(mgr: CommerceManager, stype: int, sname: String, sid: String = "") -> void:
+func setup(mgr, stype: int, sname: String, sid: String = "") -> void:
 	commerce_manager = mgr
 	station_type = stype
 	station_name = sname
@@ -129,7 +129,7 @@ func _hide_all_views() -> void:
 
 
 func _layout_controls() -> void:
-	var s := size
+	var s =size
 	var sidebar_x: float = 30.0
 	var btn_w: float = SIDEBAR_W - 20.0
 	var btn_h: float = 28.0
@@ -150,7 +150,7 @@ func _layout_controls() -> void:
 
 func _layout_content_area() -> void:
 	if _active_view == null: return
-	var s := size
+	var s =size
 	var content_x: float = SIDEBAR_W + 10.0
 	var content_y: float = CONTENT_TOP + 5.0
 	var content_w: float = s.x - content_x - 20.0
@@ -160,7 +160,7 @@ func _layout_content_area() -> void:
 
 
 func _draw() -> void:
-	var s := size
+	var s =size
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.85))
 
 	_draw_title(s)
@@ -186,7 +186,7 @@ func _draw() -> void:
 
 	# Credits display
 	if commerce_manager and commerce_manager.player_economy:
-		var credits_text := "Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
+		var credits_text ="Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
 		draw_string(font, Vector2(SIDEBAR_W + 20, s.y - 18),
 			credits_text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)
@@ -206,7 +206,7 @@ func _draw() -> void:
 
 	# Scanline
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
 
 
@@ -216,7 +216,7 @@ func _draw_section_header(font: Font) -> void:
 	var lx: float = 28.0
 	var rx: float = SIDEBAR_W - 2.0
 
-	var first_btn := _sidebar_buttons[0]
+	var first_btn =_sidebar_buttons[0]
 	var header_y: float = first_btn.position.y - SECTION_HEADER_H + 2.0
 	draw_rect(Rect2(lx, header_y, 3, 12), UITheme.PRIMARY)
 	draw_string(font, Vector2(lx + 8, header_y + 11), "CHANTIER NAVAL",
@@ -226,7 +226,7 @@ func _draw_section_header(font: Font) -> void:
 		Vector2(rx, header_y + 7),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.25), 1.0)
 
-	var last_btn := _sidebar_buttons[_sidebar_buttons.size() - 1]
+	var last_btn =_sidebar_buttons[_sidebar_buttons.size() - 1]
 	var section_bottom: float = last_btn.position.y + last_btn.size.y + 4
 	draw_rect(Rect2(22, header_y - 2, SIDEBAR_W - 4, section_bottom - header_y + 4),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.03))

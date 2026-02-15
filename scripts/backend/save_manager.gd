@@ -54,9 +54,9 @@ func save_player_state(force: bool = false) -> bool:
 		return false
 
 	_saving = true
-	var state := _collect_state()
+	var state =_collect_state()
 
-	var result := await ApiClient.put_async("/api/v1/player/state", state)
+	var result =await ApiClient.put_async("/api/v1/player/state", state)
 	_saving = false
 	_last_save_time = Time.get_ticks_msec() / 1000.0
 
@@ -78,7 +78,7 @@ func load_player_state() -> Dictionary:
 		load_failed.emit("not authenticated")
 		return {}
 
-	var result := await ApiClient.get_async("/api/v1/player/state")
+	var result =await ApiClient.get_async("/api/v1/player/state")
 	var status: int = result.get("_status_code", 0)
 
 	if status == 200:
@@ -106,7 +106,7 @@ func apply_state(state: Dictionary) -> void:
 	if GameManager.player_data:
 		GameManager.player_data.apply_save_state(
 			state,
-			GameManager.player_ship as ShipController,
+			GameManager.player_ship,
 			GameManager._system_transition,
 			GameManager._galaxy,
 			GameManager._fleet_deployment_mgr,
@@ -116,12 +116,12 @@ func apply_state(state: Dictionary) -> void:
 
 	# Ship change (must happen after fleet is restored by PlayerData)
 	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
-	var ship := GameManager.player_ship as ShipController
+	var ship =GameManager.player_ship
 	if ship and ship_id != "":
 		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else Constants.DEFAULT_SHIP_ID)
 		if current_sid != ship_id and GameManager.player_fleet:
 			var target_idx: int = GameManager.player_fleet.active_index
-			var active_fs := GameManager.player_fleet.get_active()
+			var active_fs = GameManager.player_fleet.get_active()
 			if active_fs == null or str(active_fs.ship_id) != ship_id:
 				for i in GameManager.player_fleet.ships.size():
 					if str(GameManager.player_fleet.ships[i].ship_id) == ship_id:
@@ -137,7 +137,7 @@ func _collect_state() -> Dictionary:
 		GameManager._fleet_deployment_mgr.force_sync_positions()
 	if GameManager.player_data:
 		return GameManager.player_data.collect_save_state(
-			GameManager.player_ship as ShipController,
+			GameManager.player_ship,
 			GameManager._system_transition,
 		)
 	return {}

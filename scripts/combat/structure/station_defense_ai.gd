@@ -9,8 +9,8 @@ const SCAN_INTERVAL: float = 0.5
 const DETECTION_RANGE: float = 2000.0
 const THREAT_DECAY_TIME: float = 30.0
 
-var _station: SpaceStation = null
-var _weapon_manager: WeaponManager = null
+var _station = null
+var _weapon_manager = null
 var _current_target: Node3D = null
 var _scan_timer: float = 0.0
 
@@ -18,7 +18,7 @@ var _scan_timer: float = 0.0
 var _threat_table: Dictionary = {}
 
 
-func initialize(station: SpaceStation, wm: WeaponManager) -> void:
+func initialize(station, wm) -> void:
 	_station = station
 	_weapon_manager = wm
 
@@ -118,7 +118,7 @@ func _find_best_target() -> Node3D:
 		if ship_faction == &"player_fleet" or ship_faction == &"friendly":
 			continue
 		# Only target hostile NPCs (faction check via AIBrain)
-		var brain := ship.get_node_or_null("AIBrain") as AIBrain
+		var brain = ship.get_node_or_null("AIBrain")
 		if brain == null:
 			continue
 		# Target ships that are in ATTACK or PURSUE state (actively hostile)

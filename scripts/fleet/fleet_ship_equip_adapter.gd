@@ -14,19 +14,19 @@ signal loadout_changed
 enum Mode { LIVE, DATA }
 
 var mode: Mode = Mode.LIVE
-var fleet_ship: FleetShip = null
-var player_inventory: PlayerInventory = null
+var fleet_ship = null
+var player_inventory = null
 
 # LIVE mode refs
-var _weapon_manager: WeaponManager = null
-var _equipment_manager: EquipmentManager = null
+var _weapon_manager = null
+var _equipment_manager = null
 
 # DATA mode cache
 var _ship_data: ShipData = null
 
 
-static func create_live(wm: WeaponManager, em: EquipmentManager, fs: FleetShip, inv: PlayerInventory) -> FleetShipEquipAdapter:
-	var a := FleetShipEquipAdapter.new()
+static func create_live(wm, em, fs, inv):
+	var a =FleetShipEquipAdapter.new()
 	a.mode = Mode.LIVE
 	a._weapon_manager = wm
 	a._equipment_manager = em
@@ -36,8 +36,8 @@ static func create_live(wm: WeaponManager, em: EquipmentManager, fs: FleetShip, 
 	return a
 
 
-static func create_data(fs: FleetShip, inv: PlayerInventory) -> FleetShipEquipAdapter:
-	var a := FleetShipEquipAdapter.new()
+static func create_data(fs, inv):
+	var a =FleetShipEquipAdapter.new()
 	a.mode = Mode.DATA
 	a.fleet_ship = fs
 	a.player_inventory = inv
@@ -86,7 +86,7 @@ func is_hardpoint_turret(idx: int) -> bool:
 func get_mounted_weapon_name(idx: int) -> StringName:
 	if mode == Mode.LIVE and _weapon_manager:
 		if idx >= 0 and idx < _weapon_manager.hardpoints.size():
-			var hp := _weapon_manager.hardpoints[idx]
+			var hp =_weapon_manager.hardpoints[idx]
 			return hp.mounted_weapon.weapon_name if hp.mounted_weapon else &""
 		return &""
 	if fleet_ship and idx >= 0 and idx < fleet_ship.weapons.size():
@@ -95,7 +95,7 @@ func get_mounted_weapon_name(idx: int) -> StringName:
 
 
 func get_mounted_weapon(idx: int) -> WeaponResource:
-	var wn := get_mounted_weapon_name(idx)
+	var wn =get_mounted_weapon_name(idx)
 	if wn == &"":
 		return null
 	return WeaponRegistry.get_weapon(wn)
@@ -111,14 +111,14 @@ func get_equipped_shield_name() -> StringName:
 
 
 func get_equipped_shield() -> ShieldResource:
-	var sn := get_equipped_shield_name()
+	var sn =get_equipped_shield_name()
 	if sn == &"":
 		return null
 	return ShieldRegistry.get_shield(sn)
 
 
 func get_shield_slot_size() -> String:
-	var sd := get_ship_data()
+	var sd =get_ship_data()
 	return sd.shield_slot_size if sd else "S"
 
 
@@ -132,14 +132,14 @@ func get_equipped_engine_name() -> StringName:
 
 
 func get_equipped_engine() -> EngineResource:
-	var en := get_equipped_engine_name()
+	var en =get_equipped_engine_name()
 	if en == &"":
 		return null
 	return EngineRegistry.get_engine(en)
 
 
 func get_engine_slot_size() -> String:
-	var sd := get_ship_data()
+	var sd =get_ship_data()
 	return sd.engine_slot_size if sd else "S"
 
 
@@ -147,14 +147,14 @@ func get_engine_slot_size() -> String:
 # QUERIES — Modules
 # =============================================================================
 func get_module_slot_count() -> int:
-	var sd := get_ship_data()
+	var sd =get_ship_data()
 	return sd.module_slots.size() if sd else 0
 
 
 func get_module_slot_size(idx: int) -> String:
 	if mode == Mode.LIVE and _equipment_manager:
 		return _equipment_manager.get_module_slot_size(idx)
-	var sd := get_ship_data()
+	var sd =get_ship_data()
 	if sd and idx >= 0 and idx < sd.module_slots.size():
 		return sd.module_slots[idx]
 	return "S"
@@ -172,7 +172,7 @@ func get_equipped_module_name(idx: int) -> StringName:
 
 
 func get_equipped_module(idx: int) -> ModuleResource:
-	var mn := get_equipped_module_name(idx)
+	var mn =get_equipped_module_name(idx)
 	if mn == &"":
 		return null
 	return ModuleRegistry.get_module(mn)
@@ -186,12 +186,12 @@ func equip_weapon(idx: int, weapon_name: StringName) -> void:
 		return
 
 	if mode == Mode.LIVE and _weapon_manager:
-		var hp := _weapon_manager.hardpoints[idx]
-		var new_w := WeaponRegistry.get_weapon(weapon_name)
+		var hp =_weapon_manager.hardpoints[idx]
+		var new_w =WeaponRegistry.get_weapon(weapon_name)
 		if new_w == null or not hp.can_mount(new_w):
 			return
 		player_inventory.remove_weapon(weapon_name)
-		var old_name := _weapon_manager.swap_weapon(idx, weapon_name)
+		var old_name =_weapon_manager.swap_weapon(idx, weapon_name)
 		if old_name != &"":
 			player_inventory.add_weapon(old_name)
 		_sync_fleet_ship_weapons()
@@ -199,12 +199,12 @@ func equip_weapon(idx: int, weapon_name: StringName) -> void:
 		if fleet_ship == null or idx < 0 or idx >= fleet_ship.weapons.size():
 			return
 		# Slot compatibility check
-		var slot_size := get_hardpoint_slot_size(idx)
-		var is_turret := is_hardpoint_turret(idx)
+		var slot_size =get_hardpoint_slot_size(idx)
+		var is_turret =is_hardpoint_turret(idx)
 		if not player_inventory.is_compatible(weapon_name, slot_size, is_turret):
 			return
 		player_inventory.remove_weapon(weapon_name)
-		var old := fleet_ship.weapons[idx]
+		var old = fleet_ship.weapons[idx]
 		if old != &"":
 			player_inventory.add_weapon(old)
 		fleet_ship.weapons[idx] = weapon_name
@@ -217,14 +217,14 @@ func remove_weapon(idx: int) -> void:
 		return
 
 	if mode == Mode.LIVE and _weapon_manager:
-		var old_name := _weapon_manager.remove_weapon(idx)
+		var old_name =_weapon_manager.remove_weapon(idx)
 		if old_name != &"":
 			player_inventory.add_weapon(old_name)
 		_sync_fleet_ship_weapons()
 	else:
 		if fleet_ship == null or idx < 0 or idx >= fleet_ship.weapons.size():
 			return
-		var old := fleet_ship.weapons[idx]
+		var old = fleet_ship.weapons[idx]
 		if old != &"":
 			player_inventory.add_weapon(old)
 			fleet_ship.weapons[idx] = &""
@@ -240,19 +240,19 @@ func equip_shield(shield_name: StringName) -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var sd := _equipment_manager.ship_data
+		var sd =_equipment_manager.ship_data
 		if sd and not player_inventory.is_shield_compatible(shield_name, sd.shield_slot_size):
 			return
 		player_inventory.remove_shield(shield_name)
-		var new_sh := ShieldRegistry.get_shield(shield_name)
-		var old := _equipment_manager.equip_shield(new_sh)
+		var new_sh =ShieldRegistry.get_shield(shield_name)
+		var old =_equipment_manager.equip_shield(new_sh)
 		if old:
 			player_inventory.add_shield(old.shield_name)
 		_sync_fleet_ship_shield()
 	else:
 		if fleet_ship == null:
 			return
-		var slot_sz := get_shield_slot_size()
+		var slot_sz =get_shield_slot_size()
 		if not player_inventory.is_shield_compatible(shield_name, slot_sz):
 			return
 		player_inventory.remove_shield(shield_name)
@@ -268,7 +268,7 @@ func remove_shield() -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var old := _equipment_manager.remove_shield()
+		var old =_equipment_manager.remove_shield()
 		if old:
 			player_inventory.add_shield(old.shield_name)
 		_sync_fleet_ship_shield()
@@ -288,19 +288,19 @@ func equip_engine(engine_name: StringName) -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var sd := _equipment_manager.ship_data
+		var sd =_equipment_manager.ship_data
 		if sd and not player_inventory.is_engine_compatible(engine_name, sd.engine_slot_size):
 			return
 		player_inventory.remove_engine(engine_name)
-		var new_en := EngineRegistry.get_engine(engine_name)
-		var old := _equipment_manager.equip_engine(new_en)
+		var new_en =EngineRegistry.get_engine(engine_name)
+		var old =_equipment_manager.equip_engine(new_en)
 		if old:
 			player_inventory.add_engine(old.engine_name)
 		_sync_fleet_ship_engine()
 	else:
 		if fleet_ship == null:
 			return
-		var slot_sz := get_engine_slot_size()
+		var slot_sz =get_engine_slot_size()
 		if not player_inventory.is_engine_compatible(engine_name, slot_sz):
 			return
 		player_inventory.remove_engine(engine_name)
@@ -316,7 +316,7 @@ func remove_engine() -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var old := _equipment_manager.remove_engine()
+		var old =_equipment_manager.remove_engine()
 		if old:
 			player_inventory.add_engine(old.engine_name)
 		_sync_fleet_ship_engine()
@@ -336,23 +336,23 @@ func equip_module(idx: int, module_name: StringName) -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var slot_sz := _equipment_manager.get_module_slot_size(idx)
+		var slot_sz =_equipment_manager.get_module_slot_size(idx)
 		if not player_inventory.is_module_compatible(module_name, slot_sz):
 			return
 		player_inventory.remove_module(module_name)
-		var new_mod := ModuleRegistry.get_module(module_name)
-		var old := _equipment_manager.equip_module(idx, new_mod)
+		var new_mod =ModuleRegistry.get_module(module_name)
+		var old =_equipment_manager.equip_module(idx, new_mod)
 		if old:
 			player_inventory.add_module(old.module_name)
 		_sync_fleet_ship_modules()
 	else:
 		if fleet_ship == null or idx < 0 or idx >= fleet_ship.modules.size():
 			return
-		var slot_sz := get_module_slot_size(idx)
+		var slot_sz =get_module_slot_size(idx)
 		if not player_inventory.is_module_compatible(module_name, slot_sz):
 			return
 		player_inventory.remove_module(module_name)
-		var old := fleet_ship.modules[idx]
+		var old = fleet_ship.modules[idx]
 		if old != &"":
 			player_inventory.add_module(old)
 		fleet_ship.modules[idx] = module_name
@@ -365,14 +365,14 @@ func remove_module(idx: int) -> void:
 		return
 
 	if mode == Mode.LIVE and _equipment_manager:
-		var old := _equipment_manager.remove_module(idx)
+		var old =_equipment_manager.remove_module(idx)
 		if old:
 			player_inventory.add_module(old.module_name)
 		_sync_fleet_ship_modules()
 	else:
 		if fleet_ship == null or idx < 0 or idx >= fleet_ship.modules.size():
 			return
-		var old := fleet_ship.modules[idx]
+		var old = fleet_ship.modules[idx]
 		if old != &"":
 			player_inventory.add_module(old)
 			fleet_ship.modules[idx] = &""
@@ -388,7 +388,7 @@ func _sync_fleet_ship_weapons() -> void:
 		return
 	for i in _weapon_manager.hardpoints.size():
 		if i < fleet_ship.weapons.size():
-			var hp := _weapon_manager.hardpoints[i]
+			var hp =_weapon_manager.hardpoints[i]
 			fleet_ship.weapons[i] = hp.mounted_weapon.weapon_name if hp.mounted_weapon else &""
 
 

@@ -42,7 +42,7 @@ func setup_hardpoints_from_configs(configs: Array[Dictionary], ship_node: Node3D
 
 func _create_hardpoints_from_configs(configs: Array[Dictionary], parent: Node3D) -> void:
 	for cfg in configs:
-		var hp := Hardpoint.new()
+		var hp =Hardpoint.new()
 		hp.setup_from_config(cfg)
 		parent.add_child(hp)
 		hardpoints.append(hp)
@@ -59,7 +59,7 @@ func equip_weapons(weapon_names: Array[StringName]) -> void:
 		if weapon_names[i] == &"":
 			hardpoints[i].unmount_weapon()
 		else:
-			var weapon := WeaponRegistry.get_weapon(weapon_names[i])
+			var weapon =WeaponRegistry.get_weapon(weapon_names[i])
 			if weapon:
 				hardpoints[i].mount_weapon(weapon)
 	_recalculate_groups()
@@ -78,7 +78,7 @@ func get_hardpoint_count() -> int:
 func get_hardpoint_status(index: int) -> Dictionary:
 	if index < 0 or index >= hardpoints.size():
 		return {}
-	var hp := hardpoints[index]
+	var hp =hardpoints[index]
 	var wname: StringName = &""
 	var wtype: int = -1
 	if hp.mounted_weapon:
@@ -90,7 +90,7 @@ func get_hardpoint_status(index: int) -> Dictionary:
 		if index in weapon_groups[g]:
 			fire_grp = g
 			break
-	var result := {}
+	var result ={}
 	result["weapon_name"] = wname
 	result["weapon_type"] = wtype
 	result["slot_size"] = hp.slot_size
@@ -105,7 +105,7 @@ func is_any_weapon_ready(group_index: int) -> bool:
 		return false
 	for hp_idx in weapon_groups[group_index]:
 		if hp_idx < hardpoints.size():
-			var hp := hardpoints[hp_idx]
+			var hp =hardpoints[hp_idx]
 			if hp.enabled and hp.mounted_weapon and hp.get_cooldown_ratio() == 0.0:
 				return true
 	return false
@@ -122,7 +122,7 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 
 	if sequential:
 		# Fire one hardpoint at a time, cycling through (skip disabled, mining lasers, turrets)
-		var attempts := 0
+		var attempts =0
 		while attempts < group.size():
 			var idx: int = _fire_index.get(group_index, 0) % group.size()
 			_fire_index[group_index] = idx + 1
@@ -134,7 +134,7 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
 						attempts += 1
 						continue
-				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
+				var bolt = hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
 					if _weapon_audio:
@@ -149,7 +149,7 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 					var wtype: int = hardpoints[hp_idx].mounted_weapon.weapon_type
 					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
 						continue
-				var bolt := hardpoints[hp_idx].try_fire(target_pos, ship_vel)
+				var bolt = hardpoints[hp_idx].try_fire(target_pos, ship_vel)
 				if bolt:
 					weapon_fired.emit(hp_idx, hardpoints[hp_idx].mounted_weapon.weapon_name if hardpoints[hp_idx].mounted_weapon else &"")
 					if _weapon_audio:
@@ -175,7 +175,7 @@ func update_turrets(target_node: Variant = null) -> void:
 
 	var target_pos: Vector3 = TargetingSystem.get_ship_center(target_node)
 
-	var target_vel := Vector3.ZERO
+	var target_vel =Vector3.ZERO
 	if target_node is RigidBody3D:
 		target_vel = (target_node as RigidBody3D).linear_velocity
 	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
@@ -188,14 +188,14 @@ func update_turrets(target_node: Variant = null) -> void:
 			continue
 
 		# Quadratic lead prediction per turret (same as TargetingSystem)
-		var lead_pos := _solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed)
+		var lead_pos =_solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed)
 
 		# Update aim direction
-		var aim_dir := (lead_pos - hp.global_position).normalized()
+		var aim_dir =(lead_pos - hp.global_position).normalized()
 		hp.set_target_direction(aim_dir)
 
 		# Auto-fire when aligned
-		var bolt := hp.try_fire(lead_pos, ship_vel)
+		var bolt = hp.try_fire(lead_pos, ship_vel)
 		if bolt:
 			weapon_fired.emit(hp.slot_id, hp.mounted_weapon.weapon_name)
 			if _weapon_audio:
@@ -236,9 +236,9 @@ static func _solve_turret_lead(turret_pos: Vector3, ship_vel: Vector3, target_po
 func swap_weapon(hardpoint_index: int, weapon_name: StringName) -> StringName:
 	if hardpoint_index < 0 or hardpoint_index >= hardpoints.size():
 		return &""
-	var hp := hardpoints[hardpoint_index]
+	var hp =hardpoints[hardpoint_index]
 	var old_name: StringName = hp.mounted_weapon.weapon_name if hp.mounted_weapon else &""
-	var new_weapon := WeaponRegistry.get_weapon(weapon_name)
+	var new_weapon =WeaponRegistry.get_weapon(weapon_name)
 	if new_weapon == null:
 		return old_name
 	hp.unmount_weapon()
@@ -251,7 +251,7 @@ func swap_weapon(hardpoint_index: int, weapon_name: StringName) -> StringName:
 func remove_weapon(hardpoint_index: int) -> StringName:
 	if hardpoint_index < 0 or hardpoint_index >= hardpoints.size():
 		return &""
-	var hp := hardpoints[hardpoint_index]
+	var hp =hardpoints[hardpoint_index]
 	var old_name: StringName = hp.mounted_weapon.weapon_name if hp.mounted_weapon else &""
 	hp.unmount_weapon()
 	_recalculate_groups()

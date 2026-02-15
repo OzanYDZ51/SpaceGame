@@ -8,11 +8,11 @@ extends Node
 
 signal squadron_changed
 
-var _fleet: PlayerFleet = null
-var _fleet_deployment_mgr: FleetDeploymentManager = null
+var _fleet = null
+var _fleet_deployment_mgr = null
 
 
-func initialize(fleet: PlayerFleet, fdm: FleetDeploymentManager) -> void:
+func initialize(fleet, fdm) -> void:
 	_fleet = fleet
 	_fleet_deployment_mgr = fdm
 
@@ -27,7 +27,7 @@ func create_squadron(leader_fleet_index: int, sq_name: String = "") -> Squadron:
 	if _fleet.get_ship_squadron(leader_fleet_index) != null:
 		return null
 
-	var sq := Squadron.new()
+	var sq =Squadron.new()
 	sq.squadron_id = _fleet.next_squadron_id()
 	sq.squadron_name = sq_name if sq_name != "" else "Escadron %d" % sq.squadron_id
 	sq.leader_fleet_index = leader_fleet_index
@@ -45,7 +45,7 @@ func create_squadron(leader_fleet_index: int, sq_name: String = "") -> Squadron:
 func disband_squadron(squadron_id: int) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return
 
@@ -64,7 +64,7 @@ func add_to_squadron(squadron_id: int, fleet_index: int) -> bool:
 		return false
 	if _fleet.get_ship_squadron(fleet_index) != null:
 		return false
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return false
 
@@ -76,7 +76,7 @@ func add_to_squadron(squadron_id: int, fleet_index: int) -> bool:
 
 	# If already deployed, attach AI controller
 	if _fleet_deployment_mgr:
-		var npc := _fleet_deployment_mgr.get_deployed_npc(fleet_index)
+		var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 		if npc:
 			setup_squadron_controller(fleet_index, npc)
 
@@ -87,7 +87,7 @@ func add_to_squadron(squadron_id: int, fleet_index: int) -> bool:
 func remove_from_squadron(fleet_index: int) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_ship_squadron(fleet_index)
+	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null:
 		return
 
@@ -107,7 +107,7 @@ func remove_from_squadron(fleet_index: int) -> void:
 func set_formation(squadron_id: int, formation_type: StringName) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return
 	sq.formation_type = formation_type
@@ -125,7 +125,7 @@ func get_squadron_for_ship(fleet_index: int) -> Squadron:
 func rename_squadron(squadron_id: int, new_name: String) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return
 	sq.squadron_name = new_name
@@ -135,7 +135,7 @@ func rename_squadron(squadron_id: int, new_name: String) -> void:
 func promote_leader(squadron_id: int, new_leader_fleet_index: int) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return
 	if sq.is_leader(new_leader_fleet_index) or not sq.is_member(new_leader_fleet_index):
@@ -157,7 +157,7 @@ func promote_leader(squadron_id: int, new_leader_fleet_index: int) -> void:
 	# Refresh AI controllers
 	_detach_squadron_controller(new_leader_fleet_index)
 	if old_leader_idx >= 0 and _fleet_deployment_mgr:
-		var npc := _fleet_deployment_mgr.get_deployed_npc(old_leader_idx)
+		var npc = _fleet_deployment_mgr.get_deployed_npc(old_leader_idx)
 		if npc:
 			setup_squadron_controller(old_leader_idx, npc)
 	for idx in sq.member_fleet_indices:
@@ -170,18 +170,18 @@ func promote_leader(squadron_id: int, new_leader_fleet_index: int) -> void:
 func reset_to_follow(fleet_index: int) -> void:
 	if _fleet == null or _fleet_deployment_mgr == null:
 		return
-	var sq := _fleet.get_ship_squadron(fleet_index)
+	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null or sq.is_leader(fleet_index):
 		return
 	# Clear the bridge command so SquadronAIController resumes formation
-	var npc := _fleet_deployment_mgr.get_deployed_npc(fleet_index)
+	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc:
-		var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+		var bridge = npc.get_node_or_null("FleetAIBridge")
 		if bridge:
 			bridge._arrived = true
 			bridge.command = &""
 		# Re-attach controller if missing
-		var ctrl := npc.get_node_or_null("SquadronAIController")
+		var ctrl = npc.get_node_or_null("SquadronAIController")
 		if ctrl == null:
 			setup_squadron_controller(fleet_index, npc)
 	# Clear deployed command on FleetShip
@@ -197,12 +197,12 @@ func reset_to_follow(fleet_index: int) -> void:
 func propagate_leader_order(squadron_id: int, order_id: StringName, params: Dictionary) -> void:
 	if _fleet == null or _fleet_deployment_mgr == null:
 		return
-	var sq := _fleet.get_squadron(squadron_id)
+	var sq = _fleet.get_squadron(squadron_id)
 	if sq == null:
 		return
 
 	for member_idx in sq.member_fleet_indices:
-		var fs := _fleet.ships[member_idx] if member_idx < _fleet.ships.size() else null
+		var fs = _fleet.ships[member_idx] if member_idx < _fleet.ships.size() else null
 		if fs == null:
 			continue
 
@@ -219,7 +219,7 @@ func propagate_leader_order(squadron_id: int, order_id: StringName, params: Dict
 func on_ship_deployed(fleet_index: int, npc: Node) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_ship_squadron(fleet_index)
+	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null:
 		return
 	if sq.is_leader(fleet_index):
@@ -240,7 +240,7 @@ func on_ship_retrieved(fleet_index: int) -> void:
 func on_member_destroyed(fleet_index: int) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_ship_squadron(fleet_index)
+	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null:
 		return
 
@@ -263,7 +263,7 @@ func on_member_destroyed(fleet_index: int) -> void:
 func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 	if _fleet == null:
 		return
-	var sq := _fleet.get_ship_squadron(fleet_index)
+	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null or sq.is_leader(fleet_index):
 		return
 
@@ -271,11 +271,11 @@ func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 	if leader_node == null:
 		return
 
-	var existing := npc.get_node_or_null("SquadronAIController")
+	var existing = npc.get_node_or_null("SquadronAIController")
 	if existing:
 		existing.queue_free()
 
-	var ctrl := SquadronAIController.new()
+	var ctrl =SquadronAIController.new()
 	ctrl.name = "SquadronAIController"
 	ctrl.fleet_index = fleet_index
 	ctrl.squadron = sq
@@ -283,7 +283,7 @@ func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 	npc.add_child(ctrl)
 
 	# Clear FleetAIBridge command so SquadronAIController takes priority immediately
-	var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+	var bridge = npc.get_node_or_null("FleetAIBridge")
 	if bridge:
 		bridge._arrived = true
 		bridge.command = &""
@@ -295,35 +295,35 @@ func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 func _detach_squadron_controller(fleet_index: int) -> void:
 	if _fleet_deployment_mgr == null:
 		return
-	var npc := _fleet_deployment_mgr.get_deployed_npc(fleet_index)
+	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc == null:
 		return
-	var ctrl := npc.get_node_or_null("SquadronAIController")
+	var ctrl = npc.get_node_or_null("SquadronAIController")
 	if ctrl:
 		ctrl.queue_free()
-	var brain := npc.get_node_or_null("AIBrain") as AIBrain
+	var brain = npc.get_node_or_null("AIBrain")
 	if brain and brain.current_state == AIBrain.State.FORMATION:
 		brain.formation_leader = null
 		brain.current_state = AIBrain.State.PATROL
 
 
-func _refresh_controller(fleet_index: int, sq: Squadron) -> void:
+func _refresh_controller(fleet_index: int, sq) -> void:
 	if _fleet_deployment_mgr == null:
 		return
-	var npc := _fleet_deployment_mgr.get_deployed_npc(fleet_index)
+	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc == null:
 		return
-	var ctrl := npc.get_node_or_null("SquadronAIController") as SquadronAIController
+	var ctrl = npc.get_node_or_null("SquadronAIController")
 	if ctrl:
 		ctrl.squadron = sq
 		ctrl.leader_node = _resolve_leader_node(sq)
 
 
-func _resolve_leader_node(sq: Squadron) -> Node3D:
+func _resolve_leader_node(sq):
 	if sq.leader_fleet_index < 0:
-		return GameManager.player_ship as Node3D
+		return GameManager.player_ship
 	if _fleet and sq.leader_fleet_index == _fleet.active_index:
-		return GameManager.player_ship as Node3D
+		return GameManager.player_ship
 	if _fleet_deployment_mgr:
 		return _fleet_deployment_mgr.get_deployed_npc(sq.leader_fleet_index)
 	return null

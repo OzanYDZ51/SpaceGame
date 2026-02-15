@@ -7,19 +7,19 @@ extends Node
 # Heat/overheat system with hysteresis for satisfying gameplay loop
 # =============================================================================
 
-signal mining_started(asteroid: AsteroidData)
+signal mining_started(asteroid)
 signal mining_progress(resource_name: String, quantity: int)
 signal mining_stopped
 signal heat_changed(heat_ratio: float, is_overheated: bool)
 
-var _asteroid_mgr: AsteroidFieldManager = null
+var _asteroid_mgr = null
 var _ship: RigidBody3D = null
-var _weapon_mgr: WeaponManager = null
-var _beam: MiningLaserBeam = null
+var _weapon_mgr = null
+var _beam = null
 
 # Mining state
 var is_mining: bool = false
-var mining_target: AsteroidData = null
+var mining_target = null
 var _mining_tick_timer: float = 0.0
 const MINING_TICK_INTERVAL: float = 0.5
 
@@ -46,15 +46,15 @@ func _ready() -> void:
 	GameManager.player_ship_rebuilt.connect(_on_player_ship_rebuilt)
 
 
-func _on_player_ship_rebuilt(ship: ShipController) -> void:
-	set_weapon_manager(ship.get_node_or_null("WeaponManager") as WeaponManager)
+func _on_player_ship_rebuilt(ship) -> void:
+	set_weapon_manager(ship.get_node_or_null("WeaponManager"))
 
 
-func set_asteroid_manager(mgr: AsteroidFieldManager) -> void:
+func set_asteroid_manager(mgr) -> void:
 	_asteroid_mgr = mgr
 
 
-func set_weapon_manager(mgr: WeaponManager) -> void:
+func set_weapon_manager(mgr) -> void:
 	_weapon_mgr = mgr
 
 
@@ -66,7 +66,7 @@ func try_fire(aim_point: Vector3) -> void:
 		return
 
 	# Get mining hardpoint positions — check BEFORE setting _is_firing
-	var mining_hps := _weapon_mgr.get_mining_hardpoints_in_group(0)
+	var mining_hps = _weapon_mgr.get_mining_hardpoints_in_group(0)
 	if mining_hps.is_empty():
 		return
 
@@ -82,13 +82,13 @@ func try_fire(aim_point: Vector3) -> void:
 		mining_energy_per_second = source_hp.mounted_weapon.energy_cost_per_shot * 2.0
 
 	# Raycast from camera to find asteroid at crosshair
-	var asteroid_hit := _raycast_for_asteroid()
+	var asteroid_hit = _raycast_for_asteroid()
 
 	if asteroid_hit == null:
 		# Firing but not hitting an asteroid — beam shoots forward (visual only)
 		if is_mining:
 			_stop_extraction()
-		var beam_end := source_pos + (aim_point - source_pos).normalized() * Constants.MINING_RANGE
+		var beam_end =source_pos + (aim_point - source_pos).normalized() * Constants.MINING_RANGE
 		if not _beam._active:
 			_beam.activate(source_pos, beam_end)
 		_beam.update_beam(source_pos, beam_end)
@@ -104,7 +104,7 @@ func try_fire(aim_point: Vector3) -> void:
 	if dist > Constants.MINING_RANGE:
 		if is_mining:
 			_stop_extraction()
-		var beam_end := source_pos + (aim_point - source_pos).normalized() * Constants.MINING_RANGE
+		var beam_end =source_pos + (aim_point - source_pos).normalized() * Constants.MINING_RANGE
 		if not _beam._active:
 			_beam.activate(source_pos, beam_end)
 		_beam.update_beam(source_pos, beam_end)
@@ -150,7 +150,7 @@ func _process(delta: float) -> void:
 			return
 
 		# Check energy
-		var energy_sys := _ship.get_node_or_null("EnergySystem") as EnergySystem
+		var energy_sys = _ship.get_node_or_null("EnergySystem")
 		if energy_sys and energy_sys.energy_current < mining_energy_per_second * delta:
 			_stop_extraction()
 			_beam.deactivate()
@@ -168,7 +168,7 @@ func _process(delta: float) -> void:
 
 
 func _update_heat(delta: float) -> void:
-	var old_heat := heat
+	var old_heat =heat
 
 	# No mining laser equipped — fast-reset all heat state
 	if not has_mining_laser():
@@ -194,37 +194,37 @@ func _update_heat(delta: float) -> void:
 
 
 func _raycast_for_asteroid() -> AsteroidData:
-	var cam := _ship.get_viewport().get_camera_3d()
+	var cam = _ship.get_viewport().get_camera_3d()
 	if cam == null:
 		return null
 
-	var screen_center := _ship.get_viewport().get_visible_rect().size / 2.0
-	var ray_origin := cam.project_ray_origin(screen_center)
-	var ray_dir := cam.project_ray_normal(screen_center)
+	var screen_center = _ship.get_viewport().get_visible_rect().size / 2.0
+	var ray_origin =cam.project_ray_origin(screen_center)
+	var ray_dir =cam.project_ray_normal(screen_center)
 
-	var world := _ship.get_world_3d()
+	var world = _ship.get_world_3d()
 	if world == null:
 		return null
 
-	var space_state := world.direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(
+	var space_state =world.direct_space_state
+	var query =PhysicsRayQueryParameters3D.create(
 		ray_origin, ray_origin + ray_dir * Constants.MINING_RANGE * 2.0
 	)
 	query.collision_mask = Constants.LAYER_ASTEROIDS
 	query.exclude = [_ship.get_rid()]
 
-	var result := space_state.intersect_ray(query)
+	var result =space_state.intersect_ray(query)
 	if result.is_empty():
 		return null
 
-	var collider := result["collider"] as Node3D
-	if collider is AsteroidNode:
-		return (collider as AsteroidNode).data
+	var collider = result["collider"]
+	if collider.has_signal("depleted"):
+		return collider.data
 
 	return null
 
 
-func _start_extraction(asteroid: AsteroidData) -> void:
+func _start_extraction(asteroid) -> void:
 	if is_mining and mining_target == asteroid:
 		return
 	if is_mining:
@@ -240,7 +240,7 @@ func _start_extraction(asteroid: AsteroidData) -> void:
 
 	# Show scan label if it has a resource
 	if asteroid.has_resource and asteroid.node_ref and is_instance_valid(asteroid.node_ref):
-		(asteroid.node_ref as AsteroidNode).show_scan_info()
+		asteroid.node_ref.show_scan_info()
 
 	mining_started.emit(mining_target)
 
@@ -251,7 +251,7 @@ func _stop_extraction() -> void:
 
 	# Hide scan label
 	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
-		(mining_target.node_ref as AsteroidNode).hide_scan_info()
+		mining_target.node_ref.hide_scan_info()
 
 	is_mining = false
 	mining_target = null
@@ -266,14 +266,13 @@ func _do_mining_tick() -> void:
 	# Barren asteroids: take damage but yield nothing
 	var is_barren: bool = not mining_target.has_resource
 
-	var res := MiningRegistry.get_resource(mining_target.primary_resource) if not is_barren else null
+	var res =MiningRegistry.get_resource(mining_target.primary_resource) if not is_barren else null
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = mining_dps * MINING_TICK_INTERVAL / difficulty
 
 	var yield_data: Dictionary
 	if mining_target.node_ref and is_instance_valid(mining_target.node_ref):
-		var node := mining_target.node_ref as AsteroidNode
-		yield_data = node.take_mining_damage(damage)
+		yield_data = mining_target.node_ref.take_mining_damage(damage)
 	else:
 		mining_target.health_current -= damage
 		if mining_target.health_current <= 0.0:
@@ -289,13 +288,13 @@ func _do_mining_tick() -> void:
 	if not is_barren and not yield_data.is_empty() and yield_data.get("quantity", 0) > 0:
 		var resource_id: StringName = yield_data["resource_id"]
 		var qty: int = yield_data["quantity"]
-		var mining_res := MiningRegistry.get_resource(resource_id)
+		var mining_res =MiningRegistry.get_resource(resource_id)
 		if mining_res and GameManager.player_data:
 			GameManager.player_data.add_active_ship_resource(resource_id, qty)
 			mining_progress.emit(mining_res.display_name, qty)
 
 	if not is_barren and mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
-		(mining_target.node_ref as AsteroidNode)._update_label_text()
+		mining_target.node_ref._update_label_text()
 
 	if mining_target and mining_target.is_depleted:
 		# Broadcast depletion to other players
@@ -308,9 +307,9 @@ func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 	if not NetworkManager.is_connected_to_server():
 		push_warning("MiningSystem: skipping asteroid depletion broadcast — not connected to server")
 		return
-	var id_str := String(asteroid_id)
+	var id_str =String(asteroid_id)
 	if NetworkManager.is_host:
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth:
 			var sys_trans = GameManager._system_transition
 			var sys_id: int = sys_trans.current_system_id if sys_trans else -1

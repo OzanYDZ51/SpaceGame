@@ -6,7 +6,7 @@ extends Control
 # Custom-drawn for holographic aesthetic, dynamic height
 # =============================================================================
 
-var camera: MapCamera = null
+var camera = null
 var _selected_id: String = ""
 var _player_id: String = ""
 var _pulse_t: float = 0.0
@@ -69,7 +69,7 @@ func _draw() -> void:
 	# Panel background
 	var panel_x: float = size.x - PANEL_WIDTH - PANEL_MARGIN
 	var panel_y: float = 60.0
-	var panel_rect := Rect2(panel_x, panel_y, PANEL_WIDTH, panel_h)
+	var panel_rect =Rect2(panel_x, panel_y, PANEL_WIDTH, panel_h)
 	draw_rect(panel_rect, MapColors.BG_PANEL)
 
 	# Border

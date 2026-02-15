@@ -133,15 +133,15 @@ func _ready() -> void:
 
 
 func _cache_refs() -> void:
-	_cached_energy_sys = get_node_or_null("EnergySystem") as EnergySystem
-	_cached_weapon_mgr = get_node_or_null("WeaponManager") as WeaponManager
-	_cached_model = get_node_or_null("ShipModel") as ShipModel
-	_cached_targeting = get_node_or_null("TargetingSystem") as TargetingSystem
-	_cached_mining_sys = get_node_or_null("MiningSystem") as MiningSystem
+	_cached_energy_sys = get_node_or_null("EnergySystem")
+	_cached_weapon_mgr = get_node_or_null("WeaponManager")
+	_cached_model = get_node_or_null("ShipModel")
+	_cached_targeting = get_node_or_null("TargetingSystem")
+	_cached_mining_sys = get_node_or_null("MiningSystem")
 	_refs_cached = true
 
 	# Connect health system damage signal for combat lock
-	var health := get_node_or_null("HealthSystem") as HealthSystem
+	var health = get_node_or_null("HealthSystem")
 	if health and not health.damage_taken.is_connected(_on_combat_damage):
 		health.damage_taken.connect(_on_combat_damage)
 
@@ -204,7 +204,7 @@ func _read_input() -> void:
 			_run_autopilot()
 			return
 		# Only manual flight input cancels autopilot (not combat lock — cruise is blocked separately)
-		var has_manual_input := false
+		var has_manual_input =false
 		if not _ui_blocking:
 			# In cruise, mouse is free look (camera orbit) — not manual flight input
 			if speed_mode != Constants.SpeedMode.CRUISE:
@@ -237,7 +237,7 @@ func _read_input() -> void:
 		return
 
 	# === THRUST ===
-	var thrust := Vector3.ZERO
+	var thrust =Vector3.ZERO
 	if Input.is_action_pressed("move_forward"):
 		thrust.z -= 1.0
 	if Input.is_action_pressed("move_backward"):
@@ -263,14 +263,14 @@ func _read_input() -> void:
 		_target_yaw_rate = 0.0
 	else:
 		cruise_look_delta = Vector2.ZERO
-		var pitch_speed := (ship_data.rotation_pitch_speed if ship_data else Constants.ROTATION_PITCH_SPEED) * engine_rotation_mult
-		var yaw_speed := (ship_data.rotation_yaw_speed if ship_data else Constants.ROTATION_YAW_SPEED) * engine_rotation_mult
+		var pitch_speed =(ship_data.rotation_pitch_speed if ship_data else Constants.ROTATION_PITCH_SPEED) * engine_rotation_mult
+		var yaw_speed =(ship_data.rotation_yaw_speed if ship_data else Constants.ROTATION_YAW_SPEED) * engine_rotation_mult
 		_target_pitch_rate = -_mouse_delta.y * Constants.MOUSE_SENSITIVITY * pitch_speed
 		_target_yaw_rate = -_mouse_delta.x * Constants.MOUSE_SENSITIVITY * yaw_speed
 		_mouse_delta = Vector2.ZERO
 
 	# Roll from keyboard
-	var roll_speed := (ship_data.rotation_roll_speed if ship_data else Constants.ROTATION_ROLL_SPEED) * engine_rotation_mult
+	var roll_speed =(ship_data.rotation_roll_speed if ship_data else Constants.ROTATION_ROLL_SPEED) * engine_rotation_mult
 	_target_roll_rate = 0.0
 	if Input.is_action_pressed("roll_left"):
 		_target_roll_rate = roll_speed
@@ -312,7 +312,7 @@ func _handle_player_weapon_input() -> void:
 		_cache_refs()
 
 	# Targeting works regardless of mouse mode
-	var targeting := _cached_targeting as TargetingSystem
+	var targeting = _cached_targeting
 	if targeting:
 		if Input.is_action_just_pressed("target_cycle"):
 			targeting.cycle_target_forward()
@@ -335,7 +335,7 @@ func _handle_player_weapon_input() -> void:
 	if _aim_timer <= 0.0:
 		_aim_point = _get_crosshair_aim_point()
 		_aim_timer = AIM_RAYCAST_INTERVAL
-	var target_pos := _aim_point
+	var target_pos =_aim_point
 
 	# Weapon toggles
 	for i in mini(4, _cached_weapon_mgr.get_hardpoint_count()):
@@ -371,29 +371,29 @@ const WEAPON_CONVERGENCE_DISTANCE: float = 500.0  ## Meters ahead of ship where 
 
 func _get_crosshair_aim_point() -> Vector3:
 	# Raycast from camera through screen center to find where crosshair actually points
-	var cam := get_viewport().get_camera_3d()
+	var cam =get_viewport().get_camera_3d()
 	if cam == null:
 		return global_position + global_transform.basis * Vector3.FORWARD * WEAPON_CONVERGENCE_DISTANCE
 
-	var screen_center := get_viewport().get_visible_rect().size / 2.0
-	var ray_origin := cam.project_ray_origin(screen_center)
-	var ray_dir := cam.project_ray_normal(screen_center)
+	var screen_center =get_viewport().get_visible_rect().size / 2.0
+	var ray_origin =cam.project_ray_origin(screen_center)
+	var ray_dir =cam.project_ray_normal(screen_center)
 
 	# Physics raycast to check if we hit something
-	var world := get_world_3d()
+	var world =get_world_3d()
 	if world == null:
 		return ray_origin + ray_dir * WEAPON_CONVERGENCE_DISTANCE
-	var space_state := world.direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 5000.0)
+	var space_state =world.direct_space_state
+	var query =PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 5000.0)
 	query.collision_mask = Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_SHIPS | Constants.LAYER_TERRAIN
 	query.exclude = [get_rid()]  # Don't hit ourselves
 
-	var result := space_state.intersect_ray(query)
+	var result =space_state.intersect_ray(query)
 	if result.size() > 0:
 		return result["position"]
 
 	# Nothing hit: converge at fixed distance ahead of ship along camera aim ray
-	var cam_to_ship := maxf((global_position - ray_origin).dot(ray_dir), 0.0)
+	var cam_to_ship =maxf((global_position - ray_origin).dot(ray_dir), 0.0)
 	return ray_origin + ray_dir * (cam_to_ship + WEAPON_CONVERGENCE_DISTANCE)
 
 
@@ -402,7 +402,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var ship_basis: Basis = state.transform.basis
 
 	# Engine multiplier from energy system
-	var engine_mult := 1.0
+	var engine_mult =1.0
 	if _cached_energy_sys:
 		engine_mult = _cached_energy_sys.get_engine_multiplier()
 
@@ -410,15 +410,15 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# FIX 6 — BOOST ENERGY DRAIN
 	# =========================================================================
 	if speed_mode == Constants.SpeedMode.BOOST and _cached_energy_sys:
-		var drain := (ship_data.boost_energy_drain if ship_data else 15.0) * engine_boost_drain_mult * dt
+		var drain =(ship_data.boost_energy_drain if ship_data else 15.0) * engine_boost_drain_mult * dt
 		if not _cached_energy_sys.drain_engine_energy(drain):
 			speed_mode = Constants.SpeedMode.NORMAL
 
 	# Get stats from ship_data or constants
-	var accel_fwd := (ship_data.accel_forward if ship_data else Constants.ACCEL_FORWARD) * engine_mult * engine_accel_mult
-	var accel_bwd := (ship_data.accel_backward if ship_data else Constants.ACCEL_BACKWARD) * engine_mult * engine_accel_mult
-	var accel_str := (ship_data.accel_strafe if ship_data else Constants.ACCEL_STRAFE) * engine_mult * engine_accel_mult
-	var accel_vert := (ship_data.accel_vertical if ship_data else Constants.ACCEL_VERTICAL) * engine_mult * engine_accel_mult
+	var accel_fwd =(ship_data.accel_forward if ship_data else Constants.ACCEL_FORWARD) * engine_mult * engine_accel_mult
+	var accel_bwd =(ship_data.accel_backward if ship_data else Constants.ACCEL_BACKWARD) * engine_mult * engine_accel_mult
+	var accel_str =(ship_data.accel_strafe if ship_data else Constants.ACCEL_STRAFE) * engine_mult * engine_accel_mult
+	var accel_vert =(ship_data.accel_vertical if ship_data else Constants.ACCEL_VERTICAL) * engine_mult * engine_accel_mult
 
 	# Cruise mode: two-phase acceleration system
 	# Phase 1 (0-10s): Gentle spool-up — FTL drive charging, speed builds slowly
@@ -428,7 +428,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var cruise_mult: float
 		if cruise_time <= CRUISE_SPOOL_DURATION:
 			# Phase 1: quadratic ease-in (slow start, builds momentum)
-			var t := cruise_time / CRUISE_SPOOL_DURATION
+			var t =cruise_time / CRUISE_SPOOL_DURATION
 			cruise_mult = lerpf(1.0, 15.0, t * t)
 		else:
 			# Phase 2: explosive punch
@@ -437,7 +437,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 				if is_player_controlled:
 					cruise_punch_triggered.emit()
 					_enter_cruise_warp()
-			var t2 := clampf((cruise_time - CRUISE_SPOOL_DURATION) / CRUISE_PUNCH_DURATION, 0.0, 1.0)
+			var t2 =clampf((cruise_time - CRUISE_SPOOL_DURATION) / CRUISE_PUNCH_DURATION, 0.0, 1.0)
 			cruise_mult = lerpf(50.0, 3000.0, t2)
 		accel_fwd *= cruise_mult
 	else:
@@ -450,7 +450,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# THRUST (Fix 1: throttle_input already normalized in _read_input/set_throttle)
 	# =========================================================================
 	if throttle_input.length_squared() > 0.01:
-		var local_accel := Vector3.ZERO
+		var local_accel =Vector3.ZERO
 		local_accel.x = throttle_input.x * accel_str
 		local_accel.y = throttle_input.y * accel_vert
 		if throttle_input.z < 0.0:
@@ -465,14 +465,14 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var response: float = Constants.ROTATION_RESPONSE * rotation_responsiveness * dt
 
 	# Fix 4 — rotation damping at high speed
-	var max_speed_normal := ship_data.max_speed_normal if ship_data else Constants.MAX_SPEED_NORMAL
-	var rot_damp_min := ship_data.rotation_damp_min_factor if ship_data else 0.15
-	var rot_damp_factor := 1.0
-	var speed_threshold := max_speed_normal * 1.1
-	var max_speed_cruise := ship_data.max_speed_cruise if ship_data else Constants.MAX_SPEED_CRUISE
+	var max_speed_normal =ship_data.max_speed_normal if ship_data else Constants.MAX_SPEED_NORMAL
+	var rot_damp_min =ship_data.rotation_damp_min_factor if ship_data else 0.15
+	var rot_damp_factor =1.0
+	var speed_threshold =max_speed_normal * 1.1
+	var max_speed_cruise =ship_data.max_speed_cruise if ship_data else Constants.MAX_SPEED_CRUISE
 	current_speed = state.linear_velocity.length()
 	if current_speed > speed_threshold:
-		var t := clampf((current_speed - speed_threshold) / (max_speed_cruise - speed_threshold), 0.0, 1.0)
+		var t =clampf((current_speed - speed_threshold) / (max_speed_cruise - speed_threshold), 0.0, 1.0)
 		rot_damp_factor = lerpf(1.0, rot_damp_min, t)
 
 	_current_pitch_rate = lerp(_current_pitch_rate, _target_pitch_rate * rot_damp_factor, response)
@@ -480,11 +480,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	_current_roll_rate = lerp(_current_roll_rate, _target_roll_rate * rot_damp_factor, response)
 
 	# Fix 5 — auto-roll: yaw induces a slight bank unless player is manually rolling
-	var auto_roll := 0.0
+	var auto_roll =0.0
 	if abs(auto_roll_factor) > 0.001 and abs(_target_roll_rate) < 0.1:
 		auto_roll = -_current_yaw_rate * auto_roll_factor
 
-	var desired_angular_vel := ship_basis * Vector3(
+	var desired_angular_vel =ship_basis * Vector3(
 		deg_to_rad(_current_pitch_rate),
 		deg_to_rad(_current_yaw_rate),
 		deg_to_rad(_current_roll_rate + auto_roll)
@@ -517,9 +517,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# matches the planet's orbit without it eating into flight speed.
 	# Smoothed to avoid velocity jumps when PlanetApproachManager updates at 10Hz.
 	# =========================================================================
-	var target_orbit_vel := planetary_orbit_velocity
+	var target_orbit_vel =planetary_orbit_velocity
 	_smoothed_orbit_vel = _smoothed_orbit_vel.lerp(target_orbit_vel, minf(16.0 * dt, 1.0))
-	var has_orbit_drag := _smoothed_orbit_vel.length_squared() > 0.1
+	var has_orbit_drag =_smoothed_orbit_vel.length_squared() > 0.1
 	if has_orbit_drag:
 		state.linear_velocity -= _smoothed_orbit_vel
 
@@ -593,7 +593,7 @@ func _fa_axis_brake(vel: float, input: float, dt: float) -> float:
 		vel *= maxf(0.0, 1.0 - Constants.FA_LINEAR_BRAKE * dt)
 	elif signf(input) != signf(vel) and absf(vel) > 0.5:
 		# Input opposes velocity: boosted counter-brake
-		var brake := absf(vel) * Constants.FA_COUNTER_BRAKE * dt
+		var brake =absf(vel) * Constants.FA_COUNTER_BRAKE * dt
 		if brake >= absf(vel):
 			vel = 0.0
 		else:
@@ -628,8 +628,8 @@ func _check_planet_collision(delta: float) -> void:
 		# Cruise exit at fixed 30km above surface (not speed-dependent)
 		var cruise_exit_alt: float = PLANET_CRUISE_EXIT_MARGIN
 		if alt < cruise_exit_alt:
-			var to_planet := Vector3(float(dx), float(dy), float(dz)).normalized()
-			var ship_fwd := (-global_transform.basis.z).normalized()
+			var to_planet =Vector3(float(dx), float(dy), float(dz)).normalized()
+			var ship_fwd =(-global_transform.basis.z).normalized()
 			var heading_toward: bool = ship_fwd.dot(to_planet) > 0.2
 
 			if is_autopilot_target:
@@ -668,7 +668,7 @@ func _exit_cruise() -> void:
 func _enter_cruise_warp() -> void:
 	if cruise_warp_active:
 		return
-	var act_ctrl := get_node_or_null("ShipActivationController") as ShipActivationController
+	var act_ctrl = get_node_or_null("ShipActivationController")
 	if act_ctrl:
 		act_ctrl.deactivate(ShipActivationController.DeactivationMode.INTANGIBLE)
 	cruise_warp_active = true
@@ -677,7 +677,7 @@ func _enter_cruise_warp() -> void:
 func _exit_cruise_warp() -> void:
 	if not cruise_warp_active:
 		return
-	var act_ctrl := get_node_or_null("ShipActivationController") as ShipActivationController
+	var act_ctrl = get_node_or_null("ShipActivationController")
 	if act_ctrl:
 		act_ctrl.activate()
 	cruise_warp_active = false
@@ -809,8 +809,8 @@ func _run_autopilot() -> void:
 
 	# Compute pitch/yaw needed in ship local space
 	var local_dir: Vector3 = global_transform.basis.inverse() * dir
-	var pitch_speed := ship_data.rotation_pitch_speed if ship_data else 30.0
-	var yaw_speed := ship_data.rotation_yaw_speed if ship_data else 25.0
+	var pitch_speed =ship_data.rotation_pitch_speed if ship_data else 30.0
+	var yaw_speed =ship_data.rotation_yaw_speed if ship_data else 25.0
 
 	# Proportional steering (stronger when far off, gentle when nearly aligned)
 	_target_pitch_rate = clampf(local_dir.y * 3.0, -1.0, 1.0) * pitch_speed
@@ -874,7 +874,7 @@ func _run_autopilot() -> void:
 ## Steer autopilot direction away from planets/stars that block the flight path.
 ## Returns adjusted direction vector.
 func _autopilot_avoid_planets(desired_dir: Vector3, target_dist: float) -> Vector3:
-	var best_avoidance := Vector3.ZERO
+	var best_avoidance =Vector3.ZERO
 	var worst_penetration: float = 0.0
 
 	# Collect obstacles: planets + star (exclude our autopilot destination)
@@ -895,7 +895,7 @@ func _autopilot_avoid_planets(desired_dir: Vector3, target_dist: float) -> Vecto
 		var avoid_radius: float = obs["radius"] * AUTOPILOT_PLANET_AVOIDANCE_MARGIN
 
 		# Vector from ship to obstacle center
-		var obs_world := FloatingOrigin.to_local_pos([obs["pos_x"], obs["pos_y"], obs["pos_z"]])
+		var obs_world =FloatingOrigin.to_local_pos([obs["pos_x"], obs["pos_y"], obs["pos_z"]])
 		var to_obs: Vector3 = obs_world - global_position
 		var obs_dist: float = to_obs.length()
 

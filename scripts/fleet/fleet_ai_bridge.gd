@@ -15,9 +15,9 @@ var fleet_index: int = -1
 var command: StringName = &""
 var command_params: Dictionary = {}
 
-var _ship: ShipController = null
-var _brain: AIBrain = null
-var _pilot: AIPilot = null
+var _ship = null
+var _brain = null
+var _pilot = null
 var _station_id: String = ""
 var _returning: bool = false
 var _arrived: bool = false
@@ -34,7 +34,7 @@ var _initialized: bool = false
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
+	_ship = get_parent()
 	# If tree is disabled (player is docked), defer init until _process fires.
 	if _ship and not _ship.can_process():
 		return
@@ -54,14 +54,14 @@ func _do_init() -> void:
 	if _initialized:
 		return
 	_initialized = true
-	_brain = _ship.get_node_or_null("AIBrain") as AIBrain if _ship else null
-	_pilot = _ship.get_node_or_null("AIPilot") as AIPilot if _ship else null
+	_brain = _ship.get_node_or_null("AIBrain") if _ship else null
+	_pilot = _ship.get_node_or_null("AIPilot") if _ship else null
 
 	if _brain:
 		# Fleet ships on mission don't react to enemies (no wasted time fighting)
 		_brain.ignore_threats = true
 		# Check if ship has combat weapons — disable if unarmed
-		var wm := _ship.get_node_or_null("WeaponManager") as WeaponManager if _ship else null
+		var wm = _ship.get_node_or_null("WeaponManager") if _ship else null
 		var has_weapons: bool = wm != null and wm.has_combat_weapons_in_group(0)
 		if not has_weapons:
 			_brain.weapons_enabled = false
@@ -92,7 +92,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		&"move_to":
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
-			var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
 				_brain.set_patrol_area(target_pos, 50.0)
@@ -103,17 +103,17 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			var center_x: float = params.get("center_x", 0.0)
 			var center_z: float = params.get("center_z", 0.0)
 			var radius: float = params.get("radius", 500.0)
-			var center_pos := FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
+			var center_pos =FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
 			_brain.set_patrol_area(center_pos, radius)
 			_brain.current_state = AIBrain.State.PATROL
 		&"attack":
 			_attack_target_id = params.get("target_entity_id", "")
 			if _attack_target_id != "":
-				var ent := EntityRegistry.get_entity(_attack_target_id)
+				var ent =EntityRegistry.get_entity(_attack_target_id)
 				if not ent.is_empty():
-					var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					var target_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					_brain.set_patrol_area(target_pos, 50.0)
-					var target_node: Node3D = ent.get("node", null) as Node3D if ent.get("node") else null
+					var target_node = ent.get("node", null) if ent.get("node") else null
 					if target_node and is_instance_valid(target_node):
 						_brain.target = target_node
 						_brain.current_state = AIBrain.State.PURSUE
@@ -122,7 +122,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		&"construction":
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
-			var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
 				_brain.set_patrol_area(target_pos, 50.0)
@@ -132,7 +132,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		&"mine":
 			var center_x: float = params.get("center_x", 0.0)
 			var center_z: float = params.get("center_z", 0.0)
-			var target_pos := FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
+			var target_pos =FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
 				_brain.set_patrol_area(target_pos, 50.0)
@@ -147,13 +147,13 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			if new_station != "":
 				_station_id = new_station
 			if _station_id != "":
-				var ent := EntityRegistry.get_entity(_station_id)
+				var ent =EntityRegistry.get_entity(_station_id)
 				if not ent.is_empty():
-					var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					var station_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					var dist: float = _ship.global_position.distance_to(station_pos)
 					if dist < DOCK_FINAL_DIST and _ship.linear_velocity.length() < DOCK_MAX_SPEED:
 						# Already at station and slow — retrieve immediately
-						var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+						var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 						if fdm:
 							fdm.retrieve_ship(fleet_index)
 					else:
@@ -176,9 +176,9 @@ func _process(_delta: float) -> void:
 
 	# Monitor return_to_station — direct dock approach when close
 	if _returning and _station_id != "":
-		var ent := EntityRegistry.get_entity(_station_id)
+		var ent =EntityRegistry.get_entity(_station_id)
 		if not ent.is_empty():
-			var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			var station_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			var dist: float = _ship.global_position.distance_to(station_pos)
 
 			if dist < DOCK_APPROACH_DIST:
@@ -194,7 +194,7 @@ func _process(_delta: float) -> void:
 				# Complete docking when close and slow
 				var speed: float = _ship.linear_velocity.length()
 				if dist < DOCK_FINAL_DIST and speed < DOCK_MAX_SPEED:
-					var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+					var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 					if fdm:
 						fdm.retrieve_ship(fleet_index)
 				return
@@ -208,7 +208,7 @@ func _process(_delta: float) -> void:
 	if command == &"construction" and not _arrived:
 		var target_x: float = command_params.get("target_x", 0.0)
 		var target_z: float = command_params.get("target_z", 0.0)
-		var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
 		var dist: float = _ship.global_position.distance_to(target_pos)
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
@@ -217,7 +217,7 @@ func _process(_delta: float) -> void:
 	if command == &"mine" and not _arrived:
 		var cx: float = command_params.get("center_x", 0.0)
 		var cz: float = command_params.get("center_z", 0.0)
-		var target_pos := FloatingOrigin.to_local_pos([cx, 0.0, cz])
+		var target_pos =FloatingOrigin.to_local_pos([cx, 0.0, cz])
 		var dist: float = _ship.global_position.distance_to(target_pos)
 		if dist < MOVE_ARRIVE_DIST:
 			_arrived = true
@@ -227,23 +227,23 @@ func _process(_delta: float) -> void:
 	if command == &"move_to" and not _arrived:
 		var target_x: float = command_params.get("target_x", 0.0)
 		var target_z: float = command_params.get("target_z", 0.0)
-		var target_pos := FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
 		var dist: float = _ship.global_position.distance_to(target_pos)
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
 
 	# Monitor attack target
 	if command == &"attack" and _attack_target_id != "":
-		var ent := EntityRegistry.get_entity(_attack_target_id)
+		var ent =EntityRegistry.get_entity(_attack_target_id)
 		if ent.is_empty():
 			# Target destroyed — stay in patrol zone, keep fighting nearby enemies
 			_attack_target_id = ""
 		else:
 			# Update patrol area to track moving target
-			var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			var target_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			_brain.set_patrol_area(target_pos, 50.0)
 			# If target has a node and brain lost its target, re-acquire
-			var target_node: Node3D = ent.get("node", null) as Node3D if ent.get("node") else null
+			var target_node = ent.get("node", null) if ent.get("node") else null
 			if target_node and is_instance_valid(target_node) and _brain.target == null:
 				_brain.target = target_node
 				_brain.current_state = AIBrain.State.PURSUE
@@ -257,7 +257,7 @@ func _mark_arrived(target_pos: Vector3) -> void:
 		# Speed cap handled by _update_navigation_boost (keeps low cap until settled)
 	if _brain:
 		_brain.set_patrol_area(target_pos, 30.0)  # Tight holding pattern
-	var fdm: FleetDeploymentManager = GameManager.get_node_or_null("FleetDeploymentManager")
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
 
@@ -283,13 +283,13 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
 		&"attack":
 			if _attack_target_id != "":
-				var ent := EntityRegistry.get_entity(_attack_target_id)
+				var ent =EntityRegistry.get_entity(_attack_target_id)
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
 		&"return_to_station":
 			# During dock approach (brain=IDLE), no patrol waypoints to refresh
 			if _station_id != "" and _brain.current_state == AIBrain.State.PATROL:
-				var ent := EntityRegistry.get_entity(_station_id)
+				var ent =EntityRegistry.get_entity(_station_id)
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
 
@@ -328,7 +328,7 @@ func _update_navigation_boost() -> void:
 				_ship.ai_navigation_active = false
 				_ship._gate_approach_speed_cap = 0.0
 				return
-			var ent := EntityRegistry.get_entity(_station_id)
+			var ent =EntityRegistry.get_entity(_station_id)
 			if ent.is_empty():
 				_ship.ai_navigation_active = false
 				_ship._gate_approach_speed_cap = 0.0
@@ -336,7 +336,7 @@ func _update_navigation_boost() -> void:
 			target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 		&"attack":
 			if _attack_target_id != "":
-				var ent := EntityRegistry.get_entity(_attack_target_id)
+				var ent =EntityRegistry.get_entity(_attack_target_id)
 				if not ent.is_empty():
 					target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				else:

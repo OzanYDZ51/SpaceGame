@@ -15,8 +15,8 @@ static var _scene_cache: Dictionary = {}
 static var _convex_cache: Dictionary = {}
 
 
-static func setup_player_ship(ship_id: StringName, controller: ShipController) -> void:
-	var data := ShipRegistry.get_ship_data(ship_id)
+static func setup_player_ship(ship_id: StringName, controller) -> void:
+	var data =ShipRegistry.get_ship_data(ship_id)
 	if data == null:
 		push_error("ShipFactory: Could not find ship data for '%s'" % ship_id)
 		return
@@ -27,18 +27,18 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	controller.add_to_group("ships")
 
 	# Load ship scene (source of truth for model, hardpoints, collision)
-	var scene_result := _load_ship_scene(data)
+	var scene_result =_load_ship_scene(data)
 	controller.center_offset = scene_result.center_offset
 
 	# Clean up all components from a previous ship (when switching ships)
 	for node_name in ["ShipModel", "CollisionShape3D", "HardpointRoot", "HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
-		var old := controller.get_node_or_null(node_name)
+		var old = controller.get_node_or_null(node_name)
 		if old:
 			controller.remove_child(old)
 			old.free()
 
 	# Create new ShipModel
-	var ship_model := ShipModel.new()
+	var ship_model =ShipModel.new()
 	ship_model.name = "ShipModel"
 	ship_model.model_path = data.model_path
 	ship_model.model_scale = scene_result.model_scale
@@ -55,26 +55,26 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	controller.add_child(scene_result.collision_shape)
 
 	# Health System
-	var health := HealthSystem.new()
+	var health =HealthSystem.new()
 	health.name = "HealthSystem"
 	controller.add_child(health)
 	health.setup(data)
 
 	# Energy System
-	var energy := EnergySystem.new()
+	var energy =EnergySystem.new()
 	energy.name = "EnergySystem"
 	controller.add_child(energy)
 	energy.setup(data)
 
 	# HardpointRoot — preserves the ship scene root's transform (rotation + scale).
 	# Hardpoints inherit this naturally, matching their editor positions exactly.
-	var hp_root := Node3D.new()
+	var hp_root =Node3D.new()
 	hp_root.name = "HardpointRoot"
 	hp_root.transform.basis = scene_result.root_basis
 	controller.add_child(hp_root)
 
 	# Weapon Manager
-	var wm := WeaponManager.new()
+	var wm =WeaponManager.new()
 	wm.name = "WeaponManager"
 	controller.add_child(wm)
 
@@ -99,38 +99,38 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 		wm.set_weapon_group(2, group_l)
 
 	# Targeting System
-	var targeting := TargetingSystem.new()
+	var targeting =TargetingSystem.new()
 	targeting.name = "TargetingSystem"
 	controller.add_child(targeting)
 
 	# Equipment Manager (shields, engines, modules)
-	var em := EquipmentManager.new()
+	var em =EquipmentManager.new()
 	em.name = "EquipmentManager"
 	controller.add_child(em)
 	em.setup(data)
 	# Equip defaults from ShipData
 	if data.default_shield != &"":
-		var default_shield := ShieldRegistry.get_shield(data.default_shield)
+		var default_shield =ShieldRegistry.get_shield(data.default_shield)
 		if default_shield:
 			em.equip_shield(default_shield)
 	if data.default_engine != &"":
-		var default_engine := EngineRegistry.get_engine(data.default_engine)
+		var default_engine =EngineRegistry.get_engine(data.default_engine)
 		if default_engine:
 			em.equip_engine(default_engine)
 	for i in mini(data.default_modules.size(), data.module_slots.size()):
-		var mod := ModuleRegistry.get_module(data.default_modules[i])
+		var mod =ModuleRegistry.get_module(data.default_modules[i])
 		if mod:
 			em.equip_module(i, mod)
 
 
-static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false, skip_default_loadout: bool = false) -> ShipController:
+static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: Vector3, parent: Node, faction_name: StringName = &"hostile", skip_registration: bool = false, skip_default_loadout: bool = false):
 	# Create RigidBody3D ship
-	var ship := ShipController.new()
+	var ship =ShipController.new()
 	ship.name = "NPC_%s_%d" % [ship_id, randi() % 10000]
 	ship.is_player_controlled = false
 	ship.faction = faction_name
 
-	var data := ShipRegistry.get_ship_data(ship_id)
+	var data =ShipRegistry.get_ship_data(ship_id)
 	if data == null:
 		push_error("ShipFactory: Unknown ship_id '%s'" % ship_id)
 		ship.queue_free()
@@ -149,12 +149,12 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	ship.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
 
 	# Load ship scene (source of truth for model, hardpoints, collision)
-	var scene_result := _load_ship_scene(data)
+	var scene_result =_load_ship_scene(data)
 	ship.center_offset = scene_result.center_offset
 	ship.add_child(scene_result.collision_shape)
 
 	# Add ship model from ShipData (path + scale), tinted by faction
-	var ship_model := ShipModel.new()
+	var ship_model =ShipModel.new()
 	ship_model.name = "ShipModel"
 	ship_model.model_path = data.model_path
 	ship_model.model_scale = scene_result.model_scale
@@ -200,25 +200,25 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 		})
 
 	# Health System
-	var health := HealthSystem.new()
+	var health =HealthSystem.new()
 	health.name = "HealthSystem"
 	ship.add_child(health)
 	health.setup(data)
 
 	# Energy System
-	var energy := EnergySystem.new()
+	var energy =EnergySystem.new()
 	energy.name = "EnergySystem"
 	ship.add_child(energy)
 	energy.setup(data)
 
 	# HardpointRoot for NPC
-	var hp_root := Node3D.new()
+	var hp_root =Node3D.new()
 	hp_root.name = "HardpointRoot"
 	hp_root.transform.basis = scene_result.root_basis
 	ship.add_child(hp_root)
 
 	# Weapon Manager
-	var wm := WeaponManager.new()
+	var wm =WeaponManager.new()
 	wm.name = "WeaponManager"
 	ship.add_child(wm)
 
@@ -232,81 +232,81 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 		wm.set_weapon_group(0, all_indices)
 
 	# Targeting System
-	var targeting := TargetingSystem.new()
+	var targeting =TargetingSystem.new()
 	targeting.name = "TargetingSystem"
 	ship.add_child(targeting)
 
 	# AI Brain
-	var brain := AIBrain.new()
+	var brain =AIBrain.new()
 	brain.name = "AIBrain"
 	ship.add_child(brain)
 	brain.setup(behavior_name)
 
 	# AI Pilot
-	var pilot := AIPilot.new()
+	var pilot =AIPilot.new()
 	pilot.name = "AIPilot"
 	ship.add_child(pilot)
 
 	# Obstacle Sensor (omnidirectional proximity + velocity avoidance)
-	var sensor := ObstacleSensor.new()
+	var sensor =ObstacleSensor.new()
 	sensor.name = "ObstacleSensor"
 	ship.add_child(sensor)
 
 	# Connect destruction
 	# Safety net: unregister on tree exit (skip if LOD system already nulled node ref)
 	ship.tree_exiting.connect(func():
-		var ent := EntityRegistry.get_entity(ship.name)
+		var ent =EntityRegistry.get_entity(ship.name)
 		if ent.is_empty() or ent.get("node") == ship:
 			EntityRegistry.unregister(ship.name)
 	)
 
 	health.ship_destroyed.connect(func():
 		var death_pos: Vector3 = ship.global_position
-		var npc_name := StringName(ship.name)
+		var npc_name =StringName(ship.name)
 
 		# Server only: broadcast death via NpcAuthority (clients get loot via RPC)
 		if NetworkManager.is_server():
-			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 			if npc_auth and npc_auth._npcs.has(npc_name):
-				var upos := FloatingOrigin.to_universe_pos(death_pos)
-				var drops := LootTable.roll_drops_for_ship(ship.ship_data)
+				var upos =FloatingOrigin.to_universe_pos(death_pos)
+				var drops =LootTable.roll_drops_for_ship(ship.ship_data)
 				# killer_pid=0 means killed by local AI/combat bridge (no player killer)
 				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
 				npc_auth.unregister_npc(npc_name)
 			else:
 				# NPC not registered with NpcAuthority — spawn loot locally (host player)
-				var drops := LootTable.roll_drops_for_ship(ship.ship_data)
+				var drops =LootTable.roll_drops_for_ship(ship.ship_data)
 				if not drops.is_empty():
-					var crate := CargoCrate.new()
+					var crate =CargoCrate.new()
 					crate.contents = drops
 					crate.global_position = death_pos
 					ship.get_parent().call_deferred("add_child", crate)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system
-		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 		if lod_mgr:
 			lod_mgr.unregister_ship(npc_name)
 		ship.set_process(false)
 		ship.set_physics_process(false)
 		# Death effect: scale down and free
-		var tween := ship.create_tween()
+		var tween =ship.create_tween()
 		tween.tween_property(ship, "scale", Vector3.ZERO, 0.5)
 		tween.tween_callback(ship.queue_free)
 	)
 
 	# Register with LOD system (skip when LOD manager is promoting)
 	if not skip_registration:
-		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 		if lod_mgr:
-			var lod_data := ShipLODData.new()
+			var lod_data =ShipLODData.new()
 			lod_data.id = StringName(ship.name)
 			lod_data.ship_id = data.ship_id
 			lod_data.ship_class = data.ship_class
 			lod_data.faction = faction_name
 			# Extract unique number from node name (NPC_fighter_mk1_1234 → 234)
-			var name_parts := ship.name.split("_")
-			var name_suffix := name_parts[-1].right(3) if name_parts.size() > 0 else str(randi() % 1000)
+			var name_parts =ship.name.split("_")
+			var name_suffix =name_parts[-1].right(3) if name_parts.size() > 0 else str(randi() % 1000)
 			lod_data.display_name = "%s #%s" % [data.ship_name, name_suffix]
 			lod_data.position = pos
 			lod_data.node_ref = ship
@@ -326,14 +326,14 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	return ship
 
 
-static func create_npc_data_only(ship_id: StringName, behavior_name: StringName, pos: Vector3, faction_name: StringName = &"hostile") -> ShipLODData:
-	var data := ShipRegistry.get_ship_data(ship_id)
+static func create_npc_data_only(ship_id: StringName, behavior_name: StringName, pos: Vector3, faction_name: StringName = &"hostile"):
+	var data =ShipRegistry.get_ship_data(ship_id)
 	if data == null:
 		push_error("ShipFactory: Unknown ship_id '%s'" % ship_id)
 		return null
 
-	var lod_data := ShipLODData.new()
-	var uid := randi() % 100000
+	var lod_data =ShipLODData.new()
+	var uid =randi() % 100000
 	lod_data.id = StringName("NPC_%s_%d" % [ship_id, uid])
 	lod_data.ship_id = data.ship_id
 	lod_data.ship_class = data.ship_class
@@ -422,7 +422,7 @@ static func get_equipment_camera_data(ship_id: StringName) -> Dictionary:
 
 
 static func _cache_scene_info(ship_id: StringName) -> void:
-	var data := ShipRegistry.get_ship_data(ship_id)
+	var data =ShipRegistry.get_ship_data(ship_id)
 	if data == null or data.ship_scene_path == "":
 		_config_cache[ship_id] = [] as Array[Dictionary]
 		_rotation_cache[ship_id] = Vector3.ZERO
@@ -461,7 +461,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		elif child.name == "ShipCenter":
 			center_off = child.position
 		elif child.name == "EquipmentCamera" and child is Camera3D:
-			var cam := child as Camera3D
+			var cam =child as Camera3D
 			equip_cam_data = {
 				"position": cam.position,
 				"basis": cam.transform.basis,
@@ -498,7 +498,7 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 
 ## Loads a ship scene and extracts HardpointSlot configs and model node.
 ## Generates a ConvexPolygonShape3D collision from the mesh (cached per ship type).
-static func _load_ship_scene(data: ShipData) -> Dictionary:
+static func _load_ship_scene(data) -> Dictionary:
 	assert(data.ship_scene_path != "", "ShipFactory: ship_scene_path is empty for '%s'" % data.ship_id)
 
 	# Check cache
@@ -574,7 +574,7 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 		convex_shape = _generate_convex_shape(model_node, scene_model_scale)
 		_convex_cache[data.ship_scene_path] = convex_shape
 
-	var col_node := CollisionShape3D.new()
+	var col_node =CollisionShape3D.new()
 	col_node.shape = convex_shape
 
 	return {
@@ -592,7 +592,7 @@ static func _load_ship_scene(data: ShipData) -> Dictionary:
 ## Generates a ConvexPolygonShape3D from all MeshInstance3D vertices in a model node tree.
 ## Vertices are scaled by model_scale to match the visual size.
 static func _generate_convex_shape(model_root: Node3D, model_scale: float) -> ConvexPolygonShape3D:
-	var verts := PackedVector3Array()
+	var verts =PackedVector3Array()
 	_collect_mesh_vertices(model_root, verts, Transform3D.IDENTITY)
 	assert(not verts.is_empty(), "ShipFactory: No mesh vertices found for convex collision")
 
@@ -601,14 +601,14 @@ static func _generate_convex_shape(model_root: Node3D, model_scale: float) -> Co
 		for i in verts.size():
 			verts[i] *= model_scale
 
-	var shape := ConvexPolygonShape3D.new()
+	var shape =ConvexPolygonShape3D.new()
 	shape.points = verts
 	return shape
 
 
 ## Recursively collects all mesh vertices from a node tree, applying transforms.
 static func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent_xform: Transform3D) -> void:
-	var xform := parent_xform
+	var xform =parent_xform
 	if node is Node3D:
 		xform = parent_xform * (node as Node3D).transform
 
@@ -616,7 +616,7 @@ static func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent
 		var mesh: Mesh = (node as MeshInstance3D).mesh
 		if mesh:
 			for si in mesh.get_surface_count():
-				var arrays := mesh.surface_get_arrays(si)
+				var arrays =mesh.surface_get_arrays(si)
 				if arrays.size() > Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX] != null:
 					var surface_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 					for v in surface_verts:

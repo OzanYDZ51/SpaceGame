@@ -7,10 +7,10 @@ extends Node
 # =============================================================================
 
 # Injected refs
-var player_data: PlayerData = null
-var screen_manager: UIScreenManager = null
-var loot_screen: LootScreen = null
-var notif: NotificationService = null
+var player_data = null
+var screen_manager = null
+var loot_screen = null
+var notif = null
 var get_game_state: Callable  # () -> GameState
 
 
@@ -26,8 +26,8 @@ func open_loot_screen(crate: CargoCrate) -> void:
 
 
 func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) -> void:
-	var economy: PlayerEconomy = player_data.economy if player_data else null
-	var cargo: PlayerCargo = player_data.cargo if player_data else null
+	var economy = player_data.economy if player_data else null
+	var cargo = player_data.cargo if player_data else null
 
 	var cargo_items: Array[Dictionary] = []
 	for item in selected_items:
@@ -44,8 +44,8 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 		else:
 			cargo_items.append(item)
 	if cargo and not cargo_items.is_empty():
-		var added := cargo.add_items(cargo_items)
-		var rejected := cargo_items.size() - added
+		var added =cargo.add_items(cargo_items)
+		var rejected =cargo_items.size() - added
 		if rejected > 0 and notif:
 			notif.general.cargo_full(rejected)
 	if crate and is_instance_valid(crate):

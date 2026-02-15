@@ -60,7 +60,7 @@ func _check_activation() -> void:
 		# RPC path handles remote clients, but the host needs a signal connection
 		if not NetworkManager.is_dedicated_server:
 			_fleet_reconnect_status.connect(func(alive: Array, deaths: Array) -> void:
-				var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+				var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 				if fleet_mgr:
 					fleet_mgr.apply_reconnect_fleet_status(alive, deaths)
 			)
@@ -80,8 +80,8 @@ func _physics_process(delta: float) -> void:
 	# Update remote system NPC positions (simple velocity drift)
 	_update_remote_npcs(delta)
 
-	var do_full := _batch_timer <= 0.0
-	var do_slow := _slow_batch_timer <= 0.0
+	var do_full =_batch_timer <= 0.0
+	var do_slow =_slow_batch_timer <= 0.0
 
 	if do_full:
 		_batch_timer = BATCH_INTERVAL
@@ -142,7 +142,7 @@ func clear_system_npcs(system_id: int) -> void:
 func connect_npc_fire_relay(npc_id: StringName, ship_node: Node3D) -> void:
 	if not _active or ship_node == null:
 		return
-	var wm := ship_node.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = ship_node.get_node_or_null("WeaponManager")
 	if wm == null:
 		return
 	if not _npcs.has(npc_id):
@@ -156,18 +156,18 @@ func connect_npc_fire_relay(npc_id: StringName, ship_node: Node3D) -> void:
 func _relay_npc_fire(npc_id: StringName, system_id: int, ship_node: Node3D, hardpoint_id: int, weapon_name_str: StringName) -> void:
 	if not _active or ship_node == null or not is_instance_valid(ship_node):
 		return
-	var wm := ship_node.get_node_or_null("WeaponManager") as WeaponManager
+	var wm = ship_node.get_node_or_null("WeaponManager")
 	if wm == null or hardpoint_id >= wm.hardpoints.size():
 		return
 	var hp: Hardpoint = wm.hardpoints[hardpoint_id]
-	var muzzle := hp.get_muzzle_transform()
-	var fire_pos := FloatingOrigin.to_universe_pos(muzzle.origin)
-	var fire_dir := (-muzzle.basis.z).normalized()
-	var ship_vel := Vector3.ZERO
+	var muzzle =hp.get_muzzle_transform()
+	var fire_pos =FloatingOrigin.to_universe_pos(muzzle.origin)
+	var fire_dir =(-muzzle.basis.z).normalized()
+	var ship_vel =Vector3.ZERO
 	if ship_node is RigidBody3D:
-		ship_vel = (ship_node as RigidBody3D).linear_velocity
+		ship_vel = ship_node.linear_velocity
 
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	var dir_arr: Array = [fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z]
 	for pid in peers_in_sys:
 		if pid == 1 and not NetworkManager.is_dedicated_server:
@@ -182,22 +182,22 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 	var info: Dictionary = _npcs[npc_id]
 
 	# Build spawn state from LOD data
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-	var spawn_dict := {
+	var spawn_dict ={
 		"nid": String(npc_id),
 		"sid": String(info.get("ship_id", "")),
 		"fac": String(info.get("faction", "hostile")),
 		"px": 0.0, "py": 0.0, "pz": 0.0,
 	}
 	if lod_data:
-		var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 		spawn_dict["px"] = upos[0]
 		spawn_dict["py"] = upos[1]
 		spawn_dict["pz"] = upos[2]
 
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == 1 and not NetworkManager.is_dedicated_server:
 			# Host — deliver locally
@@ -210,7 +210,7 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 	# Send local system NPCs (managed by LOD manager)
 	if _npcs_by_system.has(system_id):
-		var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 		var npc_ids: Array = _npcs_by_system[system_id]
 
 		for npc_id in npc_ids:
@@ -219,14 +219,14 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 			var info: Dictionary = _npcs[npc_id]
 			var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-			var spawn_dict := {
+			var spawn_dict ={
 				"nid": String(npc_id),
 				"sid": String(info.get("ship_id", "")),
 				"fac": String(info.get("faction", "hostile")),
 				"px": 0.0, "py": 0.0, "pz": 0.0,
 			}
 			if lod_data:
-				var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+				var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 				spawn_dict["px"] = upos[0]
 				spawn_dict["py"] = upos[1]
 				spawn_dict["pz"] = upos[2]
@@ -252,14 +252,14 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 # =========================================================================
 
 func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr == null:
 		return
 
 	# Group peers by system
 	var peers_by_sys: Dictionary = {}
 	for pid in NetworkManager.peers:
-		var pstate: NetworkState = NetworkManager.peers[pid]
+		var pstate = NetworkManager.peers[pid]
 		if not peers_by_sys.has(pstate.system_id):
 			peers_by_sys[pstate.system_id] = []
 		peers_by_sys[pstate.system_id].append(pid)
@@ -273,10 +273,10 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 
 		# Build batch per peer (distance-filtered)
 		for pid in peer_ids:
-			var pstate: NetworkState = NetworkManager.peers.get(pid)
+			var pstate = NetworkManager.peers.get(pid)
 			if pstate == null:
 				continue
-			var peer_pos := FloatingOrigin.to_local_pos([pstate.pos_x, pstate.pos_y, pstate.pos_z])
+			var peer_pos =FloatingOrigin.to_local_pos([pstate.pos_x, pstate.pos_y, pstate.pos_z])
 
 			var batch: Array = []
 			for npc_id in npc_ids:
@@ -284,7 +284,7 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 				if lod_data == null or lod_data.is_dead:
 					continue
 
-				var dist := peer_pos.distance_to(lod_data.position)
+				var dist =peer_pos.distance_to(lod_data.position)
 				if dist <= FULL_SYNC_DISTANCE and full_sync:
 					batch.append(_build_npc_state_dict(npc_id, lod_data))
 				elif dist <= MAX_SYNC_DISTANCE and slow_sync:
@@ -300,9 +300,9 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 
 
 func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Dictionary:
-	var upos := FloatingOrigin.to_universe_pos(lod_data.position)
-	var rot_rad := lod_data.rotation_basis.get_euler()
-	var rot_deg := Vector3(rad_to_deg(rot_rad.x), rad_to_deg(rot_rad.y), rad_to_deg(rot_rad.z))
+	var upos =FloatingOrigin.to_universe_pos(lod_data.position)
+	var rot_rad =lod_data.rotation_basis.get_euler()
+	var rot_deg =Vector3(rad_to_deg(rot_rad.x), rad_to_deg(rot_rad.y), rad_to_deg(rot_rad.z))
 
 	# If the NPC has a node, use its rotation_degrees directly (more accurate)
 	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
@@ -339,11 +339,11 @@ func relay_fire_event(sender_pid: int, weapon_name: String, fire_pos: Array, fir
 	if not _active:
 		return
 
-	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
+	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
 		return
 
-	var peers_in_sys := NetworkManager.get_peers_in_system(sender_state.system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(sender_state.system_id)
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
@@ -358,13 +358,13 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	if not _active:
 		return
 
-	var npc_id := StringName(target_npc)
+	var npc_id =StringName(target_npc)
 
 	# 1. NPC exists and is alive
 	if not _npcs.has(npc_id):
 		return
 
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr == null:
 		return
 
@@ -373,17 +373,17 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		return
 
 	# 2. Distance check: peer must be within range
-	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
+	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
 		return
-	var peer_pos := FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
-	var dist := peer_pos.distance_to(lod_data.position)
+	var peer_pos =FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
+	var dist =peer_pos.distance_to(lod_data.position)
 	if dist > HIT_VALIDATION_RANGE:
 		print("NpcAuthority: Hit rejected — peer %d too far (%.0fm)" % [sender_pid, dist])
 		return
 
 	# 3. Damage within weapon bounds (±50%)
-	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
 	if weapon:
 		var expected_dmg: float = weapon.damage_per_hit
 		if claimed_damage > expected_dmg * (1.0 + HIT_DAMAGE_TOLERANCE) or claimed_damage < 0.0:
@@ -391,7 +391,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			return
 
 	# 4. Apply damage on the server's NPC
-	var hit_dir_vec := Vector3(hit_dir[0] if hit_dir.size() > 0 else 0.0,
+	var hit_dir_vec =Vector3(hit_dir[0] if hit_dir.size() > 0 else 0.0,
 		hit_dir[1] if hit_dir.size() > 1 else 0.0,
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
 
@@ -402,9 +402,9 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	# broadcast + unregister (checks _npcs.has to avoid double broadcast).
 	# We call _on_npc_killed to broadcast with correct killer_pid BEFORE the lambda runs.
 	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
-		var health := lod_data.node_ref.get_node_or_null("HealthSystem") as HealthSystem
+		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
 		if health:
-			var hit_result := health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
+			var hit_result =health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
 			shield_absorbed = hit_result.get("shield_absorbed", false)
 			lod_data.hull_ratio = health.get_hull_ratio()
 			lod_data.shield_ratio = health.get_total_shield_ratio()
@@ -434,7 +434,7 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 	var system_id: int = info.get("system_id", -1)
 
 	# Get death position
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var death_pos: Array = [0.0, 0.0, 0.0]
 	if lod_mgr:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
@@ -442,7 +442,7 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 			death_pos = FloatingOrigin.to_universe_pos(lod_data.position)
 
 	# Roll loot from ship class
-	var ship_data := ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
+	var ship_data =ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
 	var loot: Array = []
 	if ship_data:
 		loot = LootTable.roll_drops_for_ship(ship_data)
@@ -462,7 +462,7 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 
 
 func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: String, system_id: int) -> void:
-	var reporter := GameManager.get_node_or_null("EventReporter") as EventReporter
+	var reporter = GameManager.get_node_or_null("EventReporter")
 	if reporter == null:
 		return
 
@@ -479,7 +479,7 @@ func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: Strin
 	# Weapon display name
 	var weapon_display: String = weapon_name
 	if weapon_name != "":
-		var w := WeaponRegistry.get_weapon(StringName(weapon_name))
+		var w =WeaponRegistry.get_weapon(StringName(weapon_name))
 		if w:
 			weapon_display = String(w.weapon_name) if w.weapon_name != &"" else weapon_name
 
@@ -495,7 +495,7 @@ func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: Strin
 func broadcast_hit_effect(target_id: String, exclude_pid: int, hit_dir: Array, shield_absorbed: bool, system_id: int) -> void:
 	if not _active:
 		return
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == exclude_pid:
 			continue
@@ -510,7 +510,7 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 	if system_id < 0 and _npcs.has(npc_id):
 		system_id = _npcs[npc_id].get("system_id", -1)
 
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == 1 and not NetworkManager.is_dedicated_server:
 			NetworkManager.npc_died.emit(String(npc_id), killer_pid, death_pos, loot)
@@ -601,20 +601,20 @@ func on_player_reconnected(uuid: String, new_pid: int) -> void:
 
 	# Build alive fleet status (include positions for reconnect)
 	var alive_list: Array = []
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if _fleet_npcs_by_owner.has(uuid):
 		for npc_id in _fleet_npcs_by_owner[uuid]:
 			if _fleet_npcs.has(npc_id):
 				var info: Dictionary = _fleet_npcs[npc_id]
-				var entry := {
+				var entry ={
 					"fleet_index": info.get("fleet_index", -1),
 					"npc_id": String(npc_id),
 				}
 				# Include universe position from LOD data
 				if lod_mgr:
-					var lod_data := lod_mgr.get_ship_data(npc_id)
+					var lod_data = lod_mgr.get_ship_data(npc_id)
 					if lod_data:
-						var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+						var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 						entry["pos_x"] = upos[0]
 						entry["pos_y"] = upos[1]
 						entry["pos_z"] = upos[2]
@@ -640,7 +640,7 @@ signal _fleet_reconnect_status(alive: Array, deaths: Array)
 @rpc("authority", "reliable")
 func _rpc_fleet_reconnect_status(alive: Array, deaths: Array) -> void:
 	# Client-side: update local fleet data
-	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr:
 		fleet_mgr.apply_reconnect_fleet_status(alive, deaths)
 
@@ -651,7 +651,7 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 		return
 
 	# Server-side: execute the deploy via FleetDeploymentManager
-	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
@@ -661,23 +661,23 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 		push_warning("NpcAuthority: Fleet deploy from remote client pid=%d rejected — server lacks per-player fleet data" % sender_pid)
 		return
 
-	var success := fleet_mgr.deploy_ship(fleet_index, cmd, params)
+	var success =fleet_mgr.deploy_ship(fleet_index, cmd, params)
 	if not success:
 		return
 
 	# Get the spawned NPC info
-	var fleet: PlayerFleet = GameManager.player_fleet
+	var fleet = GameManager.player_fleet
 	if fleet == null or fleet_index >= fleet.ships.size():
 		return
-	var fs := fleet.ships[fleet_index]
-	var npc_id := fs.deployed_npc_id
+	var fs =fleet.ships[fleet_index]
+	var npc_id =fs.deployed_npc_id
 
 	# Register as fleet NPC
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
 
 	# Build spawn data for broadcast
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
-	var spawn_data := {
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	var spawn_data ={
 		"sid": String(fs.ship_id),
 		"fac": "player_fleet",
 		"cmd": String(cmd),
@@ -686,7 +686,7 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	if lod_mgr:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
-			var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+			var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 			spawn_data["px"] = upos[0]
 			spawn_data["py"] = upos[1]
 			spawn_data["pz"] = upos[2]
@@ -711,18 +711,18 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 		push_warning("NpcAuthority: Fleet retrieve from remote client pid=%d rejected" % sender_pid)
 		return
 
-	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
-	var fleet: PlayerFleet = GameManager.player_fleet
+	var fleet = GameManager.player_fleet
 	if fleet == null or fleet_index >= fleet.ships.size():
 		return
-	var fs := fleet.ships[fleet_index]
-	var npc_id := fs.deployed_npc_id
+	var fs =fleet.ships[fleet_index]
+	var npc_id =fs.deployed_npc_id
 	var sys_id: int = GameManager.current_system_id_safe()
 
-	var success := fleet_mgr.retrieve_ship(fleet_index)
+	var success =fleet_mgr.retrieve_ship(fleet_index)
 	if not success:
 		return
 
@@ -743,18 +743,18 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 		push_warning("NpcAuthority: Fleet command from remote client pid=%d rejected" % sender_pid)
 		return
 
-	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
-	var fleet: PlayerFleet = GameManager.player_fleet
+	var fleet = GameManager.player_fleet
 	if fleet == null or fleet_index >= fleet.ships.size():
 		return
-	var fs := fleet.ships[fleet_index]
-	var npc_id := fs.deployed_npc_id
+	var fs =fleet.ships[fleet_index]
+	var npc_id =fs.deployed_npc_id
 	var sys_id: int = GameManager.current_system_id_safe()
 
-	var success := fleet_mgr.change_command(fleet_index, cmd, params)
+	var success =fleet_mgr.change_command(fleet_index, cmd, params)
 	if not success:
 		return
 
@@ -763,7 +763,7 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 
 
 func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: StringName, spawn_data: Dictionary, system_id: int) -> void:
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue  # Owner already sees it locally
@@ -774,7 +774,7 @@ func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: Strin
 
 
 func _broadcast_fleet_event_retrieve(owner_pid: int, fleet_idx: int, npc_id: StringName, system_id: int) -> void:
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue
@@ -785,7 +785,7 @@ func _broadcast_fleet_event_retrieve(owner_pid: int, fleet_idx: int, npc_id: Str
 
 
 func _broadcast_fleet_event_command(owner_pid: int, fleet_idx: int, npc_id: StringName, cmd: StringName, params: Dictionary, system_id: int) -> void:
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue
@@ -824,7 +824,7 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 	var sys_trans = GameManager._system_transition
 	if sys_trans == null:
 		return
-	var galaxy: GalaxyData = sys_trans.galaxy
+	var galaxy = sys_trans.galaxy
 	if galaxy == null:
 		return
 	var galaxy_sys: Dictionary = galaxy.get_system(system_id)
@@ -840,18 +840,18 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 		system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
 
 	# Base position near first station
-	var base_pos := Vector3(500, 0, -1500)
+	var base_pos =Vector3(500, 0, -1500)
 	if system_data.stations.size() > 0:
 		var st: StationData = system_data.stations[0]
-		var st_angle := EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-		var station_pos := Vector3(
+		var st_angle =EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
+		var station_pos =Vector3(
 			cos(st_angle) * st.orbital_radius, 0.0,
 			sin(st_angle) * st.orbital_radius)
-		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
+		var radial_dir =station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 
 	# Spawn config from danger level (shared with EncounterManager)
-	var configs := EncounterConfig.get_danger_config(danger_level)
+	var configs =EncounterConfig.get_danger_config(danger_level)
 
 	var npcs: Array = []
 	for config in configs:
@@ -861,10 +861,10 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 		var radius: float = config["radius"]
 		for i in count:
 			var angle: float = (float(i) / float(count)) * TAU
-			var offset := Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
-			var pos := base_pos + offset
-			var vel := Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
-			var npc_id := StringName("NPC_%s_%d" % [ship_id, randi() % 100000])
+			var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
+			var pos =base_pos + offset
+			var vel =Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
+			var npc_id =StringName("NPC_%s_%d" % [ship_id, randi() % 100000])
 
 			npcs.append({
 				"nid": String(npc_id),
@@ -901,7 +901,7 @@ func _broadcast_remote_npc_states(slow_sync: bool) -> void:
 
 	var peers_by_sys: Dictionary = {}
 	for pid in NetworkManager.peers:
-		var pstate: NetworkState = NetworkManager.peers[pid]
+		var pstate = NetworkManager.peers[pid]
 		if not peers_by_sys.has(pstate.system_id):
 			peers_by_sys[pstate.system_id] = []
 		peers_by_sys[pstate.system_id].append(pid)
@@ -924,7 +924,7 @@ func _broadcast_remote_npc_states(slow_sync: bool) -> void:
 ## Detect when peers change systems and spawn NPCs for the new system.
 func _check_peer_system_changes() -> void:
 	for pid in NetworkManager.peers:
-		var state: NetworkState = NetworkManager.peers[pid]
+		var state = NetworkManager.peers[pid]
 		var prev_sys: int = _peer_systems.get(pid, -1)
 		if state.system_id != prev_sys:
 			_peer_systems[pid] = state.system_id
@@ -940,10 +940,10 @@ func _check_peer_system_changes() -> void:
 func relay_mining_beam(sender_pid: int, is_active: bool, source_pos: Array, target_pos: Array) -> void:
 	if not _active:
 		return
-	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
+	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
 		return
-	var peers_in_sys := NetworkManager.get_peers_in_system(sender_state.system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(sender_state.system_id)
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
@@ -957,7 +957,7 @@ func relay_mining_beam(sender_pid: int, is_active: bool, source_pos: Array, targ
 func broadcast_asteroid_depleted(asteroid_id: String, system_id: int, sender_pid: int) -> void:
 	if not _active:
 		return
-	var peers_in_sys := NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
@@ -976,7 +976,7 @@ func _sync_fleet_to_backend() -> void:
 	if _backend_client == null or _fleet_npcs.is_empty():
 		return
 
-	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr == null:
 		return
 
@@ -989,7 +989,7 @@ func _sync_fleet_to_backend() -> void:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data == null or lod_data.is_dead:
 			continue
-		var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 		updates.append({
 			"player_id": uuid,
 			"fleet_index": fleet_info.get("fleet_index", -1),
@@ -1038,7 +1038,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		var faction: StringName = &"player_fleet"
 
 		# Register as data-only NPC (will get a real node when a player enters the system)
-		var npc_id := StringName("FleetNPC_%s_%d" % [player_id.left(8), fleet_index])
+		var npc_id =StringName("FleetNPC_%s_%d" % [player_id.left(8), fleet_index])
 
 		# Register in NPC authority
 		register_npc(npc_id, system_id, StringName(ship_id), faction)

@@ -72,7 +72,7 @@ func activate() -> void:
 
 	# Restore targeting system
 	if _saved_state.has("targeting_process_mode"):
-		var targeting := _ship.get_node_or_null("TargetingSystem") as TargetingSystem
+		var targeting = _ship.get_node_or_null("TargetingSystem")
 		if targeting:
 			targeting.process_mode = _saved_state["targeting_process_mode"] as Node.ProcessMode
 
@@ -115,7 +115,7 @@ func _apply_full(freeze_physics: bool) -> void:
 		player_ent["extra"]["hidden"] = true
 
 	# Disable targeting system
-	var targeting := _ship.get_node_or_null("TargetingSystem") as TargetingSystem
+	var targeting = _ship.get_node_or_null("TargetingSystem")
 	if targeting:
 		_saved_state["targeting_process_mode"] = targeting.process_mode
 		targeting.clear_target()

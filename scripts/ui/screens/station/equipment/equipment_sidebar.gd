@@ -8,11 +8,11 @@ extends Control
 signal arsenal_selected(item_name: StringName)
 signal arsenal_double_clicked(item_name: StringName)
 
-const EC := preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
+const EC =preload("res://scripts/ui/screens/station/equipment/equipment_constants.gd")
 
 # --- State ---
 var _adapter: RefCounted = null
-var _inventory: PlayerInventory = null
+var _inventory = null
 var _arsenal_list: UIScrollList = null
 var _arsenal_items: Array[StringName] = []
 var _current_tab: int = 0
@@ -30,7 +30,7 @@ func _ready() -> void:
 	add_child(_arsenal_list)
 
 
-func setup(adapter: RefCounted, inventory: PlayerInventory) -> void:
+func setup(adapter: RefCounted, inventory) -> void:
 	_adapter = adapter
 	_inventory = inventory
 
@@ -54,7 +54,7 @@ func set_selected_module_slot(idx: int) -> void:
 
 
 func get_selected_item() -> StringName:
-	var idx := _arsenal_list.selected_index
+	var idx =_arsenal_list.selected_index
 	if idx >= 0 and idx < _arsenal_items.size():
 		return _arsenal_items[idx]
 	return &""
@@ -145,13 +145,13 @@ func _draw_arsenal_row(ctrl: Control, index: int, rect: Rect2, _item: Variant) -
 
 func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var weapon_name: StringName = _arsenal_items[index]
-	var weapon := WeaponRegistry.get_weapon(weapon_name)
+	var weapon =WeaponRegistry.get_weapon(weapon_name)
 	if weapon == null:
 		return
 	var font: Font = UITheme.get_font()
 	var count: int = _inventory.get_weapon_count(weapon_name) if _inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][weapon.slot_size]
-	var compatible := true
+	var compatible =true
 	if _selected_hardpoint >= 0 and _adapter:
 		var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
 		var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
@@ -162,9 +162,9 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	if not compatible:
 		type_col = Color(type_col.r, type_col.g, type_col.b, 0.3)
 
-	var icon_cx := rect.position.x + 24.0
-	var icon_cy := rect.position.y + rect.size.y * 0.5
-	var icon_r := 16.0
+	var icon_cx =rect.position.x + 24.0
+	var icon_cy =rect.position.y + rect.size.y * 0.5
+	var icon_r =16.0
 	ctrl.draw_arc(Vector2(icon_cx, icon_cy), icon_r, 0, TAU, 20,
 		Color(type_col.r, type_col.g, type_col.b, 0.15 * alpha_mult), icon_r * 0.7)
 	ctrl.draw_arc(Vector2(icon_cx, icon_cy), icon_r, 0, TAU, 20,
@@ -172,14 +172,14 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	_draw_weapon_icon_on(ctrl, Vector2(icon_cx, icon_cy), 8.0, weapon.weapon_type,
 		Color(type_col.r, type_col.g, type_col.b, alpha_mult))
 
-	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
-	var name_x := rect.position.x + 48
-	var name_max_w := rect.size.x - 48 - 90
+	var text_col =Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
+	var name_x =rect.position.x + 48
+	var name_max_w =rect.size.x - 48 - 90
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(weapon_name),
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
-	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
-	var dps := weapon.damage_per_hit * weapon.fire_rate
+	var dim_col =Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
+	var dps =weapon.damage_per_hit * weapon.fire_rate
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38), "%.0f DPS" % dps,
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
@@ -188,29 +188,29 @@ func _draw_weapon_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 func _draw_shield_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var sn: StringName = _arsenal_items[index]
-	var shield := ShieldRegistry.get_shield(sn)
+	var shield =ShieldRegistry.get_shield(sn)
 	if shield == null:
 		return
 	var font: Font = UITheme.get_font()
 	var count: int = _inventory.get_shield_count(sn) if _inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][shield.slot_size]
-	var compatible := true
+	var compatible =true
 	if _adapter:
 		compatible = _inventory.is_shield_compatible(sn, _adapter.get_shield_slot_size()) if _inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
-	var col := Color(EC.SHIELD_COLOR.r, EC.SHIELD_COLOR.g, EC.SHIELD_COLOR.b, alpha_mult)
+	var col =Color(EC.SHIELD_COLOR.r, EC.SHIELD_COLOR.g, EC.SHIELD_COLOR.b, alpha_mult)
 
-	var icon_cx := rect.position.x + 24.0
-	var icon_cy := rect.position.y + rect.size.y * 0.5
+	var icon_cx =rect.position.x + 24.0
+	var icon_cy =rect.position.y + rect.size.y * 0.5
 	_draw_shield_icon_on(ctrl, Vector2(icon_cx, icon_cy), 14.0, col)
 
-	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
-	var name_x := rect.position.x + 48
-	var name_max_w := rect.size.x - 48 - 90
+	var text_col =Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
+	var name_x =rect.position.x + 48
+	var name_max_w =rect.size.x - 48 - 90
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(sn),
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
-	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
+	var dim_col =Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38),
 		"%d HP/f, %.0f HP/s" % [int(shield.shield_hp_per_facing), shield.regen_rate],
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
@@ -220,30 +220,30 @@ func _draw_shield_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 func _draw_engine_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var en: StringName = _arsenal_items[index]
-	var engine := EngineRegistry.get_engine(en)
+	var engine =EngineRegistry.get_engine(en)
 	if engine == null:
 		return
 	var font: Font = UITheme.get_font()
 	var count: int = _inventory.get_engine_count(en) if _inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][engine.slot_size]
-	var compatible := true
+	var compatible =true
 	if _adapter:
 		compatible = _inventory.is_engine_compatible(en, _adapter.get_engine_slot_size()) if _inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
-	var col := Color(EC.ENGINE_COLOR.r, EC.ENGINE_COLOR.g, EC.ENGINE_COLOR.b, alpha_mult)
+	var col =Color(EC.ENGINE_COLOR.r, EC.ENGINE_COLOR.g, EC.ENGINE_COLOR.b, alpha_mult)
 
-	var icon_cx := rect.position.x + 24.0
-	var icon_cy := rect.position.y + rect.size.y * 0.5
+	var icon_cx =rect.position.x + 24.0
+	var icon_cy =rect.position.y + rect.size.y * 0.5
 	_draw_engine_icon_on(ctrl, Vector2(icon_cx, icon_cy), 14.0, col)
 
-	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
-	var name_x := rect.position.x + 48
-	var name_max_w := rect.size.x - 48 - 90
+	var text_col =Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
+	var name_x =rect.position.x + 48
+	var name_max_w =rect.size.x - 48 - 90
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(en),
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
-	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
-	var best_stat := EC.get_engine_best_stat(engine)
+	var dim_col =Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
+	var best_stat =EC.get_engine_best_stat(engine)
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38), best_stat,
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
@@ -252,33 +252,33 @@ func _draw_engine_row(ctrl: Control, index: int, rect: Rect2) -> void:
 
 func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 	var mn: StringName = _arsenal_items[index]
-	var module := ModuleRegistry.get_module(mn)
+	var module =ModuleRegistry.get_module(mn)
 	if module == null:
 		return
 	var font: Font = UITheme.get_font()
 	var count: int = _inventory.get_module_count(mn) if _inventory else 0
 	var slot_size_str: String = ["S", "M", "L"][module.slot_size]
-	var compatible := true
+	var compatible =true
 	if _selected_module_slot >= 0 and _adapter:
 		var slot_sz: String = _adapter.get_module_slot_size(_selected_module_slot)
 		compatible = _inventory.is_module_compatible(mn, slot_sz) if _inventory else false
 	var alpha_mult: float = 1.0 if compatible else 0.3
 	var mod_col: Color = EC.MODULE_COLORS.get(module.module_type, UITheme.PRIMARY)
-	var col := Color(mod_col.r, mod_col.g, mod_col.b, alpha_mult)
+	var col =Color(mod_col.r, mod_col.g, mod_col.b, alpha_mult)
 
-	var icon_cx := rect.position.x + 24.0
-	var icon_cy := rect.position.y + rect.size.y * 0.5
+	var icon_cx =rect.position.x + 24.0
+	var icon_cy =rect.position.y + rect.size.y * 0.5
 	_draw_module_icon_on(ctrl, Vector2(icon_cx, icon_cy), 14.0, col)
 
-	var text_col := Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
-	var name_x := rect.position.x + 48
-	var name_max_w := rect.size.x - 48 - 90
+	var text_col =Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, alpha_mult)
+	var name_x =rect.position.x + 48
+	var name_max_w =rect.size.x - 48 - 90
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(mn),
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, text_col)
 
-	var dim_col := Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
-	var bonuses := module.get_bonuses_text()
-	var bonus_str := bonuses[0] if bonuses.size() > 0 else ""
+	var dim_col =Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7 * alpha_mult)
+	var bonuses =module.get_bonuses_text()
+	var bonus_str =bonuses[0] if bonuses.size() > 0 else ""
 	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38), bonus_str,
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
@@ -290,19 +290,19 @@ func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 # =============================================================================
 func _draw_qty_and_size_badges(ctrl: Control, font: Font, rect: Rect2,
 		count: int, slot_size_str: String, compatible: bool, alpha_mult: float) -> void:
-	var qty_x := rect.position.x + rect.size.x - 80
-	var qty_y := rect.position.y + (rect.size.y - 20) * 0.5
-	var qty_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.8 * alpha_mult)
+	var qty_x =rect.position.x + rect.size.x - 80
+	var qty_y =rect.position.y + (rect.size.y - 20) * 0.5
+	var qty_col =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.8 * alpha_mult)
 	ctrl.draw_rect(Rect2(qty_x, qty_y, 32, 20), Color(qty_col.r, qty_col.g, qty_col.b, 0.1))
 	ctrl.draw_rect(Rect2(qty_x, qty_y, 32, 20), Color(qty_col.r, qty_col.g, qty_col.b, 0.4), false, 1.0)
 	ctrl.draw_string(font, Vector2(qty_x + 2, qty_y + 15), "x%d" % count,
 		HORIZONTAL_ALIGNMENT_CENTER, 28, UITheme.FONT_SIZE_BODY, qty_col)
 
-	var badge_col := EC.get_slot_size_color(slot_size_str)
+	var badge_col =EC.get_slot_size_color(slot_size_str)
 	if not compatible:
 		badge_col = Color(badge_col.r, badge_col.g, badge_col.b, 0.3)
-	var badge_x := rect.position.x + rect.size.x - 40
-	var badge_y := rect.position.y + (rect.size.y - EC.SIZE_BADGE_H) * 0.5
+	var badge_x =rect.position.x + rect.size.x - 40
+	var badge_y =rect.position.y + (rect.size.y - EC.SIZE_BADGE_H) * 0.5
 	ctrl.draw_rect(Rect2(badge_x, badge_y, EC.SIZE_BADGE_W, EC.SIZE_BADGE_H),
 		Color(badge_col.r, badge_col.g, badge_col.b, 0.12))
 	ctrl.draw_rect(Rect2(badge_x, badge_y, EC.SIZE_BADGE_W, EC.SIZE_BADGE_H), badge_col, false, 1.0)
@@ -310,8 +310,8 @@ func _draw_qty_and_size_badges(ctrl: Control, font: Font, rect: Rect2,
 		HORIZONTAL_ALIGNMENT_LEFT, EC.SIZE_BADGE_W, UITheme.FONT_SIZE_BODY, badge_col)
 
 	if not compatible:
-		var lock_x := rect.end.x - 16
-		var lock_y := rect.position.y + rect.size.y * 0.5
+		var lock_x =rect.end.x - 16
+		var lock_y =rect.position.y + rect.size.y * 0.5
 		ctrl.draw_rect(Rect2(lock_x - 5, lock_y - 2, 10, 8),
 			Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.5))
 		ctrl.draw_arc(Vector2(lock_x, lock_y - 4), 4.0, PI, TAU, 8,
@@ -332,9 +332,9 @@ func draw_comparison(parent: Control, font: Font, px: float, start_y: float, pw:
 
 
 func _draw_no_selection_msg(parent: Control, font: Font, px: float, start_y: float, pw: float, msg: String) -> void:
-	var center_x := px + pw * 0.5
-	var center_y := start_y + 40
-	var cr := 14.0
+	var center_x =px + pw * 0.5
+	var center_y =start_y + 40
+	var cr =14.0
 	parent.draw_arc(Vector2(center_x, center_y), cr, 0, TAU, 24, UITheme.TEXT_DIM, 1.0)
 	parent.draw_line(Vector2(center_x - cr - 5, center_y), Vector2(center_x - cr + 5, center_y), UITheme.TEXT_DIM, 1.0)
 	parent.draw_line(Vector2(center_x + cr - 5, center_y), Vector2(center_x + cr + 5, center_y), UITheme.TEXT_DIM, 1.0)
@@ -351,7 +351,7 @@ func _draw_weapon_comparison(parent: Control, font: Font, px: float, start_y: fl
 		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un point d'emport et une arme")
 		return
 
-	var new_weapon := WeaponRegistry.get_weapon(selected_weapon)
+	var new_weapon =WeaponRegistry.get_weapon(selected_weapon)
 	if new_weapon == null:
 		return
 
@@ -359,16 +359,16 @@ func _draw_weapon_comparison(parent: Control, font: Font, px: float, start_y: fl
 	if _adapter:
 		current_weapon = _adapter.get_mounted_weapon(_selected_hardpoint)
 
-	var cur_dmg := current_weapon.damage_per_hit if current_weapon else 0.0
-	var new_dmg := new_weapon.damage_per_hit
-	var cur_rate := current_weapon.fire_rate if current_weapon else 0.0
-	var new_rate := new_weapon.fire_rate
-	var cur_dps := cur_dmg * cur_rate
-	var new_dps := new_dmg * new_rate
-	var cur_energy := current_weapon.energy_cost_per_shot if current_weapon else 0.0
-	var new_energy := new_weapon.energy_cost_per_shot
-	var cur_range := (current_weapon.projectile_speed * current_weapon.projectile_lifetime) if current_weapon else 0.0
-	var new_range := new_weapon.projectile_speed * new_weapon.projectile_lifetime
+	var cur_dmg =current_weapon.damage_per_hit if current_weapon else 0.0
+	var new_dmg =new_weapon.damage_per_hit
+	var cur_rate =current_weapon.fire_rate if current_weapon else 0.0
+	var new_rate =new_weapon.fire_rate
+	var cur_dps =cur_dmg * cur_rate
+	var new_dps =new_dmg * new_rate
+	var cur_energy =current_weapon.energy_cost_per_shot if current_weapon else 0.0
+	var new_energy =new_weapon.energy_cost_per_shot
+	var cur_range =(current_weapon.projectile_speed * current_weapon.projectile_lifetime) if current_weapon else 0.0
+	var new_range =new_weapon.projectile_speed * new_weapon.projectile_lifetime
 
 	var stats: Array = [
 		["DEGATS", cur_dmg, new_dmg, true],
@@ -385,7 +385,7 @@ func _draw_shield_comparison(parent: Control, font: Font, px: float, start_y: fl
 		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un bouclier")
 		return
 
-	var new_shield := ShieldRegistry.get_shield(selected_shield)
+	var new_shield =ShieldRegistry.get_shield(selected_shield)
 	if new_shield == null:
 		return
 
@@ -405,7 +405,7 @@ func _draw_engine_comparison(parent: Control, font: Font, px: float, start_y: fl
 		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un moteur")
 		return
 
-	var new_engine := EngineRegistry.get_engine(selected_engine)
+	var new_engine =EngineRegistry.get_engine(selected_engine)
 	if new_engine == null:
 		return
 
@@ -426,7 +426,7 @@ func _draw_module_comparison(parent: Control, font: Font, px: float, start_y: fl
 		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un slot et un module")
 		return
 
-	var new_mod := ModuleRegistry.get_module(selected_module)
+	var new_mod =ModuleRegistry.get_module(selected_module)
 	if new_mod == null:
 		return
 
@@ -463,11 +463,11 @@ func _draw_module_comparison(parent: Control, font: Font, px: float, start_y: fl
 # STAT ROWS
 # =============================================================================
 func _draw_stat_rows(parent: Control, font: Font, px: float, start_y: float, pw: float, stats: Array) -> void:
-	var row_h := 24.0
-	var label_x := px + 8
-	var val_x := px + pw * 0.38
-	var new_val_x := px + pw * 0.58
-	var delta_x := px + pw - 8
+	var row_h =24.0
+	var label_x =px + 8
+	var val_x =px + pw * 0.38
+	var new_val_x =px + pw * 0.58
+	var delta_x =px + pw - 8
 
 	for row_i in stats.size():
 		var stat: Array = stats[row_i]
@@ -476,7 +476,7 @@ func _draw_stat_rows(parent: Control, font: Font, px: float, start_y: float, pw:
 		var new_val: float = stat[2]
 		var higher_better: bool = stat[3]
 		var delta: float = new_val - cur_val
-		var ry := start_y + row_i * row_h
+		var ry =start_y + row_i * row_h
 
 		if row_i % 2 == 0:
 			parent.draw_rect(Rect2(px + 4, ry - 4, pw - 8, row_h), Color(0, 0.02, 0.05, 0.15))
@@ -494,7 +494,7 @@ func _draw_stat_rows(parent: Control, font: Font, px: float, start_y: float, pw:
 			parent.draw_string(font, Vector2(new_val_x - 12, ry + 10), ">",
 				HORIZONTAL_ALIGNMENT_LEFT, 10, UITheme.FONT_SIZE_LABEL, arr_col)
 
-		var new_text_col := UITheme.TEXT
+		var new_text_col =UITheme.TEXT
 		if is_better:
 			new_text_col = UITheme.ACCENT
 		elif is_worse:
@@ -504,7 +504,7 @@ func _draw_stat_rows(parent: Control, font: Font, px: float, start_y: float, pw:
 
 		if absf(delta) > 0.01:
 			var delta_col: Color = UITheme.ACCENT if is_better else UITheme.DANGER
-			var sign_str := "+" if delta > 0.0 else ""
+			var sign_str ="+" if delta > 0.0 else ""
 			parent.draw_string(font, Vector2(delta_x - 60, ry + 10), sign_str + EC.format_stat(delta, label),
 				HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_LABEL, delta_col)
 
@@ -539,7 +539,7 @@ func _draw_weapon_icon_on(ctrl: Control, center: Vector2, r: float, weapon_type:
 			ctrl.draw_arc(center, r * 0.65, 0, TAU, 12, col, 1.5)
 			ctrl.draw_circle(center, r * 0.25, col)
 		2:
-			var pts := PackedVector2Array([
+			var pts =PackedVector2Array([
 				center + Vector2(r, 0), center + Vector2(-r * 0.5, -r * 0.5),
 				center + Vector2(-r * 0.3, 0), center + Vector2(-r * 0.5, r * 0.5),
 			])
@@ -553,9 +553,9 @@ func _draw_weapon_icon_on(ctrl: Control, center: Vector2, r: float, weapon_type:
 		4:
 			ctrl.draw_arc(center, r * 0.45, 0, TAU, 12, col, 1.5)
 			for spike_i in 6:
-				var angle := TAU * spike_i / 6.0
-				var inner_pt := center + Vector2(cos(angle), sin(angle)) * r * 0.45
-				var outer_pt := center + Vector2(cos(angle), sin(angle)) * r * 0.9
+				var angle =TAU * spike_i / 6.0
+				var inner_pt =center + Vector2(cos(angle), sin(angle)) * r * 0.45
+				var outer_pt =center + Vector2(cos(angle), sin(angle)) * r * 0.9
 				ctrl.draw_line(inner_pt, outer_pt, col, 1.5)
 				ctrl.draw_circle(outer_pt, 1.5, col)
 		5:
@@ -567,8 +567,8 @@ func _draw_weapon_icon_on(ctrl: Control, center: Vector2, r: float, weapon_type:
 
 func _draw_shield_icon_on(ctrl: Control, center: Vector2, r: float, col: Color) -> void:
 	for seg in 6:
-		var a1 := TAU * seg / 6.0 - PI / 6.0
-		var a2 := TAU * (seg + 1) / 6.0 - PI / 6.0
+		var a1 =TAU * seg / 6.0 - PI / 6.0
+		var a2 =TAU * (seg + 1) / 6.0 - PI / 6.0
 		ctrl.draw_line(
 			center + Vector2(cos(a1), sin(a1)) * r,
 			center + Vector2(cos(a2), sin(a2)) * r,
@@ -577,7 +577,7 @@ func _draw_shield_icon_on(ctrl: Control, center: Vector2, r: float, col: Color) 
 
 
 func _draw_engine_icon_on(ctrl: Control, center: Vector2, r: float, col: Color) -> void:
-	var pts := PackedVector2Array([
+	var pts =PackedVector2Array([
 		center + Vector2(0, -r),
 		center + Vector2(r * 0.5, -r * 0.3),
 		center + Vector2(r * 0.3, r * 0.5),
@@ -597,7 +597,7 @@ func _draw_module_icon_on(ctrl: Control, center: Vector2, r: float, col: Color) 
 		Color(col.r, col.g, col.b, 0.2))
 	ctrl.draw_rect(Rect2(center.x - r * 0.6, center.y - r * 0.6, r * 1.2, r * 1.2), col, false, 1.5)
 	for i in 3:
-		var offset := (i - 1) * r * 0.35
+		var offset =(i - 1) * r * 0.35
 		ctrl.draw_line(center + Vector2(-r * 0.6, offset), center + Vector2(-r, offset), col, 1.0)
 		ctrl.draw_line(center + Vector2(r * 0.6, offset), center + Vector2(r, offset), col, 1.0)
 	ctrl.draw_circle(center, r * 0.15, col)

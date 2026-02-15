@@ -8,38 +8,52 @@ extends Node
 # =============================================================================
 
 # --- Per-system toggles (runtime-editable) ---
-var engine_trails_enabled := true
-var speed_effects_enabled := true
-var space_dust_reactive_enabled := false
-var camera_vibration_enabled := true
-var gforce_enabled := true
-var motion_blur_enabled := false
-var nebula_wisps_enabled := false
+var engine_trails_enabled =true
+var speed_effects_enabled =true
+var space_dust_reactive_enabled =true
+var camera_vibration_enabled =true
+var gforce_enabled =true
+var motion_blur_enabled =true
+var nebula_wisps_enabled =false
 
 # --- Internal refs ---
-var _ship: ShipController = null
-var _camera: ShipCamera = null
+var _ship = null
+var _camera = null
 var _universe: Node3D = null
 var _main_scene: Node3D = null
+
+var film_grain_enabled =true
 
 var _engine_exhaust: EngineExhaust = null
 var _speed_effects: SpeedEffects = null
 var _gforce: GForceEffects = null
 var _motion_blur: MotionBlur = null
+var _space_dust: SpaceDust = null
+var _film_grain: FilmGrain = null
 
 
-func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main_scene: Node3D) -> void:
+func initialize(ship, camera, universe: Node3D, main_scene: Node3D) -> void:
 	_ship = ship
 	_camera = camera
 	_universe = universe
 	_main_scene = main_scene
 
-	# --- Space Dust & Nebula Wisps: DISABLED (visual quality insufficient) ---
-	# SpaceDust and NebulaWisps are not created.
-	# Kill any leftover instances from previous sessions
+	# --- Space Dust (speed-reactive ambient particles) ---
+	if space_dust_reactive_enabled and universe:
+		# Kill any leftover instances from previous sessions
+		for child in universe.get_children():
+			if child.name == "SpaceDust":
+				child.queue_free()
+		_space_dust = SpaceDust.new()
+		_space_dust.name = "SpaceDust"
+		universe.add_child(_space_dust)
+		_space_dust.set_camera(camera)
+		_space_dust.set_ship(ship)
+
+	# --- Nebula Wisps: DISABLED ---
 	if universe:
 		for child in universe.get_children():
-			if child.name == "SpaceDust" or child.name == "NebulaWisps":
+			if child.name == "NebulaWisps":
 				child.queue_free()
 
 	# --- Engine Exhaust (child of ShipModel) ---
@@ -61,14 +75,20 @@ func initialize(ship: ShipController, camera: ShipCamera, universe: Node3D, main
 	# --- Motion Blur (child of Camera) ---
 	_create_motion_blur()
 
+	# --- Film Grain (fullscreen anti-banding) ---
+	if film_grain_enabled:
+		_film_grain = FilmGrain.new()
+		_film_grain.name = "FilmGrain"
+		main_scene.add_child(_film_grain)
+
 	# --- Camera vibration toggle ---
 	if _camera:
 		_camera.vibration_enabled = camera_vibration_enabled
 
 
-func on_ship_rebuilt(new_ship: ShipController) -> void:
+func on_ship_rebuilt(new_ship) -> void:
 	_ship = new_ship
-	var new_camera := new_ship.get_node_or_null("ShipCamera") as ShipCamera
+	var new_camera =new_ship.get_node_or_null("ShipCamera")
 	if new_camera:
 		_camera = new_camera
 
@@ -77,6 +97,10 @@ func on_ship_rebuilt(new_ship: ShipController) -> void:
 		_speed_effects.set_ship(new_ship)
 	if _gforce:
 		_gforce.set_ship(new_ship)
+	if _space_dust and is_instance_valid(_space_dust):
+		_space_dust.set_ship(new_ship)
+		if new_camera:
+			_space_dust.set_camera(new_camera)
 	if _camera:
 		_camera.vibration_enabled = camera_vibration_enabled
 
@@ -103,10 +127,10 @@ func _recreate_ship_model_effects() -> void:
 func _create_engine_exhaust() -> void:
 	if _ship == null or not engine_trails_enabled:
 		return
-	var model := _ship.get_node_or_null("ShipModel") as ShipModel
+	var model = _ship.get_node_or_null("ShipModel")
 	if model == null:
 		return
-	var vfx_pts := _get_vfx_points()
+	var vfx_pts =_get_vfx_points()
 	_engine_exhaust = EngineExhaust.new()
 	_engine_exhaust.name = "EngineExhaust"
 	model.add_child(_engine_exhaust)
@@ -135,6 +159,7 @@ func set_all_enabled(enabled: bool) -> void:
 	gforce_enabled = enabled
 	motion_blur_enabled = enabled
 	nebula_wisps_enabled = enabled
+	film_grain_enabled = enabled
 
 	if _motion_blur and is_instance_valid(_motion_blur):
 		_motion_blur.visible = enabled
@@ -142,6 +167,10 @@ func set_all_enabled(enabled: bool) -> void:
 		_speed_effects.visible = enabled
 	if _gforce:
 		_gforce.visible = enabled
+	if _space_dust and is_instance_valid(_space_dust):
+		_space_dust.visible = enabled
+	if _film_grain and is_instance_valid(_film_grain):
+		_film_grain.visible = enabled
 	if _camera:
 		_camera.vibration_enabled = enabled
 

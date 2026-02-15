@@ -8,7 +8,7 @@ extends UIScreen
 
 signal refinery_closed
 
-var _player_data: PlayerData = null
+var _player_data = null
 var _station_key: String = ""
 var _station_name: String = "STATION"
 
@@ -19,9 +19,9 @@ var _recipe_view: RecipeBrowserView = null
 var _queue_view: QueueView = null
 var _current_tab: int = -1
 
-const SIDEBAR_W := 160.0
-const CONTENT_TOP := 65.0
-const BOTTOM_H := 50.0
+const SIDEBAR_W =160.0
+const CONTENT_TOP =65.0
+const BOTTOM_H =50.0
 const TABS: Array[Array] = [
 	["RECETTES", "Parcourir et lancer des recettes"],
 	["FILE", "Jobs en cours et completes"],
@@ -34,7 +34,7 @@ func _ready() -> void:
 	super._ready()
 
 	for i in TABS.size():
-		var btn := UIButton.new()
+		var btn =UIButton.new()
 		btn.text = TABS[i][0]
 		btn.visible = false
 		btn.pressed.connect(_on_tab_pressed.bind(i))
@@ -57,12 +57,12 @@ func _ready() -> void:
 	add_child(_queue_view)
 
 
-func setup(pdata: PlayerData, station_key: String, sname: String) -> void:
+func setup(pdata, station_key: String, sname: String) -> void:
 	_player_data = pdata
 	_station_key = station_key
 	_station_name = sname
 	screen_title = "RAFFINERIE — " + sname.to_upper()
-	var mgr: RefineryManager = pdata.refinery_manager if pdata else null
+	var mgr = pdata.refinery_manager if pdata else null
 	if _recipe_view:
 		_recipe_view.setup(mgr, station_key, pdata)
 	if _queue_view:
@@ -134,7 +134,7 @@ func _layout_controls() -> void:
 	_back_btn.position = Vector2(btn_x, s.y - BOTTOM_H - btn_h)
 	_back_btn.size = Vector2(btn_w, btn_h)
 
-	var content_rect := Rect2(SIDEBAR_W, CONTENT_TOP, s.x - SIDEBAR_W - 8.0, s.y - CONTENT_TOP - BOTTOM_H)
+	var content_rect =Rect2(SIDEBAR_W, CONTENT_TOP, s.x - SIDEBAR_W - 8.0, s.y - CONTENT_TOP - BOTTOM_H)
 	if _recipe_view:
 		_recipe_view.position = content_rect.position
 		_recipe_view.size = content_rect.size
@@ -147,7 +147,7 @@ func _draw() -> void:
 	var s: Vector2 = size
 	# Background
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
-	var edge_col := Color(0.0, 0.0, 0.02, 0.5)
+	var edge_col =Color(0.0, 0.0, 0.02, 0.5)
 	draw_rect(Rect2(0, 0, s.x, 50), edge_col)
 	draw_rect(Rect2(0, s.y - 40, s.x, 40), edge_col)
 	_draw_title(s)
@@ -171,7 +171,7 @@ func _draw() -> void:
 
 	# Storage usage
 	if _player_data and _player_data.refinery_manager:
-		var storage := _player_data.refinery_manager.get_storage(_station_key)
+		var storage =_player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
 		var st_text: String = "Stockage: %d / %d" % [total, cap]
@@ -180,5 +180,5 @@ func _draw() -> void:
 
 	# Scanline
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)

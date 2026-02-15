@@ -8,7 +8,7 @@ extends Control
 
 signal ship_purchased(ship_id: StringName)
 
-var _commerce_manager: CommerceManager = null
+var _commerce_manager = null
 var _station_type: int = 0
 var _available_ships: Array[StringName] = []
 var _selected_index: int = 0
@@ -17,7 +17,7 @@ var _selected_index: int = 0
 var _viewport_container: SubViewportContainer = null
 var _viewport: SubViewport = null
 var _viewer_camera: Camera3D = null
-var _ship_model_node: ShipModel = null
+var _ship_model_node = null
 var _orbit_yaw: float = 30.0
 var _orbit_pitch: float = -15.0
 var _orbit_distance: float = 8.0
@@ -30,10 +30,10 @@ var _last_input_time: float = 0.0
 var _ship_list: UIScrollList = null
 var _configure_btn: UIButton = null
 
-const LIST_W := 160.0
-const STATS_W := 220.0
-const ROW_H := 36.0
-const SIZE_LABELS := { "S": "Petit", "M": "Moyen", "L": "Grand" }
+const LIST_W =160.0
+const STATS_W =220.0
+const ROW_H =36.0
+const SIZE_LABELS ={ "S": "Petit", "M": "Moyen", "L": "Grand" }
 
 
 func _ready() -> void:
@@ -54,7 +54,7 @@ func _ready() -> void:
 	add_child(_configure_btn)
 
 
-func setup(mgr: CommerceManager, stype: int) -> void:
+func setup(mgr, stype: int) -> void:
 	_commerce_manager = mgr
 	_station_type = stype
 
@@ -76,7 +76,7 @@ func refresh() -> void:
 
 
 func _layout() -> void:
-	var s := size
+	var s =size
 	# Ship list on left
 	_ship_list.position = Vector2(0, 0)
 	_ship_list.size = Vector2(LIST_W, s.y)
@@ -109,7 +109,7 @@ func _on_buy_pressed() -> void:
 		return
 	var ship_id: StringName = _available_ships[_selected_index]
 	if _commerce_manager.buy_ship(ship_id):
-		var data := ShipRegistry.get_ship_data(ship_id)
+		var data =ShipRegistry.get_ship_data(ship_id)
 		if GameManager._notif and data:
 			GameManager._notif.commerce.bought(String(data.ship_name), data.price)
 		ship_purchased.emit(ship_id)
@@ -140,16 +140,16 @@ func _setup_3d_viewer() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_viewport_container.add_child(_viewport)
 
-	var env := Environment.new()
+	var env =Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.0, 0.0, 0.0, 0.0)
 	env.ambient_light_color = Color(0.15, 0.2, 0.25)
 	env.ambient_light_energy = 0.3
-	var world_env := WorldEnvironment.new()
+	var world_env =WorldEnvironment.new()
 	world_env.environment = env
 	_viewport.add_child(world_env)
 
-	var key_light := DirectionalLight3D.new()
+	var key_light =DirectionalLight3D.new()
 	key_light.light_color = Color(1.0, 0.95, 0.9)
 	key_light.light_energy = 1.2
 	key_light.rotation_degrees = Vector3(-45, 30, 0)
@@ -174,7 +174,7 @@ func _cleanup_3d_viewer() -> void:
 
 
 func _update_preview() -> void:
-	var data := _get_selected_ship_data()
+	var data =_get_selected_ship_data()
 	if data == null or _viewport == null: return
 
 	# Remove old model + old lights
@@ -187,16 +187,16 @@ func _update_preview() -> void:
 			child.queue_free()
 
 	# Scale lights to model size so all ships are well-lit
-	var scene_scale := ShipFactory.get_scene_model_scale(_available_ships[_selected_index])
-	var light_scale := maxf(1.0, scene_scale)
-	var fill_light := OmniLight3D.new()
+	var scene_scale =ShipFactory.get_scene_model_scale(_available_ships[_selected_index])
+	var light_scale =maxf(1.0, scene_scale)
+	var fill_light =OmniLight3D.new()
 	fill_light.light_color = Color(0.8, 0.85, 0.9)
 	fill_light.light_energy = 0.6
 	fill_light.omni_range = 30.0 * light_scale
 	fill_light.position = Vector3(-6, 2, -4) * light_scale
 	_viewport.add_child(fill_light)
 
-	var rim_light := OmniLight3D.new()
+	var rim_light =OmniLight3D.new()
 	rim_light.light_color = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b)
 	rim_light.light_energy = 0.4
 	rim_light.omni_range = 30.0 * light_scale
@@ -220,9 +220,9 @@ func _update_preview() -> void:
 
 func _update_orbit_camera() -> void:
 	if _viewer_camera == null: return
-	var yaw_rad := deg_to_rad(_orbit_yaw)
-	var pitch_rad := deg_to_rad(_orbit_pitch)
-	var pos := Vector3(
+	var yaw_rad =deg_to_rad(_orbit_yaw)
+	var pitch_rad =deg_to_rad(_orbit_pitch)
+	var pos =Vector3(
 		_orbit_distance * cos(pitch_rad) * sin(yaw_rad),
 		_orbit_distance * sin(pitch_rad),
 		_orbit_distance * cos(pitch_rad) * cos(yaw_rad),
@@ -234,12 +234,12 @@ func _update_orbit_camera() -> void:
 func _auto_fit_camera() -> void:
 	var max_radius: float = 2.0
 	if _ship_model_node:
-		var aabb := _ship_model_node.get_visual_aabb()
+		var aabb =_ship_model_node.get_visual_aabb()
 		for i in 8:
 			var corner: Vector3 = aabb.get_endpoint(i) + _ship_model_node.position
 			max_radius = maxf(max_radius, corner.length())
-	var half_fov := deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
-	var ideal := max_radius / tan(half_fov) * 1.3
+	var half_fov =deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
+	var ideal =max_radius / tan(half_fov) * 1.3
 	_orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
 	_orbit_max_dist = ideal * 3.0
@@ -249,7 +249,7 @@ func _auto_fit_camera() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
+		var mb =event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			_orbit_dragging = mb.pressed
 			_last_input_time = 0.0
@@ -262,7 +262,7 @@ func _gui_input(event: InputEvent) -> void:
 			_update_orbit_camera()
 			_last_input_time = 0.0
 	elif event is InputEventMouseMotion and _orbit_dragging:
-		var mm := event as InputEventMouseMotion
+		var mm =event as InputEventMouseMotion
 		_orbit_yaw += mm.relative.x * 0.3
 		_orbit_pitch = clampf(_orbit_pitch - mm.relative.y * 0.3, -80.0, 80.0)
 		_update_orbit_camera()
@@ -282,7 +282,7 @@ func _process(delta: float) -> void:
 # DRAWING
 # =========================================================================
 func _draw() -> void:
-	var s := size
+	var s =size
 	var font: Font = UITheme.get_font()
 
 	# Stats panel background (right side)
@@ -293,7 +293,7 @@ func _draw() -> void:
 	# List separator
 	draw_line(Vector2(LIST_W + 2, 0), Vector2(LIST_W + 2, s.y), UITheme.BORDER, 1.0)
 
-	var data := _get_selected_ship_data()
+	var data =_get_selected_ship_data()
 	if data == null: return
 
 	# Ship name + class
@@ -329,7 +329,7 @@ func _draw() -> void:
 	for hp in data.hardpoints:
 		var sz: String = hp.get("size", "S")
 		hp_sizes[sz] = hp_sizes.get(sz, 0) + 1
-	var hp_text := ""
+	var hp_text =""
 	for sz_key in ["S", "M", "L"]:
 		if hp_sizes.has(sz_key):
 			hp_text += "%dx %s  " % [hp_sizes[sz_key], sz_key]
@@ -340,7 +340,7 @@ func _draw() -> void:
 	var mod_sizes: Dictionary = {}
 	for ms in data.module_slots:
 		mod_sizes[ms] = mod_sizes.get(ms, 0) + 1
-	var mod_text := ""
+	var mod_text =""
 	for sz_key in ["S", "M", "L"]:
 		if mod_sizes.has(sz_key):
 			mod_text += "%dx %s  " % [mod_sizes[sz_key], sz_key]
@@ -350,7 +350,7 @@ func _draw() -> void:
 
 	# Price
 	y += 8.0
-	var price_text := PriceCatalog.format_price(data.price)
+	var price_text =PriceCatalog.format_price(data.price)
 	draw_rect(Rect2(stats_x + 10, y, STATS_W - 20, 30),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.1))
 	draw_rect(Rect2(stats_x + 10, y, STATS_W - 20, 30),
@@ -387,7 +387,7 @@ func _draw_stat_section(font: Font, x: float, y: float, title: String, rows: Arr
 
 func _draw_ship_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> void:
 	if idx < 0 or idx >= _available_ships.size(): return
-	var data := ShipRegistry.get_ship_data(_available_ships[idx])
+	var data =ShipRegistry.get_ship_data(_available_ships[idx])
 	if data == null: return
 
 	var font: Font = UITheme.get_font()
@@ -402,7 +402,7 @@ func _draw_ship_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 		UITheme.FONT_SIZE_BODY, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
 
 	# Class + price
-	var info := String(data.ship_class) + " — " + PriceCatalog.format_price(data.price)
+	var info =String(data.ship_class) + " — " + PriceCatalog.format_price(data.price)
 	ci.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + 30),
 		info, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 16,
 		UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)

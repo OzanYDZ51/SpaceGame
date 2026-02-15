@@ -22,10 +22,10 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	_intensity = clampf(intensity, 0.5, 3.0)
 
 	# Get AABB from ShipModel for hull-conforming ellipsoid
-	var shield_half_extents := Vector3.ONE * FALLBACK_RADIUS
-	var shield_center := Vector3.ZERO
-	var ship_model := target_ship.get_node_or_null("ShipModel")
-	if ship_model is ShipModel:
+	var shield_half_extents =Vector3.ONE * FALLBACK_RADIUS
+	var shield_center =Vector3.ZERO
+	var ship_model =target_ship.get_node_or_null("ShipModel")
+	if ship_model and ship_model.has_method("get_visual_aabb"):
 		var aabb: AABB = ship_model.get_visual_aabb()
 		if aabb.size.length() > 0.1:
 			shield_half_extents = aabb.size * 0.5 * SHIELD_PADDING
@@ -39,13 +39,13 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	position = shield_center
 
 	# Impact direction in ship's local space, relative to shield center
-	var impact_world := hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
+	var impact_world =hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
 	if impact_world.length_squared() < 0.01:
 		impact_world = -target_ship.global_transform.basis.z
 	var impact_local: Vector3 = target_ship.global_transform.basis.inverse() * impact_world.normalized()
 
 	# === Load shader ===
-	var shader := load("res://shaders/shield_hit.gdshader") as Shader
+	var shader =load("res://shaders/shield_hit.gdshader") as Shader
 	if shader == null:
 		push_warning("ShieldHitEffect: shader not found")
 		queue_free()
@@ -59,8 +59,8 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	_shield_mat.set_shader_parameter("shield_scale", shield_half_extents)
 
 	# === Unit sphere scaled to AABB ellipsoid ===
-	var shield_mesh := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
+	var shield_mesh =MeshInstance3D.new()
+	var sphere =SphereMesh.new()
 	sphere.radius = 1.0
 	sphere.height = 2.0
 	sphere.radial_segments = 48
@@ -72,10 +72,10 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	add_child(shield_mesh)
 
 	# === Flash light at impact point on ellipsoid surface ===
-	var flash_pos := impact_local * shield_half_extents
+	var flash_pos =impact_local * shield_half_extents
 	_flash_light = OmniLight3D.new()
 	_flash_light.position = flash_pos
-	var flash_col := Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)
+	var flash_col =Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)
 	_flash_light.light_color = flash_col
 	_flash_light.light_energy = 3.5 * _intensity
 	_flash_light.omni_range = 20.0 * sqrt(_intensity)
@@ -101,7 +101,7 @@ func _process(delta: float) -> void:
 
 
 func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> void:
-	var sparks := GPUParticles3D.new()
+	var sparks =GPUParticles3D.new()
 	sparks.position = pos
 	sparks.emitting = true
 	sparks.one_shot = true
@@ -111,7 +111,7 @@ func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> v
 	sparks.randomness = 0.4
 	sparks.local_coords = true
 
-	var mat := ParticleProcessMaterial.new()
+	var mat =ParticleProcessMaterial.new()
 	mat.direction = impact_dir
 	mat.spread = 80.0
 	mat.initial_velocity_min = 20.0
@@ -122,24 +122,24 @@ func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> v
 	mat.scale_min = 0.1
 	mat.scale_max = 0.45
 
-	var arc_col := Color(0.15, 0.4, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.35, 0.1)
+	var arc_col =Color(0.15, 0.4, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.35, 0.1)
 
-	var grad := Gradient.new()
+	var grad =Gradient.new()
 	grad.colors = PackedColorArray([
 		Color(0.6, 0.8, 1.0, 0.8),
 		arc_col,
 		Color(arc_col.r * 0.1, arc_col.g * 0.1, arc_col.b * 0.25, 0.0),
 	])
 	grad.offsets = PackedFloat32Array([0.0, 0.2, 1.0])
-	var grad_tex := GradientTexture1D.new()
+	var grad_tex =GradientTexture1D.new()
 	grad_tex.gradient = grad
 	mat.color_ramp = grad_tex
 
 	sparks.process_material = mat
 
-	var mesh := BoxMesh.new()
+	var mesh =BoxMesh.new()
 	mesh.size = Vector3(0.03, 0.03, 0.35)
-	var mesh_mat := StandardMaterial3D.new()
+	var mesh_mat =StandardMaterial3D.new()
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mesh_mat.albedo_color = arc_col

@@ -39,8 +39,8 @@ var _turret_base: Node3D = null  # Future: static turret base mesh
 var _cooldown_timer: float = 0.0
 var _projectile_scene: PackedScene = null
 var _cached_ship: Node3D = null
-var _cached_energy_sys: EnergySystem = null
-var _cached_pool: ProjectilePool = null
+var _cached_energy_sys = null
+var _cached_pool = null
 var _refs_cached: bool = false
 
 # Module multipliers (set by WeaponManager from EquipmentManager)
@@ -140,7 +140,7 @@ func can_mount(weapon: WeaponResource) -> bool:
 	# MINING LASERS can only mount on forward (non-turret) slots
 	if weapon.weapon_type == WeaponResource.WeaponType.MINING_LASER and is_turret:
 		return false
-	var size_order := {"S": 0, "M": 1, "L": 2}
+	var size_order ={"S": 0, "M": 1, "L": 2}
 	var weapon_size_str: String = ["S", "M", "L"][weapon.slot_size]
 	return size_order.get(weapon_size_str, 0) <= size_order.get(slot_size, 0)
 
@@ -153,7 +153,7 @@ func toggle() -> void:
 func get_cooldown_ratio() -> float:
 	if mounted_weapon == null or mounted_weapon.fire_rate <= 0.0:
 		return 0.0
-	var cooldown_duration := 1.0 / mounted_weapon.fire_rate
+	var cooldown_duration =1.0 / mounted_weapon.fire_rate
 	return clampf(_cooldown_timer / cooldown_duration, 0.0, 1.0)
 
 
@@ -180,29 +180,29 @@ func _update_turret_rotation(delta: float) -> void:
 		return
 
 	# Decompose target direction into yaw and pitch in local space
-	var dir := _target_direction.normalized()
+	var dir =_target_direction.normalized()
 	if dir.length_squared() < 0.01:
 		dir = Vector3.FORWARD
 
 	# Yaw = rotation around Y axis (horizontal)
 	# Negate dir.x: in Godot, positive rotation_degrees.y = CCW from above = turn LEFT
 	# So target to the right (dir.x > 0) needs negative yaw
-	var raw_yaw := rad_to_deg(atan2(-dir.x, -dir.z))
+	var raw_yaw =rad_to_deg(atan2(-dir.x, -dir.z))
 	# Pitch = rotation around X axis (vertical)
 	# Positive dir.y = target above = need positive rotation_degrees.x to tilt up
-	var horizontal_dist := sqrt(dir.x * dir.x + dir.z * dir.z)
-	var raw_pitch := rad_to_deg(atan2(dir.y, horizontal_dist))
+	var horizontal_dist =sqrt(dir.x * dir.x + dir.z * dir.z)
+	var raw_pitch =rad_to_deg(atan2(dir.y, horizontal_dist))
 
 	# Check if target is within arc BEFORE clamping
-	var half_arc := turret_arc_degrees * 0.5
-	var target_in_arc := absf(raw_yaw) <= half_arc + 5.0 and raw_pitch >= turret_pitch_min - 5.0 and raw_pitch <= turret_pitch_max + 5.0
+	var half_arc =turret_arc_degrees * 0.5
+	var target_in_arc =absf(raw_yaw) <= half_arc + 5.0 and raw_pitch >= turret_pitch_min - 5.0 and raw_pitch <= turret_pitch_max + 5.0
 
 	# Clamp to arc limits (turret still tracks to edge even if out of arc)
-	var clamped_yaw := clampf(raw_yaw, -half_arc, half_arc)
-	var clamped_pitch := clampf(raw_pitch, turret_pitch_min, turret_pitch_max)
+	var clamped_yaw =clampf(raw_yaw, -half_arc, half_arc)
+	var clamped_pitch =clampf(raw_pitch, turret_pitch_min, turret_pitch_max)
 
 	# Smooth but fast rotation: move_toward at 2x speed for responsive tracking
-	var max_step := turret_speed_deg_s * delta * 2.0
+	var max_step =turret_speed_deg_s * delta * 2.0
 	_current_yaw = move_toward(_current_yaw, clamped_yaw, max_step)
 	_current_pitch = move_toward(_current_pitch, clamped_pitch, max_step)
 
@@ -210,12 +210,12 @@ func _update_turret_rotation(delta: float) -> void:
 	_turret_pivot.rotation_degrees = Vector3(_current_pitch, _current_yaw, 0.0)
 
 	# Can fire only if: target is within arc AND turret is aligned to it
-	var yaw_error := absf(_current_yaw - clamped_yaw)
-	var pitch_error := absf(_current_pitch - clamped_pitch)
+	var yaw_error =absf(_current_yaw - clamped_yaw)
+	var pitch_error =absf(_current_pitch - clamped_pitch)
 	_can_fire = target_in_arc and (yaw_error < 3.0 and pitch_error < 3.0)
 
 
-func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
+func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 	if not enabled:
 		return null
 
@@ -230,7 +230,7 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 		return null
 
 	# Check energy (apply module multiplier)
-	var energy_sys := _get_energy_system()
+	var energy_sys = _get_energy_system()
 	if energy_sys and mounted_weapon.ammo_type == WeaponResource.AmmoType.ENERGY:
 		if not energy_sys.consume_energy(mounted_weapon.energy_cost_per_shot * energy_cost_mult):
 			return null
@@ -240,19 +240,19 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 		set_process(true)
 
 	# Spawn projectile (prefer pool, fallback to instantiate)
-	var bolt: BaseProjectile = null
-	var pool := _get_projectile_pool()
+	var bolt = null
+	var pool = _get_projectile_pool()
 	if pool and mounted_weapon.projectile_scene_path != "":
 		bolt = pool.acquire(mounted_weapon.projectile_scene_path)
 		if bolt:
 			bolt._pool = pool
 	if bolt == null:
-		bolt = _projectile_scene.instantiate() as BaseProjectile
+		bolt = _projectile_scene.instantiate()
 		if bolt == null:
 			return null
 		get_tree().current_scene.add_child(bolt)
 
-	var ship_node := _get_ship_node()
+	var ship_node =_get_ship_node()
 	bolt.damage = mounted_weapon.damage_per_hit
 	bolt.damage_type = mounted_weapon.damage_type
 	bolt.max_lifetime = mounted_weapon.projectile_lifetime * range_mult
@@ -263,7 +263,7 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 	var fire_dir: Vector3
 	var up_hint: Vector3
 
-	var muzzle := get_muzzle_transform()
+	var muzzle =get_muzzle_transform()
 	spawn_pos = muzzle.origin
 
 	if is_turret and _turret_pivot:
@@ -288,13 +288,12 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3) -> BaseProjectile:
 
 	# For missiles, set tracking target and reset arm timer (needed for pool reuse)
 	if bolt is MissileProjectile and mounted_weapon.weapon_type in [WeaponResource.WeaponType.MISSILE, WeaponResource.WeaponType.TURRET]:
-		var missile := bolt as MissileProjectile
-		missile._arm_timer = 0.3
-		missile.target = null
-		var targeting := ship_node.get_node_or_null("TargetingSystem") as TargetingSystem
+		bolt._arm_timer = 0.3
+		bolt.target = null
+		var targeting = ship_node.get_node_or_null("TargetingSystem")
 		if targeting and targeting.current_target:
-			missile.target = targeting.current_target
-			missile.tracking_strength = mounted_weapon.tracking_strength
+			bolt.target = targeting.current_target
+			bolt.tracking_strength = mounted_weapon.tracking_strength
 
 	return bolt
 
@@ -376,7 +375,7 @@ func _cache_refs_if_needed() -> void:
 		return
 	_refs_cached = true
 	# Walk up to find the ship (RigidBody3D) or station (StaticBody3D)
-	var node := get_parent()
+	var node =get_parent()
 	while node:
 		if node is RigidBody3D:
 			_cached_ship = node as Node3D
@@ -390,13 +389,13 @@ func _cache_refs_if_needed() -> void:
 				break
 			node = node.get_parent()
 	if _cached_ship:
-		_cached_energy_sys = _cached_ship.get_node_or_null("EnergySystem") as EnergySystem
-	var mgr := GameManager.get_node_or_null("ShipLODManager")
-	if mgr and mgr is ShipLODManager:
-		_cached_pool = mgr.get_node_or_null("ProjectilePool") as ProjectilePool
+		_cached_energy_sys = _cached_ship.get_node_or_null("EnergySystem")
+	var mgr =GameManager.get_node_or_null("ShipLODManager")
+	if mgr:
+		_cached_pool = mgr.get_node_or_null("ProjectilePool")
 
 
-func _get_energy_system() -> EnergySystem:
+func _get_energy_system():
 	_cache_refs_if_needed()
 	return _cached_energy_sys
 
@@ -406,13 +405,13 @@ func _get_ship_node() -> Node3D:
 	return _cached_ship
 
 
-func _get_projectile_pool() -> ProjectilePool:
+func _get_projectile_pool():
 	_cache_refs_if_needed()
 	return _cached_pool
 
 
-func _get_ship_model() -> ShipModel:
-	var ship := _get_ship_node()
+func _get_ship_model():
+	var ship =_get_ship_node()
 	if ship:
-		return ship.get_node_or_null("ShipModel") as ShipModel
+		return ship.get_node_or_null("ShipModel")
 	return null

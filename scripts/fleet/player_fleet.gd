@@ -6,27 +6,27 @@ extends RefCounted
 # =============================================================================
 
 signal fleet_changed
-signal active_ship_changed(ship: FleetShip)
+signal active_ship_changed(ship)
 
-var ships: Array[FleetShip] = []
+var ships: Array = []
 var active_index: int = 0
-var squadrons: Array[Squadron] = []
+var squadrons: Array = []
 var _next_squadron_id: int = 1
 
 
-func add_ship(ship: FleetShip) -> int:
+func add_ship(ship) -> int:
 	ships.append(ship)
 	fleet_changed.emit()
 	return ships.size() - 1
 
 
-func remove_ship(index: int) -> FleetShip:
+func remove_ship(index: int):
 	if index < 0 or index >= ships.size():
 		return null
 	if ships.size() <= 1:
 		push_warning("PlayerFleet: Cannot remove last ship")
 		return null
-	var removed := ships[index]
+	var removed = ships[index]
 	ships.remove_at(index)
 	if active_index >= ships.size():
 		active_index = ships.size() - 1
@@ -34,7 +34,7 @@ func remove_ship(index: int) -> FleetShip:
 	return removed
 
 
-func get_active() -> FleetShip:
+func get_active():
 	if active_index >= 0 and active_index < ships.size():
 		return ships[active_index]
 	return null
@@ -56,16 +56,16 @@ func get_ship_count() -> int:
 func serialize() -> Array:
 	var result: Array = []
 	for ship in ships:
-		var d := ship.serialize()
+		var d = ship.serialize()
 		d["active"] = (ships.find(ship) == active_index)
 		result.append(d)
 	return result
 
 
-static func deserialize(data: Array) -> PlayerFleet:
-	var fleet := PlayerFleet.new()
+static func deserialize(data: Array):
+	var fleet =PlayerFleet.new()
 	for i in data.size():
-		var ship := FleetShip.deserialize(data[i])
+		var ship = FleetShip.deserialize(data[i])
 		fleet.ships.append(ship)
 		if data[i].get("active", false):
 			fleet.active_index = i
@@ -87,7 +87,7 @@ func get_ship_squadron(fleet_index: int) -> Squadron:
 
 
 func next_squadron_id() -> int:
-	var id := _next_squadron_id
+	var id =_next_squadron_id
 	_next_squadron_id += 1
 	return id
 
@@ -95,7 +95,7 @@ func next_squadron_id() -> int:
 func get_ships_at_station(station_id: String) -> Array[int]:
 	var result: Array[int] = []
 	for i in ships.size():
-		var fs := ships[i]
+		var fs = ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_station_id == station_id:
 			result.append(i)
 	return result
@@ -104,7 +104,7 @@ func get_ships_at_station(station_id: String) -> Array[int]:
 func get_deployed_in_system(system_id: int) -> Array[int]:
 	var result: Array[int] = []
 	for i in ships.size():
-		var fs := ships[i]
+		var fs = ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.docked_system_id == system_id:
 			result.append(i)
 	return result
@@ -113,7 +113,7 @@ func get_deployed_in_system(system_id: int) -> Array[int]:
 func get_ships_in_system(system_id: int) -> Array[int]:
 	var result: Array[int] = []
 	for i in ships.size():
-		var fs := ships[i]
+		var fs = ships[i]
 		if fs.docked_system_id == system_id and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
 			result.append(i)
 	return result

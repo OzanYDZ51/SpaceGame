@@ -7,14 +7,14 @@ extends Node
 # =============================================================================
 
 signal wormhole_jump_started
-signal wormhole_jump_completed(galaxy: GalaxyData, spawn_system: int)
+signal wormhole_jump_completed(galaxy, spawn_system: int)
 
 # Injected refs
-var system_transition: SystemTransition = null
-var route_manager: RouteManager = null
-var fleet_deployment_mgr: FleetDeploymentManager = null
-var screen_manager: UIScreenManager = null
-var player_data: PlayerData = null
+var system_transition = null
+var route_manager = null
+var fleet_deployment_mgr = null
+var screen_manager = null
+var player_data = null
 
 
 func initiate_wormhole_jump() -> void:
@@ -22,7 +22,7 @@ func initiate_wormhole_jump() -> void:
 		route_manager.cancel_route()
 	if fleet_deployment_mgr:
 		fleet_deployment_mgr.auto_retrieve_all()
-	var wormhole := system_transition.get_active_wormhole()
+	var wormhole = system_transition.get_active_wormhole()
 	if wormhole == null:
 		return
 
@@ -57,7 +57,7 @@ func initiate_wormhole_jump() -> void:
 
 	# 4. Switch galaxy
 	Constants.galaxy_seed = target_seed
-	var new_galaxy := GalaxyGenerator.generate(target_seed)
+	var new_galaxy = GalaxyGenerator.generate(target_seed)
 	if system_transition:
 		system_transition.galaxy = new_galaxy
 
@@ -68,7 +68,7 @@ func initiate_wormhole_jump() -> void:
 
 	# Update map
 	if screen_manager:
-		var map_screen := screen_manager._screens.get("map") as UnifiedMapScreen
+		var map_screen = screen_manager._screens.get("map")
 		if map_screen:
 			map_screen.galaxy = new_galaxy
 
@@ -79,9 +79,9 @@ func initiate_wormhole_jump() -> void:
 	var state: Array = [false, false]
 	var timeout: float = 10.0
 
-	var on_connected := func():
+	var on_connected =func():
 		state[0] = true
-	var on_config := func(_cfg: Dictionary):
+	var on_config =func(_cfg: Dictionary):
 		state[1] = true
 
 	NetworkManager.connection_succeeded.connect(on_connected, CONNECT_ONE_SHOT)

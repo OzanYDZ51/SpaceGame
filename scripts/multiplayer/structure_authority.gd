@@ -79,12 +79,12 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	if node == null or not is_instance_valid(node):
 		return
 
-	var health := node.get_node_or_null("StructureHealth") as StructureHealth
+	var health = node.get_node_or_null("StructureHealth")
 	if health == null or health.is_dead():
 		return
 
 	# System check — sender must be in the same system as the structure
-	var sender_state: NetworkState = NetworkManager.peers.get(sender_pid)
+	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
 		return
 	var struct_sys: int = entry.get("system_id", -1)
@@ -92,7 +92,7 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 		return
 
 	# Distance check
-	var sender_pos := FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
+	var sender_pos =FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
 	if sender_pos.distance_to(node.global_position) > 5000.0:
 		return
 
@@ -102,13 +102,13 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 		return
 
 	# Apply damage
-	var dir := Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
+	var dir =Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
 	health.apply_damage(damage, &"thermal", dir, null)
 
 	# If destroyed, broadcast death
 	if health.is_dead():
 		var loot: Array[Dictionary] = StructureLootTable.roll_drops(entry.get("station_type", 0))
-		var pos := [node.global_position.x, node.global_position.y, node.global_position.z]
+		var pos =[node.global_position.x, node.global_position.y, node.global_position.z]
 		_broadcast_structure_destroyed(target_id, sender_pid, pos, loot)
 
 
@@ -126,7 +126,7 @@ func _broadcast_batch() -> void:
 		var node: Node3D = entry.get("node_ref")
 		if node == null or not is_instance_valid(node):
 			continue
-		var health := node.get_node_or_null("StructureHealth") as StructureHealth
+		var health = node.get_node_or_null("StructureHealth")
 		if health == null:
 			continue
 		var sys_id: int = entry["system_id"]
@@ -140,7 +140,7 @@ func _broadcast_batch() -> void:
 
 	# Send to each peer in matching system
 	for peer_id in NetworkManager.peers:
-		var ps: NetworkState = NetworkManager.peers[peer_id]
+		var ps = NetworkManager.peers[peer_id]
 		if ps == null:
 			continue
 		var sys_id: int = ps.system_id
@@ -159,7 +159,7 @@ func _broadcast_structure_destroyed(struct_id: String, killer_pid: int, pos: Arr
 		sys_id = _structures[struct_id].get("system_id", -1)
 
 	# Send to peers in the same system only
-	var target_peers := NetworkManager.get_peers_in_system(sys_id) if sys_id >= 0 else NetworkManager.peers.keys()
+	var target_peers =NetworkManager.get_peers_in_system(sys_id) if sys_id >= 0 else NetworkManager.peers.keys()
 	for peer_id in target_peers:
 		var loot_for_peer: Array = loot if peer_id == killer_pid else []
 		if peer_id == 1 and not NetworkManager.is_dedicated_server:
@@ -179,7 +179,7 @@ func apply_batch(batch: Array) -> void:
 		var node: Node3D = _structures[sid].get("node_ref")
 		if node == null or not is_instance_valid(node):
 			continue
-		var health := node.get_node_or_null("StructureHealth") as StructureHealth
+		var health = node.get_node_or_null("StructureHealth")
 		if health == null or health.is_dead():
 			continue
 		# Apply server ratios
@@ -195,7 +195,7 @@ func apply_structure_destroyed(struct_id: String, _killer_pid: int, _pos: Array,
 	var node: Node3D = _structures[struct_id].get("node_ref")
 	if node == null or not is_instance_valid(node):
 		return
-	var health := node.get_node_or_null("StructureHealth") as StructureHealth
+	var health = node.get_node_or_null("StructureHealth")
 	if health and not health.is_dead():
 		health.hull_current = 0.0
 		health._is_dead = true

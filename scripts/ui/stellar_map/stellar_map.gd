@@ -211,7 +211,7 @@ func open() -> void:
 
 	# Ensure fleet panel has the current fleet reference (may have been
 	# replaced after backend state load or deserialization)
-	var current_fleet: PlayerFleet = GameManager.player_fleet
+	var current_fleet = GameManager.player_fleet
 	if current_fleet and _fleet_panel._fleet != current_fleet:
 		_fleet_panel.set_fleet(current_fleet)
 
@@ -323,7 +323,7 @@ func _process(delta: float) -> void:
 		return
 
 	# --- Smooth WASD pan with acceleration / inertia ---
-	var input_dir := Vector2.ZERO
+	var input_dir =Vector2.ZERO
 	if Input.is_action_pressed("strafe_right"):
 		input_dir.x += 1.0
 	if Input.is_action_pressed("strafe_left"):
@@ -334,7 +334,7 @@ func _process(delta: float) -> void:
 		input_dir.y -= 1.0
 
 	if input_dir != Vector2.ZERO:
-		var target_vel := input_dir.normalized() * PAN_BASE_SPEED
+		var target_vel =input_dir.normalized() * PAN_BASE_SPEED
 		_pan_velocity = _pan_velocity.lerp(target_vel, 1.0 - exp(-PAN_ACCEL * delta))
 	else:
 		_pan_velocity = _pan_velocity.lerp(Vector2.ZERO, 1.0 - exp(-PAN_FRICTION * delta))
@@ -548,12 +548,12 @@ func _input(event: InputEvent) -> void:
 						var now: float = Time.get_ticks_msec() / 1000.0
 						if hit_id == _last_click_id and (now - _last_click_time) < 0.4:
 							# Double-click = move selected ships to this entity
-							var effective_indices := _get_effective_fleet_indices()
-							var ent := EntityRegistry.get_entity(hit_id)
+							var effective_indices =_get_effective_fleet_indices()
+							var ent =EntityRegistry.get_entity(hit_id)
 							if not effective_indices.is_empty() and not ent.is_empty():
 								var ux: float = ent["pos_x"]
 								var uz: float = ent["pos_z"]
-								var params := {"target_x": ux, "target_z": uz}
+								var params ={"target_x": ux, "target_z": uz}
 								for idx in effective_indices:
 									fleet_order_requested.emit(idx, &"move_to", params)
 								_show_waypoint(ux, uz)
@@ -575,7 +575,7 @@ func _input(event: InputEvent) -> void:
 				# Left button released
 				if _marquee.active:
 					if _marquee.is_drag():
-						var rect := _marquee.get_rect()
+						var rect =_marquee.get_rect()
 						var ids = _entity_layer.get_entities_in_rect(rect)
 						_entity_layer.selected_ids.assign(ids)
 						if ids.size() > 0:
@@ -619,12 +619,12 @@ func _input(event: InputEvent) -> void:
 				_right_hold_triggered = false
 			else:
 				# Right click released — quick release = move_to or attack
-				var effective_indices := _get_effective_fleet_indices()
+				var effective_indices =_get_effective_fleet_indices()
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
 					# Check construction marker first
 					var cm = _entity_layer.get_construction_marker_at(event.position)
 					if not cm.is_empty():
-						var params := {
+						var params ={
 							"target_x": cm["pos_x"],
 							"target_z": cm["pos_z"],
 							"marker_id": cm.get("id", ""),
@@ -638,10 +638,10 @@ func _input(event: InputEvent) -> void:
 						return
 
 					var target_id = _entity_layer.get_entity_at(event.position)
-					var target_ent := EntityRegistry.get_entity(target_id) if target_id != "" else {}
+					var target_ent =EntityRegistry.get_entity(target_id) if target_id != "" else {}
 					if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC:
 						# Attack enemy NPC
-						var params := {
+						var params ={
 							"target_entity_id": target_id,
 							"target_x": target_ent["pos_x"],
 							"target_z": target_ent["pos_z"],
@@ -689,7 +689,7 @@ func _input(event: InputEvent) -> void:
 							# No fleet_index on target — move to position
 							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
 							var universe_z: float = _camera.screen_to_universe_z(event.position.y)
-							var params := {"target_x": universe_x, "target_z": universe_z}
+							var params ={"target_x": universe_x, "target_z": universe_z}
 							for idx in effective_indices:
 								fleet_order_requested.emit(idx, &"move_to", params)
 							_show_waypoint(universe_x, universe_z)
@@ -697,7 +697,7 @@ func _input(event: InputEvent) -> void:
 					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.STATION:
 						# Right-click on a station → dock at that station
 						_select_entity(target_id)
-						var params := {"station_id": target_id}
+						var params ={"station_id": target_id}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"return_to_station", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
@@ -705,7 +705,7 @@ func _input(event: InputEvent) -> void:
 					elif not target_ent.is_empty():
 						# Right-click on a known entity (gate, planet...) → move to it
 						_select_entity(target_id)
-						var params := {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
+						var params ={"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
@@ -714,7 +714,7 @@ func _input(event: InputEvent) -> void:
 						# Move to empty space
 						var universe_x: float = _camera.screen_to_universe_x(event.position.x)
 						var universe_z: float = _camera.screen_to_universe_z(event.position.y)
-						var params := {"target_x": universe_x, "target_z": universe_z}
+						var params ={"target_x": universe_x, "target_z": universe_z}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(universe_x, universe_z)
@@ -762,7 +762,7 @@ func _get_effective_fleet_indices() -> Array[int]:
 
 ## Convenience: returns first effective fleet index or -1.
 func _get_effective_fleet_index() -> int:
-	var indices := _get_effective_fleet_indices()
+	var indices =_get_effective_fleet_indices()
 	return indices[0] if not indices.is_empty() else -1
 
 
@@ -785,13 +785,13 @@ func _entity_to_fleet_index(entity_id: String) -> int:
 	if entity_id == _player_id:
 		return _fleet_panel._fleet.active_index
 	# Fast path: entity extra has fleet_index
-	var ent := EntityRegistry.get_entity(entity_id)
+	var ent =EntityRegistry.get_entity(entity_id)
 	if not ent.is_empty():
 		var extra: Dictionary = ent.get("extra", {})
 		if extra.has("fleet_index"):
 			return extra["fleet_index"]
 	# Fallback: match against FleetShip.deployed_npc_id
-	var sn := StringName(entity_id)
+	var sn =StringName(entity_id)
 	for i in _fleet_panel._fleet.ships.size():
 		if _fleet_panel._fleet.ships[i].deployed_npc_id == sn:
 			return i
@@ -865,7 +865,7 @@ func set_construction_manager(mgr: ConstructionManager) -> void:
 	_construction_mgr = mgr
 
 
-func set_squadron_manager(mgr: SquadronManager) -> void:
+func set_squadron_manager(mgr) -> void:
 	_squadron_mgr = mgr
 	if _squadron_mgr:
 		_squadron_mgr.squadron_changed.connect(_on_squadron_changed)
@@ -886,7 +886,7 @@ func _sync_squadron_data() -> void:
 		_entity_layer._squadron_fleet = null
 
 
-func set_fleet(fleet: PlayerFleet, galaxy: GalaxyData) -> void:
+func set_fleet(fleet, galaxy) -> void:
 	_fleet_panel.set_fleet(fleet)
 	_fleet_panel.set_galaxy(galaxy)
 	_sync_squadron_data()
@@ -905,14 +905,14 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 		return
 	# Deployed ship = follow the NPC entity (moving target)
 	if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
-		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+		var ent =EntityRegistry.get_entity(String(fs.deployed_npc_id))
 		if not ent.is_empty():
 			_follow_entity(String(fs.deployed_npc_id))
 			_restore_route_for_fleet_selection(fleet_index)
 			return
 	# Docked ship = center on its station (static, no follow needed)
 	if fs.docked_station_id != "":
-		var ent := EntityRegistry.get_entity(fs.docked_station_id)
+		var ent =EntityRegistry.get_entity(fs.docked_station_id)
 		if not ent.is_empty():
 			_center_on_entity(fs.docked_station_id)
 			return
@@ -942,11 +942,11 @@ func _on_sidebar_context_menu(fleet_index: int, screen_pos: Vector2) -> void:
 		ship_ux = fs.last_known_pos[0]
 		ship_uz = fs.last_known_pos[2]
 	elif fs.deployed_npc_id != &"":
-		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+		var ent =EntityRegistry.get_entity(String(fs.deployed_npc_id))
 		if not ent.is_empty():
 			ship_ux = ent.get("pos_x", 0.0)
 			ship_uz = ent.get("pos_z", 0.0)
-	var context := {
+	var context ={
 		"fleet_index": fleet_index,
 		"fleet_ship": fs,
 		"is_deployed": fs.deployment_state == FleetShip.DeploymentState.DEPLOYED,
@@ -955,10 +955,10 @@ func _on_sidebar_context_menu(fleet_index: int, screen_pos: Vector2) -> void:
 		"target_entity_id": "",
 	}
 
-	var orders := FleetOrderRegistry.get_available_orders(context)
+	var orders =FleetOrderRegistry.get_available_orders(context)
 
 	# Inject squadron orders
-	var sq_orders := _build_squadron_context_orders(fleet_index)
+	var sq_orders =_build_squadron_context_orders(fleet_index)
 	orders.append_array(sq_orders)
 
 	# Add promote leader for squadron members
@@ -1006,7 +1006,7 @@ func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:
 	_rename_edit.select_all_on_focus = true
 	_rename_edit.add_theme_font_size_override("font_size", 13)
 	_rename_edit.add_theme_color_override("font_color", UITheme.PRIMARY)
-	var sb := StyleBoxFlat.new()
+	var sb =StyleBoxFlat.new()
 	sb.bg_color = Color(0.0, 0.05, 0.1, 0.95)
 	sb.border_color = UITheme.PRIMARY
 	sb.set_border_width_all(1)
@@ -1058,7 +1058,7 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 	var all_orders: Array[Dictionary] = []
 
 	# --- Fleet orders (only if a ship is selected) ---
-	var effective_idx := _get_effective_fleet_index()
+	var effective_idx =_get_effective_fleet_index()
 	var has_fleet: bool = effective_idx >= 0 and _fleet_panel._fleet != null and effective_idx < _fleet_panel._fleet.ships.size()
 	var context: Dictionary = {
 		"universe_x": universe_x,
@@ -1077,8 +1077,8 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 		context["fleet_ship"] = fs
 		context["is_deployed"] = fs.deployment_state == FleetShip.DeploymentState.DEPLOYED
 
-		var fleet_orders := FleetOrderRegistry.get_available_orders(context)
-		var sq_orders := _build_squadron_context_orders(effective_idx, context)
+		var fleet_orders =FleetOrderRegistry.get_available_orders(context)
+		var sq_orders =_build_squadron_context_orders(effective_idx, context)
 		fleet_orders.append_array(sq_orders)
 
 		if not fleet_orders.is_empty():
@@ -1086,7 +1086,7 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 			all_orders.append_array(fleet_orders)
 
 	# --- Construction orders (always available) ---
-	var build_orders := ConstructionOrderRegistry.get_available_orders()
+	var build_orders =ConstructionOrderRegistry.get_available_orders()
 	if not build_orders.is_empty():
 		all_orders.append({"id": &"_header_construction", "display_name": "CONSTRUCTION", "is_header": true})
 		all_orders.append_array(build_orders)
@@ -1122,7 +1122,7 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 		_close_context_menu()
 		return
 
-	var effective_indices := _get_effective_fleet_indices()
+	var effective_indices =_get_effective_fleet_indices()
 	if not effective_indices.is_empty():
 		for idx in effective_indices:
 			fleet_order_requested.emit(idx, order_id, params)
@@ -1178,7 +1178,7 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})
 
 	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
-	var effective := _get_effective_fleet_indices()
+	var effective =_get_effective_fleet_indices()
 	if effective.size() >= 2:
 		var any_in_sq: bool = false
 		for idx in effective:
@@ -1205,8 +1205,8 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 
 
 func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -> void:
-	var effective := _get_effective_fleet_indices()
-	var order_str := String(order_id)
+	var effective =_get_effective_fleet_indices()
+	var order_str =String(order_id)
 
 	if order_id == &"sq_create" and effective.size() >= 2:
 		squadron_action_requested.emit(&"create", {
@@ -1214,27 +1214,27 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 			"members": effective.slice(1),
 		})
 	elif order_id == &"sq_disband":
-		var idx := _get_effective_fleet_index()
+		var idx =_get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:
 			var sq = _fleet_panel._fleet.get_ship_squadron(idx)
 			if sq:
 				squadron_action_requested.emit(&"disband", {"squadron_id": sq.squadron_id})
 	elif order_id == &"sq_leave":
-		var idx := _get_effective_fleet_index()
+		var idx =_get_effective_fleet_index()
 		if idx >= 0:
 			squadron_action_requested.emit(&"remove_member", {"fleet_index": idx})
 	elif order_id == &"sq_promote":
-		var idx := _get_effective_fleet_index()
+		var idx =_get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:
 			var sq = _fleet_panel._fleet.get_ship_squadron(idx)
 			if sq:
 				squadron_action_requested.emit(&"promote_leader", {"squadron_id": sq.squadron_id, "fleet_index": idx})
 	elif order_str.begins_with("sq_follow_"):
-		var target_fi := int(order_str.substr(10))
+		var target_fi =int(order_str.substr(10))
 		# Collect members: ships not in a squadron OR already in target's squadron (re-follow)
 		var members_to_add: Array[int] = []
 		var members_to_refollow: Array[int] = []
-		var target_sq: Squadron = _fleet_panel._fleet.get_ship_squadron(target_fi) if _fleet_panel._fleet else null
+		var target_sq = _fleet_panel._fleet.get_ship_squadron(target_fi) if _fleet_panel._fleet else null
 		for idx in effective:
 			if idx == target_fi:
 				continue
@@ -1261,12 +1261,12 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		all_following.append_array(members_to_add)
 		all_following.append_array(members_to_refollow)
 		if all_following.size() > 0:
-			var target_eid := _get_fleet_entity_id(target_fi)
+			var target_eid =_get_fleet_entity_id(target_fi)
 			if target_eid != "":
 				_set_follow_route(all_following, target_eid)
 	elif order_str.begins_with("sq_join_"):
-		var sq_id := int(order_str.substr(8))
-		var idx := _get_effective_fleet_index()
+		var sq_id =int(order_str.substr(8))
+		var idx =_get_effective_fleet_index()
 		if idx >= 0:
 			squadron_action_requested.emit(&"add_member", {"squadron_id": sq_id, "fleet_index": idx})
 
@@ -1346,13 +1346,13 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 		var sq = _fleet_panel._fleet.get_ship_squadron(first_idx)
 		if sq and not sq.is_leader(first_idx):
 			# Ship is a squadron member — show follow route to leader
-			var leader_eid := _get_fleet_entity_id(sq.leader_fleet_index)
+			var leader_eid =_get_fleet_entity_id(sq.leader_fleet_index)
 			if leader_eid != "":
 				_set_follow_route(source_indices, leader_eid)
 				return
 
 	# Find first deployed ship with a target destination
-	var first_fs: FleetShip = null
+	var first_fs = null
 	var restore_indices: Array[int] = []
 	for idx in source_indices:
 		if idx < 0 or idx >= _fleet_panel._fleet.ships.size():
@@ -1365,7 +1365,7 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 	if first_fs == null or restore_indices.is_empty():
 		_clear_route_line()
 		return
-	var params := first_fs.deployed_command_params
+	var params =first_fs.deployed_command_params
 	var tx: float = params.get("target_x", params.get("center_x", 0.0))
 	var tz: float = params.get("target_z", params.get("center_z", 0.0))
 	if tx == 0.0 and tz == 0.0:

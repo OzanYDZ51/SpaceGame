@@ -39,14 +39,14 @@ func _physics_process(delta: float) -> void:
 ## Broadcasts all player states to all connected clients.
 ## Each client only receives states of players in the same system.
 func _broadcast_world_state() -> void:
-	var peers := NetworkManager.peers
+	var peers =NetworkManager.peers
 	if peers.size() < 2:
 		return  # Need at least 2 players to broadcast
 
 	# Group peers by system
 	var by_system: Dictionary = {}  # system_id -> Array[int peer_ids]
 	for pid in peers:
-		var state: NetworkState = peers[pid]
+		var state = peers[pid]
 		if not by_system.has(state.system_id):
 			by_system[state.system_id] = []
 		by_system[state.system_id].append(pid)
@@ -63,7 +63,7 @@ func _broadcast_world_state() -> void:
 					continue
 				if not NetworkManager.peers.has(other_pid):
 					continue
-				var state: NetworkState = NetworkManager.peers[other_pid]
+				var state = NetworkManager.peers[other_pid]
 				if pid == 1 and not NetworkManager.is_dedicated_server:
 					# Host is local — deliver via signal, not RPC
 					NetworkManager.player_state_received.emit(other_pid, state)

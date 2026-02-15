@@ -19,7 +19,7 @@ func _ready() -> void:
 
 
 func update_visibility() -> void:
-	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	var rm = GameManager._route_manager if GameManager else null
 	var should_show: bool = rm != null and rm.is_route_active()
 	_panel.visible = should_show
 	if should_show:
@@ -27,25 +27,25 @@ func update_visibility() -> void:
 
 
 func _draw_route_panel(ctrl: Control) -> void:
-	var rm: RouteManager = GameManager._route_manager if GameManager else null
+	var rm = GameManager._route_manager if GameManager else null
 	if rm == null or not rm.is_route_active():
 		return
 
-	var s := ctrl.size
-	var font := UITheme.get_font_medium()
+	var s =ctrl.size
+	var font =UITheme.get_font_medium()
 	var pulse: float = sin(pulse_t * 2.0) * 0.15 + 0.85
 
 	# Background
-	var bg := Color(0.0, 0.02, 0.06, 0.75)
+	var bg =Color(0.0, 0.02, 0.06, 0.75)
 	ctrl.draw_rect(Rect2(Vector2.ZERO, s), bg)
 
 	# Border
-	var border := Color(0.0, 0.7, 1.0, 0.3 * pulse)
+	var border =Color(0.0, 0.7, 1.0, 0.3 * pulse)
 	ctrl.draw_rect(Rect2(Vector2.ZERO, s), border, false, 1.0)
 
 	# Corner accents
 	var cl: float = 6.0
-	var cc := Color(0.0, 0.9, 1.0, 0.6)
+	var cc =Color(0.0, 0.9, 1.0, 0.6)
 	ctrl.draw_line(Vector2(0, 0), Vector2(cl, 0), cc, 1.5)
 	ctrl.draw_line(Vector2(0, 0), Vector2(0, cl), cc, 1.5)
 	ctrl.draw_line(Vector2(s.x, 0), Vector2(s.x - cl, 0), cc, 1.5)
@@ -60,7 +60,7 @@ func _draw_route_panel(ctrl: Control) -> void:
 	# Jump progress
 	var current_jump: int = rm.get_current_jump()
 	var total_jumps: int = rm.get_jumps_total()
-	var jump_text := "SAUT %d/%d" % [current_jump + 1, total_jumps]
+	var jump_text ="SAUT %d/%d" % [current_jump + 1, total_jumps]
 	ctrl.draw_string(font, Vector2(8, 30), jump_text, HORIZONTAL_ALIGNMENT_LEFT, 100, 13, Color(0.6, 0.8, 0.9, 0.8))
 
 	# Progress dots

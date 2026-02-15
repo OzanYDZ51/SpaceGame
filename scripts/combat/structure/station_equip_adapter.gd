@@ -8,15 +8,15 @@ extends RefCounted
 
 signal loadout_changed
 
-var station_equipment: StationEquipment = null
-var player_inventory: PlayerInventory = null
+var station_equipment = null
+var player_inventory = null
 
 # Cached configs for hardpoint queries
 var _hp_configs: Array[Dictionary] = []
 
 
-static func create(equipment: StationEquipment, inv: PlayerInventory) -> StationEquipAdapter:
-	var a := StationEquipAdapter.new()
+static func create(equipment, inv):
+	var a =StationEquipAdapter.new()
 	a.station_equipment = equipment
 	a.player_inventory = inv
 	a._hp_configs = StationHardpointConfig.get_configs(equipment.station_type)
@@ -49,7 +49,7 @@ func get_mounted_weapon_name(idx: int) -> StringName:
 
 
 func get_mounted_weapon(idx: int) -> WeaponResource:
-	var wn := get_mounted_weapon_name(idx)
+	var wn =get_mounted_weapon_name(idx)
 	if wn == &"":
 		return null
 	return WeaponRegistry.get_weapon(wn)
@@ -63,7 +63,7 @@ func get_equipped_shield_name() -> StringName:
 
 
 func get_equipped_shield() -> ShieldResource:
-	var sn := get_equipped_shield_name()
+	var sn =get_equipped_shield_name()
 	if sn == &"":
 		return null
 	return ShieldRegistry.get_shield(sn)
@@ -108,7 +108,7 @@ func get_equipped_module_name(idx: int) -> StringName:
 
 
 func get_equipped_module(idx: int) -> ModuleResource:
-	var mn := get_equipped_module_name(idx)
+	var mn =get_equipped_module_name(idx)
 	if mn == &"":
 		return null
 	return ModuleRegistry.get_module(mn)
@@ -132,12 +132,12 @@ func equip_weapon(idx: int, weapon_name: StringName) -> void:
 	if idx < 0 or idx >= station_equipment.weapons.size():
 		return
 	# Slot compatibility check
-	var slot_size := get_hardpoint_slot_size(idx)
-	var is_turret := is_hardpoint_turret(idx)
+	var slot_size =get_hardpoint_slot_size(idx)
+	var is_turret =is_hardpoint_turret(idx)
 	if not player_inventory.is_compatible(weapon_name, slot_size, is_turret):
 		return
 	player_inventory.remove_weapon(weapon_name)
-	var old := station_equipment.weapons[idx]
+	var old = station_equipment.weapons[idx]
 	if old != &"":
 		player_inventory.add_weapon(old)
 	station_equipment.weapons[idx] = weapon_name
@@ -149,7 +149,7 @@ func remove_weapon(idx: int) -> void:
 		return
 	if idx < 0 or idx >= station_equipment.weapons.size():
 		return
-	var old := station_equipment.weapons[idx]
+	var old = station_equipment.weapons[idx]
 	if old != &"":
 		player_inventory.add_weapon(old)
 		station_equipment.weapons[idx] = &""
@@ -203,11 +203,11 @@ func equip_module(idx: int, module_name: StringName) -> void:
 		return
 	if idx < 0 or idx >= station_equipment.modules.size():
 		return
-	var slot_sz := get_module_slot_size(idx)
+	var slot_sz =get_module_slot_size(idx)
 	if not player_inventory.is_module_compatible(module_name, slot_sz):
 		return
 	player_inventory.remove_module(module_name)
-	var old := station_equipment.modules[idx]
+	var old = station_equipment.modules[idx]
 	if old != &"":
 		player_inventory.add_module(old)
 	station_equipment.modules[idx] = module_name
@@ -219,7 +219,7 @@ func remove_module(idx: int) -> void:
 		return
 	if idx < 0 or idx >= station_equipment.modules.size():
 		return
-	var old := station_equipment.modules[idx]
+	var old = station_equipment.modules[idx]
 	if old != &"":
 		player_inventory.add_module(old)
 		station_equipment.modules[idx] = &""

@@ -24,6 +24,7 @@ var _star_radius: float = 696340.0  # default ~Sun size in game meters (~696 km)
 var _star_luminosity: float = 1.0
 
 var _mesh_instance: MeshInstance3D = null
+var _lens_flare: LensFlare = null
 var _last_cam_pos: Vector3 = Vector3(INF, INF, INF)
 var _last_origin_x: float = INF
 var _last_origin_y: float = INF
@@ -39,14 +40,14 @@ func setup(star_color: Color, star_radius: float, star_luminosity: float) -> voi
 
 
 func _build_visuals() -> void:
-	var mesh := SphereMesh.new()
+	var mesh =SphereMesh.new()
 	mesh.radius = 1.0
 	mesh.height = 2.0
 	mesh.radial_segments = 32
 	mesh.rings = 16
 
-	var surface_shader := preload("res://shaders/planet/star_surface.gdshader")
-	var surface_mat := ShaderMaterial.new()
+	var surface_shader =preload("res://shaders/planet/star_surface.gdshader")
+	var surface_mat =ShaderMaterial.new()
 	surface_mat.shader = surface_shader
 	surface_mat.set_shader_parameter("star_color", _star_color)
 	# High emission for realistic HDR bloom/glare — the star should be blinding
@@ -58,13 +59,19 @@ func _build_visuals() -> void:
 	_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_mesh_instance)
 
+	# Lens flare (anamorphic streak + halo)
+	_lens_flare = LensFlare.new()
+	_lens_flare.name = "LensFlare"
+	add_child(_lens_flare)
+	_lens_flare.setup(_star_color, _star_luminosity)
+
 
 func _process(_delta: float) -> void:
-	var cam := get_viewport().get_camera_3d()
+	var cam =get_viewport().get_camera_3d()
 	if cam == null:
 		return
 
-	var cam_pos := cam.global_position
+	var cam_pos =cam.global_position
 	var origin_changed: bool = FloatingOrigin.origin_offset_x != _last_origin_x \
 		or FloatingOrigin.origin_offset_y != _last_origin_y \
 		or FloatingOrigin.origin_offset_z != _last_origin_z
@@ -88,12 +95,12 @@ func _process(_delta: float) -> void:
 		return
 
 	# Direction in local float32 coords (fine for direction vector)
-	var star_local := Vector3(
+	var star_local =Vector3(
 		-float(FloatingOrigin.origin_offset_x),
 		-float(FloatingOrigin.origin_offset_y),
 		-float(FloatingOrigin.origin_offset_z)
 	)
-	var dir_to_star := (star_local - cam_pos).normalized()
+	var dir_to_star =(star_local - cam_pos).normalized()
 
 	global_position = cam_pos + dir_to_star * IMPOSTOR_DISTANCE
 
@@ -103,9 +110,9 @@ func _process(_delta: float) -> void:
 
 	# Sun direction for lighting — convention: direction TOWARD the sun
 	# (skybox god rays need dot(EYEDIR, sun_dir) > 0 when looking at star)
-	var sun_dir := dir_to_star
+	var sun_dir =dir_to_star
 	if sun_dir.distance_squared_to(_last_sun_dir) > 0.0001:
 		_last_sun_dir = sun_dir
-		var main := GameManager.main_scene
-		if main is SpaceEnvironment:
-			(main as SpaceEnvironment).update_sun_direction(sun_dir)
+		var main =GameManager.main_scene
+		if main and main.has_method("update_sun_direction"):
+			main.update_sun_direction(sun_dir)

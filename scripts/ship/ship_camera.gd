@@ -40,9 +40,9 @@ var target_distance: float = 50.0
 var current_distance: float = 50.0
 var _current_fov: float = 75.0
 
-var _ship: ShipController = null
-var _targeting: TargetingSystem = null
-var _weapon_manager: WeaponManager = null
+var _ship = null
+var _targeting = null
+var _weapon_manager = null
 
 var _shake_intensity: float = 0.0
 var _shake_offset: Vector3 = Vector3.ZERO
@@ -71,15 +71,28 @@ const FREE_LOOK_RETURN_SPEED: float = 4.0
 
 
 func _ready() -> void:
-	_ship = get_parent() as ShipController
-	if _ship == null:
-		_ship = get_parent().get_parent() as ShipController
+	_ship = get_parent()
+	if _ship == null or not _ship.has_method("set_throttle"):
+		_ship = get_parent().get_parent()
 	set_as_top_level(true)
 
 	# Sync runtime vars from export defaults
 	target_distance = cam_distance_default
 	current_distance = cam_distance_default
 	_current_fov = fov_base
+
+	# --- CameraAttributes: auto-exposure + subtle far DOF ---
+	var cam_attrs =CameraAttributesPractical.new()
+	cam_attrs.auto_exposure_enabled = true
+	cam_attrs.auto_exposure_min_sensitivity = 50.0
+	cam_attrs.auto_exposure_max_sensitivity = 3200.0
+	cam_attrs.auto_exposure_speed = 2.0
+	cam_attrs.auto_exposure_scale = 0.4
+	cam_attrs.dof_blur_far_enabled = true
+	cam_attrs.dof_blur_far_distance = 5000.0
+	cam_attrs.dof_blur_far_transition = 3000.0
+	cam_attrs.dof_blur_amount = 0.02
+	attributes = cam_attrs
 
 	# Initialize camera position immediately behind and above ship
 	if _ship:
@@ -99,8 +112,8 @@ func _ready() -> void:
 func _find_combat_systems() -> void:
 	if _ship == null:
 		return
-	_targeting = _ship.get_node_or_null("TargetingSystem") as TargetingSystem
-	_weapon_manager = _ship.get_node_or_null("WeaponManager") as WeaponManager
+	_targeting = _ship.get_node_or_null("TargetingSystem")
+	_weapon_manager = _ship.get_node_or_null("WeaponManager")
 	if _weapon_manager and not _weapon_manager.weapon_fired.is_connected(_on_weapon_fired):
 		_weapon_manager.weapon_fired.connect(_on_weapon_fired)
 	# Cruise VFX signals
@@ -183,7 +196,7 @@ func _update_third_person(delta: float) -> void:
 	# =========================================================================
 	var cam_offset: Vector3 = Vector3(0.0, cam_height, current_distance)
 	if is_free_looking:
-		var fl_basis := Basis(Vector3.UP, deg_to_rad(-_free_look_yaw))
+		var fl_basis =Basis(Vector3.UP, deg_to_rad(-_free_look_yaw))
 		fl_basis = fl_basis * Basis(Vector3.RIGHT, deg_to_rad(-_free_look_pitch))
 		cam_offset = fl_basis * cam_offset
 	var desired_pos: Vector3 = ship_pos + ship_basis * cam_offset
@@ -205,7 +218,7 @@ func _update_third_person(delta: float) -> void:
 		_vibration_time += delta
 		var speed_ratio: float = clampf(_ship.current_speed / Constants.MAX_SPEED_CRUISE, 0.0, 1.0)
 		var amp: float = lerpf(VIBRATION_AMP_IDLE, VIBRATION_AMP_SPEED, speed_ratio)
-		var vib := Vector3(
+		var vib =Vector3(
 			sin(_vibration_time * VIBRATION_FREQ_X * TAU) * amp,
 			sin(_vibration_time * VIBRATION_FREQ_Y * TAU) * amp * 0.7,
 			sin(_vibration_time * VIBRATION_FREQ_Z * TAU) * amp * 0.3
@@ -240,14 +253,14 @@ func _update_third_person(delta: float) -> void:
 	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
 	if smooth_forward.length_squared() > 0.001:
-		var target_pos := global_position + smooth_forward
+		var target_pos =global_position + smooth_forward
 		if not global_position.is_equal_approx(target_pos):
-			var up_hint := ship_basis.y.lerp(Vector3.UP, 0.05)
+			var up_hint =ship_basis.y.lerp(Vector3.UP, 0.05)
 			# Planetary mode: blend toward planet surface normal as "up"
 			if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
 				up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
 			# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
-			var up_vec := (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
+			var up_vec =(up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
 			if up_vec.length_squared() > 0.001:
 				look_at(target_pos, up_vec)
 

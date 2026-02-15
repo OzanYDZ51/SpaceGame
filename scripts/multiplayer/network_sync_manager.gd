@@ -7,22 +7,22 @@ extends Node
 # as GameManager children for backward compat (15+ files use get_node_or_null).
 # =============================================================================
 
-signal server_galaxy_changed(new_galaxy: GalaxyData)
+signal server_galaxy_changed(new_galaxy)
 
-# Injected refs (typed for convenience, actual nodes live under GameManager)
-var ship_net_sync: ShipNetworkSync = null
-var chat_relay: NetworkChatRelay = null
-var server_authority: ServerAuthority = null
-var npc_authority: NpcAuthority = null
-var discord_rpc: DiscordRPC = null
-var event_reporter: EventReporter = null
-var lod_manager: ShipLODManager = null
-var system_transition: SystemTransition = null
-var universe_node: Node3D = null
-var galaxy: GalaxyData = null
-var screen_manager: UIScreenManager = null
-var player_data: PlayerData = null
-var fleet_deployment_mgr: FleetDeploymentManager = null
+# Injected refs (untyped to avoid circular dependency on custom class_names)
+var ship_net_sync = null
+var chat_relay = null
+var server_authority = null
+var npc_authority = null
+var discord_rpc = null
+var event_reporter = null
+var lod_manager = null
+var system_transition = null
+var universe_node = null
+var galaxy = null
+var screen_manager = null
+var player_data = null
+var fleet_deployment_mgr = null
 
 var remote_players: Dictionary = {}  # peer_id -> RemotePlayerShip
 var remote_npcs: Dictionary = {}     # npc_id (StringName) -> true
@@ -81,7 +81,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
 
 	# Auto-connect
-	var args := OS.get_cmdline_args()
+	var args =OS.get_cmdline_args()
 	var port: int = Constants.NET_DEFAULT_PORT
 	for i in args.size():
 		if args[i] == "--port" and i + 1 < args.size():
@@ -109,7 +109,7 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 	if peer_id == NetworkManager.local_peer_id:
 		return
 
-	var remote := RemotePlayerShip.new()
+	var remote =RemotePlayerShip.new()
 	remote.peer_id = peer_id
 	if NetworkManager.peers.has(peer_id):
 		remote.ship_id = NetworkManager.peers[peer_id].ship_id
@@ -120,7 +120,7 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 	remote_players[peer_id] = remote
 
 	if lod_manager:
-		var rdata := ShipLODData.new()
+		var rdata =ShipLODData.new()
 		rdata.id = StringName(remote.name)
 		rdata.is_remote_player = true
 		rdata.peer_id = peer_id
@@ -162,7 +162,7 @@ func remove_remote_player(peer_id: int) -> void:
 		remote_players.erase(peer_id)
 
 
-func _on_state_received(peer_id: int, state: NetworkState) -> void:
+func _on_state_received(peer_id: int, state) -> void:
 	var local_sys_id: int = system_transition.current_system_id if system_transition else -1
 	if state.system_id != local_sys_id:
 		remove_remote_player(peer_id)
@@ -174,15 +174,15 @@ func _on_state_received(peer_id: int, state: NetworkState) -> void:
 			_on_peer_connected(peer_id, pname)
 
 	if lod_manager:
-		var rid := StringName("RemotePlayer_%d" % peer_id)
-		var rdata := lod_manager.get_ship_data(rid)
+		var rid =StringName("RemotePlayer_%d" % peer_id)
+		var rdata = lod_manager.get_ship_data(rid)
 		if rdata:
 			rdata.position = FloatingOrigin.to_local_pos([state.pos_x, state.pos_y, state.pos_z])
 			rdata.velocity = state.velocity
 
 	# Update map entity velocity + visibility
-	var map_ent_id := "remote_player_%d" % peer_id
-	var map_ent := EntityRegistry.get_entity(map_ent_id)
+	var map_ent_id ="remote_player_%d" % peer_id
+	var map_ent =EntityRegistry.get_entity(map_ent_id)
 	if not map_ent.is_empty():
 		map_ent["vel_x"] = state.velocity.x
 		map_ent["vel_z"] = state.velocity.z
@@ -208,7 +208,7 @@ func _on_server_config_received(config: Dictionary) -> void:
 		if system_transition:
 			system_transition.galaxy = galaxy
 		if screen_manager:
-			var map_screen := screen_manager._screens.get("map") as UnifiedMapScreen
+			var map_screen = screen_manager._screens.get("map")
 			if map_screen:
 				map_screen.galaxy = galaxy
 		if player_data:
@@ -226,12 +226,12 @@ func _on_server_config_received(config: Dictionary) -> void:
 func _populate_wormhole_targets() -> void:
 	if galaxy == null or NetworkManager.galaxy_servers.is_empty():
 		return
-	var servers := NetworkManager.galaxy_servers
+	var servers =NetworkManager.galaxy_servers
 	var current_seed: int = Constants.galaxy_seed
 	var target_idx: int = 0
 	for sys in galaxy.systems:
 		if sys.has("wormhole_target"):
-			var found := false
+			var found =false
 			for j in servers.size():
 				var candidate: Dictionary = servers[(target_idx + j) % servers.size()]
 				if candidate.get("seed", 0) != current_seed:
@@ -255,14 +255,14 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
 		return
 
-	var npc_id := StringName(data.get("nid", ""))
+	var npc_id =StringName(data.get("nid", ""))
 	if npc_id == &"" or remote_npcs.has(npc_id):
 		return
 
-	var sid := StringName(data.get("sid", String(Constants.DEFAULT_SHIP_ID)))
-	var fac := StringName(data.get("fac", "hostile"))
+	var sid =StringName(data.get("sid", String(Constants.DEFAULT_SHIP_ID)))
+	var fac =StringName(data.get("fac", "hostile"))
 
-	var lod_data := ShipLODData.new()
+	var lod_data =ShipLODData.new()
 	lod_data.id = npc_id
 	lod_data.ship_id = sid
 	lod_data.ship_class = ShipRegistry.get_ship_data(sid).ship_class if ShipRegistry.get_ship_data(sid) else &"Fighter"
@@ -283,7 +283,7 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	else:
 		lod_data.color_tint = Color(0.8, 0.7, 1.0)
 
-	var sdata := ShipRegistry.get_ship_data(sid)
+	var sdata =ShipRegistry.get_ship_data(sid)
 	if sdata:
 		lod_data.model_scale = sdata.model_scale
 
@@ -297,7 +297,7 @@ func _on_npc_batch_received(batch: Array) -> void:
 		return
 
 	for state_dict in batch:
-		var npc_id := StringName(state_dict.get("nid", ""))
+		var npc_id =StringName(state_dict.get("nid", ""))
 		if npc_id == &"":
 			continue
 
@@ -316,24 +316,24 @@ func _on_npc_batch_received(batch: Array) -> void:
 				lod_data.ai_state = state_dict.get("ai", 0)
 				if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
 					if lod_data.node_ref is RemoteNPCShip:
-						(lod_data.node_ref as RemoteNPCShip).receive_state(state_dict)
+						lod_data.node_ref.receive_state(state_dict)
 
 
 func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
-	var npc_id := StringName(npc_id_str)
+	var npc_id =StringName(npc_id_str)
 
 	if lod_manager:
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
 		if lod_data:
-			var pos := lod_data.position
+			var pos =lod_data.position
 			if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
 				pos = lod_data.node_ref.global_position
 				if lod_data.node_ref is RemoteNPCShip:
-					(lod_data.node_ref as RemoteNPCShip).play_death()
+					lod_data.node_ref.play_death()
 				else:
 					lod_data.node_ref.queue_free()
 			else:
-				var explosion := ExplosionEffect.new()
+				var explosion =ExplosionEffect.new()
 				get_tree().current_scene.add_child(explosion)
 				explosion.global_position = pos
 			lod_data.is_dead = true
@@ -342,8 +342,8 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 	remote_npcs.erase(npc_id)
 
 	if killer_pid == NetworkManager.local_peer_id and not loot.is_empty():
-		var local_pos := FloatingOrigin.to_local_pos(death_pos)
-		var crate := CargoCrate.new()
+		var local_pos =FloatingOrigin.to_local_pos(death_pos)
+		var crate =CargoCrate.new()
 		var typed_loot: Array[Dictionary] = []
 		for item in loot:
 			if item is Dictionary:
@@ -364,7 +364,7 @@ func _on_remote_fleet_deployed(_owner_pid: int, _fleet_idx: int, _npc_id_str: St
 func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: String) -> void:
 	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
 		return
-	var npc_id := StringName(npc_id_str)
+	var npc_id =StringName(npc_id_str)
 	if lod_manager:
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
 		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
@@ -388,7 +388,7 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	if not is_instance_valid(remote):
 		return
 
-	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
 	if weapon == null:
 		return
 
@@ -396,11 +396,11 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	if proj_scene_path.is_empty():
 		return
 
-	var pool: ProjectilePool = null
+	var pool = null
 	if lod_manager:
-		pool = lod_manager.get_node_or_null("ProjectilePool") as ProjectilePool
+		pool = lod_manager.get_node_or_null("ProjectilePool")
 
-	var bolt: BaseProjectile = null
+	var bolt = null
 	if pool:
 		bolt = pool.acquire(proj_scene_path)
 		if bolt:
@@ -409,7 +409,7 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 		var scene: PackedScene = load(proj_scene_path)
 		if scene == null:
 			return
-		bolt = scene.instantiate() as BaseProjectile
+		bolt = scene.instantiate()
 		if bolt == null:
 			return
 		get_tree().current_scene.add_child(bolt)
@@ -421,11 +421,11 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
 
-	var dir := Vector3(
+	var dir =Vector3(
 		fire_dir[0] if fire_dir.size() > 0 else 0.0,
 		fire_dir[1] if fire_dir.size() > 1 else 0.0,
 		fire_dir[2] if fire_dir.size() > 2 else 0.0)
-	var ship_vel := Vector3(
+	var ship_vel =Vector3(
 		fire_dir[3] if fire_dir.size() > 3 else 0.0,
 		fire_dir[4] if fire_dir.size() > 4 else 0.0,
 		fire_dir[5] if fire_dir.size() > 5 else 0.0)
@@ -446,32 +446,32 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 # =============================================================================
 
 func _on_player_damage_received(attacker_pid: int, _weapon_name: String, damage_val: float, hit_dir: Array) -> void:
-	var player_ship := GameManager.player_ship as ShipController
+	var player_ship = GameManager.player_ship
 	if player_ship == null:
 		return
-	var health := player_ship.get_node_or_null("HealthSystem") as HealthSystem
+	var health = player_ship.get_node_or_null("HealthSystem")
 	if health == null or health.is_dead():
 		return
-	var dir_vec := Vector3(
+	var dir_vec =Vector3(
 		hit_dir[0] if hit_dir.size() > 0 else 0.0,
 		hit_dir[1] if hit_dir.size() > 1 else 0.0,
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
 	# Find attacker node for damage attribution
 	var attacker: Node3D = remote_players.get(attacker_pid)
-	var hit_result := health.apply_damage(damage_val, &"thermal", dir_vec, attacker)
+	var hit_result =health.apply_damage(damage_val, &"thermal", dir_vec, attacker)
 
 	# Spawn hit effect on our own ship (same visual as NPC projectile impact)
-	var intensity := clampf(damage_val / 25.0, 0.5, 3.0)
-	var hit_pos := player_ship.global_position + dir_vec * 2.0
+	var intensity =clampf(damage_val / 25.0, 0.5, 3.0)
+	var hit_pos =player_ship.global_position + dir_vec * 2.0
 	if hit_result.get("shield_absorbed", false):
-		var effect := ShieldHitEffect.new()
+		var effect =ShieldHitEffect.new()
 		player_ship.add_child(effect)
 		effect.setup(hit_pos, player_ship, hit_result.get("shield_ratio", 0.0), intensity)
 	else:
-		var effect := HullHitEffect.new()
+		var effect =HullHitEffect.new()
 		get_tree().current_scene.add_child(effect)
 		effect.global_position = hit_pos
-		var hit_normal := dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
+		var hit_normal =dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
 		effect.setup(hit_normal, intensity)
 
 
@@ -484,7 +484,7 @@ func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed:
 
 	# Player target: "player_<pid>"
 	if target_id.begins_with("player_"):
-		var pid := target_id.trim_prefix("player_").to_int()
+		var pid =target_id.trim_prefix("player_").to_int()
 		if remote_players.has(pid):
 			target_node = remote_players[pid]
 	else:
@@ -497,21 +497,21 @@ func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed:
 	if target_node == null or not is_instance_valid(target_node):
 		return
 
-	var dir_vec := Vector3(
+	var dir_vec =Vector3(
 		hit_dir[0] if hit_dir.size() > 0 else 0.0,
 		hit_dir[1] if hit_dir.size() > 1 else 0.0,
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
-	var hit_pos := target_node.global_position + dir_vec * 2.0
+	var hit_pos =target_node.global_position + dir_vec * 2.0
 
 	if shield_absorbed:
-		var effect := ShieldHitEffect.new()
+		var effect =ShieldHitEffect.new()
 		target_node.add_child(effect)
 		effect.setup(hit_pos, target_node, 0.5, 1.0)
 	else:
-		var effect := HullHitEffect.new()
+		var effect =HullHitEffect.new()
 		get_tree().current_scene.add_child(effect)
 		effect.global_position = hit_pos
-		var hit_normal := dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
+		var hit_normal =dir_vec.normalized() if dir_vec.length_squared() > 0.001 else Vector3.UP
 		effect.setup(hit_normal, 1.0)
 
 
@@ -520,7 +520,7 @@ func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed:
 # =============================================================================
 
 func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
-	var weapon := WeaponRegistry.get_weapon(StringName(weapon_name))
+	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
 	if weapon == null:
 		return
 
@@ -528,11 +528,11 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 	if proj_scene_path.is_empty():
 		return
 
-	var pool: ProjectilePool = null
+	var pool = null
 	if lod_manager:
-		pool = lod_manager.get_node_or_null("ProjectilePool") as ProjectilePool
+		pool = lod_manager.get_node_or_null("ProjectilePool")
 
-	var bolt: BaseProjectile = null
+	var bolt = null
 	if pool:
 		bolt = pool.acquire(proj_scene_path)
 		if bolt:
@@ -541,7 +541,7 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 		var scene: PackedScene = load(proj_scene_path)
 		if scene == null:
 			return
-		bolt = scene.instantiate() as BaseProjectile
+		bolt = scene.instantiate()
 		if bolt == null:
 			return
 		get_tree().current_scene.add_child(bolt)
@@ -554,16 +554,16 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
 
-	var dir := Vector3(
+	var dir =Vector3(
 		fire_dir[0] if fire_dir.size() > 0 else 0.0,
 		fire_dir[1] if fire_dir.size() > 1 else 0.0,
 		fire_dir[2] if fire_dir.size() > 2 else 0.0)
-	var ship_vel := Vector3(
+	var ship_vel =Vector3(
 		fire_dir[3] if fire_dir.size() > 3 else 0.0,
 		fire_dir[4] if fire_dir.size() > 4 else 0.0,
 		fire_dir[5] if fire_dir.size() > 5 else 0.0)
 
-	var spawn_pos := FloatingOrigin.to_local_pos(fire_pos)
+	var spawn_pos =FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
 	if dir.length_squared() > 0.001:
@@ -592,11 +592,11 @@ func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> vo
 			remote.change_ship_model(new_ship_id)
 	# Update LOD data with new ship info
 	if lod_manager:
-		var rid := StringName("RemotePlayer_%d" % peer_id)
-		var rdata := lod_manager.get_ship_data(rid)
+		var rid =StringName("RemotePlayer_%d" % peer_id)
+		var rdata = lod_manager.get_ship_data(rid)
 		if rdata:
 			rdata.ship_id = new_ship_id
-			var sdata := ShipRegistry.get_ship_data(new_ship_id)
+			var sdata =ShipRegistry.get_ship_data(new_ship_id)
 			if sdata:
 				rdata.ship_class = sdata.ship_class
 				rdata.model_scale = sdata.model_scale
@@ -622,7 +622,7 @@ func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
 	var field_mgr = GameManager._asteroid_field_mgr
 	if field_mgr == null:
 		return
-	var id := StringName(asteroid_id_str)
+	var id =StringName(asteroid_id_str)
 	field_mgr.on_asteroid_depleted(id)
 	# Also deplete the asteroid data if loaded
 	var ast = field_mgr.get_asteroid_data(id)
@@ -630,8 +630,8 @@ func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
 		ast.is_depleted = true
 		ast.health_current = 0.0
 		# Update visual if node exists
-		if ast.node_ref and is_instance_valid(ast.node_ref) and ast.node_ref is AsteroidNode:
-			(ast.node_ref as AsteroidNode)._on_depleted()
+		if ast.node_ref and is_instance_valid(ast.node_ref) and ast.node_ref.has_method("_on_depleted"):
+			ast.node_ref._on_depleted()
 
 
 # =============================================================================

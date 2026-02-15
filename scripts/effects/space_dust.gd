@@ -9,12 +9,12 @@ extends GPUParticles3D
 # =============================================================================
 
 var _camera: Camera3D = null
-var _ship: ShipController = null
+var _ship = null
 var _mat: ParticleProcessMaterial = null
 
 
 func _ready() -> void:
-	var mat := ParticleProcessMaterial.new()
+	var mat =ParticleProcessMaterial.new()
 
 	# Large box emission around the camera
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -31,7 +31,7 @@ func _ready() -> void:
 	mat.scale_max = 1.2
 
 	# Color ramp: fade in, hold, fade out — very subtle dim blue-white
-	var grad := Gradient.new()
+	var grad =Gradient.new()
 	grad.colors = PackedColorArray([
 		Color(0.3, 0.4, 0.65, 0.0),
 		Color(0.35, 0.42, 0.65, 0.08),
@@ -39,23 +39,23 @@ func _ready() -> void:
 		Color(0.25, 0.3, 0.5, 0.0),
 	])
 	grad.offsets = PackedFloat32Array([0.0, 0.1, 0.75, 1.0])
-	var grad_tex := GradientTexture1D.new()
+	var grad_tex =GradientTexture1D.new()
 	grad_tex.gradient = grad
 	mat.color_ramp = grad_tex
 
 	_mat = mat
 	process_material = mat
-	amount = 80
+	amount = 200
 	lifetime = 4.0
 	local_coords = false
 	emitting = true
 
 	# Soft glowing particle mesh
-	var soft_tex := _create_soft_circle(24)
+	var soft_tex =_create_soft_circle(24)
 
-	var mesh := QuadMesh.new()
+	var mesh =QuadMesh.new()
 	mesh.size = Vector2(0.18, 0.18)
-	var mesh_mat := StandardMaterial3D.new()
+	var mesh_mat =StandardMaterial3D.new()
 	mesh_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.vertex_color_use_as_albedo = true
@@ -74,7 +74,7 @@ func set_camera(cam: Camera3D) -> void:
 	_camera = cam
 
 
-func set_ship(ship: ShipController) -> void:
+func set_ship(ship) -> void:
 	_ship = ship
 
 
@@ -113,13 +113,13 @@ func _process(_delta: float) -> void:
 
 
 func _create_soft_circle(tex_size: int = 24) -> GradientTexture2D:
-	var tex := GradientTexture2D.new()
+	var tex =GradientTexture2D.new()
 	tex.width = tex_size
 	tex.height = tex_size
 	tex.fill = GradientTexture2D.FILL_RADIAL
 	tex.fill_from = Vector2(0.5, 0.5)
 	tex.fill_to = Vector2(0.5, 0.0)
-	var grad := Gradient.new()
+	var grad =Gradient.new()
 	grad.colors = PackedColorArray([
 		Color(1.0, 1.0, 1.0, 0.5),
 		Color(1.0, 1.0, 1.0, 0.15),

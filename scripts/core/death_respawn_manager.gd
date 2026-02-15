@@ -15,15 +15,15 @@ var _death_fade: float = 0.0
 # Injected refs
 var player_ship: RigidBody3D = null
 var main_scene: Node3D = null
-var galaxy: GalaxyData = null
-var system_transition: SystemTransition = null
-var route_manager: RouteManager = null
-var fleet_deployment_mgr: FleetDeploymentManager = null
-var discord_rpc: DiscordRPC = null
-var toast_manager: UIToastManager = null
-var docking_mgr: DockingManager = null
-var docking_system: DockingSystem = null
-var ship_change_mgr: ShipChangeManager = null
+var galaxy = null
+var system_transition = null
+var route_manager = null
+var fleet_deployment_mgr = null
+var discord_rpc = null
+var toast_manager = null
+var docking_mgr = null
+var docking_system = null
+var ship_change_mgr = null
 
 
 func _process(delta: float) -> void:
@@ -37,9 +37,9 @@ func handle_player_destroyed() -> void:
 		route_manager.cancel_route()
 
 	# Mark the active ship as permanently destroyed
-	var fleet: PlayerFleet = GameManager.player_fleet
+	var fleet = GameManager.player_fleet
 	if fleet:
-		var active_fs := fleet.get_active()
+		var active_fs = fleet.get_active()
 		if active_fs:
 			active_fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 
@@ -47,17 +47,17 @@ func handle_player_destroyed() -> void:
 	_spawn_death_explosion()
 
 	# Disable player controls & hide ship
-	var ship := player_ship as ShipController
+	var ship = player_ship
 	if ship:
 		ship.is_player_controlled = false
 		ship.throttle_input = Vector3.ZERO
 		ship.set_rotation_target(0, 0, 0)
-		var act_ctrl := ship.get_node_or_null("ShipActivationController") as ShipActivationController
+		var act_ctrl = ship.get_node_or_null("ShipActivationController")
 		if act_ctrl:
 			act_ctrl.deactivate(ShipActivationController.DeactivationMode.FULL, true)
 
 	# Hide flight HUD
-	var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
+	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = false
 
@@ -69,7 +69,7 @@ func handle_player_destroyed() -> void:
 
 
 func handle_respawn() -> void:
-	var fleet: PlayerFleet = GameManager.player_fleet
+	var fleet = GameManager.player_fleet
 	if fleet == null:
 		return
 
@@ -81,7 +81,7 @@ func handle_respawn() -> void:
 		next_index = _grant_starter_ship(fleet)
 
 	# Determine target system: nearest repair station to the respawn ship's system
-	var respawn_fs := fleet.ships[next_index]
+	var respawn_fs =fleet.ships[next_index]
 	var ship_sys: int = respawn_fs.docked_system_id
 	if ship_sys < 0:
 		ship_sys = system_transition.current_system_id if system_transition else 0
@@ -118,14 +118,14 @@ func handle_respawn() -> void:
 
 
 ## Find the best ship to respawn with: 1) first DOCKED, 2) recall a DEPLOYED, 3) -1 (none).
-func _find_respawn_ship(fleet: PlayerFleet) -> int:
+func _find_respawn_ship(fleet) -> int:
 	# 1. First DOCKED ship (prefer same system, then any)
 	var best_docked: int = -1
 	var current_sys: int = system_transition.current_system_id if system_transition else 0
 	for i in fleet.ships.size():
 		if i == fleet.active_index:
 			continue
-		var fs := fleet.ships[i]
+		var fs =fleet.ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 			if best_docked < 0 or fs.docked_system_id == current_sys:
 				best_docked = i
@@ -138,7 +138,7 @@ func _find_respawn_ship(fleet: PlayerFleet) -> int:
 	for i in fleet.ships.size():
 		if i == fleet.active_index:
 			continue
-		var fs := fleet.ships[i]
+		var fs =fleet.ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 			# Force-recall: mark as DOCKED
 			fs.deployment_state = FleetShip.DeploymentState.DOCKED
@@ -147,7 +147,7 @@ func _find_respawn_ship(fleet: PlayerFleet) -> int:
 			fs.deployed_command_params = {}
 			# Free the NPC node if it exists
 			if fleet_deployment_mgr:
-				var npc := fleet_deployment_mgr.get_deployed_npc(i)
+				var npc = fleet_deployment_mgr.get_deployed_npc(i)
 				if npc and is_instance_valid(npc):
 					EntityRegistry.unregister(npc.name)
 					npc.queue_free()
@@ -158,8 +158,8 @@ func _find_respawn_ship(fleet: PlayerFleet) -> int:
 
 
 ## Grant a free starter ship when all ships are destroyed.
-func _grant_starter_ship(fleet: PlayerFleet) -> int:
-	var starter_fs := FleetShip.create_bare(Constants.DEFAULT_SHIP_ID)
+func _grant_starter_ship(fleet) -> int:
+	var starter_fs =FleetShip.create_bare(Constants.DEFAULT_SHIP_ID)
 	if starter_fs == null:
 		push_error("DeathRespawnManager: Failed to create starter ship!")
 		return 0
@@ -167,7 +167,7 @@ func _grant_starter_ship(fleet: PlayerFleet) -> int:
 	starter_fs.deployment_state = FleetShip.DeploymentState.DOCKED
 	var sys_id: int = system_transition.current_system_id if system_transition else 0
 	starter_fs.docked_system_id = sys_id
-	var idx := fleet.add_ship(starter_fs)
+	var idx =fleet.add_ship(starter_fs)
 
 	# Toast notification
 	if GameManager._notif:
@@ -178,7 +178,7 @@ func _grant_starter_ship(fleet: PlayerFleet) -> int:
 
 func _auto_dock_at_station() -> void:
 	var station_name: String = ""
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 
 	# Prefer repair station
 	for ent in stations:
@@ -212,18 +212,18 @@ func _spawn_death_explosion() -> void:
 	if player_ship == null:
 		return
 	var pos: Vector3 = player_ship.global_position
-	var scene_root := get_tree().current_scene
+	var scene_root =get_tree().current_scene
 
 	# Main explosion (big)
-	var main_exp := ExplosionEffect.new()
+	var main_exp =ExplosionEffect.new()
 	scene_root.add_child(main_exp)
 	main_exp.global_position = pos
 	main_exp.scale = Vector3.ONE * 4.0
 
 	# Secondary explosions with slight delays and offsets
 	for i in 5:
-		var timer := get_tree().create_timer(0.15 * (i + 1))
-		var offset := Vector3(
+		var timer =get_tree().create_timer(0.15 * (i + 1))
+		var offset =Vector3(
 			randf_range(-15.0, 15.0),
 			randf_range(-10.0, 10.0),
 			randf_range(-15.0, 15.0)
@@ -233,7 +233,7 @@ func _spawn_death_explosion() -> void:
 
 
 func _spawn_delayed_explosion(pos: Vector3, scale_mult: float) -> void:
-	var explosion := ExplosionEffect.new()
+	var explosion =ExplosionEffect.new()
 	get_tree().current_scene.add_child(explosion)
 	explosion.global_position = pos
 	explosion.scale = Vector3.ONE * scale_mult
@@ -245,12 +245,12 @@ func _create_death_screen() -> void:
 	_death_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_death_screen.modulate.a = 0.0
 
-	var overlay := ColorRect.new()
+	var overlay =ColorRect.new()
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.color = Color(0.0, 0.0, 0.02, 0.7)
 	_death_screen.add_child(overlay)
 
-	var title := Label.new()
+	var title =Label.new()
 	title.text = "VAISSEAU DÉTRUIT"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -263,7 +263,7 @@ func _create_death_screen() -> void:
 	title.add_theme_color_override("font_color", Color(1.0, 0.15, 0.1, 1.0))
 	_death_screen.add_child(title)
 
-	var prompt := Label.new()
+	var prompt =Label.new()
 	prompt.text = "Appuyez sur [R] pour respawn à la station la plus proche"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -276,7 +276,7 @@ func _create_death_screen() -> void:
 	prompt.add_theme_color_override("font_color", Color(0.6, 0.75, 0.85, 0.8))
 	_death_screen.add_child(prompt)
 
-	var ui_layer := main_scene.get_node_or_null("UI")
+	var ui_layer =main_scene.get_node_or_null("UI")
 	if ui_layer:
 		ui_layer.add_child(_death_screen)
 	else:
@@ -284,12 +284,12 @@ func _create_death_screen() -> void:
 
 
 func _repair_ship() -> void:
-	var ship := player_ship as ShipController
+	var ship = player_ship
 	if ship == null:
 		return
 
 	# Restore ship via activation controller (collision, visibility, group, map, targeting)
-	var act_ctrl := ship.get_node_or_null("ShipActivationController") as ShipActivationController
+	var act_ctrl = ship.get_node_or_null("ShipActivationController")
 	if act_ctrl:
 		act_ctrl.activate()
 
@@ -297,11 +297,11 @@ func _repair_ship() -> void:
 	ship.linear_velocity = Vector3.ZERO
 	ship.angular_velocity = Vector3.ZERO
 
-	var health := ship.get_node_or_null("HealthSystem") as HealthSystem
+	var health = ship.get_node_or_null("HealthSystem")
 	if health:
 		health.revive()
 
-	var energy := ship.get_node_or_null("EnergySystem") as EnergySystem
+	var energy = ship.get_node_or_null("EnergySystem")
 	if energy:
 		energy.energy_current = energy.energy_max
 		energy.reset_pips()

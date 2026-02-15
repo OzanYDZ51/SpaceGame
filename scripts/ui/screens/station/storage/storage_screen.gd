@@ -9,7 +9,7 @@ extends UIScreen
 
 signal storage_closed
 
-var _player_data: PlayerData = null
+var _player_data = null
 var _station_key: String = ""
 var _station_name: String = "STATION"
 var _selected_fleet_index: int = 0
@@ -32,10 +32,10 @@ var _selected_ship_item: int = -1
 var _fleet_options: Array[String] = []
 var _fleet_indices: Array[int] = []  # Maps dropdown index -> fleet index
 
-const TRANSFER_QTY := 10
-const CONTENT_TOP := 65.0
-const BOTTOM_H := 50.0
-const CENTER_W := 90.0
+const TRANSFER_QTY =10
+const CONTENT_TOP =65.0
+const BOTTOM_H =50.0
+const CENTER_W =90.0
 
 
 func _ready() -> void:
@@ -99,7 +99,7 @@ func _ready() -> void:
 	add_child(_back_btn)
 
 
-func setup(pdata: PlayerData, station_key: String, sname: String) -> void:
+func setup(pdata, station_key: String, sname: String) -> void:
 	_player_data = pdata
 	_station_key = station_key
 	_station_name = sname
@@ -135,14 +135,14 @@ func _rebuild_fleet_dropdown() -> void:
 	_fleet_indices.clear()
 	if _player_data == null or _player_data.fleet == null:
 		return
-	var fleet := _player_data.fleet
+	var fleet =_player_data.fleet
 	var current_station_id: String = ""
-	var active_fs := fleet.get_active()
+	var active_fs = fleet.get_active()
 	if active_fs:
 		current_station_id = active_fs.docked_station_id
 	var dropdown_sel: int = 0
 	for i in fleet.ships.size():
-		var fs: FleetShip = fleet.ships[i]
+		var fs = fleet.ships[i]
 		# Only show ships docked at this station (+ active ship)
 		if i != fleet.active_index:
 			if fs.deployment_state != FleetShip.DeploymentState.DOCKED:
@@ -166,7 +166,7 @@ func _on_fleet_changed(idx: int) -> void:
 	_refresh()
 
 
-func _get_selected_fleet_ship() -> FleetShip:
+func _get_selected_fleet_ship():
 	if _player_data == null or _player_data.fleet == null:
 		return null
 	if _selected_fleet_index < 0 or _selected_fleet_index >= _player_data.fleet.ships.size():
@@ -195,8 +195,8 @@ func _rebuild_lists() -> void:
 
 	# Station storage items
 	if _player_data and _player_data.refinery_manager:
-		var storage := _player_data.refinery_manager.get_storage(_station_key)
-		var items := storage.get_all_items()
+		var storage =_player_data.refinery_manager.get_storage(_station_key)
+		var items =storage.get_all_items()
 		for item_id in items:
 			_station_items.append({
 				id = item_id,
@@ -208,7 +208,7 @@ func _rebuild_lists() -> void:
 		_station_items.sort_custom(func(a, b): return a.name < b.name)
 
 	# Ship resources + cargo
-	var fs := _get_selected_fleet_ship()
+	var fs =_get_selected_fleet_ship()
 	if fs:
 		# Mining ores / resources
 		for res_id in fs.ship_resources:
@@ -307,10 +307,10 @@ func _on_transfer_all_to_station() -> void:
 
 
 func _do_transfer_to_ship(item: Dictionary, qty: int) -> void:
-	var mgr := _player_data.refinery_manager if _player_data else null
+	var mgr =_player_data.refinery_manager if _player_data else null
 	if mgr == null:
 		return
-	var fs := _get_selected_fleet_ship()
+	var fs =_get_selected_fleet_ship()
 	if fs == null:
 		return
 	# Storage -> ship: all storage items become resources on the ship
@@ -319,10 +319,10 @@ func _do_transfer_to_ship(item: Dictionary, qty: int) -> void:
 
 
 func _do_transfer_to_station(item: Dictionary, qty: int) -> void:
-	var mgr := _player_data.refinery_manager if _player_data else null
+	var mgr =_player_data.refinery_manager if _player_data else null
 	if mgr == null:
 		return
-	var fs := _get_selected_fleet_ship()
+	var fs =_get_selected_fleet_ship()
 	if fs == null:
 		return
 	var source: String = item.get("source", "resource")
@@ -397,7 +397,7 @@ func _draw() -> void:
 
 	# Background
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
-	var edge_col := Color(0.0, 0.0, 0.02, 0.5)
+	var edge_col =Color(0.0, 0.0, 0.02, 0.5)
 	draw_rect(Rect2(0, 0, s.x, 50), edge_col)
 	draw_rect(Rect2(0, s.y - 40, s.x, 40), edge_col)
 	_draw_title(s)
@@ -440,7 +440,7 @@ func _draw() -> void:
 
 	# Storage usage
 	if _player_data and _player_data.refinery_manager:
-		var storage := _player_data.refinery_manager.get_storage(_station_key)
+		var storage =_player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
 		var st_text: String = "Stockage: %d / %d" % [total, cap]
@@ -449,12 +449,12 @@ func _draw() -> void:
 
 	# Scanline
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col := Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
+	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
 
 
 func _draw_storage_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void:
-	var data := item as Dictionary
+	var data =item as Dictionary
 	if data == null or data.is_empty():
 		return
 	var font: Font = UITheme.get_font()
