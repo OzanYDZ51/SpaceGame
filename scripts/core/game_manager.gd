@@ -11,34 +11,34 @@ extends Node
 ## Systems (HUD, MiningSystem, ShipNetworkSync) connect to self-rewire.
 signal player_ship_rebuilt(ship: ShipController)
 
-enum GameState { LOADING, PLAYING, PAUSED, MENU, DEAD, DOCKED }
+const GameState = Constants.GameState
 
-var current_state: GameState = GameState.LOADING
+var current_state: int = Constants.GameState.LOADING
 var player_ship: RigidBody3D = null
 var universe_node: Node3D = null
 var main_scene: Node3D = null
 var _music_player: AudioStreamPlayer = null
-var _stellar_map: StellarMap = null
-var _screen_manager: UIScreenManager = null
-var _tooltip_manager: UITooltipManager = null
-var _toast_manager: UIToastManager = null
-var _encounter_manager: EncounterManager = null
-var _clan_manager: ClanManager = null
-var _docking_system: DockingSystem = null
-var _station_screen: StationScreen = null
-var _dock_instance: DockInstance = null
-var _system_transition: SystemTransition = null
-var _galaxy: GalaxyData = null
-var _death_respawn_mgr: DeathRespawnManager = null
-var _docking_mgr: DockingManager = null
-var _loot_mgr: LootManager = null
-var _input_router: InputRouter = null
-var _ship_change_mgr: ShipChangeManager = null
-var _wormhole_mgr: WormholeManager = null
-var _net_sync_mgr: NetworkSyncManager = null
+var _stellar_map = null
+var _screen_manager = null
+var _tooltip_manager = null
+var _toast_manager = null
+var _encounter_manager = null
+var _clan_manager = null
+var _docking_system = null
+var _station_screen = null
+var _dock_instance = null
+var _system_transition = null
+var _galaxy = null
+var _death_respawn_mgr = null
+var _docking_mgr = null
+var _loot_mgr = null
+var _input_router = null
+var _ship_change_mgr = null
+var _wormhole_mgr = null
+var _net_sync_mgr = null
 var _discord_rpc: DiscordRPC:
 	get: return _net_sync_mgr.discord_rpc if _net_sync_mgr else null
-var _vfx_manager: VFXManager = null
+var _vfx_manager = null
 var player_data: PlayerData = null
 var player_inventory: PlayerInventory:
 	get: return player_data.inventory if player_data else null
@@ -56,35 +56,35 @@ var station_services: StationServices:
 	set(value):
 		if player_data:
 			player_data.station_services = value
-var _equipment_screen: EquipmentScreen = null
-var _shipyard_screen: ShipyardScreen = null
-var _refinery_screen: RefineryScreen = null
+var _equipment_screen = null
+var _shipyard_screen = null
+var _refinery_screen = null
 var _storage_screen: Control = null  # StorageScreen
-var _refinery_manager: RefineryManager = null
-var _loot_screen: LootScreen = null
-var _loot_pickup: LootPickupSystem = null
-var _lod_manager: ShipLODManager = null
-var _asteroid_field_mgr: AsteroidFieldManager = null
-var _mining_system: MiningSystem = null
-var _commerce_screen: CommerceScreen = null
-var _commerce_manager: CommerceManager = null
-var _route_manager: RouteManager = null
-var _fleet_deployment_mgr: FleetDeploymentManager = null
-var _squadron_mgr: SquadronManager = null
+var _refinery_manager = null
+var _loot_screen = null
+var _loot_pickup = null
+var _lod_manager = null
+var _asteroid_field_mgr = null
+var _mining_system = null
+var _commerce_screen = null
+var _commerce_manager = null
+var _route_manager = null
+var _fleet_deployment_mgr = null
+var _squadron_mgr = null
 var _player_autopilot_wp: String = ""
 var _backend_state_loaded: bool = false
-var _bug_report_screen: BugReportScreen = null
-var _notif: NotificationService = null
-var _structure_auth: StructureAuthority = null
-var _construction_mgr: ConstructionManager = null
-var _planet_lod_mgr: PlanetLODManager = null
-var _planet_approach_mgr: PlanetApproachManager = null
-var _asteroid_scanner: AsteroidScanner = null
+var _bug_report_screen = null
+var _notif = null
+var _structure_auth = null
+var _construction_mgr = null
+var _planet_lod_mgr = null
+var _planet_approach_mgr = null
+var _asteroid_scanner = null
 var _build_available: bool = false
 var _build_beacon_name: String = ""
 var _build_marker_id: int = -1
-var _construction_screen: ConstructionScreen = null
-var _admin_screen: StationAdminScreen = null
+var _construction_screen = null
+var _admin_screen = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 

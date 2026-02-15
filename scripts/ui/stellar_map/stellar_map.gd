@@ -562,9 +562,7 @@ func _input(event: InputEvent) -> void:
 							_select_entity(hit_id)
 							_sync_fleet_selection_from_entity(hit_id)
 							# Follow moving entities (fleet ships, player)
-							var hit_ent := EntityRegistry.get_entity(hit_id)
-							var hit_type: int = hit_ent.get("type", -1)
-							if hit_id == _player_id or hit_type == EntityRegistrySystem.EntityType.SHIP_FLEET:
+							if _entity_to_fleet_index(hit_id) >= 0:
 								_camera.follow_entity_id = hit_id
 								_camera.follow_enabled = true
 							_last_click_id = hit_id
@@ -586,14 +584,9 @@ func _input(event: InputEvent) -> void:
 							# Extract fleet indices from marquee-selected entities
 							var fleet_ids: Array[int] = []
 							for eid in ids:
-								if eid == _player_id and _fleet_panel._fleet:
-									fleet_ids.append(_fleet_panel._fleet.active_index)
-								else:
-									var ent := EntityRegistry.get_entity(eid)
-									if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
-										var extra: Dictionary = ent.get("extra", {})
-										if extra.has("fleet_index"):
-											fleet_ids.append(extra["fleet_index"])
+								var fi: int = _entity_to_fleet_index(eid)
+								if fi >= 0:
+									fleet_ids.append(fi)
 							if not fleet_ids.is_empty():
 								_fleet_selected_indices = fleet_ids
 								_fleet_panel.set_selected_fleet_indices(fleet_ids)
@@ -655,10 +648,9 @@ func _input(event: InputEvent) -> void:
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 						_entity_layer.route_target_entity_id = target_id
-					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET and _fleet_panel._fleet:
+					elif not target_ent.is_empty() and _fleet_panel._fleet:
 						# Right-click on fleet ship → follow (join/create squadron or re-follow)
-						var target_extra: Dictionary = target_ent.get("extra", {})
-						var target_fi: int = target_extra.get("fleet_index", -1)
+						var target_fi: int = _entity_to_fleet_index(target_id)
 						if target_fi >= 0:
 							var target_sq := _fleet_panel._fleet.get_ship_squadron(target_fi)
 							var new_members: Array[int] = []
@@ -758,15 +750,9 @@ func _get_effective_fleet_indices() -> Array[int]:
 	# 2. Check entity selected on the map
 	var sel_id := _entity_layer.selected_id
 	if sel_id != "":
-		# Player ship → active fleet index
-		if sel_id == _player_id and _fleet_panel._fleet:
-			return [_fleet_panel._fleet.active_index]
-		# Fleet NPC → fleet_index from entity extra
-		var ent := EntityRegistry.get_entity(sel_id)
-		if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
-			var extra: Dictionary = ent.get("extra", {})
-			if extra.has("fleet_index"):
-				return [extra["fleet_index"]]
+		var fi: int = _entity_to_fleet_index(sel_id)
+		if fi >= 0:
+			return [fi]
 	# 3. Nothing selected — no implicit default (user must select a ship first)
 	return []
 
@@ -788,28 +774,38 @@ func _select_entity(id: String) -> void:
 
 
 ## Updates fleet panel highlight when a fleet-related entity is selected on the map.
+## Resolve an entity ID to a fleet index.  Returns -1 if not a fleet ship.
+## Checks entity extra first, then falls back to matching deployed_npc_id.
+func _entity_to_fleet_index(entity_id: String) -> int:
+	if _fleet_panel._fleet == null or entity_id == "":
+		return -1
+	if entity_id == _player_id:
+		return _fleet_panel._fleet.active_index
+	# Fast path: entity extra has fleet_index
+	var ent := EntityRegistry.get_entity(entity_id)
+	if not ent.is_empty():
+		var extra: Dictionary = ent.get("extra", {})
+		if extra.has("fleet_index"):
+			return extra["fleet_index"]
+	# Fallback: match against FleetShip.deployed_npc_id
+	var sn := StringName(entity_id)
+	for i in _fleet_panel._fleet.ships.size():
+		if _fleet_panel._fleet.ships[i].deployed_npc_id == sn:
+			return i
+	return -1
+
+
 func _sync_fleet_selection_from_entity(id: String) -> void:
 	if _fleet_panel._fleet == null:
 		return
 	if id == "":
 		return  # Don't clear fleet selection on empty — handled separately
-	# Player ship → active index
-	if id == _player_id:
-		var idx: int = _fleet_panel._fleet.active_index
+	var idx: int = _entity_to_fleet_index(id)
+	if idx >= 0:
 		_fleet_selected_indices = [idx]
 		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
 		_restore_route_for_fleet_selection()
 		return
-	# Fleet NPC → fleet_index from entity extra
-	var ent := EntityRegistry.get_entity(id)
-	if ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
-		var extra: Dictionary = ent.get("extra", {})
-		if extra.has("fleet_index"):
-			var idx: int = extra["fleet_index"]
-			_fleet_selected_indices = [idx]
-			_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
-			_restore_route_for_fleet_selection()
-			return
 	# Non-fleet entity: clear fleet selection
 	_fleet_selected_indices.clear()
 	_fleet_panel.clear_selection()
@@ -1160,11 +1156,8 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 	# "SUIVRE" option when the context menu target is a fleet ship
 	var target_entity_id: String = context.get("target_entity_id", "")
 	if target_entity_id != "":
-		var target_ent := EntityRegistry.get_entity(target_entity_id)
-		if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
-			var target_extra: Dictionary = target_ent.get("extra", {})
-			var target_fi: int = target_extra.get("fleet_index", -1)
-			if target_fi >= 0 and target_fi != fleet_index:
+		var target_fi: int = _entity_to_fleet_index(target_entity_id)
+		if target_fi >= 0 and target_fi != fleet_index:
 				var target_fs := fleet.ships[target_fi] if target_fi < fleet.ships.size() else null
 				var target_name := target_fs.custom_name if target_fs else "vaisseau"
 				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})

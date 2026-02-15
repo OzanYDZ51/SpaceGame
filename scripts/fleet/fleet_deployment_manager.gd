@@ -153,19 +153,34 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 	if health:
 		health.ship_destroyed.connect(_on_fleet_npc_died.bind(fleet_index, npc))
 
-	# Register as fleet entity in EntityRegistry
+	# Register / update as fleet entity in EntityRegistry
 	var npc_id := StringName(npc.name)
+	var upos: Array = FloatingOrigin.to_universe_pos(spawn_pos)
 	var existing_ent := EntityRegistry.get_entity(npc.name)
-	if not existing_ent.is_empty():
+	if existing_ent.is_empty():
+		# Entity wasn't registered yet (LOD skip, timing) — register now
+		EntityRegistry.register(npc.name, {
+			"name": npc.name,
+			"type": EntityRegistrySystem.EntityType.SHIP_FLEET,
+			"node": npc,
+			"radius": 10.0,
+			"color": Color(0.3, 0.5, 1.0),
+			"pos_x": upos[0], "pos_y": upos[1], "pos_z": upos[2],
+			"extra": {
+				"fleet_index": fleet_index,
+				"owner_name": "Player",
+				"command": String(cmd),
+				"arrived": false,
+				"faction": "player_fleet",
+			},
+		})
+	else:
 		# Update extra data on existing entity
 		existing_ent["extra"]["fleet_index"] = fleet_index
 		existing_ent["extra"]["owner_name"] = "Player"
 		existing_ent["extra"]["command"] = String(cmd)
 		existing_ent["extra"]["arrived"] = false
 		existing_ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
-		# Manually set initial position — node may be in a disabled tree (docked)
-		# so EntityRegistry._process won't read from node.global_position
-		var upos: Array = FloatingOrigin.to_universe_pos(spawn_pos)
 		existing_ent["pos_x"] = upos[0]
 		existing_ent["pos_y"] = upos[1]
 		existing_ent["pos_z"] = upos[2]
