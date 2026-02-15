@@ -172,6 +172,11 @@ func handle_ship_change(fleet_index: int) -> void:
 		return
 
 	var fs := fleet.ships[fleet_index]
+	# Safety: only switch to ships docked at the same station
+	var active_fs := fleet.get_active()
+	if active_fs and fs.docked_station_id != active_fs.docked_station_id:
+		push_warning("ShipChangeManager: Cannot switch to ship at different station")
+		return
 	var ship_id := fs.ship_id
 	var data := ShipRegistry.get_ship_data(ship_id)
 	if data == null:

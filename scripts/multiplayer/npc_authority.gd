@@ -1026,7 +1026,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		var pos_z: float = float(ship_data.get("pos_z", 0.0))
 		var hull: float = float(ship_data.get("hull_ratio", 1.0))
 		var shield: float = float(ship_data.get("shield_ratio", 1.0))
-		var command: String = ship_data.get("command", "")
+		var _command: String = ship_data.get("command", "")
 		var faction: StringName = &"player_fleet"
 
 		# Register as data-only NPC (will get a real node when a player enters the system)

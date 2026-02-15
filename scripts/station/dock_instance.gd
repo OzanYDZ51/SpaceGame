@@ -40,14 +40,16 @@ func enter(ctx: Dictionary) -> void:
 	if encounter_manager:
 		encounter_manager.process_mode = Node.PROCESS_MODE_DISABLED
 
-	# Send a final "docked" state so remote puppets hide immediately, then stop sync
+	# Send "docked" state so remote puppets hide immediately.
+	# Keep ShipNetworkSync alive (ALWAYS) so it continues sending is_docked=true
+	# at 20Hz — this keeps the WebSocket connection alive through NAT/proxy timeouts.
 	var net_sync: Node = ctx.get("net_sync")
 	if not is_instance_valid(net_sync):
 		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
 	if net_sync and is_instance_valid(net_sync):
 		if net_sync is ShipNetworkSync:
 			(net_sync as ShipNetworkSync).force_send_now()
-		net_sync.process_mode = Node.PROCESS_MODE_DISABLED
+		net_sync.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# --- 2. DEACTIVATE PLAYER SHIP ---
 	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
@@ -127,12 +129,14 @@ func leave(ctx: Dictionary) -> void:
 	var encounter_manager: Node = ctx.get("encounter_manager")
 	if encounter_manager:
 		encounter_manager.process_mode = Node.PROCESS_MODE_INHERIT
-	# Resume network sync + force an immediate state send
+	# Restore network sync to normal mode + force immediate undocked state
 	var net_sync: Node = ctx.get("net_sync")
 	if not is_instance_valid(net_sync):
 		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
 	if net_sync and is_instance_valid(net_sync):
 		net_sync.process_mode = Node.PROCESS_MODE_INHERIT
+		if net_sync is ShipNetworkSync:
+			(net_sync as ShipNetworkSync).force_send_now()
 
 	# --- 4. RESTORE PLAYER SHIP ---
 	var act_ctrl := player_ship.get_node_or_null("ShipActivationController") as ShipActivationController
@@ -169,13 +173,17 @@ func _get_switchable_fleet_indices() -> Array:
 	var result: Array[int] = []
 	if GameManager.player_fleet == null:
 		return result
+	# Only show ships docked at THIS station
+	var current_station_id: String = ""
+	var active_fs := GameManager.player_fleet.get_active()
+	if active_fs:
+		current_station_id = active_fs.docked_station_id
 	for i in GameManager.player_fleet.ships.size():
 		var fs := GameManager.player_fleet.ships[i]
-		# Can only switch to docked ships (not deployed/destroyed)
-		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
-			result.append(i)
-		elif i == GameManager.player_fleet.active_index:
+		if i == GameManager.player_fleet.active_index:
 			result.append(i)  # Always include active ship
+		elif fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_station_id == current_station_id:
+			result.append(i)
 	return result
 
 
