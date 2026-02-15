@@ -1159,7 +1159,7 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		var target_fi: int = _entity_to_fleet_index(target_entity_id)
 		if target_fi >= 0 and target_fi != fleet_index:
 				var target_fs = fleet.ships[target_fi] if target_fi < fleet.ships.size() else null
-				var target_name := target_fs.custom_name if target_fs else "vaisseau"
+				var target_name = target_fs.custom_name if target_fs else "vaisseau"
 				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})
 
 	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
