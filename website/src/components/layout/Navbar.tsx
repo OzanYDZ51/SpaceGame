@@ -198,9 +198,8 @@ export function Navbar() {
                 Online
               </span>
             </a>
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:block">
               <FactionBadge />
-              <LanguageSwitcher />
             </div>
           </div>
 
@@ -233,14 +232,17 @@ export function Navbar() {
                 {t.nav.login}
               </Button>
             )}
+            <LanguageSwitcher />
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden text-text-secondary hover:text-cyan transition-colors cursor-pointer"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Menu"
-          >
+          {/* Mobile: language switcher + hamburger */}
+          <div className="md:hidden flex items-center gap-3">
+            <LanguageSwitcher />
+            <button
+              className="text-text-secondary hover:text-cyan transition-colors cursor-pointer"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Menu"
+            >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               {mobileOpen ? (
                 <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="1.5" />
@@ -252,7 +254,8 @@ export function Navbar() {
                 </>
               )}
             </svg>
-          </button>
+            </button>
+          </div>
         </Container>
 
         {/* Mobile menu */}
@@ -269,9 +272,8 @@ export function Navbar() {
                   {t.nav[NAV_LABEL_KEYS[link.id]]}
                 </a>
               ))}
-              <div className="pt-2 border-t border-border-subtle sm:hidden flex items-center gap-2">
+              <div className="pt-2 border-t border-border-subtle sm:hidden">
                 <FactionBadge />
-                <LanguageSwitcher />
               </div>
               {isAuthenticated ? (
                 <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
