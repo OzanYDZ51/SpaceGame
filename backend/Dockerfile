@@ -5,9 +5,9 @@ WORKDIR /app
 COPY go.mod go.sum* ./
 RUN go mod download
 
-# Build (only rebuilds if source changes)
+# Build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
 
 # Minimal runtime image
 FROM alpine:3.19

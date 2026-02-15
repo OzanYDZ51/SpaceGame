@@ -1,19 +1,18 @@
 # Godot 4.6 Headless Game Server for Railway
 # Build context must be the project root: docker build -f gameserver/Dockerfile .
 
-# --- Base: Ubuntu + Godot binary (cached unless version changes) ---
 FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
+    wget unzip ca-certificates \
     fontconfig libfontconfig1 libfreetype6 fonts-dejavu-core \
     libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Godot download — cached in its own layer
 ARG GODOT_VERSION=4.6-stable
-ADD "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" /tmp/godot.zip
-RUN cd /tmp && unzip -q godot.zip \
+RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" -O /tmp/godot.zip \
+    && cd /tmp && unzip -q godot.zip \
     && mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot \
     && chmod +x /usr/local/bin/godot \
     && rm godot.zip
@@ -42,8 +41,5 @@ COPY scenes/ scenes/
 
 # 5. Scripts (change most often — last for best cache)
 COPY scripts/ scripts/
-
-# Skip --import: Godot auto-imports on first run.
-# Only game-logic resources are loaded in headless, so startup is fast.
 
 ENTRYPOINT ["godot", "--headless", "--path", "/game"]
