@@ -29,6 +29,7 @@ var route_ship_ids: Array[String] = []
 var route_dest_ux: float = 0.0
 var route_dest_uz: float = 0.0
 var route_target_entity_id: String = ""  # If set, route tracks this entity's position
+var route_is_follow: bool = false  # True = follow (cyan), false + target = attack (red)
 
 # Waypoint flash (universe coords, set by StellarMap)
 var waypoint_ux: float = 0.0
@@ -875,8 +876,14 @@ func _draw_route_line(entities: Dictionary) -> void:
 			route_ship_ids.clear()
 			route_target_entity_id = ""
 			return
-	var is_attack: bool = route_target_entity_id != ""
-	var base_col: Color = Color(1.0, 0.2, 0.15) if is_attack else UITheme.PRIMARY
+	var is_tracking: bool = route_target_entity_id != ""
+	var base_col: Color
+	if route_is_follow:
+		base_col = Color(0.2, 0.8, 1.0)  # Cyan for follow
+	elif is_tracking:
+		base_col = Color(1.0, 0.2, 0.15)  # Red for attack
+	else:
+		base_col = UITheme.PRIMARY
 	var col := Color(base_col.r, base_col.g, base_col.b, 0.5)
 	var last_dest_sp := camera.universe_to_screen(default_dest_ux, default_dest_uz)
 	for ship_id in route_ship_ids:

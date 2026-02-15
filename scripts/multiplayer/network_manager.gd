@@ -23,6 +23,7 @@ signal connection_failed(reason: String)
 signal player_state_received(peer_id: int, state: NetworkState)
 signal chat_message_received(sender_name: String, channel: int, text: String)
 signal whisper_received(sender_name: String, text: String)
+signal chat_history_received(history: Array)
 signal player_list_updated
 signal server_config_received(config: Dictionary)
 
@@ -91,6 +92,11 @@ var _player_last_system: Dictionary = {}  # peer_id -> system_id
 # UUID ↔ peer_id mapping (server-side, persists across reconnects)
 var _uuid_to_peer: Dictionary = {}  # player_uuid (String) -> peer_id (int)
 var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
+
+# Chat history ring buffer (server-side, in-memory only)
+const CHAT_HISTORY_MAX: int = 50
+var _chat_history: Dictionary = {}        # channel (int) -> Array[{s, t, ts, ch}]
+var _system_chat_history: Dictionary = {} # system_id (int) -> Array[{s, t, ts, ch}]
 
 
 func _ready() -> void:
@@ -328,7 +334,9 @@ func _on_peer_disconnected(id: int) -> void:
 	if is_server():
 		_rpc_player_left.rpc(id)
 		# Broadcast system chat: player left
+		var leave_sys: int = _player_last_system.get(id, -1)
 		_rpc_receive_chat.rpc(left_name, 1, "%s a quitté." % left_name)
+		_store_chat_message(1, left_name, "%s a quitté." % left_name, leave_sys)
 		if not is_dedicated_server:
 			chat_message_received.emit(left_name, 1, "%s a quitté." % left_name)
 
@@ -436,6 +444,9 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 	}
 	_rpc_server_config.rpc_id(sender_id, config)
 
+	# Send chat history to the new client
+	_send_chat_history(sender_id, spawn_sys)
+
 	# Handle reconnect: re-associate fleet NPCs with the new peer_id
 	if is_reconnect and player_uuid != "":
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
@@ -447,6 +458,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 
 	# Broadcast system chat: player joined
 	_rpc_receive_chat.rpc(player_name, 1, "%s a rejoint le secteur." % player_name)
+	_store_chat_message(1, player_name, "%s a rejoint le secteur." % player_name, spawn_sys)
 	if not is_dedicated_server:
 		chat_message_received.emit(player_name, 1, "%s a rejoint le secteur." % player_name)
 
@@ -534,6 +546,7 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 		sender_name = peers[sender_id].player_name
 
 	if is_server():
+		_store_chat_message(channel, sender_name, text)
 		# Channel-scoped routing — never relay back to sender (they already showed it locally)
 		match channel:
 			1:  # SYSTEM → only peers in same system
@@ -560,6 +573,12 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_chat(sender_name: String, channel: int, text: String) -> void:
 	chat_message_received.emit(sender_name, channel, text)
+
+
+## Server -> Client: Chat history on connect.
+@rpc("authority", "reliable")
+func _rpc_chat_history(history: Array) -> void:
+	chat_history_received.emit(history)
 
 
 ## Client -> Server: Whisper (private message) to a named player.
@@ -611,6 +630,7 @@ func _deliver_whisper_from_host(target_name: String, text: String) -> void:
 ## Host sends a chat message using the same scoped routing as client messages.
 func _relay_chat_from_host(channel: int, text: String) -> void:
 	var sender_name: String = local_player_name
+	_store_chat_message(channel, sender_name, text)
 	match channel:
 		1:  # SYSTEM → only peers in same system
 			var host_sys: int = peers[1].system_id if peers.has(1) else -1
@@ -623,6 +643,48 @@ func _relay_chat_from_host(channel: int, text: String) -> void:
 				if pid == 1:
 					continue
 				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
+
+
+## Store a chat message in the server-side ring buffer (server only).
+func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1) -> void:
+	if not is_server():
+		return
+	if channel == 4:  # PRIVATE — not stored
+		return
+	var entry := {"s": sender_name, "t": text, "ts": Time.get_time_string_from_system().substr(0, 5), "ch": channel}
+	if channel == 1:  # SYSTEM → per-system buffer
+		var sys_id: int = override_system_id
+		if sys_id < 0:
+			var sender_id := multiplayer.get_remote_sender_id()
+			if sender_id > 0 and peers.has(sender_id):
+				sys_id = peers[sender_id].system_id
+			elif peers.has(1):
+				sys_id = peers[1].system_id  # Fallback: host's system
+		if sys_id >= 0:
+			if not _system_chat_history.has(sys_id):
+				_system_chat_history[sys_id] = []
+			_system_chat_history[sys_id].append(entry)
+			if _system_chat_history[sys_id].size() > CHAT_HISTORY_MAX:
+				_system_chat_history[sys_id].pop_front()
+	else:  # GLOBAL, CLAN, TRADE → global buffer per channel
+		if not _chat_history.has(channel):
+			_chat_history[channel] = []
+		_chat_history[channel].append(entry)
+		if _chat_history[channel].size() > CHAT_HISTORY_MAX:
+			_chat_history[channel].pop_front()
+
+
+## Send chat history to a newly connected client.
+func _send_chat_history(peer_id: int, system_id: int) -> void:
+	var history: Array = []
+	for ch in [0, 2, 3]:  # GLOBAL, CLAN, TRADE
+		if _chat_history.has(ch):
+			history.append_array(_chat_history[ch])
+	if _system_chat_history.has(system_id):
+		history.append_array(_system_chat_history[system_id])
+	if history.is_empty():
+		return
+	_rpc_chat_history.rpc_id(peer_id, history)
 
 
 ## Find a peer ID by player name (server-side only).

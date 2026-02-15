@@ -668,8 +668,7 @@ func _input(event: InputEvent) -> void:
 										squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": idx})
 										joined += 1
 								if joined > 0:
-									# Toast handled by GameManager; no waypoint needed
-									pass
+									_set_follow_route(effective_indices, target_id)
 							else:
 								# Target has no squadron — auto-create one with target as leader
 								# and selected ships as "follow" members
@@ -682,9 +681,7 @@ func _input(event: InputEvent) -> void:
 										"leader": target_fi,
 										"members": members_to_add,
 									})
-								else:
-									# All selected are already in squadrons — just join target's new group
-									pass
+									_set_follow_route(members_to_add, target_id)
 						else:
 							# No fleet_index on target — move to position
 							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
@@ -1255,6 +1252,10 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 					"leader": target_fi,
 					"members": members_to_add,
 				})
+			# Set follow route tracking
+			var target_eid := _get_fleet_entity_id(target_fi)
+			if target_eid != "":
+				_set_follow_route(members_to_add, target_eid)
 	elif order_str.begins_with("sq_join_"):
 		var sq_id := int(order_str.substr(8))
 		var idx := _get_effective_fleet_index()
@@ -1275,7 +1276,8 @@ func _show_waypoint(ux: float, uz: float) -> void:
 func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float) -> void:
 	_entity_layer.route_dest_ux = dest_ux
 	_entity_layer.route_dest_uz = dest_uz
-	_entity_layer.route_target_entity_id = ""  # Reset; caller sets for attack
+	_entity_layer.route_target_entity_id = ""  # Reset; caller sets for attack/follow
+	_entity_layer.route_is_follow = false
 	_entity_layer.route_ship_ids.clear()
 	if _fleet_panel._fleet == null:
 		return
@@ -1291,9 +1293,27 @@ func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float)
 	_dirty = true
 
 
+func _set_follow_route(fleet_indices: Array[int], target_entity_id: String) -> void:
+	_set_route_lines(fleet_indices, 0.0, 0.0)
+	_entity_layer.route_target_entity_id = target_entity_id
+	_entity_layer.route_is_follow = true
+	_dirty = true
+
+
+func _get_fleet_entity_id(fleet_index: int) -> String:
+	if _fleet_panel._fleet == null or fleet_index < 0 or fleet_index >= _fleet_panel._fleet.ships.size():
+		return ""
+	# Active ship = player entity
+	if fleet_index == _fleet_panel._fleet.active_index:
+		return _player_id
+	var fs := _fleet_panel._fleet.ships[fleet_index]
+	return String(fs.deployed_npc_id) if fs.deployed_npc_id != &"" else ""
+
+
 func _clear_route_line() -> void:
 	_entity_layer.route_ship_ids.clear()
 	_entity_layer.route_target_entity_id = ""
+	_entity_layer.route_is_follow = false
 	_dirty = true
 
 
@@ -1310,6 +1330,18 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 		source_indices = _fleet_selected_indices
 	if source_indices.is_empty():
 		return
+
+	# Check if any selected ship is in a squadron (follow mode)
+	var first_idx: int = source_indices[0] if not source_indices.is_empty() else -1
+	if first_idx >= 0 and first_idx < _fleet_panel._fleet.ships.size():
+		var sq := _fleet_panel._fleet.get_ship_squadron(first_idx)
+		if sq and not sq.is_leader(first_idx):
+			# Ship is a squadron member — show follow route to leader
+			var leader_eid := _get_fleet_entity_id(sq.leader_fleet_index)
+			if leader_eid != "":
+				_set_follow_route(source_indices, leader_eid)
+				return
+
 	# Find first deployed ship with a target destination
 	var first_fs: FleetShip = null
 	var restore_indices: Array[int] = []

@@ -19,6 +19,7 @@ func _ready() -> void:
 	# Listen for network chat messages
 	NetworkManager.chat_message_received.connect(_on_network_chat_received)
 	NetworkManager.whisper_received.connect(_on_whisper_received)
+	NetworkManager.chat_history_received.connect(_on_chat_history_received)
 
 	# Note: join/leave messages are broadcast by the server via SYSTEM channel chat RPCs.
 	# No need to listen to peer_connected/peer_disconnected here.
@@ -86,6 +87,15 @@ func _on_whisper_received(sender_name: String, text: String) -> void:
 	_chat_panel._private_target = sender_name
 	_chat_panel.add_message(ChatPanel.Channel.PRIVATE, "← " + sender_name, text, Color(0.85, 0.5, 1.0))
 
+
+
+## Server sent chat history on connect → load into ChatPanel.
+func _on_chat_history_received(history: Array) -> void:
+	if _chat_panel == null:
+		_find_chat_panel()
+	if _chat_panel == null:
+		return
+	_chat_panel.load_history(history)
 
 
 func _channel_name_to_int(channel_name: String) -> int:

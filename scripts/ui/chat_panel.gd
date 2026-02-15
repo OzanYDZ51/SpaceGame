@@ -546,3 +546,39 @@ func _handle_command(text: String) -> void:
 
 		_:
 			add_system_message("Commande inconnue : %s. Tapez /help." % cmd)
+
+
+## Load chat history received from the server on (re)connect.
+## Clears existing messages and populates channels without triggering unread indicators.
+func load_history(history: Array) -> void:
+	# Clear all channels
+	for ch in Channel.values():
+		_messages[ch].clear()
+		_unread_indicators[ch] = 0
+
+	# Add historical messages (no unread tracking)
+	for entry in history:
+		var ch: int = int(entry.get("ch", 0))
+		if ch < 0 or ch >= Channel.size():
+			continue
+		var author: String = entry.get("s", "???")
+		var color: Color = Color(0.3, 0.85, 1.0)
+		# Apply same transformations as NetworkChatRelay._on_network_chat_received
+		if ch == Channel.SYSTEM:
+			author = "SYSTÈME"
+			color = Color(1.0, 0.85, 0.3)
+		elif ch == Channel.PRIVATE:
+			color = Color(0.85, 0.5, 1.0)
+		var msg := {
+			"author": author,
+			"text": entry.get("t", ""),
+			"time": entry.get("ts", "--:--"),
+			"channel": ch,
+			"color": color,
+		}
+		_messages[ch].append(msg)
+
+	# Reset tab labels and refresh current view
+	for i in _tab_buttons.size():
+		_tab_buttons[i].text = CHANNEL_NAMES[i]
+	_refresh_messages()
