@@ -16,7 +16,7 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 @export var cam_distance_min: float = 8.0      ## Min zoom distance
 @export var cam_distance_max: float = 250.0    ## Max zoom distance
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
-@export var cam_rotation_speed: float = 18.0   ## Rotation follow speed
+@export var cam_rotation_speed: float = 10.0   ## Rotation follow speed (low = cinematic lag)
 @export var cam_look_ahead_y: float = 0.0      ## Vertical offset for look target
 @export var cam_speed_pull: float = 0.008      ## Extra distance per m/s
 @export var cam_zoom_step: float = 10.0        ## Distance per scroll tick
@@ -44,9 +44,25 @@ var _ship = null
 var _targeting = null
 var _weapon_manager = null
 
-var _shake_intensity: float = 0.0
-var _shake_offset: Vector3 = Vector3.ZERO
 var _fov_spike: float = 0.0  # Temporary FOV burst (decays) — cruise punch/exit effects
+
+## Spring-damper position follow (replaces lerp for cinematic inertia + overshoot)
+var _spring_velocity: Vector3 = Vector3.ZERO
+const SPRING_STIFFNESS: float = 120.0
+const SPRING_DAMPING: float = 18.0
+
+## G-force camera sway (visual inertia feedback on acceleration)
+var _prev_velocity: Vector3 = Vector3.ZERO
+var _gforce_offset: Vector3 = Vector3.ZERO
+const GFORCE_STRENGTH: float = 0.015  # Meters of offset per m/s²
+const GFORCE_MAX: float = 0.8
+const GFORCE_DECAY: float = 4.0
+
+## Layered camera shake (sin-based, replaces flat randf jitter)
+var _shake_layers: Array[Dictionary] = []
+
+## Public free-look state (readable by HUD)
+var is_free_looking: bool = false
 const FOV_SPIKE_DECAY: float = 3.5
 
 ## Planetary mode: when set, camera uses planet surface as "up" reference
@@ -117,15 +133,15 @@ func _find_combat_systems() -> void:
 
 
 func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
-	_shake_intensity = maxf(_shake_intensity, cam_shake_fire)
+	_shake_layers.append({"intensity": cam_shake_fire, "decay": 15.0, "frequency": 2.0, "time": 0.0})
 
 
 func _on_cruise_punch() -> void:
-	_shake_intensity = maxf(_shake_intensity, 0.15)
+	_shake_layers.append({"intensity": 0.20, "decay": 6.0, "frequency": 0.5, "time": 0.0})
 
 
 func _on_cruise_exit() -> void:
-	_shake_intensity = maxf(_shake_intensity, 0.1)
+	_shake_layers.append({"intensity": 0.12, "decay": 8.0, "frequency": 0.8, "time": 0.0})
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -161,15 +177,15 @@ func _update_third_person(delta: float) -> void:
 	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
 	# =========================================================================
-	# FREE LOOK (cruise mode: mouse orbits camera; otherwise smooth return)
+	# FREE LOOK (Alt key or cruise: mouse orbits camera; otherwise smooth return)
 	# =========================================================================
-	var is_free_looking: bool = false
-	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+	var has_free_look_input: bool = _ship.cruise_look_delta.length_squared() > 0.01
+	if has_free_look_input:
 		var md: Vector2 = _ship.cruise_look_delta
 		_free_look_yaw += md.x * FREE_LOOK_SENSITIVITY
 		_free_look_pitch += md.y * FREE_LOOK_SENSITIVITY
 		_free_look_pitch = clampf(_free_look_pitch, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
-		is_free_looking = absf(_free_look_yaw) > 0.5 or absf(_free_look_pitch) > 0.5
+		is_free_looking = true
 	else:
 		_free_look_yaw = lerpf(_free_look_yaw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
 		_free_look_pitch = lerpf(_free_look_pitch, 0.0, FREE_LOOK_RETURN_SPEED * delta)
@@ -185,46 +201,73 @@ func _update_third_person(delta: float) -> void:
 	current_distance = lerpf(current_distance, target_distance, 3.0 * delta)
 
 	# =========================================================================
+	# G-FORCE CAMERA SWAY (visual inertia: camera shifts opposite to acceleration)
+	# =========================================================================
+	var velocity: Vector3 = _ship.linear_velocity
+	var accel_world: Vector3 = (velocity - _prev_velocity) / maxf(delta, 0.001)
+	_prev_velocity = velocity
+	var accel_local: Vector3 = ship_basis.inverse() * accel_world
+	var target_gforce: Vector3 = -accel_local * GFORCE_STRENGTH
+	target_gforce = target_gforce.limit_length(GFORCE_MAX)
+	_gforce_offset = _gforce_offset.lerp(target_gforce, GFORCE_DECAY * delta)
+
+	# =========================================================================
 	# CAMERA POSITION (behind and above the ship)
 	# =========================================================================
 	var cam_offset: Vector3 = Vector3(0.0, cam_height, current_distance)
 	if is_free_looking:
-		var fl_basis =Basis(Vector3.UP, deg_to_rad(-_free_look_yaw))
+		var fl_basis: Basis = Basis(Vector3.UP, deg_to_rad(-_free_look_yaw))
 		fl_basis = fl_basis * Basis(Vector3.RIGHT, deg_to_rad(-_free_look_pitch))
 		cam_offset = fl_basis * cam_offset
-	var desired_pos: Vector3 = ship_pos + ship_basis * cam_offset
+	var desired_pos: Vector3 = ship_pos + ship_basis * (cam_offset + _gforce_offset)
 
-	# Weapon fire shake
-	if _shake_intensity > 0.005:
-		_shake_offset = Vector3(
-			randf_range(-1.0, 1.0),
-			randf_range(-0.5, 0.5),
-			randf_range(-0.3, 0.3)
-		) * _shake_intensity
-		desired_pos += ship_basis * _shake_offset
-		_shake_intensity *= maxf(0.0, 1.0 - cam_shake_decay * delta)
-	else:
-		_shake_intensity = 0.0
+	# Camera shake (layered sin-based — each event adds a decaying layer)
+	if not _shake_layers.is_empty():
+		var shake_total: Vector3 = Vector3.ZERO
+		var i: int = _shake_layers.size() - 1
+		while i >= 0:
+			var layer: Dictionary = _shake_layers[i]
+			layer["time"] += delta
+			layer["intensity"] *= maxf(0.0, 1.0 - layer["decay"] * delta)
+			if layer["intensity"] < 0.002:
+				_shake_layers.remove_at(i)
+				i -= 1
+				continue
+			var t: float = layer["time"] * layer["frequency"] * TAU
+			shake_total += Vector3(
+				sin(t * 1.0),
+				sin(t * 0.7 + 1.3),
+				sin(t * 0.5 + 2.7)
+			) * layer["intensity"]
+			i -= 1
+		desired_pos += ship_basis * shake_total
 
 	# Micro-vibration (subtle engine hum feel)
 	if vibration_enabled:
 		_vibration_time += delta
 		var speed_ratio: float = clampf(_ship.current_speed / Constants.MAX_SPEED_CRUISE, 0.0, 1.0)
 		var amp: float = lerpf(VIBRATION_AMP_IDLE, VIBRATION_AMP_SPEED, speed_ratio)
-		var vib =Vector3(
+		var vib: Vector3 = Vector3(
 			sin(_vibration_time * VIBRATION_FREQ_X * TAU) * amp,
 			sin(_vibration_time * VIBRATION_FREQ_Y * TAU) * amp * 0.7,
 			sin(_vibration_time * VIBRATION_FREQ_Z * TAU) * amp * 0.3
 		)
 		desired_pos += ship_basis * vib
 
-	# Smooth position follow (instant during cruise — ship must never outrun camera)
-	var follow: float
+	# Position follow: spring-damper in normal/boost, snap in cruise
 	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-		follow = 1.0  # Instant snap — no lag at quantum speeds
+		# Snap in cruise — ship must not outrun camera at quantum speeds
+		global_position = desired_pos
+		_spring_velocity = Vector3.ZERO
 	else:
-		follow = cam_follow_speed * delta
-	global_position = global_position.lerp(desired_pos, follow)
+		var spring_accel: Vector3 = (desired_pos - global_position) * SPRING_STIFFNESS - _spring_velocity * SPRING_DAMPING
+		_spring_velocity += spring_accel * delta
+		_spring_velocity = _spring_velocity.limit_length(5000.0)
+		global_position += _spring_velocity * delta
+		# Safety snap: if camera drifted too far (spawn/teleport), catch up immediately
+		if (desired_pos - global_position).length_squared() > 10000.0:  # > 100m
+			global_position = desired_pos
+			_spring_velocity = Vector3.ZERO
 
 	# =========================================================================
 	# LOOK TARGET
@@ -238,22 +281,25 @@ func _update_third_person(delta: float) -> void:
 		look_target = ship_pos + ship_basis * Vector3(0.0, cam_look_ahead_y, -look_ahead)
 
 	# =========================================================================
-	# SMOOTH ROTATION
+	# SMOOTH ROTATION (combat boost: faster tracking when target-locked)
 	# =========================================================================
-	var rot_follow: float = cam_rotation_speed * delta
+	var rot_speed: float = cam_rotation_speed
+	if _targeting and is_instance_valid(_targeting) and _targeting.current_target and is_instance_valid(_targeting.current_target):
+		rot_speed = 12.0
+	var rot_follow: float = rot_speed * delta
 	var current_forward: Vector3 = -global_transform.basis.z
 	var desired_forward: Vector3 = (look_target - global_position).normalized()
 	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
 	if smooth_forward.length_squared() > 0.001:
-		var target_pos =global_position + smooth_forward
+		var target_pos: Vector3 = global_position + smooth_forward
 		if not global_position.is_equal_approx(target_pos):
-			var up_hint =ship_basis.y.lerp(Vector3.UP, 0.05)
+			var up_hint: Vector3 = ship_basis.y.lerp(Vector3.UP, 0.05)
 			# Planetary mode: blend toward planet surface normal as "up"
 			if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
 				up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
 			# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
-			var up_vec =(up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
+			var up_vec: Vector3 = (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
 			if up_vec.length_squared() > 0.001:
 				look_at(target_pos, up_vec)
 
@@ -288,7 +334,10 @@ func _get_fov_for_mode(mode: int) -> float:
 	return fov_base
 
 
-func _on_origin_shifted(delta: Vector3) -> void:
+func _on_origin_shifted(shift: Vector3) -> void:
 	# Camera is top_level — it doesn't shift with the parent.
 	# Apply the same shift so camera stays in sync with the ship.
-	global_position -= delta
+	global_position -= shift
+	# Reset spring to avoid explosion from sudden position discontinuity
+	_spring_velocity = Vector3.ZERO
+	_prev_velocity = _ship.linear_velocity if _ship else Vector3.ZERO

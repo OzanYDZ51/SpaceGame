@@ -187,8 +187,9 @@ func _layout_controls() -> void:
 		_sidebar_buttons[i].size = Vector2(btn_w, btn_h)
 		y += btn_h + btn_gap
 
-	# Back button at bottom of sidebar
-	_back_btn.position = Vector2(sidebar_x, s.y - BOTTOM_H - 35.0)
+	# Back button — right after sell buttons, inside sidebar section
+	y += 12.0
+	_back_btn.position = Vector2(sidebar_x, y)
 	_back_btn.size = Vector2(btn_w, btn_h)
 
 	_layout_content_area()

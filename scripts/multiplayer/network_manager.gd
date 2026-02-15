@@ -928,19 +928,25 @@ func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void
 # =========================================================================
 
 ## Client -> Server: Request to deploy a fleet ship.
+## ship_data_json contains the client's ship loadout for server-side NPC spawning.
 @rpc("any_peer", "reliable")
-func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: String) -> void:
+func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: String, ship_data_json: String = "") -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var params: Dictionary = {}
 		if params_json != "":
 			var parsed = JSON.parse_string(params_json)
 			if parsed is Dictionary:
 				params = parsed
-		npc_auth.handle_fleet_deploy_request(sender_id, fleet_index, StringName(cmd_str), params)
+		var ship_data: Dictionary = {}
+		if ship_data_json != "":
+			var parsed_sd = JSON.parse_string(ship_data_json)
+			if parsed_sd is Dictionary:
+				ship_data = parsed_sd
+		npc_auth.handle_fleet_deploy_request(sender_id, fleet_index, StringName(cmd_str), params, ship_data)
 
 
 ## Client -> Server: Request to retrieve a fleet ship.

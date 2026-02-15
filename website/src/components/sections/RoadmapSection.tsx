@@ -5,10 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
-import { ROADMAP_PHASES } from "@/lib/constants";
-import type { RoadmapPhase } from "@/lib/constants";
+import { ROADMAP_STRUCTURE } from "@/lib/constants";
+import type { RoadmapStatus } from "@/lib/constants";
+import { useI18n } from "@/i18n";
+import type { RoadmapPhaseText } from "@/i18n";
 
-function StatusIcon({ status }: { status: RoadmapPhase["status"] }) {
+type MergedPhase = { id: string; status: RoadmapStatus } & RoadmapPhaseText;
+
+function StatusIcon({ status }: { status: RoadmapStatus }) {
   if (status === "done") {
     return (
       <div className="w-8 h-8 rounded-full bg-accent/15 border-2 border-accent flex items-center justify-center flex-shrink-0">
@@ -35,36 +39,35 @@ function StatusIcon({ status }: { status: RoadmapPhase["status"] }) {
   );
 }
 
-function StatusBadge({ status }: { status: RoadmapPhase["status"] }) {
+function StatusBadge({ status, labels }: { status: RoadmapStatus; labels: { done: string; inProgress: string; upcoming: string } }) {
   if (status === "done") {
     return (
       <span className="text-[10px] font-mono uppercase tracking-widest text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
-        Terminé
+        {labels.done}
       </span>
     );
   }
   if (status === "in-progress") {
     return (
       <span className="text-[10px] font-mono uppercase tracking-widest text-cyan bg-cyan/10 px-2 py-0.5 rounded-full border border-cyan/20 text-glow-cyan-sm">
-        En cours
+        {labels.inProgress}
       </span>
     );
   }
   return (
     <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-      À venir
+      {labels.upcoming}
     </span>
   );
 }
 
-function PhaseItem({ phase, index }: { phase: RoadmapPhase; index: number }) {
+function PhaseItem({ phase, index, total, statusLabels }: { phase: MergedPhase; index: number; total: number; statusLabels: { done: string; inProgress: string; upcoming: string } }) {
   const [expanded, setExpanded] = useState(phase.status === "in-progress");
-  const isLast = index === ROADMAP_PHASES.length - 1;
+  const isLast = index === total - 1;
 
   return (
     <ScrollReveal delay={index * 0.08}>
       <div className="flex gap-4">
-        {/* Timeline line + icon */}
         <div className="flex flex-col items-center">
           <StatusIcon status={phase.status} />
           {!isLast && (
@@ -76,7 +79,6 @@ function PhaseItem({ phase, index }: { phase: RoadmapPhase; index: number }) {
           )}
         </div>
 
-        {/* Content */}
         <div className={`pb-8 flex-1 ${isLast ? "pb-0" : ""}`}>
           <button
             onClick={() => setExpanded((prev) => !prev)}
@@ -90,7 +92,7 @@ function PhaseItem({ phase, index }: { phase: RoadmapPhase; index: number }) {
               >
                 {phase.title}
               </h3>
-              <StatusBadge status={phase.status} />
+              <StatusBadge status={phase.status} labels={statusLabels} />
               <svg
                 width="12"
                 height="12"
@@ -148,19 +150,32 @@ function PhaseItem({ phase, index }: { phase: RoadmapPhase; index: number }) {
 }
 
 export function RoadmapSection() {
+  const { t } = useI18n();
+
+  const phases: MergedPhase[] = ROADMAP_STRUCTURE.map((s, i) => ({
+    ...s,
+    ...t.roadmap.phases[i],
+  }));
+
+  const statusLabels = {
+    done: t.roadmap.statusDone,
+    inProgress: t.roadmap.statusInProgress,
+    upcoming: t.roadmap.statusUpcoming,
+  };
+
   return (
     <section id="roadmap" className="py-20 sm:py-24 md:py-32">
       <Container>
         <ScrollReveal>
           <SectionHeading
-            title="Roadmap"
-            subtitle="Le chemin parcouru et les horizons à venir."
+            title={t.roadmap.title}
+            subtitle={t.roadmap.subtitle}
           />
         </ScrollReveal>
 
         <div className="max-w-2xl mx-auto">
-          {ROADMAP_PHASES.map((phase, i) => (
-            <PhaseItem key={phase.id} phase={phase} index={i} />
+          {phases.map((phase, i) => (
+            <PhaseItem key={phase.id} phase={phase} index={i} total={phases.length} statusLabels={statusLabels} />
           ))}
         </div>
       </Container>

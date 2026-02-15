@@ -21,7 +21,6 @@ signal administration_requested
 @export var button_width: float = 280.0
 @export var button_height: float = 30.0
 @export var button_gap: float = 4.0
-@export var services_start_y: float = 240.0
 
 var _station_name: String = "STATION"
 var _service_buttons: Array[UIButton] = []
@@ -194,17 +193,30 @@ func _on_admin_pressed() -> void:
 	administration_requested.emit()
 
 
+func _get_info_panel_bottom() -> float:
+	var emblem_y: float = 90.0
+	var emblem_r: float = 22.0
+	var info_y: float = emblem_y + emblem_r + 48.0 + 14.0  # After first divider line
+	info_y += UITheme.ROW_HEIGHT * 3.0 + 8.0  # 3 info rows + bottom spacing
+	return info_y
+
+
+func _get_services_start_y() -> float:
+	return _get_info_panel_bottom() + 12.0 + 22.0  # gap + header height + gap
+
+
 func _layout_buttons() -> void:
 	var s: Vector2 = size
 	var cx: float = s.x * 0.5
+	var svc_start_y: float = _get_services_start_y()
 
 	for i in _service_buttons.size():
 		var btn: UIButton = _service_buttons[i]
-		btn.position = Vector2(cx - button_width * 0.5, services_start_y + i * (button_height + button_gap))
+		btn.position = Vector2(cx - button_width * 0.5, svc_start_y + i * (button_height + button_gap))
 		btn.size = Vector2(button_width, button_height)
 
 	# Station equipment button — after service buttons
-	var station_equip_y: float = services_start_y + _service_buttons.size() * (button_height + button_gap) + 12
+	var station_equip_y: float = svc_start_y + _service_buttons.size() * (button_height + button_gap) + 12
 	_station_equip_button.position = Vector2(cx - button_width * 0.5, station_equip_y)
 	_station_equip_button.size = Vector2(button_width, button_height)
 
@@ -277,7 +289,7 @@ func _draw() -> void:
 	# =========================================================================
 	# SERVICE SECTION HEADER
 	# =========================================================================
-	var svc_header_y: float = 218.0
+	var svc_header_y: float = _get_info_panel_bottom() + 12.0
 	var header_x: float = cx - 140.0
 	draw_rect(Rect2(header_x, svc_header_y, 2, 12), UITheme.PRIMARY)
 	draw_string(font, Vector2(header_x + 8, svc_header_y + 10), "SERVICES",

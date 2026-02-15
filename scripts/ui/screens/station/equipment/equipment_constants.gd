@@ -65,7 +65,7 @@ static func get_slot_size_color(s: String) -> Color:
 	match s:
 		"S": return UITheme.PRIMARY
 		"M": return UITheme.WARNING
-		"L": return Color(1.0, 0.5, 0.15, 0.9)
+		"L": return Color(0.7, 0.5, 1.0, 0.9)
 	return UITheme.TEXT_DIM
 
 

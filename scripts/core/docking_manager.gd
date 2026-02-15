@@ -120,26 +120,30 @@ func handle_undock() -> void:
 	undocked.emit()
 
 
-const UNDOCK_DISTANCE_MIN: float = 1800.0  ## Min spawn distance from station
-const UNDOCK_DISTANCE_MAX: float = 2200.0  ## Max spawn distance from station
+const UNDOCK_EXIT_DISTANCE: float = 300.0  ## Distance ahead of bay exit
 
 func _reposition_at_station() -> void:
 	if player_ship == null:
 		return
 
-	# Resolve station position — prefer live node, fallback to EntityRegistry
-	var station_pos =Vector3.ZERO
+	# Resolve station node — prefer live node, fallback to EntityRegistry
+	var station_node: Node3D = null
+	var station_pos: Vector3 = Vector3.ZERO
 	var found: bool = false
 
 	if docking_system and docking_system.nearest_station_node != null and is_instance_valid(docking_system.nearest_station_node):
-		station_pos = docking_system.nearest_station_node.global_position
+		station_node = docking_system.nearest_station_node
+		station_pos = station_node.global_position
 		found = true
 	else:
 		# Fallback: find station from EntityRegistry using docked_station_idx
-		var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		var stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		for ent in stations:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.get("station_index", -1) == docked_station_idx:
+				var node_ref = ent.get("node")
+				if node_ref != null and is_instance_valid(node_ref):
+					station_node = node_ref
 				station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				found = true
 				break
@@ -147,13 +151,24 @@ func _reposition_at_station() -> void:
 	if not found:
 		return
 
-	# Random direction on the XZ plane, ~2km from station
-	var angle: float = randf() * TAU
-	var dist: float = randf_range(UNDOCK_DISTANCE_MIN, UNDOCK_DISTANCE_MAX)
-	var offset =Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
-	var new_pos: Vector3 = station_pos + offset
+	# Prefer exiting from bay if station has get_bay_exit_global()
+	if station_node and station_node.has_method("get_bay_exit_global"):
+		var bay_exit: Vector3 = station_node.get_bay_exit_global()
+		# Face away from station center
+		var away_dir: Vector3 = (bay_exit - station_pos).normalized()
+		if away_dir.length_squared() < 0.01:
+			away_dir = Vector3.FORWARD
+		var new_pos: Vector3 = bay_exit + away_dir * UNDOCK_EXIT_DISTANCE
+		player_ship.global_position = new_pos
+		# Orient ship to face away from station
+		player_ship.look_at(new_pos + away_dir, Vector3.UP)
+	else:
+		# Fallback: random position around station
+		var angle: float = randf() * TAU
+		var dist: float = randf_range(1800.0, 2200.0)
+		var offset = Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+		player_ship.global_position = station_pos + offset
 
-	player_ship.global_position = new_pos
 	player_ship.linear_velocity = Vector3.ZERO
 	player_ship.angular_velocity = Vector3.ZERO
 

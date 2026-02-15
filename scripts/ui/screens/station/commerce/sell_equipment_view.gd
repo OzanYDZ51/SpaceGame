@@ -299,7 +299,7 @@ func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> vo
 			if inv: count = inv.get_module_count(item_name)
 
 	# Size badge
-	var badge_col: Color = UITheme.PRIMARY if size_str == "S" else (UITheme.WARNING if size_str == "M" else Color(1.0, 0.5, 0.2))
+	var badge_col: Color = UITheme.PRIMARY if size_str == "S" else (UITheme.WARNING if size_str == "M" else Color(0.7, 0.5, 1.0))
 	ci.draw_rect(Rect2(rect.position.x + 4, rect.position.y + 4, 24, 16), Color(badge_col.r, badge_col.g, badge_col.b, 0.2))
 	ci.draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 16),
 		size_str, HORIZONTAL_ALIGNMENT_CENTER, 24, UITheme.FONT_SIZE_TINY, badge_col)

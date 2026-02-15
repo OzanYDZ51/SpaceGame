@@ -208,9 +208,9 @@ func _setup_shield_holo() -> void:
 	dir_light.rotation_degrees = Vector3(-45, 30, 0)
 	_vp.add_child(dir_light)
 
-	# Rim light — warm amber from behind-right
+	# Rim light — cool cyan from behind-right
 	var rim_light =OmniLight3D.new()
-	rim_light.light_color = Color(0.9, 0.6, 0.2)
+	rim_light.light_color = Color(0.2, 0.6, 0.9)
 	rim_light.light_energy = 1.0
 	rim_light.omni_range = 50.0
 	rim_light.position = Vector3(5, 3, -8)

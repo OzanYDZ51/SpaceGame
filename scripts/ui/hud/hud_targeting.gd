@@ -308,9 +308,9 @@ func _setup_target_holo(target: Node3D) -> void:
 	dir_light.rotation_degrees = Vector3(-45, 30, 0)
 	_target_vp.add_child(dir_light)
 
-	# Rim light — warm amber from behind-right
+	# Rim light — cool cyan from behind-right
 	var rim_light =OmniLight3D.new()
-	rim_light.light_color = Color(0.9, 0.6, 0.2)
+	rim_light.light_color = Color(0.2, 0.6, 0.9)
 	rim_light.light_energy = 1.0
 	rim_light.omni_range = 50.0
 	rim_light.position = Vector3(5, 3, -8)
@@ -343,7 +343,7 @@ func _setup_target_holo(target: Node3D) -> void:
 	# Model — holographic blue
 	_target_holo_model = ShipModel.new()
 	if is_station:
-		_target_holo_model.model_path = "res://assets/models/space_station.glb"
+		_target_holo_model.model_path = "res://assets/models/babbage_station.glb"
 	else:
 		_target_holo_model.model_path = target_ship_data.model_path
 		_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(target_ship_id)

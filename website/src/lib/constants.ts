@@ -1,368 +1,118 @@
 export const SITE_NAME = "Imperion Online";
-export const SITE_DESCRIPTION =
-  "La galaxie n'obéit à personne. MMORPG spatial en monde ouvert — explorez, combattez, conquérez.";
 export const SITE_URL = "https://imperiononline.fr";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://backend-production-05a9.up.railway.app";
 
 export const NAV_LINKS = [
-  { label: "Accueil", href: "#hero" },
-  { label: "Features", href: "#features" },
-  { label: "Vaisseaux", href: "#ships" },
-  { label: "Univers", href: "#universe" },
-  { label: "Roadmap", href: "#roadmap" },
-  { label: "Télécharger", href: "#download" },
+  { id: "home", href: "#hero" },
+  { id: "features", href: "#features" },
+  { id: "ships", href: "#ships" },
+  { id: "universe", href: "#universe" },
+  { id: "roadmap", href: "#roadmap" },
+  { id: "download", href: "#download" },
 ] as const;
 
-/* ── Hero stats bar ──────────────────────────────── */
+/* ── Features — structural data (icons, sizes) ── */
 
-export const HERO_STATS = [
-  { value: "120+", label: "Systèmes stellaires" },
-  { value: "30+", label: "Classes de vaisseaux" },
-  { value: "18", label: "Recettes de raffinage" },
-  { value: "MMO", label: "Temps réel" },
-] as const;
-
-/* ── Features — organized by player fantasy ──────── */
-
-export type FeatureData = {
-  title: string;
-  subtitle: string;
-  description: string;
-  stats?: string;
+export type FeatureStructure = {
   icon: string;
   size: "hero" | "medium" | "standard";
 };
 
-export const FEATURES: FeatureData[] = [
-  {
-    title: "Maîtrisez le Vide",
-    subtitle: "Six degrés de liberté. Zéro gravité. Contrôle total.",
-    description:
-      "Tangage, lacet, roulis, translation — chaque impulsion compte. Pas de rails, pas de limites. Le vol Newtonien vous donne un contrôle absolu dans le vide infini. Chaque manoeuvre d'évasion, chaque approche de station, chaque poursuite est un test de skill pur.",
-    stats: "6DOF  ·  Vol Newtonien  ·  Assistance désactivable",
-    icon: "rocket",
-    size: "hero",
-  },
-  {
-    title: "Conquérez par les Armes",
-    subtitle: "Boucliers directionnels. Armes dévastatrices. Décisions en une fraction de seconde.",
-    description:
-      "Quatre faces de bouclier à gérer, des armes primaires et secondaires à alterner, de l'énergie à répartir entre systèmes. Visez le point faible. Esquivez les torpilles. Achevez sans pitié. Dans le vide, seul le plus tactique survit.",
-    stats: "4 boucliers directionnels  ·  Armes multiples  ·  Gestion d'énergie",
-    icon: "crosshair",
-    size: "medium",
-  },
-  {
-    title: "Dominez l'Économie",
-    subtitle: "Minez. Raffinez. Commercez. Chaque crédit compte.",
-    description:
-      "8 minerais rares dans des ceintures d'astéroïdes procédurales. 18 recettes de raffinage. Des prix qui fluctuent en temps réel selon l'offre et la demande. Trouvez la route la plus rentable, transportez du cargo à travers des systèmes hostiles, et bâtissez votre fortune.",
-    stats: "8 minerais  ·  18 recettes  ·  Prix dynamiques",
-    icon: "trending-up",
-    size: "medium",
-  },
-  {
-    title: "Forgez des Alliances",
-    subtitle: "Créez un clan. Déployez votre flotte. Écrasez vos rivaux.",
-    description:
-      "Fondez un clan, gérez la diplomatie, déployez des escadrons autonomes avec 5 rôles de combat et 5 formations. Vos vaisseaux persistent même quand vous êtes hors-ligne. Construisez un empire qui fait trembler la galaxie.",
-    stats: "Clans  ·  Escadrons  ·  Persistance de flotte",
-    icon: "users",
-    size: "standard",
-  },
-  {
-    title: "Explorez l'Inconnu",
-    subtitle: "120+ systèmes. Des wormholes. L'immensité vous attend.",
-    description:
-      "Jump gates, wormholes inter-galaxies, 7 classes d'étoiles aux propriétés uniques. Chaque système a son identité, ses dangers, ses trésors cachés. Posez-vous sur des planètes aux atmosphères uniques. Allez là où personne n'est encore allé.",
-    stats: "120+ systèmes  ·  7 classes d'étoiles  ·  Atterrissage planétaire",
-    icon: "globe",
-    size: "standard",
-  },
-  {
-    title: "Écrivez Votre Légende",
-    subtitle: "Un univers partagé. Des milliers de pilotes. Votre histoire.",
-    description:
-      "Synchronisation temps réel, combats PvP, flotte persistante côté serveur. Chaque action impacte une galaxie partagée par des milliers de joueurs. Votre réputation vous précède — héros ou tyran, c'est vous qui décidez.",
-    stats: "MMO temps réel  ·  PvP  ·  Univers persistant",
-    icon: "signal",
-    size: "standard",
-  },
+export const FEATURE_STRUCTURE: FeatureStructure[] = [
+  { icon: "rocket", size: "hero" },
+  { icon: "crosshair", size: "medium" },
+  { icon: "trending-up", size: "medium" },
+  { icon: "users", size: "standard" },
+  { icon: "globe", size: "standard" },
+  { icon: "signal", size: "standard" },
 ];
 
-export const UNIVERSE_STATS = [
-  { value: "120+", label: "Systèmes stellaires" },
-  { value: "8", label: "Minerais extractibles" },
-  { value: "7", label: "Classes d'étoiles" },
-] as const;
+/* ── Ships — structural data (models, scale) ──── */
 
-export type ShipData = {
+export type ShipStructure = {
   id: string;
-  name: string;
-  class: string;
   modelPath: string;
   scale: number;
   cameraDistance: number;
-  stats: {
-    speed: string;
-    hull: string;
-    shields: string;
-    class: string;
-  };
-  description: string;
+  stats: { speed: string; hull: string; shields: string };
 };
 
-export const SHIPS: ShipData[] = [
+export const SHIP_STRUCTURE: ShipStructure[] = [
   {
     id: "fighter",
-    name: "Fighter Mk1",
-    class: "Chasseur",
     modelPath: "/models/tie.glb",
     scale: 1.5,
     cameraDistance: 4,
-    stats: {
-      speed: "320 m/s",
-      hull: "450 HP",
-      shields: "200 SP",
-      class: "Chasseur léger",
-    },
-    description:
-      "Agile et rapide, le Fighter Mk1 est l'épine dorsale de toute flotte. Idéal pour l'interception et les patrouilles.",
+    stats: { speed: "320 m/s", hull: "450 HP", shields: "200 SP" },
   },
   {
     id: "frigate",
-    name: "Frigate Mk1",
-    class: "Frégate",
     modelPath: "/models/frigate_mk1.glb",
     scale: 0.6,
     cameraDistance: 6,
-    stats: {
-      speed: "140 m/s",
-      hull: "2800 HP",
-      shields: "1200 SP",
-      class: "Frégate d'assaut",
-    },
-    description:
-      "Un vaisseau lourd conçu pour le combat prolongé. Ses tourelles multiples en font un adversaire redoutable.",
+    stats: { speed: "140 m/s", hull: "2800 HP", shields: "1200 SP" },
   },
 ];
 
-export const SHIPS_BY_FACTION: Record<string, ShipData[]> = {
+export const SHIP_STRUCTURE_BY_FACTION: Record<string, ShipStructure[]> = {
   nova_terra: [
     {
       id: "nt-fighter",
-      name: "Fighter NT-7",
-      class: "Chasseur",
       modelPath: "/models/tie.glb",
       scale: 1.5,
       cameraDistance: 4,
-      stats: {
-        speed: "340 m/s",
-        hull: "400 HP",
-        shields: "280 SP",
-        class: "Intercepteur de ligne",
-      },
-      description:
-        "Le NT-7 incarne la doctrine Nova Terra : précision et protection. Ses boucliers surpuissants et sa vitesse en font le chasseur parfait pour les patrouilles de la Confédération.",
+      stats: { speed: "340 m/s", hull: "400 HP", shields: "280 SP" },
     },
     {
       id: "nt-frigate",
-      name: "Frégate Aurore",
-      class: "Frégate",
       modelPath: "/models/frigate_mk1.glb",
       scale: 0.6,
       cameraDistance: 6,
-      stats: {
-        speed: "160 m/s",
-        hull: "2400 HP",
-        shields: "1600 SP",
-        class: "Frégate de défense",
-      },
-      description:
-        "La Frégate Aurore est le bouclier de la flotte. Conçue pour encaisser et protéger, ses générateurs de boucliers de dernière génération sont inégalés dans la galaxie.",
+      stats: { speed: "160 m/s", hull: "2400 HP", shields: "1600 SP" },
     },
   ],
   kharsis: [
     {
       id: "kh-fighter",
-      name: "Intercepteur Kha'ri",
-      class: "Chasseur",
       modelPath: "/models/tie.glb",
       scale: 1.5,
       cameraDistance: 4,
-      stats: {
-        speed: "300 m/s",
-        hull: "550 HP",
-        shields: "150 SP",
-        class: "Chasseur d'assaut",
-      },
-      description:
-        "Forgé au-delà du Rift, le Kha'ri est une machine de guerre brute. Sa coque renforcée par des alliages aliens et ses armes dévastatrices compensent largement ses boucliers limités.",
+      stats: { speed: "300 m/s", hull: "550 HP", shields: "150 SP" },
     },
     {
       id: "kh-frigate",
-      name: "Croiseur Kha'ri",
-      class: "Croiseur",
       modelPath: "/models/frigate_mk1.glb",
       scale: 0.6,
       cameraDistance: 6,
-      stats: {
-        speed: "120 m/s",
-        hull: "3600 HP",
-        shields: "800 SP",
-        class: "Croiseur lourd",
-      },
-      description:
-        "Le Croiseur Kha'ri est la terreur des champs de bataille. Sa masse colossale et son armement dévastateur en font un vaisseau conçu pour un seul objectif : la destruction totale.",
+      stats: { speed: "120 m/s", hull: "3600 HP", shields: "800 SP" },
     },
   ],
 };
 
-export type RoadmapPhase = {
-  id: string;
-  title: string;
-  status: "done" | "in-progress" | "upcoming";
-  summary: string;
-  details: string[];
-};
+/* ── Screenshots — structural data (paths) ─────── */
 
-export const ROADMAP_PHASES: RoadmapPhase[] = [
-  {
-    id: "flight",
-    title: "Vol spatial",
-    status: "done",
-    summary: "Physique 6DOF, caméra, HUD de pilotage",
-    details: [
-      "Contrôleur de vaisseau 6 degrés de liberté",
-      "Caméra 3e personne avec suivi dynamique",
-      "Skybox procédural avec champ d'étoiles",
-      "HUD de pilotage avec indicateurs de vitesse et cap",
-    ],
-  },
-  {
-    id: "universe",
-    title: "Univers procédural",
-    status: "done",
-    summary: "120+ systèmes, jump gates, carte galactique",
-    details: [
-      "Génération procédurale de systèmes stellaires",
-      "7 classes d'étoiles avec propriétés uniques",
-      "Réseau de jump gates et wormholes",
-      "Carte du système et carte galactique interactives",
-    ],
-  },
-  {
-    id: "combat",
-    title: "Combat",
-    status: "done",
-    summary: "Armes, boucliers directionnels, IA ennemie",
-    details: [
-      "Système de combat avec armes primaires et secondaires",
-      "Boucliers directionnels (4 faces)",
-      "IA de combat : patrouille, poursuite, évasion, fuite",
-      "Système de cible et verrouillage",
-    ],
-  },
-  {
-    id: "economy",
-    title: "Économie & Commerce",
-    status: "done",
-    summary: "Stations, minage, raffinage, commerce dynamique",
-    details: [
-      "8 types de minerais extractibles",
-      "Système de raffinage avec 18 recettes",
-      "Prix dynamiques offre/demande entre stations",
-      "Système de cargo et gestion d'inventaire",
-    ],
-  },
-  {
-    id: "multiplayer",
-    title: "Multijoueur MMO",
-    status: "done",
-    summary: "Serveur dédié, clans, persistence de flotte",
-    details: [
-      "Synchronisation temps réel des joueurs et PNJ",
-      "Système de clans avec diplomatie et trésorerie",
-      "Déploiement de flotte persistant côté serveur",
-      "Escadrons avec 5 rôles et formations",
-    ],
-  },
-  {
-    id: "launcher",
-    title: "Launcher & Déploiement",
-    status: "in-progress",
-    summary: "Launcher desktop, auto-update, authentification",
-    details: [
-      "Launcher natif avec authentification",
-      "Téléchargement et mise à jour automatique",
-      "Backend Go/PostgreSQL sur Railway",
-      "Bot Discord intégré",
-    ],
-  },
-  {
-    id: "interiors",
-    title: "Intérieurs 3D",
-    status: "upcoming",
-    summary: "Explorez l'intérieur des stations et de vos vaisseaux",
-    details: [
-      "Intérieurs de stations visitables à pied",
-      "Ponts de vaisseaux accessibles en vue FPS",
-      "Interactions avec les PNJ et les équipements",
-      "Personnalisation des cabines de vaisseau",
-    ],
-  },
-  {
-    id: "planets",
-    title: "Atterrissage planétaire",
-    status: "upcoming",
-    summary: "Posez-vous sur des planètes aux atmosphères uniques",
-    details: [
-      "Planètes avec LOD haute fidélité",
-      "Atmosphères dynamiques par type de planète",
-      "Végétation et biomes procéduraux",
-      "Bases et colonies en surface",
-    ],
-  },
-  {
-    id: "future",
-    title: "Et ensuite...",
-    status: "upcoming",
-    summary: "Quelque chose de grand se prépare...",
-    details: [
-      "Nouveaux types de vaisseaux et équipements",
-      "Missions et événements dynamiques",
-      "Territoires de clan et conquête",
-      "...et bien plus à découvrir en jeu",
-    ],
-  },
+export const SCREENSHOT_PATHS = [
+  "/screenshots/flight.jpg",
+  "/screenshots/combat.jpg",
+  "/screenshots/station.jpg",
+  "/screenshots/planet.jpg",
+  "/screenshots/galaxy.jpg",
 ];
 
-export const SCREENSHOTS = [
-  {
-    src: "/screenshots/flight.jpg",
-    alt: "Vol spatial",
-    caption: "Explorez l'immensité du vide spatial",
-  },
-  {
-    src: "/screenshots/combat.jpg",
-    alt: "Combat",
-    caption: "Affrontez vos ennemis dans des combats intenses",
-  },
-  {
-    src: "/screenshots/station.jpg",
-    alt: "Station orbitale",
-    caption: "Amarrez-vous aux stations pour commercer et vous ravitailler",
-  },
-  {
-    src: "/screenshots/planet.jpg",
-    alt: "Vue planétaire",
-    caption: "Atterrissez sur des planètes aux atmosphères uniques",
-  },
-  {
-    src: "/screenshots/galaxy.jpg",
-    alt: "Galaxy map",
-    caption: "Naviguez à travers 120+ systèmes stellaires",
-  },
+/* ── Roadmap — structural IDs + statuses ────────── */
+
+export type RoadmapStatus = "done" | "in-progress" | "upcoming";
+
+export const ROADMAP_STRUCTURE: { id: string; status: RoadmapStatus }[] = [
+  { id: "flight", status: "done" },
+  { id: "universe", status: "done" },
+  { id: "combat", status: "done" },
+  { id: "economy", status: "done" },
+  { id: "multiplayer", status: "done" },
+  { id: "launcher", status: "in-progress" },
+  { id: "interiors", status: "upcoming" },
+  { id: "planets", status: "upcoming" },
+  { id: "future", status: "upcoming" },
 ];

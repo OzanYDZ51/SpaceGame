@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/Button";
 
 interface AccountPanelProps {
@@ -9,6 +10,7 @@ interface AccountPanelProps {
 
 export function AccountPanel({ onClose }: AccountPanelProps) {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
 
   function handleLogout() {
     logout();
@@ -18,26 +20,26 @@ export function AccountPanel({ onClose }: AccountPanelProps) {
   return (
     <div className="space-y-6 text-center">
       <h3 className="text-xl font-bold uppercase tracking-wider text-cyan text-glow-cyan-sm">
-        Compte
+        {t.auth.accountTitle}
       </h3>
 
       <div className="rounded border border-border-subtle bg-bg-primary/50 p-4">
         <p className="text-xs uppercase tracking-[0.2em] text-text-secondary font-mono mb-2">
-          Identifiant
+          {t.auth.username}
         </p>
         <p className="text-lg font-bold text-cyan">{user?.username}</p>
       </div>
 
       <p className="text-xs text-text-secondary">
-        Utilisez le launcher pour jouer avec ce compte.
+        {t.auth.launcherHint}
       </p>
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={onClose} className="flex-1">
-          Fermer
+          {t.auth.closeButton}
         </Button>
         <Button variant="danger" onClick={handleLogout} className="flex-1">
-          Déconnexion
+          {t.auth.logoutButton}
         </Button>
       </div>
     </div>

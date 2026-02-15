@@ -97,6 +97,6 @@ const LABEL_KEY := Color(0.3, 0.55, 0.7, 0.7)
 const LABEL_VALUE := Color(0.6, 0.9, 1.0, 0.9)
 
 # --- Construction markers ---
-const CONSTRUCTION_STATION := Color(1.0, 0.6, 0.1, 0.9)
-const CONSTRUCTION_GHOST := Color(1.0, 0.6, 0.1, 0.3)
-const CONSTRUCTION_HEADER := Color(1.0, 0.7, 0.2, 0.85)
+const CONSTRUCTION_STATION := Color(0.2, 0.8, 1.0, 0.9)
+const CONSTRUCTION_GHOST := Color(0.2, 0.8, 1.0, 0.3)
+const CONSTRUCTION_HEADER := Color(0.3, 0.85, 1.0, 0.85)

@@ -6,22 +6,23 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useFaction } from "@/lib/faction";
-import { HERO_STATS } from "@/lib/constants";
+import { useI18n } from "@/i18n";
 
 export function HeroSection() {
   const { faction } = useFaction();
+  const { t } = useI18n();
 
   const tagline = faction === "nova_terra"
-    ? "Per Aspera Ad Astra."
+    ? t.hero.taglineNovaTerra
     : faction === "kharsis"
-      ? "Ignis Fortem Facit."
-      : "La galaxie n'obéit à personne.";
+      ? t.hero.taglineKharsis
+      : t.hero.taglineDefault;
 
   const subtitle = faction === "nova_terra"
-    ? "La Confédération a besoin de pilotes. Rejoignez Nova Terra."
+    ? t.hero.subtitleNovaTerra
     : faction === "kharsis"
-      ? "Le Dominion ne pardonne pas. Rejoignez le Kharsis."
-      : "Un univers persistant. Des milliers de pilotes. Quel empire allez-vous bâtir ?";
+      ? t.hero.subtitleKharsis
+      : t.hero.subtitleDefault;
 
   return (
     <section
@@ -55,7 +56,7 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <Badge className="mb-6 sm:mb-8">Alpha 0.1 — Accès anticipé</Badge>
+          <Badge className="mb-6 sm:mb-8">{t.hero.badge}</Badge>
         </motion.div>
 
         {/* Title */}
@@ -95,7 +96,7 @@ export function HeroSection() {
           </motion.span>
         </motion.h1>
 
-        {/* Tagline — big and dramatic */}
+        {/* Tagline */}
         <motion.p
           className="mt-6 sm:mt-8 text-lg sm:text-xl md:text-2xl text-text-primary font-medium max-w-lg mx-auto"
           initial={{ opacity: 0, y: 10 }}
@@ -123,21 +124,21 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 1.3 }}
         >
           <Button href="#download" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
-            Jouer gratuitement
+            {t.hero.ctaPlay}
           </Button>
           <Button variant="outline" href="#features" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
-            Découvrir le jeu
+            {t.hero.ctaDiscover}
           </Button>
         </motion.div>
 
-        {/* Stats bar — social proof */}
+        {/* Stats bar */}
         <motion.div
           className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-10"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.6 }}
         >
-          {HERO_STATS.map((stat, i) => (
+          {t.hero.stats.map((stat, i) => (
             <div key={i} className="text-center">
               <div className="text-2xl sm:text-3xl font-bold text-cyan font-mono">
                 {stat.value}

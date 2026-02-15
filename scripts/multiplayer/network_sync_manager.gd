@@ -200,7 +200,6 @@ func _on_state_received(peer_id: int, state) -> void:
 
 func _on_server_config_received(config: Dictionary) -> void:
 	var server_seed: int = config.get("galaxy_seed", Constants.galaxy_seed)
-	var spawn_system: int = config.get("spawn_system_id", -1)
 
 	if server_seed != Constants.galaxy_seed:
 		Constants.galaxy_seed = server_seed
@@ -218,9 +217,12 @@ func _on_server_config_received(config: Dictionary) -> void:
 
 	_populate_wormhole_targets()
 
-	if spawn_system >= 0 and galaxy and spawn_system < galaxy.systems.size():
-		if system_transition and system_transition.current_system_id != spawn_system:
-			system_transition.jump_to_system(spawn_system)
+	# NOTE: spawn_system_id from server config is intentionally IGNORED.
+	# The backend (PostgreSQL) is the sole source of truth for player position.
+	# _load_backend_state() → apply_save_state() handles system + position restore.
+	# Jumping here caused race conditions: server config arriving after backend
+	# state would call jump_to_system → _position_player, destroying the
+	# correctly restored position.
 
 
 func _populate_wormhole_targets() -> void:

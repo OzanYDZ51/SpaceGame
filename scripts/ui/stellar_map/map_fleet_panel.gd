@@ -595,7 +595,7 @@ func _draw_cargo_tooltip(font: Font) -> void:
 
 	# Capacity text: SOUTE  12 / 50
 	var cap_text ="SOUTE  %d / %d" % [total_stored, cargo_max]
-	var cap_col: Color = MapColors.LABEL_VALUE if fill_ratio < 0.85 else Color(1.0, 0.5, 0.2, 0.9)
+	var cap_col: Color = MapColors.LABEL_VALUE if fill_ratio < 0.85 else UITheme.WARNING
 	draw_string(font, Vector2(tx, cy + LINE_H - 3), cap_text, HORIZONTAL_ALIGNMENT_LEFT, inner_w, UITheme.FONT_SIZE_SMALL, cap_col)
 	cy += LINE_H
 

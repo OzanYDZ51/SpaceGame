@@ -145,6 +145,7 @@ func collect_save_state(player_ship, system_transition) -> Dictionary:
 		state["pos_x"] = abs_pos[0]
 		state["pos_y"] = abs_pos[1]
 		state["pos_z"] = abs_pos[2]
+		print("[SAVE] pos local=%s origin=(%.1f, %.1f, %.1f) → abs=(%.1f, %.1f, %.1f) system=%s" % [player_ship.global_position, FloatingOrigin.origin_offset_x, FloatingOrigin.origin_offset_y, FloatingOrigin.origin_offset_z, abs_pos[0], abs_pos[1], abs_pos[2], state.get("system_id", "?")])
 
 	# Rotation
 	if player_ship:
@@ -217,9 +218,13 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 		var abs_x: float = float(state.get("pos_x", 0.0))
 		var abs_y: float = float(state.get("pos_y", 0.0))
 		var abs_z: float = float(state.get("pos_z", 0.0))
+		print("[LOAD] abs from backend=(%.1f, %.1f, %.1f) origin=(%.1f, %.1f, %.1f) system=%d ship_pos_before=%s" % [abs_x, abs_y, abs_z, FloatingOrigin.origin_offset_x, FloatingOrigin.origin_offset_y, FloatingOrigin.origin_offset_z, sys_id, player_ship.global_position])
 		if abs_x != 0.0 or abs_y != 0.0 or abs_z != 0.0:
 			var local_pos: Vector3 = FloatingOrigin.to_local_pos([abs_x, abs_y, abs_z])
+			print("[LOAD] → local_pos=%s" % local_pos)
 			player_ship.global_position = local_pos
+		else:
+			print("[LOAD] abs is (0,0,0) — skipping position restore!")
 
 	# Rotation
 	if player_ship and state.has("rotation_x"):

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -12,6 +13,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
   const { login } = useAuth();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +27,7 @@ export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
       await login(username, password);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de connexion");
+      setError(err instanceof Error ? err.message : t.auth.errorLogin);
     } finally {
       setLoading(false);
     }
@@ -34,7 +36,7 @@ export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <h3 className="text-xl font-bold uppercase tracking-wider text-cyan text-center text-glow-cyan-sm">
-        Connexion
+        {t.auth.loginTitle}
       </h3>
 
       {error && (
@@ -45,7 +47,7 @@ export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
 
       <Input
         id="login-username"
-        label="Identifiant"
+        label={t.auth.username}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         autoComplete="username"
@@ -53,7 +55,7 @@ export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
       />
       <Input
         id="login-password"
-        label="Mot de passe"
+        label={t.auth.password}
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -62,17 +64,17 @@ export function LoginForm({ onSwitch, onSuccess }: LoginFormProps) {
       />
 
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Connexion..." : "Se connecter"}
+        {loading ? t.auth.loginLoading : t.auth.loginButton}
       </Button>
 
       <p className="text-center text-xs text-text-secondary">
-        Pas encore de compte ?{" "}
+        {t.auth.noAccount}{" "}
         <button
           type="button"
           onClick={onSwitch}
           className="text-cyan hover:underline cursor-pointer"
         >
-          Créer un compte
+          {t.auth.createAccount}
         </button>
       </p>
     </form>

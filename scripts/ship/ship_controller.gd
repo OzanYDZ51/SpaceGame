@@ -219,8 +219,8 @@ func _read_input() -> void:
 			autopilot_disengaged_by_player.emit()
 		else:
 			_run_autopilot()
-			# In cruise, redirect mouse to free look camera before clearing
-			if speed_mode == Constants.SpeedMode.CRUISE:
+			# In cruise or Alt held, redirect mouse to free look camera before clearing
+			if speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT):
 				cruise_look_delta = _mouse_delta
 			else:
 				cruise_look_delta = Vector2.ZERO
@@ -254,8 +254,8 @@ func _read_input() -> void:
 		thrust = thrust.normalized()
 	throttle_input = thrust
 
-	# === ROTATION from mouse ===
-	if speed_mode == Constants.SpeedMode.CRUISE:
+	# === ROTATION from mouse (cruise or Alt held → free look) ===
+	if speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT):
 		# Free look: redirect mouse delta to camera, ship flies straight
 		cruise_look_delta = _mouse_delta
 		_mouse_delta = Vector2.ZERO

@@ -7,11 +7,13 @@ import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge } from "@/components/ui/Badge";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
+import { useI18n } from "@/i18n";
 import type { ChangelogEntry } from "@/types/api";
 
 export function ChangelogSection() {
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     api
@@ -26,8 +28,8 @@ export function ChangelogSection() {
       <Container>
         <ScrollReveal>
           <SectionHeading
-            title="Changelog"
-            subtitle="Les dernières mises à jour du jeu."
+            title={t.changelog.title}
+            subtitle={t.changelog.subtitle}
           />
         </ScrollReveal>
 
@@ -37,16 +39,14 @@ export function ChangelogSection() {
           </div>
         ) : entries.length === 0 ? (
           <p className="text-center text-text-secondary text-sm">
-            Aucune entrée de changelog pour le moment.
+            {t.changelog.empty}
           </p>
         ) : (
           <div className="max-w-2xl mx-auto">
-            {/* Timeline */}
             <div className="relative border-l border-border-subtle pl-6 sm:pl-8 space-y-6 sm:space-y-8">
               {entries.map((entry, i) => (
                 <ScrollReveal key={entry.id} delay={i * 0.1}>
                   <div className="relative">
-                    {/* Timeline dot */}
                     <div className="absolute -left-[1.85rem] sm:-left-[2.35rem] top-1 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-cyan/60 ring-4 ring-bg-primary" />
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">

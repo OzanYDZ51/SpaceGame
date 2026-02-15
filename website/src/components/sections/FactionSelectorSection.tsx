@@ -3,20 +3,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFaction, type FactionId } from "@/lib/faction";
+import { useI18n } from "@/i18n";
+import type { FactionText } from "@/i18n";
 import { Container } from "@/components/ui/Container";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
 
-const FACTIONS = {
+const FACTION_STYLE = {
   nova_terra: {
-    name: "Nova Terra",
-    subtitle: "La Confederation",
-    motto: "Per Aspera Ad Astra",
     color: "#00c8ff",
     colorDim: "rgba(0,200,255,0.15)",
     colorGlow: "rgba(0,200,255,0.4)",
-    description:
-      "Descendants de la Terre, structures et disciplins. La Confederation Nova Terra perpuee la tradition militaire humaine avec une technologie conventionnelle raffinee. Boucliers puissants, coques angulaires, precision chirurgicale.",
-    traits: ["Boucliers superieurs", "Vitesse elevee", "Technologie raffinee"],
     icon: (
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <polygon points="24,4 44,40 4,40" strokeLinejoin="round" />
@@ -26,15 +22,9 @@ const FACTIONS = {
     ),
   },
   kharsis: {
-    name: "Kharsis",
-    subtitle: "Le Dominion",
-    motto: "Ignis Fortem Facit",
     color: "#ff2244",
     colorDim: "rgba(255,34,68,0.15)",
     colorGlow: "rgba(255,34,68,0.4)",
-    description:
-      "Colons abandonnes au-dela du Rift, fusionnes avec une technologie alien ancestrale. Le Dominion Kharsis a evolue par la force et l'adaptation. Armes devastatrices, coques biomechaniques, puissance brute.",
-    traits: ["Armes devastatrices", "Coque renforcee", "Technologie hybride"],
     icon: (
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M24 4L4 24L24 44L44 24Z" strokeLinejoin="round" />
@@ -48,33 +38,34 @@ const FACTIONS = {
   },
 } as const;
 
-const BACKSTORY =
-  "En 3847, l'humanite unie colonisait la galaxie sous la banniere de Nova Terra. Puis vint la Grande Fracture \u2014 un cataclysme cosmique qui dechira l'espace connu en deux. De l'autre cote du Rift, les colons oublies ont survecu en fusionnant avec une technologie alien ancestrale. Ils sont devenus le Kharsis. Deux civilisations. Un seul univers.";
-
 function FactionCard({
   factionId,
+  factionText,
   hovered,
   otherHovered,
   onHover,
   onLeave,
   onSelect,
+  chooseLabel,
 }: {
   factionId: FactionId;
+  factionText: FactionText;
   hovered: boolean;
   otherHovered: boolean;
   onHover: () => void;
   onLeave: () => void;
   onSelect: () => void;
+  chooseLabel: string;
 }) {
-  const f = FACTIONS[factionId];
+  const style = FACTION_STYLE[factionId];
 
   return (
     <motion.button
       className="relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-xl border cursor-pointer overflow-hidden text-center"
       style={{
-        borderColor: hovered ? f.colorGlow : "rgba(255,255,255,0.08)",
+        borderColor: hovered ? style.colorGlow : "rgba(255,255,255,0.08)",
         background: hovered
-          ? `linear-gradient(180deg, ${f.colorDim} 0%, rgba(5,8,16,0.95) 100%)`
+          ? `linear-gradient(180deg, ${style.colorDim} 0%, rgba(5,8,16,0.95) 100%)`
           : "rgba(5,8,16,0.8)",
       }}
       onMouseEnter={onHover}
@@ -87,12 +78,11 @@ function FactionCard({
       transition={{ duration: 0.4, ease: "easeOut" }}
       whileTap={{ scale: 0.98 }}
     >
-      {/* Glow background */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
         animate={{
           boxShadow: hovered
-            ? `inset 0 0 80px ${f.colorDim}, 0 0 40px ${f.colorDim}`
+            ? `inset 0 0 80px ${style.colorDim}, 0 0 40px ${style.colorDim}`
             : "inset 0 0 0px transparent",
         }}
         transition={{ duration: 0.4 }}
@@ -100,38 +90,38 @@ function FactionCard({
 
       <div className="relative z-10 flex flex-col items-center gap-4">
         <motion.div
-          style={{ color: f.color }}
+          style={{ color: style.color }}
           animate={{ scale: hovered ? 1.15 : 1 }}
           transition={{ duration: 0.3 }}
         >
-          {f.icon}
+          {style.icon}
         </motion.div>
 
         <div>
           <h3
             className="text-2xl sm:text-3xl font-bold uppercase tracking-wider"
-            style={{ color: f.color }}
+            style={{ color: style.color }}
           >
-            {f.name}
+            {factionText.name}
           </h3>
           <p className="text-xs uppercase tracking-[0.3em] text-text-muted mt-1">
-            {f.subtitle}
+            {factionText.subtitle}
           </p>
         </div>
 
         <p className="text-sm text-text-secondary leading-relaxed max-w-xs">
-          {f.description}
+          {factionText.description}
         </p>
 
         <div className="flex flex-wrap justify-center gap-2 mt-2">
-          {f.traits.map((trait) => (
+          {factionText.traits.map((trait) => (
             <span
               key={trait}
               className="text-xs font-mono px-2 py-0.5 rounded border"
               style={{
-                borderColor: `${f.color}33`,
-                color: f.color,
-                backgroundColor: `${f.color}0d`,
+                borderColor: `${style.color}33`,
+                color: style.color,
+                backgroundColor: `${style.color}0d`,
               }}
             >
               {trait}
@@ -141,23 +131,23 @@ function FactionCard({
 
         <p
           className="text-xs italic mt-2 font-mono tracking-wider"
-          style={{ color: `${f.color}99` }}
+          style={{ color: `${style.color}99` }}
         >
-          &ldquo;{f.motto}&rdquo;
+          &ldquo;{factionText.motto}&rdquo;
         </p>
 
         <motion.div
           className="mt-3 px-6 py-2 rounded border text-sm font-bold uppercase tracking-wider"
           style={{
-            borderColor: f.color,
-            color: f.color,
+            borderColor: style.color,
+            color: style.color,
           }}
           animate={{
-            backgroundColor: hovered ? `${f.color}22` : "transparent",
+            backgroundColor: hovered ? `${style.color}22` : "transparent",
           }}
           transition={{ duration: 0.3 }}
         >
-          Choisir {f.name}
+          {chooseLabel} {factionText.name}
         </motion.div>
       </div>
     </motion.button>
@@ -166,6 +156,7 @@ function FactionCard({
 
 export function FactionSelectorSection() {
   const { faction, setFaction } = useFaction();
+  const { t } = useI18n();
   const [hovered, setHovered] = useState<FactionId | null>(null);
   const [justChose, setJustChose] = useState(false);
 
@@ -174,7 +165,6 @@ export function FactionSelectorSection() {
   const handleSelect = (f: FactionId) => {
     setFaction(f);
     setJustChose(true);
-    // Smooth scroll to features after short delay
     setTimeout(() => {
       document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
     }, 400);
@@ -198,10 +188,10 @@ export function FactionSelectorSection() {
             <ScrollReveal>
               <div className="text-center mb-10 sm:mb-14">
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-wider text-text-primary">
-                  Choisissez votre <span className="text-cyan text-glow-cyan-sm">camp</span>
+                  {t.faction.title} <span className="text-cyan text-glow-cyan-sm">{t.faction.titleHighlight}</span>
                 </h2>
                 <p className="mt-4 text-sm sm:text-base text-text-secondary max-w-2xl mx-auto leading-relaxed">
-                  {BACKSTORY}
+                  {t.faction.backstory}
                 </p>
               </div>
             </ScrollReveal>
@@ -210,19 +200,23 @@ export function FactionSelectorSection() {
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 min-h-[420px] sm:min-h-[480px]">
                 <FactionCard
                   factionId="nova_terra"
+                  factionText={t.faction.novaTerra}
                   hovered={hovered === "nova_terra"}
                   otherHovered={hovered === "kharsis"}
                   onHover={() => setHovered("nova_terra")}
                   onLeave={() => setHovered(null)}
                   onSelect={() => handleSelect("nova_terra")}
+                  chooseLabel={t.faction.choose}
                 />
                 <FactionCard
                   factionId="kharsis"
+                  factionText={t.faction.kharsis}
                   hovered={hovered === "kharsis"}
                   otherHovered={hovered === "nova_terra"}
                   onHover={() => setHovered("kharsis")}
                   onLeave={() => setHovered(null)}
                   onSelect={() => handleSelect("kharsis")}
+                  chooseLabel={t.faction.choose}
                 />
               </div>
             </ScrollReveal>

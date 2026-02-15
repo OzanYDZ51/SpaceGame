@@ -20,7 +20,7 @@ const NAV_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
 const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
-const NAV_COL_CONSTRUCTION: Color = Color(1.0, 0.6, 0.1, 0.85)
+const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
 
 var _radar: Control = null
 

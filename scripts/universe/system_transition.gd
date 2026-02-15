@@ -247,6 +247,12 @@ func _cleanup_current_system() -> void:
 	# Clear entity registry
 	EntityRegistry.clear_all()
 
+	# Clear docking system station connections (bay signals etc.)
+	if GameManager.player_ship:
+		var dock_sys = GameManager.player_ship.get_node_or_null("DockingSystem")
+		if dock_sys:
+			dock_sys.clear_station_connections()
+
 	# Re-register player (always persists)
 	if GameManager.player_ship:
 		EntityRegistry.register("player_ship", {
@@ -307,7 +313,7 @@ func _populate_system() -> void:
 		var angle: float = EntityRegistrySystem.compute_orbital_angle(sd.orbital_angle, sd.orbital_period)
 		station.transform = Transform3D.IDENTITY
 		station.position = Vector3(cos(angle) * orbit_r, 0, sin(angle) * orbit_r)
-		station.scale = Vector3(100, 100, 100)
+		station.scale = Vector3(0.24, 0.24, 0.24)
 
 		universe.add_child(station)
 

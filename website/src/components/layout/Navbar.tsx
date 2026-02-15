@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { NAV_LINKS } from "@/lib/constants";
+import { useI18n, LOCALES, type Locale } from "@/i18n";
 import { useScrollPosition } from "@/hooks/useScrollPosition";
 import { useAuth } from "@/hooks/useAuth";
 import { useFaction, type FactionId } from "@/lib/faction";
@@ -15,8 +16,77 @@ const FACTION_LABELS: Record<FactionId, { name: string; color: string }> = {
   kharsis: { name: "Kharsis", color: "#ff2244" },
 };
 
+const NAV_LABEL_KEYS: Record<string, keyof ReturnType<typeof useI18n>["t"]["nav"]> = {
+  home: "home",
+  features: "features",
+  ships: "ships",
+  universe: "universe",
+  roadmap: "roadmap",
+  download: "download",
+};
+
+function LanguageSwitcher() {
+  const { locale, setLocale } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded border border-border-subtle text-xs font-mono uppercase tracking-wider text-text-secondary transition-all cursor-pointer hover:text-cyan hover:border-cyan/40"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+          <path d="M2 12h20" />
+        </svg>
+        {locale.toUpperCase()}
+      </button>
+
+      {open && (
+        <div className="absolute top-full right-0 mt-2 w-28 rounded border border-border-subtle bg-bg-secondary/95 backdrop-blur-md shadow-lg z-50 overflow-hidden">
+          {LOCALES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => {
+                setLocale(l.code as Locale);
+                setOpen(false);
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors cursor-pointer",
+                l.code === locale
+                  ? "bg-cyan/10 text-cyan"
+                  : "text-text-secondary hover:text-text-primary hover:bg-white/5"
+              )}
+            >
+              {l.label}
+              {l.code === locale && (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className="ml-auto">
+                  <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FactionBadge() {
   const { faction, setFaction, clearFaction } = useFaction();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -55,7 +125,7 @@ function FactionBadge() {
       {open && (
         <div className="absolute top-full right-0 mt-2 w-48 rounded border border-border-subtle bg-bg-secondary/95 backdrop-blur-md shadow-lg z-50 overflow-hidden">
           <div className="px-3 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-subtle">
-            Changer de faction
+            {t.nav.changeFaction}
           </div>
           {(Object.keys(FACTION_LABELS) as FactionId[]).map((id) => (
             <button
@@ -90,7 +160,7 @@ function FactionBadge() {
             }}
             className="w-full text-left px-3 py-2 text-xs text-text-muted hover:text-text-secondary border-t border-border-subtle transition-colors cursor-pointer"
           >
-            Rechoisir (afficher selecteur)
+            {t.nav.resetFaction}
           </button>
         </div>
       )}
@@ -101,6 +171,7 @@ function FactionBadge() {
 export function Navbar() {
   const scrollY = useScrollPosition();
   const { user, isAuthenticated, logout } = useAuth();
+  const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -127,8 +198,9 @@ export function Navbar() {
                 Online
               </span>
             </a>
-            <div className="hidden sm:block">
+            <div className="hidden sm:flex items-center gap-2">
               <FactionBadge />
+              <LanguageSwitcher />
             </div>
           </div>
 
@@ -140,7 +212,7 @@ export function Navbar() {
                 href={link.href}
                 className="text-sm uppercase tracking-[0.15em] text-text-secondary hover:text-cyan transition-colors duration-200"
               >
-                {link.label}
+                {t.nav[NAV_LABEL_KEYS[link.id]]}
               </a>
             ))}
             {isAuthenticated ? (
@@ -149,7 +221,7 @@ export function Navbar() {
                   {user?.username}
                 </span>
                 <Button variant="ghost" onClick={logout} className="text-xs px-3 py-1.5">
-                  Deconnexion
+                  {t.nav.logout}
                 </Button>
               </div>
             ) : (
@@ -158,7 +230,7 @@ export function Navbar() {
                 onClick={() => setAuthOpen(true)}
                 className="text-xs px-4 py-1.5"
               >
-                Connexion
+                {t.nav.login}
               </Button>
             )}
           </div>
@@ -194,17 +266,18 @@ export function Navbar() {
                   className="text-sm uppercase tracking-[0.15em] text-text-secondary hover:text-cyan py-2"
                   onClick={() => setMobileOpen(false)}
                 >
-                  {link.label}
+                  {t.nav[NAV_LABEL_KEYS[link.id]]}
                 </a>
               ))}
-              <div className="pt-2 border-t border-border-subtle sm:hidden">
+              <div className="pt-2 border-t border-border-subtle sm:hidden flex items-center gap-2">
                 <FactionBadge />
+                <LanguageSwitcher />
               </div>
               {isAuthenticated ? (
                 <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
                   <span className="text-xs font-mono text-cyan">{user?.username}</span>
                   <Button variant="ghost" onClick={logout} className="text-xs px-3 py-1.5">
-                    Deconnexion
+                    {t.nav.logout}
                   </Button>
                 </div>
               ) : (
@@ -216,7 +289,7 @@ export function Navbar() {
                   }}
                   className="text-xs mt-2"
                 >
-                  Connexion
+                  {t.nav.login}
                 </Button>
               )}
             </Container>

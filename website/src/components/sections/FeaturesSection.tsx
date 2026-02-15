@@ -1,8 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FEATURES } from "@/lib/constants";
-import type { FeatureData } from "@/lib/constants";
+import { FEATURE_STRUCTURE } from "@/lib/constants";
+import type { FeatureStructure } from "@/lib/constants";
+import type { FeatureCardText } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { Container } from "@/components/ui/Container";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
 
@@ -56,7 +58,9 @@ const icons: Record<string, (size: number) => React.ReactNode> = {
   ),
 };
 
-function FeatureCard({ feature, index }: { feature: FeatureData; index: number }) {
+type MergedFeature = FeatureStructure & FeatureCardText;
+
+function FeatureCard({ feature, index }: { feature: MergedFeature; index: number }) {
   const isHero = feature.size === "hero";
   const isMedium = feature.size === "medium";
   const iconSize = isHero ? 44 : isMedium ? 36 : 30;
@@ -73,14 +77,10 @@ function FeatureCard({ feature, index }: { feature: FeatureData; index: number }
             ${isHero ? "p-8 sm:p-10 lg:p-12" : isMedium ? "p-6 sm:p-8" : "p-6"}
           `}
         >
-          {/* Top gradient line */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
-
-          {/* Hover glow background */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           <div className={`relative z-10 ${isHero ? "flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8" : ""}`}>
-            {/* Icon with glow */}
             <div
               className={`
                 text-cyan transition-all duration-300
@@ -138,9 +138,16 @@ function FeatureCard({ feature, index }: { feature: FeatureData; index: number }
 }
 
 export function FeaturesSection() {
-  const hero = FEATURES.filter((f) => f.size === "hero");
-  const medium = FEATURES.filter((f) => f.size === "medium");
-  const standard = FEATURES.filter((f) => f.size === "standard");
+  const { t } = useI18n();
+
+  const features: MergedFeature[] = FEATURE_STRUCTURE.map((s, i) => ({
+    ...s,
+    ...t.features.cards[i],
+  }));
+
+  const hero = features.filter((f) => f.size === "hero");
+  const medium = features.filter((f) => f.size === "medium");
+  const standard = features.filter((f) => f.size === "standard");
 
   return (
     <section id="features" className="relative py-20 sm:py-28 md:py-36">
@@ -150,34 +157,34 @@ export function FeaturesSection() {
             <div className="flex items-center justify-center gap-3 sm:gap-4 mb-4">
               <div className="h-px w-8 sm:w-16 bg-gradient-to-r from-transparent to-cyan/50" />
               <span className="text-xs font-mono uppercase tracking-[0.4em] text-cyan/60">
-                Votre aventure commence ici
+                {t.features.tagline}
               </span>
               <div className="h-px w-8 sm:w-16 bg-gradient-to-l from-transparent to-cyan/50" />
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold uppercase tracking-wider text-text-primary">
-              Un seul univers.{" "}
-              <span className="text-cyan text-glow-cyan-sm">Infinies possibilités.</span>
+              {t.features.title}{" "}
+              <span className="text-cyan text-glow-cyan-sm">{t.features.titleHighlight}</span>
             </h2>
             <p className="mt-4 text-text-secondary text-sm sm:text-base md:text-lg max-w-2xl mx-auto">
-              Combat, exploration, commerce, diplomatie — chaque pilote forge son propre chemin dans une galaxie partagée par des milliers de joueurs.
+              {t.features.subtitle}
             </p>
           </div>
         </ScrollReveal>
 
         <div className="space-y-4 sm:space-y-6">
           {hero.map((f, i) => (
-            <FeatureCard key={f.title} feature={f} index={i} />
+            <FeatureCard key={i} feature={f} index={i} />
           ))}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {medium.map((f, i) => (
-              <FeatureCard key={f.title} feature={f} index={hero.length + i} />
+              <FeatureCard key={i} feature={f} index={hero.length + i} />
             ))}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {standard.map((f, i) => (
-              <FeatureCard key={f.title} feature={f} index={hero.length + medium.length + i} />
+              <FeatureCard key={i} feature={f} index={hero.length + medium.length + i} />
             ))}
           </div>
         </div>

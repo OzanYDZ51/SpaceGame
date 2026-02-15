@@ -649,39 +649,49 @@ func _rpc_fleet_reconnect_status(alive: Array, deaths: Array) -> void:
 
 
 ## Server handles deploy request from a client (or host).
-func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
+## ship_data is required for remote clients (ship_id, weapons, equipment, station).
+func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary, ship_data: Dictionary = {}) -> void:
 	if not _active:
 		return
 
-	# Server-side: execute the deploy via FleetDeploymentManager
 	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
-	# Only the host (pid=1) has fleet data on this server instance.
-	# Remote client fleet deploy requires per-player fleet storage (future).
-	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
-		push_warning("NpcAuthority: Fleet deploy from remote client pid=%d rejected — server lacks per-player fleet data" % sender_pid)
-		return
+	var npc_id: StringName
+	var ship_id: StringName
+	var sys_id: int = GameManager.current_system_id_safe()
 
-	var success =fleet_mgr.deploy_ship(fleet_index, cmd, params)
-	if not success:
-		return
+	# Local host: use FleetDeploymentManager (has full local fleet data)
+	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
+	if is_local_host:
+		var success: bool = fleet_mgr.deploy_ship(fleet_index, cmd, params)
+		if not success:
+			return
+		var fleet = GameManager.player_fleet
+		if fleet == null or fleet_index >= fleet.ships.size():
+			return
+		var fs = fleet.ships[fleet_index]
+		npc_id = fs.deployed_npc_id
+		ship_id = fs.ship_id
+	else:
+		# Remote client or dedicated server: spawn NPC using ship_data from RPC
+		if ship_data.is_empty():
+			push_warning("NpcAuthority: Fleet deploy from pid=%d — no ship_data" % sender_pid)
+			return
+		var result: Dictionary = _spawn_remote_fleet_npc(sender_pid, fleet_index, cmd, params, ship_data, sys_id)
+		if result.is_empty():
+			return
+		npc_id = result["npc_id"]
+		ship_id = StringName(ship_data.get("ship_id", ""))
 
-	# Get the spawned NPC info
-	var fleet = GameManager.player_fleet
-	if fleet == null or fleet_index >= fleet.ships.size():
-		return
-	var fs =fleet.ships[fleet_index]
-	var npc_id =fs.deployed_npc_id
-
-	# Register as fleet NPC
+	# Register as fleet NPC for tracking
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
 
 	# Build spawn data for broadcast
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-	var spawn_data ={
-		"sid": String(fs.ship_id),
+	var spawn_data: Dictionary = {
+		"sid": String(ship_id),
 		"fac": "player_fleet",
 		"cmd": String(cmd),
 		"owner_name": _get_peer_name(sender_pid),
@@ -689,14 +699,18 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	if lod_mgr:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
-			var upos =FloatingOrigin.to_universe_pos(lod_data.position)
+			var upos: Array = FloatingOrigin.to_universe_pos(lod_data.position)
 			spawn_data["px"] = upos[0]
 			spawn_data["py"] = upos[1]
 			spawn_data["pz"] = upos[2]
 
-	# Also register with standard NPC authority for state sync
-	var sys_id: int = GameManager.current_system_id_safe()
-	register_npc(npc_id, sys_id, StringName(fs.ship_id), &"player_fleet")
+	# Register with NPC authority for state sync
+	if not is_local_host:
+		register_npc(npc_id, sys_id, ship_id, &"player_fleet")
+	else:
+		# Host: deploy_ship already registered via LOD, but ensure NPC authority knows
+		if not _npcs.has(npc_id):
+			register_npc(npc_id, sys_id, ship_id, &"player_fleet")
 
 	# Broadcast to all peers in system
 	_broadcast_fleet_event_deploy(sender_pid, fleet_index, npc_id, spawn_data, sys_id)
@@ -710,31 +724,47 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 	if not _active:
 		return
 
-	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
-		push_warning("NpcAuthority: Fleet retrieve from remote client pid=%d rejected" % sender_pid)
-		return
-
 	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
-	var fleet = GameManager.player_fleet
-	if fleet == null or fleet_index >= fleet.ships.size():
-		return
-	var fs =fleet.ships[fleet_index]
-	var npc_id =fs.deployed_npc_id
 	var sys_id: int = GameManager.current_system_id_safe()
+	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
 
-	var success =fleet_mgr.retrieve_ship(fleet_index)
-	if not success:
-		return
+	if is_local_host:
+		# Host: use FleetDeploymentManager (has local fleet data)
+		var fleet = GameManager.player_fleet
+		if fleet == null or fleet_index >= fleet.ships.size():
+			return
+		var fs = fleet.ships[fleet_index]
+		var npc_id: StringName = fs.deployed_npc_id
 
-	# Clean up NPC authority tracking
-	unregister_npc(npc_id)
-	_unregister_fleet_npc(npc_id)
+		var success: bool = fleet_mgr.retrieve_ship(fleet_index)
+		if not success:
+			return
 
-	# Broadcast retrieval to all peers in system
-	_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
+		unregister_npc(npc_id)
+		_unregister_fleet_npc(npc_id)
+		_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
+	else:
+		# Remote client: look up NPC by owner + fleet_index
+		var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
+		if npc_id == &"":
+			push_warning("NpcAuthority: Fleet retrieve pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
+			return
+
+		# Despawn the NPC node
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+		if lod_mgr:
+			var lod_data = lod_mgr.get_ship_data(npc_id)
+			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+				EntityRegistry.unregister(String(npc_id))
+				lod_data.node_ref.queue_free()
+			lod_mgr.unregister_ship(npc_id)
+
+		unregister_npc(npc_id)
+		_unregister_fleet_npc(npc_id)
+		_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
 
 
 ## Server handles command change request from a client (or host).
@@ -742,27 +772,54 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 	if not _active:
 		return
 
-	if sender_pid != 1 and not NetworkManager.is_dedicated_server:
-		push_warning("NpcAuthority: Fleet command from remote client pid=%d rejected" % sender_pid)
-		return
-
 	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
 		return
 
-	var fleet = GameManager.player_fleet
-	if fleet == null or fleet_index >= fleet.ships.size():
-		return
-	var fs =fleet.ships[fleet_index]
-	var npc_id =fs.deployed_npc_id
 	var sys_id: int = GameManager.current_system_id_safe()
+	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
 
-	var success =fleet_mgr.change_command(fleet_index, cmd, params)
-	if not success:
-		return
+	if is_local_host:
+		# Host: use FleetDeploymentManager
+		var fleet = GameManager.player_fleet
+		if fleet == null or fleet_index >= fleet.ships.size():
+			return
+		var fs = fleet.ships[fleet_index]
+		var npc_id: StringName = fs.deployed_npc_id
 
-	# Broadcast command change to all peers in system
-	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
+		var success: bool = fleet_mgr.change_command(fleet_index, cmd, params)
+		if not success:
+			return
+		_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
+	else:
+		# Remote client: look up NPC and update its AI
+		var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
+		if npc_id == &"":
+			push_warning("NpcAuthority: Fleet command pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
+			return
+
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+		if lod_mgr:
+			var lod_data = lod_mgr.get_ship_data(npc_id)
+			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+				var npc = lod_data.node_ref
+				var bridge = npc.get_node_or_null("FleetAIBridge")
+				if bridge:
+					bridge.apply_command(cmd, params)
+				# Manage AIMiningBehavior lifecycle
+				var existing_mining = npc.get_node_or_null("AIMiningBehavior")
+				if cmd == &"mine":
+					if existing_mining:
+						existing_mining.update_params(params)
+					else:
+						var mining_behavior = AIMiningBehavior.new()
+						mining_behavior.name = "AIMiningBehavior"
+						mining_behavior.fleet_index = fleet_index
+						npc.add_child(mining_behavior)
+				elif existing_mining:
+					existing_mining.queue_free()
+
+		_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
 
 
 func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: StringName, spawn_data: Dictionary, system_id: int) -> void:
@@ -802,6 +859,136 @@ func _get_peer_name(pid: int) -> String:
 	if NetworkManager.peers.has(pid):
 		return NetworkManager.peers[pid].player_name
 	return "Pilote #%d" % pid
+
+
+## Find a fleet NPC ID by owner peer_id and fleet_index.
+func _find_fleet_npc_id(sender_pid: int, fleet_index: int) -> StringName:
+	var uuid: String = NetworkManager.get_peer_uuid(sender_pid)
+	var owner_key: String = uuid if uuid != "" else str(sender_pid)
+	if not _fleet_npcs_by_owner.has(owner_key):
+		return &""
+	for npc_id in _fleet_npcs_by_owner[owner_key]:
+		if _fleet_npcs.has(npc_id):
+			if _fleet_npcs[npc_id].get("fleet_index", -1) == fleet_index:
+				return npc_id
+	return &""
+
+
+## Spawn a fleet NPC for a remote client using ship data from the RPC.
+## Returns { "npc_id": StringName } on success, empty dict on failure.
+func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary, ship_data: Dictionary, system_id: int) -> Dictionary:
+	var universe: Node3D = GameManager.universe_node
+	if universe == null:
+		push_warning("NpcAuthority: Cannot spawn remote fleet NPC — no universe node")
+		return {}
+
+	var ship_id_str: String = ship_data.get("ship_id", "")
+	if ship_id_str == "":
+		push_warning("NpcAuthority: Remote fleet deploy — empty ship_id")
+		return {}
+	var ship_id := StringName(ship_id_str)
+
+	# Resolve spawn position near docked station
+	var spawn_pos := Vector3.ZERO
+	var station_id: String = ship_data.get("docked_station_id", "")
+	if station_id != "":
+		var ent: Dictionary = EntityRegistry.get_entity(station_id)
+		if not ent.is_empty():
+			spawn_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+	var angle: float = randf() * TAU
+	var dist: float = randf_range(1800.0, 2200.0)
+	var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+	spawn_pos += offset
+
+	# Spawn NPC via ShipFactory (skip_default_loadout = true)
+	var npc = ShipFactory.spawn_npc_ship(ship_id, &"balanced", spawn_pos, universe, &"player_fleet", false, true)
+	if npc == null:
+		push_error("NpcAuthority: Remote fleet spawn FAILED for ship_id '%s'" % ship_id_str)
+		return {}
+
+	npc.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Orient facing away
+	if offset.length_squared() > 1.0:
+		var away_dir := offset.normalized()
+		npc.look_at_from_position(spawn_pos, spawn_pos + away_dir, Vector3.UP)
+
+	# Equip weapons from ship_data
+	var wm = npc.get_node_or_null("WeaponManager")
+	if wm:
+		var weapons: Array = ship_data.get("weapons", [])
+		var weapons_sn: Array[StringName] = []
+		for w in weapons:
+			weapons_sn.append(StringName(w))
+		wm.equip_weapons(weapons_sn)
+
+	# Equip shield/engine/modules from ship_data
+	var em = npc.get_node_or_null("EquipmentManager")
+	if em == null:
+		em = EquipmentManager.new()
+		em.name = "EquipmentManager"
+		npc.add_child(em)
+		em.setup(npc.ship_data)
+	var shield_name: String = ship_data.get("shield_name", "")
+	if shield_name != "":
+		var shield_res = ShieldRegistry.get_shield(StringName(shield_name))
+		if shield_res:
+			em.equip_shield(shield_res)
+	var engine_name: String = ship_data.get("engine_name", "")
+	if engine_name != "":
+		var engine_res = EngineRegistry.get_engine(StringName(engine_name))
+		if engine_res:
+			em.equip_engine(engine_res)
+	var modules: Array = ship_data.get("modules", [])
+	for i in modules.size():
+		if modules[i] != "":
+			var mod_res = ModuleRegistry.get_module(StringName(modules[i]))
+			if mod_res:
+				em.equip_module(i, mod_res)
+
+	# Attach FleetAIBridge
+	var bridge = FleetAIBridge.new()
+	bridge.name = "FleetAIBridge"
+	bridge.fleet_index = fleet_index
+	bridge.command = cmd
+	bridge.command_params = params
+	bridge._station_id = station_id
+	npc.add_child(bridge)
+
+	# Attach AIMiningBehavior if mining order
+	if cmd == &"mine":
+		var mining_behavior = AIMiningBehavior.new()
+		mining_behavior.name = "AIMiningBehavior"
+		mining_behavior.fleet_index = fleet_index
+		npc.add_child(mining_behavior)
+
+	# Register in EntityRegistry
+	var npc_id := StringName(npc.name)
+	var upos: Array = FloatingOrigin.to_universe_pos(spawn_pos)
+	EntityRegistry.register(npc.name, {
+		"name": npc.name,
+		"type": EntityRegistrySystem.EntityType.SHIP_FLEET,
+		"node": npc,
+		"radius": 10.0,
+		"color": Color(0.3, 0.5, 1.0),
+		"pos_x": upos[0], "pos_y": upos[1], "pos_z": upos[2],
+		"extra": {
+			"fleet_index": fleet_index,
+			"owner_name": _get_peer_name(sender_pid),
+			"command": String(cmd),
+			"arrived": false,
+			"faction": "player_fleet",
+		},
+	})
+
+	# Tag ShipLODData
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(npc_id)
+		if lod_data:
+			lod_data.fleet_index = fleet_index
+
+	return {"npc_id": npc_id}
 
 
 # =========================================================================
@@ -1006,14 +1193,18 @@ func _sync_fleet_to_backend() -> void:
 	if updates.is_empty():
 		return
 
-	_backend_client.sync_fleet_positions(updates)
+	var ok: bool = await _backend_client.sync_fleet_positions(updates)
+	if not ok:
+		push_warning("NpcAuthority: Fleet position sync failed (%d updates)" % updates.size())
 
 
 ## Report a fleet NPC death to the backend.
 func _report_fleet_death_to_backend(uuid: String, fleet_index: int) -> void:
 	if _backend_client == null or uuid == "":
 		return
-	_backend_client.report_fleet_death(uuid, fleet_index)
+	var ok: bool = await _backend_client.report_fleet_death(uuid, fleet_index)
+	if not ok:
+		push_error("NpcAuthority: Fleet death NOT persisted for %s index %d" % [uuid, fleet_index])
 
 
 ## Load previously deployed fleet ships from the backend on server startup.

@@ -145,7 +145,7 @@ func _on_opened() -> void:
 	if _is_station_mode():
 		screen_title = "STATION — EQUIPEMENT"
 		var station_center =StationHardpointConfig.get_station_center()
-		setup_ship_viewer("res://assets/models/space_station.glb", 1.0, station_center, Vector3.ZERO, Basis.IDENTITY)
+		setup_ship_viewer("res://assets/models/babbage_station.glb", 0.01, station_center, Vector3.ZERO, Basis.IDENTITY)
 	else:
 		screen_title = "FLOTTE — EQUIPEMENT"
 

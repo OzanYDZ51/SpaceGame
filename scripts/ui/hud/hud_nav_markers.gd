@@ -17,7 +17,7 @@ const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
 const NAV_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
-const NAV_COL_CONSTRUCTION: Color = Color(1.0, 0.6, 0.1, 0.85)
+const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
 const NAV_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
 
 var _nav_markers: Control = null

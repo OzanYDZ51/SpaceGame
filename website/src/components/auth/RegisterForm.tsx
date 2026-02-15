@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -12,6 +13,7 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
   const { register } = useAuth();
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,11 +26,11 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError(t.auth.errorPasswordMismatch);
       return;
     }
     if (password.length < 6) {
-      setError("Le mot de passe doit faire au moins 6 caractères");
+      setError(t.auth.errorPasswordLength);
       return;
     }
 
@@ -37,7 +39,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
       await register(username, email, password);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
+      setError(err instanceof Error ? err.message : t.auth.errorRegister);
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <h3 className="text-xl font-bold uppercase tracking-wider text-cyan text-center text-glow-cyan-sm">
-        Créer un compte
+        {t.auth.registerTitle}
       </h3>
 
       {error && (
@@ -57,7 +59,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
 
       <Input
         id="reg-username"
-        label="Identifiant"
+        label={t.auth.username}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         autoComplete="username"
@@ -65,7 +67,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
       />
       <Input
         id="reg-email"
-        label="Email"
+        label={t.auth.email}
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +76,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
       />
       <Input
         id="reg-password"
-        label="Mot de passe"
+        label={t.auth.password}
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -83,7 +85,7 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
       />
       <Input
         id="reg-confirm"
-        label="Confirmer"
+        label={t.auth.confirmPassword}
         type="password"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -92,17 +94,17 @@ export function RegisterForm({ onSwitch, onSuccess }: RegisterFormProps) {
       />
 
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Création..." : "Créer le compte"}
+        {loading ? t.auth.registerLoading : t.auth.registerButton}
       </Button>
 
       <p className="text-center text-xs text-text-secondary">
-        Déjà un compte ?{" "}
+        {t.auth.hasAccount}{" "}
         <button
           type="button"
           onClick={onSwitch}
           className="text-cyan hover:underline cursor-pointer"
         >
-          Se connecter
+          {t.auth.switchToLogin}
         </button>
       </p>
     </form>

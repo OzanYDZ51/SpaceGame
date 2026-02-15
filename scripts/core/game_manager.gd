@@ -88,7 +88,13 @@ var _admin_screen = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
+var _quitting: bool = false
+
+
 func _ready() -> void:
+	# Prevent instant quit — we need time to save before exiting
+	get_tree().auto_accept_quit = false
+
 	await get_tree().process_frame
 
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
@@ -742,12 +748,24 @@ func _initialize_game() -> void:
 	if _asteroid_scanner:
 		_input_router.scanner_pulse_requested.connect(_asteroid_scanner.trigger_scan)
 
+	# Reload backend state on reconnect (not first connect — that's handled in _ready)
+	NetworkManager.connection_succeeded.connect(_on_network_reconnected)
+
 	current_state = GameState.PLAYING
 	if _discord_rpc:
 		_discord_rpc.update_from_game_state(current_state)
 
 	# Start auto-save timer
 	SaveManager.start_auto_save()
+
+
+## Called on every successful connection (initial + reconnects).
+## Skips the first connect (handled by _ready → _load_backend_state).
+func _on_network_reconnected() -> void:
+	if not _backend_state_loaded:
+		return  # First connect — _ready handles this
+	print("[GameManager] Network reconnected — reloading backend state")
+	_load_backend_state()
 
 
 func _load_backend_state() -> void:
@@ -782,13 +800,25 @@ func _load_backend_state() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		# Save before quit (no await — _notification must not be a coroutine)
-		if _fleet_deployment_mgr:
-			_fleet_deployment_mgr.force_sync_positions()
-		if AuthManager.is_authenticated:
-			SaveManager.trigger_save("game_closing")
-		# Quit is deferred so the save request has time to start
-		get_tree().quit.call_deferred()
+		if _quitting:
+			return
+		_quitting = true
+		_graceful_quit()
+
+
+## Saves player state and waits for completion before quitting.
+## auto_accept_quit = false keeps the game alive until save finishes.
+func _graceful_quit() -> void:
+	if _fleet_deployment_mgr:
+		_fleet_deployment_mgr.force_sync_positions()
+	if AuthManager.is_authenticated:
+		# Fire the save — await gives it time to complete the HTTP PUT
+		var saved: bool = await SaveManager.save_player_state(true)
+		if saved:
+			print("[GameManager] Closing save completed successfully.")
+		else:
+			print("[GameManager] Closing save failed — quitting anyway.")
+	get_tree().quit()
 
 
 func _setup_visual_effects() -> void:
@@ -865,6 +895,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	if _fleet_deployment_mgr == null:
 		return
 	var fs = player_fleet.ships[fleet_index]
+	var is_mp_client: bool = _fleet_deployment_mgr._is_multiplayer_client()
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
@@ -873,39 +904,46 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 			else:
 				_notif.fleet.deploy_failed("DEPLOIEMENT IMPOSSIBLE")
 			return
-		# Deploy: use direct call to get success/fail feedback
-		var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
-		if success:
+		if is_mp_client:
+			# Multiplayer client: route through server via RPC
+			_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
 			_notif.fleet.deployed(fs.custom_name)
-			# Update route line now that deployed_npc_id is set
-			if _stellar_map:
-				_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
 		else:
-			_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
-			push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
-	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-		# Check if the NPC actually exists (may be missing after save/load)
-		var has_npc: bool = _fleet_deployment_mgr.get_deployed_npc(fleet_index) != null
-		if has_npc:
-			# Change command on already deployed ship (local NPCs — always execute locally)
-			_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
-		else:
-			# NPC is gone (save/load, system change) — reset to DOCKED and redeploy
-			fs.deployment_state = FleetShip.DeploymentState.DOCKED
-			fs.deployed_npc_id = &""
-			if fs.docked_system_id != current_system_id_safe():
-				# Ship was in a different system — dock it here so it can deploy
-				fs.docked_system_id = current_system_id_safe()
-			if _fleet_deployment_mgr.can_deploy(fleet_index):
-				var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
-				if success:
-					_notif.fleet.deployed(fs.custom_name)
-					if _stellar_map:
-						_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
-				else:
-					_notif.fleet.deploy_failed("REDÉPLOIEMENT ÉCHOUÉ")
+			# Host/offline: deploy locally with success feedback
+			var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
+			if success:
+				_notif.fleet.deployed(fs.custom_name)
+				if _stellar_map:
+					_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
 			else:
-				_notif.fleet.deploy_failed("REDÉPLOIEMENT IMPOSSIBLE")
+				_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
+				push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
+	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+		if is_mp_client:
+			# Multiplayer client: route command change through server
+			_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
+		else:
+			# Host/offline: execute locally
+			# Check if the NPC actually exists (may be missing after save/load)
+			var has_npc: bool = _fleet_deployment_mgr.get_deployed_npc(fleet_index) != null
+			if has_npc:
+				_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
+			else:
+				# NPC is gone (save/load, system change) — reset to DOCKED and redeploy
+				fs.deployment_state = FleetShip.DeploymentState.DOCKED
+				fs.deployed_npc_id = &""
+				if fs.docked_system_id != current_system_id_safe():
+					fs.docked_system_id = current_system_id_safe()
+				if _fleet_deployment_mgr.can_deploy(fleet_index):
+					var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
+					if success:
+						_notif.fleet.deployed(fs.custom_name)
+						if _stellar_map:
+							_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
+					else:
+						_notif.fleet.deploy_failed("REDÉPLOIEMENT ÉCHOUÉ")
+				else:
+					_notif.fleet.deploy_failed("REDÉPLOIEMENT IMPOSSIBLE")
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:
@@ -1179,7 +1217,7 @@ func _on_construction_completed(marker_id: int) -> void:
 	station.transform = Transform3D.IDENTITY
 	station.position = FloatingOrigin.to_local_pos(
 		[marker.get("pos_x", 0.0), 0.0, marker.get("pos_z", 0.0)])
-	station.scale = Vector3(100, 100, 100)
+	station.scale = Vector3(0.24, 0.24, 0.24)
 
 	# Station equipment for persistence within session
 	var sys_id: int = _system_transition.current_system_id if _system_transition else 0

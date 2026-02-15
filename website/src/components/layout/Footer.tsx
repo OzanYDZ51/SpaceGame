@@ -1,6 +1,11 @@
+"use client";
+
+import { useI18n } from "@/i18n";
 import { Container } from "@/components/ui/Container";
 
 export function Footer() {
+  const { t } = useI18n();
+
   return (
     <footer className="border-t border-border-subtle bg-bg-secondary/50 py-8 sm:py-10">
       <Container>
@@ -16,13 +21,13 @@ export function Footer() {
 
           <div className="flex items-center gap-4 sm:gap-6">
             <a href="#hero" className="text-xs uppercase tracking-wider text-text-secondary hover:text-cyan transition-colors">
-              Accueil
+              {t.footer.home}
             </a>
             <a href="#features" className="text-xs uppercase tracking-wider text-text-secondary hover:text-cyan transition-colors">
-              Features
+              {t.footer.features}
             </a>
             <a href="#download" className="text-xs uppercase tracking-wider text-text-secondary hover:text-cyan transition-colors">
-              Télécharger
+              {t.footer.download}
             </a>
           </div>
 

@@ -128,9 +128,9 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var loot_col =Color(1.0, 0.7, 0.2)
+	var loot_col =Color(1.0, 0.85, 0.3)
 	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
-	ctrl.draw_rect(bg_rect, Color(0.06, 0.04, 0.0, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(0.02, 0.015, 0.04, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(loot_col.r, loot_col.g, loot_col.b, 0.3 * pulse), false, 1.0)
 
 	if loot_pickup and loot_pickup.nearest_crate:
@@ -209,9 +209,9 @@ func _draw_build_prompt(ctrl: Control) -> void:
 	var cx: float = s.x * 0.5
 	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
-	var build_col =Color(1.0, 0.6, 0.1)
+	var build_col =Color(0.2, 0.8, 1.0)
 	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
-	ctrl.draw_rect(bg_rect, Color(0.06, 0.03, 0.0, 0.6 * pulse))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.02, 0.06, 0.6 * pulse))
 	ctrl.draw_rect(bg_rect, Color(build_col.r, build_col.g, build_col.b, 0.3 * pulse), false, 1.0)
 
 	if build_target_name != "":

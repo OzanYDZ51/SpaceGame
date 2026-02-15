@@ -27,6 +27,9 @@ func _ready() -> void:
 	_auto_save_timer.timeout.connect(_on_auto_save)
 	add_child(_auto_save_timer)
 
+	# Save immediately on network disconnect (up to 60s of gameplay otherwise lost)
+	NetworkManager.connection_failed.connect(_on_network_disconnected)
+
 
 func start_auto_save() -> void:
 	_auto_save_timer.start()
@@ -146,8 +149,16 @@ func _collect_state() -> Dictionary:
 # --- Triggers ---
 
 func _on_auto_save() -> void:
-	if _is_dirty:
-		save_player_state()
+	# Always save periodically — position changes continuously during flight
+	# and there are no event triggers for normal movement.
+	save_player_state()
+
+
+func _on_network_disconnected(_reason: String) -> void:
+	if AuthManager.is_authenticated:
+		print("[SaveManager] Network disconnected — emergency save")
+		mark_dirty()
+		save_player_state(true)
 
 
 func trigger_save(reason: String = "") -> void:
@@ -155,10 +166,3 @@ func trigger_save(reason: String = "") -> void:
 		print("[SaveManager] trigger_save: ", reason)
 	mark_dirty()
 	save_player_state(true)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		# Synchronous-ish save on quit
-		if AuthManager.is_authenticated and _is_dirty:
-			save_player_state(true)

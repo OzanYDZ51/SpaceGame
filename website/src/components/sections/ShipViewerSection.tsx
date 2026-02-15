@@ -6,37 +6,36 @@ import { OrbitControls, useGLTF, Environment, ContactShadows } from "@react-thre
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
-import { SHIPS, SHIPS_BY_FACTION } from "@/lib/constants";
-import type { ShipData } from "@/lib/constants";
+import { SHIP_STRUCTURE, SHIP_STRUCTURE_BY_FACTION } from "@/lib/constants";
+import type { ShipStructure } from "@/lib/constants";
+import type { ShipText } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { useFaction } from "@/lib/faction";
 import * as THREE from "three";
 
-function ShipModel({ ship }: { ship: ShipData }) {
+type MergedShip = ShipStructure & ShipText;
+
+function ShipModel({ ship }: { ship: MergedShip }) {
   const { scene } = useGLTF(ship.modelPath);
   const ref = useRef<THREE.Group>(null!);
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
 
-  // Clone scene and compute bounds to auto-center + auto-fit
   const cloned = useMemo(() => scene.clone(), [scene]);
 
   useEffect(() => {
     if (!ref.current) return;
 
-    // Compute bounding box of the full model
     const box = new THREE.Box3().setFromObject(ref.current);
     const center = new THREE.Vector3();
     const size = new THREE.Vector3();
     box.getCenter(center);
     box.getSize(size);
 
-    // Shift children so the geometry center is at (0,0,0)
     ref.current.position.set(-center.x, -center.y, -center.z);
 
-    // Position camera to fit the model with some padding
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
-    const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.6; // 1.6x padding
+    const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.6;
 
     camera.position.set(dist * 0.5, dist * 0.3, dist);
     camera.lookAt(0, 0, 0);
@@ -67,11 +66,11 @@ function LoadingSpinner() {
 }
 
 function ShipTab({
-  ship,
+  name,
   isActive,
   onClick,
 }: {
-  ship: ShipData;
+  name: string;
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -86,7 +85,7 @@ function ShipTab({
         }
       `}
     >
-      {ship.name}
+      {name}
     </button>
   );
 }
@@ -114,26 +113,33 @@ function StatRow({ label, value }: { label: string; value: string }) {
 
 export function ShipViewerSection() {
   const { faction } = useFaction();
-  const ships = faction && SHIPS_BY_FACTION[faction] ? SHIPS_BY_FACTION[faction] : SHIPS;
+  const { t } = useI18n();
+
+  const structures = faction && SHIP_STRUCTURE_BY_FACTION[faction]
+    ? SHIP_STRUCTURE_BY_FACTION[faction]
+    : SHIP_STRUCTURE;
+  const texts = faction && t.ships.factionShips[faction]
+    ? t.ships.factionShips[faction]
+    : t.ships.defaultShips;
+
+  const ships: MergedShip[] = structures.map((s, i) => ({ ...s, ...texts[i] }));
+
   const [activeIndex, setActiveIndex] = useState(0);
   const safeIndex = activeIndex >= ships.length ? 0 : activeIndex;
   const activeShip = ships[safeIndex];
   const rimColor = faction === "kharsis" ? "#ff2244" : "#00c8ff";
 
+  const subtitle = faction === "nova_terra"
+    ? t.ships.subtitleNovaTerra
+    : faction === "kharsis"
+      ? t.ships.subtitleKharsis
+      : t.ships.subtitleDefault;
+
   return (
     <section id="ships" className="py-20 sm:py-24 md:py-32 relative">
       <Container>
         <ScrollReveal>
-          <SectionHeading
-            title="Vaisseaux"
-            subtitle={
-              faction === "nova_terra"
-                ? "La flotte de la Confédération Nova Terra. Précision et protection."
-                : faction === "kharsis"
-                  ? "L'arsenal du Dominion Kharsis. Puissance et destruction."
-                  : "Inspectez les vaisseaux qui vous attendent dans l'univers d'Imperion."
-            }
-          />
+          <SectionHeading title={t.ships.title} subtitle={subtitle} />
         </ScrollReveal>
 
         <ScrollReveal delay={0.15}>
@@ -143,7 +149,7 @@ export function ShipViewerSection() {
               {ships.map((ship, i) => (
                 <ShipTab
                   key={ship.id}
-                  ship={ship}
+                  name={ship.name}
                   isActive={i === safeIndex}
                   onClick={() => setActiveIndex(i)}
                 />
@@ -151,7 +157,7 @@ export function ShipViewerSection() {
               <LockedTab />
               <div className="flex-1" />
               <span className="px-4 text-xs text-text-muted font-mono hidden sm:block">
-                Plus de vaisseaux à découvrir...
+                {t.ships.moreShips}
               </span>
             </div>
 
@@ -192,7 +198,7 @@ export function ShipViewerSection() {
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M2 8H14M14 8L10 4M14 8L10 12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span>Glisser pour tourner</span>
+                  <span>{t.ships.dragHint}</span>
                 </div>
               </div>
 
@@ -200,7 +206,7 @@ export function ShipViewerSection() {
               <div className="lg:col-span-2 p-6 border-t lg:border-t-0 lg:border-l border-border-subtle flex flex-col">
                 <div className="mb-4">
                   <span className="text-xs font-mono uppercase tracking-widest text-cyan/60">
-                    {activeShip.stats.class}
+                    {activeShip.statsClass}
                   </span>
                   <h3 className="text-2xl font-bold text-text-primary mt-1">
                     {activeShip.name}
@@ -212,9 +218,9 @@ export function ShipViewerSection() {
                 </p>
 
                 <div className="border-t border-border-subtle pt-4 space-y-0.5">
-                  <StatRow label="Vitesse max" value={activeShip.stats.speed} />
-                  <StatRow label="Coque" value={activeShip.stats.hull} />
-                  <StatRow label="Boucliers" value={activeShip.stats.shields} />
+                  <StatRow label={t.ships.statLabels.speed} value={activeShip.stats.speed} />
+                  <StatRow label={t.ships.statLabels.hull} value={activeShip.stats.hull} />
+                  <StatRow label={t.ships.statLabels.shields} value={activeShip.stats.shields} />
                 </div>
 
                 <div className="mt-auto pt-6">
@@ -223,7 +229,7 @@ export function ShipViewerSection() {
                       <circle cx="7" cy="7" r="6" stroke="currentColor" strokeOpacity="0.4" />
                       <path d="M7 4V7.5L9 9" stroke="currentColor" strokeOpacity="0.4" strokeLinecap="round" />
                     </svg>
-                    <span>Armement et modules — à découvrir en jeu</span>
+                    <span>{t.ships.weaponsHint}</span>
                   </div>
                 </div>
               </div>

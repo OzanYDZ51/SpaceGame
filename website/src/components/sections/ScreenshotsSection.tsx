@@ -5,13 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
-import { SCREENSHOTS } from "@/lib/constants";
+import { SCREENSHOT_PATHS } from "@/lib/constants";
+import { useI18n } from "@/i18n";
+import type { ScreenshotText } from "@/i18n";
+
+type Screenshot = ScreenshotText & { src: string };
 
 function LightboxModal({
   screenshot,
   onClose,
 }: {
-  screenshot: (typeof SCREENSHOTS)[number];
+  screenshot: Screenshot;
   onClose: () => void;
 }) {
   return (
@@ -57,7 +61,7 @@ function ScreenshotCard({
   index,
   onClick,
 }: {
-  screenshot: (typeof SCREENSHOTS)[number];
+  screenshot: Screenshot;
   index: number;
   onClick: () => void;
 }) {
@@ -92,7 +96,6 @@ function ScreenshotCard({
         />
       ) : null}
 
-      {/* Fallback gradient when no image */}
       {(!imageLoaded || imageError) && (
         <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index % gradients.length]}`}>
           <div className="absolute inset-0 flex items-center justify-center">
@@ -103,7 +106,6 @@ function ScreenshotCard({
         </div>
       )}
 
-      {/* Hover overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <p className="text-sm text-text-primary font-medium">{screenshot.caption}</p>
@@ -119,23 +121,27 @@ function ScreenshotCard({
 }
 
 export function ScreenshotsSection() {
+  const { t } = useI18n();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
   const handleClose = useCallback(() => setLightboxIndex(null), []);
+
+  const screenshots: Screenshot[] = SCREENSHOT_PATHS.map((src, i) => ({
+    src,
+    ...t.screenshots.items[i],
+  }));
 
   return (
     <section id="screenshots" className="py-20 sm:py-24 md:py-32">
       <Container>
         <ScrollReveal>
           <SectionHeading
-            title="Aperçu"
-            subtitle="Quelques captures de l'univers d'Imperion Online."
+            title={t.screenshots.title}
+            subtitle={t.screenshots.subtitle}
           />
         </ScrollReveal>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* First row: 2 large images */}
-          {SCREENSHOTS.slice(0, 2).map((shot, i) => (
+          {screenshots.slice(0, 2).map((shot, i) => (
             <ScrollReveal key={i} delay={i * 0.1} className={i === 0 ? "sm:col-span-1 lg:col-span-2" : ""}>
               <ScreenshotCard
                 screenshot={shot}
@@ -144,8 +150,7 @@ export function ScreenshotsSection() {
               />
             </ScrollReveal>
           ))}
-          {/* Remaining 3 images */}
-          {SCREENSHOTS.slice(2).map((shot, i) => (
+          {screenshots.slice(2).map((shot, i) => (
             <ScrollReveal key={i + 2} delay={(i + 2) * 0.1}>
               <ScreenshotCard
                 screenshot={shot}
@@ -160,7 +165,7 @@ export function ScreenshotsSection() {
       <AnimatePresence>
         {lightboxIndex !== null && (
           <LightboxModal
-            screenshot={SCREENSHOTS[lightboxIndex]}
+            screenshot={screenshots[lightboxIndex]}
             onClose={handleClose}
           />
         )}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { API_URL } from "@/lib/constants";
+import { useI18n } from "@/i18n";
 
 type ServerStats = {
   players_online: number;
@@ -62,20 +63,10 @@ function StatusDot({ status }: { status: "online" | "offline" }) {
   );
 }
 
-function formatEvent(event: NonNullable<ServerStats["last_event"]>): string {
-  const type = event.event_type;
-  if (type === "kill" || type === "player_kill") {
-    return `${event.actor_name} a détruit le vaisseau de ${event.target_name}`;
-  }
-  if (type === "player_join") {
-    return `${event.actor_name} a rejoint l'univers`;
-  }
-  return `${event.actor_name || "Quelqu'un"} — activité détectée`;
-}
-
 export function ServerPulseSection() {
   const [stats, setStats] = useState<ServerStats | null>(null);
   const [error, setError] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +98,17 @@ export function ServerPulseSection() {
     };
   }, []);
 
+  function formatEvent(event: NonNullable<ServerStats["last_event"]>): string {
+    const type = event.event_type;
+    if (type === "kill" || type === "player_kill") {
+      return t.server.killEvent(event.actor_name, event.target_name);
+    }
+    if (type === "player_join") {
+      return t.server.joinEvent(event.actor_name);
+    }
+    return t.server.genericEvent(event.actor_name);
+  }
+
   return (
     <section className="py-6 sm:py-8 border-y border-border-subtle bg-gradient-to-r from-transparent via-cyan-faint to-transparent">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -121,11 +123,10 @@ export function ServerPulseSection() {
           <div className="flex items-center gap-2">
             <StatusDot status={stats?.server_status ?? (error ? "offline" : "online")} />
             <span className="text-xs font-mono uppercase tracking-widest text-text-secondary">
-              Serveur {stats?.server_status === "offline" || error ? "hors ligne" : "en ligne"}
+              {t.server.serverLabel} {stats?.server_status === "offline" || error ? t.server.offline : t.server.online}
             </span>
           </div>
 
-          {/* Separator */}
           <div className="hidden sm:block w-px h-4 bg-border-subtle" />
 
           {/* Online players */}
@@ -135,7 +136,7 @@ export function ServerPulseSection() {
               <path d="M2 12.5C2 10.01 4.24 8 7 8C9.76 8 12 10.01 12 12.5" stroke="currentColor" strokeLinecap="round" />
             </svg>
             <AnimatedNumber value={stats?.players_online ?? 0} />
-            <span className="text-text-muted text-xs">en ligne</span>
+            <span className="text-text-muted text-xs">{t.server.onlineLabel}</span>
           </div>
 
           <div className="hidden sm:block w-px h-4 bg-border-subtle" />
@@ -149,10 +150,10 @@ export function ServerPulseSection() {
               <path d="M9 8C11.21 8 13 9.79 13 12" stroke="currentColor" strokeLinecap="round" />
             </svg>
             <AnimatedNumber value={stats?.players_total ?? 0} />
-            <span className="text-text-muted text-xs">inscrits</span>
+            <span className="text-text-muted text-xs">{t.server.registeredLabel}</span>
           </div>
 
-          {/* Last event - only shown if available */}
+          {/* Last event */}
           {stats?.last_event && (
             <>
               <div className="hidden md:block w-px h-4 bg-border-subtle" />

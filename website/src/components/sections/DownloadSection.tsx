@@ -7,10 +7,12 @@ import { formatBytes } from "@/lib/utils";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
+import { useI18n } from "@/i18n";
 import type { UpdatesResponse } from "@/types/api";
 
 export function DownloadSection() {
   const [updates, setUpdates] = useState<UpdatesResponse | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     api
@@ -24,7 +26,6 @@ export function DownloadSection() {
 
   return (
     <section id="download" className="relative py-20 sm:py-24 md:py-32 overflow-hidden">
-      {/* Animated background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <motion.div
           className="w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] md:w-[600px] md:h-[600px] rounded-full bg-cyan/[0.03] blur-[80px] sm:blur-[100px]"
@@ -39,11 +40,10 @@ export function DownloadSection() {
       <Container className="relative z-10 text-center px-6">
         <ScrollReveal>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-wider text-cyan text-glow-cyan mb-4">
-            Rejoignez l&apos;aventure
+            {t.download.title}
           </h2>
           <p className="text-text-secondary text-base sm:text-lg mb-8 sm:mb-10 max-w-md sm:max-w-xl mx-auto">
-            Téléchargez le launcher, créez votre compte et prenez les commandes
-            de votre vaisseau.
+            {t.download.subtitle}
           </p>
         </ScrollReveal>
 
@@ -59,23 +59,23 @@ export function DownloadSection() {
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" x2="12" y1="15" y2="3" />
                 </svg>
-                Télécharger le launcher
+                {t.download.cta}
               </Button>
             ) : (
               <Button className="text-sm sm:text-lg px-6 sm:px-10 py-3 sm:py-4" disabled>
-                Launcher bientôt disponible
+                {t.download.ctaUnavailable}
               </Button>
             )}
 
             {launcher && (
               <p className="text-xs font-mono text-text-muted tracking-wider">
-                v{launcher.version} — Launcher {formatBytes(launcher.size)}
-                {game ? ` | Jeu ${formatBytes(game.size)}` : ""}
+                v{launcher.version} — {t.download.launcherLabel} {formatBytes(launcher.size)}
+                {game ? ` | ${t.download.gameLabel} ${formatBytes(game.size)}` : ""}
               </p>
             )}
 
             <p className="text-xs text-text-muted mt-2">
-              Windows 10+ requis
+              {t.download.windowsRequired}
             </p>
           </div>
         </ScrollReveal>

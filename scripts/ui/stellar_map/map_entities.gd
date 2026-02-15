@@ -946,7 +946,7 @@ func _draw_hint_text(font: Font) -> void:
 
 
 # =============================================================================
-# CONSTRUCTION MARKERS (orange pulsing blueprint markers)
+# CONSTRUCTION MARKERS (cyan pulsing blueprint markers)
 # =============================================================================
 func _draw_construction_markers() -> void:
 	if construction_markers.is_empty() or camera == null:
