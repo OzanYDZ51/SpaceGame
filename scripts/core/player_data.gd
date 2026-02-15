@@ -40,7 +40,7 @@ func initialize(galaxy: GalaxyData) -> void:
 
 	# Fleet (starts with one ship — cargo lives on the ship)
 	fleet = PlayerFleet.new()
-	var starting_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(&"fighter_mk1"))
+	var starting_ship := FleetShip.from_ship_data(ShipRegistry.get_ship_data(Constants.DEFAULT_SHIP_ID))
 	# Starting resources on the ship (generous for testing)
 	starting_ship.add_resource(&"ice", 50)
 	starting_ship.add_resource(&"iron", 100)
@@ -132,7 +132,7 @@ func collect_save_state(player_ship: ShipController, system_transition: SystemTr
 
 	# Ship ID
 	if player_ship:
-		state["current_ship_id"] = str(player_ship.ship_data.ship_id if player_ship.ship_data else &"fighter_mk1")
+		state["current_ship_id"] = str(player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID)
 
 	# Galaxy + system
 	state["galaxy_seed"] = Constants.galaxy_seed

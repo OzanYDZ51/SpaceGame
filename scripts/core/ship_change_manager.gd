@@ -73,6 +73,94 @@ func _on_autopilot_cancelled() -> void:
 		_on_autopilot_cancelled_callback.call()
 
 
+## Force-rebuild the player ship for respawn (bypasses DOCKED state check).
+## Used when the active ship is DESTROYED and we need to switch to another ship.
+func rebuild_ship_for_respawn(fleet_index: int) -> void:
+	if player_ship == null:
+		return
+	var fleet := player_data.fleet if player_data else null
+	if fleet == null or fleet_index < 0 or fleet_index >= fleet.ships.size():
+		return
+
+	var fs := fleet.ships[fleet_index]
+	var ship_id := fs.ship_id
+	var data := ShipRegistry.get_ship_data(ship_id)
+	if data == null:
+		push_error("ShipChangeManager: Unknown ship_id '%s' for respawn" % ship_id)
+		return
+
+	var ship := player_ship as ShipController
+	# Strip old components
+	for comp_name in ["HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
+		var comp := ship.get_node_or_null(comp_name)
+		if comp:
+			ship.remove_child(comp)
+			comp.free()
+	var old_model := ship.get_node_or_null("ShipModel")
+	if old_model:
+		ship.remove_child(old_model)
+		old_model.free()
+	var old_col := ship.get_node_or_null("CollisionShape3D")
+	if old_col:
+		ship.remove_child(old_col)
+		old_col.free()
+
+	# Rebuild with new ship
+	ShipFactory.setup_player_ship(ship_id, ship)
+
+	# Equip loadout from FleetShip
+	var wm := ship.get_node_or_null("WeaponManager") as WeaponManager
+	if wm and not fs.weapons.is_empty():
+		wm.equip_weapons(fs.weapons)
+	var em := ship.get_node_or_null("EquipmentManager") as EquipmentManager
+	if em:
+		em.remove_shield()
+		em.remove_engine()
+		for i in em.equipped_modules.size():
+			em.remove_module(i)
+		if fs.shield_name != &"":
+			var shield_res := ShieldRegistry.get_shield(fs.shield_name)
+			if shield_res:
+				em.equip_shield(shield_res)
+		if fs.engine_name != &"":
+			var engine_res := EngineRegistry.get_engine(fs.engine_name)
+			if engine_res:
+				em.equip_engine(engine_res)
+		for i in fs.modules.size():
+			if fs.modules[i] != &"":
+				var mod_res := ModuleRegistry.get_module(fs.modules[i])
+				if mod_res:
+					em.equip_module(i, mod_res)
+
+	# Update fleet active index
+	fleet.set_active(fleet_index)
+
+	# Resync economy resources
+	if player_data:
+		player_data._sync_economy_resources()
+
+	# Rewire
+	rewire_ship_systems()
+
+	# Notify multiplayer peers
+	NetworkManager.local_ship_id = ship_id
+	if NetworkManager.is_connected_to_server():
+		if NetworkManager.is_host:
+			if NetworkManager.peers.has(1):
+				var my_state: NetworkState = NetworkManager.peers[1]
+				my_state.ship_id = ship_id
+				var sdata_net := ShipRegistry.get_ship_data(ship_id)
+				my_state.ship_class = sdata_net.ship_class if sdata_net else &"Fighter"
+			for pid in NetworkManager.peers:
+				if pid == 1:
+					continue
+				NetworkManager._rpc_receive_player_ship_changed.rpc_id(pid, 1, String(ship_id))
+		else:
+			NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
+
+	print("ShipChangeManager: Respawn rebuild -> '%s' (%s)" % [data.ship_name, ship_id])
+
+
 func handle_ship_change(fleet_index: int) -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != GameManagerSystem.GameState.DOCKED or player_ship == null:

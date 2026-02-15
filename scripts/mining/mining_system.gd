@@ -65,12 +65,12 @@ func try_fire(aim_point: Vector3) -> void:
 	if is_overheated:
 		return
 
-	_is_firing = true
-
-	# Get mining hardpoint positions
+	# Get mining hardpoint positions — check BEFORE setting _is_firing
 	var mining_hps := _weapon_mgr.get_mining_hardpoints_in_group(0)
 	if mining_hps.is_empty():
 		return
+
+	_is_firing = true
 
 	var source_hp: Hardpoint = mining_hps[0]
 	# Use muzzle point if weapon model has one, otherwise fallback to hardpoint position
@@ -169,6 +169,15 @@ func _process(delta: float) -> void:
 
 func _update_heat(delta: float) -> void:
 	var old_heat := heat
+
+	# No mining laser equipped — fast-reset all heat state
+	if not has_mining_laser():
+		if heat > 0.0 or is_overheated:
+			heat = 0.0
+			is_overheated = false
+			_is_firing = false
+			heat_changed.emit(heat, is_overheated)
+		return
 
 	if _is_firing and not is_overheated:
 		heat = minf(heat + HEAT_RATE * delta, 1.0)

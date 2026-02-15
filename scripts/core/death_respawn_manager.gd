@@ -23,6 +23,7 @@ var discord_rpc: DiscordRPC = null
 var toast_manager: UIToastManager = null
 var docking_mgr: DockingManager = null
 var docking_system: DockingSystem = null
+var ship_change_mgr: ShipChangeManager = null
 
 
 func _process(delta: float) -> void:
@@ -34,8 +35,13 @@ func _process(delta: float) -> void:
 func handle_player_destroyed() -> void:
 	if route_manager:
 		route_manager.cancel_route()
-	if fleet_deployment_mgr:
-		fleet_deployment_mgr.auto_retrieve_all()
+
+	# Mark the active ship as permanently destroyed
+	var fleet: PlayerFleet = GameManager.player_fleet
+	if fleet:
+		var active_fs := fleet.get_active()
+		if active_fs:
+			active_fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 
 	# Big explosion at player position
 	_spawn_death_explosion()
@@ -63,64 +69,142 @@ func handle_player_destroyed() -> void:
 
 
 func handle_respawn() -> void:
-	var current_sys_id: int = system_transition.current_system_id if system_transition else 0
-	var target_sys: int = current_sys_id
+	var fleet: PlayerFleet = GameManager.player_fleet
+	if fleet == null:
+		return
+
+	# --- Find next usable ship ---
+	var next_index: int = _find_respawn_ship(fleet)
+
+	# If no ship at all, grant a free starter
+	if next_index < 0:
+		next_index = _grant_starter_ship(fleet)
+
+	# Determine target system: nearest repair station to the respawn ship's system
+	var respawn_fs := fleet.ships[next_index]
+	var ship_sys: int = respawn_fs.docked_system_id
+	if ship_sys < 0:
+		ship_sys = system_transition.current_system_id if system_transition else 0
+	var target_sys: int = ship_sys
 	if galaxy:
 		target_sys = galaxy.find_nearest_repair_system(target_sys)
+
+	# Update the respawn ship's system to where we're actually going
+	respawn_fs.docked_system_id = target_sys
 
 	# Remove death screen
 	if _death_screen and is_instance_valid(_death_screen):
 		_death_screen.queue_free()
 		_death_screen = null
 
+	# Switch to the respawn ship if it's different from active
+	if next_index != fleet.active_index and ship_change_mgr:
+		ship_change_mgr.rebuild_ship_for_respawn(next_index)
+	else:
+		fleet.set_active(next_index)
+
 	# Restore player ship
 	_repair_ship()
 
-	# Jump to target system (or reposition if same system)
-	if system_transition and target_sys != system_transition.current_system_id:
+	# Always do a full system reload (even for same system) to ensure
+	# floating origin is reset and entities are freshly registered.
+	if system_transition:
 		system_transition.jump_to_system(target_sys)
-	elif system_transition:
-		system_transition._position_player()
 
 	player_respawned.emit()
 
-	# Auto-dock at nearest repair station
-	_auto_dock_at_repair_station()
+	# Auto-dock at nearest station
+	_auto_dock_at_station()
 
 
-func _auto_dock_at_repair_station() -> void:
-	if docking_mgr == null or docking_system == null:
-		# Fallback: show HUD and capture mouse if docking not available
-		var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
-		if hud:
-			hud.visible = true
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		return
+## Find the best ship to respawn with: 1) first DOCKED, 2) recall a DEPLOYED, 3) -1 (none).
+func _find_respawn_ship(fleet: PlayerFleet) -> int:
+	# 1. First DOCKED ship (prefer same system, then any)
+	var best_docked: int = -1
+	var current_sys: int = system_transition.current_system_id if system_transition else 0
+	for i in fleet.ships.size():
+		if i == fleet.active_index:
+			continue
+		var fs := fleet.ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+			if best_docked < 0 or fs.docked_system_id == current_sys:
+				best_docked = i
+				if fs.docked_system_id == current_sys:
+					break  # Prefer same system
+	if best_docked >= 0:
+		return best_docked
 
-	# Find repair station in current system
+	# 2. Recall a DEPLOYED ship (closest system, or just any)
+	for i in fleet.ships.size():
+		if i == fleet.active_index:
+			continue
+		var fs := fleet.ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+			# Force-recall: mark as DOCKED
+			fs.deployment_state = FleetShip.DeploymentState.DOCKED
+			fs.deployed_npc_id = &""
+			fs.deployed_command = &""
+			fs.deployed_command_params = {}
+			# Free the NPC node if it exists
+			if fleet_deployment_mgr:
+				var npc := fleet_deployment_mgr.get_deployed_npc(i)
+				if npc and is_instance_valid(npc):
+					EntityRegistry.unregister(npc.name)
+					npc.queue_free()
+				fleet_deployment_mgr._deployed_ships.erase(i)
+			return i
+
+	return -1
+
+
+## Grant a free starter ship when all ships are destroyed.
+func _grant_starter_ship(fleet: PlayerFleet) -> int:
+	var starter_fs := FleetShip.create_bare(Constants.DEFAULT_SHIP_ID)
+	if starter_fs == null:
+		push_error("DeathRespawnManager: Failed to create starter ship!")
+		return 0
+	starter_fs.custom_name = "Vaisseau de secours"
+	starter_fs.deployment_state = FleetShip.DeploymentState.DOCKED
+	var sys_id: int = system_transition.current_system_id if system_transition else 0
+	starter_fs.docked_system_id = sys_id
+	var idx := fleet.add_ship(starter_fs)
+
+	# Toast notification
+	if GameManager._notif:
+		GameManager._notif.toast("VAISSEAU DE SECOURS ATTRIBUÉ")
+
+	return idx
+
+
+func _auto_dock_at_station() -> void:
 	var station_name: String = ""
 	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+
+	# Prefer repair station
 	for ent in stations:
 		var extra: Dictionary = ent.get("extra", {})
 		if extra.get("station_type", "") == "repair":
 			station_name = ent.get("name", "")
 			break
-	# Fallback: any station
+
+	# Any station
 	if station_name == "" and stations.size() > 0:
 		station_name = stations[0].get("name", "Station")
 
-	if station_name == "":
-		# No station found — fall back to space respawn
-		var hud := main_scene.get_node_or_null("UI/FlightHUD") as Control
-		if hud:
-			hud.visible = true
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		return
+	# Read from system data if registry empty
+	if station_name == "" and system_transition and system_transition.current_system_data:
+		var sys_stations: Array = system_transition.current_system_data.stations
+		if sys_stations.size() > 0:
+			station_name = sys_stations[0].station_name
 
-	# Set docking system state
+	# No station — jump to home system which always has one
+	if station_name == "" and galaxy and system_transition:
+		system_transition.jump_to_system(galaxy.player_home_system)
+		stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		if stations.size() > 0:
+			station_name = stations[0].get("name", "Station")
+
 	docking_system.is_docked = true
-
-	# Trigger full docking flow (freezes world, loads hangar, hides HUD)
 	docking_mgr.handle_docked(station_name)
 
 
@@ -180,7 +264,7 @@ func _create_death_screen() -> void:
 	_death_screen.add_child(title)
 
 	var prompt := Label.new()
-	prompt.text = "Appuyez sur [R] pour respawn à la station de réparation"
+	prompt.text = "Appuyez sur [R] pour respawn à la station la plus proche"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	prompt.set_anchors_preset(Control.PRESET_CENTER)

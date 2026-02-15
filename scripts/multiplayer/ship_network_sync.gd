@@ -63,7 +63,7 @@ func _send_state() -> void:
 	state.rotation_deg = _ship.rotation_degrees
 	state.throttle = _ship.throttle_input.length()
 	state.timestamp = Time.get_ticks_msec() / 1000.0
-	state.ship_id = _ship.ship_data.ship_id if _ship.ship_data else &"fighter_mk1"
+	state.ship_id = _ship.ship_data.ship_id if _ship.ship_data else Constants.DEFAULT_SHIP_ID
 
 	# System ID from SystemTransition
 	var gm := GameManager as GameManagerSystem

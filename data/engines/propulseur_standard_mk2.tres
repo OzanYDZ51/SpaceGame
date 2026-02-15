@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EngineResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/engine_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+engine_name = &"Propulseur Standard Mk2"
+slot_size = 0
+accel_mult = 1.1
+speed_mult = 1.05
+rotation_mult = 1.05
+cruise_mult = 1.05
+boost_drain_mult = 1.0
+price = 1500
+sold_at_station_types = Array[StringName]([&"repair", &"trade", &"mining"])

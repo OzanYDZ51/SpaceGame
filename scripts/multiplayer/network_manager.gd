@@ -60,7 +60,7 @@ enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
 var local_player_name: String = "Pilote"
-var local_ship_id: StringName = &"fighter_mk1"
+var local_ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var local_peer_id: int = -1
 
 ## True when this instance is acting as the server (listen-server host OR dedicated).
@@ -87,6 +87,10 @@ var galaxy_servers: Array[Dictionary] = []
 
 # Server-side: track each player's last known system (in-memory persistence)
 var _player_last_system: Dictionary = {}  # peer_id -> system_id
+
+# UUID ↔ peer_id mapping (server-side, persists across reconnects)
+var _uuid_to_peer: Dictionary = {}  # player_uuid (String) -> peer_id (int)
+var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
 
 
 func _ready() -> void:
@@ -236,6 +240,8 @@ func disconnect_from_server() -> void:
 	local_peer_id = -1
 	is_host = false
 	peers.clear()
+	_uuid_to_peer.clear()
+	_peer_to_uuid.clear()
 	player_list_updated.emit()
 
 
@@ -272,6 +278,16 @@ func get_local_ip() -> String:
 	return "127.0.0.1"
 
 
+## Get the UUID for a peer_id (server-side).
+func get_peer_uuid(peer_id: int) -> String:
+	return _peer_to_uuid.get(peer_id, "")
+
+
+## Get the peer_id for a UUID (server-side). Returns -1 if offline.
+func get_uuid_peer(uuid: String) -> int:
+	return _uuid_to_peer.get(uuid, -1)
+
+
 ## Check if a server is already running on localhost (same machine).
 ## Tries to bind the same port — if it fails, the server is using it.
 func is_local_server_running(port: int = Constants.NET_DEFAULT_PORT) -> bool:
@@ -302,6 +318,7 @@ func _on_peer_disconnected(id: int) -> void:
 		left_name = peers[id].player_name
 		peers.erase(id)
 	# Keep _player_last_system[id] for reconnect persistence (don't erase)
+	# Keep _peer_to_uuid / _uuid_to_peer for fleet NPC reconnect (don't erase)
 
 	if is_server():
 		_rpc_player_left.rpc(id)
@@ -309,6 +326,13 @@ func _on_peer_disconnected(id: int) -> void:
 		_rpc_receive_chat.rpc(left_name, 1, "%s a quitté." % left_name)
 		if not is_dedicated_server:
 			chat_message_received.emit(left_name, 1, "%s a quitté." % left_name)
+
+		# Notify NpcAuthority about disconnect (fleet NPCs persist)
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		if npc_auth:
+			var uuid: String = _peer_to_uuid.get(id, "")
+			if uuid != "":
+				npc_auth.on_player_disconnected(uuid, id)
 
 	peer_disconnected.emit(id)
 	player_list_updated.emit()
@@ -318,8 +342,9 @@ func _on_connected_to_server() -> void:
 	connection_state = ConnectionState.CONNECTED
 	local_peer_id = multiplayer.get_unique_id()
 	_reconnect_attempts = 0
-	# Register with the server
-	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id))
+	# Register with the server (include UUID for fleet persistence)
+	var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
+	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid)
 	connection_succeeded.emit()
 
 
@@ -367,7 +392,7 @@ func _attempt_reconnect() -> void:
 
 ## Client -> Server: Register as a new player.
 @rpc("any_peer", "reliable")
-func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
+func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid: String = "") -> void:
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
@@ -377,6 +402,19 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 	state.ship_id = StringName(ship_id_str)
 	var sdata := ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
+
+	# Track UUID ↔ peer mapping
+	var is_reconnect: bool = false
+	if player_uuid != "":
+		# Clean up old peer mapping for this UUID (reconnect case)
+		if _uuid_to_peer.has(player_uuid):
+			var old_pid: int = _uuid_to_peer[player_uuid]
+			if old_pid != sender_id:
+				_peer_to_uuid.erase(old_pid)
+				peers.erase(old_pid)  # Safety: remove stale peer entry
+				is_reconnect = true
+		_uuid_to_peer[player_uuid] = sender_id
+		_peer_to_uuid[sender_id] = player_uuid
 
 	# Send server config to the new client (galaxy seed, spawn system, routing)
 	# For new players, default to the host's current system (not -1)
@@ -392,6 +430,12 @@ func _rpc_register_player(player_name: String, ship_id_str: String) -> void:
 		"galaxies": galaxy_servers,
 	}
 	_rpc_server_config.rpc_id(sender_id, config)
+
+	# Handle reconnect: re-associate fleet NPCs with the new peer_id
+	if is_reconnect and player_uuid != "":
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		if npc_auth:
+			npc_auth.on_player_reconnected(player_uuid, sender_id)
 
 	# Notify ALL clients (including new one) about this player
 	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)

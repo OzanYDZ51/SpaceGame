@@ -622,11 +622,6 @@ func _sync_entity_registry_position(id: StringName, data: ShipLODData) -> void:
 # =============================================================================
 
 func _tick_combat_bridge() -> void:
-	var class_dps := {
-		&"Fighter": 18.0,
-		&"Frigate": 65.0,
-	}
-
 	var dead_ids: Array[StringName] = []
 
 	# Collect combatant IDs from LOD1+LOD2+LOD3 (skip LOD0 - handled by real AI)
@@ -675,7 +670,8 @@ func _tick_combat_bridge() -> void:
 		if target_data.current_lod == ShipLODData.LODLevel.LOD0 or target_data.current_lod == ShipLODData.LODLevel.LOD1:
 			continue
 
-		var dps: float = class_dps.get(data.ship_class, 15.0)
+		var ship_res: ShipData = ShipRegistry.get_ship_data(data.ship_id)
+		var dps: float = ship_res.lod_combat_dps if ship_res else 15.0
 		var damage_this_tick := dps * COMBAT_BRIDGE_INTERVAL
 		if target_data.shield_ratio > 0.0:
 			target_data.shield_ratio = maxf(target_data.shield_ratio - damage_this_tick * 0.008, 0.0)

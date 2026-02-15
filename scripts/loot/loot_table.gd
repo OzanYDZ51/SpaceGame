@@ -2,8 +2,7 @@ class_name LootTable
 extends RefCounted
 
 # =============================================================================
-# Loot Table - Defines drops by ship class
-# Placeholder items for now; real economy items plug in later.
+# Loot Table - Data-driven drops from ShipData loot fields.
 # =============================================================================
 
 # Item types
@@ -30,33 +29,28 @@ const TYPE_COLORS := {
 const MATERIAL_POOL: Array[String] = ["metal", "electronics", "water", "iron"]
 
 
+## Data-driven loot: reads parameters from ShipData fields.
+static func roll_drops_for_ship(ship_data: ShipData) -> Array[Dictionary]:
+	return _roll(
+		ship_data.loot_credits_min, ship_data.loot_credits_max,
+		ship_data.loot_mat_count_min, ship_data.loot_mat_count_max,
+		ship_data.loot_weapon_part_chance, 0.0)
+
+
+## Legacy compat wrapper — looks up ShipData by class, falls back to defaults.
 static func roll_drops(ship_class: StringName) -> Array[Dictionary]:
+	# Find first ship with matching class to get loot params
+	for sid in ShipRegistry.get_all_ship_ids():
+		var data := ShipRegistry.get_ship_data(sid)
+		if data and data.ship_class == ship_class:
+			return roll_drops_for_ship(data)
+	# Fallback defaults
+	return _roll(100, 300, 1, 1, 0.0, 0.0)
+
+
+static func _roll(credit_min: int, credit_max: int, mat_min: int, mat_max: int,
+		wp_chance: float, dc_chance: float) -> Array[Dictionary]:
 	var drops: Array[Dictionary] = []
-
-	# Per-class loot parameters
-	var credit_min: int
-	var credit_max: int
-	var mat_count_min: int
-	var mat_count_max: int
-	var weapon_part_chance: float
-	var data_chip_chance: float
-
-	match ship_class:
-		&"Fighter":
-			credit_min = 150; credit_max = 400
-			mat_count_min = 1; mat_count_max = 2
-			weapon_part_chance = 0.0
-			data_chip_chance = 0.0
-		&"Frigate":
-			credit_min = 500; credit_max = 1200
-			mat_count_min = 3; mat_count_max = 4
-			weapon_part_chance = 0.25
-			data_chip_chance = 0.0
-		_:
-			credit_min = 100; credit_max = 300
-			mat_count_min = 1; mat_count_max = 1
-			weapon_part_chance = 0.0
-			data_chip_chance = 0.0
 
 	# Credits always drop
 	drops.append({
@@ -67,7 +61,7 @@ static func roll_drops(ship_class: StringName) -> Array[Dictionary]:
 	})
 
 	# Random materials
-	var mat_count: int = randi_range(mat_count_min, mat_count_max)
+	var mat_count: int = randi_range(mat_min, mat_max)
 	for i in mat_count:
 		var mat_type: String = MATERIAL_POOL[randi() % MATERIAL_POOL.size()]
 		var mat_name: String = mat_type.capitalize()
@@ -87,7 +81,7 @@ static func roll_drops(ship_class: StringName) -> Array[Dictionary]:
 			})
 
 	# Rare: weapon part
-	if weapon_part_chance > 0.0 and randf() < weapon_part_chance:
+	if wp_chance > 0.0 and randf() < wp_chance:
 		drops.append({
 			"name": "Weapon Part",
 			"type": TYPE_WEAPON_PART,
@@ -96,7 +90,7 @@ static func roll_drops(ship_class: StringName) -> Array[Dictionary]:
 		})
 
 	# Rare: data chip
-	if data_chip_chance > 0.0 and randf() < data_chip_chance:
+	if dc_chance > 0.0 and randf() < dc_chance:
 		drops.append({
 			"name": "Data Chip",
 			"type": TYPE_DATA_CHIP,

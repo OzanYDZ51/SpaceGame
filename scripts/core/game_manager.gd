@@ -309,7 +309,7 @@ func _initialize_game() -> void:
 	FloatingOrigin.set_universe_node(universe_node)
 
 	# Setup player ship with combat systems
-	ShipFactory.setup_player_ship(&"fighter_mk1", player_ship as ShipController)
+	ShipFactory.setup_player_ship(Constants.DEFAULT_SHIP_ID, player_ship as ShipController)
 
 	# Generate galaxy (needed before PlayerData.initialize)
 	_galaxy = GalaxyGenerator.generate(Constants.galaxy_seed)
@@ -339,7 +339,7 @@ func _initialize_game() -> void:
 					var mod_res := ModuleRegistry.get_module(starting_fleet_ship.modules[i])
 					if mod_res:
 						start_em.equip_module(i, mod_res)
-	NetworkManager.local_ship_id = &"fighter_mk1"
+	NetworkManager.local_ship_id = Constants.DEFAULT_SHIP_ID
 
 	# Docking system (child of player ship, scans for nearby stations)
 	_docking_system = DockingSystem.new()
@@ -455,8 +455,8 @@ func _initialize_game() -> void:
 	# Register player ship in LOD system (always LOD0)
 	var player_lod := ShipLODData.new()
 	player_lod.id = &"player_ship"
-	player_lod.ship_id = &"frigate_mk1"
-	player_lod.ship_class = &"Frigate"
+	player_lod.ship_id = player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID
+	player_lod.ship_class = player_ship.ship_data.ship_class if player_ship.ship_data else &"Fighter"
 	player_lod.faction = &"neutral"
 	player_lod.display_name = NetworkManager.local_player_name
 	player_lod.node_ref = player_ship
@@ -682,10 +682,11 @@ func _initialize_game() -> void:
 	_docking_mgr.discord_rpc = _net_sync_mgr.discord_rpc if _net_sync_mgr else null
 	_docking_mgr.get_game_state = func() -> GameState: return current_state
 	add_child(_docking_mgr)
-	# Inject docking refs into death/respawn manager for auto-dock on respawn
+	# Inject docking + ship change refs into death/respawn manager for auto-dock on respawn
 	if _death_respawn_mgr:
 		_death_respawn_mgr.docking_mgr = _docking_mgr
 		_death_respawn_mgr.docking_system = _docking_system
+		_death_respawn_mgr.ship_change_mgr = _ship_change_mgr
 	# Connect station/commerce/equipment screen signals directly to DockingManager
 	_station_screen.undock_requested.connect(_docking_mgr.handle_undock)
 	_station_screen.equipment_requested.connect(_docking_mgr.handle_equipment_requested)
@@ -782,7 +783,7 @@ func _on_system_unloading(system_id: int) -> void:
 	_cleanup_player_autopilot_wp()
 	_build_available = false
 	if _fleet_deployment_mgr:
-		_fleet_deployment_mgr.auto_retrieve_all()
+		_fleet_deployment_mgr.release_scene_nodes()
 	SaveManager.trigger_save("system_jump")
 	if _net_sync_mgr:
 		_net_sync_mgr.on_system_unloading(system_id)

@@ -65,17 +65,33 @@ func cycle_target_forward() -> void:
 
 
 func target_nearest_hostile() -> void:
-	target_nearest_to_crosshair()
+	# T key — target nearest hostile only (skip allies)
+	var ship := get_parent() as Node3D
+	if ship == null:
+		return
+	var own_faction: StringName = ship.faction if "faction" in ship else &"neutral"
+	var hostiles: Array[Node3D] = []
+	for t in _targetable_ships:
+		if not is_instance_valid(t) or not t.is_inside_tree():
+			continue
+		var t_faction: StringName = t.faction if "faction" in t else &"unknown"
+		if not _is_allied(own_faction, t_faction):
+			hostiles.append(t)
+	_target_nearest_to_crosshair_from(hostiles)
 
 
 func target_nearest_to_crosshair() -> void:
+	_target_nearest_to_crosshair_from(_targetable_ships)
+
+
+func _target_nearest_to_crosshair_from(candidates: Array[Node3D]) -> void:
 	var ship := get_parent() as Node3D
 	if ship == null:
 		return
 	var cam := ship.get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	if _targetable_ships.is_empty():
+	if candidates.is_empty():
 		clear_target()
 		return
 
@@ -84,7 +100,7 @@ func target_nearest_to_crosshair() -> void:
 	var in_reticle_dist: Array[float] = []  # screen distance for sorting
 	var out_of_reticle: Array[Node3D] = []  # already sorted by 3D distance from _gather
 
-	for t in _targetable_ships:
+	for t in candidates:
 		if not is_instance_valid(t) or not t.is_inside_tree():
 			continue
 		var to_target: Vector3 = t.global_position - cam.global_position
@@ -238,8 +254,9 @@ func _gather_targetable_ships() -> void:
 	if ship == null:
 		return
 
-	# Determine own faction for friendly-fire prevention
+	# Determine own faction for friendly-fire prevention (NPC only)
 	var own_faction: StringName = ship.faction if "faction" in ship else &"neutral"
+	var is_player: bool = ship.is_player_controlled if "is_player_controlled" in ship else false
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
@@ -250,8 +267,8 @@ func _gather_targetable_ships() -> void:
 			var data := lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
 				continue
-			# Skip allied fleet ships (player can't target own fleet)
-			if _is_allied(own_faction, data.faction):
+			# NPC ships skip allied targets (friendly fire prevention)
+			if not is_player and _is_allied(own_faction, data.faction):
 				continue
 			# Only target ships with a scene node (LOD0/LOD1), never self
 			if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref != ship:
@@ -263,9 +280,9 @@ func _gather_targetable_ships() -> void:
 			if node == ship:
 				continue
 			if node is Node3D:
-				# Skip allied fleet ships
+				# NPC ships skip allied targets
 				var node_faction: StringName = node.faction if "faction" in node else &"neutral"
-				if _is_allied(own_faction, node_faction):
+				if not is_player and _is_allied(own_faction, node_faction):
 					continue
 				var dist: float = ship.global_position.distance_to((node as Node3D).global_position)
 				if dist <= target_lock_range:

@@ -24,6 +24,9 @@ enum ModuleType { COQUE, ENERGIE, BOUCLIER, ARME, SCANNER, MOTEUR }
 @export var weapon_range_mult: float = 1.0
 @export var price: int = 0
 
+# --- Commerce ---
+@export var sold_at_station_types: Array[StringName] = []
+
 
 func get_bonuses_text() -> Array[String]:
 	var lines: Array[String] = []

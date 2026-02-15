@@ -108,18 +108,17 @@ static func setup_player_ship(ship_id: StringName, controller: ShipController) -
 	em.name = "EquipmentManager"
 	controller.add_child(em)
 	em.setup(data)
-	# Equip defaults
-	var default_shield_name := ShieldRegistry.get_default_shield(data.ship_class)
-	var default_shield := ShieldRegistry.get_shield(default_shield_name)
-	if default_shield:
-		em.equip_shield(default_shield)
-	var default_engine_name := EngineRegistry.get_default_engine(data.ship_class)
-	var default_engine := EngineRegistry.get_engine(default_engine_name)
-	if default_engine:
-		em.equip_engine(default_engine)
-	var default_mods := ModuleRegistry.get_default_modules(data.ship_class)
-	for i in mini(default_mods.size(), data.module_slots.size()):
-		var mod := ModuleRegistry.get_module(default_mods[i])
+	# Equip defaults from ShipData
+	if data.default_shield != &"":
+		var default_shield := ShieldRegistry.get_shield(data.default_shield)
+		if default_shield:
+			em.equip_shield(default_shield)
+	if data.default_engine != &"":
+		var default_engine := EngineRegistry.get_engine(data.default_engine)
+		if default_engine:
+			em.equip_engine(default_engine)
+	for i in mini(data.default_modules.size(), data.module_slots.size()):
+		var mod := ModuleRegistry.get_module(data.default_modules[i])
 		if mod:
 			em.equip_module(i, mod)
 
@@ -270,13 +269,13 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 			if npc_auth and npc_auth._npcs.has(npc_name):
 				var upos := FloatingOrigin.to_universe_pos(death_pos)
-				var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+				var drops := LootTable.roll_drops_for_ship(ship.ship_data)
 				# killer_pid=0 means killed by local AI/combat bridge (no player killer)
 				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
 				npc_auth.unregister_npc(npc_name)
 			else:
 				# NPC not registered with NpcAuthority — spawn loot locally (host player)
-				var drops := LootTable.roll_drops(ship.ship_data.ship_class)
+				var drops := LootTable.roll_drops_for_ship(ship.ship_data)
 				if not drops.is_empty():
 					var crate := CargoCrate.new()
 					crate.contents = drops

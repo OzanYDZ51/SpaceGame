@@ -42,6 +42,7 @@ func main() {
 	changelogRepo := repository.NewChangelogRepository(db)
 	eventRepo := repository.NewEventRepository(db)
 	discordRepo := repository.NewDiscordRepository(db)
+	fleetRepo := repository.NewFleetRepository(db)
 
 	// Services
 	authSvc := service.NewAuthService(playerRepo, sessionRepo, cfg.JWTSecret)
@@ -121,6 +122,12 @@ func main() {
 	// Game server events
 	eventH := handler.NewEventHandler(eventSvc)
 	server.Post("/event", eventH.RecordEvent)
+	// Fleet management (server-to-server)
+	fleetH := handler.NewFleetHandler(fleetRepo)
+	server.Get("/fleet/deployed", fleetH.GetDeployed)
+	server.Put("/fleet/sync", fleetH.SyncPositions)
+	server.Post("/fleet/death", fleetH.ReportDeath)
+	server.Put("/fleet/upsert", fleetH.BulkUpsert)
 
 	// Admin — registered BEFORE protected group
 	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))

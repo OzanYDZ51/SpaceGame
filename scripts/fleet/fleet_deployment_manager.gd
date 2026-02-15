@@ -251,6 +251,24 @@ func auto_retrieve_all() -> void:
 		retrieve_ship(idx)
 
 
+## Free all deployed NPC nodes from the scene WITHOUT changing deployment_state.
+## Ships remain marked DEPLOYED in their system — they'll respawn via redeploy_saved_ships()
+## when the player returns to that system.
+func release_scene_nodes() -> void:
+	if _fleet == null:
+		return
+	for fleet_index in _deployed_ships.keys():
+		var npc_ref = _deployed_ships[fleet_index]
+		if is_instance_valid(npc_ref):
+			var npc: ShipController = npc_ref
+			EntityRegistry.unregister(npc.name)
+			var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+			if lod_mgr:
+				lod_mgr.unregister_ship(StringName(npc.name))
+			npc.queue_free()
+	_deployed_ships.clear()
+
+
 func ensure_deployed_visible() -> void:
 	for npc in _deployed_ships.values():
 		if is_instance_valid(npc):
@@ -360,3 +378,41 @@ func request_change_command(fleet_index: int, cmd: StringName, params: Dictionar
 
 func _is_multiplayer_client() -> bool:
 	return NetworkManager.is_connected_to_server() and not NetworkManager.is_server()
+
+
+## Client-side: apply fleet status from server on reconnect.
+## alive = [{ fleet_index, npc_id }], deaths = [{ fleet_index, npc_id, death_time }]
+func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
+	if _fleet == null:
+		return
+
+	# Mark ships that died while we were offline
+	for death in deaths:
+		var fi: int = int(death.get("fleet_index", -1))
+		if fi >= 0 and fi < _fleet.ships.size():
+			var fs := _fleet.ships[fi]
+			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
+				fs.deployed_npc_id = &""
+				fs.deployed_command = &""
+				fs.deployed_command_params = {}
+				if GameManager._notif:
+					GameManager._notif.fleet.lost(fs.custom_name)
+
+	# Confirm alive ships are still DEPLOYED
+	var alive_indices: Dictionary = {}
+	for entry in alive:
+		alive_indices[int(entry.get("fleet_index", -1))] = true
+
+	# Ships that were DEPLOYED but not in alive list → mark DESTROYED
+	for i in _fleet.ships.size():
+		var fs := _fleet.ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+			if not alive_indices.has(i):
+				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
+				fs.deployed_npc_id = &""
+				fs.deployed_command = &""
+				fs.deployed_command_params = {}
+
+	_fleet.fleet_changed.emit()
+	print("FleetDeploy: Reconnect status — %d alive, %d died offline" % [alive.size(), deaths.size()])

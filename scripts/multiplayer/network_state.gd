@@ -8,7 +8,7 @@ extends RefCounted
 
 var peer_id: int = -1
 var player_name: String = ""
-var ship_id: StringName = &"fighter_mk1"
+var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
 var system_id: int = 0
 
@@ -63,7 +63,7 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary) -> void:
 	peer_id = d.get("pid", -1)
 	player_name = d.get("name", "")
-	ship_id = StringName(d.get("ship", "fighter_mk1"))
+	ship_id = StringName(d.get("ship", String(Constants.DEFAULT_SHIP_ID)))
 	var sdata := ShipRegistry.get_ship_data(ship_id)
 	ship_class = sdata.ship_class if sdata else &"Fighter"
 	system_id = d.get("sys", 0)

@@ -13,3 +13,6 @@ extends Resource
 @export var cruise_mult: float = 1.0
 @export var boost_drain_mult: float = 1.0
 @export var price: int = 0
+
+# --- Commerce ---
+@export var sold_at_station_types: Array[StringName] = []

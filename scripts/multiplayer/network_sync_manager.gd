@@ -259,7 +259,7 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if npc_id == &"" or remote_npcs.has(npc_id):
 		return
 
-	var sid := StringName(data.get("sid", "fighter_mk1"))
+	var sid := StringName(data.get("sid", String(Constants.DEFAULT_SHIP_ID)))
 	var fac := StringName(data.get("fac", "hostile"))
 
 	var lod_data := ShipLODData.new()

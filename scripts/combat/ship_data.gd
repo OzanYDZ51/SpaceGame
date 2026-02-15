@@ -74,3 +74,29 @@ extends Resource
 
 # --- Utility ---
 @export var utility_slot_count: int = 0
+
+# --- Default Equipment (data-driven defaults, replaces registry lookups) ---
+@export_group("Defaults")
+@export var default_shield: StringName = &""
+@export var default_engine: StringName = &""
+@export var default_modules: Array[StringName] = []
+
+# --- Loot (data-driven drops, replaces LootTable match) ---
+@export_group("Loot")
+@export var loot_credits_min: int = 100
+@export var loot_credits_max: int = 300
+@export var loot_mat_count_min: int = 1
+@export var loot_mat_count_max: int = 1
+@export var loot_weapon_part_chance: float = 0.0
+
+# --- LOD Combat (data-driven DPS, replaces ShipLODManager dict) ---
+@export_group("LOD")
+@export var lod_combat_dps: float = 15.0
+
+# --- NPC Encounters (tier for danger-level composition) ---
+@export_group("NPC")
+@export var npc_tier: int = 0  # 0=low, 1=mid, 2=high
+
+# --- Commerce (which station types sell this ship) ---
+@export_group("Commerce")
+@export var sold_at_station_types: Array[StringName] = []

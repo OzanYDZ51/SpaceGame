@@ -28,7 +28,7 @@ func _ready() -> void:
 
 func update_visibility() -> void:
 	if _mining_heat:
-		var show_heat: bool = mining_system != null and mining_system.heat > 0.01
+		var show_heat: bool = mining_system != null and mining_system.has_mining_laser() and mining_system.heat > 0.01
 		_mining_heat.visible = show_heat
 		if show_heat:
 			_mining_heat.queue_redraw()

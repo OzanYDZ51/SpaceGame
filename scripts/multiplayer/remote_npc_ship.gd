@@ -8,7 +8,7 @@ extends Node3D
 # =============================================================================
 
 var npc_id: StringName = &""
-var ship_id: StringName = &"fighter_mk1"
+var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var faction: StringName = &"hostile"
 
 # Interpolation buffer

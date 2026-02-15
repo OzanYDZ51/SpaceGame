@@ -9,7 +9,7 @@ extends Node3D
 
 var peer_id: int = -1
 var player_name: String = ""
-var ship_id: StringName = &"fighter_mk1"
+var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
 var _was_dead: bool = false
 var _remote_beam: MiningLaserBeam = null

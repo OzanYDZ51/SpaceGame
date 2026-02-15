@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = &"Mining Laser Mk1"
+weapon_type = 6
+slot_size = 0
+ammo_type = 0
+damage_per_hit = 10.0
+damage_type = &"thermal"
+fire_rate = 2.0
+energy_cost_per_shot = 4.0
+projectile_speed = 0.0
+projectile_lifetime = 0.0
+bolt_color = Color(0.2, 1, 0.5, 1)
+bolt_length = 0.0
+weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk1.tscn"
+price = 1000
+sold_at_station_types = Array[StringName]([&"repair", &"mining"])

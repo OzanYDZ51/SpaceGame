@@ -115,10 +115,10 @@ func apply_state(state: Dictionary) -> void:
 		)
 
 	# Ship change (must happen after fleet is restored by PlayerData)
-	var ship_id: String = state.get("current_ship_id", "fighter_mk1")
+	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
 	var ship := GameManager.player_ship as ShipController
 	if ship and ship_id != "":
-		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else &"fighter_mk1")
+		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else Constants.DEFAULT_SHIP_ID)
 		if current_sid != ship_id and GameManager.player_fleet:
 			var target_idx: int = GameManager.player_fleet.active_index
 			var active_fs := GameManager.player_fleet.get_active()

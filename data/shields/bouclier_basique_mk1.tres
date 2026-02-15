@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ShieldResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/shield_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+shield_name = &"Bouclier Basique Mk1"
+slot_size = 0
+shield_hp_per_facing = 100.0
+regen_rate = 12.0
+regen_delay = 4.0
+bleedthrough = 0.12
+price = 800
+sold_at_station_types = Array[StringName]([&"repair", &"trade", &"mining"])

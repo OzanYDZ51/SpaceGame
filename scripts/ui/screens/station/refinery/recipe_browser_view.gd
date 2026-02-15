@@ -258,6 +258,7 @@ func _draw_recipe_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> v
 
 
 static func _format_time(seconds: float) -> String:
+	@warning_ignore("integer_division")
 	var mins: int = int(seconds) / 60
 	var secs: int = int(seconds) % 60
 	if mins > 0:

@@ -9,6 +9,9 @@ extends Node
 # --- Version ---
 const GAME_VERSION: String = "0.1.86"
 
+# --- Default Ship ---
+const DEFAULT_SHIP_ID: StringName = &"fighter_mk1"
+
 # --- Floating Origin ---
 const ORIGIN_SHIFT_THRESHOLD: float = 5000.0
 

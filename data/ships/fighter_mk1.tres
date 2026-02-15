@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"fighter_mk1"
+ship_name = &"Fighter Mk I"
+ship_class = &"Fighter"
+model_path = "res://assets/models/tie.glb"
+model_scale = 2.0
+exhaust_scale = 0.8
+ship_scene_path = "res://scenes/ships/fighter_mk1.tscn"
+default_loadout = Array[StringName]([&"Laser Mk1", &"Laser Mk1"])
+hull_hp = 1000.0
+shield_hp = 500.0
+shield_regen_rate = 15.0
+shield_regen_delay = 4.0
+shield_damage_bleedthrough = 0.1
+armor_rating = 5.0
+mass = 50000.0
+accel_forward = 80.0
+accel_backward = 50.0
+accel_strafe = 40.0
+accel_vertical = 40.0
+max_speed_normal = 300.0
+max_speed_boost = 600.0
+max_speed_cruise = 850000.0
+rotation_pitch_speed = 30.0
+rotation_yaw_speed = 25.0
+rotation_roll_speed = 50.0
+max_speed_lateral = 150.0
+max_speed_vertical = 150.0
+rotation_damp_min_factor = 0.15
+energy_capacity = 100.0
+energy_regen_rate = 22.0
+boost_energy_drain = 15.0
+shield_slot_size = "S"
+engine_slot_size = "S"
+module_slots = Array[String](["S", "S"])
+price = 30000
+cargo_capacity = 30
+sensor_range = 3000.0
+engagement_range = 1500.0
+disengage_range = 4000.0
+default_shield = &"Bouclier Basique Mk1"
+default_engine = &"Propulseur Standard Mk1"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Condensateur d'Energie"])
+loot_credits_min = 150
+loot_credits_max = 400
+loot_mat_count_min = 1
+loot_mat_count_max = 2
+loot_weapon_part_chance = 0.0
+lod_combat_dps = 18.0
+npc_tier = 0
+sold_at_station_types = Array[StringName]([&"repair", &"military", &"mining"])

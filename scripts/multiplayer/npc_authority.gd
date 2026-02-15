@@ -20,6 +20,9 @@ const HIT_DAMAGE_TOLERANCE: float = 0.5  # ±50% damage variance allowed
 var _active: bool = false
 var _batch_timer: float = 0.0
 var _slow_batch_timer: float = 0.0
+var _fleet_sync_timer: float = 0.0
+const FLEET_SYNC_INTERVAL: float = 30.0
+var _backend_client: ServerBackendClient = null
 
 # npc_id -> { system_id, ship_id, faction, node_ref (if LOD0/1) }
 var _npcs: Dictionary = {}
@@ -32,10 +35,12 @@ var _remote_npcs: Dictionary = {}
 # Peer system tracking: peer_id -> last known system_id (detect system changes).
 var _peer_systems: Dictionary = {}
 
-# Fleet NPC tracking: npc_id -> { owner_pid, fleet_index }
+# Fleet NPC tracking: npc_id -> { owner_uuid, owner_pid, fleet_index }
 var _fleet_npcs: Dictionary = {}
-# owner_pid -> Array[StringName] npc_ids
+# owner_uuid -> Array[StringName] npc_ids (persistent across reconnects)
 var _fleet_npcs_by_owner: Dictionary = {}
+# owner_uuid -> Array[Dictionary] { fleet_index, npc_id, death_time }
+var _fleet_deaths_while_offline: Dictionary = {}
 
 
 func _ready() -> void:
@@ -46,7 +51,14 @@ func _ready() -> void:
 func _check_activation() -> void:
 	if NetworkManager.is_server() and not _active:
 		_active = true
+		# Create backend client for fleet persistence
+		_backend_client = ServerBackendClient.new()
+		_backend_client.name = "ServerBackendClient"
+		add_child(_backend_client)
+		_fleet_sync_timer = FLEET_SYNC_INTERVAL
 		print("NpcAuthority: Activated (server mode)")
+		# Load previously deployed fleet ships from backend (async)
+		_load_deployed_fleet_ships_from_backend()
 
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +67,7 @@ func _physics_process(delta: float) -> void:
 
 	_batch_timer -= delta
 	_slow_batch_timer -= delta
+	_fleet_sync_timer -= delta
 
 	# Update remote system NPC positions (simple velocity drift)
 	_update_remote_npcs(delta)
@@ -71,6 +84,11 @@ func _physics_process(delta: float) -> void:
 	if do_full or do_slow:
 		_broadcast_npc_states(do_full, do_slow)
 		_broadcast_remote_npc_states(do_slow)
+
+	# Periodic fleet sync to backend (30s)
+	if _fleet_sync_timer <= 0.0:
+		_fleet_sync_timer = FLEET_SYNC_INTERVAL
+		_sync_fleet_to_backend()
 
 
 # =========================================================================
@@ -419,7 +437,7 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 	var ship_data := ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
 	var loot: Array = []
 	if ship_data:
-		loot = LootTable.roll_drops(ship_data.ship_class)
+		loot = LootTable.roll_drops_for_ship(ship_data)
 
 	# Report kill to Discord via EventReporter
 	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
@@ -491,7 +509,23 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 		else:
 			NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), killer_pid, death_pos, loot)
 
-	# Clean up fleet tracking if this was a fleet NPC
+	# Track death for offline owners + report to backend + clean up fleet tracking
+	if _fleet_npcs.has(npc_id):
+		var fleet_info: Dictionary = _fleet_npcs[npc_id]
+		var owner_uuid: String = fleet_info.get("owner_uuid", "")
+		var owner_pid: int = fleet_info.get("owner_pid", -1)
+		var fi: int = fleet_info.get("fleet_index", -1)
+		# Report death to backend for persistence
+		_report_fleet_death_to_backend(owner_uuid, fi)
+		# If owner is offline, record death for notification on reconnect
+		if owner_uuid != "" and not NetworkManager.peers.has(owner_pid):
+			if not _fleet_deaths_while_offline.has(owner_uuid):
+				_fleet_deaths_while_offline[owner_uuid] = []
+			_fleet_deaths_while_offline[owner_uuid].append({
+				"fleet_index": fi,
+				"npc_id": String(npc_id),
+				"death_time": Time.get_unix_time_from_system(),
+			})
 	_unregister_fleet_npc(npc_id)
 
 
@@ -500,10 +534,12 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 # =========================================================================
 
 func register_fleet_npc(npc_id: StringName, owner_pid: int, fleet_index: int) -> void:
-	_fleet_npcs[npc_id] = { "owner_pid": owner_pid, "fleet_index": fleet_index }
-	if not _fleet_npcs_by_owner.has(owner_pid):
-		_fleet_npcs_by_owner[owner_pid] = []
-	var owner_list: Array = _fleet_npcs_by_owner[owner_pid]
+	var uuid: String = NetworkManager.get_peer_uuid(owner_pid)
+	_fleet_npcs[npc_id] = { "owner_uuid": uuid, "owner_pid": owner_pid, "fleet_index": fleet_index }
+	var owner_key: String = uuid if uuid != "" else str(owner_pid)
+	if not _fleet_npcs_by_owner.has(owner_key):
+		_fleet_npcs_by_owner[owner_key] = []
+	var owner_list: Array = _fleet_npcs_by_owner[owner_key]
 	if not owner_list.has(npc_id):
 		owner_list.append(npc_id)
 
@@ -512,12 +548,14 @@ func _unregister_fleet_npc(npc_id: StringName) -> void:
 	if not _fleet_npcs.has(npc_id):
 		return
 	var info: Dictionary = _fleet_npcs[npc_id]
+	var uuid: String = info.get("owner_uuid", "")
 	var owner_pid: int = info.get("owner_pid", -1)
-	if _fleet_npcs_by_owner.has(owner_pid):
-		var owner_list: Array = _fleet_npcs_by_owner[owner_pid]
+	var owner_key: String = uuid if uuid != "" else str(owner_pid)
+	if _fleet_npcs_by_owner.has(owner_key):
+		var owner_list: Array = _fleet_npcs_by_owner[owner_key]
 		owner_list.erase(npc_id)
 		if owner_list.is_empty():
-			_fleet_npcs_by_owner.erase(owner_pid)
+			_fleet_npcs_by_owner.erase(owner_key)
 	_fleet_npcs.erase(npc_id)
 
 
@@ -529,6 +567,64 @@ func get_fleet_npc_owner(npc_id: StringName) -> int:
 	if _fleet_npcs.has(npc_id):
 		return _fleet_npcs[npc_id].get("owner_pid", -1)
 	return -1
+
+
+## Called when a player disconnects. Fleet NPCs persist — only clear the peer_id.
+func on_player_disconnected(uuid: String, old_pid: int) -> void:
+	if uuid == "":
+		return
+	# Fleet NPCs stay alive — just mark owner_pid as -1 (offline)
+	if _fleet_npcs_by_owner.has(uuid):
+		for npc_id in _fleet_npcs_by_owner[uuid]:
+			if _fleet_npcs.has(npc_id):
+				_fleet_npcs[npc_id]["owner_pid"] = -1
+	print("NpcAuthority: Player %s (pid=%d) disconnected — fleet NPCs persist" % [uuid, old_pid])
+
+
+## Called when a player reconnects. Re-associate fleet NPCs and send status.
+func on_player_reconnected(uuid: String, new_pid: int) -> void:
+	if uuid == "":
+		return
+	# Re-associate owner_pid for all fleet NPCs
+	if _fleet_npcs_by_owner.has(uuid):
+		for npc_id in _fleet_npcs_by_owner[uuid]:
+			if _fleet_npcs.has(npc_id):
+				_fleet_npcs[npc_id]["owner_pid"] = new_pid
+
+	# Build alive fleet status
+	var alive_list: Array = []
+	if _fleet_npcs_by_owner.has(uuid):
+		for npc_id in _fleet_npcs_by_owner[uuid]:
+			if _fleet_npcs.has(npc_id):
+				var info: Dictionary = _fleet_npcs[npc_id]
+				alive_list.append({
+					"fleet_index": info.get("fleet_index", -1),
+					"npc_id": String(npc_id),
+				})
+
+	# Get deaths that happened while offline
+	var deaths: Array = _fleet_deaths_while_offline.get(uuid, [])
+	_fleet_deaths_while_offline.erase(uuid)
+
+	# Send status to the reconnected client
+	if new_pid == 1 and not NetworkManager.is_dedicated_server:
+		_fleet_reconnect_status.emit(alive_list, deaths)
+	else:
+		_rpc_fleet_reconnect_status.rpc_id(new_pid, alive_list, deaths)
+
+	print("NpcAuthority: Player %s reconnected (pid=%d) — %d alive, %d died offline" % [uuid, new_pid, alive_list.size(), deaths.size()])
+
+
+signal _fleet_reconnect_status(alive: Array, deaths: Array)
+
+
+## Server -> Client: Fleet status on reconnect (alive NPCs + offline deaths).
+@rpc("authority", "reliable")
+func _rpc_fleet_reconnect_status(alive: Array, deaths: Array) -> void:
+	# Client-side: update local fleet data
+	var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+	if fleet_mgr:
+		fleet_mgr.apply_reconnect_fleet_status(alive, deaths)
 
 
 ## Server handles deploy request from a client (or host).
@@ -736,15 +832,8 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 
-	# Spawn config from danger level (mirrors EncounterManager logic)
-	var configs: Array = []
-	match danger_level:
-		0: configs = [{"count": 1, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
-		1: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"neutral", "radius": 300.0}]
-		2: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
-		3: configs = [{"count": 3, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 500.0}]
-		4: configs = [{"count": 2, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 400.0}]
-		5: configs = [{"count": 3, "ship": &"fighter_mk1", "fac": &"hostile", "radius": 500.0}]
+	# Spawn config from danger level (shared with EncounterManager)
+	var configs := EncounterConfig.get_danger_config(danger_level)
 
 	var npcs: Array = []
 	for config in configs:
@@ -858,3 +947,101 @@ func broadcast_asteroid_depleted(asteroid_id: String, system_id: int, sender_pid
 			NetworkManager.asteroid_depleted_received.emit(asteroid_id)
 		else:
 			NetworkManager._rpc_receive_asteroid_depleted.rpc_id(pid, asteroid_id)
+
+
+# =========================================================================
+# FLEET BACKEND SYNC (server → Go backend, 30s interval)
+# =========================================================================
+
+## Collect positions/health of all fleet NPCs and batch-sync to backend.
+func _sync_fleet_to_backend() -> void:
+	if _backend_client == null or _fleet_npcs.is_empty():
+		return
+
+	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
+	if lod_mgr == null:
+		return
+
+	var updates: Array = []
+	for npc_id in _fleet_npcs:
+		var fleet_info: Dictionary = _fleet_npcs[npc_id]
+		var uuid: String = fleet_info.get("owner_uuid", "")
+		if uuid == "":
+			continue
+		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
+		if lod_data == null or lod_data.is_dead:
+			continue
+		var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+		updates.append({
+			"player_id": uuid,
+			"fleet_index": fleet_info.get("fleet_index", -1),
+			"pos_x": upos[0],
+			"pos_y": upos[1],
+			"pos_z": upos[2],
+			"hull_ratio": lod_data.hull_ratio,
+			"shield_ratio": lod_data.shield_ratio,
+		})
+
+	if updates.is_empty():
+		return
+
+	_backend_client.sync_fleet_positions(updates)
+
+
+## Report a fleet NPC death to the backend.
+func _report_fleet_death_to_backend(uuid: String, fleet_index: int) -> void:
+	if _backend_client == null or uuid == "":
+		return
+	_backend_client.report_fleet_death(uuid, fleet_index)
+
+
+## Load previously deployed fleet ships from the backend on server startup.
+func _load_deployed_fleet_ships_from_backend() -> void:
+	if _backend_client == null:
+		return
+
+	var ships: Array = await _backend_client.get_deployed_fleet_ships()
+	if ships.is_empty():
+		print("NpcAuthority: No deployed fleet ships to restore from backend")
+		return
+
+	print("NpcAuthority: Restoring %d deployed fleet ships from backend..." % ships.size())
+	for ship_data in ships:
+		var player_id: String = ship_data.get("player_id", "")
+		var fleet_index: int = int(ship_data.get("fleet_index", -1))
+		var ship_id: String = ship_data.get("ship_id", "")
+		var system_id: int = int(ship_data.get("system_id", 0))
+		var pos_x: float = float(ship_data.get("pos_x", 0.0))
+		var pos_y: float = float(ship_data.get("pos_y", 0.0))
+		var pos_z: float = float(ship_data.get("pos_z", 0.0))
+		var hull: float = float(ship_data.get("hull_ratio", 1.0))
+		var shield: float = float(ship_data.get("shield_ratio", 1.0))
+		var command: String = ship_data.get("command", "")
+		var faction: StringName = &"player_fleet"
+
+		# Register as data-only NPC (will get a real node when a player enters the system)
+		var npc_id := StringName("FleetNPC_%s_%d" % [player_id.left(8), fleet_index])
+
+		# Register in NPC authority
+		register_npc(npc_id, system_id, StringName(ship_id), faction)
+		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index }
+		if not _fleet_npcs_by_owner.has(player_id):
+			_fleet_npcs_by_owner[player_id] = []
+		_fleet_npcs_by_owner[player_id].append(npc_id)
+
+		# Store as remote NPC data for state broadcasting
+		if not _remote_npcs.has(system_id):
+			_remote_npcs[system_id] = []
+		_remote_npcs[system_id].append({
+			"nid": String(npc_id),
+			"sid": ship_id,
+			"fac": String(faction),
+			"px": pos_x, "py": pos_y, "pz": pos_z,
+			"vx": 0.0, "vy": 0.0, "vz": 0.0,
+			"rx": 0.0, "ry": 0.0, "rz": 0.0,
+			"hull": hull, "shd": shield,
+			"thr": 0.5, "ai": 0, "tid": "",
+			"t": Time.get_ticks_msec() / 1000.0,
+		})
+
+	print("NpcAuthority: Restored %d fleet NPCs from backend" % ships.size())

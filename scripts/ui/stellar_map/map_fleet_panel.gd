@@ -484,15 +484,27 @@ func _draw_cargo_tooltip(font: Font) -> void:
 	if row_y < 0.0:
 		return
 
-	const TT_W: float = 180.0
+	const TT_W: float = 200.0
 	const TT_PAD: float = 8.0
 	const LINE_H: float = 16.0
 	const SWATCH_SIZE: float = 8.0
+	const BAR_H: float = 4.0
 
-	# Gather content lines
-	var lines: Array[Dictionary] = []  # { "text": String, "color": Color, "swatch": Color or null }
+	# --- Gather data ---
 	var ship_name: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
-	lines.append({"text": ship_name, "color": MapColors.TEXT, "swatch": Color(), "is_header": true})
+	var sdata := ShipRegistry.get_ship_data(fs.ship_id)
+	var class_text: String = String(sdata.ship_class) if sdata else ""
+
+	var cargo_used: int = fs.cargo.get_total_count() if fs.cargo else 0
+	var cargo_max: int = fs.cargo.capacity if fs.cargo else (sdata.cargo_capacity if sdata else 50)
+	var res_total: int = 0
+	for res_id in fs.ship_resources:
+		res_total += fs.ship_resources[res_id]
+	var total_stored: int = cargo_used + res_total
+	var fill_ratio: float = clampf(float(total_stored) / float(maxi(cargo_max, 1)), 0.0, 1.0)
+
+	# --- Build content lines (after header block) ---
+	var content_lines: Array[Dictionary] = []
 
 	# Resources section
 	var has_resources: bool = false
@@ -500,10 +512,10 @@ func _draw_cargo_tooltip(font: Font) -> void:
 		var qty: int = fs.ship_resources.get(res_id, 0)
 		if qty > 0:
 			if not has_resources:
-				lines.append({"text": "RESSOURCES", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+				content_lines.append({"text": "MINERAIS (%d)" % res_total, "color": MapColors.TEXT_DIM, "swatch": Color()})
 				has_resources = true
 			var def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
-			lines.append({"text": "  %s  %d" % [def["name"], qty], "color": MapColors.LABEL_VALUE, "swatch": def["color"], "is_header": false})
+			content_lines.append({"text": "  %s  %d" % [def["name"], qty], "color": MapColors.LABEL_VALUE, "swatch": def["color"]})
 
 	# Cargo section
 	var has_cargo: bool = false
@@ -512,57 +524,87 @@ func _draw_cargo_tooltip(font: Font) -> void:
 			var qty: int = item.get("quantity", 0)
 			if qty > 0:
 				if not has_cargo:
-					lines.append({"text": "CARGO", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+					content_lines.append({"text": "OBJETS (%d)" % cargo_used, "color": MapColors.TEXT_DIM, "swatch": Color()})
 					has_cargo = true
-				lines.append({"text": "  %s  x%d" % [item.get("name", "?"), qty], "color": MapColors.LABEL_VALUE, "swatch": Color(), "is_header": false})
+				content_lines.append({"text": "  %s  x%d" % [item.get("name", "?"), qty], "color": MapColors.LABEL_VALUE, "swatch": Color()})
 
-	if not has_resources and not has_cargo:
-		lines.append({"text": "SOUTE VIDE", "color": MapColors.TEXT_DIM, "swatch": Color(), "is_header": false})
+	# --- Calculate tooltip height ---
+	# name_line + sep(6) + capacity_line + bar(BAR_H+4) + content
+	var tt_h: float = TT_PAD + LINE_H + 6 + LINE_H + BAR_H + 4 + content_lines.size() * LINE_H + TT_PAD
+	if content_lines.is_empty():
+		tt_h += 2
 
-	# Calculate tooltip dimensions
-	var tt_h: float = TT_PAD * 2 + lines.size() * LINE_H
+	# Position tooltip
 	var tt_x: float = PANEL_W + 8.0
 	var tt_y: float = row_y
-	# Keep on screen vertically
 	if tt_y + tt_h > size.y - 10:
 		tt_y = size.y - tt_h - 10
 	if tt_y < HEADER_H + 4:
 		tt_y = HEADER_H + 4
 
-	# Background
+	# --- Draw background ---
 	var bg_rect := Rect2(tt_x, tt_y, TT_W, tt_h)
 	draw_rect(bg_rect, MapColors.BG_PANEL)
 	draw_rect(bg_rect, MapColors.PANEL_BORDER, false, 1.0)
 
 	# Corner accents
 	var cl: float = 6.0
-	var cx: float = tt_x
-	var cy: float = tt_y
-	var cw: float = TT_W
-	var ch: float = tt_h
-	draw_line(Vector2(cx, cy), Vector2(cx + cl, cy), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx, cy), Vector2(cx, cy + cl), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx + cw, cy), Vector2(cx + cw - cl, cy), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx + cw, cy), Vector2(cx + cw, cy + cl), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx, cy + ch), Vector2(cx + cl, cy + ch), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx, cy + ch), Vector2(cx, cy + ch - cl), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx + cw, cy + ch), Vector2(cx + cw - cl, cy + ch), MapColors.CORNER, 1.5)
-	draw_line(Vector2(cx + cw, cy + ch), Vector2(cx + cw, cy + ch - cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x, tt_y), Vector2(tt_x + cl, tt_y), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x, tt_y), Vector2(tt_x, tt_y + cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x + TT_W, tt_y), Vector2(tt_x + TT_W - cl, tt_y), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x + TT_W, tt_y), Vector2(tt_x + TT_W, tt_y + cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x, tt_y + tt_h), Vector2(tt_x + cl, tt_y + tt_h), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x, tt_y + tt_h), Vector2(tt_x, tt_y + tt_h - cl), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x + TT_W, tt_y + tt_h), Vector2(tt_x + TT_W - cl, tt_y + tt_h), MapColors.CORNER, 1.5)
+	draw_line(Vector2(tt_x + TT_W, tt_y + tt_h), Vector2(tt_x + TT_W, tt_y + tt_h - cl), MapColors.CORNER, 1.5)
 
-	# Draw lines
-	var ly: float = tt_y + TT_PAD + LINE_H - 3.0
-	for line_data in lines:
+	# --- Draw content with cursor ---
+	var tx: float = tt_x + TT_PAD
+	var inner_w: float = TT_W - TT_PAD * 2
+	var cy: float = tt_y + TT_PAD
+
+	# Ship name + class on same line
+	draw_string(font, Vector2(tx, cy + LINE_H - 3), ship_name, HORIZONTAL_ALIGNMENT_LEFT, inner_w - 50, UITheme.FONT_SIZE_BODY, MapColors.TEXT)
+	if class_text != "":
+		draw_string(font, Vector2(tt_x + TT_W - TT_PAD, cy + LINE_H - 3), class_text, HORIZONTAL_ALIGNMENT_RIGHT, 80, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
+	cy += LINE_H
+
+	# Separator
+	cy += 2
+	draw_line(Vector2(tx, cy), Vector2(tx + inner_w, cy), Color(MapColors.PANEL_BORDER.r, MapColors.PANEL_BORDER.g, MapColors.PANEL_BORDER.b, 0.4), 1.0)
+	cy += 4
+
+	# Capacity text: SOUTE  12 / 50
+	var cap_text := "SOUTE  %d / %d" % [total_stored, cargo_max]
+	var cap_col: Color = MapColors.LABEL_VALUE if fill_ratio < 0.85 else Color(1.0, 0.5, 0.2, 0.9)
+	draw_string(font, Vector2(tx, cy + LINE_H - 3), cap_text, HORIZONTAL_ALIGNMENT_LEFT, inner_w, UITheme.FONT_SIZE_SMALL, cap_col)
+	cy += LINE_H
+
+	# Fill bar
+	draw_rect(Rect2(tx, cy, inner_w, BAR_H), Color(0.1, 0.2, 0.3, 0.4))
+	if fill_ratio > 0.01:
+		var fill_col: Color
+		if fill_ratio < 0.6:
+			fill_col = Color(0.15, 0.65, 0.85, 0.7)
+		elif fill_ratio < 0.85:
+			fill_col = Color(0.85, 0.7, 0.15, 0.7)
+		else:
+			fill_col = Color(0.95, 0.35, 0.15, 0.8)
+		draw_rect(Rect2(tx, cy, inner_w * fill_ratio, BAR_H), fill_col)
+		draw_line(Vector2(tx, cy), Vector2(tx + inner_w * fill_ratio, cy), Color(fill_col.r, fill_col.g, fill_col.b, 0.9), 1.0)
+	cy += BAR_H + 4
+
+	# Content lines (resources + cargo items)
+	for line_data in content_lines:
 		var text: String = line_data["text"]
 		var col: Color = line_data["color"]
 		var swatch: Color = line_data["swatch"]
-		var fs_size: int = UITheme.FONT_SIZE_BODY if line_data.get("is_header", false) else UITheme.FONT_SIZE_SMALL
-		var tx: float = tt_x + TT_PAD
-		# Draw swatch if it has meaningful alpha
+		var lx: float = tx
 		if swatch.a > 0.01:
-			draw_rect(Rect2(tx, ly - SWATCH_SIZE + 1, SWATCH_SIZE, SWATCH_SIZE), swatch)
-			tx += SWATCH_SIZE + 4.0
-		draw_string(font, Vector2(tx, ly), text, HORIZONTAL_ALIGNMENT_LEFT, TT_W - TT_PAD * 2 - 12, fs_size, col)
-		ly += LINE_H
+			draw_rect(Rect2(lx, cy + LINE_H - 3 - SWATCH_SIZE + 1, SWATCH_SIZE, SWATCH_SIZE), swatch)
+			lx += SWATCH_SIZE + 4.0
+		draw_string(font, Vector2(lx, cy + LINE_H - 3), text, HORIZONTAL_ALIGNMENT_LEFT, inner_w - 12, UITheme.FONT_SIZE_SMALL, col)
+		cy += LINE_H
 
 
 func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
@@ -683,6 +725,27 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 	if ship_data:
 		var cls_text := String(ship_data.ship_class)
 		draw_string(font, Vector2(PANEL_W - MARGIN - 2, y + SHIP_H - 4), cls_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
+
+	# Cargo fill micro-bar (thin line at bottom of row)
+	var c_max: int = fs.cargo.capacity if fs.cargo else 0
+	var c_stored: int = fs.cargo.get_total_count() if fs.cargo else 0
+	for rid in fs.ship_resources:
+		c_stored += fs.ship_resources[rid]
+	if c_max > 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+		var bar_x2: float = MARGIN + 16
+		var bar_w2: float = PANEL_W - MARGIN * 2 - 16
+		var bar_y2: float = y + SHIP_H - 1.5
+		draw_rect(Rect2(bar_x2, bar_y2, bar_w2, 1.5), Color(0.1, 0.2, 0.3, 0.25))
+		var f2: float = clampf(float(c_stored) / float(c_max), 0.0, 1.0)
+		if f2 > 0.01:
+			var fc2: Color
+			if f2 < 0.6:
+				fc2 = Color(0.15, 0.6, 0.8, 0.3)
+			elif f2 < 0.85:
+				fc2 = Color(0.8, 0.65, 0.1, 0.4)
+			else:
+				fc2 = Color(0.9, 0.3, 0.15, 0.5)
+			draw_rect(Rect2(bar_x2, bar_y2, bar_w2 * f2, 1.5), fc2)
 
 
 func _in_clip(y: float, h: float, clip: Rect2) -> bool:

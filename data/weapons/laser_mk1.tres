@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WeaponResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = &"Laser Mk1"
+weapon_type = 0
+slot_size = 0
+ammo_type = 0
+damage_per_hit = 25.0
+damage_type = &"thermal"
+fire_rate = 6.0
+energy_cost_per_shot = 4.0
+projectile_speed = 800.0
+projectile_lifetime = 3.0
+projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+bolt_color = Color(0.3, 0.7, 1, 1)
+bolt_length = 4.0
+fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+price = 500
+sold_at_station_types = Array[StringName]([&"repair", &"military", &"mining"])

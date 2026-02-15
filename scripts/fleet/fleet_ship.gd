@@ -62,14 +62,13 @@ static func from_ship_data(data: ShipData) -> FleetShip:
 			fs.weapons[i] = data.default_loadout[i]
 		else:
 			fs.weapons[i] = &""
-	# Default equipment from registries
-	fs.shield_name = ShieldRegistry.get_default_shield(data.ship_class)
-	fs.engine_name = EngineRegistry.get_default_engine(data.ship_class)
-	var default_mods := ModuleRegistry.get_default_modules(data.ship_class)
+	# Default equipment from ShipData
+	fs.shield_name = data.default_shield
+	fs.engine_name = data.default_engine
 	fs.modules.resize(data.module_slots.size())
 	for i in data.module_slots.size():
-		if i < default_mods.size():
-			fs.modules[i] = default_mods[i]
+		if i < data.default_modules.size():
+			fs.modules[i] = data.default_modules[i]
 		else:
 			fs.modules[i] = &""
 	fs._init_cargo(data.cargo_capacity)

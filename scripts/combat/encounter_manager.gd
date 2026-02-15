@@ -70,19 +70,13 @@ func _do_spawn_encounters(danger_level: int, system_data: StarSystemData) -> voi
 		var radial_dir := station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 
-	match danger_level:
-		0:
-			spawn_patrol(1, &"fighter_mk1", base_pos, 400.0, &"hostile")
-		1:
-			spawn_patrol(2, &"fighter_mk1", base_pos, 300.0, &"neutral")
-		2:
-			spawn_patrol(2, &"fighter_mk1", base_pos, 400.0, &"hostile")
-		3:
-			spawn_patrol(3, &"fighter_mk1", base_pos, 500.0, &"hostile")
-		4:
-			spawn_formation(&"frigate_mk1", &"fighter_mk1", 1, base_pos, &"hostile")
-		5:
-			spawn_formation(&"frigate_mk1", &"fighter_mk1", 2, base_pos, &"hostile")
+	var configs := EncounterConfig.get_danger_config(danger_level)
+	if danger_level == 5 and configs.size() >= 2:
+		# Danger 5: formation (leader + wingmen)
+		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"])
+	else:
+		for cfg in configs:
+			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"])
 
 
 func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile") -> void:
