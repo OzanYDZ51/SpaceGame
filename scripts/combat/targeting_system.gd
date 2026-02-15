@@ -270,9 +270,10 @@ func _gather_targetable_ships() -> void:
 			# NPC ships skip allied targets (friendly fire prevention)
 			if not is_player and _is_allied(own_faction, data.faction):
 				continue
-			# Only target ships with a scene node (LOD0/LOD1), never self
+			# Only target ships with a visible scene node (LOD0/LOD1), never self
 			if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref != ship:
-				_targetable_ships.append(data.node_ref)
+				if data.node_ref is Node3D and (data.node_ref as Node3D).visible:
+					_targetable_ships.append(data.node_ref)
 	else:
 		# Legacy fallback: scan group
 		var all_ships := get_tree().get_nodes_in_group("ships")
@@ -280,6 +281,9 @@ func _gather_targetable_ships() -> void:
 			if node == ship:
 				continue
 			if node is Node3D:
+				# Skip hidden ships (docked, dead puppets)
+				if not (node as Node3D).visible:
+					continue
 				# NPC ships skip allied targets
 				var node_faction: StringName = node.faction if "faction" in node else &"neutral"
 				if not is_player and _is_allied(own_faction, node_faction):

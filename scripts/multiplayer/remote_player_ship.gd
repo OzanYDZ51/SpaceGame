@@ -105,6 +105,19 @@ func receive_state(state: NetworkState) -> void:
 	var should_hide: bool = state.is_docked or state.is_dead or state.is_cruising
 	if visible != (not should_hide):
 		visible = not should_hide
+		# Remove from targeting group + disable collision when hidden
+		if should_hide:
+			if is_in_group("ships"):
+				remove_from_group("ships")
+			var hit_body := get_node_or_null("HitBody") as StaticBody3D
+			if hit_body:
+				hit_body.collision_layer = 0
+		else:
+			if not is_in_group("ships"):
+				add_to_group("ships")
+			var hit_body := get_node_or_null("HitBody") as StaticBody3D
+			if hit_body:
+				hit_body.collision_layer = Constants.LAYER_SHIPS
 
 	# Detect death/respawn transitions and clear stale snapshots
 	if state.is_dead and not _was_dead:

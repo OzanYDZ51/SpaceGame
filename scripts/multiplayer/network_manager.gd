@@ -773,6 +773,9 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 	var target_state: NetworkState = peers[target_pid]
 	if sender_state.system_id != target_state.system_id:
 		return
+	# Reject hits on docked or dead players
+	if target_state.is_docked or target_state.is_dead:
+		return
 	# Distance validation
 	var sender_pos := Vector3(sender_state.pos_x, sender_state.pos_y, sender_state.pos_z)
 	var target_pos := Vector3(target_state.pos_x, target_state.pos_y, target_state.pos_z)
