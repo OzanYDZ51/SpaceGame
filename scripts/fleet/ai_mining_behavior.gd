@@ -571,20 +571,32 @@ func _tick_docked(delta: float) -> void:
 
 
 func _do_sell_resources() -> void:
+	if fleet_ship == null:
+		return
+
+	var commerce: CommerceManager = GameManager._commerce_manager
 	var total_credits: int = 0
-	for res_id in fleet_ship.ship_resources:
+	var res_keys: Array = fleet_ship.ship_resources.keys()
+
+	for res_id in res_keys:
 		var qty: int = fleet_ship.ship_resources[res_id]
 		if qty <= 0:
 			continue
-		var unit_price := PriceCatalog.get_resource_price(res_id)
-		total_credits += unit_price * qty
-		fleet_ship.ship_resources[res_id] = 0
 
-	if total_credits > 0:
-		GameManager.player_data.economy.add_credits(total_credits)
-		SaveManager.mark_dirty()
-		if GameManager._notif:
-			GameManager._notif.fleet.earned(fleet_ship.custom_name, total_credits)
+		if commerce:
+			var unit_price := PriceCatalog.get_resource_price(res_id)
+			if unit_price > 0 and commerce.sell_resource_from_ship(res_id, qty, fleet_ship):
+				total_credits += unit_price * qty
+		else:
+			# Fallback if CommerceManager unavailable
+			var unit_price := PriceCatalog.get_resource_price(res_id)
+			total_credits += unit_price * qty
+			fleet_ship.ship_resources[res_id] = 0
+			GameManager.player_data.economy.add_credits(total_credits)
+			SaveManager.mark_dirty()
+
+	if total_credits > 0 and GameManager._notif:
+		GameManager._notif.fleet.earned(fleet_ship.custom_name, total_credits)
 
 
 func _tick_roaming() -> void:

@@ -240,13 +240,16 @@ func _update_third_person(delta: float) -> void:
 	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
 	if smooth_forward.length_squared() > 0.001:
-		var up_hint := ship_basis.y.lerp(Vector3.UP, 0.05)
-		# Planetary mode: blend toward planet surface normal as "up"
-		if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
-			up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
-		# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
-		var up_vec := (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
-		look_at(global_position + smooth_forward, up_vec)
+		var target_pos := global_position + smooth_forward
+		if not global_position.is_equal_approx(target_pos):
+			var up_hint := ship_basis.y.lerp(Vector3.UP, 0.05)
+			# Planetary mode: blend toward planet surface normal as "up"
+			if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
+				up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
+			# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
+			var up_vec := (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
+			if up_vec.length_squared() > 0.001:
+				look_at(target_pos, up_vec)
 
 	# =========================================================================
 	# DYNAMIC FOV (phase-aware cruise + spike effects)

@@ -671,14 +671,20 @@ func _input(event: InputEvent) -> void:
 									# Toast handled by GameManager; no waypoint needed
 									pass
 							else:
-								# Target has no squadron — treat as move
-								var universe_x: float = _camera.screen_to_universe_x(event.position.x)
-								var universe_z: float = _camera.screen_to_universe_z(event.position.y)
-								var params := {"target_x": universe_x, "target_z": universe_z}
+								# Target has no squadron — auto-create one with target as leader
+								# and selected ships as "follow" members
+								var members_to_add: Array[int] = []
 								for idx in effective_indices:
-									fleet_order_requested.emit(idx, &"move_to", params)
-								_show_waypoint(universe_x, universe_z)
-								_set_route_lines(effective_indices, universe_x, universe_z)
+									if idx != target_fi and _fleet_panel._fleet.get_ship_squadron(idx) == null:
+										members_to_add.append(idx)
+								if members_to_add.size() > 0:
+									squadron_action_requested.emit(&"create", {
+										"leader": target_fi,
+										"members": members_to_add,
+									})
+								else:
+									# All selected are already in squadrons — just join target's new group
+									pass
 						else:
 							# No fleet_index on target — move to position
 							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
@@ -1056,7 +1062,7 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 		context["is_deployed"] = fs.deployment_state == FleetShip.DeploymentState.DEPLOYED
 
 		var fleet_orders := FleetOrderRegistry.get_available_orders(context)
-		var sq_orders := _build_squadron_context_orders(effective_idx)
+		var sq_orders := _build_squadron_context_orders(effective_idx, context)
 		fleet_orders.append_array(sq_orders)
 
 		if not fleet_orders.is_empty():
@@ -1138,13 +1144,25 @@ func _handle_construction_order(order_id: StringName) -> void:
 # =============================================================================
 # SQUADRON CONTEXT ORDERS
 # =============================================================================
-func _build_squadron_context_orders(fleet_index: int) -> Array[Dictionary]:
+func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if _fleet_panel._fleet == null:
 		return result
 
 	var fleet := _fleet_panel._fleet
 	var sq := fleet.get_ship_squadron(fleet_index)
+
+	# "SUIVRE" option when the context menu target is a fleet ship
+	var target_entity_id: String = context.get("target_entity_id", "")
+	if target_entity_id != "":
+		var target_ent := EntityRegistry.get_entity(target_entity_id)
+		if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET:
+			var target_extra: Dictionary = target_ent.get("extra", {})
+			var target_fi: int = target_extra.get("fleet_index", -1)
+			if target_fi >= 0 and target_fi != fleet_index:
+				var target_fs := fleet.ships[target_fi] if target_fi < fleet.ships.size() else null
+				var target_name := target_fs.custom_name if target_fs else "vaisseau"
+				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})
 
 	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
 	var effective := _get_effective_fleet_indices()
@@ -1219,6 +1237,24 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 			var sq := _fleet_panel._fleet.get_ship_squadron(idx)
 			if sq:
 				squadron_action_requested.emit(&"promote_leader", {"squadron_id": sq.squadron_id, "fleet_index": idx})
+	elif order_str.begins_with("sq_follow_"):
+		# Auto-create squadron: target as leader, selected ships as follow members
+		var target_fi := int(order_str.substr(10))
+		var members_to_add: Array[int] = []
+		for idx in effective:
+			if idx != target_fi and (_fleet_panel._fleet == null or _fleet_panel._fleet.get_ship_squadron(idx) == null):
+				members_to_add.append(idx)
+		if members_to_add.size() > 0:
+			# If target already has a squadron, join it; otherwise create new
+			var target_sq: Squadron = _fleet_panel._fleet.get_ship_squadron(target_fi) if _fleet_panel._fleet else null
+			if target_sq:
+				for m in members_to_add:
+					squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": m})
+			else:
+				squadron_action_requested.emit(&"create", {
+					"leader": target_fi,
+					"members": members_to_add,
+				})
 	elif order_str.begins_with("sq_join_"):
 		var sq_id := int(order_str.substr(8))
 		var idx := _get_effective_fleet_index()
