@@ -147,6 +147,24 @@ func _ready() -> void:
 	if fleet_ship and not fleet_ship.ai_state.is_empty():
 		_restore_state(fleet_ship.ai_state)
 
+	# Fallback: if belt center is still (0,0) after restore, use ship's current position
+	# This prevents mining ships from flying to the sun after reconnect with stale data
+	if absf(_belt_center_x) < 1.0 and absf(_belt_center_z) < 1.0:
+		if fleet_ship and fleet_ship.last_known_pos.size() >= 3:
+			var lkp_x: float = fleet_ship.last_known_pos[0]
+			var lkp_z: float = fleet_ship.last_known_pos[2]
+			if absf(lkp_x) > 1.0 or absf(lkp_z) > 1.0:
+				_belt_center_x = lkp_x
+				_belt_center_z = lkp_z
+		elif _ship:
+			var upos := FloatingOrigin.local_to_universe(_ship.global_position)
+			if absf(upos[0]) > 1.0 or absf(upos[2]) > 1.0:
+				_belt_center_x = upos[0]
+				_belt_center_z = upos[2]
+		# Re-resolve home station with corrected belt center
+		if _home_station_id == "":
+			_home_station_id = _find_nearest_station(_belt_center_x, _belt_center_z)
+
 	# Set initial entity destination to belt center for map display
 	if _state == MiningState.RETURNING:
 		var station_ent := EntityRegistry.get_entity(_home_station_id)
@@ -242,6 +260,8 @@ func save_state() -> Dictionary:
 	return {
 		"mining_state": _state,
 		"home_station_id": _home_station_id,
+		"belt_center_x": _belt_center_x,
+		"belt_center_z": _belt_center_z,
 		"heat": heat,
 		"is_overheated": is_overheated,
 	}
@@ -250,6 +270,8 @@ func save_state() -> Dictionary:
 ## Restores AI state from saved data. Called during _ready() if fleet_ship.ai_state exists.
 func _restore_state(state: Dictionary) -> void:
 	_home_station_id = state.get("home_station_id", _home_station_id)
+	_belt_center_x = state.get("belt_center_x", _belt_center_x)
+	_belt_center_z = state.get("belt_center_z", _belt_center_z)
 	heat = state.get("heat", 0.0)
 	is_overheated = state.get("is_overheated", false)
 
