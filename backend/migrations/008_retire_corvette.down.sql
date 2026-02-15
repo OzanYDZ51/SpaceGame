@@ -1,0 +1,2 @@
+-- No rollback: corvette_mk1 data is lost after migration.
+-- Ships were converted to fighter_mk1.

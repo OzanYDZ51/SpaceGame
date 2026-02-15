@@ -13,7 +13,7 @@ extends RefCounted
 static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 	# Categorize ships by npc_tier
 	var tier0: Array[StringName] = []  # low (fighters)
-	var tier1: Array[StringName] = []  # mid (corvettes)
+	var tier1: Array[StringName] = []  # mid
 	var tier2: Array[StringName] = []  # high (frigates)
 
 	for sid in ShipRegistry.get_all_ship_ids():

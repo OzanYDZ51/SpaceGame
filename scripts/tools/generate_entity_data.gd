@@ -32,9 +32,8 @@ func _ensure_dirs() -> void:
 
 func _generate_ships() -> void:
 	_save_ship(_build_fighter_mk1())
-	_save_ship(_build_corvette_mk1())
 	_save_ship(_build_frigate_mk1())
-	print("  Ships: 3 generated")
+	print("  Ships: 2 generated")
 
 
 func _build_fighter_mk1() -> ShipData:
@@ -73,42 +72,6 @@ func _build_fighter_mk1() -> ShipData:
 	d.sold_at_station_types = [&"repair", &"military", &"mining"]
 	return d
 
-
-func _build_corvette_mk1() -> ShipData:
-	var d := ShipData.new()
-	d.ship_id = &"corvette_mk1"
-	d.ship_name = &"Corvette Mk I"
-	d.ship_class = &"Corvette"
-	d.model_path = "res://assets/models/corvette_mk1.glb"
-	d.model_scale = 2.5
-	d.exhaust_scale = 1.2
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1"]
-	d.hull_hp = 2500.0; d.shield_hp = 1200.0; d.shield_regen_rate = 20.0; d.shield_regen_delay = 4.5
-	d.shield_damage_bleedthrough = 0.08; d.armor_rating = 10.0
-	d.mass = 120000.0
-	d.accel_forward = 55.0; d.accel_backward = 35.0; d.accel_strafe = 25.0; d.accel_vertical = 25.0
-	d.max_speed_normal = 220.0; d.max_speed_boost = 450.0; d.max_speed_cruise = 700_000.0
-	d.rotation_pitch_speed = 20.0; d.rotation_yaw_speed = 16.0; d.rotation_roll_speed = 35.0
-	d.max_speed_lateral = 100.0; d.max_speed_vertical = 100.0
-	d.rotation_damp_min_factor = 0.12
-	d.energy_capacity = 150.0; d.energy_regen_rate = 30.0; d.boost_energy_drain = 20.0
-	d.ship_scene_path = "res://scenes/ships/corvette_mk1.tscn"
-	d.shield_slot_size = "M"; d.engine_slot_size = "M"
-	d.module_slots = ["S", "M", "M"] as Array[String]
-	d.sensor_range = 3500.0; d.engagement_range = 1800.0; d.disengage_range = 4500.0
-	d.price = 120000
-	d.cargo_capacity = 60
-	# Data-driven fields
-	d.default_shield = &"Bouclier Renforce"
-	d.default_engine = &"Propulseur de Combat"
-	d.default_modules = [&"Blindage Renforce", &"Generateur Auxiliaire", &"Amplificateur de Bouclier"]
-	d.loot_credits_min = 300; d.loot_credits_max = 800
-	d.loot_mat_count_min = 2; d.loot_mat_count_max = 3
-	d.loot_weapon_part_chance = 0.15
-	d.lod_combat_dps = 40.0
-	d.npc_tier = 1
-	d.sold_at_station_types = [&"repair", &"military", &"mining"]
-	return d
 
 
 func _build_frigate_mk1() -> ShipData:

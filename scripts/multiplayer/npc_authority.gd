@@ -591,16 +591,26 @@ func on_player_reconnected(uuid: String, new_pid: int) -> void:
 			if _fleet_npcs.has(npc_id):
 				_fleet_npcs[npc_id]["owner_pid"] = new_pid
 
-	# Build alive fleet status
+	# Build alive fleet status (include positions for reconnect)
 	var alive_list: Array = []
+	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
 	if _fleet_npcs_by_owner.has(uuid):
 		for npc_id in _fleet_npcs_by_owner[uuid]:
 			if _fleet_npcs.has(npc_id):
 				var info: Dictionary = _fleet_npcs[npc_id]
-				alive_list.append({
+				var entry := {
 					"fleet_index": info.get("fleet_index", -1),
 					"npc_id": String(npc_id),
-				})
+				}
+				# Include universe position from LOD data
+				if lod_mgr:
+					var lod_data := lod_mgr.get_ship_data(npc_id)
+					if lod_data:
+						var upos := FloatingOrigin.to_universe_pos(lod_data.position)
+						entry["pos_x"] = upos[0]
+						entry["pos_y"] = upos[1]
+						entry["pos_z"] = upos[2]
+				alive_list.append(entry)
 
 	# Get deaths that happened while offline
 	var deaths: Array = _fleet_deaths_while_offline.get(uuid, [])

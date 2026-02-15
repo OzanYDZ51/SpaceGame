@@ -25,6 +25,8 @@ var docked_system_id: int = -1           # System where docked/deployed
 var deployed_npc_id: StringName = &""    # Transient: ShipLODManager NPC ref
 var deployed_command: StringName = &""   # Current command ID
 var deployed_command_params: Dictionary = {}
+var last_known_pos: Array = []           # [pos_x, pos_y, pos_z] universe coords (float64)
+var ai_state: Dictionary = {}            # Runtime AI state (mining phase, home station, heat...)
 
 # Squadron membership
 var squadron_id: int = -1
@@ -132,6 +134,8 @@ func serialize() -> Dictionary:
 		"docked_system_id": docked_system_id,
 		"deployed_command": String(deployed_command),
 		"deployed_command_params": deployed_command_params,
+		"last_known_pos": last_known_pos,
+		"ai_state": ai_state,
 		"squadron_id": squadron_id,
 		"squadron_role": String(squadron_role),
 	}
@@ -153,21 +157,59 @@ static func deserialize(data: Dictionary) -> FleetShip:
 	var fs := FleetShip.new()
 	fs.ship_id = StringName(data.get("ship_id", ""))
 	fs.custom_name = data.get("custom_name", "")
-	for w in data.get("weapons", []):
-		fs.weapons.append(StringName(w))
-	fs.shield_name = StringName(data.get("shield", ""))
-	fs.engine_name = StringName(data.get("engine", ""))
-	for m in data.get("modules", []):
-		fs.modules.append(StringName(m))
+
+	# Safety net: if ship_id was removed from game, replace with default
+	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
+	if ship_data == null:
+		var old_id := fs.ship_id
+		fs.ship_id = Constants.DEFAULT_SHIP_ID
+		ship_data = ShipRegistry.get_ship_data(fs.ship_id)
+		push_warning("FleetShip.deserialize: ship '%s' retired, replaced with '%s'" % [old_id, fs.ship_id])
+		if fs.custom_name == "" or fs.custom_name == String(old_id):
+			fs.custom_name = String(ship_data.ship_name) if ship_data else "Ship"
+		# Reset loadout to defaults since slots likely differ
+		fs.weapons.clear()
+		fs.shield_name = &""
+		fs.engine_name = &""
+		fs.modules.clear()
+		if ship_data:
+			for i in ship_data.hardpoints.size():
+				if i < ship_data.default_loadout.size():
+					fs.weapons.append(ship_data.default_loadout[i])
+				else:
+					fs.weapons.append(&"")
+			fs.shield_name = ship_data.default_shield
+			fs.engine_name = ship_data.default_engine
+			for i in ship_data.module_slots.size():
+				if i < ship_data.default_modules.size():
+					fs.modules.append(ship_data.default_modules[i])
+				else:
+					fs.modules.append(&"")
+	else:
+		for w in data.get("weapons", []):
+			fs.weapons.append(StringName(w))
+		fs.shield_name = StringName(data.get("shield", ""))
+		fs.engine_name = StringName(data.get("engine", ""))
+		for m in data.get("modules", []):
+			fs.modules.append(StringName(m))
+
 	fs.deployment_state = data.get("deployment_state", DeploymentState.DOCKED) as DeploymentState
 	fs.docked_station_id = data.get("docked_station_id", "")
 	fs.docked_system_id = int(data.get("docked_system_id", -1))
 	fs.deployed_command = StringName(data.get("deployed_command", ""))
 	fs.deployed_command_params = data.get("deployed_command_params", {})
+	fs.last_known_pos = data.get("last_known_pos", [])
+	fs.ai_state = data.get("ai_state", {})
 	fs.squadron_id = int(data.get("squadron_id", -1))
 	fs.squadron_role = StringName(data.get("squadron_role", ""))
+	# If ship was retired and was DEPLOYED, force back to DOCKED
+	if ship_data and fs.ship_id != StringName(data.get("ship_id", "")):
+		if fs.deployment_state == DeploymentState.DEPLOYED:
+			fs.deployment_state = DeploymentState.DOCKED
+			fs.deployed_npc_id = &""
+			fs.deployed_command = &""
+			fs.deployed_command_params = {}
 	# Per-ship cargo + resources
-	var ship_data := ShipRegistry.get_ship_data(fs.ship_id)
 	var cap: int = ship_data.cargo_capacity if ship_data else 50
 	fs._init_cargo(cap)
 	var cargo_items: Array = data.get("cargo", [])

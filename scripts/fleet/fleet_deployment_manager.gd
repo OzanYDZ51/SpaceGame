@@ -12,10 +12,36 @@ const FLEET_FACTION: StringName = &"player_fleet"
 
 var _fleet: PlayerFleet = null
 var _deployed_ships: Dictionary = {}  # fleet_index (int) -> ShipController node
+var _pos_sync_timer: float = 0.0
+const POS_SYNC_INTERVAL: float = 10.0
 
 
 func initialize(fleet: PlayerFleet) -> void:
 	_fleet = fleet
+
+
+func _process(delta: float) -> void:
+	# Periodically save deployed NPC positions to FleetShip for persistence
+	_pos_sync_timer += delta
+	if _pos_sync_timer >= POS_SYNC_INTERVAL:
+		_pos_sync_timer = 0.0
+		_sync_deployed_positions()
+
+
+func _sync_deployed_positions() -> void:
+	if _fleet == null:
+		return
+	for fleet_index in _deployed_ships:
+		var npc: ShipController = _deployed_ships[fleet_index]
+		if not is_instance_valid(npc):
+			continue
+		if fleet_index >= 0 and fleet_index < _fleet.ships.size():
+			var fs := _fleet.ships[fleet_index]
+			fs.last_known_pos = FloatingOrigin.to_universe_pos(npc.global_position)
+			# Save AI state (mining phase, home station, heat, etc.)
+			var mining_ai := npc.get_node_or_null("AIMiningBehavior") as AIMiningBehavior
+			if mining_ai:
+				fs.ai_state = mining_ai.save_state()
 
 
 func can_deploy(fleet_index: int) -> bool:
@@ -35,7 +61,7 @@ func can_deploy(fleet_index: int) -> bool:
 	return true
 
 
-func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> bool:
+func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, override_pos: Variant = null) -> bool:
 	if not can_deploy(fleet_index):
 		push_warning("FleetDeploy: can_deploy FAILED for index %d" % fleet_index)
 		return false
@@ -46,19 +72,23 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 		push_warning("FleetDeploy: universe_node is null!")
 		return false
 
-	# Resolve spawn position from station
-	var station_local_pos := Vector3.ZERO
-	var station_id: String = fs.docked_station_id
-	if station_id != "":
-		var ent := EntityRegistry.get_entity(station_id)
-		if not ent.is_empty():
-			station_local_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+	var spawn_pos: Vector3
+	if override_pos is Vector3:
+		# Use exact position (reconnect / reload with saved position)
+		spawn_pos = override_pos
+	else:
+		# Resolve spawn position from station + random offset
+		var station_local_pos := Vector3.ZERO
+		var station_id: String = fs.docked_station_id
+		if station_id != "":
+			var ent := EntityRegistry.get_entity(station_id)
+			if not ent.is_empty():
+				station_local_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 
-	# Random offset around station (facing away from station)
-	var angle: float = randf() * TAU
-	var dist: float = randf_range(SPAWN_OFFSET_MIN, SPAWN_OFFSET_MAX)
-	var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
-	var spawn_pos := station_local_pos + offset
+		var angle: float = randf() * TAU
+		var dist: float = randf_range(SPAWN_OFFSET_MIN, SPAWN_OFFSET_MAX)
+		var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+		spawn_pos = station_local_pos + offset
 
 	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
 	var npc := ShipFactory.spawn_npc_ship(fs.ship_id, &"balanced", spawn_pos, universe, FLEET_FACTION, false, true)
@@ -144,6 +174,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> 
 	fs.deployed_npc_id = npc_id
 	fs.deployed_command = cmd
 	fs.deployed_command_params = params
+	fs.last_known_pos = FloatingOrigin.to_universe_pos(spawn_pos)
 
 	# Tag ShipLODData so LOD re-promotion re-equips custom loadout
 	var lod_mgr := GameManager.get_node_or_null("ShipLODManager") as ShipLODManager
@@ -284,9 +315,13 @@ func redeploy_saved_ships() -> void:
 		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.docked_system_id == current_sys:
 			if i == _fleet.active_index:
 				continue
+			# Use saved position if available, otherwise fall back to station + random
+			var saved_pos: Variant = null
+			if fs.last_known_pos.size() == 3:
+				saved_pos = FloatingOrigin.to_local_pos(fs.last_known_pos)
 			# Reset to DOCKED temporarily so deploy_ship can work
 			fs.deployment_state = FleetShip.DeploymentState.DOCKED
-			deploy_ship(i, fs.deployed_command, fs.deployed_command_params)
+			deploy_ship(i, fs.deployed_command, fs.deployed_command_params, saved_pos)
 
 
 func _on_fleet_npc_died(fleet_index: int, _npc: ShipController) -> void:
@@ -399,10 +434,18 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 				if GameManager._notif:
 					GameManager._notif.fleet.lost(fs.custom_name)
 
-	# Confirm alive ships are still DEPLOYED
+	# Confirm alive ships are still DEPLOYED + restore positions
 	var alive_indices: Dictionary = {}
 	for entry in alive:
-		alive_indices[int(entry.get("fleet_index", -1))] = true
+		var fi: int = int(entry.get("fleet_index", -1))
+		alive_indices[fi] = true
+		# Restore position from server if available
+		if fi >= 0 and fi < _fleet.ships.size():
+			var px: float = float(entry.get("pos_x", 0.0))
+			var py: float = float(entry.get("pos_y", 0.0))
+			var pz: float = float(entry.get("pos_z", 0.0))
+			if px != 0.0 or py != 0.0 or pz != 0.0:
+				_fleet.ships[fi].last_known_pos = [px, py, pz]
 
 	# Ships that were DEPLOYED but not in alive list → mark DESTROYED
 	for i in _fleet.ships.size():

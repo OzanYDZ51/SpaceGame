@@ -143,8 +143,21 @@ func _ready() -> void:
 	# Listen to origin shifts for virtual target position correction
 	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
 
+	# Restore saved AI state if available (reconnect / save-load)
+	if fleet_ship and not fleet_ship.ai_state.is_empty():
+		_restore_state(fleet_ship.ai_state)
+
 	# Set initial entity destination to belt center for map display
-	_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
+	if _state == MiningState.RETURNING:
+		var station_ent := EntityRegistry.get_entity(_home_station_id)
+		if not station_ent.is_empty():
+			_update_entity_destination(station_ent["pos_x"], station_ent["pos_z"], "returning")
+		else:
+			_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
+	elif _state == MiningState.DOCKED:
+		_update_entity_destination(0.0, 0.0, "docked")
+	else:
+		_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
 
 
 func _exit_tree() -> void:
@@ -222,6 +235,67 @@ func _find_nearest_station(uni_x: float, uni_z: float) -> String:
 			best_dist_sq = d2
 			best_id = ent.get("id", "")
 	return best_id
+
+
+## Captures runtime AI state for persistence (called by FleetDeploymentManager every 10s).
+func save_state() -> Dictionary:
+	return {
+		"mining_state": _state,
+		"home_station_id": _home_station_id,
+		"heat": heat,
+		"is_overheated": is_overheated,
+	}
+
+
+## Restores AI state from saved data. Called during _ready() if fleet_ship.ai_state exists.
+func _restore_state(state: Dictionary) -> void:
+	_home_station_id = state.get("home_station_id", _home_station_id)
+	heat = state.get("heat", 0.0)
+	is_overheated = state.get("is_overheated", false)
+
+	var saved_state: int = state.get("mining_state", MiningState.SEARCHING)
+	var cargo_fill: float = float(_get_total_resources()) / float(maxi(_resource_capacity, 1))
+
+	# Smart state restoration: check cargo + saved state to pick the right phase
+	if saved_state == MiningState.DOCKED or saved_state == MiningState.RETURNING:
+		# Was selling or heading to station — validate station and resume return
+		_validate_home_station()
+		if _home_station_id != "":
+			_state = MiningState.RETURNING
+		else:
+			_state = MiningState.SEARCHING
+	elif cargo_fill >= CARGO_RETURN_RATIO:
+		# Cargo full but wasn't returning — start return now
+		_validate_home_station()
+		if _home_station_id != "":
+			_state = MiningState.RETURNING
+		else:
+			_state = MiningState.SEARCHING
+	elif saved_state == MiningState.DEPARTING:
+		_state = MiningState.DEPARTING
+	else:
+		_state = MiningState.SEARCHING
+
+	print("AIMining[%d]: Restored state=%s home=%s cargo=%.0f%%" % [
+		fleet_index, MiningState.keys()[_state], _home_station_id, cargo_fill * 100.0])
+
+
+## Checks if home station still exists. If not, finds the nearest alternative.
+func _validate_home_station() -> void:
+	if _home_station_id == "":
+		_home_station_id = _find_nearest_station(_belt_center_x, _belt_center_z)
+		return
+	var ent := EntityRegistry.get_entity(_home_station_id)
+	if not ent.is_empty():
+		return  # Station still exists
+	# Station gone — find nearest replacement
+	var new_id := _find_nearest_station(_belt_center_x, _belt_center_z)
+	if new_id != "":
+		print("AIMining[%d]: Home station '%s' lost, rerouting to '%s'" % [fleet_index, _home_station_id, new_id])
+		_home_station_id = new_id
+	else:
+		print("AIMining[%d]: Home station '%s' lost, no replacement found!" % [fleet_index, _home_station_id])
+		_home_station_id = ""
 
 
 func _process(delta: float) -> void:
@@ -420,14 +494,16 @@ func _tick_cooling() -> void:
 
 
 func _tick_returning() -> void:
+	_validate_home_station()
 	if _home_station_id == "":
+		# No station available anywhere — keep mining, cargo overflow
 		_clear_nav_boost()
 		_state = MiningState.SEARCHING
 		return
 	var ent := EntityRegistry.get_entity(_home_station_id)
 	if ent.is_empty():
+		# Station registered but entity not loaded yet — wait
 		_clear_nav_boost()
-		_state = MiningState.SEARCHING
 		return
 	var station_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 	var dist := _ship.global_position.distance_to(station_pos)
@@ -471,6 +547,14 @@ func _tick_docked(delta: float) -> void:
 	_ship.set_throttle(Vector3.ZERO)
 	_ship.linear_velocity = Vector3.ZERO
 	_ship.angular_velocity = Vector3.ZERO
+
+	# Check if station still exists (destroyed mid-dock → emergency undock)
+	_validate_home_station()
+	if _home_station_id == "" or EntityRegistry.get_entity(_home_station_id).is_empty():
+		_exit_dock()
+		_state = MiningState.DEPARTING
+		_update_entity_destination(_belt_center_x, _belt_center_z, "departing")
+		return
 
 	_dock_timer += delta
 
