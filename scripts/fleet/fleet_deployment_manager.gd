@@ -73,6 +73,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 		return false
 
 	var spawn_pos: Vector3
+	var offset := Vector3.ZERO
 	if override_pos is Vector3:
 		# Use exact position (reconnect / reload with saved position)
 		spawn_pos = override_pos
@@ -87,7 +88,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 
 		var angle: float = randf() * TAU
 		var dist: float = randf_range(SPAWN_OFFSET_MIN, SPAWN_OFFSET_MAX)
-		var offset := Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
+		offset = Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
 		spawn_pos = station_local_pos + offset
 
 	# Spawn NPC via ShipFactory (skip_default_loadout: fleet ships use their own loadout)
