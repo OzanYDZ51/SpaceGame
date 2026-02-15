@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Godot editor cache (309MB!) — reimported in Docker
+.godot/
+
+# Other services (each has its own build context on Railway)
+backend/
+website/
+launcher/
+
+# Dev files
+docs/
+*.md
+CLAUDE.md
+LICENSE
+*.import.cfg
+
+# OS junk
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Blender source files
+*.blend
+*.blend1

@@ -1,38 +1,31 @@
-# Godot 4.6 Headless Game Server for Railway
-# Build context must be the project root: docker build -f gameserver/Dockerfile .
+# Godot 4.6 Headless Game Server for Railway (root Dockerfile)
 
-FROM ubuntu:22.04 AS base
+FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget unzip ca-certificates \
+    ca-certificates \
+    fontconfig libfontconfig1 libfreetype6 fonts-dejavu-core \
+    libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Download Godot 4.6 headless (Linux x86_64)
 ARG GODOT_VERSION=4.6-stable
-RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
-    && unzip -q "Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
+ADD "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" /tmp/godot.zip
+RUN cd /tmp && unzip -q godot.zip \
     && mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot \
     && chmod +x /usr/local/bin/godot \
-    && rm *.zip
+    && rm godot.zip
 
 WORKDIR /game
 
-# Copy only what the server needs (no build artifacts, no backend)
-COPY project.godot .
-COPY icon.svg .
-COPY scripts/ scripts/
-COPY scenes/ scenes/
-COPY shaders/ shaders/
+COPY project.godot icon.svg ./
 COPY data/ data/
-COPY assets/ assets/
+COPY shaders/ shaders/
+COPY assets/fonts/ assets/fonts/
+COPY assets/models/tie.glb assets/models/
+COPY assets/models/frigate_mk1.glb assets/models/
+COPY assets/models/canon_laser.glb assets/models/
+COPY assets/models/tourelle.glb assets/models/
+COPY scenes/ scenes/
+COPY scripts/ scripts/
 
-# Pre-import resources so first startup is fast
-RUN godot --headless --import || true
-
-# Railway sets PORT env var dynamically; our NetworkManager reads it
-EXPOSE 7777
-
-# Run as headless dedicated server
-# NetworkManager._check_dedicated_server() detects headless → is_dedicated_server = true
-# → calls start_dedicated_server() which reads PORT from env
 ENTRYPOINT ["godot", "--headless", "--path", "/game"]

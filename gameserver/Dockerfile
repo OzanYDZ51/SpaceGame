@@ -1,44 +1,49 @@
 # Godot 4.6 Headless Game Server for Railway
 # Build context must be the project root: docker build -f gameserver/Dockerfile .
 
-FROM ubuntu:22.04 AS base
+# --- Base: Ubuntu + Godot binary (cached unless version changes) ---
+FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget unzip ca-certificates \
+    ca-certificates \
     fontconfig libfontconfig1 libfreetype6 fonts-dejavu-core \
     libgl1 libxi6 libxcursor1 libxrandr2 libxinerama1 \
-    && fc-cache -fv \
-    && ldconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# Download Godot 4.6 headless (Linux x86_64)
+# Godot download — cached in its own layer
 ARG GODOT_VERSION=4.6-stable
-RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
-    && unzip -q "Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
+ADD "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip" /tmp/godot.zip
+RUN cd /tmp && unzip -q godot.zip \
     && mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot \
     && chmod +x /usr/local/bin/godot \
-    && rm *.zip
+    && rm godot.zip
 
 WORKDIR /game
 
-# Copy only what the server needs (no build artifacts, no backend)
-COPY project.godot .
-COPY icon.svg .
-COPY scripts/ scripts/
-COPY scenes/ scenes/
-COPY shaders/ shaders/
+# --- Layers ordered: least-changed → most-changed for max cache ---
+
+# 1. Project config (rarely changes)
+COPY project.godot icon.svg ./
+
+# 2. Data + shaders (change sometimes)
 COPY data/ data/
-COPY assets/ assets/
+COPY shaders/ shaders/
 
-# Pre-import resources so first startup is fast
-# --import may return non-zero on warnings (missing editor features in headless),
-# so we allow failure but log output for debugging.
-RUN godot --headless --import 2>&1 || echo "Import step returned non-zero (expected in headless mode)"
+# 3. Assets — only ship/weapon models needed for collision/hardpoints
+#    Skip space_station (37MB), hangar (25MB), vegetation — visual only
+COPY assets/fonts/ assets/fonts/
+COPY assets/models/tie.glb assets/models/
+COPY assets/models/frigate_mk1.glb assets/models/
+COPY assets/models/canon_laser.glb assets/models/
+COPY assets/models/tourelle.glb assets/models/
 
-# Railway sets PORT env var dynamically; NetworkManager reads it.
-# Do NOT hardcode EXPOSE — Railway assigns PORT at runtime.
+# 4. Scenes (change sometimes)
+COPY scenes/ scenes/
 
-# Run as headless dedicated server
-# NetworkManager._check_dedicated_server() detects headless → is_dedicated_server = true
-# → calls start_dedicated_server() which reads PORT from env
+# 5. Scripts (change most often — last for best cache)
+COPY scripts/ scripts/
+
+# Skip --import: Godot auto-imports on first run.
+# Only game-logic resources are loaded in headless, so startup is fast.
+
 ENTRYPOINT ["godot", "--headless", "--path", "/game"]

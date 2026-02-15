@@ -1,0 +1,11 @@
+# Binary / cache
+*.exe
+*.test
+tmp/
+
+# Dev
+*.md
+.git
+.env
+.env.*
+docker-compose*.yml
