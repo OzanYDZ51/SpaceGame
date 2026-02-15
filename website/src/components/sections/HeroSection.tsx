@@ -62,11 +62,17 @@ export function HeroSection() {
           <motion.span
             className="text-cyan text-glow-cyan inline-block"
             animate={{
-              textShadow: [
-                "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
-                "0 0 15px rgba(0,200,255,0.8), 0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(0,200,255,0.25)",
-                "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
-              ],
+              textShadow: faction === "kharsis"
+                ? [
+                    "0 0 10px rgba(255,34,68,0.6), 0 0 30px rgba(255,80,0,0.3), 0 0 60px rgba(255,34,68,0.15)",
+                    "0 0 15px rgba(255,34,68,0.8), 0 0 40px rgba(255,120,20,0.5), 0 0 80px rgba(255,60,0,0.25)",
+                    "0 0 10px rgba(255,34,68,0.6), 0 0 30px rgba(255,80,0,0.3), 0 0 60px rgba(255,34,68,0.15)",
+                  ]
+                : [
+                    "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
+                    "0 0 15px rgba(0,200,255,0.8), 0 0 40px rgba(0,200,255,0.5), 0 0 80px rgba(0,200,255,0.25)",
+                    "0 0 10px rgba(0,200,255,0.6), 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.15)",
+                  ],
             }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           >
