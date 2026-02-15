@@ -66,14 +66,13 @@ func _send_state() -> void:
 	state.ship_id = _ship.ship_data.ship_id if _ship.ship_data else Constants.DEFAULT_SHIP_ID
 
 	# System ID from SystemTransition
-	var gm := GameManager as GameManagerSystem
-	if gm and gm._system_transition:
-		state.system_id = gm._system_transition.current_system_id
+	var sys_trans = GameManager._system_transition
+	if sys_trans:
+		state.system_id = sys_trans.current_system_id
 
 	# Status flags
-	if gm:
-		state.is_docked = gm.current_state == GameManagerSystem.GameState.DOCKED
-		state.is_dead = gm.current_state == GameManagerSystem.GameState.DEAD
+	state.is_docked = GameManager.current_state == Constants.GameState.DOCKED
+	state.is_dead = GameManager.current_state == Constants.GameState.DEAD
 	state.is_cruising = _ship.cruise_warp_active
 
 	# Reliable death/respawn events (detect transitions)

@@ -90,7 +90,7 @@ func handle_docked(station_name: String) -> void:
 
 func handle_undock() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	# Close station UI
 	if screen_manager:
@@ -184,7 +184,7 @@ func handle_commerce_requested() -> void:
 
 func handle_commerce_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 
@@ -215,14 +215,14 @@ func handle_shipyard_requested() -> void:
 
 func handle_shipyard_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 
 
 func handle_equipment_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 
@@ -351,7 +351,7 @@ func handle_administration_requested() -> void:
 
 func handle_admin_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 
@@ -370,7 +370,7 @@ func handle_refinery_requested() -> void:
 
 func handle_refinery_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 
@@ -389,7 +389,7 @@ func handle_storage_requested() -> void:
 
 func handle_storage_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED:
+	if state_val != Constants.GameState.DOCKED:
 		return
 	open_station_terminal()
 

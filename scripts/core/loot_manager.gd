@@ -51,7 +51,7 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 	if crate and is_instance_valid(crate):
 		crate._destroy()
 	SaveManager.mark_dirty()
-	if get_game_state.is_valid() and get_game_state.call() == GameManagerSystem.GameState.PLAYING:
+	if get_game_state.is_valid() and get_game_state.call() == Constants.GameState.PLAYING:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 

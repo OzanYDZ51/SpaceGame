@@ -821,10 +821,10 @@ func ensure_system_npcs(system_id: int) -> void:
 
 
 func _spawn_remote_system_npcs(system_id: int) -> void:
-	var gm := GameManager as GameManagerSystem
-	if gm == null or gm._system_transition == null:
+	var sys_trans = GameManager._system_transition
+	if sys_trans == null:
 		return
-	var galaxy: GalaxyData = gm._system_transition.galaxy
+	var galaxy: GalaxyData = sys_trans.galaxy
 	if galaxy == null:
 		return
 	var galaxy_sys: Dictionary = galaxy.get_system(system_id)
@@ -836,7 +836,7 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 	# Resolve system data (override > procedural)
 	var system_data: StarSystemData = SystemDataRegistry.get_override(system_id)
 	if system_data == null:
-		var connections := gm._system_transition._build_connection_list(system_id)
+		var connections = sys_trans._build_connection_list(system_id)
 		system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
 
 	# Base position near first station

@@ -271,7 +271,7 @@ func _setup_ui_managers() -> void:
 
 	# Transition overlay (on top of everything)
 	if _system_transition:
-		var overlay := _system_transition.get_transition_overlay()
+		var overlay = _system_transition.get_transition_overlay()
 		if overlay:
 			ui_layer.add_child(overlay)
 
@@ -319,7 +319,7 @@ func _initialize_game() -> void:
 	player_data.initialize(_galaxy)
 
 	# Equip starting loadout from fleet data
-	var starting_fleet_ship := player_data.get_starting_fleet_ship()
+	var starting_fleet_ship = player_data.get_starting_fleet_ship()
 	if starting_fleet_ship:
 		var start_wm := player_ship.get_node_or_null("WeaponManager") as WeaponManager
 		if start_wm:
@@ -414,7 +414,7 @@ func _initialize_game() -> void:
 	_ship_change_mgr.main_scene = main_scene
 	_ship_change_mgr.player_data = player_data
 	_ship_change_mgr.mining_system = _mining_system
-	_ship_change_mgr.get_game_state = func() -> GameState: return current_state
+	_ship_change_mgr.get_game_state = func() -> int: return current_state
 	_ship_change_mgr._on_destroyed_callback = _on_player_destroyed
 	_ship_change_mgr._on_autopilot_cancelled_callback = _on_autopilot_cancelled_by_player
 	_ship_change_mgr.ship_rebuilt.connect(func(ship: ShipController): player_ship_rebuilt.emit(ship))
@@ -590,7 +590,7 @@ func _initialize_game() -> void:
 	_input_router.docking_system = _docking_system
 	_input_router.loot_pickup = _loot_pickup
 	_input_router.system_transition = _system_transition
-	_input_router.get_game_state = func() -> GameState: return current_state
+	_input_router.get_game_state = func() -> int: return current_state
 	add_child(_input_router)
 	_input_router.respawn_requested.connect(func():
 		if _death_respawn_mgr:
@@ -680,7 +680,7 @@ func _initialize_game() -> void:
 	_docking_mgr.encounter_manager = _encounter_manager
 	_docking_mgr.ship_net_sync = _net_sync_mgr.ship_net_sync if _net_sync_mgr else null
 	_docking_mgr.discord_rpc = _net_sync_mgr.discord_rpc if _net_sync_mgr else null
-	_docking_mgr.get_game_state = func() -> GameState: return current_state
+	_docking_mgr.get_game_state = func() -> int: return current_state
 	add_child(_docking_mgr)
 	# Inject docking + ship change refs into death/respawn manager for auto-dock on respawn
 	if _death_respawn_mgr:
@@ -730,7 +730,7 @@ func _initialize_game() -> void:
 	_loot_mgr.screen_manager = _screen_manager
 	_loot_mgr.loot_screen = _loot_screen
 	_loot_mgr.notif = _notif
-	_loot_mgr.get_game_state = func() -> GameState: return current_state
+	_loot_mgr.get_game_state = func() -> int: return current_state
 	add_child(_loot_mgr)
 
 	# Deferred InputRouter connections (need _docking_mgr + _loot_mgr)
@@ -813,7 +813,7 @@ func _on_system_loaded(system_id: int) -> void:
 	# Ensure the active fleet ship has a valid docked_system_id
 	# (starting ship is created before system loads, so fix up here)
 	if player_fleet:
-		var active_fs := player_fleet.get_active()
+		var active_fs = player_fleet.get_active()
 		if active_fs and active_fs.docked_system_id < 0:
 			active_fs.docked_system_id = system_id
 
@@ -844,14 +844,14 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		_autopilot_player_to(params)
 		# Propagate to squadron members if player is a squadron leader
 		if _squadron_mgr:
-			var sq := player_fleet.get_ship_squadron(fleet_index)
+			var sq = player_fleet.get_ship_squadron(fleet_index)
 			if sq and (sq.is_leader(fleet_index) or sq.leader_fleet_index < 0):
 				_squadron_mgr.propagate_leader_order(sq.squadron_id, order_id, params)
 		return
 
 	if _fleet_deployment_mgr == null:
 		return
-	var fs := player_fleet.ships[fleet_index]
+	var fs = player_fleet.ships[fleet_index]
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
@@ -896,7 +896,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:
-		var sq := player_fleet.get_squadron(fs.squadron_id)
+		var sq = player_fleet.get_squadron(fs.squadron_id)
 		if sq and sq.is_leader(fleet_index):
 			_squadron_mgr.propagate_leader_order(sq.squadron_id, order_id, params)
 
@@ -912,7 +912,7 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			var leader_idx: int = int(data.get("leader", -1))
 			var members: Array = data.get("members", [])
 			var sq_name: String = data.get("name", "")
-			var sq := _squadron_mgr.create_squadron(leader_idx, sq_name)
+			var sq = _squadron_mgr.create_squadron(leader_idx, sq_name)
 			if sq:
 				for m in members:
 					_squadron_mgr.add_to_squadron(sq.squadron_id, int(m))
@@ -1114,7 +1114,7 @@ func _spawn_construction_beacon(marker: Dictionary) -> void:
 func _respawn_construction_beacons(system_id: int) -> void:
 	if _construction_mgr == null:
 		return
-	var markers := _construction_mgr.get_markers_for_system(system_id)
+	var markers = _construction_mgr.get_markers_for_system(system_id)
 	for marker in markers:
 		_spawn_construction_beacon(marker)
 
@@ -1143,7 +1143,7 @@ func _on_build_requested() -> void:
 	if _construction_mgr == null or _construction_screen == null or _screen_manager == null:
 		return
 
-	var marker := _construction_mgr.get_marker(_build_marker_id)
+	var marker = _construction_mgr.get_marker(_build_marker_id)
 	if marker.is_empty():
 		return
 
@@ -1155,7 +1155,7 @@ func _on_construction_completed(marker_id: int) -> void:
 	if _construction_mgr == null or universe_node == null:
 		return
 
-	var marker := _construction_mgr.get_marker(marker_id)
+	var marker = _construction_mgr.get_marker(marker_id)
 	if marker.is_empty():
 		return
 

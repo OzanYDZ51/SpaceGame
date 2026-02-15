@@ -619,14 +619,13 @@ func _on_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, ta
 
 
 func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
-	var gm := GameManager as GameManagerSystem
-	if gm == null or gm._asteroid_field_mgr == null:
+	var field_mgr = GameManager._asteroid_field_mgr
+	if field_mgr == null:
 		return
-	var field_mgr: AsteroidFieldManager = gm._asteroid_field_mgr
 	var id := StringName(asteroid_id_str)
 	field_mgr.on_asteroid_depleted(id)
 	# Also deplete the asteroid data if loaded
-	var ast := field_mgr.get_asteroid_data(id)
+	var ast = field_mgr.get_asteroid_data(id)
 	if ast and not ast.is_depleted:
 		ast.is_depleted = true
 		ast.health_current = 0.0

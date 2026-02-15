@@ -259,8 +259,8 @@ func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringNam
 	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 	if npc_auth == null:
 		return
-	var gm := GameManager as GameManagerSystem
-	var system_id: int = gm._system_transition.current_system_id if gm and gm._system_transition else 0
+	var sys_trans = GameManager._system_transition
+	var system_id: int = sys_trans.current_system_id if sys_trans else 0
 	npc_auth.register_npc(npc_id, system_id, sid, fac)
 	npc_auth.notify_spawn_to_peers(npc_id, system_id)
 	# Connect weapon fire relay for remote clients to see NPC shots

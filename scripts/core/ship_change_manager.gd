@@ -163,7 +163,7 @@ func rebuild_ship_for_respawn(fleet_index: int) -> void:
 
 func handle_ship_change(fleet_index: int) -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
-	if state_val != GameManagerSystem.GameState.DOCKED or player_ship == null:
+	if state_val != Constants.GameState.DOCKED or player_ship == null:
 		return
 	var fleet := player_data.fleet if player_data else null
 	if fleet == null or fleet_index < 0 or fleet_index >= fleet.ships.size():

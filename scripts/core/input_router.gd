@@ -91,7 +91,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var state: int = get_game_state.call() if get_game_state.is_valid() else 0
 
 	# Respawn on R when dead
-	if state == GameManagerSystem.GameState.DEAD:
+	if state == Constants.GameState.DEAD:
 		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_R:
 			respawn_requested.emit()
 		return
@@ -139,7 +139,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	# === DOCKED STATE ===
-	if state == GameManagerSystem.GameState.DOCKED:
+	if state == Constants.GameState.DOCKED:
 		if event.is_action_pressed("dock"):
 			terminal_requested.emit()
 			get_viewport().set_input_as_handled()
@@ -151,46 +151,46 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	# === PLAYING STATE ===
-	if event.is_action_pressed("dock") and state == GameManagerSystem.GameState.PLAYING:
+	if event.is_action_pressed("dock") and state == Constants.GameState.PLAYING:
 		if docking_system and docking_system.can_dock:
 			docking_system.request_dock()
 			get_viewport().set_input_as_handled()
 			return
 
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_X:
-		if loot_pickup and loot_pickup.can_pickup and state == GameManagerSystem.GameState.PLAYING:
+		if loot_pickup and loot_pickup.can_pickup and state == Constants.GameState.PLAYING:
 			var crate := loot_pickup.request_pickup()
 			if crate:
 				loot_pickup_requested.emit(crate)
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("gate_jump") and state == GameManagerSystem.GameState.PLAYING:
+	if event.is_action_pressed("gate_jump") and state == Constants.GameState.PLAYING:
 		if system_transition and system_transition.can_gate_jump():
 			system_transition.initiate_gate_jump(system_transition.get_gate_target_id())
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("wormhole_jump") and state == GameManagerSystem.GameState.PLAYING:
+	if event.is_action_pressed("wormhole_jump") and state == Constants.GameState.PLAYING:
 		if system_transition and system_transition.can_wormhole_jump():
 			wormhole_jump_requested.emit()
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("build") and state == GameManagerSystem.GameState.PLAYING:
+	if event.is_action_pressed("build") and state == Constants.GameState.PLAYING:
 		if construction_proximity_check.is_valid() and construction_proximity_check.call():
 			build_requested.emit()
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("scanner_pulse") and state == GameManagerSystem.GameState.PLAYING:
+	if event.is_action_pressed("scanner_pulse") and state == Constants.GameState.PLAYING:
 		scanner_pulse_requested.emit()
 		get_viewport().set_input_as_handled()
 		return
 
 	# DEBUG: F9 = teleport near nearest planet
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F9:
-		if state == GameManagerSystem.GameState.PLAYING:
+		if state == Constants.GameState.PLAYING:
 			_debug_teleport_to_planet()
 			get_viewport().set_input_as_handled()
 			return

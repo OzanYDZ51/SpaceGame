@@ -312,8 +312,8 @@ func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 	if NetworkManager.is_host:
 		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
 		if npc_auth:
-			var gm := GameManager as GameManagerSystem
-			var sys_id: int = gm._system_transition.current_system_id if gm and gm._system_transition else -1
+			var sys_trans = GameManager._system_transition
+			var sys_id: int = sys_trans.current_system_id if sys_trans else -1
 			npc_auth.broadcast_asteroid_depleted(id_str, sys_id, 1)
 	else:
 		NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)
