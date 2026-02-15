@@ -266,7 +266,7 @@ func _draw_section_headers(font: Font) -> void:
 
 	# --- "ACHETER" header above first buy button ---
 	var buy_btn =_sidebar_buttons[0]
-	var buy_header_y: float = buy_btn.position.y - SECTION_HEADER_H + 2.0
+	var buy_header_y: float = buy_btn.position.y - SECTION_HEADER_H - 4.0
 	# Accent bar
 	draw_rect(Rect2(lx, buy_header_y, 3, 12), UITheme.PRIMARY)
 	# Label
@@ -286,7 +286,7 @@ func _draw_section_headers(font: Font) -> void:
 	# --- "VENDRE" header above first sell button ---
 	if BUY_COUNT < _sidebar_buttons.size():
 		var sell_btn =_sidebar_buttons[BUY_COUNT]
-		var sell_header_y: float = sell_btn.position.y - SECTION_HEADER_H + 2.0
+		var sell_header_y: float = sell_btn.position.y - SECTION_HEADER_H - 4.0
 		# Accent bar (red/danger for sell)
 		var sell_col =UITheme.WARNING
 		draw_rect(Rect2(lx, sell_header_y, 3, 12), sell_col)

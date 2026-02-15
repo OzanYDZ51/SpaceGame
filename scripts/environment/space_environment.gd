@@ -89,7 +89,7 @@ func apply_environment(env_data) -> void:
 	env.glow_hdr_threshold = 0.8
 	env.glow_hdr_scale = 2.0
 	env.glow_hdr_luminance_cap = 20.0
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	# Enable all 7 mip levels for multi-scale bloom (wide halo + tight core)
 	env.set_glow_level(0, true)
 	env.set_glow_level(1, true)
@@ -102,8 +102,8 @@ func apply_environment(env_data) -> void:
 	# --- SSAO (reinforced for better depth perception) ---
 	env.ssao_enabled = true
 	env.ssao_radius = 1.5
-	env.ssao_intensity = 2.0
-	env.ssao_power = 1.5
+	env.ssao_intensity = 1.2
+	env.ssao_power = 1.2
 	env.ssao_detail = 0.5
 	env.ssao_horizon = 0.06
 	env.ssao_sharpness = 0.98
@@ -112,12 +112,12 @@ func apply_environment(env_data) -> void:
 	# --- SSIL off in space (toggled on for interiors) ---
 	env.ssil_enabled = false
 
-	# --- SSR (Screen Space Reflections — metallic surfaces come alive) ---
-	env.ssr_enabled = true
-	env.ssr_max_steps = 64
-	env.ssr_fade_in = 0.15
-	env.ssr_fade_out = 2.0
-	env.ssr_depth_tolerance = 0.2
+	# --- SSR disabled in space ---
+	# SSR traces screen-space rays. In open space, those rays hit nothing but black
+	# sky, replacing the correct sky-based probe reflections with black. This makes
+	# metallic ships (like frigates) appear completely dark. Sky probe reflections
+	# (REFLECTION_SOURCE_SKY above) are the correct approach for space environments.
+	env.ssr_enabled = false
 
 	# --- Color Grading (subtle cinematic polish) ---
 	env.adjustment_enabled = true
@@ -185,3 +185,10 @@ func set_indoor_mode(is_indoor: bool) -> void:
 		return
 	var env: Environment = world_env.environment
 	env.ssil_enabled = is_indoor
+	# SSR works great indoors (nearby geometry to reflect), terrible in open space
+	env.ssr_enabled = is_indoor
+	if is_indoor:
+		env.ssr_max_steps = 64
+		env.ssr_fade_in = 0.15
+		env.ssr_fade_out = 2.0
+		env.ssr_depth_tolerance = 0.2

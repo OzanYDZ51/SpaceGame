@@ -115,8 +115,8 @@ func _layout_controls() -> void:
 	var cx =s.x * 0.5
 	var panel_x =cx - PANEL_W * 0.5
 
-	# Input + Rename button row (y ~ 160)
-	var row_y =160.0
+	# Input + Rename button row
+	var row_y =164.0
 	var prefix_w =70.0  # width reserved for "Station " label
 	_name_input.position = Vector2(panel_x + prefix_w + 8, row_y)
 	_name_input.size = Vector2(INPUT_W, INPUT_H)
@@ -182,22 +182,24 @@ func _draw() -> void:
 	)
 
 	# Subsection background
-	var sub_rect =Rect2(panel_x, 120, PANEL_W, 90)
+	var sub_rect =Rect2(panel_x, 114, PANEL_W, 140)
 	draw_rect(sub_rect, Color(0.0, 0.02, 0.06, 0.4))
 	draw_rect(sub_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12), false, 1.0)
 
+	# Current name label (context shown first, near top of subsection)
+	draw_string(font, Vector2(panel_x + 12, 136), "Nom actuel:",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(panel_x + 90, 136), _current_name,
+		HORIZONTAL_ALIGNMENT_LEFT, int(PANEL_W - 100), UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
+
+	# "Nouveau nom:" small label (dimmed, above input)
+	draw_string(font, Vector2(panel_x + 12, 160), "Nouveau nom:",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
 	# "Station " prefix label (left of input)
 	var prefix_x =panel_x + 12
-	var row_y =174.0
-	draw_string(font_bold, Vector2(prefix_x, row_y), "Station",
+	draw_string(font_bold, Vector2(prefix_x, 178), "Station",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
-
-	# Current name label
-	var current_label_y =200.0
-	draw_string(font, Vector2(panel_x + 12, current_label_y), "Nom actuel:",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(panel_x + 90, current_label_y), _current_name,
-		HORIZONTAL_ALIGNMENT_LEFT, int(PANEL_W - 100), UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
 
 	# =========================================================================
 	# CORNER DECORATIONS
@@ -205,11 +207,11 @@ func _draw() -> void:
 	var accent =Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3)
 	var corner_len =20.0
 	# Top-left
-	draw_line(Vector2(panel_x, 120), Vector2(panel_x + corner_len, 120), accent, 1.0)
-	draw_line(Vector2(panel_x, 120), Vector2(panel_x, 120 + corner_len), accent, 1.0)
+	draw_line(Vector2(panel_x, 114), Vector2(panel_x + corner_len, 114), accent, 1.0)
+	draw_line(Vector2(panel_x, 114), Vector2(panel_x, 114 + corner_len), accent, 1.0)
 	# Top-right
-	draw_line(Vector2(panel_x + PANEL_W, 120), Vector2(panel_x + PANEL_W - corner_len, 120), accent, 1.0)
-	draw_line(Vector2(panel_x + PANEL_W, 120), Vector2(panel_x + PANEL_W, 120 + corner_len), accent, 1.0)
+	draw_line(Vector2(panel_x + PANEL_W, 114), Vector2(panel_x + PANEL_W - corner_len, 114), accent, 1.0)
+	draw_line(Vector2(panel_x + PANEL_W, 114), Vector2(panel_x + PANEL_W, 114 + corner_len), accent, 1.0)
 
 	# =========================================================================
 	# CLOSE SECTION SEPARATOR

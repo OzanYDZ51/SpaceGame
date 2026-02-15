@@ -91,7 +91,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(0, y), "MODE : %s" % mode_label, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 
 	# --- Player list header ---
-	var list_header_y: float = _player_list.position.y - 6
+	var list_header_y: float = _player_list.position.y - 20
 	var count: int = _player_list.items.size()
 	draw_string(font, Vector2(left_x, list_header_y), "JOUEURS EN LIGNE (%d)" % count, HORIZONTAL_ALIGNMENT_LEFT, PANEL_WIDTH, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
 

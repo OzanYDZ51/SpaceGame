@@ -725,6 +725,8 @@ func get_entity_at(screen_pos: Vector2) -> String:
 			continue
 		if filters.get(ent["type"], false):
 			continue  # filtered out
+		if ent.get("extra", {}).get("hidden", false):
+			continue
 		var sp: Vector2 = camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
 		var d: float = screen_pos.distance_to(sp)
 		if d < best_dist:
@@ -742,6 +744,8 @@ func get_entities_in_rect(screen_rect: Rect2) -> Array[String]:
 		if ent["type"] == EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue
 		if filters.get(ent["type"], false):
+			continue
+		if ent.get("extra", {}).get("hidden", false):
 			continue
 		var sp: Vector2 = camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
 		if screen_rect.has_point(sp):

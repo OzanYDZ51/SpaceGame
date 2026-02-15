@@ -153,9 +153,9 @@ func _draw() -> void:
 	draw_line(Vector2(0, action_y + 44), Vector2(size.x, action_y + 44), UITheme.BORDER, 1.0)
 
 	# Labels above inputs
-	draw_string(font, Vector2(m, action_y - 4), "DEPOSER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.ACCENT)
+	draw_string(font, Vector2(m, action_y - 14), "DEPOSER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.ACCENT)
 	var wx: float = m + 320
-	draw_string(font, Vector2(wx, action_y - 4), "RETIRER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
+	draw_string(font, Vector2(wx, action_y - 14), "RETIRER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 
 	# ─── Right Side: Top Contributors ───────────────────────────────────
 	var table_y: float = action_y + 52

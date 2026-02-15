@@ -217,7 +217,7 @@ func _draw_section_header(font: Font) -> void:
 	var rx: float = SIDEBAR_W - 2.0
 
 	var first_btn =_sidebar_buttons[0]
-	var header_y: float = first_btn.position.y - SECTION_HEADER_H + 2.0
+	var header_y: float = first_btn.position.y - SECTION_HEADER_H - 4.0
 	draw_rect(Rect2(lx, header_y, 3, 12), UITheme.PRIMARY)
 	draw_string(font, Vector2(lx + 8, header_y + 11), "CHANTIER NAVAL",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)

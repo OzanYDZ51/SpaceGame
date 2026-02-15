@@ -283,6 +283,9 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 				var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 				if lod_data == null or lod_data.is_dead:
 					continue
+				# Skip mining-docked NPCs (hidden, no position updates needed)
+				if lod_data.node_ref and is_instance_valid(lod_data.node_ref) and not lod_data.node_ref.visible:
+					continue
 
 				var dist =peer_pos.distance_to(lod_data.position)
 				if dist <= FULL_SYNC_DISTANCE and full_sync:

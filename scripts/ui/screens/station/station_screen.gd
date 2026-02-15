@@ -247,14 +247,14 @@ func _draw() -> void:
 	draw_string(font, Vector2(0, emblem_y + emblem_r + 18), _station_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 
-	draw_string(font, Vector2(0, emblem_y + emblem_r + 32), "TERMINAL DE STATION",
+	draw_string(font, Vector2(0, emblem_y + emblem_r + 40), "TERMINAL DE STATION",
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# =========================================================================
 	# INFO PANEL
 	# =========================================================================
 	var info_x: float = cx - 140.0
-	var info_y: float = emblem_y + emblem_r + 44
+	var info_y: float = emblem_y + emblem_r + 48
 	var info_w: float = 280.0
 
 	draw_line(Vector2(info_x, info_y), Vector2(info_x + info_w, info_y), UITheme.BORDER, 1.0)
@@ -277,7 +277,7 @@ func _draw() -> void:
 	# =========================================================================
 	# SERVICE SECTION HEADER
 	# =========================================================================
-	var svc_header_y: float = 224.0
+	var svc_header_y: float = 218.0
 	var header_x: float = cx - 140.0
 	draw_rect(Rect2(header_x, svc_header_y, 2, 12), UITheme.PRIMARY)
 	draw_string(font, Vector2(header_x + 8, svc_header_y + 10), "SERVICES",

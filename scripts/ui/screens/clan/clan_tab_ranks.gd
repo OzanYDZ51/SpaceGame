@@ -200,11 +200,11 @@ func _process(_delta: float) -> void:
 		toggle.size = Vector2(rw - m * 2, 28)
 		ty += 34.0
 
-	ty += 8
+	ty += 24
 	_name_input.position = Vector2(rx + m, ty)
 	_name_input.size = Vector2(rw - m * 2, 30)
 
-	_btn_save.position = Vector2(rx + m, ty + 40)
+	_btn_save.position = Vector2(rx + m, ty + 44)
 	_btn_save.size = Vector2(rw - m * 2, 32)
 
 
@@ -234,6 +234,10 @@ func _draw() -> void:
 		draw_rect(Rect2(rx, 0, 3, 28), UITheme.PRIMARY)
 		draw_string(font, Vector2(rx + m + 4, 18), header, HORIZONTAL_ALIGNMENT_LEFT, rw - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 		draw_line(Vector2(rx, 28), Vector2(rx + rw, 28), UITheme.BORDER, 1.0)
+
+		# "NOM DU RANG" label above name input
+		if _name_input.visible:
+			draw_string(font, Vector2(rx + m + 4, _name_input.position.y - 16 + UITheme.FONT_SIZE_TINY), "NOM DU RANG", HORIZONTAL_ALIGNMENT_LEFT, rw - m * 2, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 		# Permission count
 		var perm_count =0

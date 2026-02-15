@@ -174,6 +174,12 @@ func _ready() -> void:
 			_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
 	elif _state == MiningState.DOCKED:
 		_update_entity_destination(0.0, 0.0, "docked")
+		# Re-apply hidden flags for map (reconnect / save-load)
+		var fdm2 = GameManager.get_node_or_null("FleetDeploymentManager")
+		if fdm2:
+			fdm2.update_entity_extra(fleet_index, "hidden", true)
+			fdm2.update_entity_extra(fleet_index, "mining_docked", true)
+			fdm2.update_entity_extra(fleet_index, "mining_docked_station", _home_station_id)
 	else:
 		_update_entity_destination(_belt_center_x, _belt_center_z, "mining")
 
@@ -556,12 +562,26 @@ func _enter_dock() -> void:
 	_state = MiningState.DOCKED
 	_update_entity_destination(0.0, 0.0, "docked")
 
+	# Hide from stellar map while docked
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
+	if fdm:
+		fdm.update_entity_extra(fleet_index, "hidden", true)
+		fdm.update_entity_extra(fleet_index, "mining_docked", true)
+		fdm.update_entity_extra(fleet_index, "mining_docked_station", _home_station_id)
+
 
 func _exit_dock() -> void:
 	# Restore ship visibility + collisions
 	_ship.visible = true
 	_ship.collision_layer = _saved_collision_layer
 	_ship.collision_mask = _saved_collision_mask
+
+	# Unhide from stellar map
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
+	if fdm:
+		fdm.update_entity_extra(fleet_index, "hidden", false)
+		fdm.update_entity_extra(fleet_index, "mining_docked", false)
+		fdm.update_entity_extra(fleet_index, "mining_docked_station", "")
 
 
 func _tick_docked(delta: float) -> void:

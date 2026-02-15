@@ -115,6 +115,25 @@ func _rebuild() -> void:
 				sys_map[sys_id]["docked"][st_id] = []
 			sys_map[sys_id]["docked"][st_id].append({"fleet_index": i, "ship": fs})
 
+	# Move mining-docked DEPLOYED ships to station docked groups
+	for sys_id in sys_map:
+		var sdata: Dictionary = sys_map[sys_id]
+		var remaining: Array = []
+		for entry in sdata["deployed"]:
+			var fs = entry["ship"]
+			var npc_id_str: String = String(fs.deployed_npc_id) if fs.deployed_npc_id != &"" else ""
+			var ent: Dictionary = EntityRegistry.get_entity(npc_id_str) if npc_id_str != "" else {}
+			if ent.get("extra", {}).get("mining_docked", false):
+				var dock_st: String = ent.get("extra", {}).get("mining_docked_station", "_none")
+				if dock_st == "":
+					dock_st = "_none"
+				if not sdata["docked"].has(dock_st):
+					sdata["docked"][dock_st] = []
+				sdata["docked"][dock_st].append(entry)
+			else:
+				remaining.append(entry)
+		sdata["deployed"] = remaining
+
 	# Convert to sorted groups
 	var sys_ids: Array = sys_map.keys()
 	sys_ids.sort()
@@ -701,8 +720,15 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 		badge = "[D]"
 		badge_col = MapColors.FLEET_STATUS_DOCKED
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-		badge = "[>]"
-		badge_col = MapColors.FLEET_STATUS_DEPLOYED
+		# Check if temporarily docked (mining sell cycle)
+		var npc_id_str: String = String(fs.deployed_npc_id) if fs.deployed_npc_id != &"" else ""
+		var ent_chk: Dictionary = EntityRegistry.get_entity(npc_id_str) if npc_id_str != "" else {}
+		if ent_chk.get("extra", {}).get("mining_docked", false):
+			badge = "[D]"
+			badge_col = MapColors.FLEET_STATUS_DOCKED
+		else:
+			badge = "[>]"
+			badge_col = MapColors.FLEET_STATUS_DEPLOYED
 	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 		badge = "[X]"
 		badge_col = MapColors.FLEET_STATUS_DESTROYED

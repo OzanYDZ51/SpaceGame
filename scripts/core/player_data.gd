@@ -212,6 +212,23 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	if system_transition and sys_id != system_transition.current_system_id:
 		system_transition.jump_to_system(sys_id)
 
+	# Position (floating origin absolute → local)
+	if player_ship and state.has("pos_x"):
+		var abs_x: float = float(state.get("pos_x", 0.0))
+		var abs_y: float = float(state.get("pos_y", 0.0))
+		var abs_z: float = float(state.get("pos_z", 0.0))
+		if abs_x != 0.0 or abs_y != 0.0 or abs_z != 0.0:
+			var local_pos: Vector3 = FloatingOrigin.to_local_pos([abs_x, abs_y, abs_z])
+			player_ship.global_position = local_pos
+
+	# Rotation
+	if player_ship and state.has("rotation_x"):
+		player_ship.rotation = Vector3(
+			float(state.get("rotation_x", 0.0)),
+			float(state.get("rotation_y", 0.0)),
+			float(state.get("rotation_z", 0.0)),
+		)
+
 	# Credits (global)
 	if economy:
 		var current_credits: int = economy.credits

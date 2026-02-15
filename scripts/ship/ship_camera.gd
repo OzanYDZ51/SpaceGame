@@ -74,6 +74,13 @@ func _ready() -> void:
 	_ship = get_parent()
 	if _ship == null or not _ship.has_method("set_throttle"):
 		_ship = get_parent().get_parent()
+
+	# Server-side ships are plain Node3D — no camera needed
+	if _ship == null or not ("center_offset" in _ship):
+		set_process(false)
+		set_process_unhandled_input(false)
+		return
+
 	set_as_top_level(true)
 
 	# Sync runtime vars from export defaults
@@ -81,25 +88,11 @@ func _ready() -> void:
 	current_distance = cam_distance_default
 	_current_fov = fov_base
 
-	# --- CameraAttributes: auto-exposure + subtle far DOF ---
-	var cam_attrs =CameraAttributesPractical.new()
-	cam_attrs.auto_exposure_enabled = true
-	cam_attrs.auto_exposure_min_sensitivity = 50.0
-	cam_attrs.auto_exposure_max_sensitivity = 3200.0
-	cam_attrs.auto_exposure_speed = 2.0
-	cam_attrs.auto_exposure_scale = 0.4
-	cam_attrs.dof_blur_far_enabled = true
-	cam_attrs.dof_blur_far_distance = 5000.0
-	cam_attrs.dof_blur_far_transition = 3000.0
-	cam_attrs.dof_blur_amount = 0.02
-	attributes = cam_attrs
-
 	# Initialize camera position immediately behind and above ship
-	if _ship:
-		var ship_basis: Basis = _ship.global_transform.basis
-		var center: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
-		global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
-		look_at(center, ship_basis.y)
+	var ship_basis: Basis = _ship.global_transform.basis
+	var center: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
+	global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
+	look_at(center, ship_basis.y)
 
 	# Camera is top_level so floating origin shifts don't move it automatically.
 	# We must shift it manually to avoid the camera lagging behind after each shift.
@@ -116,10 +109,10 @@ func _find_combat_systems() -> void:
 	_weapon_manager = _ship.get_node_or_null("WeaponManager")
 	if _weapon_manager and not _weapon_manager.weapon_fired.is_connected(_on_weapon_fired):
 		_weapon_manager.weapon_fired.connect(_on_weapon_fired)
-	# Cruise VFX signals
-	if not _ship.cruise_punch_triggered.is_connected(_on_cruise_punch):
+	# Cruise VFX signals (may not exist on server-side ships)
+	if _ship.has_signal("cruise_punch_triggered") and not _ship.cruise_punch_triggered.is_connected(_on_cruise_punch):
 		_ship.cruise_punch_triggered.connect(_on_cruise_punch)
-	if not _ship.cruise_exit_triggered.is_connected(_on_cruise_exit):
+	if _ship.has_signal("cruise_exit_triggered") and not _ship.cruise_exit_triggered.is_connected(_on_cruise_exit):
 		_ship.cruise_exit_triggered.connect(_on_cruise_exit)
 
 

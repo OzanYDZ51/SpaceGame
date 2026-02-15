@@ -423,6 +423,10 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 		if _uuid_to_peer.has(player_uuid):
 			var old_pid: int = _uuid_to_peer[player_uuid]
 			if old_pid != sender_id:
+				# Transfer last known system to new peer_id
+				if _player_last_system.has(old_pid):
+					_player_last_system[sender_id] = _player_last_system[old_pid]
+					_player_last_system.erase(old_pid)
 				_peer_to_uuid.erase(old_pid)
 				peers.erase(old_pid)  # Safety: remove stale peer entry
 				is_reconnect = true

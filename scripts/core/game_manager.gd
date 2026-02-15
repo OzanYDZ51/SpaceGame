@@ -757,6 +757,16 @@ func _load_backend_state() -> void:
 	if not state.is_empty() and not state.has("error"):
 		SaveManager.apply_state(state)
 		_backend_state_loaded = true
+
+		# Update network ship ID to match restored ship
+		if player_ship and player_ship.ship_data:
+			NetworkManager.local_ship_id = player_ship.ship_data.ship_id
+
+		# Re-register with server if already connected (corrects ship_id + system)
+		if NetworkManager.is_connected_to_server():
+			var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
+			NetworkManager._rpc_register_player.rpc_id(1, NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
+
 		# Fleet reference was replaced by deserialize — reconnect map panels
 		_refresh_fleet_on_maps()
 		# Redeploy fleet ships that were deployed in the current system.
