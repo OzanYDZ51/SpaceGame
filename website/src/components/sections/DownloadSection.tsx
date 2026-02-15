@@ -20,6 +20,7 @@ export function DownloadSection() {
   }, []);
 
   const launcher = updates?.launcher;
+  const game = updates?.game;
 
   return (
     <section id="download" className="relative py-20 sm:py-24 md:py-32 overflow-hidden">
@@ -68,12 +69,13 @@ export function DownloadSection() {
 
             {launcher && (
               <p className="text-xs font-mono text-text-muted tracking-wider">
-                v{launcher.version} — {formatBytes(launcher.size)}
+                v{launcher.version} — Launcher {formatBytes(launcher.size)}
+                {game ? ` | Jeu ${formatBytes(game.size)}` : ""}
               </p>
             )}
 
             <p className="text-xs text-text-muted mt-2">
-              Windows 10+ requis | ~200 Mo
+              Windows 10+ requis
             </p>
           </div>
         </ScrollReveal>
