@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { FEATURES } from "@/lib/constants";
 import type { FeatureData } from "@/lib/constants";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
 
 const icons: Record<string, (size: number) => React.ReactNode> = {
@@ -38,13 +37,6 @@ const icons: Record<string, (size: number) => React.ReactNode> = {
       <polyline points="16 7 22 7 22 13" />
     </svg>
   ),
-  pickaxe: (s) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.531 12.469 6.619 20.38a1 1 0 1 1-1.414-1.414l7.912-7.912" />
-      <path d="M15.686 4.314A12.5 12.5 0 0 0 5.461 2.958l-.108.031c-.043.012-.08.04-.104.074a.5.5 0 0 0 .054.55l2.398 2.398-1.414 1.414-2.398-2.398a.5.5 0 0 0-.55-.054c-.034.024-.062.061-.074.104l-.031.108a12.5 12.5 0 0 0 1.356 10.225" />
-      <path d="m18.5 5.5 2.5 2.5" />
-    </svg>
-  ),
   users: (s) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -53,56 +45,90 @@ const icons: Record<string, (size: number) => React.ReactNode> = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
+  signal: (s) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 20h.01" />
+      <path d="M7 20v-4" />
+      <path d="M12 20v-8" />
+      <path d="M17 20V8" />
+      <path d="M22 4v16" />
+    </svg>
+  ),
 };
 
 function FeatureCard({ feature, index }: { feature: FeatureData; index: number }) {
   const isHero = feature.size === "hero";
   const isMedium = feature.size === "medium";
-  const iconSize = isHero ? 40 : isMedium ? 36 : 28;
+  const iconSize = isHero ? 44 : isMedium ? 36 : 30;
 
   return (
     <ScrollReveal delay={index * 0.08}>
       <motion.div
         className="h-full"
-        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        whileHover={{ y: -6, transition: { duration: 0.25 } }}
       >
         <div
           className={`
-            relative h-full rounded border border-border-subtle bg-bg-card backdrop-blur-sm border-glow-hover group overflow-hidden
-            ${isHero ? "p-8 sm:p-10" : isMedium ? "p-6 sm:p-8" : "p-6"}
+            relative h-full rounded-lg border border-border-subtle bg-bg-card backdrop-blur-sm border-glow-hover group overflow-hidden
+            ${isHero ? "p-8 sm:p-10 lg:p-12" : isMedium ? "p-6 sm:p-8" : "p-6"}
           `}
         >
-          {/* Subtle gradient accent at top */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/30 to-transparent" />
+          {/* Top gradient line */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
 
-          <div className={isHero ? "flex flex-col sm:flex-row sm:items-start gap-6" : ""}>
+          {/* Hover glow background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+          <div className={`relative z-10 ${isHero ? "flex flex-col sm:flex-row sm:items-start gap-6 sm:gap-8" : ""}`}>
+            {/* Icon with glow */}
             <div
               className={`
-                text-cyan mb-4 transition-all duration-300
-                group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_var(--color-cyan-glow)]
-                ${isHero ? "sm:mb-0 shrink-0" : ""}
+                text-cyan transition-all duration-300
+                group-hover:scale-110 group-hover:drop-shadow-[0_0_16px_var(--color-cyan-glow)]
+                ${isHero ? "mb-4 sm:mb-0 shrink-0" : "mb-4"}
               `}
             >
-              {icons[feature.icon]?.(iconSize)}
+              <div className="relative">
+                {icons[feature.icon]?.(iconSize)}
+                <div className="absolute -inset-2 rounded-full bg-cyan/[0.05] scale-0 group-hover:scale-100 transition-transform duration-500" />
+              </div>
             </div>
 
-            <div>
+            <div className="flex-1">
               <h3
                 className={`
-                  font-bold uppercase tracking-wider text-text-primary mb-2
-                  ${isHero ? "text-xl sm:text-2xl" : isMedium ? "text-lg sm:text-xl" : "text-base sm:text-lg"}
+                  font-bold uppercase tracking-wider text-text-primary mb-1
+                  ${isHero ? "text-2xl sm:text-3xl" : isMedium ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"}
                 `}
               >
                 {feature.title}
               </h3>
+
+              <p
+                className={`
+                  text-cyan/80 font-medium mb-3
+                  ${isHero ? "text-base sm:text-lg" : "text-sm sm:text-base"}
+                `}
+              >
+                {feature.subtitle}
+              </p>
+
               <p
                 className={`
                   text-text-secondary leading-relaxed
-                  ${isHero ? "text-sm sm:text-base" : "text-xs sm:text-sm"}
+                  ${isHero ? "text-sm sm:text-base max-w-2xl" : "text-xs sm:text-sm"}
                 `}
               >
                 {feature.description}
               </p>
+
+              {feature.stats && (
+                <div className={`mt-4 pt-3 border-t border-border-subtle ${isHero ? "mt-6 pt-4" : ""}`}>
+                  <span className="text-xs font-mono uppercase tracking-widest text-cyan/60">
+                    {feature.stats}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -117,29 +143,38 @@ export function FeaturesSection() {
   const standard = FEATURES.filter((f) => f.size === "standard");
 
   return (
-    <section id="features" className="relative py-20 sm:py-24 md:py-32">
+    <section id="features" className="relative py-20 sm:py-28 md:py-36">
       <Container>
         <ScrollReveal>
-          <SectionHeading
-            title="Features"
-            subtitle="Un MMORPG spatial ambitieux, construit pour les pilotes exigeants."
-          />
+          <div className="text-center mb-12 sm:mb-20">
+            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-4">
+              <div className="h-px w-8 sm:w-16 bg-gradient-to-r from-transparent to-cyan/50" />
+              <span className="text-xs font-mono uppercase tracking-[0.4em] text-cyan/60">
+                Votre aventure commence ici
+              </span>
+              <div className="h-px w-8 sm:w-16 bg-gradient-to-l from-transparent to-cyan/50" />
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold uppercase tracking-wider text-text-primary">
+              Un seul univers.{" "}
+              <span className="text-cyan text-glow-cyan-sm">Infinies possibilités.</span>
+            </h2>
+            <p className="mt-4 text-text-secondary text-sm sm:text-base md:text-lg max-w-2xl mx-auto">
+              Combat, exploration, commerce, diplomatie — chaque pilote forge son propre chemin dans une galaxie partagée par des milliers de joueurs.
+            </p>
+          </div>
         </ScrollReveal>
 
         <div className="space-y-4 sm:space-y-6">
-          {/* Hero feature — full width */}
           {hero.map((f, i) => (
             <FeatureCard key={f.title} feature={f} index={i} />
           ))}
 
-          {/* Medium features — 2 columns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {medium.map((f, i) => (
               <FeatureCard key={f.title} feature={f} index={hero.length + i} />
             ))}
           </div>
 
-          {/* Standard features — 3 columns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {standard.map((f, i) => (
               <FeatureCard key={f.title} feature={f} index={hero.length + medium.length + i} />

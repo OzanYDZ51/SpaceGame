@@ -6,28 +6,33 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useFaction } from "@/lib/faction";
+import { HERO_STATS } from "@/lib/constants";
 
 export function HeroSection() {
   const { faction } = useFaction();
 
   const tagline = faction === "nova_terra"
-    ? "Per Aspera Ad Astra.\nLa Confédération vous attend."
+    ? "Per Aspera Ad Astra."
     : faction === "kharsis"
-      ? "Ignis Fortem Facit.\nLe Dominion vous attend."
-      : "Explorez. Commercez. Conquérez.\nUn univers persistant vous attend.";
+      ? "Ignis Fortem Facit."
+      : "La galaxie n'obéit à personne.";
+
+  const subtitle = faction === "nova_terra"
+    ? "La Confédération a besoin de pilotes. Rejoignez Nova Terra."
+    : faction === "kharsis"
+      ? "Le Dominion ne pardonne pas. Rejoignez le Kharsis."
+      : "Un univers persistant. Des milliers de pilotes. Quel empire allez-vous bâtir ?";
 
   return (
     <section
       id="hero"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Starfield background */}
       <StarfieldCanvas />
 
-      {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/30 via-transparent to-bg-primary pointer-events-none" />
 
-      {/* Animated radial pulse behind title */}
+      {/* Animated radial pulse */}
       <motion.div
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
         initial={{ opacity: 0 }}
@@ -35,12 +40,12 @@ export function HeroSection() {
         transition={{ delay: 0.5, duration: 1.5 }}
       >
         <motion.div
-          className="w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full bg-cyan/[0.04] blur-[80px] sm:blur-[120px]"
+          className="w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] rounded-full bg-cyan/[0.04] blur-[80px] sm:blur-[140px]"
           animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.5, 0.8, 0.5],
+            scale: [1, 1.2, 1],
+            opacity: [0.4, 0.7, 0.4],
           }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
       </motion.div>
 
@@ -53,6 +58,7 @@ export function HeroSection() {
           <Badge className="mb-6 sm:mb-8">Alpha 0.1 — Accès anticipé</Badge>
         </motion.div>
 
+        {/* Title */}
         <motion.h1
           className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold uppercase tracking-wider leading-none"
           initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -89,32 +95,58 @@ export function HeroSection() {
           </motion.span>
         </motion.h1>
 
+        {/* Tagline — big and dramatic */}
         <motion.p
-          className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-text-secondary max-w-md sm:max-w-xl mx-auto"
+          className="mt-6 sm:mt-8 text-lg sm:text-xl md:text-2xl text-text-primary font-medium max-w-lg mx-auto"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.9 }}
         >
-          {tagline.split("\n").map((line, i) => (
-            <span key={i}>
-              {i > 0 && <br />}
-              {line}
-            </span>
-          ))}
+          {tagline}
         </motion.p>
 
+        {/* Subtitle */}
+        <motion.p
+          className="mt-2 text-sm sm:text-base md:text-lg text-text-secondary max-w-xl mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.1 }}
+        >
+          {subtitle}
+        </motion.p>
+
+        {/* CTA Buttons */}
         <motion.div
           className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
+          transition={{ duration: 0.6, delay: 1.3 }}
         >
           <Button href="#download" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
-            Télécharger le launcher
+            Jouer gratuitement
           </Button>
           <Button variant="outline" href="#features" className="w-full sm:w-auto text-sm sm:text-base px-6 sm:px-8 py-3">
             Découvrir le jeu
           </Button>
+        </motion.div>
+
+        {/* Stats bar — social proof */}
+        <motion.div
+          className="mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-6 sm:gap-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.6 }}
+        >
+          {HERO_STATS.map((stat, i) => (
+            <div key={i} className="text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-cyan font-mono">
+                {stat.value}
+              </div>
+              <div className="text-xs uppercase tracking-[0.2em] text-text-muted mt-0.5">
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </motion.div>
       </Container>
 
@@ -123,7 +155,7 @@ export function HeroSection() {
         className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.8 }}
+        transition={{ delay: 2.0 }}
       >
         <motion.div
           animate={{ y: [0, 8, 0] }}

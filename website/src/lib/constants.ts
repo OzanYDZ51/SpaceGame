@@ -1,6 +1,6 @@
 export const SITE_NAME = "Imperion Online";
 export const SITE_DESCRIPTION =
-  "Explorez. Commercez. Conquérez. Un univers persistant vous attend.";
+  "La galaxie n'obéit à personne. MMORPG spatial en monde ouvert — explorez, combattez, conquérez.";
 export const SITE_URL = "https://imperiononline.fr";
 
 export const API_URL =
@@ -15,54 +15,79 @@ export const NAV_LINKS = [
   { label: "Télécharger", href: "#download" },
 ] as const;
 
+/* ── Hero stats bar ──────────────────────────────── */
+
+export const HERO_STATS = [
+  { value: "120+", label: "Systèmes stellaires" },
+  { value: "30+", label: "Classes de vaisseaux" },
+  { value: "18", label: "Recettes de raffinage" },
+  { value: "MMO", label: "Temps réel" },
+] as const;
+
+/* ── Features — organized by player fantasy ──────── */
+
 export type FeatureData = {
   title: string;
+  subtitle: string;
   description: string;
+  stats?: string;
   icon: string;
   size: "hero" | "medium" | "standard";
 };
 
 export const FEATURES: FeatureData[] = [
   {
-    title: "Liberté totale de vol",
+    title: "Maîtrisez le Vide",
+    subtitle: "Six degrés de liberté. Zéro gravité. Contrôle total.",
     description:
-      "Six degrés de liberté. Aucun rail, aucune limite. Votre vaisseau répond à chaque impulsion — tangage, lacet, roulis, translation. Le vide spatial n'a pas de haut ni de bas, et c'est exactement comme ça que ça doit être. Maîtrisez le vol Newtonien ou laissez l'assistance vous guider.",
+      "Tangage, lacet, roulis, translation — chaque impulsion compte. Pas de rails, pas de limites. Le vol Newtonien vous donne un contrôle absolu dans le vide infini. Chaque manoeuvre d'évasion, chaque approche de station, chaque poursuite est un test de skill pur.",
+    stats: "6DOF  ·  Vol Newtonien  ·  Assistance désactivable",
     icon: "rocket",
     size: "hero",
   },
   {
-    title: "120+ systèmes stellaires",
+    title: "Conquérez par les Armes",
+    subtitle: "Boucliers directionnels. Armes dévastatrices. Décisions en une fraction de seconde.",
     description:
-      "Une galaxie entière générée procéduralement vous attend. Jump gates, wormholes inter-galaxies, 7 classes d'étoiles — chaque système a son identité, ses dangers et ses opportunités. Explorez l'inconnu ou tracez vos routes commerciales.",
-    icon: "globe",
-    size: "medium",
-  },
-  {
-    title: "Combat sans merci",
-    description:
-      "Boucliers directionnels, armes primaires et secondaires, gestion d'énergie en temps réel. Chaque affrontement est un duel de tactique et de réflexes. Visez les boucliers faibles, esquivez les torpilles, et achevez vos ennemis.",
+      "Quatre faces de bouclier à gérer, des armes primaires et secondaires à alterner, de l'énergie à répartir entre systèmes. Visez le point faible. Esquivez les torpilles. Achevez sans pitié. Dans le vide, seul le plus tactique survit.",
+    stats: "4 boucliers directionnels  ·  Armes multiples  ·  Gestion d'énergie",
     icon: "crosshair",
     size: "medium",
   },
   {
-    title: "Économie vivante",
+    title: "Dominez l'Économie",
+    subtitle: "Minez. Raffinez. Commercez. Chaque crédit compte.",
     description:
-      "Les prix fluctuent selon l'offre et la demande entre les stations. Trouvez les routes les plus rentables, transportez du cargo précieux à travers des systèmes dangereux.",
+      "8 minerais rares dans des ceintures d'astéroïdes procédurales. 18 recettes de raffinage. Des prix qui fluctuent en temps réel selon l'offre et la demande. Trouvez la route la plus rentable, transportez du cargo à travers des systèmes hostiles, et bâtissez votre fortune.",
+    stats: "8 minerais  ·  18 recettes  ·  Prix dynamiques",
     icon: "trending-up",
-    size: "standard",
+    size: "medium",
   },
   {
-    title: "Minage & Raffinage",
+    title: "Forgez des Alliances",
+    subtitle: "Créez un clan. Déployez votre flotte. Écrasez vos rivaux.",
     description:
-      "8 minerais, des ceintures d'astéroïdes procédurales, un laser de minage avec gestion thermique. Raffinez vos matériaux bruts en composants de valeur avec 18 recettes.",
-    icon: "pickaxe",
-    size: "standard",
-  },
-  {
-    title: "Clans & Flottes",
-    description:
-      "Fondez votre clan, déployez des escadrons autonomes, gérez la diplomatie. Vos vaisseaux persistent même hors-ligne — construisez un empire.",
+      "Fondez un clan, gérez la diplomatie, déployez des escadrons autonomes avec 5 rôles de combat et 5 formations. Vos vaisseaux persistent même quand vous êtes hors-ligne. Construisez un empire qui fait trembler la galaxie.",
+    stats: "Clans  ·  Escadrons  ·  Persistance de flotte",
     icon: "users",
+    size: "standard",
+  },
+  {
+    title: "Explorez l'Inconnu",
+    subtitle: "120+ systèmes. Des wormholes. L'immensité vous attend.",
+    description:
+      "Jump gates, wormholes inter-galaxies, 7 classes d'étoiles aux propriétés uniques. Chaque système a son identité, ses dangers, ses trésors cachés. Posez-vous sur des planètes aux atmosphères uniques. Allez là où personne n'est encore allé.",
+    stats: "120+ systèmes  ·  7 classes d'étoiles  ·  Atterrissage planétaire",
+    icon: "globe",
+    size: "standard",
+  },
+  {
+    title: "Écrivez Votre Légende",
+    subtitle: "Un univers partagé. Des milliers de pilotes. Votre histoire.",
+    description:
+      "Synchronisation temps réel, combats PvP, flotte persistante côté serveur. Chaque action impacte une galaxie partagée par des milliers de joueurs. Votre réputation vous précède — héros ou tyran, c'est vous qui décidez.",
+    stats: "MMO temps réel  ·  PvP  ·  Univers persistant",
+    icon: "signal",
     size: "standard",
   },
 ];

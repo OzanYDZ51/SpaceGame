@@ -196,7 +196,7 @@ body {
   background: rgba(255, 34, 68, 0.3);
 }
 
-/* ── Kharsis: Ambient heat edges ────────────────── */
+/* ── Kharsis: Ambient heat edges (body pseudo-elements) ── */
 
 [data-faction="kharsis"] body::before,
 [data-faction="kharsis"] body::after {
@@ -204,19 +204,20 @@ body {
   position: fixed;
   top: 0;
   bottom: 0;
-  width: 180px;
+  width: 300px;
   pointer-events: none;
   z-index: 30;
   opacity: 0;
-  animation: kharsis-edge-glow 1s ease-out 0.3s forwards;
+  animation: kharsis-edge-glow 1.2s ease-out 0.3s forwards;
 }
 
 [data-faction="kharsis"] body::before {
   left: 0;
   background: linear-gradient(
     to right,
-    rgba(255, 60, 10, 0.08) 0%,
-    rgba(255, 30, 0, 0.04) 30%,
+    rgba(255, 40, 0, 0.14) 0%,
+    rgba(255, 60, 10, 0.08) 25%,
+    rgba(255, 30, 0, 0.03) 50%,
     transparent 100%
   );
 }
@@ -225,8 +226,9 @@ body {
   right: 0;
   background: linear-gradient(
     to left,
-    rgba(255, 60, 10, 0.08) 0%,
-    rgba(255, 30, 0, 0.04) 30%,
+    rgba(255, 40, 0, 0.14) 0%,
+    rgba(255, 60, 10, 0.08) 25%,
+    rgba(255, 30, 0, 0.03) 50%,
     transparent 100%
   );
 }
@@ -236,39 +238,33 @@ body {
   to { opacity: 1; }
 }
 
-/* Pulsing ember glow overlay on edges */
-[data-faction="kharsis"] body > .kharsis-heat-left,
-[data-faction="kharsis"] body > .kharsis-heat-right {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  width: 120px;
-  pointer-events: none;
-  z-index: 30;
-}
+/* ── Kharsis: Pulsing side glow overlays ─────────── */
 
 @keyframes ember-pulse-left {
   0%, 100% {
     background: linear-gradient(
       to right,
-      rgba(255, 80, 0, 0.06) 0%,
-      rgba(255, 40, 10, 0.03) 40%,
+      rgba(255, 80, 0, 0.10) 0%,
+      rgba(255, 40, 10, 0.05) 30%,
+      rgba(255, 20, 0, 0.02) 60%,
       transparent 100%
     );
   }
   33% {
     background: linear-gradient(
       to right,
-      rgba(255, 120, 20, 0.10) 0%,
-      rgba(255, 60, 10, 0.05) 40%,
+      rgba(255, 120, 20, 0.16) 0%,
+      rgba(255, 80, 10, 0.08) 30%,
+      rgba(255, 40, 0, 0.03) 60%,
       transparent 100%
     );
   }
   66% {
     background: linear-gradient(
       to right,
-      rgba(200, 40, 0, 0.05) 0%,
-      rgba(180, 20, 0, 0.02) 40%,
+      rgba(200, 40, 0, 0.08) 0%,
+      rgba(180, 30, 0, 0.04) 30%,
+      rgba(160, 20, 0, 0.01) 60%,
       transparent 100%
     );
   }
@@ -278,58 +274,67 @@ body {
   0%, 100% {
     background: linear-gradient(
       to left,
-      rgba(255, 80, 0, 0.06) 0%,
-      rgba(255, 40, 10, 0.03) 40%,
+      rgba(255, 80, 0, 0.10) 0%,
+      rgba(255, 40, 10, 0.05) 30%,
+      rgba(255, 20, 0, 0.02) 60%,
       transparent 100%
     );
   }
   33% {
     background: linear-gradient(
       to left,
-      rgba(200, 40, 0, 0.05) 0%,
-      rgba(180, 20, 0, 0.02) 40%,
+      rgba(200, 40, 0, 0.08) 0%,
+      rgba(180, 30, 0, 0.04) 30%,
+      rgba(160, 20, 0, 0.01) 60%,
       transparent 100%
     );
   }
   66% {
     background: linear-gradient(
       to left,
-      rgba(255, 120, 20, 0.10) 0%,
-      rgba(255, 60, 10, 0.05) 40%,
+      rgba(255, 120, 20, 0.16) 0%,
+      rgba(255, 80, 10, 0.08) 30%,
+      rgba(255, 40, 0, 0.03) 60%,
       transparent 100%
     );
   }
 }
 
-/* ── Kharsis: Subtle warm vignette ──────────────── */
+/* ── Kharsis: Strong warm vignette ───────────────── */
 
 [data-faction="kharsis"] .kharsis-vignette {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 29;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 50%,
-    rgba(80, 10, 0, 0.12) 100%
-  );
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 40%,
+      rgba(60, 5, 0, 0.18) 75%,
+      rgba(40, 0, 0, 0.35) 100%
+    );
 }
 
 /* ── Kharsis: Floating ember particles ──────────── */
 
 @keyframes ember-float {
   0% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) translateX(0) scale(1);
     opacity: 0;
   }
-  10% {
-    opacity: 1;
+  8% {
+    opacity: 0.9;
   }
-  80% {
-    opacity: 0.6;
+  50% {
+    transform: translateY(-50vh) translateX(20px) scale(0.8);
+    opacity: 0.7;
+  }
+  85% {
+    opacity: 0.3;
   }
   100% {
-    transform: translateY(-100vh) scale(0.3);
+    transform: translateY(-105vh) translateX(-10px) scale(0.2);
     opacity: 0;
   }
 }
@@ -342,5 +347,12 @@ body {
   pointer-events: none;
   z-index: 31;
   animation: ember-float linear infinite;
-  filter: blur(1px);
+  filter: blur(0.5px);
+}
+
+/* ── Kharsis: Top heat haze ──────────────────────── */
+
+@keyframes heat-shimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
