@@ -133,6 +133,8 @@ func apply_state(state: Dictionary) -> void:
 # --- Collect current state ---
 
 func _collect_state() -> Dictionary:
+	if GameManager._fleet_deployment_mgr:
+		GameManager._fleet_deployment_mgr.force_sync_positions()
 	if GameManager.player_data:
 		return GameManager.player_data.collect_save_state(
 			GameManager.player_ship as ShipController,

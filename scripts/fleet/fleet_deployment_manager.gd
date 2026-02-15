@@ -286,9 +286,15 @@ func auto_retrieve_all() -> void:
 ## Free all deployed NPC nodes from the scene WITHOUT changing deployment_state.
 ## Ships remain marked DEPLOYED in their system — they'll respawn via redeploy_saved_ships()
 ## when the player returns to that system.
+func force_sync_positions() -> void:
+	_sync_deployed_positions()
+	_pos_sync_timer = 0.0
+
+
 func release_scene_nodes() -> void:
 	if _fleet == null:
 		return
+	_sync_deployed_positions()  # Save positions + AI state before freeing
 	for fleet_index in _deployed_ships.keys():
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
@@ -310,6 +316,8 @@ func ensure_deployed_visible() -> void:
 func redeploy_saved_ships() -> void:
 	if _fleet == null:
 		return
+	if _is_multiplayer_client():
+		return  # Server manages fleet NPCs, client sees them via LOD
 	var current_sys: int = GameManager.current_system_id_safe()
 	for i in _fleet.ships.size():
 		var fs := _fleet.ships[i]

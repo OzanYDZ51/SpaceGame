@@ -764,6 +764,8 @@ func _load_backend_state() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		# Save before quit (no await — _notification must not be a coroutine)
+		if _fleet_deployment_mgr:
+			_fleet_deployment_mgr.force_sync_positions()
 		if AuthManager.is_authenticated:
 			SaveManager.trigger_save("game_closing")
 		# Quit is deferred so the save request has time to start

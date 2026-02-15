@@ -583,17 +583,9 @@ func _do_sell_resources() -> void:
 		if qty <= 0:
 			continue
 
-		if commerce:
-			var unit_price := PriceCatalog.get_resource_price(res_id)
-			if unit_price > 0 and commerce.sell_resource_from_ship(res_id, qty, fleet_ship):
-				total_credits += unit_price * qty
-		else:
-			# Fallback if CommerceManager unavailable
-			var unit_price := PriceCatalog.get_resource_price(res_id)
+		var unit_price := PriceCatalog.get_resource_price(res_id)
+		if unit_price > 0 and commerce.sell_resource_from_ship(res_id, qty, fleet_ship):
 			total_credits += unit_price * qty
-			fleet_ship.ship_resources[res_id] = 0
-			GameManager.player_data.economy.add_credits(total_credits)
-			SaveManager.mark_dirty()
 
 	if total_credits > 0 and GameManager._notif:
 		GameManager._notif.fleet.earned(fleet_ship.custom_name, total_credits)
