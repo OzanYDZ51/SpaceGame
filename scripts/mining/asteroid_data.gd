@@ -21,6 +21,7 @@ var respawn_timer: float = 0.0
 var visual_radius: float = 10.0
 var color_tint: Color = Color.GRAY
 var scale_distort: Vector3 = Vector3.ONE  # Non-uniform scale for rocky look
+var mesh_variant_idx: int = 0      # Index into AsteroidMeshLib variants
 var has_resource: bool = true       # false = barren rock (no yield)
 var is_scanned: bool = false        # true = resource revealed by scanner
 var scan_expire_time: float = 0.0   # Time.get_ticks_msec() when scan expires
@@ -40,15 +41,15 @@ func get_yield_per_hit() -> int:
 
 func get_health_for_size() -> float:
 	match size:
-		AsteroidSize.SMALL: return 50.0
-		AsteroidSize.MEDIUM: return 150.0
-		AsteroidSize.LARGE: return 400.0
-	return 50.0
+		AsteroidSize.SMALL: return 80.0
+		AsteroidSize.MEDIUM: return 250.0
+		AsteroidSize.LARGE: return 600.0
+	return 80.0
 
 
 func get_radius_for_size() -> float:
 	match size:
-		AsteroidSize.SMALL: return 8.0
-		AsteroidSize.MEDIUM: return 18.0
-		AsteroidSize.LARGE: return 35.0
-	return 8.0
+		AsteroidSize.SMALL: return 16.0
+		AsteroidSize.MEDIUM: return 36.0
+		AsteroidSize.LARGE: return 70.0
+	return 16.0

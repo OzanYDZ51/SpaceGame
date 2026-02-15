@@ -103,12 +103,12 @@ func _send_state() -> void:
 	var health = _ship.get_node_or_null("HealthSystem")
 	if health:
 		state.hull_ratio = health.hull_current / health.hull_max if health.hull_max > 0 else 1.0
-		state.shield_ratios = [
-			health.shield_current[0] / health.shield_max_per_facing if health.shield_max_per_facing > 0 else 1.0,
-			health.shield_current[1] / health.shield_max_per_facing if health.shield_max_per_facing > 0 else 1.0,
-			health.shield_current[2] / health.shield_max_per_facing if health.shield_max_per_facing > 0 else 1.0,
-			health.shield_current[3] / health.shield_max_per_facing if health.shield_max_per_facing > 0 else 1.0,
-		]
+		var smpf: float = health.shield_max_per_facing
+		if smpf > 0.0:
+			state.shield_ratios[0] = health.shield_current[0] / smpf
+			state.shield_ratios[1] = health.shield_current[1] / smpf
+			state.shield_ratios[2] = health.shield_current[2] / smpf
+			state.shield_ratios[3] = health.shield_current[3] / smpf
 
 	if NetworkManager.is_host:
 		# Host: update our own state directly in the peers dict

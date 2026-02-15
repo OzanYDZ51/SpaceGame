@@ -765,7 +765,10 @@ func _load_backend_state() -> void:
 		# Re-register with server if already connected (corrects ship_id + system)
 		if NetworkManager.is_connected_to_server():
 			var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
-			NetworkManager._rpc_register_player.rpc_id(1, NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
+			if NetworkManager.is_host:
+				NetworkManager._rpc_register_player(NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
+			else:
+				NetworkManager._rpc_register_player.rpc_id(1, NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
 
 		# Fleet reference was replaced by deserialize — reconnect map panels
 		_refresh_fleet_on_maps()

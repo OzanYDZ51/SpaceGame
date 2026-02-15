@@ -8,28 +8,34 @@ extends Node
 # Deterministic seeding ensures the same cell always produces the same asteroids.
 # =============================================================================
 
+const _AsteroidMeshLib = preload("res://scripts/mining/asteroid_mesh_lib.gd")
+
 # --- LOD ---
-const LOD_FULL_DIST: float = 500.0
-const LOD_SIMPLIFIED_DIST: float = 2000.0
-const LOD_DOT_DIST: float = 6000.0
-const LOD_FULL_MAX: int = 50
-const LOD_SIMPLIFIED_MAX: int = 200
-const MAX_PROMOTIONS_PER_TICK: int = 10
-const LOD_EVAL_INTERVAL: float = 0.3
+const LOD_FULL_DIST: float = 800.0
+const LOD_SIMPLIFIED_DIST: float = 4000.0
+const LOD_DOT_DIST: float = 12000.0
+const LOD_FULL_MAX: int = 60
+const LOD_SIMPLIFIED_MAX: int = 300
+const MAX_PROMOTIONS_PER_TICK: int = 30
+const LOD_EVAL_INTERVAL: float = 0.15
 const RESPAWN_CHECK_INTERVAL: float = 10.0
 
 # --- Cell-based generation ---
 const CELL_SIZE: float = 1000.0        # 1 km generation cells
-const LOAD_RADIUS: float = 8000.0      # Load cells within 8 km
-const UNLOAD_RADIUS: float = 10000.0   # Unload cells beyond 10 km
-const CELL_EVAL_INTERVAL: float = 0.5  # Check cells every 0.5s
+const LOAD_RADIUS: float = 15000.0     # Load cells within 15 km
+const UNLOAD_RADIUS: float = 18000.0   # Unload cells beyond 18 km
+const CELL_EVAL_INTERVAL: float = 0.2  # Check cells every 0.2s
 const ASTEROIDS_PER_CELL_MIN: int = 3
 const ASTEROIDS_PER_CELL_MAX: int = 6
 const VERTICAL_SPREAD: float = 400.0   # ±200 m vertical spread
-const SCAN_NEUTRAL_COLOR =Color(0.35, 0.33, 0.3)
+const SCAN_NEUTRAL_COLOR = Color(0.35, 0.33, 0.3)
 const SCAN_BARREN_RATE: float = 0.60
 const SCAN_REVEAL_DURATION: float = 30.0  # seconds before scan expires
 const SCAN_EXPIRY_CHECK_INTERVAL: float = 2.0
+
+# --- Look-ahead ---
+const LOOKAHEAD_SPEED_THRESHOLD: float = 100.0  # m/s before look-ahead activates
+const LOOKAHEAD_TIME: float = 2.0               # predict 2s into the future
 
 enum AsteroidLOD { FULL, SIMPLIFIED, DOT, DATA_ONLY }
 
@@ -60,10 +66,14 @@ var _respawn_timer: float = 0.0
 var _scan_expiry_timer: float = 0.0
 var _dots_dirty: bool = false
 
+# Look-ahead: player ship reference for velocity prediction
+var _ship_ref: WeakRef = WeakRef.new()
+
 
 func _ready() -> void:
 	_grid = SpatialGrid.new(500.0)
 	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
+	_AsteroidMeshLib.ensure_loaded()
 
 
 func initialize(universe: Node3D) -> void:
@@ -80,18 +90,18 @@ func _setup_multimesh() -> void:
 		return
 	_multimesh_instance = MultiMeshInstance3D.new()
 	_multimesh_instance.name = "AsteroidDots"
-	var mm =MultiMesh.new()
+	var mm = MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.instance_count = 0
-	var dot_mesh =SphereMesh.new()
+	var dot_mesh = SphereMesh.new()
 	dot_mesh.radius = 3.0
 	dot_mesh.height = 6.0
 	dot_mesh.radial_segments = 4
 	dot_mesh.rings = 2
 	mm.mesh = dot_mesh
 	_multimesh_instance.multimesh = mm
-	var mat =StandardMaterial3D.new()
+	var mat = StandardMaterial3D.new()
 	mat.albedo_color = Color(0.35, 0.33, 0.3)
 	mat.emission_enabled = false
 	mat.roughness = 0.95
@@ -134,7 +144,7 @@ func clear_all() -> void:
 # === Public API ===
 
 func get_nearest_asteroid(pos: Vector3, radius: float) -> AsteroidData:
-	var results =_grid.query_nearest(pos, radius, 1)
+	var results = _grid.query_nearest(pos, radius, 1)
 	if results.is_empty():
 		return null
 	var id: StringName = results[0]["id"]
@@ -142,18 +152,18 @@ func get_nearest_asteroid(pos: Vector3, radius: float) -> AsteroidData:
 
 
 func get_nearest_minable_asteroid(pos: Vector3, radius: float) -> AsteroidData:
-	var results =_grid.query_nearest(pos, radius, 10)
+	var results = _grid.query_nearest(pos, radius, 10)
 	for entry in results:
-		var asteroid =_all_asteroids.get(entry["id"])
+		var asteroid = _all_asteroids.get(entry["id"])
 		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
 			return asteroid
 	return null
 
 
 func get_nearest_minable_asteroid_filtered(pos: Vector3, radius: float, resource_filter: Array) -> AsteroidData:
-	var results =_grid.query_nearest(pos, radius, 20)
+	var results = _grid.query_nearest(pos, radius, 20)
 	for entry in results:
-		var asteroid =_all_asteroids.get(entry["id"])
+		var asteroid = _all_asteroids.get(entry["id"])
 		if asteroid and not asteroid.is_depleted and asteroid.has_resource:
 			if asteroid.primary_resource in resource_filter:
 				return asteroid
@@ -166,10 +176,10 @@ func get_asteroid_data(id: StringName) -> AsteroidData:
 
 ## Returns asteroid data objects within radius of pos (for radar).
 func get_asteroids_in_radius(pos: Vector3, radius: float) -> Array[AsteroidData]:
-	var ids =_grid.query_radius(pos, radius)
+	var ids = _grid.query_radius(pos, radius)
 	var result: Array[AsteroidData] = []
 	for id in ids:
-		var ast =_all_asteroids.get(id)
+		var ast = _all_asteroids.get(id)
 		if ast and not ast.is_depleted:
 			result.append(ast)
 	return result
@@ -195,17 +205,37 @@ func _process(delta: float) -> void:
 	if _fields.is_empty():
 		return
 
+	# Resolve ship reference for velocity look-ahead
+	var ship: Node3D = _ship_ref.get_ref() as Node3D
+	if ship == null:
+		var tree = get_tree()
+		if tree:
+			ship = tree.current_scene.find_child("PlayerShip", true, false) as Node3D
+			if ship:
+				_ship_ref = weakref(ship)
+	var speed: float = 0.0
+	if ship and ship is RigidBody3D:
+		speed = (ship as RigidBody3D).linear_velocity.length()
+
+	# Adaptive intervals based on speed
+	var cell_interval: float = CELL_EVAL_INTERVAL
+	var lod_interval: float = LOD_EVAL_INTERVAL
+	if speed > 200.0:
+		var factor: float = clampf(200.0 / speed, 0.25, 1.0)
+		cell_interval = maxf(0.05, CELL_EVAL_INTERVAL * factor)
+		lod_interval = maxf(0.05, LOD_EVAL_INTERVAL * factor)
+
 	# Cell evaluation (load/unload cells around player)
 	_cell_timer += delta
-	if _cell_timer >= CELL_EVAL_INTERVAL:
-		_cell_timer -= CELL_EVAL_INTERVAL
-		_evaluate_cells()
+	if _cell_timer >= cell_interval:
+		_cell_timer -= cell_interval
+		_evaluate_cells(ship, speed)
 
 	# LOD evaluation (throttled)
 	if not _all_asteroids.is_empty():
 		_lod_timer += delta
-		if _lod_timer >= LOD_EVAL_INTERVAL:
-			_lod_timer -= LOD_EVAL_INTERVAL
+		if _lod_timer >= lod_interval:
+			_lod_timer -= lod_interval
 			_evaluate_lod()
 
 	# Respawn check (throttled)
@@ -223,39 +253,40 @@ func _process(delta: float) -> void:
 
 # === Cell Generation ===
 
-func _evaluate_cells() -> void:
-	var cam =get_viewport().get_camera_3d()
+func _evaluate_cells(ship: Node3D, speed: float) -> void:
+	var cam = get_viewport().get_camera_3d()
 	if cam == null:
 		return
 
-	var cam_pos =cam.global_position
+	var cam_pos = cam.global_position
 	var universe_x: float = cam_pos.x + FloatingOrigin.origin_offset_x
 	var universe_z: float = cam_pos.z + FloatingOrigin.origin_offset_z
 
-	# Determine which cells should be loaded
+	# Look-ahead: predict future position when moving fast
+	var ahead_x: float = universe_x
+	var ahead_z: float = universe_z
+	var use_lookahead: bool = speed > LOOKAHEAD_SPEED_THRESHOLD and ship and ship is RigidBody3D
+	if use_lookahead:
+		var vel: Vector3 = (ship as RigidBody3D).linear_velocity
+		ahead_x = universe_x + vel.x * LOOKAHEAD_TIME
+		ahead_z = universe_z + vel.z * LOOKAHEAD_TIME
+
+	# Determine which cells should be loaded (around current pos + ahead pos)
 	var desired_cells: Dictionary = {}  # Vector2i -> field_idx
 	var cell_range: int = ceili(LOAD_RADIUS / CELL_SIZE)
 	var player_cell_x: int = floori(universe_x / CELL_SIZE)
 	var player_cell_z: int = floori(universe_z / CELL_SIZE)
 
-	for cx in range(player_cell_x - cell_range, player_cell_x + cell_range + 1):
-		for cz in range(player_cell_z - cell_range, player_cell_z + cell_range + 1):
-			var cell_center_x: float = (cx + 0.5) * CELL_SIZE
-			var cell_center_z: float = (cz + 0.5) * CELL_SIZE
-			var dx: float = cell_center_x - universe_x
-			var dz: float = cell_center_z - universe_z
-			if dx * dx + dz * dz > LOAD_RADIUS * LOAD_RADIUS:
-				continue
+	# Load around current position
+	_gather_cells_in_radius(player_cell_x, player_cell_z, cell_range, universe_x, universe_z, LOAD_RADIUS, desired_cells)
 
-			# Check if cell center falls within any belt ring
-			var dist_from_star: float = sqrt(cell_center_x * cell_center_x + cell_center_z * cell_center_z)
-			for fi in _fields.size():
-				var f: AsteroidFieldData = _fields[fi]
-				if absf(dist_from_star - f.orbital_radius) < f.width * 0.5:
-					desired_cells[Vector2i(cx, cz)] = fi
-					break
+	# Load around predicted position (if moving fast)
+	if use_lookahead:
+		var ahead_cell_x: int = floori(ahead_x / CELL_SIZE)
+		var ahead_cell_z: int = floori(ahead_z / CELL_SIZE)
+		_gather_cells_in_radius(ahead_cell_x, ahead_cell_z, cell_range, ahead_x, ahead_z, LOAD_RADIUS, desired_cells)
 
-	# Unload cells beyond UNLOAD_RADIUS (hysteresis prevents thrashing)
+	# Unload cells beyond UNLOAD_RADIUS from BOTH current and predicted positions
 	var cells_to_remove: Array[Vector2i] = []
 	for key: Vector2i in _loaded_cells:
 		if desired_cells.has(key):
@@ -264,8 +295,16 @@ func _evaluate_cells() -> void:
 		var ccz: float = (key.y + 0.5) * CELL_SIZE
 		var dx: float = ccx - universe_x
 		var dz: float = ccz - universe_z
-		if dx * dx + dz * dz > UNLOAD_RADIUS * UNLOAD_RADIUS:
-			cells_to_remove.append(key)
+		var dist_sq: float = dx * dx + dz * dz
+		if use_lookahead:
+			var dx2: float = ccx - ahead_x
+			var dz2: float = ccz - ahead_z
+			var dist_sq2: float = dx2 * dx2 + dz2 * dz2
+			if dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS and dist_sq2 > UNLOAD_RADIUS * UNLOAD_RADIUS:
+				cells_to_remove.append(key)
+		else:
+			if dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS:
+				cells_to_remove.append(key)
 
 	for key in cells_to_remove:
 		_unload_cell(key)
@@ -276,18 +315,41 @@ func _evaluate_cells() -> void:
 			_load_cell(key, desired_cells[key])
 
 
+func _gather_cells_in_radius(center_cx: int, center_cz: int, cell_range: int,
+		universe_x: float, universe_z: float, radius: float, out_cells: Dictionary) -> void:
+	var radius_sq: float = radius * radius
+	for cx in range(center_cx - cell_range, center_cx + cell_range + 1):
+		for cz in range(center_cz - cell_range, center_cz + cell_range + 1):
+			var cell_center_x: float = (cx + 0.5) * CELL_SIZE
+			var cell_center_z: float = (cz + 0.5) * CELL_SIZE
+			var dx: float = cell_center_x - universe_x
+			var dz: float = cell_center_z - universe_z
+			if dx * dx + dz * dz > radius_sq:
+				continue
+			# Check if cell center falls within any belt ring
+			var dist_from_star: float = sqrt(cell_center_x * cell_center_x + cell_center_z * cell_center_z)
+			for fi in _fields.size():
+				var f: AsteroidFieldData = _fields[fi]
+				if absf(dist_from_star - f.orbital_radius) < f.width * 0.5:
+					var key: Vector2i = Vector2i(cx, cz)
+					if not out_cells.has(key):
+						out_cells[key] = fi
+					break
+
+
 func _load_cell(cell: Vector2i, field_idx: int) -> void:
 	var field: AsteroidFieldData = _fields[field_idx]
 
-	var rng =RandomNumberGenerator.new()
+	var rng = RandomNumberGenerator.new()
 	# Deterministic seed from system_seed + field_index + cell coords
 	rng.seed = _hash_cell(field_idx, cell.x, cell.y)
 
 	var count: int = rng.randi_range(ASTEROIDS_PER_CELL_MIN, ASTEROIDS_PER_CELL_MAX)
 	var ids: Array[StringName] = []
+	var mesh_count: int = _AsteroidMeshLib.get_variant_count()
 
 	for i in count:
-		var id =StringName("ast_%d_%d_%d_%d" % [field_idx, cell.x, cell.y, i])
+		var id = StringName("ast_%d_%d_%d_%d" % [field_idx, cell.x, cell.y, i])
 
 		# Skip depleted asteroids
 		if _depleted_ids.has(id):
@@ -295,7 +357,7 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 			_consume_rng_draws(rng)
 			continue
 
-		var asteroid =AsteroidData.new()
+		var asteroid = AsteroidData.new()
 		asteroid.id = id
 		asteroid.field_id = field.field_id
 
@@ -337,6 +399,13 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 			rng.randf_range(0.7, 1.3),
 		)
 
+		# Mesh variant (deterministic per asteroid)
+		if mesh_count > 0:
+			asteroid.mesh_variant_idx = rng.randi() % mesh_count
+		else:
+			rng.randi()  # consume draw for determinism
+			asteroid.mesh_variant_idx = 0
+
 		# Barren roll: 60% of asteroids have no resource
 		var barren_roll: float = rng.randf()
 		if barren_roll < SCAN_BARREN_RATE:
@@ -354,7 +423,7 @@ func _load_cell(cell: Vector2i, field_idx: int) -> void:
 				asteroid.primary_resource = field.rare_resource
 
 		# Color: compute true resource_color but display neutral until scanned
-		var res =MiningRegistry.get_resource(asteroid.primary_resource) if asteroid.has_resource else null
+		var res = MiningRegistry.get_resource(asteroid.primary_resource) if asteroid.has_resource else null
 		if res:
 			asteroid.resource_color = Color(
 				res.color.r + rng.randf_range(-0.08, 0.08),
@@ -383,6 +452,7 @@ func _consume_rng_draws(rng: RandomNumberGenerator) -> void:
 	rng.randf_range(0.02, 0.15)            # rotation speed
 	rng.randf()                             # size
 	rng.randf_range(0.7, 1.3); rng.randf_range(0.6, 1.2); rng.randf_range(0.7, 1.3)  # scale
+	rng.randi()                             # mesh variant
 	rng.randf()                             # barren roll
 	rng.randf()                             # resource
 	rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08); rng.randf_range(-0.08, 0.08)  # color
@@ -404,7 +474,7 @@ func _unload_cell(cell: Vector2i) -> void:
 func _remove_lod_representation(id: StringName) -> void:
 	if _full_nodes.has(id):
 		var node = _full_nodes[id]
-		var asteroid =_all_asteroids.get(id)
+		var asteroid = _all_asteroids.get(id)
 		if asteroid:
 			asteroid.node_ref = null
 		if is_instance_valid(node):
@@ -425,8 +495,8 @@ func _hash_cell(field_idx: int, cx: int, cz: int) -> int:
 # === LOD ===
 
 func _evaluate_lod() -> void:
-	var cam_pos =Vector3.ZERO
-	var cam =get_viewport().get_camera_3d()
+	var cam_pos = Vector3.ZERO
+	var cam = get_viewport().get_camera_3d()
 	if cam:
 		cam_pos = cam.global_position
 
@@ -436,7 +506,7 @@ func _evaluate_lod() -> void:
 	var simplified_count: int = _simplified_meshes.size()
 
 	for id: StringName in _all_asteroids:
-		var asteroid =_all_asteroids[id]
+		var asteroid = _all_asteroids[id]
 		var dist: float = cam_pos.distance_to(asteroid.position)
 		var current_lod: AsteroidLOD = _lod_levels.get(id, AsteroidLOD.DATA_ONLY)
 		var target_lod: AsteroidLOD
@@ -502,7 +572,7 @@ func _transition_lod(id: StringName, asteroid, from, to) -> void:
 func _spawn_full(id: StringName, asteroid) -> void:
 	if _universe_node == null:
 		return
-	var node =AsteroidNode.new()
+	var node = AsteroidNode.new()
 	node.setup(asteroid)
 	_universe_node.add_child(node)
 	_full_nodes[id] = node
@@ -516,25 +586,34 @@ func _spawn_full(id: StringName, asteroid) -> void:
 func _spawn_simplified(id: StringName, asteroid) -> void:
 	if _universe_node == null:
 		return
-	var mesh_inst =MeshInstance3D.new()
+	var mesh_inst = MeshInstance3D.new()
 	mesh_inst.name = "AsteroidSimp_" + String(id)
-	var sphere =SphereMesh.new()
-	sphere.radius = asteroid.visual_radius
-	sphere.height = asteroid.visual_radius * 2.0
-	sphere.radial_segments = 6
-	sphere.rings = 4
-	mesh_inst.mesh = sphere
-	mesh_inst.scale = asteroid.scale_distort
 
-	var mat =StandardMaterial3D.new()
+	# Use GLB mesh variant
+	var variant: Dictionary = _AsteroidMeshLib.get_variant(asteroid.mesh_variant_idx)
+	if not variant.is_empty():
+		mesh_inst.mesh = variant["mesh"]
+		var glb_scale: Vector3 = _AsteroidMeshLib.compute_scale_for_radius(variant, asteroid.visual_radius)
+		mesh_inst.scale = glb_scale * asteroid.scale_distort
+	else:
+		# Fallback sphere
+		var sphere = SphereMesh.new()
+		sphere.radius = asteroid.visual_radius
+		sphere.height = asteroid.visual_radius * 2.0
+		sphere.radial_segments = 6
+		sphere.rings = 4
+		mesh_inst.mesh = sphere
+		mesh_inst.scale = asteroid.scale_distort
+
+	# Dark overlay to make simplified rocks look distant/dark
+	var mat = StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	var base_col: Color = asteroid.color_tint if asteroid.color_tint != Color.GRAY else Color(0.35, 0.33, 0.3)
-	# Darken the color so simplified asteroids look like dark rocks, not bright blobs
-	mat.albedo_color = Color(base_col.r * 0.4, base_col.g * 0.4, base_col.b * 0.4)
+	mat.albedo_color = Color(base_col.r * 0.4, base_col.g * 0.4, base_col.b * 0.4, 0.5)
 	if asteroid.is_depleted:
-		mat.albedo_color = Color(0.15, 0.15, 0.15, 0.5)
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(0.1, 0.1, 0.1, 0.7)
 	mat.roughness = 0.95
-	mesh_inst.material_override = mat
+	mesh_inst.material_overlay = mat
 	mesh_inst.position = asteroid.position
 	_universe_node.add_child(mesh_inst)
 	_simplified_meshes[id] = mesh_inst
@@ -543,17 +622,17 @@ func _spawn_simplified(id: StringName, asteroid) -> void:
 func _rebuild_multimesh() -> void:
 	if _multimesh_instance == null or _multimesh_instance.multimesh == null:
 		return
-	var mm =_multimesh_instance.multimesh
+	var mm = _multimesh_instance.multimesh
 	var count: int = _dot_ids.size()
 	mm.instance_count = count
 
 	for i in count:
 		var id: StringName = _dot_ids[i]
-		var asteroid =_all_asteroids.get(id)
+		var asteroid = _all_asteroids.get(id)
 		if asteroid == null:
 			continue
-		var t =Transform3D.IDENTITY
-		t = t.scaled(Vector3.ONE * (asteroid.visual_radius * 0.3))
+		var t = Transform3D.IDENTITY
+		t = t.scaled(Vector3.ONE * (asteroid.visual_radius * 0.4))
 		t.origin = asteroid.position
 		mm.set_instance_transform(i, t)
 		var col: Color = asteroid.color_tint if asteroid.color_tint != Color.GRAY else Color(0.5, 0.55, 0.6)
@@ -575,7 +654,7 @@ func _tick_respawns() -> void:
 
 	# Respawn loaded depleted asteroids whose timer expired
 	for id: StringName in _all_asteroids:
-		var asteroid =_all_asteroids[id]
+		var asteroid = _all_asteroids[id]
 		if not asteroid.is_depleted:
 			continue
 		if _depleted_ids.has(id):
@@ -598,7 +677,7 @@ func _on_node_depleted(asteroid_id: StringName) -> void:
 func _on_origin_shifted(shift: Vector3) -> void:
 	# Shift all asteroid positions in data
 	for id: StringName in _all_asteroids:
-		var asteroid =_all_asteroids[id]
+		var asteroid = _all_asteroids[id]
 		asteroid.position -= shift
 
 	# Rebuild spatial grid
@@ -608,7 +687,7 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	for id in _simplified_meshes:
 		var mesh: MeshInstance3D = _simplified_meshes[id]
 		if is_instance_valid(mesh):
-			var asteroid =_all_asteroids.get(id)
+			var asteroid = _all_asteroids.get(id)
 			if asteroid:
 				mesh.position = asteroid.position
 
@@ -620,12 +699,12 @@ func _on_origin_shifted(shift: Vector3) -> void:
 
 ## Reveals asteroids within radius of center. Returns count of resource-bearing asteroids found.
 func reveal_asteroids_in_radius(center: Vector3, radius: float) -> int:
-	var ids =_grid.query_radius(center, radius)
+	var ids = _grid.query_radius(center, radius)
 	var revealed_count: int = 0
 	var now: float = Time.get_ticks_msec() / 1000.0
 
 	for id: StringName in ids:
-		var ast =_all_asteroids.get(id)
+		var ast = _all_asteroids.get(id)
 		if ast == null or ast.is_depleted or ast.is_scanned:
 			continue
 
@@ -664,13 +743,16 @@ func _update_asteroid_visual(ast, reveal: bool) -> void:
 			ast.node_ref.apply_scan_reveal(ast)
 		else:
 			ast.node_ref.apply_scan_expire()
-	# SIMPLIFIED LOD — update material directly
+	# SIMPLIFIED LOD — update material_overlay directly
 	if _simplified_meshes.has(ast.id):
 		var mesh: MeshInstance3D = _simplified_meshes[ast.id]
-		if is_instance_valid(mesh) and mesh.material_override:
-			var mat: StandardMaterial3D = mesh.material_override
+		if is_instance_valid(mesh) and mesh.material_overlay:
+			var mat: StandardMaterial3D = mesh.material_overlay
 			var col: Color = ast.color_tint
-			mat.albedo_color = Color(col.r * 0.4, col.g * 0.4, col.b * 0.4)
+			if reveal:
+				mat.albedo_color = Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.5)
+			else:
+				mat.albedo_color = Color(0.14, 0.13, 0.12, 0.5)
 
 
 func _flash_barren_asteroid(ast) -> void:
@@ -683,7 +765,7 @@ func _tick_scan_expiry() -> void:
 	var any_expired: bool = false
 
 	for id: StringName in _all_asteroids:
-		var ast =_all_asteroids[id]
+		var ast = _all_asteroids[id]
 		if not ast.is_scanned:
 			continue
 		if ast.scan_expire_time > 0.0 and now >= ast.scan_expire_time:

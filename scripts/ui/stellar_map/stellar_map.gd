@@ -719,6 +719,11 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(universe_x, universe_z)
 						_set_route_lines(effective_indices, universe_x, universe_z)
+				elif effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
+					# No fleet ship selected — right-click selects/locks the entity
+					var target_id = _entity_layer.get_entity_at(event.position)
+					if target_id != "":
+						_select_entity(target_id)
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()
