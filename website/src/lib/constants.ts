@@ -15,44 +15,57 @@ export const NAV_LINKS = [
   { label: "Télécharger", href: "#download" },
 ] as const;
 
-export const FEATURES = [
+export type FeatureData = {
+  title: string;
+  description: string;
+  icon: string;
+  size: "hero" | "medium" | "standard";
+};
+
+export const FEATURES: FeatureData[] = [
   {
-    title: "Vol 6DOF",
+    title: "Liberté totale de vol",
     description:
-      "Pilotez votre vaisseau avec une liberté totale dans les 6 degrés de mouvement. Tangage, lacet, roulis — le vide spatial est votre terrain de jeu.",
+      "Six degrés de liberté. Aucun rail, aucune limite. Votre vaisseau répond à chaque impulsion — tangage, lacet, roulis, translation. Le vide spatial n'a pas de haut ni de bas, et c'est exactement comme ça que ça doit être. Maîtrisez le vol Newtonien ou laissez l'assistance vous guider.",
     icon: "rocket",
+    size: "hero",
   },
   {
-    title: "Univers Massif",
+    title: "120+ systèmes stellaires",
     description:
-      "Plus de 120 systèmes stellaires générés procéduralement, reliés par des jump gates et des wormholes inter-galaxies.",
+      "Une galaxie entière générée procéduralement vous attend. Jump gates, wormholes inter-galaxies, 7 classes d'étoiles — chaque système a son identité, ses dangers et ses opportunités. Explorez l'inconnu ou tracez vos routes commerciales.",
     icon: "globe",
+    size: "medium",
   },
   {
-    title: "Combat Temps Réel",
+    title: "Combat sans merci",
     description:
-      "Affrontez des PNJ et d'autres joueurs avec un système de combat dynamique : boucliers directionnels, armes multiples, gestion de l'énergie.",
+      "Boucliers directionnels, armes primaires et secondaires, gestion d'énergie en temps réel. Chaque affrontement est un duel de tactique et de réflexes. Visez les boucliers faibles, esquivez les torpilles, et achevez vos ennemis.",
     icon: "crosshair",
+    size: "medium",
   },
   {
-    title: "Économie Dynamique",
+    title: "Économie vivante",
     description:
-      "Achetez, vendez et transportez des marchandises entre les stations. Les prix fluctuent selon l'offre et la demande.",
+      "Les prix fluctuent selon l'offre et la demande entre les stations. Trouvez les routes les plus rentables, transportez du cargo précieux à travers des systèmes dangereux.",
     icon: "trending-up",
+    size: "standard",
   },
   {
-    title: "Minage",
+    title: "Minage & Raffinage",
     description:
-      "Extrayez 8 types de minerais dans les ceintures d'astéroïdes. Gérez la chaleur de votre laser et optimisez vos routes de minage.",
+      "8 minerais, des ceintures d'astéroïdes procédurales, un laser de minage avec gestion thermique. Raffinez vos matériaux bruts en composants de valeur avec 18 recettes.",
     icon: "pickaxe",
+    size: "standard",
   },
   {
-    title: "Système de Clans",
+    title: "Clans & Flottes",
     description:
-      "Créez ou rejoignez un clan, gérez la diplomatie, et déployez votre flotte pour contrôler des systèmes stratégiques.",
+      "Fondez votre clan, déployez des escadrons autonomes, gérez la diplomatie. Vos vaisseaux persistent même hors-ligne — construisez un empire.",
     icon: "users",
+    size: "standard",
   },
-] as const;
+];
 
 export const UNIVERSE_STATS = [
   { value: "120+", label: "Systèmes stellaires" },
@@ -110,6 +123,77 @@ export const SHIPS: ShipData[] = [
       "Un vaisseau lourd conçu pour le combat prolongé. Ses tourelles multiples en font un adversaire redoutable.",
   },
 ];
+
+export const SHIPS_BY_FACTION: Record<string, ShipData[]> = {
+  nova_terra: [
+    {
+      id: "nt-fighter",
+      name: "Fighter NT-7",
+      class: "Chasseur",
+      modelPath: "/models/tie.glb",
+      scale: 1.5,
+      cameraDistance: 4,
+      stats: {
+        speed: "340 m/s",
+        hull: "400 HP",
+        shields: "280 SP",
+        class: "Intercepteur de ligne",
+      },
+      description:
+        "Le NT-7 incarne la doctrine Nova Terra : précision et protection. Ses boucliers surpuissants et sa vitesse en font le chasseur parfait pour les patrouilles de la Confédération.",
+    },
+    {
+      id: "nt-frigate",
+      name: "Frégate Aurore",
+      class: "Frégate",
+      modelPath: "/models/frigate_mk1.glb",
+      scale: 0.6,
+      cameraDistance: 6,
+      stats: {
+        speed: "160 m/s",
+        hull: "2400 HP",
+        shields: "1600 SP",
+        class: "Frégate de défense",
+      },
+      description:
+        "La Frégate Aurore est le bouclier de la flotte. Conçue pour encaisser et protéger, ses générateurs de boucliers de dernière génération sont inégalés dans la galaxie.",
+    },
+  ],
+  kharsis: [
+    {
+      id: "kh-fighter",
+      name: "Intercepteur Kha'ri",
+      class: "Chasseur",
+      modelPath: "/models/tie.glb",
+      scale: 1.5,
+      cameraDistance: 4,
+      stats: {
+        speed: "300 m/s",
+        hull: "550 HP",
+        shields: "150 SP",
+        class: "Chasseur d'assaut",
+      },
+      description:
+        "Forgé au-delà du Rift, le Kha'ri est une machine de guerre brute. Sa coque renforcée par des alliages aliens et ses armes dévastatrices compensent largement ses boucliers limités.",
+    },
+    {
+      id: "kh-frigate",
+      name: "Croiseur Kha'ri",
+      class: "Croiseur",
+      modelPath: "/models/frigate_mk1.glb",
+      scale: 0.6,
+      cameraDistance: 6,
+      stats: {
+        speed: "120 m/s",
+        hull: "3600 HP",
+        shields: "800 SP",
+        class: "Croiseur lourd",
+      },
+      description:
+        "Le Croiseur Kha'ri est la terreur des champs de bataille. Sa masse colossale et son armement dévastateur en font un vaisseau conçu pour un seul objectif : la destruction totale.",
+    },
+  ],
+};
 
 export type RoadmapPhase = {
   id: string;

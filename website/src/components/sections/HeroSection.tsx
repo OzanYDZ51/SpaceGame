@@ -5,8 +5,17 @@ import { StarfieldCanvas } from "@/components/effects/StarfieldCanvas";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { useFaction } from "@/lib/faction";
 
 export function HeroSection() {
+  const { faction } = useFaction();
+
+  const tagline = faction === "nova_terra"
+    ? "Per Aspera Ad Astra.\nLa Confédération vous attend."
+    : faction === "kharsis"
+      ? "Ignis Fortem Facit.\nLe Dominion vous attend."
+      : "Explorez. Commercez. Conquérez.\nUn univers persistant vous attend.";
+
   return (
     <section
       id="hero"
@@ -80,9 +89,12 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.9 }}
         >
-          Explorez. Commercez. Conquérez.
-          <br />
-          Un univers persistant vous attend.
+          {tagline.split("\n").map((line, i) => (
+            <span key={i}>
+              {i > 0 && <br />}
+              {line}
+            </span>
+          ))}
         </motion.p>
 
         <motion.div

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { rajdhani, shareTechMono } from "@/lib/fonts";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { AuthProvider } from "@/lib/auth";
+import { FactionProvider } from "@/lib/faction";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
@@ -27,11 +28,13 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${rajdhani.variable} ${shareTechMono.variable}`}>
       <body className="min-h-screen bg-bg-primary text-text-primary font-heading antialiased">
-        <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
-        </AuthProvider>
+        <FactionProvider>
+          <AuthProvider>
+            <Navbar />
+            <main>{children}</main>
+            <Footer />
+          </AuthProvider>
+        </FactionProvider>
       </body>
     </html>
   );

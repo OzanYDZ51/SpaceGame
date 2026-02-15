@@ -126,3 +126,72 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 200, 255, 0.3);
 }
+
+/* ── Faction: Kharsis (Red/Crimson override) ────── */
+
+[data-faction="kharsis"] {
+  --color-cyan: #ff2244;
+  --color-cyan-dim: rgba(255, 34, 68, 0.5);
+  --color-cyan-glow: rgba(255, 34, 68, 0.3);
+  --color-cyan-subtle: rgba(255, 34, 68, 0.1);
+  --color-cyan-faint: rgba(255, 34, 68, 0.06);
+
+  --color-accent: #ff6644;
+
+  --color-text-primary: #e8c8b0;
+  --color-text-secondary: rgba(232, 200, 176, 0.6);
+  --color-text-muted: rgba(232, 200, 176, 0.35);
+
+  --color-border-subtle: rgba(255, 34, 68, 0.12);
+  --color-border-hover: rgba(255, 34, 68, 0.4);
+
+  --color-bg-card: rgba(30, 5, 10, 0.6);
+  --color-bg-card-solid: #1e050a;
+}
+
+[data-faction="kharsis"] ::selection {
+  background: rgba(255, 34, 68, 0.3);
+}
+
+[data-faction="kharsis"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 34, 68, 0.2);
+}
+
+[data-faction="kharsis"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 34, 68, 0.4);
+}
+
+[data-faction="kharsis"] .text-glow-cyan {
+  text-shadow:
+    0 0 10px rgba(255, 34, 68, 0.6),
+    0 0 30px rgba(255, 34, 68, 0.3),
+    0 0 60px rgba(255, 34, 68, 0.15);
+}
+
+[data-faction="kharsis"] .text-glow-cyan-sm {
+  text-shadow:
+    0 0 6px rgba(255, 34, 68, 0.5),
+    0 0 15px rgba(255, 34, 68, 0.2);
+}
+
+[data-faction="kharsis"] .box-glow-cyan {
+  box-shadow:
+    0 0 10px rgba(255, 34, 68, 0.15),
+    0 0 30px rgba(255, 34, 68, 0.08),
+    inset 0 0 10px rgba(255, 34, 68, 0.05);
+}
+
+[data-faction="kharsis"] .border-glow-hover:hover {
+  border-color: rgba(255, 34, 68, 0.4);
+  box-shadow:
+    0 0 15px rgba(255, 34, 68, 0.15),
+    0 0 40px rgba(255, 34, 68, 0.08);
+}
+
+[data-faction="kharsis"] .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 34, 68, 0.15);
+}
+
+[data-faction="kharsis"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 34, 68, 0.3);
+}

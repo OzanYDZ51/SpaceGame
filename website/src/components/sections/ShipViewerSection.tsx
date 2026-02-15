@@ -6,8 +6,9 @@ import { OrbitControls, useGLTF, Environment, ContactShadows } from "@react-thre
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ScrollReveal } from "@/components/effects/ScrollReveal";
-import { SHIPS } from "@/lib/constants";
+import { SHIPS, SHIPS_BY_FACTION } from "@/lib/constants";
 import type { ShipData } from "@/lib/constants";
+import { useFaction } from "@/lib/faction";
 import * as THREE from "three";
 
 function ShipModel({ ship }: { ship: ShipData }) {
@@ -112,8 +113,12 @@ function StatRow({ label, value }: { label: string; value: string }) {
 }
 
 export function ShipViewerSection() {
+  const { faction } = useFaction();
+  const ships = faction && SHIPS_BY_FACTION[faction] ? SHIPS_BY_FACTION[faction] : SHIPS;
   const [activeIndex, setActiveIndex] = useState(0);
-  const activeShip = SHIPS[activeIndex];
+  const safeIndex = activeIndex >= ships.length ? 0 : activeIndex;
+  const activeShip = ships[safeIndex];
+  const rimColor = faction === "kharsis" ? "#ff2244" : "#00c8ff";
 
   return (
     <section id="ships" className="py-20 sm:py-24 md:py-32 relative">
@@ -121,7 +126,13 @@ export function ShipViewerSection() {
         <ScrollReveal>
           <SectionHeading
             title="Vaisseaux"
-            subtitle="Inspectez les vaisseaux qui vous attendent dans l'univers d'Imperion."
+            subtitle={
+              faction === "nova_terra"
+                ? "La flotte de la Confédération Nova Terra. Précision et protection."
+                : faction === "kharsis"
+                  ? "L'arsenal du Dominion Kharsis. Puissance et destruction."
+                  : "Inspectez les vaisseaux qui vous attendent dans l'univers d'Imperion."
+            }
           />
         </ScrollReveal>
 
@@ -129,11 +140,11 @@ export function ShipViewerSection() {
           <div className="rounded-xl border border-border-subtle overflow-hidden bg-bg-card backdrop-blur-sm">
             {/* Tabs */}
             <div className="flex items-center border-b border-border-subtle bg-black/30 overflow-x-auto">
-              {SHIPS.map((ship, i) => (
+              {ships.map((ship, i) => (
                 <ShipTab
                   key={ship.id}
                   ship={ship}
-                  isActive={i === activeIndex}
+                  isActive={i === safeIndex}
                   onClick={() => setActiveIndex(i)}
                 />
               ))}
@@ -156,8 +167,8 @@ export function ShipViewerSection() {
                   >
                     <ambientLight intensity={0.4} />
                     <directionalLight position={[5, 8, 5]} intensity={1.2} />
-                    <directionalLight position={[-3, 2, -2]} intensity={0.5} color="#00c8ff" />
-                    <pointLight position={[0, -2, 3]} intensity={0.4} color="#00c8ff" />
+                    <directionalLight position={[-3, 2, -2]} intensity={0.5} color={rimColor} />
+                    <pointLight position={[0, -2, 3]} intensity={0.4} color={rimColor} />
 
                     <ShipModel key={activeShip.id} ship={activeShip} />
 

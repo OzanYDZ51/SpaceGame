@@ -1,4 +1,5 @@
 import { HeroSection } from "@/components/sections/HeroSection";
+import { FactionSelectorSection } from "@/components/sections/FactionSelectorSection";
 import { FeaturesSection } from "@/components/sections/FeaturesSection";
 import { ShipViewerLazy } from "@/components/sections/ShipViewerLazy";
 import { UniverseSection } from "@/components/sections/UniverseSection";
@@ -13,6 +14,7 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
+      <FactionSelectorSection />
       <FeaturesSection />
       <ShipViewerLazy />
       <UniverseSection />
