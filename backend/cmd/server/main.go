@@ -102,6 +102,11 @@ func main() {
 	v1.Get("/updates", updatesH.GetUpdates)
 	v1.Post("/updates/refresh", updatesH.RefreshCache)
 
+	// Public stats (no auth — website server pulse)
+	publicH := handler.NewPublicHandler(playerRepo, clanRepo, eventRepo, wsHub)
+	pub := v1.Group("/public")
+	pub.Get("/stats", publicH.Stats)
+
 	// Changelog (public GET, admin POST)
 	changelogH := handler.NewChangelogHandler(changelogRepo, webhookSvc)
 	v1.Get("/changelog", changelogH.List)
