@@ -161,6 +161,11 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[1] = state
 
+	# Register host's UUID so fleet NPCs are tracked by UUID (not just peer_id "1")
+	if AuthManager.is_authenticated and AuthManager.player_id != "":
+		_uuid_to_peer[AuthManager.player_id] = 1
+		_peer_to_uuid[1] = AuthManager.player_id
+
 	connection_succeeded.emit()
 	player_list_updated.emit()
 	return OK

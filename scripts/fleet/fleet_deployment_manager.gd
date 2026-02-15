@@ -435,12 +435,9 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 				if GameManager._notif:
 					GameManager._notif.fleet.lost(fs.custom_name)
 
-	# Confirm alive ships are still DEPLOYED + restore positions
-	var alive_indices: Dictionary = {}
+	# Confirm alive ships — restore positions from server
 	for entry in alive:
 		var fi: int = int(entry.get("fleet_index", -1))
-		alive_indices[fi] = true
-		# Restore position from server if available
 		if fi >= 0 and fi < _fleet.ships.size():
 			var px: float = float(entry.get("pos_x", 0.0))
 			var py: float = float(entry.get("pos_y", 0.0))
@@ -448,15 +445,8 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 			if px != 0.0 or py != 0.0 or pz != 0.0:
 				_fleet.ships[fi].last_known_pos = [px, py, pz]
 
-	# Ships that were DEPLOYED but not in alive list → mark DESTROYED
-	for i in _fleet.ships.size():
-		var fs := _fleet.ships[i]
-		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-			if not alive_indices.has(i):
-				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
-				fs.deployed_npc_id = &""
-				fs.deployed_command = &""
-				fs.deployed_command_params = {}
+	# DO NOT mark missing ships as DESTROYED — they may be in a different
+	# system or the server may not have loaded them yet.
 
 	_fleet.fleet_changed.emit()
 	print("FleetDeploy: Reconnect status — %d alive, %d died offline" % [alive.size(), deaths.size()])

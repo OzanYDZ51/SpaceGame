@@ -230,8 +230,33 @@ func handle_equipment_closed() -> void:
 func handle_repair_requested() -> void:
 	if dock_instance and player_ship:
 		dock_instance.repair_ship(player_ship)
-		if notif:
-			notif.general.repair()
+
+	# Recover destroyed fleet ships → DOCKED at this station
+	var fleet: PlayerFleet = player_data.fleet if player_data else null
+	var recovered_count: int = 0
+	if fleet:
+		var active_fs := fleet.get_active()
+		var station_id: String = active_fs.docked_station_id if active_fs else ""
+		var system_id: int = active_fs.docked_system_id if active_fs else -1
+
+		for i in fleet.ships.size():
+			if i == fleet.active_index:
+				continue
+			var fs := fleet.ships[i]
+			if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+				fs.deployment_state = FleetShip.DeploymentState.DOCKED
+				fs.docked_station_id = station_id
+				fs.docked_system_id = system_id
+				fs.deployed_npc_id = &""
+				fs.deployed_command = &""
+				fs.deployed_command_params = {}
+				recovered_count += 1
+
+		if recovered_count > 0:
+			fleet.fleet_changed.emit()
+
+	if notif:
+		notif.general.repair(recovered_count)
 
 
 func handle_equipment_requested() -> void:

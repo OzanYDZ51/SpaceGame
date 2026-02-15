@@ -56,6 +56,14 @@ func _check_activation() -> void:
 		_backend_client.name = "ServerBackendClient"
 		add_child(_backend_client)
 		_fleet_sync_timer = FLEET_SYNC_INTERVAL
+		# Connect fleet reconnect signal for host (non-dedicated)
+		# RPC path handles remote clients, but the host needs a signal connection
+		if not NetworkManager.is_dedicated_server:
+			_fleet_reconnect_status.connect(func(alive: Array, deaths: Array) -> void:
+				var fleet_mgr := GameManager.get_node_or_null("FleetDeploymentManager") as FleetDeploymentManager
+				if fleet_mgr:
+					fleet_mgr.apply_reconnect_fleet_status(alive, deaths)
+			)
 		print("NpcAuthority: Activated (server mode)")
 		# Load previously deployed fleet ships from backend (async)
 		_load_deployed_fleet_ships_from_backend()

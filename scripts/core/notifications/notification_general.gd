@@ -12,8 +12,11 @@ func _init(svc: NotificationService) -> void:
 	_svc = svc
 
 
-func repair() -> void:
-	_svc.toast("VAISSEAU RÉPARÉ", UIToast.ToastType.SUCCESS)
+func repair(recovered_count: int = 0) -> void:
+	if recovered_count > 0:
+		_svc.toast("FLOTTE RÉPARÉE — %d vaisseau(x) récupéré(s)" % recovered_count, UIToast.ToastType.SUCCESS)
+	else:
+		_svc.toast("VAISSEAU RÉPARÉ", UIToast.ToastType.SUCCESS)
 
 
 func cargo_full(lost_count: int) -> void:
