@@ -110,7 +110,10 @@ func _layout() -> void:
 	var s := size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_ship_dropdown.position = Vector2(0, 0)
-	_ship_dropdown.size = Vector2(list_w, DROPDOWN_H)
+	if _ship_dropdown._expanded:
+		_ship_dropdown.size.x = list_w
+	else:
+		_ship_dropdown.size = Vector2(list_w, DROPDOWN_H)
 	var list_top: float = DROPDOWN_H + 4.0
 	_item_list.position = Vector2(0, list_top)
 	_item_list.size = Vector2(list_w, s.y - list_top)

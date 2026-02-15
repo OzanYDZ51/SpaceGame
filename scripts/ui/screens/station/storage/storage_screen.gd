@@ -347,7 +347,10 @@ func _layout_controls() -> void:
 	var dropdown_h: float = 26.0
 	var dropdown_y: float = CONTENT_TOP + 4.0
 	_fleet_dropdown.position = Vector2(right_x + 4, dropdown_y)
-	_fleet_dropdown.size = Vector2(right_w - 8, dropdown_h)
+	if _fleet_dropdown._expanded:
+		_fleet_dropdown.size.x = right_w - 8
+	else:
+		_fleet_dropdown.size = Vector2(right_w - 8, dropdown_h)
 
 	# Lists
 	var list_top: float = CONTENT_TOP + 38.0

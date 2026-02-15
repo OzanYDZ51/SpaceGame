@@ -156,7 +156,10 @@ func _process(_delta: float) -> void:
 
 	# Filter bar
 	_filter_dropdown.position = Vector2(m, m)
-	_filter_dropdown.size = Vector2(180, 30)
+	if _filter_dropdown._expanded:
+		_filter_dropdown.size.x = 180
+	else:
+		_filter_dropdown.size = Vector2(180, 30)
 
 	_btn_24h.position = Vector2(m + 200, m)
 	_btn_24h.size = Vector2(60, 30)

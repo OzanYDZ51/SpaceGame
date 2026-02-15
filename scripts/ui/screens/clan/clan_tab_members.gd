@@ -222,7 +222,10 @@ func _process(_delta: float) -> void:
 	_search.position = Vector2(m, m)
 	_search.size = Vector2(size.x * 0.42, 30)
 	_filter_dropdown.position = Vector2(size.x * 0.42 + m * 2, m)
-	_filter_dropdown.size = Vector2(size.x * 0.38, 30)
+	if _filter_dropdown._expanded:
+		_filter_dropdown.size.x = size.x * 0.38
+	else:
+		_filter_dropdown.size = Vector2(size.x * 0.38, 30)
 
 	# Table
 	_table.position = Vector2(0, m + 42)
