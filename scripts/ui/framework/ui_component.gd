@@ -146,3 +146,180 @@ func draw_key_value(x: float, y: float, w: float, key: String, value: String) ->
 	draw_string(font, Vector2(x, text_y), value, HORIZONTAL_ALIGNMENT_RIGHT, w, fsize, UITheme.LABEL_VALUE)
 
 	return y + UITheme.ROW_HEIGHT
+
+
+# =============================================================================
+# CARD / GRID HELPERS — shared by all card-grid-based views
+# =============================================================================
+
+## Draw a generic item card with icon area, name, subtitle, price, and states.
+## icon_callable: Callable(center: Vector2, color: Color) — draws the icon.
+## Returns nothing. The caller manages hover/flash on top.
+func draw_item_card(rect: Rect2, icon_callable: Callable, item_name: String,
+		subtitle: String, price_text: String, is_affordable: bool,
+		is_locked: bool, is_hovered: bool, accent_color: Color) -> void:
+	var font: Font = UITheme.get_font()
+	# Background
+	var bg: Color
+	if is_locked:
+		bg = Color(0.01, 0.015, 0.03, 0.5) if not is_hovered else Color(0.015, 0.025, 0.05, 0.62)
+	else:
+		bg = Color(0.015, 0.04, 0.08, 0.82) if not is_hovered else Color(0.025, 0.06, 0.12, 0.9)
+	draw_rect(rect, bg)
+
+	# Border
+	var bcol: Color
+	if is_locked:
+		bcol = UITheme.BORDER_HOVER if is_hovered else UITheme.BORDER
+	else:
+		bcol = UITheme.BORDER_ACTIVE if is_hovered else Color(accent_color.r, accent_color.g, accent_color.b, 0.4)
+	draw_rect(rect, bcol, false, 1.0)
+
+	# Top glow
+	if not is_locked:
+		var ga: float = 0.25 if is_hovered else 0.1
+		draw_line(Vector2(rect.position.x + 1, rect.position.y),
+			Vector2(rect.end.x - 1, rect.position.y),
+			Color(accent_color.r, accent_color.g, accent_color.b, ga), 2.0)
+
+	# Mini corners
+	draw_corners(rect, 6.0, bcol)
+
+	# Icon (centered, upper area)
+	var icon_cy: float = rect.position.y + 30.0
+	if icon_callable.is_valid():
+		var icol: Color = accent_color if not is_locked else Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.4)
+		icon_callable.call(Vector2(rect.position.x + rect.size.x * 0.5, icon_cy), icol)
+
+	# Name (centered)
+	var name_col: Color = UITheme.TEXT if not is_locked else UITheme.TEXT_DIM
+	var name_y: float = rect.position.y + 56.0
+	draw_string(font, Vector2(rect.position.x + 4, name_y),
+		item_name, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8, UITheme.FONT_SIZE_SMALL, name_col)
+
+	# Subtitle (centered, smaller)
+	if subtitle != "":
+		draw_string(font, Vector2(rect.position.x + 4, name_y + 16),
+			subtitle, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
+	# Price (bottom)
+	if price_text != "":
+		var pcol: Color = PlayerEconomy.CREDITS_COLOR if is_affordable else UITheme.DANGER
+		draw_string(font, Vector2(rect.position.x + 4, rect.end.y - 8),
+			price_text, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8, UITheme.FONT_SIZE_TINY, pcol)
+
+	# Lock overlay
+	if is_locked:
+		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.25))
+
+
+## Draw a rarity badge as N stars at a position.
+func draw_rarity_badge(pos: Vector2, rarity_level: int, col: Color) -> void:
+	var star_count: int = clampi(rarity_level, 1, 5)
+	var total_w: float = star_count * 8.0
+	var sx: float = pos.x - total_w * 0.5 + 4.0
+	for i in star_count:
+		var cx: float = sx + i * 8.0
+		var pts: PackedVector2Array = []
+		for k in 5:
+			var a_outer: float = -PI * 0.5 + TAU * float(k) / 5.0
+			pts.append(Vector2(cx + cos(a_outer) * 3.5, pos.y + sin(a_outer) * 3.5))
+			var a_inner: float = a_outer + TAU / 10.0
+			pts.append(Vector2(cx + cos(a_inner) * 1.5, pos.y + sin(a_inner) * 1.5))
+		draw_colored_polygon(pts, col)
+
+
+## Draw a mini stat bar inline. Returns nothing.
+func draw_stat_mini_bar(rect: Rect2, ratio: float, col: Color, label: String, value_text: String) -> void:
+	var font: Font = UITheme.get_font()
+	# Bar background
+	draw_rect(rect, Color(0.0, 0.05, 0.1, 0.5))
+	# Filled portion
+	var fw: float = rect.size.x * clampf(ratio, 0.0, 1.0)
+	if fw > 0.0:
+		draw_rect(Rect2(rect.position, Vector2(fw, rect.size.y)), Color(col.r, col.g, col.b, 0.5))
+	# Border
+	draw_rect(rect, Color(col.r, col.g, col.b, 0.3), false, 1.0)
+	# Label (left)
+	if label != "":
+		draw_string(font, Vector2(rect.position.x + 3, rect.end.y - 2),
+			label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.5, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	# Value (right)
+	if value_text != "":
+		draw_string(font, Vector2(rect.position.x, rect.end.y - 2),
+			value_text, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 3, UITheme.FONT_SIZE_TINY, UITheme.TEXT)
+
+
+## Draw a price tag with colored background.
+func draw_price_tag(pos: Vector2, price_text: String, affordable: bool, tag_width: float) -> void:
+	var font: Font = UITheme.get_font()
+	var h: float = 18.0
+	var r: Rect2 = Rect2(pos.x, pos.y, tag_width, h)
+	var col: Color = PlayerEconomy.CREDITS_COLOR if affordable else UITheme.DANGER
+	draw_rect(r, Color(col.r, col.g, col.b, 0.12))
+	draw_rect(r, Color(col.r, col.g, col.b, 0.3), false, 1.0)
+	draw_string(font, Vector2(pos.x, pos.y + h - 3), price_text,
+		HORIZONTAL_ALIGNMENT_CENTER, tag_width, UITheme.FONT_SIZE_TINY, col)
+
+
+## Draw a procedural ore crystal icon.
+func draw_ore_crystal(center: Vector2, radius: float, col: Color) -> void:
+	# Diamond/crystal shape with inner facets
+	var pts: PackedVector2Array = [
+		center + Vector2(0, -radius),
+		center + Vector2(radius * 0.6, -radius * 0.2),
+		center + Vector2(radius * 0.5, radius * 0.7),
+		center + Vector2(0, radius),
+		center + Vector2(-radius * 0.5, radius * 0.7),
+		center + Vector2(-radius * 0.6, -radius * 0.2),
+	]
+	draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.3))
+	pts.append(pts[0])  # close the loop
+	draw_polyline(pts, col, 1.5)
+	# Inner facet lines
+	draw_line(center + Vector2(0, -radius), center + Vector2(0, radius),
+		Color(col.r, col.g, col.b, 0.3), 1.0)
+	draw_line(center + Vector2(-radius * 0.6, -radius * 0.2),
+		center + Vector2(radius * 0.5, radius * 0.7),
+		Color(col.r, col.g, col.b, 0.2), 1.0)
+
+
+## Draw a size badge ([S], [M], [L]) — colored by size.
+func draw_size_badge(pos: Vector2, size_str: String) -> void:
+	var font: Font = UITheme.get_font()
+	var badge_col: Color
+	match size_str:
+		"S": badge_col = UITheme.PRIMARY
+		"M": badge_col = UITheme.WARNING
+		"L": badge_col = Color(0.7, 0.5, 1.0)
+		_: badge_col = UITheme.TEXT_DIM
+	var bw: float = 22.0
+	var bh: float = 14.0
+	draw_rect(Rect2(pos.x, pos.y, bw, bh), Color(badge_col.r, badge_col.g, badge_col.b, 0.2))
+	draw_rect(Rect2(pos.x, pos.y, bw, bh), Color(badge_col.r, badge_col.g, badge_col.b, 0.4), false, 1.0)
+	draw_string(font, Vector2(pos.x, pos.y + bh - 1),
+		size_str, HORIZONTAL_ALIGNMENT_CENTER, bw, UITheme.FONT_SIZE_TINY, badge_col)
+
+
+## Compute a grid layout of cards within a given area. Returns Array[Rect2].
+static func compute_card_grid(area: Rect2, card_w: float, card_h: float, gap: float, count: int) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if count <= 0:
+		return rects
+	var cols: int = maxi(1, int((area.size.x + gap) / (card_w + gap)))
+	for i in count:
+		@warning_ignore("integer_division")
+		var row: int = i / cols
+		var col: int = i % cols
+		var x: float = area.position.x + col * (card_w + gap)
+		var y: float = area.position.y + row * (card_h + gap)
+		rects.append(Rect2(x, y, card_w, card_h))
+	return rects
+
+
+## Hit-test a point against an array of Rect2. Returns index or -1.
+static func hit_test_rects(rects: Array[Rect2], point: Vector2) -> int:
+	for i in rects.size():
+		if rects[i].has_point(point):
+			return i
+	return -1

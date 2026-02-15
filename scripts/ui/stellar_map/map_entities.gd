@@ -114,6 +114,9 @@ func _draw() -> void:
 	# Galaxy autopilot route line (player → next gate)
 	_draw_galaxy_route_line(entities)
 
+	# Post-arrival autopilot line (player → final destination, gold dashed)
+	_draw_autopilot_line(entities)
+
 	# Fleet route line (dashed) from ship to destination
 	_draw_route_line(entities)
 
@@ -859,6 +862,49 @@ func _draw_galaxy_route_line(entities: Dictionary) -> void:
 	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var label_pos =to_sp + Vector2(-tw * 0.5, -22)
 	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))
+
+
+func _draw_autopilot_line(entities: Dictionary) -> void:
+	if camera == null or _player_id == "":
+		return
+	# Only draw when ship has autopilot active and no galaxy route is active
+	var ship = GameManager.player_ship
+	if ship == null or not ship.autopilot_active:
+		return
+	var rm = GameManager._route_manager if GameManager else null
+	if rm != null and rm.is_route_active():
+		return  # Galaxy route line handles this case
+	# Get autopilot target entity
+	var target_id: String = ship.autopilot_target_id
+	if target_id == "":
+		return
+	var target_ent: Dictionary = entities.get(target_id, {})
+	if target_ent.is_empty():
+		target_ent = EntityRegistry.get_entity(target_id)
+	if target_ent.is_empty():
+		return
+	# Get player screen position
+	var player_ent: Dictionary = entities.get(_player_id, {})
+	if player_ent.is_empty():
+		player_ent = EntityRegistry.get_entity(_player_id)
+	if player_ent.is_empty():
+		return
+	var from_sp: Vector2 = camera.universe_to_screen(player_ent["pos_x"], player_ent["pos_z"])
+	var to_sp: Vector2 = camera.universe_to_screen(target_ent["pos_x"], target_ent["pos_z"])
+	# Gold dashed line
+	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
+	var col: Color = Color(1.0, 0.8, 0.0, 0.4 * pulse)
+	_draw_dashed_line(from_sp, to_sp, col, 2.0, 10.0, 6.0)
+	# Destination label
+	var dest_name: String = ship.autopilot_target_name
+	if dest_name.length() > 20:
+		dest_name = dest_name.substr(0, 18) + ".."
+	if dest_name != "" and dest_name != "Destination":
+		var font: Font = UITheme.get_font()
+		var label: String = "→ " + dest_name
+		var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var label_pos: Vector2 = to_sp + Vector2(-tw * 0.5, -22)
+		draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.8, 0.0, 0.6 * pulse))
 
 
 # =============================================================================

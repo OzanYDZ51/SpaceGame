@@ -20,6 +20,7 @@ signal peer_connected(peer_id: int, player_name: String)
 signal peer_disconnected(peer_id: int)
 signal connection_succeeded
 signal connection_failed(reason: String)
+signal server_connection_lost(reason: String)  ## Emitted only when a LIVE connection drops (not initial failures)
 signal player_state_received(peer_id: int, state)
 signal chat_message_received(sender_name: String, channel: int, text: String)
 signal whisper_received(sender_name: String, text: String)
@@ -383,7 +384,9 @@ func _on_server_disconnected() -> void:
 	player_list_updated.emit()
 	_reconnect_attempts += 1
 	_reconnect_timer = RECONNECT_DELAY
-	connection_failed.emit("Serveur déconnecté. Reconnexion...")
+	var reason := "Serveur déconnecté. Reconnexion..."
+	connection_failed.emit(reason)
+	server_connection_lost.emit(reason)
 
 
 func _attempt_reconnect() -> void:
@@ -460,11 +463,13 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 	# Notify ALL clients (including new one) about this player
 	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)
 
-	# Broadcast system chat: player joined
-	_rpc_receive_chat.rpc(player_name, 1, "%s a rejoint le secteur." % player_name)
-	_store_chat_message(1, player_name, "%s a rejoint le secteur." % player_name, spawn_sys)
+	# Broadcast system chat: player joined (include system ID for diagnostics)
+	print("[Server] Joueur '%s' (peer %d) enregistré dans systeme %d%s" % [player_name, sender_id, spawn_sys, " (reconnexion)" if is_reconnect else ""])
+	var join_msg := "%s a rejoint le secteur (sys %d)." % [player_name, spawn_sys]
+	_rpc_receive_chat.rpc(player_name, 1, join_msg)
+	_store_chat_message(1, player_name, join_msg, spawn_sys)
 	if not is_dedicated_server:
-		chat_message_received.emit(player_name, 1, "%s a rejoint le secteur." % player_name)
+		chat_message_received.emit(player_name, 1, join_msg)
 
 	# Also notify locally on the host (for GameManager to spawn puppet)
 	if not is_dedicated_server:

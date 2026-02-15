@@ -165,12 +165,17 @@ func remove_remote_player(peer_id: int) -> void:
 func _on_state_received(peer_id: int, state) -> void:
 	var local_sys_id: int = system_transition.current_system_id if system_transition else -1
 	if state.system_id != local_sys_id:
+		# Log once per peer to help diagnose "can't see each other" issues
+		if remote_players.has(peer_id):
+			var pname: String = NetworkManager.peers[peer_id].player_name if NetworkManager.peers.has(peer_id) else "?"
+			print("[Net] Joueur '%s' (peer %d) dans systeme %d, nous dans %d — masqué" % [pname, peer_id, state.system_id, local_sys_id])
 		remove_remote_player(peer_id)
 		return
 
 	if not remote_players.has(peer_id):
 		if NetworkManager.peers.has(peer_id):
 			var pname: String = NetworkManager.peers[peer_id].player_name
+			print("[Net] Joueur '%s' (peer %d) visible dans systeme %d" % [pname, peer_id, local_sys_id])
 			_on_peer_connected(peer_id, pname)
 
 	if lod_manager:

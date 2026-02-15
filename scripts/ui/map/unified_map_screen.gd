@@ -1006,7 +1006,7 @@ func _open_system_preview(system_id: int) -> void:
 	var sys_name: String = sys.get("name", "Unknown")
 
 	if stellar_map:
-		stellar_map.set_preview(preview_ents, sys_name)
+		stellar_map.set_preview(preview_ents, sys_name, system_id)
 
 	# Switch to system view
 	switch_to_view(ViewMode.SYSTEM)

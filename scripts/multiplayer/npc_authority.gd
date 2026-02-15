@@ -876,7 +876,7 @@ func _find_fleet_npc_id(sender_pid: int, fleet_index: int) -> StringName:
 
 ## Spawn a fleet NPC for a remote client using ship data from the RPC.
 ## Returns { "npc_id": StringName } on success, empty dict on failure.
-func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary, ship_data: Dictionary, system_id: int) -> Dictionary:
+func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary, ship_data: Dictionary, _system_id: int) -> Dictionary:
 	var universe: Node3D = GameManager.universe_node
 	if universe == null:
 		push_warning("NpcAuthority: Cannot spawn remote fleet NPC — no universe node")

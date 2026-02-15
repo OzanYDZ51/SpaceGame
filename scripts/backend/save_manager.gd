@@ -27,8 +27,8 @@ func _ready() -> void:
 	_auto_save_timer.timeout.connect(_on_auto_save)
 	add_child(_auto_save_timer)
 
-	# Save immediately on network disconnect (up to 60s of gameplay otherwise lost)
-	NetworkManager.connection_failed.connect(_on_network_disconnected)
+	# Save immediately on REAL network disconnect (not initial connection failures)
+	NetworkManager.server_connection_lost.connect(_on_network_disconnected)
 
 
 func start_auto_save() -> void:

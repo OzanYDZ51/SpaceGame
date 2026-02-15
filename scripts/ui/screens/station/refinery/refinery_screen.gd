@@ -2,8 +2,8 @@ class_name RefineryScreen
 extends UIScreen
 
 # =============================================================================
-# Refinery Screen — Hub with sidebar (2 tabs) + content area.
-# Tabs: RECETTES (recipe browser), FILE (queue)
+# Refinery Screen — Card-based hub with 2 large cards (RECETTES / FILE).
+# Click a card → opens the corresponding sub-view fullscreen.
 # =============================================================================
 
 signal refinery_closed
@@ -12,41 +12,31 @@ var _player_data = null
 var _station_key: String = ""
 var _station_name: String = "STATION"
 
-var _sidebar_buttons: Array[UIButton] = []
-var _back_btn: UIButton = null
 var _active_view: Control = null
 var _recipe_view: RecipeBrowserView = null
 var _queue_view: QueueView = null
 var _current_tab: int = -1
 
-const SIDEBAR_W =160.0
-const CONTENT_TOP =65.0
-const BOTTOM_H =50.0
-const TABS: Array[Array] = [
-	["RECETTES", "Parcourir et lancer des recettes"],
-	["FILE", "Jobs en cours et completes"],
-]
+# Hub card state
+var _hovered_card: int = -1
+var _flash: Dictionary = {}
+var _back_hovered: bool = false
+var _back_flash: float = 0.0
+var _card_rects: Array[Rect2] = []
+var _back_rect: Rect2 = Rect2()
+var _in_hub: bool = true
+
+var _view_back_btn: UIButton = null
+
+const CARD_W: float = 200.0
+const CARD_H: float = 130.0
+const CARD_GAP: float = 16.0
 
 
 func _ready() -> void:
 	screen_title = "RAFFINERIE"
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
-
-	for i in TABS.size():
-		var btn =UIButton.new()
-		btn.text = TABS[i][0]
-		btn.visible = false
-		btn.pressed.connect(_on_tab_pressed.bind(i))
-		add_child(btn)
-		_sidebar_buttons.append(btn)
-
-	_back_btn = UIButton.new()
-	_back_btn.text = "RETOUR"
-	_back_btn.accent_color = UITheme.WARNING
-	_back_btn.visible = false
-	_back_btn.pressed.connect(_on_back_pressed)
-	add_child(_back_btn)
 
 	_recipe_view = RecipeBrowserView.new()
 	_recipe_view.visible = false
@@ -55,6 +45,13 @@ func _ready() -> void:
 	_queue_view = QueueView.new()
 	_queue_view.visible = false
 	add_child(_queue_view)
+
+	_view_back_btn = UIButton.new()
+	_view_back_btn.text = "RETOUR"
+	_view_back_btn.accent_color = UITheme.WARNING
+	_view_back_btn.visible = false
+	_view_back_btn.pressed.connect(_return_to_hub)
+	add_child(_view_back_btn)
 
 
 func setup(pdata, station_key: String, sname: String) -> void:
@@ -70,35 +67,36 @@ func setup(pdata, station_key: String, sname: String) -> void:
 
 
 func _on_opened() -> void:
-	_layout_controls()
-	for btn in _sidebar_buttons:
-		btn.visible = true
-	_back_btn.visible = true
-	_switch_to_tab(0)
+	_show_hub()
 
 
 func _on_closed() -> void:
-	for btn in _sidebar_buttons:
-		btn.visible = false
-	_back_btn.visible = false
 	_hide_all_views()
+	_view_back_btn.visible = false
+	_in_hub = true
 	_current_tab = -1
 	refinery_closed.emit()
 
 
-func _on_tab_pressed(idx: int) -> void:
-	_switch_to_tab(idx)
+func _show_hub() -> void:
+	_in_hub = true
+	_hide_all_views()
+	_view_back_btn.visible = false
+	_hovered_card = -1
+	_back_hovered = false
+	screen_title = "RAFFINERIE — " + _station_name.to_upper()
+	queue_redraw()
 
 
-func _on_back_pressed() -> void:
-	close()
+func _return_to_hub() -> void:
+	_show_hub()
 
 
 func _switch_to_tab(idx: int) -> void:
 	_current_tab = idx
+	_in_hub = false
 	_hide_all_views()
-	for i in _sidebar_buttons.size():
-		_sidebar_buttons[i].accent_color = UITheme.PRIMARY if i == idx else UITheme.TEXT_DIM
+	_view_back_btn.visible = true
 
 	match idx:
 		0:
@@ -109,76 +107,262 @@ func _switch_to_tab(idx: int) -> void:
 			_queue_view.visible = true
 			_active_view = _queue_view
 			_queue_view.refresh()
+	_layout_content_area()
 	queue_redraw()
 
 
 func _hide_all_views() -> void:
-	if _recipe_view:
-		_recipe_view.visible = false
-	if _queue_view:
-		_queue_view.visible = false
+	if _recipe_view: _recipe_view.visible = false
+	if _queue_view: _queue_view.visible = false
 	_active_view = null
 
 
-func _layout_controls() -> void:
+func _layout_content_area() -> void:
+	if _active_view == null: return
 	var s: Vector2 = size
-	var btn_w: float = SIDEBAR_W - 16.0
-	var btn_h: float = 28.0
-	var btn_x: float = 8.0
-	var btn_y: float = CONTENT_TOP + 8.0
+	var margin: float = 20.0
+	var top: float = 65.0
+	var bottom: float = 50.0
+	_active_view.position = Vector2(margin, top)
+	_active_view.size = Vector2(s.x - margin * 2, s.y - top - bottom - 10.0)
+	_view_back_btn.position = Vector2(margin, s.y - bottom - 30.0)
+	_view_back_btn.size = Vector2(120, 28)
 
-	for i in _sidebar_buttons.size():
-		_sidebar_buttons[i].position = Vector2(btn_x, btn_y + i * (btn_h + 4.0))
-		_sidebar_buttons[i].size = Vector2(btn_w, btn_h)
 
-	_back_btn.position = Vector2(btn_x, s.y - BOTTOM_H - btn_h)
-	_back_btn.size = Vector2(btn_w, btn_h)
+# =============================================================================
+# HUB LAYOUT
+# =============================================================================
 
-	var content_rect =Rect2(SIDEBAR_W, CONTENT_TOP, s.x - SIDEBAR_W - 8.0, s.y - CONTENT_TOP - BOTTOM_H)
-	if _recipe_view:
-		_recipe_view.position = content_rect.position
-		_recipe_view.size = content_rect.size
-	if _queue_view:
-		_queue_view.position = content_rect.position
-		_queue_view.size = content_rect.size
+func _compute_hub_layout() -> void:
+	var s: Vector2 = size
+	var cx: float = s.x * 0.5
+	_card_rects.resize(2)
 
+	var total_w: float = CARD_W * 2 + CARD_GAP
+	var sx: float = cx - total_w * 0.5
+
+	var total_h: float = 26.0 + CARD_H + 40.0 + 34.0
+	var ideal_top: float = (s.y - total_h) * 0.42
+	var y: float = maxf(90.0, ideal_top)
+
+	y += 26.0
+
+	_card_rects[0] = Rect2(sx, y, CARD_W, CARD_H)
+	_card_rects[1] = Rect2(sx + CARD_W + CARD_GAP, y, CARD_W, CARD_H)
+
+	_back_rect = Rect2(cx - total_w * 0.5, y + CARD_H + 40.0, total_w, 34.0)
+
+
+func _get_queue_count() -> int:
+	if _player_data == null or _player_data.refinery_manager == null:
+		return 0
+	var queue = _player_data.refinery_manager.get_queue(_station_key)
+	return queue.get_job_count() if queue else 0
+
+
+# =============================================================================
+# DRAWING
+# =============================================================================
 
 func _draw() -> void:
 	var s: Vector2 = size
-	# Background
 	draw_rect(Rect2(Vector2.ZERO, s), Color(0.0, 0.01, 0.03, 0.4))
-	var edge_col =Color(0.0, 0.0, 0.02, 0.5)
+	var edge_col = Color(0.0, 0.0, 0.02, 0.5)
 	draw_rect(Rect2(0, 0, s.x, 50), edge_col)
 	draw_rect(Rect2(0, s.y - 40, s.x, 40), edge_col)
 	_draw_title(s)
 
-	if not _is_open:
-		return
+	if not _is_open: return
 
+	if _in_hub:
+		_draw_hub(s)
+	else:
+		_draw_view_mode(s)
+
+
+func _draw_hub(s: Vector2) -> void:
+	_compute_hub_layout()
 	var font: Font = UITheme.get_font()
+	var cx: float = s.x * 0.5
 
-	# Sidebar separator
-	draw_line(Vector2(SIDEBAR_W, CONTENT_TOP), Vector2(SIDEBAR_W, s.y - BOTTOM_H), UITheme.BORDER, 1.0)
-
-	# Bottom bar
-	draw_line(Vector2(0, s.y - BOTTOM_H), Vector2(s.x, s.y - BOTTOM_H), UITheme.BORDER, 1.0)
-
-	# Credits display
+	# Credits
 	if _player_data and _player_data.economy:
-		var cr_text: String = "Credits: %s CR" % PlayerEconomy.format_credits(_player_data.economy.credits)
-		draw_string(font, Vector2(SIDEBAR_W + 12, s.y - BOTTOM_H + 22), cr_text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+		var cr_text: String = PlayerEconomy.format_credits(_player_data.economy.credits) + " CR"
+		draw_string(font, Vector2(s.x - 180, 55), cr_text,
+			HORIZONTAL_ALIGNMENT_RIGHT, 160, UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)
 
 	# Storage usage
 	if _player_data and _player_data.refinery_manager:
-		var storage =_player_data.refinery_manager.get_storage(_station_key)
+		var storage = _player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
-		var st_text: String = "Stockage: %d / %d" % [total, cap]
-		draw_string(font, Vector2(s.x - 220, s.y - BOTTOM_H + 22), st_text,
-			HORIZONTAL_ALIGNMENT_RIGHT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(30, 55), "Stockage: %d / %d" % [total, cap],
+			HORIZONTAL_ALIGNMENT_LEFT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
-	# Scanline
+	# Section header
+	var grid_w: float = CARD_W * 2 + CARD_GAP
+	var grid_x: float = cx - grid_w * 0.5
+	var header_y: float = _card_rects[0].position.y - 26.0
+	draw_rect(Rect2(grid_x, header_y + 2, 3, UITheme.FONT_SIZE_LABEL), UITheme.PRIMARY)
+	draw_string(font, Vector2(grid_x + 8, header_y + UITheme.FONT_SIZE_LABEL),
+		"RAFFINERIE", HORIZONTAL_ALIGNMENT_LEFT, grid_w - 8, UITheme.FONT_SIZE_LABEL, UITheme.PRIMARY)
+	draw_line(Vector2(grid_x, header_y + UITheme.FONT_SIZE_LABEL + 4),
+		Vector2(grid_x + grid_w, header_y + UITheme.FONT_SIZE_LABEL + 4), UITheme.BORDER, 1.0)
+
+	# Card: RECETTES
+	_draw_hub_card(_card_rects[0], "RECETTES", "Parcourir les recettes de raffinage", 0, UITheme.PRIMARY)
+	# Card: FILE D'ATTENTE
+	var queue_count: int = _get_queue_count()
+	var queue_desc: String = "%d/10 jobs en cours" % queue_count
+	_draw_hub_card(_card_rects[1], "FILE D'ATTENTE", queue_desc, 1, UITheme.ACCENT)
+
+	# Separator + back button
+	var sep_y: float = _back_rect.position.y - 12.0
+	draw_line(Vector2(grid_x, sep_y), Vector2(grid_x + grid_w, sep_y), UITheme.BORDER, 1.0)
+	_draw_back_button()
+
+	# Corners + scanline
+	draw_corners(Rect2(20, 20, s.x - 40, s.y - 40), 15.0, UITheme.CORNER)
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
-	var scan_col =Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03)
-	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y), scan_col, 1.0)
+	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y),
+		Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03), 1.0)
+
+
+func _draw_hub_card(rect: Rect2, label: String, desc: String, idx: int, accent: Color) -> void:
+	var hovered: bool = _hovered_card == idx
+	var flash_v: float = _flash.get(idx, 0.0)
+	var font: Font = UITheme.get_font()
+
+	var bg: Color = Color(0.015, 0.04, 0.08, 0.88) if not hovered else Color(0.025, 0.06, 0.12, 0.92)
+	draw_rect(rect, bg)
+	if flash_v > 0.0:
+		draw_rect(rect, Color(1, 1, 1, flash_v * 0.2))
+
+	var bcol: Color = UITheme.BORDER_ACTIVE if hovered else Color(accent.r, accent.g, accent.b, 0.4)
+	draw_rect(rect, bcol, false, 1.0)
+	var ga: float = 0.25 if hovered else 0.12
+	draw_line(Vector2(rect.position.x + 1, rect.position.y),
+		Vector2(rect.end.x - 1, rect.position.y),
+		Color(accent.r, accent.g, accent.b, ga), 2.0)
+	draw_corners(rect, 8.0, bcol)
+
+	# Icon
+	var ic: Vector2 = Vector2(rect.position.x + rect.size.x * 0.5, rect.position.y + 40.0)
+	if idx == 0:
+		# Flask (recipes)
+		var r: float = 14.0
+		draw_line(ic + Vector2(-4, -r), ic + Vector2(4, -r), accent, 1.5)
+		draw_line(ic + Vector2(-4, -r), ic + Vector2(-r * 0.7, r * 0.7), accent, 1.5)
+		draw_line(ic + Vector2(4, -r), ic + Vector2(r * 0.7, r * 0.7), accent, 1.5)
+		draw_line(ic + Vector2(-r * 0.7, r * 0.7), ic + Vector2(r * 0.7, r * 0.7), accent, 1.5)
+		draw_line(ic + Vector2(-r * 0.35, r * 0.15), ic + Vector2(r * 0.35, r * 0.15),
+			Color(accent.r, accent.g, accent.b, 0.4), 1.0)
+	else:
+		# Clock (queue)
+		var r: float = 14.0
+		draw_arc(ic, r, 0, TAU, 16, accent, 1.5)
+		draw_line(ic, ic + Vector2(0, -r * 0.6), accent, 1.5)
+		draw_line(ic, ic + Vector2(r * 0.4, r * 0.1), accent, 1.5)
+
+	draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 78),
+		label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
+	draw_string(font, Vector2(rect.position.x + 8, rect.position.y + 100),
+		desc, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 16, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+
+
+func _draw_back_button() -> void:
+	var r: Rect2 = _back_rect
+	var hov: bool = _back_hovered
+	draw_rect(r, Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.18 if hov else 0.08))
+	if _back_flash > 0.0:
+		draw_rect(r, Color(1, 1, 1, _back_flash * 0.2))
+	var bc: Color = UITheme.WARNING if hov else Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.45)
+	draw_rect(r, bc, false, 1.0)
+	draw_rect(Rect2(r.position.x, r.position.y + 2, 3, r.size.y - 4), UITheme.WARNING)
+	draw_corners(r, 6.0, bc)
+	var font: Font = UITheme.get_font()
+	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
+	draw_string(font, Vector2(r.position.x, ty), "RETOUR",
+		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+
+
+func _draw_view_mode(s: Vector2) -> void:
+	var font: Font = UITheme.get_font()
+	var bottom_h: float = 50.0
+	draw_line(Vector2(0, s.y - bottom_h), Vector2(s.x, s.y - bottom_h), UITheme.BORDER, 1.0)
+	if _player_data and _player_data.economy:
+		var cr_text: String = "Credits: %s CR" % PlayerEconomy.format_credits(_player_data.economy.credits)
+		draw_string(font, Vector2(140, s.y - bottom_h + 22), cr_text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+	if _player_data and _player_data.refinery_manager:
+		var storage = _player_data.refinery_manager.get_storage(_station_key)
+		var total: int = storage.get_total()
+		var cap: int = storage.capacity
+		draw_string(font, Vector2(s.x - 220, s.y - bottom_h + 22), "Stockage: %d / %d" % [total, cap],
+			HORIZONTAL_ALIGNMENT_RIGHT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	var scan_y: float = fmod(UITheme.scanline_y, s.y)
+	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y),
+		Color(UITheme.SCANLINE.r, UITheme.SCANLINE.g, UITheme.SCANLINE.b, 0.03), 1.0)
+
+
+# =============================================================================
+# INTERACTION
+# =============================================================================
+
+func _gui_input(event: InputEvent) -> void:
+	if _in_hub:
+		_hub_gui_input(event)
+	else:
+		super._gui_input(event)
+
+
+func _hub_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var old_h: int = _hovered_card
+		var old_b: bool = _back_hovered
+		_hovered_card = -1
+		_back_hovered = false
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position):
+				_hovered_card = i
+				break
+		_back_hovered = _back_rect.has_point(event.position)
+		if _hovered_card != old_h or _back_hovered != old_b:
+			queue_redraw()
+
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var close_x: float = size.x - UITheme.MARGIN_SCREEN - 28
+		var close_y: float = UITheme.MARGIN_SCREEN
+		if Rect2(close_x, close_y, 32, 28).has_point(event.position):
+			close()
+			accept_event()
+			return
+
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position):
+				_flash[i] = 1.0
+				_switch_to_tab(i)
+				accept_event()
+				return
+		if _back_rect.has_point(event.position):
+			_back_flash = 1.0
+			close()
+			accept_event()
+			return
+
+	accept_event()
+
+
+func _process(delta: float) -> void:
+	if _is_open:
+		var dirty: bool = false
+		for key in _flash.keys():
+			_flash[key] = maxf(0.0, _flash[key] - delta / 0.12)
+			if _flash[key] <= 0.0:
+				_flash.erase(key)
+			dirty = true
+		if _back_flash > 0.0:
+			_back_flash = maxf(0.0, _back_flash - delta / 0.12)
+			dirty = true
+		if dirty or not _in_hub:
+			queue_redraw()

@@ -39,6 +39,7 @@ var _undock_flash: float = 0.0
 var _card_rects: Array[Rect2] = []
 var _cat_header_y: PackedFloat32Array = PackedFloat32Array()
 var _undock_rect: Rect2 = Rect2()
+var _emblem_center_y: float = 85.0
 
 # Card data
 var _cards: Array[Dictionary] = []
@@ -119,7 +120,22 @@ func _compute_layout() -> void:
 	_card_rects.resize(_cards.size())
 	_cat_header_y.resize(_cat_labels.size())
 
-	var y: float = 148.0
+	# Calculate total content height first for vertical centering
+	# 3 categories: headers (26 each) + 3 rows of cards (CARD_H+14 gap between rows)
+	# + station header area (emblem+name ~60px above first card)
+	var total_content_h: float = 60.0  # emblem + name
+	total_content_h += 3 * 26.0  # 3 category headers
+	total_content_h += 3 * CARD_H  # 3 rows of cards
+	total_content_h += 2 * 14.0  # gaps between card rows
+	total_content_h += 40.0 + 34.0  # undock gap + button
+
+	# Dynamic vertical padding: center content or use minimum top
+	var min_top: float = 100.0
+	var ideal_top: float = (s.y - total_content_h) * 0.45
+	var start_y: float = maxf(min_top, ideal_top)
+
+	# Station emblem area starts at start_y, cards start after
+	var y: float = start_y + 60.0
 	var current_cat: int = -1
 	var row_start: int = 0
 
@@ -139,7 +155,8 @@ func _compute_layout() -> void:
 		y += CARD_H
 
 	var btn_w: float = minf(CARD_W * 3.0 + CARD_GAP * 2.0, s.x - 100.0)
-	_undock_rect = Rect2(cx - btn_w * 0.5, y + 24.0, btn_w, 34.0)
+	_undock_rect = Rect2(cx - btn_w * 0.5, y + 40.0, btn_w, 34.0)
+	_emblem_center_y = start_y + 25.0
 
 
 func _place_row(from: int, to: int, cx: float, y: float) -> void:
@@ -169,11 +186,12 @@ func _draw() -> void:
 	var cx: float = s.x * 0.5
 
 	# --- Station emblem + name ---
-	_draw_station_emblem(Vector2(cx, 85.0), 20.0)
-	draw_string(font, Vector2(0, 121), _station_name.to_upper(),
+	_draw_station_emblem(Vector2(cx, _emblem_center_y), 20.0)
+	var name_y: float = _emblem_center_y + 36.0
+	draw_string(font, Vector2(0, name_y), _station_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	var unlocked_count: int = _services.get_unlocked_count(_system_id, _station_idx) if _services else 0
-	draw_string(font, Vector2(0, 139), "Terminal · %d/6 services" % unlocked_count,
+	draw_string(font, Vector2(0, name_y + 18), "Terminal · %d/6 services" % unlocked_count,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# --- Category headers ---

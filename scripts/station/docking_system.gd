@@ -155,7 +155,7 @@ func _on_ship_entered_bay(ship: Node3D, station: Node3D) -> void:
 	_resolve_station_name(station)
 
 
-func _on_ship_exited_bay(ship: Node3D, station: Node3D) -> void:
+func _on_ship_exited_bay(ship: Node3D, _station: Node3D) -> void:
 	if ship != _ship:
 		return
 	_in_bay = false

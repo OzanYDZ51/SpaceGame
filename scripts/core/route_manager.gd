@@ -23,6 +23,12 @@ var _jump_retry_count: int = 0
 var _pending_jump_target_id: int = -1
 const MAX_JUMP_RETRIES: int = 8
 
+# Final destination after arrival (autopilot to specific entity/position)
+var has_final_dest: bool = false
+var final_dest_x: float = 0.0
+var final_dest_z: float = 0.0
+var final_dest_name: String = ""
+
 # External references (set by GameManager)
 var system_transition = null
 var galaxy_data = null
@@ -50,6 +56,17 @@ func start_route(from_id: int, to_id: int) -> bool:
 	return true
 
 
+func start_route_to(from_id: int, to_id: int, dest_x: float, dest_z: float, dest_name: String) -> bool:
+	has_final_dest = true
+	final_dest_x = dest_x
+	final_dest_z = dest_z
+	final_dest_name = dest_name
+	var ok: bool = start_route(from_id, to_id)
+	if not ok:
+		_clear_final_dest()
+	return ok
+
+
 func cancel_route() -> void:
 	if state == State.IDLE and route.is_empty():
 		return
@@ -66,6 +83,7 @@ func cancel_route() -> void:
 	target_system_name = ""
 	next_gate_entity_id = ""
 	_pending_jump_target_id = -1
+	_clear_final_dest()
 	route_cancelled.emit()
 
 
@@ -106,6 +124,8 @@ func on_system_loaded(system_id: int) -> void:
 
 	# Check if we've arrived at destination
 	if route_index >= route.size() - 1:
+		if has_final_dest:
+			_engage_final_dest()
 		state = State.IDLE
 		route_completed.emit()
 		route.clear()
@@ -210,3 +230,63 @@ func _auto_jump() -> void:
 
 	state = State.JUMPING
 	system_transition.initiate_gate_jump(_pending_jump_target_id)
+
+
+func _engage_final_dest() -> void:
+	# Wait one frame for entities to register after system load
+	await get_tree().process_frame
+	var ship = GameManager.player_ship
+	if ship == null:
+		_clear_final_dest()
+		return
+
+	# Find the closest entity to the final destination
+	var best_id: String = ""
+	var best_dist: float = INF
+	var entities: Dictionary = EntityRegistry.get_all()
+	for ent_id in entities:
+		var ent: Dictionary = entities[ent_id]
+		var etype: int = ent.get("type", -1)
+		# Skip player ships and hidden entities
+		if etype == EntityRegistrySystem.EntityType.SHIP_PLAYER:
+			continue
+		if ent.get("extra", {}).get("hidden", false):
+			continue
+		var dx: float = ent["pos_x"] - final_dest_x
+		var dz: float = ent["pos_z"] - final_dest_z
+		var dist: float = dx * dx + dz * dz
+		if dist < best_dist:
+			best_dist = dist
+			best_id = ent_id
+
+	if best_id != "":
+		var ent: Dictionary = EntityRegistry.get_entity(best_id)
+		var ent_name: String = ent.get("name", final_dest_name)
+		var is_gate: bool = ent.get("type", -1) == EntityRegistrySystem.EntityType.JUMP_GATE
+		ship.engage_autopilot(best_id, ent_name, is_gate)
+	elif final_dest_name != "":
+		# No entity found — create a temporary waypoint
+		var wp_id: String = "route_final_wp_%d" % Time.get_ticks_msec()
+		EntityRegistry.register(wp_id, {
+			"name": final_dest_name,
+			"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
+			"pos_x": final_dest_x,
+			"pos_y": 0.0,
+			"pos_z": final_dest_z,
+			"node": null,
+			"radius": 0.0,
+			"color": Color.TRANSPARENT,
+			"extra": {"hidden": true},
+		})
+		ship.engage_autopilot(wp_id, final_dest_name, true)
+	else:
+		push_warning("RouteManager: No entity found near final destination (%.0f, %.0f)" % [final_dest_x, final_dest_z])
+
+	_clear_final_dest()
+
+
+func _clear_final_dest() -> void:
+	has_final_dest = false
+	final_dest_x = 0.0
+	final_dest_z = 0.0
+	final_dest_name = ""

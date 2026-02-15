@@ -101,6 +101,7 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 	var data: Dictionary = item as Dictionary
 	var pname: String = data.get("name", "???")
 	var pid: int = data.get("pid", -1)
+	var sys_id: int = data.get("sys", -1)
 	var is_self: bool = (pid == NetworkManager.local_peer_id)
 	var is_hosting: bool = (pid == 1)
 
@@ -110,7 +111,12 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 		suffix = " (toi)"
 	elif is_hosting:
 		suffix = " (hôte)"
-	ctrl.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + rect.size.y - 5), pname + suffix, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 16, UITheme.FONT_SIZE_LABEL, col)
+	ctrl.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + rect.size.y - 5), pname + suffix, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 120, UITheme.FONT_SIZE_LABEL, col)
+	# Show system ID on the right
+	if sys_id >= 0:
+		var sys_text := "Sys %d" % sys_id
+		var sys_col: Color = UITheme.ACCENT if is_self else UITheme.TEXT_DIM
+		ctrl.draw_string(font, Vector2(rect.position.x + rect.size.x - 70, rect.position.y + rect.size.y - 5), sys_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_SMALL, sys_col)
 
 
 func _update_status() -> void:
@@ -133,13 +139,16 @@ func _refresh_player_list() -> void:
 	var items: Array = []
 
 	if NetworkManager.is_connected_to_server():
-		# Add self
-		items.append({"name": NetworkManager.local_player_name, "pid": NetworkManager.local_peer_id})
+		# Add self (get our system_id from system_transition)
+		var local_sys: int = -1
+		if GameManager._system_transition:
+			local_sys = GameManager._system_transition.current_system_id
+		items.append({"name": NetworkManager.local_player_name, "pid": NetworkManager.local_peer_id, "sys": local_sys})
 		# Add all remote peers
 		for pid in NetworkManager.peers:
 			var state = NetworkManager.peers[pid]
 			if state.peer_id != NetworkManager.local_peer_id:
-				items.append({"name": state.player_name, "pid": state.peer_id})
+				items.append({"name": state.player_name, "pid": state.peer_id, "sys": state.system_id})
 
 	_player_list.items = items
 	_player_list.queue_redraw()

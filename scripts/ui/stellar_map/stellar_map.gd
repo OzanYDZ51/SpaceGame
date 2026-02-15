@@ -25,10 +25,12 @@ signal view_switch_requested
 signal fleet_order_requested(fleet_index: int, order_id: StringName, params: Dictionary)
 signal squadron_action_requested(action: StringName, data: Dictionary)
 signal construction_marker_placed(marker: Dictionary)
+signal galaxy_route_requested(system_id: int, dest_x: float, dest_z: float, dest_name: String)
 
 ## Preview mode: shows static entities from StarSystemData instead of live EntityRegistry
 var _preview_entities: Dictionary = {}
 var _preview_system_name: String = ""
+var _preview_system_id: int = -1
 var _saved_system_name: String = ""
 
 # Pan state
@@ -172,10 +174,11 @@ func set_system_name(sname: String) -> void:
 	_renderer._system_name = sname
 
 
-func set_preview(entities: Dictionary, system_name: String) -> void:
+func set_preview(entities: Dictionary, system_name: String, system_id: int = -1) -> void:
 	_saved_system_name = _renderer._system_name
 	_preview_entities = entities
 	_preview_system_name = system_name
+	_preview_system_id = system_id
 	_entity_layer.preview_entities = _preview_entities
 	_renderer.preview_entities = _preview_entities
 	_renderer._belt_dot_cache.clear()
@@ -186,6 +189,7 @@ func set_preview(entities: Dictionary, system_name: String) -> void:
 func clear_preview() -> void:
 	_preview_entities = {}
 	_preview_system_name = ""
+	_preview_system_id = -1
 	_entity_layer.preview_entities = {}
 	_renderer.preview_entities = {}
 	_renderer._belt_dot_cache.clear()
@@ -619,6 +623,24 @@ func _input(event: InputEvent) -> void:
 				_right_hold_triggered = false
 			else:
 				# Right click released — quick release = move_to or attack
+				# Preview mode: emit galaxy route instead of fleet orders
+				if _preview_system_id >= 0 and _right_hold_start > 0.0 and not _right_hold_triggered:
+					var target_id = _entity_layer.get_entity_at(event.position)
+					var dest_x: float = 0.0
+					var dest_z: float = 0.0
+					var dest_name: String = ""
+					if target_id != "" and _preview_entities.has(target_id):
+						var ent: Dictionary = _preview_entities[target_id]
+						dest_x = ent["pos_x"]
+						dest_z = ent["pos_z"]
+						dest_name = ent.get("name", "")
+					else:
+						dest_x = _camera.screen_to_universe_x(event.position.x)
+						dest_z = _camera.screen_to_universe_z(event.position.y)
+					galaxy_route_requested.emit(_preview_system_id, dest_x, dest_z, dest_name)
+					_right_hold_start = 0.0
+					get_viewport().set_input_as_handled()
+					return
 				var effective_indices =_get_effective_fleet_indices()
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
 					# Check construction marker first

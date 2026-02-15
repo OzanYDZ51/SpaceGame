@@ -192,6 +192,9 @@ func _setup_ui_managers() -> void:
 		# Connect fleet order signal from stellar map
 		_stellar_map.fleet_order_requested.connect(_on_fleet_order_from_map)
 
+		# Connect galaxy route from preview mode (right-click in previewed system)
+		_stellar_map.galaxy_route_requested.connect(_on_galaxy_route_from_preview.bind(map_screen))
+
 		# Pass squadron data to map
 		if _squadron_mgr:
 			_stellar_map.set_squadron_manager(_squadron_mgr)
@@ -1060,6 +1063,31 @@ func start_galaxy_route(target_sys_id: int) -> void:
 	var sys_name: String = _galaxy.get_system_name(target_sys_id)
 	var jumps: int = _route_manager.get_jumps_total()
 	_notif.nav.route_started(sys_name, jumps)
+
+
+func start_galaxy_route_to(target_sys_id: int, dest_x: float, dest_z: float, dest_name: String) -> void:
+	if _route_manager == null or _system_transition == null or _galaxy == null:
+		return
+
+	var current_sys: int = _system_transition.current_system_id
+	if current_sys == target_sys_id:
+		_notif.nav.already_here()
+		return
+
+	var success: bool = _route_manager.start_route_to(current_sys, target_sys_id, dest_x, dest_z, dest_name)
+	if not success:
+		_notif.nav.route_not_found()
+		return
+
+	var sys_name: String = _galaxy.get_system_name(target_sys_id)
+	var jumps: int = _route_manager.get_jumps_total()
+	_notif.nav.route_started(sys_name, jumps)
+
+
+func _on_galaxy_route_from_preview(system_id: int, dest_x: float, dest_z: float, dest_name: String, map_screen: Control) -> void:
+	start_galaxy_route_to(system_id, dest_x, dest_z, dest_name)
+	if map_screen:
+		map_screen.close()
 
 
 func _on_route_completed() -> void:
