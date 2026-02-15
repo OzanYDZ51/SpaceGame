@@ -683,15 +683,9 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs: FleetShip) -> vo
 		var pulse: float = sin(Time.get_ticks_msec() / 300.0) * 0.08 + 0.12
 		draw_rect(Rect2(2, y, PANEL_W - 4, SHIP_H), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, pulse))
 
-	# Squadron role badge (before status badge)
+	# Squadron badge (leader star)
 	var role_offset: float = 0.0
-	if fs.squadron_id >= 0 and fs.squadron_role != &"":
-		var role_short := SquadronRoleRegistry.get_role_short(fs.squadron_role)
-		var role_col := SquadronRoleRegistry.get_role_color(fs.squadron_role)
-		draw_string(font, Vector2(x, y + SHIP_H - 4), "[%s]" % role_short, HORIZONTAL_ALIGNMENT_LEFT, 20, UITheme.FONT_SIZE_SMALL, role_col)
-		role_offset = 20.0
-	elif fs.squadron_id >= 0 and _fleet:
-		# Leader gets a star
+	if fs.squadron_id >= 0 and _fleet:
 		var sq := _fleet.get_squadron(fs.squadron_id)
 		if sq and sq.is_leader(fleet_index):
 			draw_string(font, Vector2(x, y + SHIP_H - 4), "*", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)

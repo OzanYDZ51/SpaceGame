@@ -558,8 +558,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if _gate_approach_speed_cap > 0.0:
 		max_speed_fwd = minf(max_speed_fwd, _gate_approach_speed_cap)
 
-	var max_lat := (ship_data.max_speed_lateral if ship_data else 150.0) * engine_speed_mult
-	var max_vert := (ship_data.max_speed_vertical if ship_data else 150.0) * engine_speed_mult
+	var max_lat: float = (ship_data.max_speed_lateral if ship_data else 150.0) * engine_speed_mult
+	var max_vert: float = (ship_data.max_speed_vertical if ship_data else 150.0) * engine_speed_mult
 
 	# Also apply planetary speed cap to lateral/vertical
 	if planetary_max_speed_override > 0.0:

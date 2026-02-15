@@ -759,6 +759,12 @@ func _load_backend_state() -> void:
 		_backend_state_loaded = true
 		# Fleet reference was replaced by deserialize — reconnect map panels
 		_refresh_fleet_on_maps()
+		# Redeploy fleet ships that were deployed in the current system.
+		# apply_state() restores fleet data (positions, commands, deployment_state)
+		# but the system already loaded before the backend responded, so
+		# _on_system_loaded().redeploy_saved_ships() ran with the default fleet.
+		if _fleet_deployment_mgr:
+			_fleet_deployment_mgr.redeploy_saved_ships()
 
 
 func _notification(what: int) -> void:
@@ -918,20 +924,13 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 		&"add_member":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var fleet_idx: int = int(data.get("fleet_index", -1))
-			var role: StringName = StringName(data.get("role", "follow"))
-			_squadron_mgr.add_to_squadron(sq_id, fleet_idx, role)
+			_squadron_mgr.add_to_squadron(sq_id, fleet_idx)
 		&"remove_member":
 			var fleet_idx: int = int(data.get("fleet_index", -1))
 			_squadron_mgr.remove_from_squadron(fleet_idx)
-		&"set_role":
+		&"reset_to_follow":
 			var fleet_idx: int = int(data.get("fleet_index", -1))
-			var role: StringName = StringName(data.get("role", "follow"))
-			_squadron_mgr.set_member_role(fleet_idx, role)
-		&"set_formation":
-			var sq_id: int = int(data.get("squadron_id", -1))
-			var formation: StringName = StringName(data.get("formation", "echelon"))
-			_squadron_mgr.set_formation(sq_id, formation)
-			_notif.squadron.formation(SquadronFormation.get_formation_display(formation))
+			_squadron_mgr.reset_to_follow(fleet_idx)
 		&"rename":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var new_name: String = data.get("name", "")

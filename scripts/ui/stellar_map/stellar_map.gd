@@ -656,32 +656,40 @@ func _input(event: InputEvent) -> void:
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 						_entity_layer.route_target_entity_id = target_id
 					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_FLEET and _fleet_panel._fleet:
-						# Right-click on fleet ship with squadron → join squadron
+						# Right-click on fleet ship → follow (join/create squadron or re-follow)
 						var target_extra: Dictionary = target_ent.get("extra", {})
 						var target_fi: int = target_extra.get("fleet_index", -1)
 						if target_fi >= 0:
 							var target_sq := _fleet_panel._fleet.get_ship_squadron(target_fi)
-							if target_sq:
-								var joined: int = 0
-								for idx in effective_indices:
-									if _fleet_panel._fleet.get_ship_squadron(idx) == null:
+							var new_members: Array[int] = []
+							var refollow_members: Array[int] = []
+							for idx in effective_indices:
+								if idx == target_fi:
+									continue
+								var idx_sq := _fleet_panel._fleet.get_ship_squadron(idx)
+								if idx_sq == null:
+									new_members.append(idx)
+								elif target_sq and idx_sq.squadron_id == target_sq.squadron_id:
+									refollow_members.append(idx)
+							# New members: join existing or create squadron
+							if new_members.size() > 0:
+								if target_sq:
+									for idx in new_members:
 										squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": idx})
-										joined += 1
-								if joined > 0:
-									_set_follow_route(effective_indices, target_id)
-							else:
-								# Target has no squadron — auto-create one with target as leader
-								# and selected ships as "follow" members
-								var members_to_add: Array[int] = []
-								for idx in effective_indices:
-									if idx != target_fi and _fleet_panel._fleet.get_ship_squadron(idx) == null:
-										members_to_add.append(idx)
-								if members_to_add.size() > 0:
+								else:
 									squadron_action_requested.emit(&"create", {
 										"leader": target_fi,
-										"members": members_to_add,
+										"members": new_members,
 									})
-									_set_follow_route(members_to_add, target_id)
+							# Re-follow: reset members already in squadron back to formation
+							for idx in refollow_members:
+								squadron_action_requested.emit(&"reset_to_follow", {"fleet_index": idx})
+							# Update route line
+							var all_following: Array[int] = []
+							all_following.append_array(new_members)
+							all_following.append_array(refollow_members)
+							if all_following.size() > 0:
+								_set_follow_route(all_following, target_id)
 						else:
 							# No fleet_index on target — move to position
 							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
@@ -1177,17 +1185,9 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		if sq.is_leader(fleet_index) or (sq.leader_fleet_index == -1 and fleet_index == fleet.active_index):
 			# Leader options
 			result.append({"id": &"sq_disband", "display_name": "DISSOUDRE ESCADRON"})
-			# Formation submenu (cycle through)
-			var formations := SquadronFormation.get_available_formations()
-			for f in formations:
-				if f["id"] != sq.formation_type:
-					result.append({"id": StringName("sq_formation_" + String(f["id"])), "display_name": "FORMATION: %s" % f["display"]})
 		elif sq.is_member(fleet_index):
-			# Member options: role change + leave
+			# Member options
 			result.append({"id": &"sq_leave", "display_name": "QUITTER ESCADRON"})
-			for r in SquadronRoleRegistry.get_all_roles():
-				if r["id"] != sq.get_role(fleet_index):
-					result.append({"id": StringName("sq_role_" + String(r["id"])), "display_name": "ROLE: %s" % r["display"]})
 	else:
 		# Not in squadron — can join existing squadrons
 		for s in fleet.squadrons:
@@ -1201,7 +1201,6 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 	var order_str := String(order_id)
 
 	if order_id == &"sq_create" and effective.size() >= 2:
-		# First selected = leader, rest = members
 		squadron_action_requested.emit(&"create", {
 			"leader": effective[0],
 			"members": effective.slice(1),
@@ -1216,18 +1215,6 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		var idx := _get_effective_fleet_index()
 		if idx >= 0:
 			squadron_action_requested.emit(&"remove_member", {"fleet_index": idx})
-	elif order_str.begins_with("sq_formation_"):
-		var formation := StringName(order_str.substr(13))
-		var idx := _get_effective_fleet_index()
-		if idx >= 0 and _fleet_panel._fleet:
-			var sq := _fleet_panel._fleet.get_ship_squadron(idx)
-			if sq:
-				squadron_action_requested.emit(&"set_formation", {"squadron_id": sq.squadron_id, "formation": String(formation)})
-	elif order_str.begins_with("sq_role_"):
-		var role := StringName(order_str.substr(8))
-		var idx := _get_effective_fleet_index()
-		if idx >= 0:
-			squadron_action_requested.emit(&"set_role", {"fleet_index": idx, "role": String(role)})
 	elif order_id == &"sq_promote":
 		var idx := _get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:
@@ -1235,15 +1222,21 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 			if sq:
 				squadron_action_requested.emit(&"promote_leader", {"squadron_id": sq.squadron_id, "fleet_index": idx})
 	elif order_str.begins_with("sq_follow_"):
-		# Auto-create squadron: target as leader, selected ships as follow members
 		var target_fi := int(order_str.substr(10))
+		# Collect members: ships not in a squadron OR already in target's squadron (re-follow)
 		var members_to_add: Array[int] = []
+		var members_to_refollow: Array[int] = []
+		var target_sq: Squadron = _fleet_panel._fleet.get_ship_squadron(target_fi) if _fleet_panel._fleet else null
 		for idx in effective:
-			if idx != target_fi and (_fleet_panel._fleet == null or _fleet_panel._fleet.get_ship_squadron(idx) == null):
+			if idx == target_fi:
+				continue
+			var idx_sq := _fleet_panel._fleet.get_ship_squadron(idx) if _fleet_panel._fleet else null
+			if idx_sq == null:
 				members_to_add.append(idx)
+			elif target_sq and idx_sq.squadron_id == target_sq.squadron_id:
+				members_to_refollow.append(idx)
+		# Join or create squadron for new members
 		if members_to_add.size() > 0:
-			# If target already has a squadron, join it; otherwise create new
-			var target_sq: Squadron = _fleet_panel._fleet.get_ship_squadron(target_fi) if _fleet_panel._fleet else null
 			if target_sq:
 				for m in members_to_add:
 					squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": m})
@@ -1252,10 +1245,17 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 					"leader": target_fi,
 					"members": members_to_add,
 				})
-			# Set follow route tracking
+		# Re-follow for members already in the same squadron
+		for m in members_to_refollow:
+			squadron_action_requested.emit(&"reset_to_follow", {"fleet_index": m})
+		# Set follow route tracking
+		var all_following: Array[int] = []
+		all_following.append_array(members_to_add)
+		all_following.append_array(members_to_refollow)
+		if all_following.size() > 0:
 			var target_eid := _get_fleet_entity_id(target_fi)
 			if target_eid != "":
-				_set_follow_route(members_to_add, target_eid)
+				_set_follow_route(all_following, target_eid)
 	elif order_str.begins_with("sq_join_"):
 		var sq_id := int(order_str.substr(8))
 		var idx := _get_effective_fleet_index()
