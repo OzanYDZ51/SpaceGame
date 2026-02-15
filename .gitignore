@@ -1,6 +1,9 @@
 # Godot
 .godot/
 
+# Godot addons (MCP plugins, etc.)
+addons/
+
 # Build output
 build/
 
@@ -11,6 +14,9 @@ launcher/dist/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local tooling
+.mcp.json
 
 # Editor
 *.swp
