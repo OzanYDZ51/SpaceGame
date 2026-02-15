@@ -220,7 +220,15 @@ func on_ship_deployed(fleet_index: int, npc: Node) -> void:
 	if _fleet == null:
 		return
 	var sq := _fleet.get_ship_squadron(fleet_index)
-	if sq == null or sq.is_leader(fleet_index):
+	if sq == null:
+		return
+	if sq.is_leader(fleet_index):
+		# Leader just deployed — set up controllers for members deployed before the leader
+		for member_idx in sq.member_fleet_indices:
+			if _fleet_deployment_mgr:
+				var member_npc = _fleet_deployment_mgr.get_deployed_npc(member_idx)
+				if member_npc:
+					setup_squadron_controller(member_idx, member_npc)
 		return
 	setup_squadron_controller(fleet_index, npc)
 
@@ -273,6 +281,15 @@ func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 	ctrl.squadron = sq
 	ctrl.leader_node = leader_node
 	npc.add_child(ctrl)
+
+	# Clear FleetAIBridge command so SquadronAIController takes priority immediately
+	var bridge := npc.get_node_or_null("FleetAIBridge") as FleetAIBridge
+	if bridge:
+		bridge._arrived = true
+		bridge.command = &""
+	if fleet_index >= 0 and fleet_index < _fleet.ships.size():
+		_fleet.ships[fleet_index].deployed_command = &""
+		_fleet.ships[fleet_index].deployed_command_params = {}
 
 
 func _detach_squadron_controller(fleet_index: int) -> void:

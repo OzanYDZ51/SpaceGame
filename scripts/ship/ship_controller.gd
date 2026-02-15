@@ -87,11 +87,11 @@ var _mouse_delta: Vector2 = Vector2.ZERO
 var cruise_look_delta: Vector2 = Vector2.ZERO  ## Mouse delta redirected to camera during cruise free look
 
 # --- Cached refs ---
-var _cached_energy_sys: EnergySystem = null
-var _cached_weapon_mgr: WeaponManager = null
-var _cached_model: ShipModel = null
-var _cached_targeting: TargetingSystem = null
-var _cached_mining_sys: MiningSystem = null
+var _cached_energy_sys = null
+var _cached_weapon_mgr = null
+var _cached_model = null
+var _cached_targeting = null
+var _cached_mining_sys = null
 var _refs_cached: bool = false
 
 # --- Planetary physics (set by PlanetApproachManager) ---
