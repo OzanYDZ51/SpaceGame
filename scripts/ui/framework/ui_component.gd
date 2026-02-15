@@ -19,17 +19,29 @@ func _ready() -> void:
 		material = UIShaderCache.get_panel_material()
 
 
-## Draw a panel background with border, top glow, corners, and scanline.
+## Draw a panel background with border, top glow, gradient overlay, corners, and scanline.
 func draw_panel_bg(rect: Rect2, bg_color: Color = UITheme.BG) -> void:
 	# Background fill
 	draw_rect(rect, bg_color)
 
+	# Gradient overlay — darker at bottom for depth
+	var grad_top := Color(1.0, 1.0, 1.0, 0.02)
+	var grad_bot := Color(0.0, 0.0, 0.0, 0.06)
+	var grad_h := rect.size.y
+	if grad_h > 4.0:
+		draw_rect(Rect2(rect.position, Vector2(rect.size.x, grad_h * 0.5)), grad_top)
+		draw_rect(Rect2(rect.position + Vector2(0, grad_h * 0.5), Vector2(rect.size.x, grad_h * 0.5)), grad_bot)
+
 	# Border
 	draw_rect(rect, UITheme.BORDER, false, 1.0)
 
-	# Top glow line (bright gradient at the top edge)
-	var glow_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.25)
-	draw_line(Vector2(rect.position.x + 1, rect.position.y), Vector2(rect.end.x - 1, rect.position.y), glow_col, 1.5)
+	# Top glow line (bright, thicker for premium look)
+	var glow_col := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.35)
+	draw_line(Vector2(rect.position.x + 1, rect.position.y), Vector2(rect.end.x - 1, rect.position.y), glow_col, 2.0)
+
+	# Inner glow line (subtle 2nd line below top edge)
+	var inner_glow := Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.08)
+	draw_line(Vector2(rect.position.x + 2, rect.position.y + 2), Vector2(rect.end.x - 2, rect.position.y + 2), inner_glow, 1.0)
 
 	# Corner accents
 	draw_corners(rect, UITheme.CORNER_LENGTH, UITheme.CORNER)
@@ -99,6 +111,10 @@ func draw_status_bar(rect: Rect2, ratio: float, col: Color, label_text: String =
 		draw_rect(Rect2(rect.position, Vector2(fw, rect.size.y)), col)
 		# Bright edge at the fill end
 		draw_rect(Rect2(rect.position + Vector2(fw - 2, 0), Vector2(2, rect.size.y)), Color(col.r, col.g, col.b, 1.0))
+		# Glow halo at leading edge
+		if fw > 4.0:
+			var halo_col := Color(col.r, col.g, col.b, 0.3)
+			draw_rect(Rect2(rect.position + Vector2(fw - 4, 0), Vector2(3, rect.size.y)), halo_col)
 
 	# Center tick
 	var cx: float = rect.position.x + rect.size.x * 0.5

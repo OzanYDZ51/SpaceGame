@@ -40,7 +40,7 @@ const TYPE_NAMES := ["LASER", "PLASMA", "MISSILE", "RAILGUN", "MINE", "TURRET"]
 
 # --- Equipment type colors ---
 const SHIELD_COLOR := Color(0.3, 0.6, 1.0, 0.9)
-const ENGINE_COLOR := Color(1.0, 0.6, 0.2, 0.9)
+const ENGINE_COLOR := Color(0.3, 0.8, 1.0, 0.9)
 const MODULE_COLORS := {
 	0: Color(0.7, 0.5, 0.3, 0.9),   # COQUE
 	1: Color(1.0, 0.85, 0.2, 0.9),  # ENERGIE

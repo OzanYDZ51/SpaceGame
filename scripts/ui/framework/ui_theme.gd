@@ -3,15 +3,15 @@ extends Node
 
 # =============================================================================
 # UI Theme - Unified design system autoload
-# Orange/amber Elite Dangerous aesthetic with holographic shaders
+# Electric cyan / ice blue sci-fi holographic aesthetic
 # Single source of truth for colors, typography, spacing, animations.
 # =============================================================================
 
-# --- Primary holographic (orange/amber Elite Dangerous) ---
-const PRIMARY := Color(1.0, 0.55, 0.0, 0.9)
-const PRIMARY_DIM := Color(0.7, 0.35, 0.0, 0.4)
-const PRIMARY_FAINT := Color(0.6, 0.3, 0.0, 0.15)
-const HEADER := Color(1.0, 0.65, 0.1, 0.92)
+# --- Primary holographic (electric cyan / ice blue) ---
+const PRIMARY := Color(0.0, 0.85, 1.0, 0.9)
+const PRIMARY_DIM := Color(0.0, 0.5, 0.7, 0.4)
+const PRIMARY_FAINT := Color(0.0, 0.4, 0.6, 0.15)
+const HEADER := Color(0.1, 0.75, 1.0, 0.92)
 
 # --- Semantic ---
 const ACCENT := Color(0.0, 1.0, 0.6, 0.9)
@@ -21,44 +21,44 @@ const DANGER := Color(1.0, 0.15, 0.1, 0.9)
 # --- Specialized ---
 const SHIELD := Color(0.2, 0.6, 1.0, 0.9)
 const TARGET := Color(1.0, 0.4, 0.2, 0.9)
-const BOOST := Color(1.0, 0.55, 0.1, 0.9)
+const BOOST := Color(0.3, 0.9, 1.0, 0.9)
 const CRUISE := Color(0.2, 1.0, 0.5, 0.9)
 const LEAD := Color(1.0, 1.0, 0.3, 0.9)
 
-# --- Backgrounds (deep warm tint) ---
-const BG := Color(0.03, 0.02, 0.01, 0.55)
-const BG_DARK := Color(0.02, 0.01, 0.005, 0.88)
-const BG_PANEL := Color(0.04, 0.025, 0.01, 0.88)
-const BG_MODAL := Color(0.02, 0.012, 0.005, 0.94)
+# --- Backgrounds (deep space blue) ---
+const BG := Color(0.01, 0.015, 0.04, 0.55)
+const BG_DARK := Color(0.005, 0.01, 0.03, 0.88)
+const BG_PANEL := Color(0.01, 0.02, 0.05, 0.88)
+const BG_MODAL := Color(0.005, 0.012, 0.035, 0.94)
 
-# --- Borders / decoration (amber) ---
-const BORDER := Color(0.55, 0.3, 0.05, 0.4)
-const BORDER_ACTIVE := Color(0.9, 0.5, 0.05, 0.7)
-const BORDER_HOVER := Color(1.0, 0.6, 0.1, 0.5)
-const CORNER := Color(0.7, 0.4, 0.05, 0.6)
-const SCANLINE := Color(0.8, 0.5, 0.1, 0.025)
+# --- Borders / decoration (steel blue / cyan) ---
+const BORDER := Color(0.08, 0.35, 0.55, 0.4)
+const BORDER_ACTIVE := Color(0.05, 0.6, 0.9, 0.7)
+const BORDER_HOVER := Color(0.1, 0.7, 1.0, 0.5)
+const CORNER := Color(0.05, 0.5, 0.7, 0.6)
+const SCANLINE := Color(0.1, 0.6, 0.8, 0.025)
 
-# --- Text (warm white/amber) ---
-const TEXT := Color(1.0, 0.88, 0.7, 0.95)
-const TEXT_DIM := Color(0.7, 0.5, 0.3, 0.7)
-const TEXT_HEADER := Color(1.0, 0.7, 0.3, 0.8)
-const LABEL_KEY := Color(0.6, 0.4, 0.2, 0.7)
-const LABEL_VALUE := Color(1.0, 0.75, 0.4, 0.9)
+# --- Text (cool white / ice — all secondaries boosted for readability) ---
+const TEXT := Color(0.9, 0.95, 1.0, 0.95)
+const TEXT_DIM := Color(0.55, 0.7, 0.85, 0.85)
+const TEXT_HEADER := Color(0.5, 0.8, 1.0, 0.92)
+const LABEL_KEY := Color(0.45, 0.65, 0.8, 0.85)
+const LABEL_VALUE := Color(0.7, 0.9, 1.0, 0.95)
 
-# --- Typography (Rajdhani Medium — harmonized hierarchy) ---
-const FONT_SIZE_TITLE := 28
-const FONT_SIZE_HEADER := 20
-const FONT_SIZE_BODY := 16
-const FONT_SIZE_LABEL := 15
-const FONT_SIZE_SMALL := 14
-const FONT_SIZE_TINY := 13
+# --- Typography (Rajdhani Bold — better readability on dark backgrounds) ---
+const FONT_SIZE_TITLE := 30
+const FONT_SIZE_HEADER := 22
+const FONT_SIZE_BODY := 17
+const FONT_SIZE_LABEL := 16
+const FONT_SIZE_SMALL := 15
+const FONT_SIZE_TINY := 14
 
 # --- Spacing ---
-const MARGIN_SCREEN := 16.0
-const MARGIN_PANEL := 14.0
-const MARGIN_SECTION := 8.0
-const ROW_HEIGHT := 22.0
-const CORNER_LENGTH := 12.0
+const MARGIN_SCREEN := 18.0
+const MARGIN_PANEL := 16.0
+const MARGIN_SECTION := 10.0
+const ROW_HEIGHT := 26.0
+const CORNER_LENGTH := 16.0
 
 # --- Animation ---
 const PULSE_SPEED := 2.0
@@ -85,10 +85,11 @@ func _ready() -> void:
 	if _font_bold == null:
 		_font_bold = _font_regular
 
-	# Apply Rajdhani MSDF as the global default font for ALL Controls
+	# Apply Rajdhani Bold as the global default font for ALL Controls
 	# (Label, Button, LineEdit, etc.) so nothing falls back to Godot's bitmap font
+	# Bold weight chosen for readability on dark holographic backgrounds
 	var global_theme := Theme.new()
-	global_theme.default_font = _font_medium
+	global_theme.default_font = _font_bold
 	global_theme.default_font_size = FONT_SIZE_BODY
 	get_tree().root.theme = global_theme
 
@@ -113,9 +114,9 @@ func ratio_color(ratio: float) -> Color:
 	return WARNING.lerp(DANGER, 1.0 - ratio * 2.0)
 
 
-## Returns the default UI font (Medium weight — readable at all sizes).
+## Returns the default UI font (Bold weight — readable at all sizes on dark backgrounds).
 func get_font() -> Font:
-	return _font_medium
+	return _font_bold
 
 
 ## Returns the medium weight font.

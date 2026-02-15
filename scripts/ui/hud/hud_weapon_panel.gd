@@ -361,7 +361,7 @@ func _draw_hardpoint_marker(ctrl: Control, font: Font, pos: Vector2, index: int,
 # =============================================================================
 func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, hp_count: int) -> void:
 	var line_h =15.0
-	var grp_colors: Array[Color] = [UITheme.PRIMARY, Color(1.0, 0.6, 0.1), Color(0.6, 0.3, 1.0)]
+	var grp_colors: Array[Color] = [UITheme.PRIMARY, Color(0.4, 0.7, 1.0), Color(0.6, 0.3, 1.0)]
 
 	for i in hp_count:
 		var status =weapon_manager.get_hardpoint_status(i)

@@ -5,7 +5,7 @@ shader_type canvas_item;
 
 render_mode unshaded;
 
-uniform vec4 stream_color : source_color = vec4(1.0, 0.55, 0.0, 0.15);
+uniform vec4 stream_color : source_color = vec4(0.0, 0.85, 1.0, 0.15);
 uniform float speed : hint_range(0.1, 4.0) = 1.0;
 uniform float density : hint_range(2.0, 30.0) = 12.0;
 uniform float fade_length : hint_range(0.05, 0.5) = 0.2;

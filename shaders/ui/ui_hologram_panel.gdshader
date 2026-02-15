@@ -4,7 +4,7 @@ shader_type canvas_item;
 // Applied as material on UIComponent Controls
 // All effects are scaled by source alpha to avoid artifacts on transparent areas.
 
-uniform vec4 glow_color : source_color = vec4(1.0, 0.55, 0.0, 0.6);
+uniform vec4 glow_color : source_color = vec4(0.0, 0.85, 1.0, 0.6);
 uniform float scanline_density : hint_range(50.0, 400.0) = 200.0;
 uniform float scanline_alpha : hint_range(0.0, 0.15) = 0.03;
 uniform float grain_intensity : hint_range(0.0, 0.2) = 0.04;

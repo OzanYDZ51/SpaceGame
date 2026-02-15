@@ -3,7 +3,7 @@ shader_type canvas_item;
 // Pulsating energy border for active/selected panels
 // Applied as material on highlighted UIComponents
 
-uniform vec4 glow_color : source_color = vec4(1.0, 0.55, 0.0, 0.8);
+uniform vec4 glow_color : source_color = vec4(0.0, 0.85, 1.0, 0.8);
 uniform float border_width : hint_range(0.005, 0.1) = 0.02;
 uniform float pulse_speed : hint_range(0.0, 8.0) = 2.0;
 uniform float pulse_min : hint_range(0.0, 1.0) = 0.3;

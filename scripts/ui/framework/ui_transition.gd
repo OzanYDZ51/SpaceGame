@@ -51,7 +51,7 @@ static func scale_out(node: Control, duration: float = 0.25) -> Tween:
 
 ## Holographic boot effect — flash bright then settle.
 static func holo_boot(node: Control, duration: float = 0.6) -> Tween:
-	node.modulate = Color(3.0, 2.0, 0.5, 0.0)
+	node.modulate = Color(0.5, 2.0, 3.0, 0.0)
 	var tw := node.create_tween()
 	tw.tween_property(node, "modulate", Color.WHITE, duration).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 	return tw
