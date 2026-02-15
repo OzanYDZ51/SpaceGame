@@ -181,18 +181,6 @@ export const ROADMAP_PHASES: RoadmapPhase[] = [
     ],
   },
   {
-    id: "planets",
-    title: "Atterrissage planétaire",
-    status: "done",
-    summary: "Planètes avec atmosphère, végétation, villes",
-    details: [
-      "Planètes cube-sphère avec LOD quadtree",
-      "Atmosphères Rayleigh/Mie par type de planète",
-      "Végétation procédurale par biome",
-      "Lumières de villes nocturnes",
-    ],
-  },
-  {
     id: "launcher",
     title: "Launcher & Déploiement",
     status: "in-progress",
@@ -202,6 +190,30 @@ export const ROADMAP_PHASES: RoadmapPhase[] = [
       "Téléchargement et mise à jour automatique",
       "Backend Go/PostgreSQL sur Railway",
       "Bot Discord intégré",
+    ],
+  },
+  {
+    id: "interiors",
+    title: "Intérieurs 3D",
+    status: "upcoming",
+    summary: "Explorez l'intérieur des stations et de vos vaisseaux",
+    details: [
+      "Intérieurs de stations visitables à pied",
+      "Ponts de vaisseaux accessibles en vue FPS",
+      "Interactions avec les PNJ et les équipements",
+      "Personnalisation des cabines de vaisseau",
+    ],
+  },
+  {
+    id: "planets",
+    title: "Atterrissage planétaire",
+    status: "upcoming",
+    summary: "Posez-vous sur des planètes aux atmosphères uniques",
+    details: [
+      "Planètes avec LOD haute fidélité",
+      "Atmosphères dynamiques par type de planète",
+      "Végétation et biomes procéduraux",
+      "Bases et colonies en surface",
     ],
   },
   {

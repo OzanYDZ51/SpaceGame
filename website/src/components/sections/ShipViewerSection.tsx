@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Suspense, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useState, Suspense, useRef, useEffect, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, ContactShadows } from "@react-three/drei";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -13,6 +13,34 @@ import * as THREE from "three";
 function ShipModel({ ship }: { ship: ShipData }) {
   const { scene } = useGLTF(ship.modelPath);
   const ref = useRef<THREE.Group>(null!);
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+
+  // Clone scene and compute bounds to auto-center + auto-fit
+  const cloned = useMemo(() => scene.clone(), [scene]);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    // Compute bounding box of the full model
+    const box = new THREE.Box3().setFromObject(ref.current);
+    const center = new THREE.Vector3();
+    const size = new THREE.Vector3();
+    box.getCenter(center);
+    box.getSize(size);
+
+    // Shift children so the geometry center is at (0,0,0)
+    ref.current.position.set(-center.x, -center.y, -center.z);
+
+    // Position camera to fit the model with some padding
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+    const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.6; // 1.6x padding
+
+    camera.position.set(dist * 0.5, dist * 0.3, dist);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [cloned, camera]);
 
   useFrame((_, delta) => {
     if (ref.current) {
@@ -21,8 +49,10 @@ function ShipModel({ ship }: { ship: ShipData }) {
   });
 
   return (
-    <group ref={ref} scale={ship.scale}>
-      <primitive object={scene.clone()} />
+    <group>
+      <group ref={ref}>
+        <primitive object={cloned} />
+      </group>
     </group>
   );
 }
@@ -120,23 +150,25 @@ export function ShipViewerSection() {
               <div className="lg:col-span-3 relative bg-gradient-to-b from-black/20 to-transparent">
                 <Suspense fallback={<LoadingSpinner />}>
                   <Canvas
-                    camera={{ position: [0, 1, activeShip.cameraDistance], fov: 45 }}
+                    camera={{ position: [0, 2, 10], fov: 40 }}
                     className="touch-none"
                     gl={{ antialias: true, alpha: true }}
                   >
-                    <ambientLight intensity={0.3} />
-                    <directionalLight position={[5, 5, 5]} intensity={1} />
-                    <directionalLight position={[-3, 2, -2]} intensity={0.4} color="#00c8ff" />
-                    <pointLight position={[0, -2, 3]} intensity={0.5} color="#00c8ff" />
+                    <ambientLight intensity={0.4} />
+                    <directionalLight position={[5, 8, 5]} intensity={1.2} />
+                    <directionalLight position={[-3, 2, -2]} intensity={0.5} color="#00c8ff" />
+                    <pointLight position={[0, -2, 3]} intensity={0.4} color="#00c8ff" />
 
                     <ShipModel key={activeShip.id} ship={activeShip} />
-                    <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={10} blur={2} color="#00c8ff" />
 
                     <OrbitControls
+                      target={[0, 0, 0]}
                       enablePan={false}
-                      enableZoom={false}
-                      minPolarAngle={Math.PI / 4}
-                      maxPolarAngle={Math.PI / 1.5}
+                      enableZoom={true}
+                      minDistance={2}
+                      maxDistance={50}
+                      minPolarAngle={Math.PI / 6}
+                      maxPolarAngle={Math.PI / 1.3}
                       autoRotate={false}
                     />
 
