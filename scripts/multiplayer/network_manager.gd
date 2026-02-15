@@ -157,7 +157,7 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	state.peer_id = 1
 	state.player_name = local_player_name
 	state.ship_id = local_ship_id
-	var sdata := ShipRegistry.get_ship_data(local_ship_id)
+	var sdata: ShipData = ShipRegistry.get_ship_data(local_ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[1] = state
 
@@ -333,7 +333,7 @@ func _on_peer_disconnected(id: int) -> void:
 			chat_message_received.emit(left_name, 1, "%s a quitté." % left_name)
 
 		# Notify NpcAuthority about disconnect (fleet NPCs persist)
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 		if npc_auth:
 			var uuid: String = _peer_to_uuid.get(id, "")
 			if uuid != "":
@@ -405,7 +405,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 	state.peer_id = sender_id
 	state.player_name = player_name
 	state.ship_id = StringName(ship_id_str)
-	var sdata := ShipRegistry.get_ship_data(state.ship_id)
+	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 
 	# Track UUID ↔ peer mapping
@@ -438,7 +438,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 
 	# Handle reconnect: re-associate fleet NPCs with the new peer_id
 	if is_reconnect and player_uuid != "":
-		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+		var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 		if npc_auth:
 			npc_auth.on_player_reconnected(player_uuid, sender_id)
 
@@ -466,7 +466,7 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> voi
 	state.peer_id = pid
 	state.player_name = pname
 	state.ship_id = StringName(ship_id_str)
-	var sdata := ShipRegistry.get_ship_data(state.ship_id)
+	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[pid] = state
 
@@ -673,7 +673,7 @@ func _rpc_fire_event(weapon_name: String, fire_pos: Array, fire_dir: Array) -> v
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.relay_fire_event(sender_id, weapon_name, fire_pos, fire_dir)
 
@@ -690,7 +690,7 @@ func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, 
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.validate_hit_claim(sender_id, target_npc, weapon_name, damage_val, hit_dir)
 
@@ -728,7 +728,7 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 	else:
 		_rpc_receive_player_damage.rpc_id(target_pid, sender_id, weapon_name, damage_val, hit_dir)
 	# Broadcast hit effect to observers (exclude attacker + target — they handle it locally)
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var target_label := "player_%d" % target_pid
 		var peers_in_sys := get_peers_in_system(sender_state.system_id)
@@ -832,7 +832,7 @@ func _rpc_player_ship_changed(new_ship_id_str: String) -> void:
 	var state: NetworkState = peers.get(sender_id)
 	if state:
 		state.ship_id = new_sid
-		var sdata := ShipRegistry.get_ship_data(new_sid)
+		var sdata: ShipData = ShipRegistry.get_ship_data(new_sid)
 		state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	# Relay to all connected peers
 	for pid in peers:
@@ -849,7 +849,7 @@ func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void
 	var new_sid := StringName(new_ship_id_str)
 	if peers.has(pid):
 		peers[pid].ship_id = new_sid
-		var sdata := ShipRegistry.get_ship_data(new_sid)
+		var sdata: ShipData = ShipRegistry.get_ship_data(new_sid)
 		peers[pid].ship_class = sdata.ship_class if sdata else &"Fighter"
 	player_ship_changed_received.emit(pid, new_sid)
 
@@ -864,7 +864,7 @@ func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: S
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var params: Dictionary = {}
 		if params_json != "":
@@ -880,7 +880,7 @@ func _rpc_request_fleet_retrieve(fleet_index: int) -> void:
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.handle_fleet_retrieve_request(sender_id, fleet_index)
 
@@ -891,7 +891,7 @@ func _rpc_request_fleet_command(fleet_index: int, cmd_str: String, params_json: 
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var params: Dictionary = {}
 		if params_json != "":
@@ -929,7 +929,7 @@ func _rpc_mining_beam(is_active: bool, source_pos: Array, target_pos: Array) -> 
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.relay_mining_beam(sender_id, is_active, source_pos, target_pos)
 
@@ -946,9 +946,9 @@ func _rpc_asteroid_depleted(asteroid_id_str: String) -> void:
 	if not is_server():
 		return
 	var sender_id := multiplayer.get_remote_sender_id()
-	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as NpcAuthority
+	var npc_auth := GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
-		var sender_state: NetworkState = peers.get(sender_id)
+		var sender_state = peers.get(sender_id)
 		if sender_state:
 			npc_auth.broadcast_asteroid_depleted(asteroid_id_str, sender_state.system_id, sender_id)
 
@@ -975,7 +975,8 @@ func _rpc_structure_hit_claim(target_id: String, weapon: String, damage: float, 
 	if damage < 0.0 or damage > 500.0:
 		return
 	# Reject unknown weapons
-	if WeaponRegistry.get_weapon(StringName(weapon)) == null:
+	var weapon_check = WeaponRegistry.get_weapon(StringName(weapon))
+	if weapon_check == null:
 		return
 	structure_hit_claimed.emit(sender_id, target_id, weapon, damage, hit_dir)
 
@@ -983,7 +984,7 @@ func _rpc_structure_hit_claim(target_id: String, weapon: String, damage: float, 
 ## Server -> Client: Batch sync of structure health ratios.
 @rpc("authority", "unreliable_ordered")
 func _rpc_structure_batch(batch: Array) -> void:
-	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as Node
 	if struct_auth:
 		struct_auth.apply_batch(batch)
 
@@ -991,7 +992,7 @@ func _rpc_structure_batch(batch: Array) -> void:
 ## Server -> Client: A structure was destroyed.
 @rpc("authority", "reliable")
 func _rpc_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
-	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as StructureAuthority
+	var struct_auth := GameManager.get_node_or_null("StructureAuthority") as Node
 	if struct_auth:
 		struct_auth.apply_structure_destroyed(struct_id, killer_pid, pos, loot)
 	structure_destroyed_received.emit(struct_id, killer_pid, pos, loot)
