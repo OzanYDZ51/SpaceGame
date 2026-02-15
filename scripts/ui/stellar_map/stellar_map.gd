@@ -535,6 +535,7 @@ func _input(event: InputEvent) -> void:
 				if hit_id == "" and not _fleet_selected_indices.is_empty():
 					_fleet_selected_indices.clear()
 					_fleet_panel.clear_selection()
+					_clear_route_line()
 					_select_entity("")
 					get_viewport().set_input_as_handled()
 					return
@@ -593,10 +594,12 @@ func _input(event: InputEvent) -> void:
 								_restore_route_for_fleet_selection()
 						else:
 							_select_entity("")
+							_clear_route_line()
 					else:
 						# Tap on empty = clear selection
 						_select_entity("")
 						_entity_layer.selected_ids.clear()
+						_clear_route_line()
 					_marquee.end()
 
 			get_viewport().set_input_as_handled()
@@ -806,9 +809,10 @@ func _sync_fleet_selection_from_entity(id: String) -> void:
 		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
 		_restore_route_for_fleet_selection()
 		return
-	# Non-fleet entity: clear fleet selection
+	# Non-fleet entity: clear fleet selection and route
 	_fleet_selected_indices.clear()
 	_fleet_panel.clear_selection()
+	_clear_route_line()
 
 
 func _toggle_multi_select(id: String) -> void:
@@ -931,12 +935,23 @@ func _on_sidebar_context_menu(fleet_index: int, screen_pos: Vector2) -> void:
 		_fleet_panel.set_selected_fleet_indices(_fleet_selected_indices)
 
 	var fs = _fleet_panel._fleet.ships[fleet_index]
+	# Use ship's current position so orders execute where the ship IS, not at map center
+	var ship_ux: float = 0.0
+	var ship_uz: float = 0.0
+	if fs.last_known_pos.size() >= 3:
+		ship_ux = fs.last_known_pos[0]
+		ship_uz = fs.last_known_pos[2]
+	elif fs.deployed_npc_id != &"":
+		var ent := EntityRegistry.get_entity(String(fs.deployed_npc_id))
+		if not ent.is_empty():
+			ship_ux = ent.get("pos_x", 0.0)
+			ship_uz = ent.get("pos_z", 0.0)
 	var context := {
 		"fleet_index": fleet_index,
 		"fleet_ship": fs,
 		"is_deployed": fs.deployment_state == FleetShip.DeploymentState.DEPLOYED,
-		"universe_x": 0.0,
-		"universe_z": 0.0,
+		"universe_x": ship_ux,
+		"universe_z": ship_uz,
 		"target_entity_id": "",
 	}
 
@@ -1322,6 +1337,7 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 	else:
 		source_indices = _fleet_selected_indices
 	if source_indices.is_empty():
+		_clear_route_line()
 		return
 
 	# Check if any selected ship is in a squadron (follow mode)
@@ -1347,11 +1363,13 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 			if first_fs == null:
 				first_fs = fs
 	if first_fs == null or restore_indices.is_empty():
+		_clear_route_line()
 		return
 	var params := first_fs.deployed_command_params
 	var tx: float = params.get("target_x", params.get("center_x", 0.0))
 	var tz: float = params.get("target_z", params.get("center_z", 0.0))
 	if tx == 0.0 and tz == 0.0:
+		_clear_route_line()
 		return
 	_set_route_lines(restore_indices, tx, tz)
 	if first_fs.deployed_command == &"attack":
