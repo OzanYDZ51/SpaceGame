@@ -15,9 +15,11 @@ var _fire_stream: AudioStream = null
 
 
 func _ready() -> void:
-	_fire_stream = load("res://assets/sounds/laser_fire.mp3")
+	var path := "res://assets/sounds/laser_fire.mp3"
+	if not ResourceLoader.exists(path):
+		return
+	_fire_stream = load(path)
 	if _fire_stream == null:
-		push_warning("WeaponAudio: Could not load laser_fire.mp3")
 		return
 
 	# Pre-allocate audio player pool

@@ -75,9 +75,10 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 		return
 
 	var entry: Dictionary = _structures[target_id]
-	var node: Node3D = entry.get("node_ref")
-	if node == null or not is_instance_valid(node):
+	var node_ref = entry.get("node_ref")
+	if node_ref == null or not is_instance_valid(node_ref):
 		return
+	var node: Node3D = node_ref
 
 	var health = node.get_node_or_null("StructureHealth")
 	if health == null or health.is_dead():
@@ -123,9 +124,10 @@ func _broadcast_batch() -> void:
 	var by_system: Dictionary = {}
 	for sid in _structures:
 		var entry: Dictionary = _structures[sid]
-		var node: Node3D = entry.get("node_ref")
-		if node == null or not is_instance_valid(node):
+		var node_ref = entry.get("node_ref")
+		if node_ref == null or not is_instance_valid(node_ref):
 			continue
+		var node: Node3D = node_ref
 		var health = node.get_node_or_null("StructureHealth")
 		if health == null:
 			continue
@@ -176,9 +178,10 @@ func apply_batch(batch: Array) -> void:
 		var sid: String = entry.get("sid", "")
 		if not _structures.has(sid):
 			continue
-		var node: Node3D = _structures[sid].get("node_ref")
-		if node == null or not is_instance_valid(node):
+		var node_ref = _structures[sid].get("node_ref")
+		if node_ref == null or not is_instance_valid(node_ref):
 			continue
+		var node: Node3D = node_ref
 		var health = node.get_node_or_null("StructureHealth")
 		if health == null or health.is_dead():
 			continue
@@ -192,9 +195,10 @@ func apply_batch(batch: Array) -> void:
 func apply_structure_destroyed(struct_id: String, _killer_pid: int, _pos: Array, _loot: Array) -> void:
 	if not _structures.has(struct_id):
 		return
-	var node: Node3D = _structures[struct_id].get("node_ref")
-	if node == null or not is_instance_valid(node):
+	var node_ref = _structures[struct_id].get("node_ref")
+	if node_ref == null or not is_instance_valid(node_ref):
 		return
+	var node: Node3D = node_ref
 	var health = node.get_node_or_null("StructureHealth")
 	if health and not health.is_dead():
 		health.hull_current = 0.0
