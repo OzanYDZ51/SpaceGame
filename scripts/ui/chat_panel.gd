@@ -244,7 +244,10 @@ func _build_chat() -> void:
 	input_focus.border_color = COL_BORDER_ACTIVE
 	_input_field.add_theme_stylebox_override("focus", input_focus)
 
-	_input_field.text_submitted.connect(_on_message_submitted)
+	# NOTE: Do NOT connect text_submitted — Enter is handled in _input() which
+	# calls _on_message_submitted directly. Connecting both causes double-send
+	# because _input() fires first, then LineEdit's text_submitted fires with
+	# the original text (captured before _input_field.clear()).
 	_input_field.focus_entered.connect(_on_input_focused)
 	_input_field.focus_exited.connect(_on_input_unfocused)
 	add_child(_input_field)
