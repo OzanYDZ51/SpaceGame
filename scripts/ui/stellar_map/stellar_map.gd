@@ -643,6 +643,8 @@ func _input(event: InputEvent) -> void:
 					get_viewport().set_input_as_handled()
 					return
 				var effective_indices =_get_effective_fleet_indices()
+				if effective_indices.is_empty() and not _fleet_selected_indices.is_empty():
+					push_warning("StellarMap: fleet_selected_indices=%s but effective is empty!" % str(_fleet_selected_indices))
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
 					# Check construction marker first
 					var cm = _entity_layer.get_construction_marker_at(event.position)
@@ -747,6 +749,10 @@ func _input(event: InputEvent) -> void:
 					var target_id = _entity_layer.get_entity_at(event.position)
 					if target_id != "":
 						_select_entity(target_id)
+				elif _right_hold_start <= 0.0 and not effective_indices.is_empty():
+					push_warning("StellarMap: right-click cancelled (hold_start=0, likely mouse moved >%dpx)" % int(RIGHT_HOLD_MAX_MOVE))
+				elif _right_hold_triggered:
+					pass  # Long-hold context menu was opened — expected
 				_right_hold_start = 0.0
 
 			get_viewport().set_input_as_handled()
@@ -947,6 +953,7 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 
 
 func _on_fleet_selection_changed(fleet_indices: Array) -> void:
+	print("[StellarMap] fleet selection changed: %s" % str(fleet_indices))
 	_fleet_selected_indices.clear()
 	for idx in fleet_indices:
 		_fleet_selected_indices.append(idx)

@@ -921,6 +921,7 @@ func _on_system_loaded(system_id: int) -> void:
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:
 	if player_fleet == null or fleet_index < 0 or fleet_index >= player_fleet.ships.size():
+		push_warning("FleetOrder: invalid fleet_index=%d (fleet size=%d, fleet=%s)" % [fleet_index, player_fleet.ships.size() if player_fleet else -1, str(player_fleet != null)])
 		return
 
 	# Active ship = engage player autopilot to destination
@@ -939,9 +940,11 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		return
 
 	if _fleet_deployment_mgr == null:
+		push_warning("FleetOrder: _fleet_deployment_mgr is null!")
 		return
 	var fs = player_fleet.ships[fleet_index]
 	var is_mp_client: bool = _fleet_deployment_mgr._is_multiplayer_client()
+	print("[FleetOrder] idx=%d order=%s state=%d sys=%d cur_sys=%d" % [fleet_index, order_id, fs.deployment_state, fs.docked_system_id, current_system_id_safe()])
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):

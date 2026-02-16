@@ -10,11 +10,13 @@ extends EditorScenePostImport
 # - Preserves original normals from Blender (no recalculation)
 # - Disables backface culling on all materials (doubleSided from Blender)
 # - Ensures materials use correct PBR metallic workflow
+# - Resets AnimationPlayers to rest pose (prevents mid-animation import)
 # =============================================================================
 
 
 func _post_import(scene: Node) -> Object:
 	_process_node(scene)
+	_reset_animations(scene)
 	return scene
 
 
@@ -24,6 +26,19 @@ func _process_node(node: Node) -> void:
 
 	for child in node.get_children():
 		_process_node(child)
+
+
+func _reset_animations(node: Node) -> void:
+	if node is AnimationPlayer:
+		var ap: AnimationPlayer = node as AnimationPlayer
+		ap.autoplay = ""
+		# Reset to RESET track (rest pose) if available
+		if ap.has_animation(&"RESET"):
+			ap.play(&"RESET")
+			ap.seek(0.0, true)
+			ap.stop()
+	for child in node.get_children():
+		_reset_animations(child)
 
 
 func _fix_mesh_materials(mi: MeshInstance3D) -> void:

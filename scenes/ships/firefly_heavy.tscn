@@ -1,32 +1,32 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dobc5184b0lku"]
 
-[ext_resource type="PackedScene" path="res://assets/models/firefly_heavy.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://ceo3gxwduq7ax" path="res://assets/models/firefly_heavy.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
 
-[node name="FireflyHeavy" type="Node3D"]
+[node name="FireflyHeavy" type="Node3D" unique_id=1599305797]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 
-[node name="ModelPivot" type="Node3D" parent="."]
-transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
+[node name="ModelPivot" type="Node3D" parent="." unique_id=1026870685]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0, 0, 0)
 
-[node name="FireflyModel" parent="ModelPivot" instance=ExtResource("1_model")]
+[node name="FireflyModel" parent="ModelPivot" unique_id=297605124 instance=ExtResource("1_model")]
 
-[node name="ShipCenter" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 28)
+[node name="ShipCenter" type="Marker3D" parent="." unique_id=1972267510]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.20932761, 1.4855008, 0.01256432)
 
-[node name="Hardpoint_0" type="Node3D" parent="."]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -3, 4.5, 36)
+[node name="Hardpoint_0" type="Node3D" parent="." unique_id=898420296]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -2.9999974, 4.5, 5.2839084)
 script = ExtResource("2_hpslot")
 preview_weapon_scene = "uid://bc351fksvydyb"
 
-[node name="Hardpoint_1" type="Node3D" parent="."]
-transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 3, 4.5, 36)
+[node name="Hardpoint_1" type="Node3D" parent="." unique_id=1472878628]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 3.0000026, 4.5, 6.797631)
 script = ExtResource("2_hpslot")
 slot_id = 1
 preview_weapon_scene = "uid://bc351fksvydyb"
 
-[node name="Hardpoint_2" type="Node3D" parent="."]
+[node name="Hardpoint_2" type="Node3D" parent="." unique_id=1874318287]
 transform = Transform3D(-0.009619096, -0.16955154, 0.98547447, -0.017964937, 0.9853902, 0.16936168, -0.9997923, -0.01607488, -0.012524545, 0, 11, 3)
 script = ExtResource("2_hpslot")
 slot_id = 2
@@ -38,8 +38,8 @@ turret_pitch_min = -10.0
 turret_pitch_max = 70.0
 preview_weapon_scene = "uid://c31lr44ihge4w"
 
-[node name="Hardpoint_3" type="Node3D" parent="."]
-transform = Transform3D(-4.216866e-08, 0.18621537, -0.982509, 8.139734e-09, 0.982509, 0.18621537, 1, -1.4490897e-10, -4.2946834e-08, 0, -8, 3)
+[node name="Hardpoint_3" type="Node3D" parent="." unique_id=84216904]
+transform = Transform3D(-4.216866e-08, 0.18621537, -0.982509, 8.139734e-09, 0.982509, 0.18621537, 1, -1.4490809e-10, -4.2946834e-08, 0, 4.1920195, 3)
 script = ExtResource("2_hpslot")
 slot_id = 3
 slot_size = "M"
@@ -50,16 +50,11 @@ turret_pitch_min = -10.0
 turret_pitch_max = 70.0
 preview_weapon_scene = "uid://c31lr44ihge4w"
 
-[node name="VFX_Engine_L" type="Marker3D" parent="."]
-transform = Transform3D(-10, 0, -8.7422785e-07, 0, 10, 0, 8.7422785e-07, 0, -10, -21, -1.5, -42)
+[node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=1709785157]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0.38453156, 1.3682868, -6.190648)
 script = ExtResource("3_vfx")
 nozzle_size = 4.0
 
-[node name="VFX_Engine_R" type="Marker3D" parent="."]
-transform = Transform3D(-10, 0, -8.7422785e-07, 0, 10, 0, 8.7422785e-07, 0, -10, 21, -1.5, -42)
-script = ExtResource("3_vfx")
-nozzle_size = 4.0
-
-[node name="EquipmentCamera" type="Camera3D" parent="."]
+[node name="EquipmentCamera" type="Camera3D" parent="." unique_id=20378209]
 transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 50, -55)
 fov = 45.0

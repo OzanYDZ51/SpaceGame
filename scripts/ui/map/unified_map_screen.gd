@@ -844,8 +844,9 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 			_start_route_to_selected()
 			get_viewport().set_input_as_handled()
 			return
-		# M and G are handled by GameManager (fires first as autoload)
-		# Escape is handled by UIScreenManager (fires before us in tree)
+		# Escape: let UIScreenManager handle it (don't consume)
+		if event.physical_keycode == KEY_ESCAPE:
+			return
 		# Consume all other keys to prevent ship movement
 		get_viewport().set_input_as_handled()
 		return

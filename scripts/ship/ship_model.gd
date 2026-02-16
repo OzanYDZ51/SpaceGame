@@ -42,6 +42,9 @@ var _visual_aabb_cached: bool = false
 var _weapon_meshes: Array[Node3D] = []  # Weapon model instances attached to this ship
 var _weapon_mount_root: Node3D = null  # Wrapper with root_basis for correct weapon positioning
 
+## Rim light shader (loaded once, shared by all instances)
+static var _rim_shader: Shader = null
+
 
 
 func _ready() -> void:
@@ -49,8 +52,7 @@ func _ready() -> void:
 		_use_external_model()
 	else:
 		_load_model()
-	if color_tint != Color.WHITE:
-		_apply_color_tint()
+	_enhance_materials()
 	_add_engine_lights()
 
 
@@ -100,13 +102,55 @@ func _center_model() -> void:
 	_model_instance.position = -aabb.get_center()
 
 
-func _apply_color_tint() -> void:
+func _enhance_materials() -> void:
 	if _model_instance == null:
 		return
+
+	# Load rim shader once (static, shared across all ship instances)
+	if _rim_shader == null:
+		_rim_shader = load("res://shaders/ship_hull_rim.gdshader") as Shader
+	if _rim_shader == null:
+		# Fallback: old tint-only path if shader is missing
+		if color_tint != Color.WHITE:
+			_apply_color_tint_fallback()
+		return
+
+	# Determine rim color based on faction tint
+	var rim_col := Color(0.35, 0.5, 0.7)  # Default: cool blue-white (player)
+	if color_tint != Color.WHITE:
+		# Derive rim color from faction tint: desaturated + brightened
+		rim_col = color_tint.lightened(0.4)
+		rim_col.s *= 0.5  # Reduce saturation for subtlety
+
+	var rim_mat := ShaderMaterial.new()
+	rim_mat.shader = _rim_shader
+	rim_mat.set_shader_parameter("rim_color", rim_col)
+	rim_mat.set_shader_parameter("rim_power", 3.0)
+	rim_mat.set_shader_parameter("rim_intensity", 0.8)
+	rim_mat.set_shader_parameter("ambient_boost", 0.025)
+
 	for child in _get_all_descendants(_model_instance):
 		if child is MeshInstance3D:
 			var mesh_inst: MeshInstance3D = child
-			# Create a tint overlay material
+			if color_tint != Color.WHITE:
+				# NPC ships: MUL tint overlay with rim light as next_pass
+				var tint_overlay := StandardMaterial3D.new()
+				tint_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				tint_overlay.blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+				tint_overlay.albedo_color = color_tint
+				tint_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				tint_overlay.next_pass = rim_mat
+				mesh_inst.material_overlay = tint_overlay
+			else:
+				# Player / untinted ships: rim light directly as overlay
+				mesh_inst.material_overlay = rim_mat
+
+
+func _apply_color_tint_fallback() -> void:
+	## Legacy tint-only path if rim shader fails to load.
+	for child in _get_all_descendants(_model_instance):
+		if child is MeshInstance3D:
+			var mesh_inst: MeshInstance3D = child
 			var overlay := StandardMaterial3D.new()
 			overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			overlay.blend_mode = BaseMaterial3D.BLEND_MODE_MUL
