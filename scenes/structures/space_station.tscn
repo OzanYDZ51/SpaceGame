@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c6eno4tl70tuq"]
 
-[ext_resource type="PackedScene" uid="uid://b676jqpyxleky" path="res://assets/models/babbage_station.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://dnamub7gwhi7u" path="res://assets/models/space_station.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 
 [node name="SpaceStation" type="Node3D" unique_id=1514895574]

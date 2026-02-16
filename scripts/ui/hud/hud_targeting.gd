@@ -343,7 +343,7 @@ func _setup_target_holo(target: Node3D) -> void:
 	# Model — holographic blue
 	_target_holo_model = ShipModel.new()
 	if is_station:
-		_target_holo_model.model_path = "res://assets/models/babbage_station.glb"
+		_target_holo_model.model_path = "res://assets/models/space_station.glb"
 	else:
 		_target_holo_model.model_path = target_ship_data.model_path
 		_target_holo_model.model_scale = ShipFactory.get_scene_model_scale(target_ship_id)
