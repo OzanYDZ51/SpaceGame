@@ -103,13 +103,15 @@ func handle_respawn() -> void:
 	else:
 		fleet.set_active(next_index)
 
-	# Restore player ship
-	_repair_ship()
-
 	# Always do a full system reload (even for same system) to ensure
 	# floating origin is reset and entities are freshly registered.
+	# NOTE: jump BEFORE repair so reset_flight_state() runs first, avoiding
+	# activate-then-deactivate flip-flop.
 	if system_transition:
 		system_transition.jump_to_system(target_sys)
+
+	# Restore player ship (after system reload so activation sticks)
+	_repair_ship()
 
 	player_respawned.emit()
 
@@ -178,6 +180,7 @@ func _grant_starter_ship(fleet) -> int:
 
 func _auto_dock_at_station() -> void:
 	var station_name: String = ""
+	var chosen_entity: Dictionary = {}
 	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 
 	# Prefer repair station
@@ -185,11 +188,13 @@ func _auto_dock_at_station() -> void:
 		var extra: Dictionary = ent.get("extra", {})
 		if extra.get("station_type", "") == "repair":
 			station_name = ent.get("name", "")
+			chosen_entity = ent
 			break
 
 	# Any station
 	if station_name == "" and stations.size() > 0:
 		station_name = stations[0].get("name", "Station")
+		chosen_entity = stations[0]
 
 	# Read from system data if registry empty
 	if station_name == "" and system_transition and system_transition.current_system_data:
@@ -203,6 +208,18 @@ func _auto_dock_at_station() -> void:
 		stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		if stations.size() > 0:
 			station_name = stations[0].get("name", "Station")
+			chosen_entity = stations[0]
+
+	# Freeze orbit + set DockingSystem state so undock sees correct positions
+	if chosen_entity.size() > 0 and docking_system:
+		var entity_id: String = chosen_entity.get("id", "")
+		if entity_id != "":
+			EntityRegistry.freeze_orbit(entity_id)
+			docking_system._frozen_station_id = entity_id
+		var node_ref = chosen_entity.get("node")
+		if node_ref != null and is_instance_valid(node_ref):
+			docking_system.nearest_station_node = node_ref
+		docking_system.nearest_station_name = station_name
 
 	docking_system.is_docked = true
 	docking_mgr.handle_docked(station_name)

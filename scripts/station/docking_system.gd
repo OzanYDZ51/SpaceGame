@@ -225,3 +225,7 @@ func clear_station_connections() -> void:
 	_connected_stations.clear()
 	_in_bay = false
 	_bay_station = null
+	nearest_station_node = null
+	nearest_station_name = ""
+	can_dock = false
+	is_near_station = false

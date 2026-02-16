@@ -52,6 +52,12 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 	ship_model.vfx_engine_positions = engine_pts
 	controller.add_child(ship_model)
 
+	# Cargo container visual — only for ships with Container_XX meshes in model
+	if scene_result.get("has_containers", false):
+		var ccv = load("res://scripts/ship/cargo_container_visual.gd").new()
+		ccv.name = "CargoContainerVisual"
+		ship_model.add_child(ccv)
+
 	controller.add_child(scene_result.collision_shape)
 
 	# Health System
@@ -187,6 +193,12 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			npc_engine_pts.append(vp["position"])
 	ship_model.vfx_engine_positions = npc_engine_pts
 	ship.add_child(ship_model)
+
+	# Cargo container visual — only for ships with Container_XX meshes
+	if scene_result.get("has_containers", false):
+		var npc_ccv = load("res://scripts/ship/cargo_container_visual.gd").new()
+		npc_ccv.name = "CargoContainerVisual"
+		ship_model.add_child(npc_ccv)
 
 	parent.add_child(ship)
 	ship.global_position = pos
@@ -596,6 +608,9 @@ static func _load_ship_scene(data) -> Dictionary:
 	# Detect animations in model tree (for ShipAnimator)
 	var has_animations: bool = _has_animation_player(model_node)
 
+	# Detect cargo containers (Container_XX nodes) in model
+	var has_containers: bool = _has_container_nodes(model_node)
+
 	return {
 		"configs": configs,
 		"vfx_points": vfx_points,
@@ -606,6 +621,7 @@ static func _load_ship_scene(data) -> Dictionary:
 		"center_offset": center_offset,
 		"root_basis": root_xform_basis,
 		"has_animations": has_animations,
+		"has_containers": has_containers,
 	}
 
 
@@ -652,6 +668,15 @@ static func _has_animation_player(node: Node) -> bool:
 		return true
 	for child in node.get_children():
 		if _has_animation_player(child):
+			return true
+	return false
+
+
+static func _has_container_nodes(node: Node) -> bool:
+	if node.name.begins_with("Container_"):
+		return true
+	for child in node.get_children():
+		if _has_container_nodes(child):
 			return true
 	return false
 

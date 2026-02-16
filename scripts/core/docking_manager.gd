@@ -144,7 +144,9 @@ func _reposition_at_station() -> void:
 				var node_ref = ent.get("node")
 				if node_ref != null and is_instance_valid(node_ref):
 					station_node = node_ref
-				station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					station_pos = station_node.global_position
+				else:
+					station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				found = true
 				break
 
