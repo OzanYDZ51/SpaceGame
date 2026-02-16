@@ -46,17 +46,21 @@ func _sync_deployed_positions() -> void:
 
 func can_deploy(fleet_index: int) -> bool:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		push_warning("can_deploy: invalid fleet/index (fleet=%s idx=%d size=%d)" % [str(_fleet != null), fleet_index, _fleet.ships.size() if _fleet else 0])
 		return false
 	var fs = _fleet.ships[fleet_index]
 	# Can't deploy active ship
 	if fleet_index == _fleet.active_index:
+		push_warning("can_deploy: idx=%d is active ship" % fleet_index)
 		return false
 	# Must be docked
 	if fs.deployment_state != FleetShip.DeploymentState.DOCKED:
+		push_warning("can_deploy: idx=%d state=%d (not DOCKED)" % [fleet_index, fs.deployment_state])
 		return false
 	# Must be in current system
 	var current_sys: int = GameManager.current_system_id_safe()
 	if fs.docked_system_id != current_sys:
+		push_warning("can_deploy: idx=%d docked_sys=%d != current_sys=%d" % [fleet_index, fs.docked_system_id, current_sys])
 		return false
 	return true
 

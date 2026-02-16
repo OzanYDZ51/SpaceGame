@@ -590,6 +590,8 @@ static func _load_ship_scene(data) -> Dictionary:
 
 	var col_node =CollisionShape3D.new()
 	col_node.shape = convex_shape
+	# Align collision with visual model (rotation from root + ModelPivot)
+	col_node.rotation_degrees = scene_model_rotation
 
 	# Detect animations in model tree (for ShipAnimator)
 	var has_animations: bool = _has_animation_player(model_node)

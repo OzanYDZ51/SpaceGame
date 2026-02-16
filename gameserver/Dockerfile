@@ -33,7 +33,6 @@ COPY shaders/ shaders/
 COPY assets/fonts/ assets/fonts/
 COPY assets/models/tie.glb assets/models/tie.glb.import assets/models/
 COPY assets/models/frigate_mk1.glb assets/models/frigate_mk1.glb.import assets/models/
-COPY assets/models/firefly_heavy.glb assets/models/firefly_heavy.glb.import assets/models/
 COPY assets/models/babbage_station.glb assets/models/babbage_station.glb.import assets/models/
 COPY assets/models/canon_laser.glb assets/models/canon_laser.glb.import assets/models/
 COPY assets/models/tourelle.glb assets/models/tourelle.glb.import assets/models/
