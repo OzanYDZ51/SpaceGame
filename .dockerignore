@@ -26,3 +26,18 @@ Thumbs.db
 # Blender source files
 *.blend
 *.blend1
+
+# Heavy visual-only assets (not needed by headless game server)
+assets/models/asteroids/
+assets/models/vegetation/
+assets/models/hangar_interior.glb
+assets/models/hangar_interior.glb.import
+assets/models/space_station.glb
+assets/models/space_station.glb.import
+assets/models/space_station_*.png
+assets/models/space_station_*.png.import
+assets/models/player_ship.glb
+assets/models/player_ship.glb.import
+assets/audio/
+assets/sounds/
+assets/textures/

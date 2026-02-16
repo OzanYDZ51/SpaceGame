@@ -28,9 +28,8 @@ COPY project.godot icon.svg ./
 COPY data/ data/
 COPY shaders/ shaders/
 
-# 3. Assets — all models + fonts (no need to cherry-pick, avoids missing model bugs)
-COPY assets/fonts/ assets/fonts/
-COPY assets/models/ assets/models/
+# 3. Assets — copied in bulk, heavy visual-only files excluded via .dockerignore
+COPY assets/ assets/
 
 # 4. Scenes (change sometimes)
 COPY scenes/ scenes/
