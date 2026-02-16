@@ -76,12 +76,15 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 	var target_cruise: float = 1.0 if speed_mode == Constants.SpeedMode.CRUISE else 0.0
 	_cruise_blend = lerpf(_cruise_blend, target_cruise, 0.06)
 
-	var t := _throttle_smooth
+	# Combine throttle input + speed-based glow for coasting ships
+	var t := maxf(_throttle_smooth, _ship_speed_ratio * 0.6)
+	# Minimum idle glow — engines always show a faint plume
+	var idle: float = 0.1
 
 	for nozzle in _nozzles:
-		_update_cone(nozzle, t, 0.0)
+		_update_cone(nozzle, t, idle)
 		_update_afterburner(nozzle, t)
-		_update_light(nozzle, t, 0.0)
+		_update_light(nozzle, t, idle)
 
 
 # =============================================================================

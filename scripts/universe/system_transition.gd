@@ -228,10 +228,29 @@ func _cleanup_current_system() -> void:
 			player_lod.position = GameManager.player_ship.global_position
 			lod_mgr.register_ship(&"player_ship", player_lod)
 
+	# Disconnect gate/wormhole signals and disable physics triggers
+	# to prevent stale body_exited callbacks during queue_free
+	for child in universe.get_children():
+		if child is JumpGate:
+			if child.player_nearby.is_connected(_on_gate_player_nearby):
+				child.player_nearby.disconnect(_on_gate_player_nearby)
+			if child.player_left.is_connected(_on_gate_player_left):
+				child.player_left.disconnect(_on_gate_player_left)
+			if child._trigger_area:
+				child._trigger_area.monitoring = false
+		elif child is WormholeGate:
+			for conn in child.player_nearby_wormhole.get_connections():
+				child.player_nearby_wormhole.disconnect(conn["callable"])
+			for conn in child.player_left_wormhole.get_connections():
+				child.player_left_wormhole.disconnect(conn["callable"])
+			if child._trigger_area:
+				child._trigger_area.monitoring = false
+
 	# Remove dynamically spawned children of Universe (stations, etc.)
 	for child in universe.get_children():
 		if child.name == "LOD2_MultiMesh":
 			continue
+		child.visible = false  # Immediately hide (Label3D no_depth_test bleeds through overlay)
 		child.queue_free()
 
 	# Clear NPCs via encounter manager
@@ -496,10 +515,14 @@ func _register_system_entities() -> void:
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
 		var node: Node3D = universe.get_node_or_null("Station_%d" % i) if universe else null
+		var st_angle: float = EntityRegistrySystem.compute_orbital_angle(sd.orbital_angle, sd.orbital_period)
+		var st_orbit_r: float = sd.orbital_radius
 		EntityRegistry.register("station_%d" % i, {
 			"name": sd.station_name,
 			"type": EntityRegistrySystem.EntityType.STATION,
 			"node": node,
+			"pos_x": cos(st_angle) * st_orbit_r,
+			"pos_z": sin(st_angle) * st_orbit_r,
 			"orbital_radius": sd.orbital_radius,
 			"orbital_period": sd.orbital_period,
 			"orbital_angle": sd.orbital_angle,
@@ -601,6 +624,8 @@ func _on_gate_player_nearby(target_id: int, target_name: String) -> void:
 
 
 func _on_gate_player_left() -> void:
+	if _is_transitioning:
+		return
 	_active_gate_target_id = -1
 	_active_gate_target_name = ""
 

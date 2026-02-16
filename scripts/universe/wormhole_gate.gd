@@ -51,6 +51,7 @@ func _build_ring() -> void:
 	_ring_mesh.mesh = torus
 
 	_material = StandardMaterial3D.new()
+	_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_material.albedo_color = Color(emission_color.r, emission_color.g, emission_color.b, 0.85)
 	_material.emission_enabled = true
 	_material.emission = emission_color
@@ -80,11 +81,13 @@ func _build_inner_glow() -> void:
 	_inner_glow.mesh = disc
 
 	_glow_material = StandardMaterial3D.new()
+	_glow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_glow_material.albedo_color = Color(0.5, 0.1, 0.8, 0.3)
 	_glow_material.emission_enabled = true
 	_glow_material.emission = Color(0.6, 0.15, 0.9)
 	_glow_material.emission_energy_multiplier = 2.0
 	_glow_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_glow_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_glow_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_glow_material.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
 	_inner_glow.material_override = _glow_material

@@ -128,3 +128,49 @@ func report_fleet_death(player_uuid: String, fleet_index: int) -> bool:
 		"fleet_index": fleet_index,
 	})
 	return await _request_with_retry("POST fleet/death", url, HTTPClient.METHOD_POST, json_str, MAX_RETRIES)
+
+
+# =============================================================================
+# CHAT PERSISTENCE
+# =============================================================================
+
+## POST /api/v1/server/chat/messages → store a chat message (fire-and-forget, 1 retry).
+func post_chat_message(channel: int, system_id: int, sender_name: String, text: String) -> bool:
+	var url: String = _get_base_url() + "/api/v1/server/chat/messages"
+	var json_str := JSON.stringify({
+		"channel": channel,
+		"system_id": system_id,
+		"sender_name": sender_name,
+		"text": text,
+	})
+	return await _request_with_retry("POST chat/messages", url, HTTPClient.METHOD_POST, json_str, 1)
+
+
+## GET /api/v1/server/chat/history → retrieve recent messages for given channels.
+## Returns Array of Dictionaries with keys: sender_name, text, channel, created_at.
+func get_chat_history(channels: Array, system_id: int, limit: int = 50) -> Array:
+	var ch_str: String = ",".join(channels.map(func(c): return str(c)))
+	var url: String = _get_base_url() + "/api/v1/server/chat/history?channels=%s&system_id=%d&limit=%d" % [ch_str, system_id, limit]
+	var http := HTTPRequest.new()
+	http.timeout = REQUEST_TIMEOUT
+	add_child(http)
+
+	var err := http.request(url, _make_headers(), HTTPClient.METHOD_GET)
+	if err != OK:
+		http.queue_free()
+		push_error("ServerBackendClient: GET chat/history failed: %s" % error_string(err))
+		return []
+
+	var result: Array = await http.request_completed
+	http.queue_free()
+
+	var response_code: int = result[1]
+	var body_str: String = result[3].get_string_from_utf8() if result[3].size() > 0 else ""
+	if response_code != 200:
+		push_error("ServerBackendClient: GET chat/history returned %d: %s" % [response_code, body_str])
+		return []
+
+	var parsed = JSON.parse_string(body_str)
+	if parsed is Dictionary:
+		return parsed.get("messages", [])
+	return []

@@ -164,8 +164,11 @@ func _input(event: InputEvent) -> void:
 	if _screen_stack.is_empty():
 		return
 
-	# Escape closes top screen
+	# Escape closes top screen (unless top screen is in key-listening mode)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
+		var top: UIScreen = _screen_stack.back()
+		if top.get("_listening"):
+			return  # Let the screen handle ESC internally
 		close_top()
 		get_viewport().set_input_as_handled()
 		return

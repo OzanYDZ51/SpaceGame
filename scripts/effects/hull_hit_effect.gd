@@ -80,6 +80,7 @@ func _create_scorch() -> void:
 	_scorch.mesh = sphere
 
 	_scorch_mat = StandardMaterial3D.new()
+	_scorch_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_scorch_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_scorch_mat.albedo_color = Color(1.0, 0.7, 0.3, 1.0)
 	_scorch_mat.emission_enabled = true
@@ -132,7 +133,9 @@ func _create_sparks(hit_normal: Vector3) -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.08, 0.08, 0.5)
 	var mesh_mat := StandardMaterial3D.new()
+	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mesh_mat.albedo_color = Color(1.0, 0.9, 0.5, 1.0)
 	mesh_mat.emission_enabled = true
 	mesh_mat.emission = Color(1.0, 0.7, 0.3)
@@ -185,6 +188,7 @@ func _create_debris(hit_normal: Vector3) -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.3, 0.15, 0.2)
 	var mesh_mat := StandardMaterial3D.new()
+	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_mat.albedo_color = Color(0.4, 0.38, 0.35, 1.0)
 	mesh_mat.emission_enabled = true
@@ -246,6 +250,7 @@ func _create_smoke(hit_normal: Vector3) -> void:
 	mesh.radial_segments = 8
 	mesh.rings = 4
 	var mesh_mat := StandardMaterial3D.new()
+	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_mat.albedo_color = Color(0.1, 0.08, 0.07, 0.5)
 	mesh_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED

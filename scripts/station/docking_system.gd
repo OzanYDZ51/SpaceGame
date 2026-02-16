@@ -25,6 +25,7 @@ const BAY_DOCK_MAX_SPEED: float = 100.0       ## Max speed for bay docking (slow
 
 var is_docked: bool = false
 var can_dock: bool = false
+var is_near_station: bool = false
 var nearest_station_name: String = ""
 var nearest_station_node: Node3D = null
 
@@ -33,6 +34,7 @@ var _check_timer: float = 0.0
 var _in_bay: bool = false            ## True if ship is inside a station's docking bay
 var _bay_station: Node3D = null      ## The station whose bay we're inside
 var _connected_stations: Array = []  ## Stations we've connected bay signals to
+var _frozen_station_id: String = ""  ## EntityRegistry ID of station whose orbit is frozen
 
 
 func _ready() -> void:
@@ -108,6 +110,7 @@ func _scan_stations() -> void:
 		# (handled by _in_bay flag above). Just track the nearest station.
 		nearest_station_node = best_node
 		nearest_station_name = best_name
+		is_near_station = best_dist < dock_range
 		if not _in_bay and was_available:
 			dock_unavailable.emit()
 			can_dock = false
@@ -115,6 +118,7 @@ func _scan_stations() -> void:
 
 	# Fallback: distance-based docking for stations without a bay
 	if best_node and best_dist < dock_range:
+		is_near_station = true
 		var speed: float = 0.0
 		if _ship is RigidBody3D:
 			speed = (_ship as RigidBody3D).linear_velocity.length()
@@ -133,6 +137,7 @@ func _scan_stations() -> void:
 		if was_available:
 			dock_unavailable.emit()
 		can_dock = false
+		is_near_station = false
 		nearest_station_node = null
 		nearest_station_name = ""
 

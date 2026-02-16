@@ -195,6 +195,9 @@ func collect_save_state(player_ship, system_transition) -> Dictionary:
 		if not ref_data.is_empty():
 			state["refinery"] = ref_data
 
+	# Player settings (audio + controls) for backend sync
+	state["settings"] = OptionsScreen.collect_settings_dict()
+
 	return state
 
 
@@ -337,6 +340,11 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	var refinery_data: Dictionary = state.get("refinery", {})
 	if not refinery_data.is_empty() and refinery_manager:
 		refinery_manager.deserialize(refinery_data)
+
+	# Player settings (audio + controls) from backend
+	var settings_data: Dictionary = state.get("settings", {})
+	if not settings_data.is_empty():
+		OptionsScreen.apply_settings_dict(settings_data)
 
 	# Migration: old saves stored cargo/resources at top-level — migrate to active ship
 	var old_cargo: Array = state.get("cargo", []) if state.get("cargo") is Array else []

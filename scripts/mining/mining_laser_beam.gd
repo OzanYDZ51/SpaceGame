@@ -126,6 +126,14 @@ func _build_impact_effects() -> void:
 	# Particle mesh: small rock-like chunks
 	var pmesh := BoxMesh.new()
 	pmesh.size = Vector3(0.25, 0.15, 0.2)
+	var pmesh_mat := StandardMaterial3D.new()
+	pmesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pmesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pmesh_mat.vertex_color_use_as_albedo = true
+	pmesh_mat.emission_enabled = true
+	pmesh_mat.emission = BEAM_COLOR_HOT
+	pmesh_mat.emission_energy_multiplier = 3.0
+	pmesh.material = pmesh_mat
 	_impact_particles.draw_pass_1 = pmesh
 	_impact_particles.visible = false
 	add_child(_impact_particles)
@@ -170,6 +178,15 @@ func _build_source_effects() -> void:
 	pmesh.height = 0.24
 	pmesh.radial_segments = 4
 	pmesh.rings = 2
+	var pmesh_mat := StandardMaterial3D.new()
+	pmesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pmesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pmesh_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	pmesh_mat.vertex_color_use_as_albedo = true
+	pmesh_mat.emission_enabled = true
+	pmesh_mat.emission = BEAM_COLOR_HOT
+	pmesh_mat.emission_energy_multiplier = 2.0
+	pmesh.material = pmesh_mat
 	_source_particles.draw_pass_1 = pmesh
 	_source_particles.visible = false
 	add_child(_source_particles)

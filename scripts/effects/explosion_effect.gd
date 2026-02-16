@@ -96,7 +96,9 @@ func _create_core_glow() -> void:
 	_core_mesh.mesh = sphere
 
 	_core_mat = StandardMaterial3D.new()
+	_core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_core_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_core_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_core_mat.albedo_color = Color(1.0, 0.8, 0.4, 1.0)
 	_core_mat.emission_enabled = true
 	_core_mat.emission = Color(1.0, 0.6, 0.2)
@@ -145,12 +147,15 @@ func _create_sparks() -> void:
 	var spark_mesh := BoxMesh.new()
 	spark_mesh.size = Vector3(0.1, 0.1, 0.5)
 	var spark_mat := StandardMaterial3D.new()
+	spark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	spark_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	spark_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	spark_mat.albedo_color = Color(1.0, 0.9, 0.5, 1.0)
 	spark_mat.emission_enabled = true
 	spark_mat.emission = Color(1.0, 0.7, 0.3)
 	spark_mat.emission_energy_multiplier = 5.0
 	spark_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	spark_mat.no_depth_test = true
 	spark_mesh.material = spark_mat
 	_sparks.draw_pass_1 = spark_mesh
 
@@ -195,7 +200,9 @@ func _create_embers() -> void:
 	ember_mesh.radial_segments = 6
 	ember_mesh.rings = 3
 	var ember_mat := StandardMaterial3D.new()
+	ember_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ember_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ember_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	ember_mat.albedo_color = Color(1.0, 0.5, 0.15, 0.9)
 	ember_mat.emission_enabled = true
 	ember_mat.emission = Color(1.0, 0.4, 0.1)
@@ -218,7 +225,9 @@ func _create_shockwave() -> void:
 	_shockwave_mesh.mesh = ring
 
 	_shockwave_mat = StandardMaterial3D.new()
+	_shockwave_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_shockwave_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_shockwave_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_shockwave_mat.albedo_color = Color(0.4, 0.7, 1.0, 0.6)
 	_shockwave_mat.emission_enabled = true
 	_shockwave_mat.emission = Color(0.3, 0.6, 1.0)

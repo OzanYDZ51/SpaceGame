@@ -152,17 +152,36 @@ func _process(delta: float) -> void:
 			node_ref = null
 
 		if node_ref != null:
-			# Scene-based entity: read position from node + floating origin
-			var node: Node3D = node_ref
-			var upos: Array = FloatingOrigin.to_universe_pos(node.global_position)
-			ent["pos_x"] = upos[0]
-			ent["pos_y"] = upos[1]
-			ent["pos_z"] = upos[2]
-			if node is RigidBody3D:
-				var vel: Vector3 = node.linear_velocity
-				ent["vel_x"] = float(vel.x)
-				ent["vel_y"] = float(vel.y)
-				ent["vel_z"] = float(vel.z)
+			# Check if this entity has orbital motion (e.g. stations)
+			if ent.get("orbital_radius", 0.0) > 0.0 and ent.get("orbital_period", 0.0) > 0.0:
+				if not _frozen_orbits.has(ent["id"]):
+					ent["orbital_angle"] = compute_orbital_angle(ent["orbital_angle_base"], ent["orbital_period"])
+					var parent_id: String = ent["orbital_parent"]
+					var px: float = 0.0
+					var pz: float = 0.0
+					if parent_id != "" and _entities.has(parent_id):
+						px = _entities[parent_id]["pos_x"]
+						pz = _entities[parent_id]["pos_z"]
+					var r: float = ent["orbital_radius"]
+					var angle: float = ent["orbital_angle"]
+					ent["pos_x"] = px + cos(angle) * r
+					ent["pos_z"] = pz + sin(angle) * r
+					# Move the actual node in scene coords
+					var node: Node3D = node_ref
+					node.global_position = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			else:
+				# Non-orbiting node: read position from node + floating origin
+				var node: Node3D = node_ref
+				var upos: Array = FloatingOrigin.to_universe_pos(node.global_position)
+				ent["pos_x"] = upos[0]
+				ent["pos_y"] = upos[1]
+				ent["pos_z"] = upos[2]
+			# Velocity for RigidBody3D (both orbiting and non-orbiting)
+			if node_ref is RigidBody3D:
+				var rb: RigidBody3D = node_ref
+				ent["vel_x"] = float(rb.linear_velocity.x)
+				ent["vel_y"] = float(rb.linear_velocity.y)
+				ent["vel_z"] = float(rb.linear_velocity.z)
 		elif ent.get("orbital_radius", 0.0) > 0.0 and ent.get("orbital_period", 0.0) > 0.0:
 			# Skip orbital update if frozen (player is near this planet)
 			if _frozen_orbits.has(ent["id"]):

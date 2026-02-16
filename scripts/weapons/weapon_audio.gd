@@ -29,7 +29,7 @@ func _ready() -> void:
 		player.unit_size = 80.0          # Distance at which sound is at 0dB
 		player.max_distance = 2000.0     # Audible up to 2km (combat range)
 		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
-		player.bus = &"Master"
+		player.bus = &"SFX"
 		player.autoplay = false
 		player.name = "ShotAudio_%d" % i
 		add_child(player)

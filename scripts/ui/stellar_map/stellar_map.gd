@@ -197,6 +197,7 @@ func clear_preview() -> void:
 	if not _saved_system_name.is_empty():
 		_renderer._system_name = _saved_system_name
 		_saved_system_name = ""
+	_clear_route_line()
 
 
 func toggle() -> void:

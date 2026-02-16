@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN settings JSONB NOT NULL DEFAULT '{}';

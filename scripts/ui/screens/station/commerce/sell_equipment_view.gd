@@ -1,27 +1,38 @@
 class_name SellEquipmentView
-extends Control
+extends UIComponent
 
 # =============================================================================
-# Sell Equipment View - Sell weapons/shields/engines/modules from inventory
-# Same layout as EquipmentShopView: Tab bar + list + detail panel + sell button
+# Sell Equipment View — Card grid of owned items (3 columns) + detail panel.
+# Tab bar: ARMES / BOUCLIERS / MOTEURS / MODULES.
+# Each card: size badge, type icon, name, quantity if >1, sell price (50%).
 # =============================================================================
 
 var _commerce_manager = null
 
 var _tab_bar: UITabBar = null
-var _item_list: UIScrollList = null
 var _sell_btn: UIButton = null
 var _current_tab: int = 0
 var _available_items: Array[StringName] = []
 var _selected_index: int = -1
 
+# Card grid state
+var _card_rects: Array[Rect2] = []
+var _hovered_idx: int = -1
+var _scroll_offset: float = 0.0
+var _total_content_h: float = 0.0
+var _grid_area: Rect2 = Rect2()
+
 const TAB_NAMES: Array[String] = ["ARMES", "BOUCLIERS", "MOTEURS", "MODULES"]
-const DETAIL_W =240.0
-const ROW_H =48.0
+const DETAIL_W: float = 240.0
+const CARD_W: float = 140.0
+const CARD_H: float = 110.0
+const CARD_GAP: float = 8.0
+const GRID_TOP: float = 34.0
 
 
 func _ready() -> void:
 	clip_contents = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(_layout)
 
 	_tab_bar = UITabBar.new()
@@ -30,14 +41,6 @@ func _ready() -> void:
 	_tab_bar.tab_changed.connect(_on_tab_changed)
 	_tab_bar.visible = false
 	add_child(_tab_bar)
-
-	_item_list = UIScrollList.new()
-	_item_list.row_height = ROW_H
-	_item_list.item_draw_callback = _draw_item_row
-	_item_list.item_selected.connect(_on_item_selected)
-	_item_list.item_double_clicked.connect(_on_item_double_clicked)
-	_item_list.visible = false
-	add_child(_item_list)
 
 	_sell_btn = UIButton.new()
 	_sell_btn.text = "VENDRE"
@@ -53,7 +56,6 @@ func setup(mgr) -> void:
 
 func refresh() -> void:
 	_tab_bar.visible = true
-	_item_list.visible = true
 	_sell_btn.visible = true
 	_tab_bar.current_tab = _current_tab
 	_refresh_items()
@@ -61,19 +63,20 @@ func refresh() -> void:
 
 
 func _layout() -> void:
-	var s =size
+	var s = size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_tab_bar.position = Vector2(0, 0)
 	_tab_bar.size = Vector2(list_w, 28)
-	_item_list.position = Vector2(0, 32)
-	_item_list.size = Vector2(list_w, s.y - 32)
 	_sell_btn.position = Vector2(s.x - DETAIL_W + 10, s.y - 42)
 	_sell_btn.size = Vector2(DETAIL_W - 20, 34)
+	_grid_area = Rect2(0, GRID_TOP, list_w, s.y - GRID_TOP)
+	_compute_card_grid()
 
 
 func _on_tab_changed(idx: int) -> void:
 	_current_tab = idx
 	_selected_index = -1
+	_scroll_offset = 0.0
 	_refresh_items()
 	queue_redraw()
 
@@ -81,7 +84,8 @@ func _on_tab_changed(idx: int) -> void:
 func _refresh_items() -> void:
 	_available_items.clear()
 	if _commerce_manager == null or _commerce_manager.player_inventory == null:
-		_item_list.items = []
+		_compute_card_grid()
+		queue_redraw()
 		return
 	var inv = _commerce_manager.player_inventory
 	match _current_tab:
@@ -89,24 +93,30 @@ func _refresh_items() -> void:
 		1: _available_items.assign(inv.get_all_shields())
 		2: _available_items.assign(inv.get_all_engines())
 		3: _available_items.assign(inv.get_all_modules())
-	var list_items: Array = []
-	for item_name in _available_items:
-		list_items.append(item_name)
-	_item_list.items = list_items
 	if _selected_index >= _available_items.size():
 		_selected_index = -1
-	_item_list.selected_index = _selected_index
+	_compute_card_grid()
 	queue_redraw()
 
 
-func _on_item_selected(idx: int) -> void:
-	_selected_index = idx
-	queue_redraw()
-
-
-func _on_item_double_clicked(idx: int) -> void:
-	_selected_index = idx
-	_do_sell()
+func _compute_card_grid() -> void:
+	_card_rects.clear()
+	if _available_items.is_empty():
+		_total_content_h = 0.0
+		return
+	var area_w: float = _grid_area.size.x
+	var cols: int = maxi(1, int((area_w + CARD_GAP) / (CARD_W + CARD_GAP)))
+	for i in _available_items.size():
+		@warning_ignore("integer_division")
+		var row: int = i / cols
+		var col: int = i % cols
+		var x: float = _grid_area.position.x + col * (CARD_W + CARD_GAP)
+		var y: float = _grid_area.position.y + row * (CARD_H + CARD_GAP) - _scroll_offset
+		_card_rects.append(Rect2(x, y, CARD_W, CARD_H))
+	var cols2: int = maxi(1, int((area_w + CARD_GAP) / (CARD_W + CARD_GAP)))
+	@warning_ignore("integer_division")
+	var total_rows: int = (_available_items.size() + cols2 - 1) / cols2
+	_total_content_h = total_rows * (CARD_H + CARD_GAP)
 
 
 func _on_sell_pressed() -> void:
@@ -125,23 +135,44 @@ func _do_sell() -> void:
 		3: success = _commerce_manager.sell_module(item_name)
 	if success:
 		if GameManager._notif:
-			var sell_price: int = 0
-			match _current_tab:
-				0:
-					var w =WeaponRegistry.get_weapon(item_name)
-					if w: sell_price = PriceCatalog.get_sell_price(w.price)
-				1:
-					var sh =ShieldRegistry.get_shield(item_name)
-					if sh: sell_price = PriceCatalog.get_sell_price(sh.price)
-				2:
-					var en =EngineRegistry.get_engine(item_name)
-					if en: sell_price = PriceCatalog.get_sell_price(en.price)
-				3:
-					var mo =ModuleRegistry.get_module(item_name)
-					if mo: sell_price = PriceCatalog.get_sell_price(mo.price)
+			var sell_price: int = _get_sell_price(item_name)
 			GameManager._notif.commerce.sold(String(item_name), sell_price)
 		_refresh_items()
 	queue_redraw()
+
+
+func _get_sell_price(item_name: StringName) -> int:
+	match _current_tab:
+		0:
+			var w = WeaponRegistry.get_weapon(item_name)
+			return PriceCatalog.get_sell_price(w.price) if w else 0
+		1:
+			var sh = ShieldRegistry.get_shield(item_name)
+			return PriceCatalog.get_sell_price(sh.price) if sh else 0
+		2:
+			var en = EngineRegistry.get_engine(item_name)
+			return PriceCatalog.get_sell_price(en.price) if en else 0
+		3:
+			var mo = ModuleRegistry.get_module(item_name)
+			return PriceCatalog.get_sell_price(mo.price) if mo else 0
+	return 0
+
+
+func _get_base_price(item_name: StringName) -> int:
+	match _current_tab:
+		0:
+			var w = WeaponRegistry.get_weapon(item_name)
+			return w.price if w else 0
+		1:
+			var sh = ShieldRegistry.get_shield(item_name)
+			return sh.price if sh else 0
+		2:
+			var en = EngineRegistry.get_engine(item_name)
+			return en.price if en else 0
+		3:
+			var mo = ModuleRegistry.get_module(item_name)
+			return mo.price if mo else 0
+	return 0
 
 
 func _process(_delta: float) -> void:
@@ -150,17 +181,61 @@ func _process(_delta: float) -> void:
 
 
 # =========================================================================
+# INPUT
+# =========================================================================
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var old: int = _hovered_idx
+		_hovered_idx = -1
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position) and _grid_area.has_point(event.position):
+				_hovered_idx = i
+				break
+		if _hovered_idx != old:
+			queue_redraw()
+
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			for i in _card_rects.size():
+				if _card_rects[i].has_point(event.position) and _grid_area.has_point(event.position):
+					if _selected_index == i:
+						_do_sell()
+					else:
+						_selected_index = i
+					queue_redraw()
+					accept_event()
+					return
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_scroll_offset = maxf(0.0, _scroll_offset - 40.0)
+			_compute_card_grid()
+			queue_redraw()
+			accept_event()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			var max_scroll: float = maxf(0.0, _total_content_h - _grid_area.size.y)
+			_scroll_offset = minf(max_scroll, _scroll_offset + 40.0)
+			_compute_card_grid()
+			queue_redraw()
+			accept_event()
+
+
+# =========================================================================
 # DRAWING
 # =========================================================================
+
 func _draw() -> void:
-	var s =size
+	var s = size
 	var font: Font = UITheme.get_font()
 	var detail_x: float = s.x - DETAIL_W
+
+	# Grid area — draw cards
+	_draw_card_grid(font)
 
 	# Detail panel background
 	draw_rect(Rect2(detail_x, 0, DETAIL_W, s.y), Color(0.02, 0.04, 0.06, 0.5))
 	draw_line(Vector2(detail_x, 0), Vector2(detail_x, s.y), UITheme.BORDER, 1.0)
 
+	# Draw selected item details
 	if _selected_index < 0 or _selected_index >= _available_items.size():
 		draw_string(font, Vector2(detail_x + 10, 30), "Selectionnez un objet",
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
@@ -172,7 +247,7 @@ func _draw() -> void:
 
 	match _current_tab:
 		0:
-			var w =WeaponRegistry.get_weapon(item_name)
+			var w = WeaponRegistry.get_weapon(item_name)
 			if w:
 				sell_price = PriceCatalog.get_sell_price(w.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -180,30 +255,40 @@ func _draw() -> void:
 				y = _draw_detail_rows(font, detail_x, y, [
 					["Type", type_str],
 					["Taille", ["S", "M", "L"][w.slot_size]],
+					["Degats", "%.0f/tir" % w.damage_per_hit],
+					["Cadence", "%.1f/s" % w.fire_rate],
 					["DPS", "%.0f" % (w.damage_per_hit * w.fire_rate)],
+					["Energie", "%.0f/tir" % w.energy_cost_per_shot],
+					["Portee", "%.0fm" % (w.projectile_speed * w.projectile_lifetime)],
 				])
 		1:
-			var sh =ShieldRegistry.get_shield(item_name)
+			var sh = ShieldRegistry.get_shield(item_name)
 			if sh:
 				sell_price = PriceCatalog.get_sell_price(sh.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
 				y = _draw_detail_rows(font, detail_x, y, [
 					["Taille", ["S", "M", "L"][sh.slot_size]],
 					["PV/face", "%.0f" % sh.shield_hp_per_facing],
+					["PV total", "%.0f" % (sh.shield_hp_per_facing * 4)],
 					["Regen", "%.0f/s" % sh.regen_rate],
+					["Delai", "%.1fs" % sh.regen_delay],
+					["Perforation", "%.0f%%" % (sh.bleedthrough * 100)],
 				])
 		2:
-			var e =EngineRegistry.get_engine(item_name)
+			var e = EngineRegistry.get_engine(item_name)
 			if e:
 				sell_price = PriceCatalog.get_sell_price(e.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
 				y = _draw_detail_rows(font, detail_x, y, [
 					["Taille", ["S", "M", "L"][e.slot_size]],
-					["Accel", "x%.2f" % e.accel_mult],
+					["Acceleration", "x%.2f" % e.accel_mult],
 					["Vitesse", "x%.2f" % e.speed_mult],
+					["Rotation", "x%.2f" % e.rotation_mult],
+					["Cruise", "x%.2f" % e.cruise_mult],
+					["Conso boost", "x%.2f" % e.boost_drain_mult],
 				])
 		3:
-			var m =ModuleRegistry.get_module(item_name)
+			var m = ModuleRegistry.get_module(item_name)
 			if m:
 				sell_price = PriceCatalog.get_sell_price(m.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
@@ -212,7 +297,7 @@ func _draw() -> void:
 					rows.append(["Bonus", bonus])
 				y = _draw_detail_rows(font, detail_x, y, rows)
 
-	# Sell price box
+	# Sell price box (WARNING colored)
 	if sell_price > 0:
 		y = _draw_sell_price_box(font, detail_x, y, sell_price)
 
@@ -229,6 +314,167 @@ func _draw() -> void:
 				"Quantite: %d" % count, HORIZONTAL_ALIGNMENT_LEFT, -1,
 				UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
+
+func _draw_card_grid(font: Font) -> void:
+	for i in _card_rects.size():
+		var r: Rect2 = _card_rects[i]
+		# Clip: only draw if visible in grid area
+		if r.end.y < _grid_area.position.y or r.position.y > _grid_area.end.y:
+			continue
+		_draw_equip_card(font, r, i)
+
+
+func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
+	if idx >= _available_items.size(): return
+	var item_name: StringName = _available_items[idx]
+	var is_sel: bool = idx == _selected_index
+	var is_hov: bool = idx == _hovered_idx
+
+	# Get item data
+	var size_str: String = ""
+	var stat_label: String = ""
+	var stat_val: String = ""
+	var stat_ratio: float = 0.0
+	var sell_price: int = 0
+	var stat_col: Color = UITheme.PRIMARY
+	var count: int = 0
+	var inv = _commerce_manager.player_inventory if _commerce_manager else null
+
+	match _current_tab:
+		0:
+			var w = WeaponRegistry.get_weapon(item_name)
+			if w:
+				size_str = ["S", "M", "L"][w.slot_size]
+				var dps: float = w.damage_per_hit * w.fire_rate
+				stat_label = "DPS"
+				stat_val = "%.0f" % dps
+				stat_ratio = clampf(dps / 500.0, 0.0, 1.0)
+				sell_price = PriceCatalog.get_sell_price(w.price)
+				stat_col = UITheme.DANGER
+			if inv: count = inv.get_weapon_count(item_name)
+		1:
+			var sh = ShieldRegistry.get_shield(item_name)
+			if sh:
+				size_str = ["S", "M", "L"][sh.slot_size]
+				stat_label = "PV"
+				stat_val = "%.0f" % sh.shield_hp_per_facing
+				stat_ratio = clampf(sh.shield_hp_per_facing / 1000.0, 0.0, 1.0)
+				sell_price = PriceCatalog.get_sell_price(sh.price)
+				stat_col = UITheme.SHIELD
+			if inv: count = inv.get_shield_count(item_name)
+		2:
+			var en = EngineRegistry.get_engine(item_name)
+			if en:
+				size_str = ["S", "M", "L"][en.slot_size]
+				stat_label = "VIT"
+				stat_val = "x%.1f" % en.speed_mult
+				stat_ratio = clampf(en.speed_mult / 3.0, 0.0, 1.0)
+				sell_price = PriceCatalog.get_sell_price(en.price)
+				stat_col = UITheme.BOOST
+			if inv: count = inv.get_engine_count(item_name)
+		3:
+			var mo = ModuleRegistry.get_module(item_name)
+			if mo:
+				size_str = ["S", "M", "L"][mo.slot_size]
+				var bonuses = mo.get_bonuses_text()
+				stat_label = ""
+				stat_val = bonuses[0] if bonuses.size() > 0 else ""
+				stat_ratio = 0.5
+				sell_price = PriceCatalog.get_sell_price(mo.price)
+				stat_col = UITheme.ACCENT
+			if inv: count = inv.get_module_count(item_name)
+
+	# Card background
+	var bg: Color
+	if is_sel:
+		bg = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15)
+	elif is_hov:
+		bg = Color(0.025, 0.06, 0.12, 0.9)
+	else:
+		bg = Color(0.015, 0.04, 0.08, 0.8)
+	draw_rect(rect, bg)
+
+	# Border
+	var bcol: Color
+	if is_sel:
+		bcol = UITheme.PRIMARY
+	elif is_hov:
+		bcol = UITheme.BORDER_HOVER
+	else:
+		bcol = UITheme.BORDER
+	draw_rect(rect, bcol, false, 1.0)
+
+	# Top glow if selected
+	if is_sel:
+		draw_line(Vector2(rect.position.x + 1, rect.position.y),
+			Vector2(rect.end.x - 1, rect.position.y),
+			Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3), 2.0)
+
+	# Size badge (top-left)
+	draw_size_badge(Vector2(rect.position.x + 4, rect.position.y + 4), size_str)
+
+	# Quantity badge (top-right) if >1
+	if count > 1:
+		var qty_str: String = "x%d" % count
+		draw_string(font, Vector2(rect.end.x - 34, rect.position.y + 14),
+			qty_str, HORIZONTAL_ALIGNMENT_RIGHT, 30,
+			UITheme.FONT_SIZE_TINY, UITheme.WARNING)
+
+	# Type icon (top-center)
+	var ic: Vector2 = Vector2(rect.position.x + rect.size.x * 0.5, rect.position.y + 28.0)
+	var icol: Color = stat_col if is_sel else Color(stat_col.r, stat_col.g, stat_col.b, 0.6)
+	_draw_type_icon(ic, _current_tab, icol)
+
+	# Name (centered)
+	draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 52),
+		String(item_name), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8,
+		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+
+	# Stat mini bar
+	if stat_label != "" or stat_val != "":
+		draw_stat_mini_bar(
+			Rect2(rect.position.x + 6, rect.position.y + 66, rect.size.x - 12, 14),
+			stat_ratio, stat_col, stat_label, stat_val)
+
+	# Sell price (bottom)
+	var pcol: Color = PlayerEconomy.CREDITS_COLOR
+	draw_string(font, Vector2(rect.position.x + 4, rect.end.y - 8),
+		"+" + PriceCatalog.format_price(sell_price), HORIZONTAL_ALIGNMENT_CENTER,
+		rect.size.x - 8, UITheme.FONT_SIZE_TINY, pcol)
+
+
+func _draw_type_icon(c: Vector2, tab: int, col: Color) -> void:
+	var r: float = 10.0
+	match tab:
+		0:  # Weapon crosshair
+			draw_arc(c, r * 0.6, 0, TAU, 12, col, 1.0)
+			draw_line(c + Vector2(0, -r), c + Vector2(0, -r * 0.3), col, 1.0)
+			draw_line(c + Vector2(0, r), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(-r, 0), c + Vector2(-r * 0.3, 0), col, 1.0)
+			draw_line(c + Vector2(r, 0), c + Vector2(r * 0.3, 0), col, 1.0)
+		1:  # Shield hexagon
+			var pts: PackedVector2Array = []
+			for k in 7:
+				var a: float = TAU * float(k) / 6.0 - PI * 0.5
+				pts.append(c + Vector2(cos(a), sin(a)) * r)
+			draw_polyline(pts, col, 1.0)
+		2:  # Engine rocket
+			draw_line(c + Vector2(0, -r), c + Vector2(-r * 0.5, r * 0.7), col, 1.0)
+			draw_line(c + Vector2(0, -r), c + Vector2(r * 0.5, r * 0.7), col, 1.0)
+			draw_line(c + Vector2(-r * 0.5, r * 0.7), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(r * 0.5, r * 0.7), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(0, r * 0.7), c + Vector2(0, r), col, 1.0)
+		3:  # Module chip
+			draw_rect(Rect2(c.x - r * 0.5, c.y - r * 0.5, r, r), col, false, 1.0)
+			draw_line(c + Vector2(-r * 0.5, -r * 0.2), c + Vector2(-r * 0.9, -r * 0.2), col, 1.0)
+			draw_line(c + Vector2(-r * 0.5, r * 0.2), c + Vector2(-r * 0.9, r * 0.2), col, 1.0)
+			draw_line(c + Vector2(r * 0.5, -r * 0.2), c + Vector2(r * 0.9, -r * 0.2), col, 1.0)
+			draw_line(c + Vector2(r * 0.5, r * 0.2), c + Vector2(r * 0.9, r * 0.2), col, 1.0)
+
+
+# =========================================================================
+# DETAIL PANEL
+# =========================================================================
 
 func _draw_detail_header(font: Font, x: float, y: float, item_name: StringName) -> float:
 	draw_string(font, Vector2(x + 10, y + 14), String(item_name).to_upper(),
@@ -255,64 +501,3 @@ func _draw_sell_price_box(_font: Font, x: float, y: float, price: int) -> float:
 		"+" + PriceCatalog.format_price(price),
 		HORIZONTAL_ALIGNMENT_CENTER, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, PlayerEconomy.CREDITS_COLOR)
 	return y + 36.0
-
-
-func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> void:
-	if idx < 0 or idx >= _available_items.size(): return
-	var item_name: StringName = _available_items[idx]
-	var font: Font = UITheme.get_font()
-
-	var is_sel: bool = (idx == _item_list.selected_index)
-	if is_sel:
-		ci.draw_rect(rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
-
-	var name_str =String(item_name)
-	var size_str =""
-	var sell_price: int = 0
-	var count: int = 0
-	var inv = _commerce_manager.player_inventory if _commerce_manager else null
-
-	match _current_tab:
-		0:
-			var w =WeaponRegistry.get_weapon(item_name)
-			if w:
-				size_str = ["S", "M", "L"][w.slot_size]
-				sell_price = PriceCatalog.get_sell_price(w.price)
-			if inv: count = inv.get_weapon_count(item_name)
-		1:
-			var sh =ShieldRegistry.get_shield(item_name)
-			if sh:
-				size_str = ["S", "M", "L"][sh.slot_size]
-				sell_price = PriceCatalog.get_sell_price(sh.price)
-			if inv: count = inv.get_shield_count(item_name)
-		2:
-			var en =EngineRegistry.get_engine(item_name)
-			if en:
-				size_str = ["S", "M", "L"][en.slot_size]
-				sell_price = PriceCatalog.get_sell_price(en.price)
-			if inv: count = inv.get_engine_count(item_name)
-		3:
-			var mo =ModuleRegistry.get_module(item_name)
-			if mo:
-				size_str = ["S", "M", "L"][mo.slot_size]
-				sell_price = PriceCatalog.get_sell_price(mo.price)
-			if inv: count = inv.get_module_count(item_name)
-
-	# Size badge
-	var badge_col: Color = UITheme.PRIMARY if size_str == "S" else (UITheme.WARNING if size_str == "M" else Color(0.7, 0.5, 1.0))
-	ci.draw_rect(Rect2(rect.position.x + 4, rect.position.y + 4, 24, 16), Color(badge_col.r, badge_col.g, badge_col.b, 0.2))
-	ci.draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 16),
-		size_str, HORIZONTAL_ALIGNMENT_CENTER, 24, UITheme.FONT_SIZE_TINY, badge_col)
-
-	# Name + count
-	var label =name_str
-	if count > 1:
-		label += " x%d" % count
-	ci.draw_string(font, Vector2(rect.position.x + 34, rect.position.y + 16),
-		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
-
-	# Sell price (right-aligned)
-	ci.draw_string(font, Vector2(rect.position.x + rect.size.x * 0.6, rect.position.y + 16),
-		"+" + PriceCatalog.format_price(sell_price), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x * 0.35,
-		UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

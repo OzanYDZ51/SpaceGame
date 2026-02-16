@@ -39,6 +39,7 @@ func _ready() -> void:
 	box.size = Vector3(2.0, 2.0, 2.0)
 	_mesh.mesh = box
 	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = Color(1.0, 0.7, 0.15)
 	mat.emission_enabled = true
 	mat.emission = Color(1.0, 0.6, 0.1)

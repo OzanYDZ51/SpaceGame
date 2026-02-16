@@ -94,10 +94,9 @@ var _player_last_system: Dictionary = {}  # peer_id -> system_id
 var _uuid_to_peer: Dictionary = {}  # player_uuid (String) -> peer_id (int)
 var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
 
-# Chat history ring buffer (server-side, in-memory only)
+# Chat persistence via backend (server-side only)
 const CHAT_HISTORY_MAX: int = 50
-var _chat_history: Dictionary = {}        # channel (int) -> Array[{s, t, ts, ch}]
-var _system_chat_history: Dictionary = {} # system_id (int) -> Array[{s, t, ts, ch}]
+var _chat_backend_client: ServerBackendClient = null
 
 
 func _ready() -> void:
@@ -173,6 +172,7 @@ func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 		_uuid_to_peer[AuthManager.player_id] = 1
 		_peer_to_uuid[1] = AuthManager.player_id
 
+	_ensure_chat_backend_client()
 	connection_succeeded.emit()
 	player_list_updated.emit()
 	return OK
@@ -205,6 +205,7 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	print("========================================")
 	print("  DEDICATED SERVER LISTENING ON PORT %d" % port)
 	print("========================================")
+	_ensure_chat_backend_client()
 	connection_succeeded.emit()
 	return OK
 
@@ -654,46 +655,54 @@ func _relay_chat_from_host(channel: int, text: String) -> void:
 				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 
 
-## Store a chat message in the server-side ring buffer (server only).
+## Persist a chat message to the backend (server only, fire-and-forget).
 func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1) -> void:
 	if not is_server():
 		return
 	if channel == 4:  # PRIVATE — not stored
 		return
-	var entry ={"s": sender_name, "t": text, "ts": Time.get_time_string_from_system().substr(0, 5), "ch": channel}
-	if channel == 1:  # SYSTEM → per-system buffer
-		var sys_id: int = override_system_id
+	if not _chat_backend_client:
+		return
+	var sys_id: int = 0
+	if channel == 1:  # SYSTEM → resolve system_id
+		sys_id = override_system_id
 		if sys_id < 0:
 			var sender_id =multiplayer.get_remote_sender_id()
 			if sender_id > 0 and peers.has(sender_id):
 				sys_id = peers[sender_id].system_id
 			elif peers.has(1):
-				sys_id = peers[1].system_id  # Fallback: host's system
-		if sys_id >= 0:
-			if not _system_chat_history.has(sys_id):
-				_system_chat_history[sys_id] = []
-			_system_chat_history[sys_id].append(entry)
-			if _system_chat_history[sys_id].size() > CHAT_HISTORY_MAX:
-				_system_chat_history[sys_id].pop_front()
-	else:  # GLOBAL, CLAN, TRADE → global buffer per channel
-		if not _chat_history.has(channel):
-			_chat_history[channel] = []
-		_chat_history[channel].append(entry)
-		if _chat_history[channel].size() > CHAT_HISTORY_MAX:
-			_chat_history[channel].pop_front()
+				sys_id = peers[1].system_id
+		if sys_id < 0:
+			sys_id = 0
+	# Fire-and-forget (no await — don't block RPC)
+	_chat_backend_client.post_chat_message(channel, sys_id, sender_name, text)
 
 
-## Send chat history to a newly connected client.
+## Send chat history to a newly connected client (loaded from backend).
 func _send_chat_history(peer_id: int, system_id: int) -> void:
-	var history: Array = []
-	for ch in [0, 2, 3]:  # GLOBAL, CLAN, TRADE
-		if _chat_history.has(ch):
-			history.append_array(_chat_history[ch])
-	if _system_chat_history.has(system_id):
-		history.append_array(_system_chat_history[system_id])
-	if history.is_empty():
+	if not _chat_backend_client:
 		return
+	var backend_msgs: Array = await _chat_backend_client.get_chat_history([0, 1, 2, 3], system_id, CHAT_HISTORY_MAX)
+	if backend_msgs.is_empty():
+		return
+	# Convert backend format to RPC format: {s, t, ts, ch}
+	var history: Array = []
+	for msg in backend_msgs:
+		var ts: String = ""
+		var created: String = msg.get("created_at", "")
+		if created.length() >= 16:
+			ts = created.substr(11, 5)  # Extract HH:MM from ISO timestamp
+		history.append({"s": msg.get("sender_name", ""), "t": msg.get("text", ""), "ts": ts, "ch": msg.get("channel", 0)})
 	_rpc_chat_history.rpc_id(peer_id, history)
+
+
+## Create the backend client for chat persistence (server-side only, idempotent).
+func _ensure_chat_backend_client() -> void:
+	if _chat_backend_client != null:
+		return
+	_chat_backend_client = ServerBackendClient.new()
+	_chat_backend_client.name = "ChatBackendClient"
+	add_child(_chat_backend_client)
 
 
 ## Find a peer ID by player name (server-side only).

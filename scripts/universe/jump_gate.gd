@@ -47,6 +47,7 @@ func _build_ring() -> void:
 	_ring_mesh.mesh = torus
 
 	_material = StandardMaterial3D.new()
+	_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_material.albedo_color = Color(emission_color.r, emission_color.g, emission_color.b, 0.8)
 	_material.emission_enabled = true
 	_material.emission = emission_color
@@ -108,6 +109,8 @@ func setup(data: Dictionary) -> void:
 	if _label:
 		_label.text = gate_name
 
+	_check_initial_overlap.call_deferred()
+
 
 ## Setup from typed JumpGateData resource.
 func setup_from_data(data: JumpGateData) -> void:
@@ -118,6 +121,9 @@ func setup_from_data(data: JumpGateData) -> void:
 
 	if _label:
 		_label.text = gate_name
+
+	# Deferred overlap check: detect player already inside trigger after system transition
+	_check_initial_overlap.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -139,3 +145,18 @@ func _on_body_exited(body: Node3D) -> void:
 	if body == GameManager.player_ship:
 		_player_inside = false
 		player_left.emit()
+
+
+## Deferred check for player already inside trigger (e.g. after system transition).
+## body_entered may not fire if the body was already overlapping when the Area3D entered the tree.
+func _check_initial_overlap() -> void:
+	if _trigger_area == null or not is_inside_tree():
+		return
+	await get_tree().physics_frame
+	if not is_inside_tree() or _player_inside:
+		return
+	var bodies := _trigger_area.get_overlapping_bodies()
+	for body in bodies:
+		if body == GameManager.player_ship:
+			_on_body_entered(body)
+			break

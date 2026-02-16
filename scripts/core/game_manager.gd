@@ -85,6 +85,8 @@ var _build_beacon_name: String = ""
 var _build_marker_id: int = -1
 var _construction_screen = null
 var _admin_screen = null
+var _pause_screen = null
+var _options_screen = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
@@ -261,6 +263,23 @@ func _setup_ui_managers() -> void:
 	_bug_report_screen = BugReportScreen.new()
 	_bug_report_screen.name = "BugReportScreen"
 	_screen_manager.register_screen("bug_report", _bug_report_screen)
+
+	# Register Pause screen (ESC)
+	_pause_screen = PauseScreen.new()
+	_pause_screen.name = "PauseScreen"
+	_screen_manager.register_screen("pause", _pause_screen)
+	_pause_screen.options_requested.connect(func():
+		if _screen_manager:
+			_screen_manager.open_screen("options")
+	)
+	_pause_screen.quit_requested.connect(func():
+		_graceful_quit()
+	)
+
+	# Register Options screen (opened from pause menu)
+	_options_screen = OptionsScreen.new()
+	_options_screen.name = "OptionsScreen"
+	_screen_manager.register_screen("options", _options_screen)
 
 	# Tooltip manager
 	_tooltip_manager = UITooltipManager.new()
@@ -620,11 +639,14 @@ func _initialize_game() -> void:
 	# Capture mouse
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+	# Audio buses (must exist before music player)
+	_setup_audio_buses()
+
 	# Background music
 	_music_player = AudioStreamPlayer.new()
 	_music_player.stream = load("res://assets/audio/game_background_music.mp3")
 	_music_player.volume_db = -35.0
-	_music_player.bus = "Master"
+	_music_player.bus = "Music"
 	_music_player.name = "BackgroundMusic"
 	add_child(_music_player)
 	_music_player.finished.connect(_music_player.play)
@@ -751,6 +773,10 @@ func _initialize_game() -> void:
 	if _asteroid_scanner:
 		_input_router.scanner_pulse_requested.connect(_asteroid_scanner.trigger_scan)
 
+	# Load user settings (audio volumes, key rebinds) — after InputRouter sets up actions
+	if _options_screen:
+		_options_screen.load_settings()
+
 	# Reload backend state on reconnect (not first connect — that's handled in _ready)
 	NetworkManager.connection_succeeded.connect(_on_network_reconnected)
 
@@ -824,6 +850,20 @@ func _graceful_quit() -> void:
 	get_tree().quit()
 
 
+func _setup_audio_buses() -> void:
+	# Create Music bus (child of Master) for background music
+	AudioServer.add_bus()
+	var music_idx: int = AudioServer.bus_count - 1
+	AudioServer.set_bus_name(music_idx, "Music")
+	AudioServer.set_bus_send(music_idx, "Master")
+
+	# Create SFX bus (child of Master) for weapon/effect sounds
+	AudioServer.add_bus()
+	var sfx_idx: int = AudioServer.bus_count - 1
+	AudioServer.set_bus_name(sfx_idx, "SFX")
+	AudioServer.set_bus_send(sfx_idx, "Master")
+
+
 func _setup_visual_effects() -> void:
 	_vfx_manager = VFXManager.new()
 	_vfx_manager.name = "VFXManager"
@@ -847,6 +887,9 @@ func _on_system_loaded(system_id: int) -> void:
 	# Update stellar map with new system info
 	if _stellar_map and _system_transition.current_system_data:
 		_stellar_map.set_system_name(_system_transition.current_system_data.system_name)
+	# Clear stale route lines from previous system
+	if _stellar_map:
+		_stellar_map._clear_route_line()
 
 	# Update Discord RPC with current system name
 	if _discord_rpc and _system_transition.current_system_data:

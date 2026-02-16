@@ -35,13 +35,16 @@ func get_pending_jobs() -> Array[RefineryJob]:
 	return result
 
 
-func can_add() -> bool:
-	# Count non-collected jobs
-	var active_count: int = 0
+func get_job_count() -> int:
+	var count: int = 0
 	for j in jobs:
 		if not j.collected:
-			active_count += 1
-	return active_count < MAX_JOBS
+			count += 1
+	return count
+
+
+func can_add() -> bool:
+	return get_job_count() < MAX_JOBS
 
 
 func add_job(job: RefineryJob) -> bool:

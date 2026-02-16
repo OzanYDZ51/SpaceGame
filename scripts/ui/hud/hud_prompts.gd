@@ -14,6 +14,7 @@ var pulse_t: float = 0.0
 var can_build: bool = false
 var build_target_name: String = ""
 
+var _approach_prompt: Control = null
 var _dock_prompt: Control = null
 var _loot_prompt: Control = null
 var _gate_prompt: Control = null
@@ -22,11 +23,17 @@ var _build_prompt: Control = null
 var _scan_prompt: Control = null
 
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
+const APPROACH_COL: Color = Color(0.2, 0.7, 0.65)
 const SCAN_COL: Color = Color(0.0, 0.85, 0.95)
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	_approach_prompt = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -130, 15, 130, 50)
+	_approach_prompt.draw.connect(_draw_approach_prompt.bind(_approach_prompt))
+	_approach_prompt.visible = false
+	add_child(_approach_prompt)
 
 	_dock_prompt = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -100, 55, 100, 90)
 	_dock_prompt.draw.connect(_draw_dock_prompt.bind(_dock_prompt))
@@ -60,6 +67,12 @@ func _ready() -> void:
 
 
 func update_visibility() -> void:
+	if _approach_prompt:
+		var show_approach: bool = docking_system != null and not docking_system.is_docked and not docking_system.can_dock and docking_system.is_near_station and docking_system.nearest_station_node != null
+		_approach_prompt.visible = show_approach
+		if show_approach:
+			_approach_prompt.queue_redraw()
+
 	if _dock_prompt:
 		var show_dock: bool = docking_system != null and docking_system.can_dock and not docking_system.is_docked
 		_dock_prompt.visible = show_dock
@@ -94,6 +107,31 @@ func update_visibility() -> void:
 		_scan_prompt.visible = show_scan
 		if show_scan:
 			_scan_prompt.queue_redraw()
+
+
+# --- Approach ---
+func _draw_approach_prompt(ctrl: Control) -> void:
+	var s = ctrl.size
+	var font = UITheme.get_font_medium()
+	var cx: float = s.x * 0.5
+	var pulse: float = 0.7 + sin(pulse_t * 2.0) * 0.3
+
+	var bg_rect = Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.04, 0.5 * pulse))
+	ctrl.draw_rect(bg_rect, Color(APPROACH_COL.r, APPROACH_COL.g, APPROACH_COL.b, 0.3 * pulse), false, 1.0)
+
+	if docking_system:
+		ctrl.draw_string(font, Vector2(0, 13), docking_system.nearest_station_name.to_upper(),
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+
+	var text_col = Color(APPROACH_COL.r, APPROACH_COL.g, APPROACH_COL.b, pulse)
+	ctrl.draw_string(font, Vector2(0, 28), "APPROCHE  [F]",
+		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+
+	var tw: float = font.get_string_size("APPROCHE  [F]", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var dy: float = 24.0
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
 
 
 # --- Dock ---

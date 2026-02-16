@@ -28,4 +28,7 @@ COPY assets/models/tourelle.glb assets/models/
 COPY scenes/ scenes/
 COPY scripts/ scripts/
 
+# Import project — generates .godot/ with script class cache, font imports, etc.
+RUN godot --headless --import || true
+
 ENTRYPOINT ["godot", "--headless", "--path", "/game"]

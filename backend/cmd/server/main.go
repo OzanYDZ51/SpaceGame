@@ -43,6 +43,7 @@ func main() {
 	eventRepo := repository.NewEventRepository(db)
 	discordRepo := repository.NewDiscordRepository(db)
 	fleetRepo := repository.NewFleetRepository(db)
+	chatRepo := repository.NewChatRepository(db)
 
 	// Services
 	authSvc := service.NewAuthService(playerRepo, sessionRepo, cfg.JWTSecret)
@@ -133,6 +134,10 @@ func main() {
 	server.Put("/fleet/sync", fleetH.SyncPositions)
 	server.Post("/fleet/death", fleetH.ReportDeath)
 	server.Put("/fleet/upsert", fleetH.BulkUpsert)
+	// Chat persistence (server-to-server)
+	chatH := handler.NewChatHandler(chatRepo)
+	server.Post("/chat/messages", chatH.PostMessage)
+	server.Get("/chat/history", chatH.GetHistory)
 
 	// Admin — registered BEFORE protected group
 	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))
@@ -181,6 +186,20 @@ func main() {
 
 	// Start hub
 	go wsHub.Run()
+
+	// Background: purge chat messages older than 7 days (runs hourly)
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			deleted, err := chatRepo.DeleteOlderThan(context.Background(), 7)
+			if err != nil {
+				log.Printf("Chat cleanup error: %v", err)
+			} else if deleted > 0 {
+				log.Printf("Chat cleanup: deleted %d old messages", deleted)
+			}
+		}
+	}()
 
 	// Start Discord bot
 	if discordBot != nil {

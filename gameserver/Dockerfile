@@ -42,4 +42,8 @@ COPY scenes/ scenes/
 # 5. Scripts (change most often — last for best cache)
 COPY scripts/ scripts/
 
+# 6. Import project — generates .godot/ with script class cache, font imports, etc.
+#    Without this, class_name resolution fails and all autoloads crash.
+RUN godot --headless --import || true
+
 ENTRYPOINT ["godot", "--headless", "--path", "/game"]

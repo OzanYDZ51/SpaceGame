@@ -140,6 +140,7 @@ func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> v
 	var mesh =BoxMesh.new()
 	mesh.size = Vector3(0.03, 0.03, 0.35)
 	var mesh_mat =StandardMaterial3D.new()
+	mesh_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mesh_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mesh_mat.albedo_color = arc_col

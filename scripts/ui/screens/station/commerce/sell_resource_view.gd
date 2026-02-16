@@ -1,46 +1,49 @@
 class_name SellResourceView
-extends Control
+extends UIComponent
 
 # =============================================================================
-# Sell Resource View - Sell mined ores from per-ship resources
-# Ship filter dropdown: TOUS / active ship / other docked ships
-# Left: UIScrollList of ores (qty > 0), Right: detail + sell buttons
+# Sell Resource View — Card grid of ores (4 columns) + detail panel.
+# Ship filter dropdown: TOUS / active ship / other docked ships.
+# Each card: ore crystal icon, name, quantity, unit price, rarity stars.
 # =============================================================================
 
 var _commerce_manager = null
 var _station_id: String = ""
 
 var _ship_dropdown: UIDropdown = null
-var _item_list: UIScrollList = null
 var _sell_1_btn: UIButton = null
 var _sell_10_btn: UIButton = null
 var _sell_all_btn: UIButton = null
 var _resource_ids: Array[StringName] = []
-var _resource_ship: Array[FleetShip] = []  # which ship owns each row
+var _resource_ship: Array[FleetShip] = []  # which ship owns each entry
 var _selected_index: int = -1
 var _docked_ships: Array[FleetShip] = []
 var _filter_ship_index: int = 0  # 0 = TOUS
 
-const DETAIL_W =240.0
-const ROW_H =44.0
-const DROPDOWN_H =32.0
+# Card grid state
+var _card_rects: Array[Rect2] = []
+var _hovered_idx: int = -1
+var _scroll_offset: float = 0.0
+var _total_content_h: float = 0.0
+var _grid_area: Rect2 = Rect2()
+
+const DETAIL_W: float = 240.0
+const CARD_W: float = 110.0
+const CARD_H: float = 100.0
+const CARD_GAP: float = 8.0
+const GRID_TOP: float = 38.0
+const DROPDOWN_H: float = 32.0
 
 
 func _ready() -> void:
+	clip_contents = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(_layout)
 
 	_ship_dropdown = UIDropdown.new()
 	_ship_dropdown.visible = false
 	_ship_dropdown.option_selected.connect(_on_ship_filter_changed)
 	add_child(_ship_dropdown)
-
-	_item_list = UIScrollList.new()
-	_item_list.row_height = ROW_H
-	_item_list.item_draw_callback = _draw_item_row
-	_item_list.item_selected.connect(_on_item_selected)
-	_item_list.item_double_clicked.connect(_on_item_double_clicked)
-	_item_list.visible = false
-	add_child(_item_list)
 
 	_sell_1_btn = UIButton.new()
 	_sell_1_btn.text = "VENDRE x1"
@@ -71,7 +74,6 @@ func setup(mgr, station_id: String = "") -> void:
 
 func refresh() -> void:
 	_ship_dropdown.visible = true
-	_item_list.visible = true
 	_sell_1_btn.visible = true
 	_sell_10_btn.visible = true
 	_sell_all_btn.visible = true
@@ -109,20 +111,21 @@ func _rebuild_docked_ships() -> void:
 
 func _on_ship_filter_changed(_idx: int) -> void:
 	_filter_ship_index = _ship_dropdown.selected_index
+	_selected_index = -1
+	_scroll_offset = 0.0
 	_refresh_items()
 
 
 func _layout() -> void:
-	var s =size
+	var s = size
 	var list_w: float = s.x - DETAIL_W - 10.0
 	_ship_dropdown.position = Vector2(0, 0)
 	if _ship_dropdown._expanded:
 		_ship_dropdown.size.x = list_w
 	else:
 		_ship_dropdown.size = Vector2(list_w, DROPDOWN_H)
-	var list_top: float = DROPDOWN_H + 4.0
-	_item_list.position = Vector2(0, list_top)
-	_item_list.size = Vector2(list_w, s.y - list_top)
+	_grid_area = Rect2(0, GRID_TOP, list_w, s.y - GRID_TOP)
+	_compute_card_grid()
 	var btn_w: float = DETAIL_W - 20
 	_sell_1_btn.position = Vector2(s.x - DETAIL_W + 10, s.y - 122)
 	_sell_1_btn.size = Vector2(btn_w, 34)
@@ -136,7 +139,8 @@ func _refresh_items() -> void:
 	_resource_ids.clear()
 	_resource_ship.clear()
 	if _commerce_manager == null:
-		_item_list.items = []
+		_compute_card_grid()
+		queue_redraw()
 		return
 
 	var ships_to_show: Array[FleetShip] = []
@@ -152,25 +156,34 @@ func _refresh_items() -> void:
 				_resource_ids.append(res_id)
 				_resource_ship.append(fs)
 
-	var list_items: Array = []
-	for rid in _resource_ids:
-		list_items.append(rid)
-	_item_list.items = list_items
 	if _selected_index >= _resource_ids.size():
 		_selected_index = -1
-	_item_list.selected_index = _selected_index
+	_compute_card_grid()
 	queue_redraw()
 
 
-func _on_item_selected(idx: int) -> void:
-	_selected_index = idx
-	queue_redraw()
+func _compute_card_grid() -> void:
+	_card_rects.clear()
+	if _resource_ids.is_empty():
+		_total_content_h = 0.0
+		return
+	var area_w: float = _grid_area.size.x
+	var cols: int = maxi(1, int((area_w + CARD_GAP) / (CARD_W + CARD_GAP)))
+	for i in _resource_ids.size():
+		@warning_ignore("integer_division")
+		var row: int = i / cols
+		var col: int = i % cols
+		var x: float = _grid_area.position.x + col * (CARD_W + CARD_GAP)
+		var y: float = _grid_area.position.y + row * (CARD_H + CARD_GAP) - _scroll_offset
+		_card_rects.append(Rect2(x, y, CARD_W, CARD_H))
+	@warning_ignore("integer_division")
+	var total_rows: int = (_resource_ids.size() + maxi(1, int((area_w + CARD_GAP) / (CARD_W + CARD_GAP))) - 1) / maxi(1, int((area_w + CARD_GAP) / (CARD_W + CARD_GAP)))
+	_total_content_h = total_rows * (CARD_H + CARD_GAP)
 
 
-func _on_item_double_clicked(idx: int) -> void:
-	_selected_index = idx
-	_do_sell(1)
-
+# =========================================================================
+# SELL LOGIC
+# =========================================================================
 
 func _on_sell_1() -> void:
 	_do_sell(1)
@@ -200,9 +213,9 @@ func _do_sell(qty: int) -> void:
 	if qty <= 0: return
 	if _commerce_manager.sell_resource_from_ship(res_id, qty, ship):
 		if GameManager._notif:
-			var total =PriceCatalog.get_resource_price(res_id) * qty
-			var res_data =MiningRegistry.get_resource(res_id)
-			var rname =res_data.display_name if res_data else String(res_id)
+			var total = PriceCatalog.get_resource_price(res_id) * qty
+			var res_data = MiningRegistry.get_resource(res_id)
+			var rname = res_data.display_name if res_data else String(res_id)
 			GameManager._notif.commerce.sold_qty(rname, qty, total)
 		_refresh_items()
 	queue_redraw()
@@ -214,17 +227,61 @@ func _process(_delta: float) -> void:
 
 
 # =========================================================================
+# INPUT
+# =========================================================================
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		var old: int = _hovered_idx
+		_hovered_idx = -1
+		for i in _card_rects.size():
+			if _card_rects[i].has_point(event.position) and _grid_area.has_point(event.position):
+				_hovered_idx = i
+				break
+		if _hovered_idx != old:
+			queue_redraw()
+
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			for i in _card_rects.size():
+				if _card_rects[i].has_point(event.position) and _grid_area.has_point(event.position):
+					if _selected_index == i:
+						# Double-click-like: sell x1 on re-click
+						pass
+					_selected_index = i
+					queue_redraw()
+					accept_event()
+					return
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_scroll_offset = maxf(0.0, _scroll_offset - 40.0)
+			_compute_card_grid()
+			queue_redraw()
+			accept_event()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			var max_scroll: float = maxf(0.0, _total_content_h - _grid_area.size.y)
+			_scroll_offset = minf(max_scroll, _scroll_offset + 40.0)
+			_compute_card_grid()
+			queue_redraw()
+			accept_event()
+
+
+# =========================================================================
 # DRAWING
 # =========================================================================
+
 func _draw() -> void:
-	var s =size
+	var s = size
 	var font: Font = UITheme.get_font()
 	var detail_x: float = s.x - DETAIL_W
+
+	# Grid area — draw ore cards
+	_draw_card_grid(font)
 
 	# Detail panel background
 	draw_rect(Rect2(detail_x, 0, DETAIL_W, s.y), Color(0.02, 0.04, 0.06, 0.5))
 	draw_line(Vector2(detail_x, 0), Vector2(detail_x, s.y), UITheme.BORDER, 1.0)
 
+	# Detail panel content
 	if _resource_ids.is_empty():
 		draw_string(font, Vector2(detail_x + 10, 30), "Aucun minerai",
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
@@ -235,12 +292,98 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
+	_draw_detail_panel(font, detail_x)
+
+
+func _draw_card_grid(font: Font) -> void:
+	for i in _card_rects.size():
+		var r: Rect2 = _card_rects[i]
+		# Clip: only draw if visible in grid area
+		if r.end.y < _grid_area.position.y or r.position.y > _grid_area.end.y:
+			continue
+		_draw_ore_card(font, r, i)
+
+
+func _draw_ore_card(font: Font, rect: Rect2, idx: int) -> void:
+	if idx >= _resource_ids.size(): return
+	var res_id: StringName = _resource_ids[idx]
+	var res_data = MiningRegistry.get_resource(res_id)
+	if res_data == null: return
+	var ship = _resource_ship[idx]
+	var qty: int = ship.get_resource(res_id)
+	var unit_price: int = res_data.base_value
+	var is_sel: bool = idx == _selected_index
+	var is_hov: bool = idx == _hovered_idx
+	var ore_col: Color = res_data.icon_color
+
+	# Card background
+	var bg: Color
+	if is_sel:
+		bg = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15)
+	elif is_hov:
+		bg = Color(0.025, 0.06, 0.12, 0.9)
+	else:
+		bg = Color(0.015, 0.04, 0.08, 0.8)
+	draw_rect(rect, bg)
+
+	# Border
+	var bcol: Color
+	if is_sel:
+		bcol = UITheme.PRIMARY
+	elif is_hov:
+		bcol = UITheme.BORDER_HOVER
+	else:
+		bcol = UITheme.BORDER
+	draw_rect(rect, bcol, false, 1.0)
+
+	# Top glow if selected
+	if is_sel:
+		draw_line(Vector2(rect.position.x + 1, rect.position.y),
+			Vector2(rect.end.x - 1, rect.position.y),
+			Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.3), 2.0)
+
+	# Ore crystal icon (top center)
+	var icon_center: Vector2 = Vector2(rect.position.x + rect.size.x * 0.5, rect.position.y + 20.0)
+	var icol: Color = ore_col if is_sel else Color(ore_col.r, ore_col.g, ore_col.b, 0.7)
+	draw_ore_crystal(icon_center, 12.0, icol)
+
+	# Ore name (centered)
+	draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 42),
+		res_data.display_name, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8,
+		UITheme.FONT_SIZE_SMALL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
+
+	# Quantity (centered, below name)
+	var qty_col: Color = UITheme.LABEL_VALUE if is_sel else UITheme.TEXT_DIM
+	draw_string(font, Vector2(rect.position.x + 4, rect.position.y + 56),
+		"x%d" % qty, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 8,
+		UITheme.FONT_SIZE_TINY, qty_col)
+
+	# Rarity stars (centered)
+	var star_y: float = rect.position.y + 68.0
+	var star_center: Vector2 = Vector2(rect.position.x + rect.size.x * 0.5, star_y)
+	var star_col: Color = ore_col if is_sel else Color(ore_col.r, ore_col.g, ore_col.b, 0.5)
+	draw_rarity_badge(star_center, res_data.rarity + 1, star_col)
+
+	# Unit price (bottom, centered)
+	draw_string(font, Vector2(rect.position.x + 4, rect.end.y - 8),
+		PriceCatalog.format_price(unit_price) + "/u", HORIZONTAL_ALIGNMENT_CENTER,
+		rect.size.x - 8, UITheme.FONT_SIZE_TINY, PlayerEconomy.CREDITS_COLOR)
+
+	# Ship name prefix overlay (top-left, tiny) when TOUS filter + multiple ships
+	if _filter_ship_index == 0 and _docked_ships.size() > 1:
+		var short_name: String = ship.custom_name.substr(0, 6)
+		draw_string(font, Vector2(rect.position.x + 3, rect.position.y + 9),
+			short_name, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 6,
+			UITheme.FONT_SIZE_TINY, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.5))
+
+
+func _draw_detail_panel(font: Font, detail_x: float) -> void:
 	var res_id: StringName = _resource_ids[_selected_index]
-	var res_data =MiningRegistry.get_resource(res_id)
+	var res_data = MiningRegistry.get_resource(res_id)
 	if res_data == null: return
 	var ship = _resource_ship[_selected_index]
 	var qty: int = ship.get_resource(res_id)
-	var unit_price =res_data.base_value
+	var unit_price: int = res_data.base_value
 
 	var y: float = 10.0
 
@@ -250,7 +393,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
 		y += 16.0
 
-	# Name with color
+	# Name with icon_color
 	draw_string(font, Vector2(detail_x + 10, y + 14), res_data.display_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, res_data.icon_color)
 	y += 24.0
@@ -284,7 +427,7 @@ func _draw() -> void:
 	y += 24.0
 
 	# Total value box
-	var total_price =unit_price * qty
+	var total_price: int = unit_price * qty
 	y += 4.0
 	draw_rect(Rect2(detail_x + 10, y, DETAIL_W - 20, 28),
 		Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.1))
@@ -292,37 +435,3 @@ func _draw() -> void:
 	draw_string(font, Vector2(detail_x + 10, y + 19),
 		"TOTAL: +" + PriceCatalog.format_price(total_price),
 		HORIZONTAL_ALIGNMENT_CENTER, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, PlayerEconomy.CREDITS_COLOR)
-
-
-func _draw_item_row(ci: CanvasItem, idx: int, rect: Rect2, _item: Variant) -> void:
-	if idx < 0 or idx >= _resource_ids.size(): return
-	var res_id: StringName = _resource_ids[idx]
-	var res_data =MiningRegistry.get_resource(res_id)
-	if res_data == null: return
-	var font: Font = UITheme.get_font()
-
-	var is_sel: bool = (idx == _item_list.selected_index)
-	if is_sel:
-		ci.draw_rect(rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.15))
-
-	var ship = _resource_ship[idx]
-	var qty: int = ship.get_resource(res_id)
-
-	# Color badge
-	ci.draw_rect(Rect2(rect.position.x + 6, rect.position.y + 8, 12, 12), res_data.icon_color)
-
-	# Ship name prefix (when TOUS filter and multiple ships)
-	var prefix: String = ""
-	if _filter_ship_index == 0 and _docked_ships.size() > 1:
-		prefix = ship.custom_name.substr(0, 8) + " | "
-
-	# Name + quantity
-	var label ="%s%s x%d" % [prefix, res_data.display_name, qty]
-	ci.draw_string(font, Vector2(rect.position.x + 24, rect.position.y + 18),
-		label, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x * 0.55,
-		UITheme.FONT_SIZE_LABEL, UITheme.TEXT if is_sel else UITheme.TEXT_DIM)
-
-	# Price (right-aligned)
-	ci.draw_string(font, Vector2(rect.position.x + rect.size.x * 0.6, rect.position.y + 18),
-		"+" + PriceCatalog.format_price(res_data.base_value) + "/u", HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x * 0.35,
-		UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
