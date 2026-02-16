@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"freighter_arion"
+ship_name = &"Freighter Arion"
+ship_class = &"Freighter"
+model_path = "res://assets/models/freighter_arion.glb"
+model_scale = 10.0
+exhaust_scale = 5.0
+ship_scene_path = "res://scenes/ships/freighter_arion.tscn"
+default_loadout = Array[StringName]([&"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1"])
+hull_hp = 8000.0
+shield_hp = 3000.0
+shield_regen_rate = 35.0
+shield_regen_delay = 7.0
+shield_damage_bleedthrough = 0.04
+armor_rating = 25.0
+mass = 500000.0
+accel_forward = 20.0
+accel_backward = 10.0
+accel_strafe = 8.0
+accel_vertical = 8.0
+max_speed_normal = 120.0
+max_speed_boost = 250.0
+max_speed_cruise = 500000.0
+rotation_pitch_speed = 6.0
+rotation_yaw_speed = 5.0
+rotation_roll_speed = 8.0
+max_speed_lateral = 40.0
+max_speed_vertical = 40.0
+rotation_damp_min_factor = 0.05
+energy_capacity = 250.0
+energy_regen_rate = 50.0
+boost_energy_drain = 35.0
+shield_slot_size = "L"
+engine_slot_size = "L"
+module_slots = Array[String](["M", "M", "L", "L"])
+price = 500000
+cargo_capacity = 500
+sensor_range = 5000.0
+engagement_range = 2500.0
+disengage_range = 6000.0
+default_shield = &"Bouclier Lourd"
+default_engine = &"Propulseur Standard Mk2"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Generateur Auxiliaire", &"Amplificateur de Bouclier", &"Systeme de Ciblage"])
+loot_credits_min = 800
+loot_credits_max = 2000
+loot_mat_count_min = 4
+loot_mat_count_max = 6
+loot_weapon_part_chance = 0.3
+lod_combat_dps = 50.0
+npc_tier = 2
+sold_at_station_types = Array[StringName]([&"trade"])
+resource_cost = {
+&"iron": 300,
+&"copper": 120,
+&"titanium": 80,
+&"gold": 40,
+&"crystal": 20
+}

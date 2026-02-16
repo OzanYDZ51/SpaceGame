@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://8phjie5374pi"]
+
+[ext_resource type="PackedScene" uid="uid://bqig20qo3agxj" path="res://assets/models/freighter_arion.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
+
+[node name="FreighterArion" type="Node3D" unique_id=261113263]
+transform = Transform3D(-10, 0, -1.509958e-06, 0, 10, 0, 1.509958e-06, 0, -10, 0, 0, 0)
+
+[node name="ModelPivot" type="Node3D" parent="." unique_id=1959184067]
+
+[node name="ArionModel" parent="ModelPivot" unique_id=1196419636 instance=ExtResource("1_model")]
+
+[node name="ShipCenter" type="Marker3D" parent="." unique_id=1256817980]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+
+[node name="Hardpoint_0" type="Node3D" parent="." unique_id=861200330]
+transform = Transform3D(-0.9869707, 0.009611144, -0.16061254, -0.017964937, 0.9853902, 0.1693617, 0.15989378, 0.17004047, -0.97237885, 2.4502543e-07, 15.875147, -6.6227303)
+script = ExtResource("2_hpslot")
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 300.0
+turret_speed_deg_s = 80.0
+turret_pitch_min = -10.0
+turret_pitch_max = 80.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
+
+[node name="Hardpoint_2" type="Node3D" parent="." unique_id=1009033236]
+transform = Transform3D(-4.3711395e-08, 0, 1, 0, 1, 0, -1, 0, -4.3711395e-08, -7.8562374, 8.482445, -12.717239)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 240.0
+turret_speed_deg_s = 70.0
+turret_pitch_min = -15.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
+
+[node name="Hardpoint_3" type="Node3D" parent="." unique_id=1523893087]
+transform = Transform3D(-4.3711395e-08, 0, -1, 0, 1, 0, 1, 0, -4.3711395e-08, 6.5923924, 8.835884, -12.78957)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 240.0
+turret_speed_deg_s = 70.0
+turret_pitch_min = -15.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "uid://c31lr44ihge4w"
+
+[node name="Hardpoint_4" type="Node3D" parent="." unique_id=1932761202]
+transform = Transform3D(-4.3711395e-08, 0, 1, 0, 1, 0, -1, 0, -4.3711395e-08, -6.684858, 5.837674, 33.782032)
+script = ExtResource("2_hpslot")
+slot_id = 4
+is_turret = true
+turret_arc_degrees = 220.0
+turret_pitch_min = -20.0
+turret_pitch_max = 70.0
+
+[node name="Hardpoint_5" type="Node3D" parent="." unique_id=685266839]
+transform = Transform3D(-4.3711395e-08, 0, -1, 0, 1, 0, 1, 0, -4.3711395e-08, 6.670225, 5.895604, 33.782024)
+script = ExtResource("2_hpslot")
+slot_id = 5
+is_turret = true
+turret_arc_degrees = 220.0
+turret_pitch_min = -20.0
+turret_pitch_max = 70.0
+
+[node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=183637871]
+transform = Transform3D(9.981434, 0, -0.60909265, 0, 10, 0, 0.60909265, 0, 9.981434, 7.4298587, -0.55829, -20.779016)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
+
+[node name="VFX_Engine_R" type="Marker3D" parent="." unique_id=542580869]
+transform = Transform3D(9.981434, 0, -0.60909265, 0, 10, 0, 0.60909265, 0, 9.981434, -7.4063773, -0.55829, -21.684362)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
+
+[node name="EquipmentCamera" type="Camera3D" parent="." unique_id=999286590]
+transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 60, -70)
+fov = 45.0
+
+[node name="VFX_Engine_L2" type="Marker3D" parent="." unique_id=1070253165]
+transform = Transform3D(9.981434, 0, -0.60909265, 0, 10, 0, 0.60909265, 0, 9.981434, 2.7172523, -0.55829, -21.066593)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
+
+[node name="VFX_Engine_R2" type="Marker3D" parent="." unique_id=323714521]
+transform = Transform3D(9.981434, 0, -0.60909265, 0, 10, 0, 0.60909265, 0, 9.981434, -2.5099726, -0.55829, -21.38557)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
