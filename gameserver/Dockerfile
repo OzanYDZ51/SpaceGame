@@ -28,17 +28,9 @@ COPY project.godot icon.svg ./
 COPY data/ data/
 COPY shaders/ shaders/
 
-# 3. Assets — ship/weapon/station models needed for hardpoints + collision
-#    Skip hangar (25MB), vegetation, asteroids (50MB) — visual only
+# 3. Assets — all models + fonts (no need to cherry-pick, avoids missing model bugs)
 COPY assets/fonts/ assets/fonts/
-COPY assets/models/tie.glb assets/models/tie.glb.import assets/models/
-COPY assets/models/frigate_mk1.glb assets/models/frigate_mk1.glb.import assets/models/
-COPY assets/models/babbage_station.glb assets/models/babbage_station.glb.import assets/models/
-COPY assets/models/babbage_station_*.jpg assets/models/
-COPY assets/models/babbage_station_*.jpg.import assets/models/
-COPY assets/models/freighter_arion.glb assets/models/freighter_arion.glb.import assets/models/
-COPY assets/models/canon_laser.glb assets/models/canon_laser.glb.import assets/models/
-COPY assets/models/tourelle.glb assets/models/tourelle.glb.import assets/models/
+COPY assets/models/ assets/models/
 
 # 4. Scenes (change sometimes)
 COPY scenes/ scenes/
