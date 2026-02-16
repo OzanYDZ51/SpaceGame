@@ -550,6 +550,8 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 ## Client/Host -> Server: Chat message (scoped by channel).
 @rpc("any_peer", "reliable")
 func _rpc_chat_message(channel: int, text: String) -> void:
+	if text.strip_edges().is_empty():
+		return
 	var sender_id =multiplayer.get_remote_sender_id()
 	var sender_name ="Unknown"
 	if peers.has(sender_id):
@@ -660,6 +662,8 @@ func _store_chat_message(channel: int, sender_name: String, text: String, overri
 	if not is_server():
 		return
 	if channel == 4:  # PRIVATE — not stored
+		return
+	if sender_name.is_empty() or text.is_empty():
 		return
 	if not _chat_backend_client:
 		return
