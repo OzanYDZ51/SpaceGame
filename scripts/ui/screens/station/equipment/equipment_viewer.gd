@@ -97,10 +97,14 @@ func refresh_weapons() -> void:
 		var sta = adapter
 		if sta:
 			var hp_configs: Array[Dictionary] = sta._hp_configs
+			var scaled_configs: Array[Dictionary] = []
 			var weapon_names: Array[StringName] = []
 			for i in hp_configs.size():
+				var cfg: Dictionary = hp_configs[i].duplicate()
+				cfg["position"] = cfg.get("position", Vector3.ZERO) * _model_scale
+				scaled_configs.append(cfg)
 				weapon_names.append(sta.get_mounted_weapon_name(i))
-			_ship_model.apply_equipment(hp_configs, weapon_names, Basis.IDENTITY)
+			_ship_model.apply_equipment(scaled_configs, weapon_names, Basis.IDENTITY)
 	elif adapter:
 		var sd = adapter.get_ship_data()
 		if sd == null:
@@ -346,7 +350,7 @@ func _auto_fit_camera() -> void:
 		var sta = adapter
 		if sta:
 			for cfg in sta._hp_configs:
-				var pos: Vector3 = cfg.get("position", Vector3.ZERO) - _center_offset
+				var pos: Vector3 = cfg.get("position", Vector3.ZERO) * _model_scale - _center_offset
 				max_radius = maxf(max_radius, pos.length())
 
 	var half_fov =deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
@@ -393,7 +397,7 @@ func _create_hardpoint_markers() -> void:
 			hp_count = sta.get_hardpoint_count()
 			for j in hp_count:
 				if j < sta._hp_configs.size():
-					hp_positions.append(sta._hp_configs[j].get("position", Vector3.ZERO))
+					hp_positions.append(sta._hp_configs[j].get("position", Vector3.ZERO) * _model_scale)
 				else:
 					hp_positions.append(Vector3.ZERO)
 				hp_turrets.append(sta.is_hardpoint_turret(j))
@@ -411,7 +415,7 @@ func _create_hardpoint_markers() -> void:
 
 	var marker_sz: float = 0.18 * _model_scale
 	if _is_station:
-		marker_sz = 2.0
+		marker_sz = 0.5
 
 	for i in hp_count:
 		var is_turret: bool = hp_turrets[i] if i < hp_turrets.size() else false

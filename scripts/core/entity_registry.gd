@@ -37,6 +37,9 @@ const SYNC_INTERVAL: float = 0.1  # 10 Hz position sync
 ## Set of entity IDs whose orbital motion is frozen (player is nearby).
 var _frozen_orbits: Dictionary = {}  # id -> true
 
+## Distance below which station nodes stop being moved (prevents StaticBody3D physics desync).
+const STATION_NODE_FREEZE_DIST: float = 10000.0
+
 
 ## Freeze an entity's orbital motion (call when player approaches a planet).
 func freeze_orbit(id: String) -> void:
@@ -166,8 +169,15 @@ func _process(delta: float) -> void:
 					var angle: float = ent["orbital_angle"]
 					ent["pos_x"] = px + cos(angle) * r
 					ent["pos_z"] = pz + sin(angle) * r
-					# Move the actual node in scene coords
+					# Move the actual node — but for stations, skip if player is nearby
+					# (StaticBody3D global_position writes desync physics vs visual)
 					var node: Node3D = node_ref
+					if ent["type"] == EntityType.STATION:
+						var player_ent: Dictionary = _entities.get("player_ship", {})
+						var pnode = player_ent.get("node")
+						if pnode != null and is_instance_valid(pnode):
+							if node.global_position.distance_to((pnode as Node3D).global_position) < STATION_NODE_FREEZE_DIST:
+								continue
 					node.global_position = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			else:
 				# Non-orbiting node: read position from node + floating origin

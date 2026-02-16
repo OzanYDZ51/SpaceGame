@@ -104,10 +104,25 @@ func _scan_stations() -> void:
 
 	var was_available: bool = can_dock
 
+	# Freeze/unfreeze orbit of nearby station to prevent physics desync
+	var best_entity_id: String = ""
+	if best_node:
+		for ent in entities.values():
+			if ent.get("node") == best_node and ent["type"] == EntityRegistrySystem.EntityType.STATION:
+				best_entity_id = ent["id"]
+				break
+	if best_entity_id != "" and best_dist < dock_range:
+		if _frozen_station_id != best_entity_id:
+			if _frozen_station_id != "":
+				EntityRegistry.unfreeze_orbit(_frozen_station_id)
+			EntityRegistry.freeze_orbit(best_entity_id)
+			_frozen_station_id = best_entity_id
+	elif _frozen_station_id != "":
+		EntityRegistry.unfreeze_orbit(_frozen_station_id)
+		_frozen_station_id = ""
+
 	# Stations with docking bays use bay-entry detection instead
 	if best_node and best_node.has_signal("ship_entered_bay"):
-		# For bay-equipped stations, only allow docking when inside the bay
-		# (handled by _in_bay flag above). Just track the nearest station.
 		nearest_station_node = best_node
 		nearest_station_name = best_name
 		is_near_station = best_dist < dock_range
@@ -204,6 +219,9 @@ func request_undock() -> void:
 
 ## Call when changing systems to clean up stale station connections
 func clear_station_connections() -> void:
+	if _frozen_station_id != "":
+		EntityRegistry.unfreeze_orbit(_frozen_station_id)
+		_frozen_station_id = ""
 	_connected_stations.clear()
 	_in_bay = false
 	_bay_station = null

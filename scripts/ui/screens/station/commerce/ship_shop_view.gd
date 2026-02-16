@@ -86,9 +86,9 @@ func _layout() -> void:
 		var vw: float = s.x - LIST_W - STATS_W - 10.0
 		_viewport_container.position = Vector2(vx, 0)
 		_viewport_container.size = Vector2(vw, s.y - 50.0)
-	# Configure button
-	_configure_btn.position = Vector2(s.x - STATS_W, s.y - 42.0)
-	_configure_btn.size = Vector2(STATS_W - 5.0, 34.0)
+	# Configure button (anchored at bottom of stats panel)
+	_configure_btn.position = Vector2(s.x - STATS_W + 10, s.y - 42.0)
+	_configure_btn.size = Vector2(STATS_W - 20.0, 34.0)
 
 
 func _on_ship_selected(idx: int) -> void:
@@ -282,7 +282,7 @@ func _process(delta: float) -> void:
 # DRAWING
 # =========================================================================
 func _draw() -> void:
-	var s =size
+	var s = size
 	var font: Font = UITheme.get_font()
 
 	# Stats panel background (right side)
@@ -293,10 +293,22 @@ func _draw() -> void:
 	# List separator
 	draw_line(Vector2(LIST_W + 2, 0), Vector2(LIST_W + 2, s.y), UITheme.BORDER, 1.0)
 
-	var data =_get_selected_ship_data()
+	var data = _get_selected_ship_data()
 	if data == null: return
 
-	# Ship name + class
+	# --- Calculate bottom section height first (price + resources + button) ---
+	var bottom_h: float = 42.0  # Buy button height + margin
+	bottom_h += 38.0  # Price box
+	var missing_resources := false
+	var res_count: int = data.resource_cost.size()
+	if res_count > 0:
+		bottom_h += 16.0 + 16.0 * res_count + 6.0  # Header + rows + spacing
+	bottom_h += 18.0  # Afford indicator text
+	bottom_h += 8.0   # Top padding
+
+	var bottom_y: float = s.y - bottom_h
+
+	# --- TOP SECTION: Ship name + stats (clipped to not overlap bottom) ---
 	var y: float = 12.0
 	draw_string(font, Vector2(stats_x + 10, y + 10), String(data.ship_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
@@ -305,70 +317,81 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	y += 24.0
 
+	var max_stats_y: float = bottom_y - 4.0
+
 	# Section: COQUE
-	y = _draw_stat_section(font, stats_x, y, "COQUE", [
-		["PV", "%.0f" % data.hull_hp],
-		["Blindage", "%.0f" % data.armor_rating],
-	])
+	if y < max_stats_y:
+		y = _draw_stat_section(font, stats_x, y, "COQUE", [
+			["PV", "%.0f" % data.hull_hp],
+			["Blindage", "%.0f" % data.armor_rating],
+		])
 
 	# Section: BOUCLIER
-	y = _draw_stat_section(font, stats_x, y, "BOUCLIER", [
-		["PV/face", "%.0f" % data.shield_hp],
-		["Regen", "%.0f/s" % data.shield_regen_rate],
-	])
+	if y < max_stats_y:
+		y = _draw_stat_section(font, stats_x, y, "BOUCLIER", [
+			["PV/face", "%.0f" % data.shield_hp],
+			["Regen", "%.0f/s" % data.shield_regen_rate],
+		])
 
 	# Section: VOL
-	y = _draw_stat_section(font, stats_x, y, "VOL", [
-		["Vitesse", "%.0f m/s" % data.max_speed_normal],
-		["Boost", "%.0f m/s" % data.max_speed_boost],
-		["Accel", "%.0f" % data.accel_forward],
-	])
+	if y < max_stats_y:
+		y = _draw_stat_section(font, stats_x, y, "VOL", [
+			["Vitesse", "%.0f m/s" % data.max_speed_normal],
+			["Boost", "%.0f m/s" % data.max_speed_boost],
+			["Accel", "%.0f" % data.accel_forward],
+		])
 
 	# Section: SLOTS
-	var hp_sizes: Dictionary = {}
-	for hp in data.hardpoints:
-		var sz: String = hp.get("size", "S")
-		hp_sizes[sz] = hp_sizes.get(sz, 0) + 1
-	var hp_text =""
-	for sz_key in ["S", "M", "L"]:
-		if hp_sizes.has(sz_key):
-			hp_text += "%dx %s  " % [hp_sizes[sz_key], sz_key]
+	if y < max_stats_y:
+		var hp_sizes: Dictionary = {}
+		for hp in data.hardpoints:
+			var sz: String = hp.get("size", "S")
+			hp_sizes[sz] = hp_sizes.get(sz, 0) + 1
+		var hp_text = ""
+		for sz_key in ["S", "M", "L"]:
+			if hp_sizes.has(sz_key):
+				hp_text += "%dx %s  " % [hp_sizes[sz_key], sz_key]
 
-	var slot_lines: Array = [["Hardpoints", hp_text.strip_edges()]]
-	slot_lines.append(["Bouclier", data.shield_slot_size])
-	slot_lines.append(["Moteur", data.engine_slot_size])
-	var mod_sizes: Dictionary = {}
-	for ms in data.module_slots:
-		mod_sizes[ms] = mod_sizes.get(ms, 0) + 1
-	var mod_text =""
-	for sz_key in ["S", "M", "L"]:
-		if mod_sizes.has(sz_key):
-			mod_text += "%dx %s  " % [mod_sizes[sz_key], sz_key]
-	if mod_text != "":
-		slot_lines.append(["Modules", mod_text.strip_edges()])
-	y = _draw_stat_section(font, stats_x, y, "SLOTS", slot_lines)
+		var slot_lines: Array = [["Hardpoints", hp_text.strip_edges()]]
+		slot_lines.append(["Bouclier", data.shield_slot_size])
+		slot_lines.append(["Moteur", data.engine_slot_size])
+		var mod_sizes: Dictionary = {}
+		for ms in data.module_slots:
+			mod_sizes[ms] = mod_sizes.get(ms, 0) + 1
+		var mod_text = ""
+		for sz_key in ["S", "M", "L"]:
+			if mod_sizes.has(sz_key):
+				mod_text += "%dx %s  " % [mod_sizes[sz_key], sz_key]
+		if mod_text != "":
+			slot_lines.append(["Modules", mod_text.strip_edges()])
+		y = _draw_stat_section(font, stats_x, y, "SLOTS", slot_lines)
+
+	# Separator between stats and bottom section
+	draw_line(Vector2(stats_x + 10, bottom_y), Vector2(stats_x + STATS_W - 10, bottom_y),
+		Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.5), 1.0)
+
+	# --- BOTTOM SECTION: Price + Resources + Buy button (anchored to bottom) ---
+	var by: float = bottom_y + 8.0
 
 	# Price
-	y += 8.0
-	var price_text =PriceCatalog.format_price(data.price)
-	draw_rect(Rect2(stats_x + 10, y, STATS_W - 20, 30),
+	var price_text = PriceCatalog.format_price(data.price)
+	draw_rect(Rect2(stats_x + 10, by, STATS_W - 20, 30),
 		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.1))
-	draw_rect(Rect2(stats_x + 10, y, STATS_W - 20, 30),
+	draw_rect(Rect2(stats_x + 10, by, STATS_W - 20, 30),
 		UITheme.PRIMARY, false, 1.0)
-	draw_string(font, Vector2(stats_x + 10, y + 20), price_text,
+	draw_string(font, Vector2(stats_x + 10, by + 20), price_text,
 		HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_HEADER, PlayerEconomy.CREDITS_COLOR)
-	y += 38.0
+	by += 38.0
 
 	# Resource cost section
-	var missing_resources := false
 	if not data.resource_cost.is_empty():
 		var active_ship = null
 		if _commerce_manager and _commerce_manager.player_data and _commerce_manager.player_data.fleet:
 			active_ship = _commerce_manager.player_data.fleet.get_active()
-		draw_rect(Rect2(stats_x + 10, y, 2, 10), UITheme.PRIMARY)
-		draw_string(font, Vector2(stats_x + 16, y + 9), "RESSOURCES",
+		draw_rect(Rect2(stats_x + 10, by, 2, 10), UITheme.PRIMARY)
+		draw_string(font, Vector2(stats_x + 16, by + 9), "RESSOURCES",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_HEADER)
-		y += 16.0
+		by += 16.0
 		for res_id in data.resource_cost:
 			var required: int = int(data.resource_cost[res_id])
 			var available: int = active_ship.get_resource(res_id) if active_ship else 0
@@ -379,16 +402,16 @@ func _draw() -> void:
 			if not has_enough:
 				missing_resources = true
 			# Color dot + resource name
-			draw_rect(Rect2(stats_x + 16, y + 3, 6, 6), res_color)
-			draw_string(font, Vector2(stats_x + 26, y + 10), res_name,
+			draw_rect(Rect2(stats_x + 16, by + 3, 6, 6), res_color)
+			draw_string(font, Vector2(stats_x + 26, by + 10), res_name,
 				HORIZONTAL_ALIGNMENT_LEFT, 70, UITheme.FONT_SIZE_SMALL, res_color)
 			# Required / available
 			var qty_text := "%d / %d" % [required, available]
 			var qty_color: Color = UITheme.DANGER if not has_enough else UITheme.LABEL_VALUE
-			draw_string(font, Vector2(stats_x + 100, y + 10), qty_text,
+			draw_string(font, Vector2(stats_x + 100, by + 10), qty_text,
 				HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 110, UITheme.FONT_SIZE_LABEL, qty_color)
-			y += 16.0
-		y += 6.0
+			by += 16.0
+		by += 6.0
 
 	# Afford indicator + button state
 	if _commerce_manager and _commerce_manager.player_economy:
@@ -397,10 +420,10 @@ func _draw() -> void:
 		if _configure_btn:
 			_configure_btn.enabled = can_buy
 		if not credits_ok:
-			draw_string(font, Vector2(stats_x + 10, y), "CREDITS INSUFFISANTS",
+			draw_string(font, Vector2(stats_x + 10, by), "CREDITS INSUFFISANTS",
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 		elif missing_resources:
-			draw_string(font, Vector2(stats_x + 10, y), "RESSOURCES INSUFFISANTES",
+			draw_string(font, Vector2(stats_x + 10, by), "RESSOURCES INSUFFISANTES",
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 
 

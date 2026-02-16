@@ -31,7 +31,7 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 	controller.center_offset = scene_result.center_offset
 
 	# Clean up all components from a previous ship (when switching ships)
-	for node_name in ["ShipModel", "CollisionShape3D", "HardpointRoot", "HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
+	for node_name in ["ShipModel", "CollisionShape3D", "HardpointRoot", "HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager", "ShipAnimator"]:
 		var old = controller.get_node_or_null(node_name)
 		if old:
 			controller.remove_child(old)
@@ -97,6 +97,13 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 		wm.set_weapon_group(1, group_m)
 	if not group_l.is_empty():
 		wm.set_weapon_group(2, group_l)
+
+	# Ship Animator (for models with animations — nacelle tilt, fan spin, etc.)
+	if scene_result.get("has_animations", false):
+		var animator = ShipAnimator.new()
+		animator.name = "ShipAnimator"
+		controller.add_child(animator)
+		animator.setup(ship_model)
 
 	# Targeting System
 	var targeting =TargetingSystem.new()
@@ -210,6 +217,13 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	energy.name = "EnergySystem"
 	ship.add_child(energy)
 	energy.setup(data)
+
+	# Ship Animator for NPC (same as player — nacelle tilt, fan spin)
+	if scene_result.get("has_animations", false):
+		var npc_animator = ShipAnimator.new()
+		npc_animator.name = "ShipAnimator"
+		ship.add_child(npc_animator)
+		npc_animator.setup(ship_model)
 
 	# HardpointRoot for NPC
 	var hp_root =Node3D.new()
@@ -577,6 +591,9 @@ static func _load_ship_scene(data) -> Dictionary:
 	var col_node =CollisionShape3D.new()
 	col_node.shape = convex_shape
 
+	# Detect animations in model tree (for ShipAnimator)
+	var has_animations: bool = _has_animation_player(model_node)
+
 	return {
 		"configs": configs,
 		"vfx_points": vfx_points,
@@ -586,6 +603,7 @@ static func _load_ship_scene(data) -> Dictionary:
 		"collision_shape": col_node,
 		"center_offset": center_offset,
 		"root_basis": root_xform_basis,
+		"has_animations": has_animations,
 	}
 
 
@@ -624,6 +642,16 @@ static func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent
 
 	for child in node.get_children():
 		_collect_mesh_vertices(child, verts, xform)
+
+
+## Recursively checks if a node tree contains an AnimationPlayer.
+static func _has_animation_player(node: Node) -> bool:
+	if node is AnimationPlayer:
+		return true
+	for child in node.get_children():
+		if _has_animation_player(child):
+			return true
+	return false
 
 
 static func _get_faction_map_color(faction: StringName) -> Color:
