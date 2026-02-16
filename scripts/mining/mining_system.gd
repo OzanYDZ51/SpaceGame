@@ -37,6 +37,11 @@ const OVERHEAT_THRESHOLD: float = 0.3  # must cool below this to resume after ov
 var mining_dps: float = 10.0
 var mining_energy_per_second: float = 4.0
 
+# Network mining damage claims (batched, sent every 0.5s)
+var _pending_claims: Dictionary = {}  # asteroid_id -> { "dmg": float, "hm": float }
+var _claim_send_timer: float = 0.0
+const CLAIM_SEND_INTERVAL: float = 0.5
+
 
 func _ready() -> void:
 	_ship = get_parent() as RigidBody3D
@@ -139,6 +144,13 @@ func _process(delta: float) -> void:
 
 	# Heat system (always ticks)
 	_update_heat(delta)
+
+	# Network claim send timer
+	if not _pending_claims.is_empty() and NetworkManager.is_connected_to_server():
+		_claim_send_timer += delta
+		if _claim_send_timer >= CLAIM_SEND_INTERVAL:
+			_claim_send_timer = 0.0
+			_send_mining_claims()
 
 	# Mining extraction tick
 	if is_mining and mining_target != null:
@@ -249,6 +261,10 @@ func _stop_extraction() -> void:
 	if not is_mining:
 		return
 
+	# Flush any pending network claims before stopping
+	if not _pending_claims.is_empty() and NetworkManager.is_connected_to_server():
+		_send_mining_claims()
+
 	# Hide scan label
 	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
 		mining_target.node_ref.hide_scan_info()
@@ -269,6 +285,14 @@ func _do_mining_tick() -> void:
 	var res =MiningRegistry.get_resource(mining_target.primary_resource) if not is_barren else null
 	var difficulty: float = res.mining_difficulty if res else 1.0
 	var damage: float = mining_dps * MINING_TICK_INTERVAL / difficulty
+
+	# Accumulate network mining claim
+	if NetworkManager.is_connected_to_server():
+		var aid: String = String(mining_target.id)
+		if _pending_claims.has(aid):
+			_pending_claims[aid]["dmg"] += damage
+		else:
+			_pending_claims[aid] = { "dmg": damage, "hm": mining_target.health_max }
 
 	var yield_data: Dictionary
 	if mining_target.node_ref and is_instance_valid(mining_target.node_ref):
@@ -305,7 +329,6 @@ func _do_mining_tick() -> void:
 
 func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 	if not NetworkManager.is_connected_to_server():
-		push_warning("MiningSystem: skipping asteroid depletion broadcast — not connected to server")
 		return
 	var id_str =String(asteroid_id)
 	if NetworkManager.is_host:
@@ -316,3 +339,24 @@ func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 			npc_auth.broadcast_asteroid_depleted(id_str, sys_id, 1)
 	else:
 		NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)
+
+
+## Send accumulated mining damage claims to the server.
+func _send_mining_claims() -> void:
+	if _pending_claims.is_empty():
+		return
+
+	var claims: Array = []
+	for aid in _pending_claims:
+		var entry: Dictionary = _pending_claims[aid]
+		claims.append({ "aid": aid, "dmg": entry["dmg"], "hm": entry["hm"] })
+	_pending_claims.clear()
+	_claim_send_timer = 0.0
+
+	if NetworkManager.is_host:
+		# Host: apply directly to NpcAuthority
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+		if npc_auth:
+			npc_auth.handle_mining_damage_claims(1, claims)
+	else:
+		NetworkManager._rpc_mining_damage_claim.rpc_id(1, claims)

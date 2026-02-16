@@ -15,6 +15,7 @@ signal refinery_requested
 signal storage_requested
 signal station_equipment_requested
 signal administration_requested
+signal missions_requested
 
 # --- Card grid constants ---
 const CARD_W: float = 150.0
@@ -45,7 +46,7 @@ var _emblem_center_y: float = 85.0
 var _cards: Array[Dictionary] = []
 var _cat_labels: PackedStringArray = PackedStringArray()
 
-enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMIN }
+enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMIN, MISSIONS }
 
 
 func _ready() -> void:
@@ -62,6 +63,7 @@ func _ready() -> void:
 		{"svc": StationServices.Service.REFINERY, "label": "RAFFINERIE", "icon": ICO.REFINERY, "cat": 1, "special": ""},
 		{"svc": -1, "label": "ÉQUIP. STATION", "icon": ICO.STN_EQUIP, "cat": 2, "special": "station_equip"},
 		{"svc": -1, "label": "ADMINISTRATION", "icon": ICO.ADMIN, "cat": 2, "special": "admin"},
+		{"svc": -1, "label": "MISSIONS", "icon": ICO.MISSIONS, "cat": 2, "special": "missions"},
 	]
 
 
@@ -345,6 +347,12 @@ func _draw_icon(c: Vector2, icon: int, col: Color) -> void:
 			draw_line(c + Vector2(-hw * 0.5, -hh * 0.3), c + Vector2(hw * 0.5, -hh * 0.3), col, 1.0)
 			draw_line(c + Vector2(-hw * 0.5, hh * 0.1), c + Vector2(hw * 0.5, hh * 0.1), col, 1.0)
 			draw_line(c + Vector2(-hw * 0.5, hh * 0.5), c + Vector2(hw * 0.15, hh * 0.5), col, 1.0)
+		ICO.MISSIONS:
+			# Diamond with exclamation mark (mission marker)
+			var d: PackedVector2Array = [c + Vector2(0, -r), c + Vector2(r * 0.7, 0), c + Vector2(0, r), c + Vector2(-r * 0.7, 0), c + Vector2(0, -r)]
+			draw_polyline(d, col, 1.5)
+			draw_line(c + Vector2(0, -r * 0.45), c + Vector2(0, r * 0.15), col, 2.0)
+			draw_circle(c + Vector2(0, r * 0.4), 1.5, col)
 
 
 func _draw_lock(pos: Vector2, col: Color) -> void:
@@ -431,6 +439,9 @@ func _on_card_clicked(idx: int) -> void:
 		return
 	if card["special"] == "admin":
 		administration_requested.emit()
+		return
+	if card["special"] == "missions":
+		missions_requested.emit()
 		return
 
 	var svc: int = card["svc"]

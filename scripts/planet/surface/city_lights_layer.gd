@@ -18,7 +18,7 @@ func setup(planet_radius: float, seed_val: int) -> void:
 	sphere.rings = 32
 	mesh = sphere
 
-	var shader := load("res://shaders/planet/planet_city_lights.gdshader")
+	var shader := preload("res://shaders/planet/planet_city_lights.gdshader")
 	_material = ShaderMaterial.new()
 	_material.shader = shader
 	_material.set_shader_parameter("city_seed", seed_val)

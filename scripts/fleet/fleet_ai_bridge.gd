@@ -27,8 +27,16 @@ const MOVE_ARRIVE_DIST: float = 200.0
 
 # --- Dock approach ---
 const DOCK_APPROACH_DIST: float = 1200.0   # Switch from patrol to direct flight
-const DOCK_FINAL_DIST: float = 200.0       # Close enough to complete docking
-const DOCK_MAX_SPEED: float = 80.0         # Must be this slow to dock
+
+## Cached dock target positions (local coords) — refreshed each frame / origin shift
+var _bay_approach_pos: Vector3 = Vector3.ZERO  ## Bay exit (above opening, for long-range nav)
+var _bay_dock_pos: Vector3 = Vector3.ZERO      ## Landing pad (inside bay, for final approach)
+var _bay_target_valid: bool = false
+
+## Bay entry detection — same system as player (station Area3D)
+var _in_bay: bool = false
+var _bay_station_node: Node3D = null
+var _bay_signal_connected: bool = false
 
 var _initialized: bool = false
 
@@ -48,6 +56,7 @@ func _exit_tree() -> void:
 		_ship._gate_approach_speed_cap = 0.0
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
+	_disconnect_bay_signals()
 
 
 func _do_init() -> void:
@@ -70,6 +79,86 @@ func _do_init() -> void:
 	# Correct waypoints when floating origin shifts (local coords become stale)
 	if not FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
+
+
+func _resolve_station_dock_targets() -> void:
+	## Resolves both approach (bay exit) and final dock (landing pad) positions.
+	## Connects bay entry signals if not already connected.
+	_bay_target_valid = false
+	if _station_id == "":
+		return
+	var ent: Dictionary = EntityRegistry.get_entity(_station_id)
+	if ent.is_empty():
+		return
+	var station_node = ent.get("node")
+	if station_node and is_instance_valid(station_node):
+		# Bay exit = approach target (above the bay opening, visible from space)
+		if station_node.has_method("get_bay_exit_global"):
+			_bay_approach_pos = station_node.get_bay_exit_global()
+		else:
+			_bay_approach_pos = station_node.global_position
+		# Landing pad = final dock target (inside the bay)
+		if station_node.has_method("get_landing_pos_global"):
+			_bay_dock_pos = station_node.get_landing_pos_global()
+		else:
+			_bay_dock_pos = _bay_approach_pos
+		_bay_target_valid = true
+		# Connect bay entry signals (same detection as player DockingSystem)
+		_connect_bay_signals(station_node)
+	else:
+		# No live node — fallback to entity position
+		_bay_approach_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+		_bay_dock_pos = _bay_approach_pos
+		_bay_target_valid = true
+
+
+func _refresh_dock_targets() -> void:
+	## Re-resolve dock target positions from live station node (handles orbit/rotation).
+	if _station_id == "":
+		return
+	var ent: Dictionary = EntityRegistry.get_entity(_station_id)
+	if ent.is_empty():
+		return
+	var station_node = ent.get("node")
+	if station_node and is_instance_valid(station_node):
+		if station_node.has_method("get_bay_exit_global"):
+			_bay_approach_pos = station_node.get_bay_exit_global()
+		if station_node.has_method("get_landing_pos_global"):
+			_bay_dock_pos = station_node.get_landing_pos_global()
+
+
+func _connect_bay_signals(station_node: Node3D) -> void:
+	if _bay_signal_connected:
+		return
+	if not station_node.has_signal("ship_entered_bay"):
+		return
+	station_node.ship_entered_bay.connect(_on_bay_entered)
+	station_node.ship_exited_bay.connect(_on_bay_exited)
+	_bay_station_node = station_node
+	_bay_signal_connected = true
+
+
+func _disconnect_bay_signals() -> void:
+	if not _bay_signal_connected:
+		return
+	if _bay_station_node and is_instance_valid(_bay_station_node):
+		if _bay_station_node.ship_entered_bay.is_connected(_on_bay_entered):
+			_bay_station_node.ship_entered_bay.disconnect(_on_bay_entered)
+		if _bay_station_node.ship_exited_bay.is_connected(_on_bay_exited):
+			_bay_station_node.ship_exited_bay.disconnect(_on_bay_exited)
+	_bay_station_node = null
+	_bay_signal_connected = false
+	_in_bay = false
+
+
+func _on_bay_entered(ship: Node3D) -> void:
+	if ship == _ship:
+		_in_bay = true
+
+
+func _on_bay_exited(ship: Node3D) -> void:
+	if ship == _ship:
+		_in_bay = false
 
 
 func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
@@ -142,23 +231,17 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 				_arrived = true
 		&"return_to_station":
 			_returning = true
+			_in_bay = false
 			# Preserve existing _station_id (set during deployment) if params don't include one
 			var new_station: String = params.get("station_id", "")
 			if new_station != "":
+				_disconnect_bay_signals()  # Station changed, reconnect later
 				_station_id = new_station
 			if _station_id != "":
-				var ent =EntityRegistry.get_entity(_station_id)
-				if not ent.is_empty():
-					var station_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-					var dist: float = _ship.global_position.distance_to(station_pos)
-					if dist < DOCK_FINAL_DIST and _ship.linear_velocity.length() < DOCK_MAX_SPEED:
-						# Already at station and slow — retrieve immediately
-						var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
-						if fdm:
-							fdm.retrieve_ship(fleet_index)
-					else:
-						_brain.set_patrol_area(station_pos, 50.0)
-						_brain.current_state = AIBrain.State.PATROL
+				_resolve_station_dock_targets()
+				if _bay_target_valid:
+					_brain.set_patrol_area(_bay_approach_pos, 50.0)
+					_brain.current_state = AIBrain.State.PATROL
 
 
 func _process(_delta: float) -> void:
@@ -174,35 +257,44 @@ func _process(_delta: float) -> void:
 	# --- Navigation speed boost: enable 3km/s approach when far from target ---
 	_update_navigation_boost()
 
-	# Monitor return_to_station — direct dock approach when close
-	if _returning and _station_id != "":
-		var ent =EntityRegistry.get_entity(_station_id)
-		if not ent.is_empty():
-			var station_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-			var dist: float = _ship.global_position.distance_to(station_pos)
+	# Monitor return_to_station — fly into the bay like a player
+	if _returning and _station_id != "" and _bay_target_valid:
+		_refresh_dock_targets()
 
-			if dist < DOCK_APPROACH_DIST:
-				# --- DOCK APPROACH: bypass patrol, fly directly to station ---
-				if _brain.current_state != AIBrain.State.IDLE:
-					_brain.current_state = AIBrain.State.IDLE
-				# Exit cruise for final approach
-				if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-					_ship._exit_cruise()
-				# Fly straight to station (arrival_dist=50 → decel zone ~150m)
-				if _pilot:
-					_pilot.fly_toward(station_pos, 50.0)
-				# Complete docking when close and slow
-				var speed: float = _ship.linear_velocity.length()
-				if dist < DOCK_FINAL_DIST and speed < DOCK_MAX_SPEED:
-					var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
-					if fdm:
-						fdm.retrieve_ship(fleet_index)
+		# Bay entry detection: ship physically entered the bay Area3D → dock when slow
+		if _in_bay:
+			var speed: float = _ship.linear_velocity.length()
+			if speed < DockingSystem.BAY_DOCK_MAX_SPEED:
+				var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
+				if fdm:
+					fdm.retrieve_ship(fleet_index)
 				return
+			# Inside bay but too fast — keep decelerating toward landing pad
+			if _brain.current_state != AIBrain.State.IDLE:
+				_brain.current_state = AIBrain.State.IDLE
+			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+				_ship._exit_cruise()
+			if _pilot:
+				_pilot.fly_toward(_bay_dock_pos, 30.0)
+			return
 
-			# Long range: keep brain navigating via patrol
-			if _brain.current_state == AIBrain.State.IDLE:
-				_brain.set_patrol_area(station_pos, 50.0)
-				_brain.current_state = AIBrain.State.PATROL
+		# Not yet in bay — approach it
+		var dist_to_approach: float = _ship.global_position.distance_to(_bay_approach_pos)
+
+		if dist_to_approach < DOCK_APPROACH_DIST:
+			# --- FINAL APPROACH: fly directly into the bay (target = landing pad) ---
+			if _brain.current_state != AIBrain.State.IDLE:
+				_brain.current_state = AIBrain.State.IDLE
+			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+				_ship._exit_cruise()
+			if _pilot:
+				_pilot.fly_toward(_bay_dock_pos, 30.0)
+			return
+
+		# Long range: keep brain navigating via patrol toward bay entrance
+		if _brain.current_state == AIBrain.State.IDLE:
+			_brain.set_patrol_area(_bay_approach_pos, 50.0)
+			_brain.current_state = AIBrain.State.PATROL
 
 	# Monitor construction arrival (same as move_to)
 	if command == &"construction" and not _arrived:
@@ -287,11 +379,11 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 				if not ent.is_empty():
 					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
 		&"return_to_station":
-			# During dock approach (brain=IDLE), no patrol waypoints to refresh
-			if _station_id != "" and _brain.current_state == AIBrain.State.PATROL:
-				var ent =EntityRegistry.get_entity(_station_id)
-				if not ent.is_empty():
-					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 50.0)
+			# Refresh dock target positions after origin shift
+			if _station_id != "" and _bay_target_valid:
+				_resolve_station_dock_targets()
+				if _brain.current_state == AIBrain.State.PATROL:
+					_brain.set_patrol_area(_bay_approach_pos, 50.0)
 
 
 const NAV_BOOST_MIN_DIST: float = 500.0    # Keep 3 km/s boost until this close
@@ -324,16 +416,11 @@ func _update_navigation_boost() -> void:
 			var cz: float = command_params.get("center_z", 0.0)
 			target_pos = FloatingOrigin.to_local_pos([cx, 0.0, cz])
 		&"return_to_station":
-			if _station_id == "":
+			if not _bay_target_valid:
 				_ship.ai_navigation_active = false
 				_ship._gate_approach_speed_cap = 0.0
 				return
-			var ent =EntityRegistry.get_entity(_station_id)
-			if ent.is_empty():
-				_ship.ai_navigation_active = false
-				_ship._gate_approach_speed_cap = 0.0
-				return
-			target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			target_pos = _bay_approach_pos
 		&"attack":
 			if _attack_target_id != "":
 				var ent =EntityRegistry.get_entity(_attack_target_id)

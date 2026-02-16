@@ -116,6 +116,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 
+	# Help screen (F1)
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F1:
+		if screen_manager:
+			var top =screen_manager.get_top_screen()
+			if top == null or top == screen_manager._screens.get("help"):
+				screen_toggled.emit("help")
+				get_viewport().set_input_as_handled()
+				return
+
 	# Bug report screen (F12)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F12:
 		if screen_manager:

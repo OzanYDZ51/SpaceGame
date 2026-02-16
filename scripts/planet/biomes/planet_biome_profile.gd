@@ -48,11 +48,6 @@ extends Resource
 @export var mountain_base: Color = Color(0, 0, 0, 0)
 @export var cliff_color: Color = Color(0, 0, 0, 0)
 
-@export_group("Multipliers")
-@export_range(0.0, 3.0) var vegetation_density_mult: float = 1.0
-@export_range(0.5, 2.0) var terrain_roughness_mult: float = 1.0
-@export_range(0.0, 2.0) var snow_line_offset: float = 0.0  ## Lower = more snow, higher = less snow
-
 
 ## Apply this profile's overrides to a ShaderMaterial.
 ## Only overrides colors that are set (alpha > 0).

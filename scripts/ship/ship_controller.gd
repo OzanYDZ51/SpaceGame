@@ -145,6 +145,12 @@ func _cache_refs() -> void:
 	if health and not health.damage_taken.is_connected(_on_combat_damage):
 		health.damage_taken.connect(_on_combat_damage)
 
+	# Dynamic environment lighting (player ship only)
+	if is_player_controlled and get_node_or_null("EnvLighting") == null:
+		var env_light := ShipEnvironmentLighting.new()
+		env_light.name = "EnvLighting"
+		add_child(env_light)
+
 
 func _notification(what: int) -> void:
 	if not is_player_controlled:
@@ -663,6 +669,28 @@ func _exit_cruise() -> void:
 		_cruise_punched = false
 		_exit_cruise_warp()
 		cruise_exit_triggered.emit()
+
+
+## Public API for PlanetApproachManager to exit cruise without accessing private method.
+func exit_cruise() -> void:
+	_exit_cruise()
+
+
+## Public API for PlanetApproachManager to set planet proximity state.
+func set_near_planet_surface(value: bool) -> void:
+	_near_planet_surface = value
+
+
+## Public API for PlanetApproachManager to set planet guard (collision avoidance).
+func set_planet_guard(body: PlanetBody, center: Vector3, radius: float) -> void:
+	_planet_guard_body = body
+	_planet_guard_center = center
+	_planet_guard_radius = radius
+
+
+func clear_planet_guard() -> void:
+	_planet_guard_body = null
+	_planet_guard_radius = 0.0
 
 
 func _enter_cruise_warp() -> void:

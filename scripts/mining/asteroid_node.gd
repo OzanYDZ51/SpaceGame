@@ -109,6 +109,17 @@ func _on_depleted() -> void:
 	tw.tween_property(_mesh_instance, "scale", target_scale, 0.5)
 
 
+## Tween mesh scale based on HP ratio (for cooperative mining visual feedback).
+## At 100% HP → full scale. At 0% → 60% scale (matches depleted shrink).
+func apply_health_visual_update(hp_ratio: float) -> void:
+	if _mesh_instance == null:
+		return
+	var scale_factor: float = lerpf(0.6, 1.0, clampf(hp_ratio, 0.0, 1.0))
+	var target_scale: Vector3 = _glb_scale * data.scale_distort * scale_factor
+	var tw = create_tween()
+	tw.tween_property(_mesh_instance, "scale", target_scale, 0.3).set_ease(Tween.EASE_OUT)
+
+
 func respawn() -> void:
 	data.is_depleted = false
 	data.health_current = data.health_max

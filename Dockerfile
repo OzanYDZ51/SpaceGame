@@ -20,11 +20,8 @@ WORKDIR /game
 COPY project.godot icon.svg ./
 COPY data/ data/
 COPY shaders/ shaders/
-COPY assets/fonts/ assets/fonts/
-COPY assets/models/tie.glb assets/models/
-COPY assets/models/frigate_mk1.glb assets/models/
-COPY assets/models/canon_laser.glb assets/models/
-COPY assets/models/tourelle.glb assets/models/
+# Assets — copied in bulk, heavy visual-only files excluded via .dockerignore
+COPY assets/ assets/
 COPY scenes/ scenes/
 COPY scripts/ scripts/
 

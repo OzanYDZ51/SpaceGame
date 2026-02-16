@@ -41,3 +41,7 @@ func bug_report_error(code: int) -> void:
 
 func bug_report_validation(msg: String) -> void:
 	_svc.toast(msg, UIToast.ToastType.ERROR)
+
+
+func undock_blocked() -> void:
+	_svc.toast("SORTIE IMPOSSIBLE — Zone bloquée", UIToast.ToastType.WARNING, 3.0)

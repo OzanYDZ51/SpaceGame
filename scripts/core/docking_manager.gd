@@ -88,43 +88,78 @@ func handle_docked(station_name: String) -> void:
 	dock_instance.enter(_build_dock_context(station_name))
 
 
-func handle_undock() -> void:
+func handle_undock() -> bool:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != Constants.GameState.DOCKED:
-		return
-	# Close station UI
+		return false
+
+	# 1. Compute exit position BEFORE any state change
+	var exit_info: Dictionary = _compute_exit_position()
+
+	# 2. Check if exit zone is clear BEFORE any state change
+	if exit_info.get("valid", false) and not _is_exit_clear(exit_info):
+		if notif:
+			notif.general.undock_blocked()
+		return false
+
+	# 3. Close station UI (only if exit OK)
 	if screen_manager:
 		screen_manager.close_screen("station")
 
-	# Leave isolated solo instance
+	# 4. Leave isolated solo instance (unfreeze world)
 	dock_instance.leave(_build_dock_context(""))
 
-	# Re-enable ship controls
+	# 5. Re-enable ship controls
 	var ship = player_ship
 	if ship:
 		ship.is_player_controlled = true
 
-	# Reposition player near the docked station (random within 5km)
-	_reposition_at_station()
+	# 6. Teleport to pre-computed position
+	_reposition_at_station(exit_info)
 
-	# Show flight HUD
+	# 7. Show flight HUD
 	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = true
 
-	# Undock from docking system
+	# 8. Undock from docking system
 	if docking_system:
 		docking_system.request_undock()
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	undocked.emit()
+	return true
 
 
-const UNDOCK_EXIT_DISTANCE: float = 300.0  ## Distance ahead of bay exit
+# ---------------------------------------------------------------------------
+# Smart undock: AABB-based exit distance + clearance check
+# ---------------------------------------------------------------------------
+const UNDOCK_EXIT_MARGIN: float = 100.0      ## Safety buffer on top of ship size
+const UNDOCK_MIN_EXIT_DIST: float = 200.0    ## Minimum exit distance (small ships)
+const UNDOCK_CLEARANCE_BUFFER: float = 50.0  ## Extra margin for obstacle check
 
-func _reposition_at_station() -> void:
+
+func _compute_exit_distance() -> float:
+	## Compute exit distance from the player ship's actual AABB.
 	if player_ship == null:
-		return
+		return UNDOCK_MIN_EXIT_DIST
+	var ship_model = player_ship.get_node_or_null("ShipModel")
+	if ship_model and ship_model.has_method("get_visual_aabb"):
+		var aabb: AABB = ship_model.get_visual_aabb()
+		if aabb.size.length() > 0.1:
+			var half_extent: float = aabb.size.length() * 0.5
+			return maxf(half_extent + UNDOCK_EXIT_MARGIN, UNDOCK_MIN_EXIT_DIST)
+	return UNDOCK_MIN_EXIT_DIST
+
+
+func _compute_exit_position() -> Dictionary:
+	## Compute exit position without modifying any state. Returns a dict:
+	## {valid: bool, position: Vector3, away_dir: Vector3, ship_half_extent: float}
+	if player_ship == null:
+		return {"valid": false}
+
+	var exit_dist: float = _compute_exit_distance()
+	var ship_half: float = exit_dist - UNDOCK_EXIT_MARGIN  # Reverse the margin to get raw half
 
 	# Resolve station node — prefer live node, fallback to EntityRegistry
 	var station_node: Node3D = null
@@ -136,7 +171,6 @@ func _reposition_at_station() -> void:
 		station_pos = station_node.global_position
 		found = true
 	else:
-		# Fallback: find station from EntityRegistry using docked_station_idx
 		var stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		for ent in stations:
 			var extra: Dictionary = ent.get("extra", {})
@@ -151,25 +185,75 @@ func _reposition_at_station() -> void:
 				break
 
 	if not found:
-		return
+		return {"valid": false}
 
 	# Prefer exiting from bay if station has get_bay_exit_global()
 	if station_node and station_node.has_method("get_bay_exit_global"):
 		var bay_exit: Vector3 = station_node.get_bay_exit_global()
-		# Face away from station center
 		var away_dir: Vector3 = (bay_exit - station_pos).normalized()
 		if away_dir.length_squared() < 0.01:
 			away_dir = Vector3.FORWARD
-		var new_pos: Vector3 = bay_exit + away_dir * UNDOCK_EXIT_DISTANCE
-		player_ship.global_position = new_pos
-		# Orient ship to face away from station
-		player_ship.look_at(new_pos + away_dir, Vector3.UP)
+		var new_pos: Vector3 = bay_exit + away_dir * exit_dist
+		return {"valid": true, "position": new_pos, "away_dir": away_dir, "ship_half_extent": ship_half, "use_bay": true}
 	else:
 		# Fallback: random position around station
 		var angle: float = randf() * TAU
 		var dist: float = randf_range(1800.0, 2200.0)
 		var offset = Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
-		player_ship.global_position = station_pos + offset
+		var new_pos: Vector3 = station_pos + offset
+		var away_dir: Vector3 = offset.normalized()
+		return {"valid": true, "position": new_pos, "away_dir": away_dir, "ship_half_extent": ship_half, "use_bay": false}
+
+
+func _is_exit_clear(exit_info: Dictionary) -> bool:
+	## Check if the exit position is free of other ships using EntityRegistry.
+	## Works while docked (world frozen) because EntityRegistry has float64 positions.
+	var local_pos: Vector3 = exit_info["position"]
+	var ship_half: float = exit_info["ship_half_extent"]
+	var block_radius: float = ship_half * 2.0 + UNDOCK_CLEARANCE_BUFFER
+	var block_radius_sq: float = block_radius * block_radius
+
+	# Convert exit position to universe coordinates
+	var exit_ux: float = local_pos.x + FloatingOrigin.origin_offset_x
+	var exit_uy: float = local_pos.y + FloatingOrigin.origin_offset_y
+	var exit_uz: float = local_pos.z + FloatingOrigin.origin_offset_z
+
+	# Check against all ship types
+	var types: Array = [
+		EntityRegistrySystem.EntityType.SHIP_PLAYER,
+		EntityRegistrySystem.EntityType.SHIP_NPC,
+		EntityRegistrySystem.EntityType.SHIP_FLEET,
+	]
+	for etype in types:
+		var entities: Array[Dictionary] = EntityRegistry.get_by_type(etype)
+		for ent in entities:
+			# Skip our own player ship
+			if ent.get("id", "") == "player_ship":
+				continue
+			var dx: float = ent["pos_x"] - exit_ux
+			var dy: float = ent["pos_y"] - exit_uy
+			var dz: float = ent["pos_z"] - exit_uz
+			var dist_sq: float = dx * dx + dy * dy + dz * dz
+			if dist_sq < block_radius_sq:
+				return false
+	return true
+
+
+func _reposition_at_station(exit_info: Dictionary = {}) -> void:
+	if player_ship == null:
+		return
+
+	if exit_info.get("valid", false):
+		player_ship.global_position = exit_info["position"]
+		var away_dir: Vector3 = exit_info["away_dir"]
+		var new_pos: Vector3 = exit_info["position"]
+		player_ship.look_at(new_pos + away_dir, Vector3.UP)
+	else:
+		# Fallback: recompute (should not happen in normal flow)
+		var fallback_info: Dictionary = _compute_exit_position()
+		if fallback_info.get("valid", false):
+			player_ship.global_position = fallback_info["position"]
+			player_ship.look_at(fallback_info["position"] + fallback_info["away_dir"], Vector3.UP)
 
 	player_ship.linear_velocity = Vector3.ZERO
 	player_ship.angular_velocity = Vector3.ZERO

@@ -99,6 +99,7 @@ func _ready() -> void:
 	_galaxy_fleet_panel.anchor_bottom = 1.0
 	_galaxy_fleet_panel.visible = false
 	_galaxy_fleet_panel.ship_selected.connect(_on_galaxy_fleet_ship_selected)
+	_galaxy_fleet_panel.selection_changed.connect(_on_galaxy_fleet_selection_changed)
 	add_child(_galaxy_fleet_panel)
 
 
@@ -1184,4 +1185,8 @@ func _on_galaxy_fleet_ship_selected(_fleet_index: int, system_id: int) -> void:
 	_info_system = sys
 	_info_visible = true
 	_resolve_system_data(system_id)
+	_galaxy_dirty = true
+
+
+func _on_galaxy_fleet_selection_changed(_fleet_indices: Array) -> void:
 	_galaxy_dirty = true

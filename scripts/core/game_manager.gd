@@ -87,6 +87,7 @@ var _construction_screen = null
 var _admin_screen = null
 var _pause_screen = null
 var _options_screen = null
+var _gameplay_integrator = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
@@ -591,6 +592,18 @@ func _initialize_game() -> void:
 	# Setup UI framework managers (needs _galaxy and _system_transition)
 	_setup_ui_managers()
 
+	# Gameplay systems integrator (missions, factions, POI, economy)
+	_gameplay_integrator = GameplayIntegrator.new()
+	_gameplay_integrator.name = "GameplayIntegrator"
+	add_child(_gameplay_integrator)
+	_gameplay_integrator.initialize({
+		"screen_manager": _screen_manager,
+		"station_screen": _station_screen,
+		"encounter_manager": _encounter_manager,
+		"notif": _notif,
+		"player_data": player_data,
+	})
+
 	# Load starting system (replaces hardcoded seed=42)
 	_system_transition.jump_to_system(_galaxy.player_home_system)
 
@@ -877,6 +890,8 @@ func _setup_visual_effects() -> void:
 func _on_system_unloading(system_id: int) -> void:
 	_cleanup_player_autopilot_wp()
 	_build_available = false
+	if _gameplay_integrator:
+		_gameplay_integrator.on_system_unloading()
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.release_scene_nodes()
 	SaveManager.trigger_save("system_jump")
@@ -900,12 +915,13 @@ func _on_system_loaded(system_id: int) -> void:
 	if _route_manager:
 		_route_manager.on_system_loaded(system_id)
 
-	# Ensure the active fleet ship has a valid docked_system_id
-	# (starting ship is created before system loads, so fix up here)
+	# Ensure all DOCKED fleet ships have a valid docked_system_id
+	# (starting ship is created before system loads; old saves may lack this field)
 	if player_fleet:
-		var active_fs = player_fleet.get_active()
-		if active_fs and active_fs.docked_system_id < 0:
-			active_fs.docked_system_id = system_id
+		for i in player_fleet.ships.size():
+			var fs = player_fleet.ships[i]
+			if fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_system_id < 0:
+				fs.docked_system_id = system_id
 
 	# Redeploy fleet ships that were deployed in this system (from save)
 	if _fleet_deployment_mgr:
@@ -913,6 +929,14 @@ func _on_system_loaded(system_id: int) -> void:
 
 	# Respawn construction beacons for this system
 	_respawn_construction_beacons(system_id)
+
+	# Notify gameplay integrator (POIs, missions, etc.)
+	if _gameplay_integrator:
+		var danger: int = 1
+		if _galaxy:
+			var sys_dict: Dictionary = _galaxy.get_system(system_id)
+			danger = int(sys_dict.get("danger_level", 1))
+		_gameplay_integrator.on_system_loaded(system_id, danger)
 
 	# Update nebula wisps with new system's environment colors/opacity
 	if _vfx_manager and main_scene.get("world_env") != null:
@@ -929,7 +953,8 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	if fleet_index == player_fleet.active_index:
 		# If docked, undock first then autopilot after a frame
 		if current_state == GameState.DOCKED and _docking_mgr:
-			_docking_mgr.handle_undock()
+			if not _docking_mgr.handle_undock():
+				return  # Exit blocked, abort fleet order
 			# Wait one frame for undock to finish (state → PLAYING)
 			await get_tree().process_frame
 		_autopilot_player_to(params)
@@ -946,6 +971,10 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	var fs = player_fleet.ships[fleet_index]
 	var is_mp_client: bool = _fleet_deployment_mgr._is_multiplayer_client()
 	print("[FleetOrder] idx=%d order=%s state=%d sys=%d cur_sys=%d" % [fleet_index, order_id, fs.deployment_state, fs.docked_system_id, current_system_id_safe()])
+	# Route line helper: use target_x/target_z with fallback to center_x/center_z (mine/patrol orders)
+	var _route_x: float = params.get("target_x", params.get("center_x", 0.0))
+	var _route_z: float = params.get("target_z", params.get("center_z", 0.0))
+
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
@@ -964,7 +993,7 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 			if success:
 				_notif.fleet.deployed(fs.custom_name)
 				if _stellar_map:
-					_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
+					_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
 			else:
 				_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
 				push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
@@ -989,11 +1018,14 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 					if success:
 						_notif.fleet.deployed(fs.custom_name)
 						if _stellar_map:
-							_stellar_map._set_route_lines([fleet_index] as Array[int], params.get("target_x", 0.0), params.get("target_z", 0.0))
+							_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
 					else:
 						_notif.fleet.deploy_failed("REDÉPLOIEMENT ÉCHOUÉ")
 				else:
 					_notif.fleet.deploy_failed("REDÉPLOIEMENT IMPOSSIBLE")
+		# Set route lines for deployed ships (all paths — offline, MP, change_command)
+		if _stellar_map:
+			_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:

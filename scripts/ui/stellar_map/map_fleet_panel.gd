@@ -148,6 +148,7 @@ func _rebuild() -> void:
 		st_ids.sort()
 		for st_id in st_ids:
 			var ships_arr: Array = data["docked"][st_id]
+			ships_arr.sort_custom(_compare_ships_by_name)
 			var st_name: String = st_id if st_id != "_none" else "En vol"
 			# Try to get station name from EntityRegistry
 			if st_id != "_none":
@@ -156,6 +157,7 @@ func _rebuild() -> void:
 					st_name = ent.get("name", st_id)
 			stations.append({"station_id": st_id, "name": st_name, "ships": ships_arr})
 
+		data["deployed"].sort_custom(_compare_ships_by_name)
 		_groups.append({
 			"system_id": sys_id,
 			"system_name": sys_name,
@@ -252,7 +254,9 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 				sqd[fs.squadron_id].append(entry)
 			else:
 				unsqd.append(entry)
-		for sq_id in sqd:
+		var sqd_ids: Array = sqd.keys()
+		sqd_ids.sort()
+		for sq_id in sqd_ids:
 			y += SHIP_H  # squadron header
 			for _entry in sqd[sq_id]:
 				y += SHIP_H
@@ -327,7 +331,9 @@ func _get_row_y_for_index(fleet_index: int) -> float:
 				squadroned[fs.squadron_id].append(entry)
 			else:
 				unsquadroned.append(entry)
-		for sq_id in squadroned:
+		var sq_ids: Array = squadroned.keys()
+		sq_ids.sort()
+		for sq_id in sq_ids:
 			y += SHIP_H  # squadron header
 			for entry in squadroned[sq_id]:
 				if entry["fleet_index"] == fleet_index:
@@ -363,7 +369,9 @@ func _get_squadron_header_at(pos: Vector2) -> int:
 				squadroned[fs.squadron_id].append(entry)
 			else:
 				unsquadroned.append(entry)
-		for sq_id in squadroned:
+		var sq_ids: Array = squadroned.keys()
+		sq_ids.sort()
+		for sq_id in sq_ids:
 			if _hit_row(pos.y, y, SHIP_H):
 				return sq_id
 			y += SHIP_H  # squadron header
@@ -399,7 +407,9 @@ func _get_fleet_index_at(pos: Vector2) -> int:
 				squadroned[fs.squadron_id].append(entry)
 			else:
 				unsquadroned.append(entry)
-		for sq_id in squadroned:
+		var sq_ids: Array = squadroned.keys()
+		sq_ids.sort()
+		for sq_id in sq_ids:
 			y += SHIP_H  # squadron header
 			for entry in squadroned[sq_id]:
 				if _hit_row(pos.y, y, SHIP_H):
@@ -423,6 +433,12 @@ func _get_system_id_for_fleet_index(fleet_index: int) -> int:
 			if entry["fleet_index"] == fleet_index:
 				return group["system_id"]
 	return -1
+
+
+static func _compare_ships_by_name(a: Dictionary, b: Dictionary) -> bool:
+	var na: String = a["ship"].custom_name if a["ship"].custom_name != "" else String(a["ship"].ship_id)
+	var nb: String = b["ship"].custom_name if b["ship"].custom_name != "" else String(b["ship"].ship_id)
+	return na.naturalcasecmp_to(nb) < 0
 
 
 func _hit_row(mouse_y: float, row_y: float, row_h: float) -> bool:
@@ -665,8 +681,10 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 		else:
 			unsquadroned.append(entry)
 
-	# Draw squadron groups first
-	for sq_id in squadroned:
+	# Draw squadron groups first (sorted by ID for deterministic order)
+	var sq_ids: Array = squadroned.keys()
+	sq_ids.sort()
+	for sq_id in sq_ids:
 		var sq_entries: Array = squadroned[sq_id]
 		var sq_name ="ESCADRON"
 		if _fleet:

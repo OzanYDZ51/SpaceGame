@@ -407,6 +407,15 @@ func _demote_lod0_to_lod1(id: StringName, data) -> void:
 			# Dim engine lights instead of hiding — fleets in combat stay visible
 			light.omni_range *= 0.5
 			light.light_energy *= 0.6
+		for fill: OmniLight3D in model._engine_fill_lights:
+			fill.omni_range *= 0.5
+			fill.light_energy *= 0.6
+		if model._cockpit_light:
+			model._cockpit_light.light_energy *= 0.5
+		if model._nav_lights:
+			model._nav_lights._energy_scale = 0.7
+			for nl: OmniLight3D in model._nav_lights.get_lights():
+				nl.omni_range *= 0.7
 
 	if node is RigidBody3D:
 		var rb =node as RigidBody3D
@@ -499,6 +508,15 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 			# Dim engine lights at LOD1 — visible but reduced cost
 			light.omni_range *= 0.5
 			light.light_energy *= 0.6
+		for fill: OmniLight3D in model._engine_fill_lights:
+			fill.omni_range *= 0.5
+			fill.light_energy *= 0.6
+		if model._cockpit_light:
+			model._cockpit_light.light_energy *= 0.5
+		if model._nav_lights:
+			model._nav_lights._energy_scale = 0.7
+			for nl: OmniLight3D in model._nav_lights.get_lights():
+				nl.omni_range *= 0.7
 
 	var brain = node.get_node_or_null("AIBrain")
 	if brain:
@@ -546,6 +564,15 @@ func _promote_to_lod0(id: StringName, data) -> void:
 			# Restore full range/energy from LOD1 dimming (×0.5/×0.6)
 			light.omni_range /= 0.5
 			light.light_energy /= 0.6
+		for fill: OmniLight3D in model._engine_fill_lights:
+			fill.omni_range /= 0.5
+			fill.light_energy /= 0.6
+		if model._cockpit_light:
+			model._cockpit_light.light_energy /= 0.5
+		if model._nav_lights:
+			model._nav_lights._energy_scale = 1.0
+			for nl: OmniLight3D in model._nav_lights.get_lights():
+				nl.omni_range /= 0.7
 
 	if node is RigidBody3D:
 		var rb =node as RigidBody3D

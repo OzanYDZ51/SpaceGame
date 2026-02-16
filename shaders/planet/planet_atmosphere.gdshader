@@ -22,7 +22,6 @@ uniform vec3 sun_direction = vec3(0.0, 0.3, -1.0);
 const float MIE_G = 0.76;
 
 varying vec3 world_pos;
-varying vec3 world_normal;
 
 float mie_phase(float cos_theta) {
 	float g2 = MIE_G * MIE_G;
@@ -33,7 +32,6 @@ float mie_phase(float cos_theta) {
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {

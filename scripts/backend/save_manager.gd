@@ -117,6 +117,10 @@ func apply_state(state: Dictionary) -> void:
 			GameManager._squadron_mgr,
 		)
 
+	# Gameplay integrator state (factions, missions, economy, POIs)
+	if GameManager._gameplay_integrator:
+		GameManager._gameplay_integrator.apply_save_state(state)
+
 	# Ship change (must happen after fleet is restored by PlayerData)
 	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
 	var ship =GameManager.player_ship
@@ -138,12 +142,15 @@ func apply_state(state: Dictionary) -> void:
 func _collect_state() -> Dictionary:
 	if GameManager._fleet_deployment_mgr:
 		GameManager._fleet_deployment_mgr.force_sync_positions()
+	var state: Dictionary = {}
 	if GameManager.player_data:
-		return GameManager.player_data.collect_save_state(
+		state = GameManager.player_data.collect_save_state(
 			GameManager.player_ship,
 			GameManager._system_transition,
 		)
-	return {}
+	if GameManager._gameplay_integrator:
+		GameManager._gameplay_integrator.collect_save_state(state)
+	return state
 
 
 # --- Triggers ---

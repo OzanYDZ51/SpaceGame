@@ -61,6 +61,9 @@ func setup(pd: PlanetData, index: int, pos_x: float, pos_y: float, pos_z: float,
 	# Terrain material — use splatmap with biome data
 	_terrain_material = TerrainMaterialFactory.create_biome_splatmap(pd, planet_radius, terrain_seed)
 
+	# Cache atmosphere config once (used by atmosphere, clouds, and external queries)
+	_cached_atmo_config = AtmosphereConfig.from_planet_data(pd)
+
 	# 6 quadtree faces
 	_faces.resize(6)
 	for f in 6:
@@ -212,21 +215,21 @@ func _update_quadtrees(cam_pos: Vector3) -> void:
 # Subsystem creation
 # =========================================================================
 
-func _create_atmosphere(pd: PlanetData) -> void:
-	var atmo_cfg := AtmosphereConfig.from_planet_data(pd)
-	if atmo_cfg.density < 0.01:
+func _create_atmosphere(_pd: PlanetData) -> void:
+	if _cached_atmo_config == null or _cached_atmo_config.density < 0.01:
 		return
 	_atmo_renderer = AtmosphereRenderer.new()
-	_atmo_renderer.setup(planet_radius, atmo_cfg)
+	_atmo_renderer.setup(planet_radius, _cached_atmo_config)
 	add_child(_atmo_renderer)
 
 
 func _create_clouds(pd: PlanetData) -> void:
-	var atmo_cfg := AtmosphereConfig.from_planet_data(pd)
 	if pd.type == PlanetData.PlanetType.GAS_GIANT:
 		return  # Gas giants have no distinct cloud layer
+	if _cached_atmo_config == null:
+		return
 	_cloud_layer = CloudLayer.new()
-	_cloud_layer.setup(planet_radius, atmo_cfg)
+	_cloud_layer.setup(planet_radius, _cached_atmo_config)
 	add_child(_cloud_layer)
 
 
@@ -286,11 +289,17 @@ func get_center_direction(world_pos: Vector3) -> Vector3:
 	return (global_position - world_pos).normalized()
 
 
-## Get atmosphere config for this planet (cached — no allocation per call).
+## Get atmosphere config for this planet (created once in setup()).
 func get_atmosphere_config() -> AtmosphereConfig:
-	if _cached_atmo_config == null and planet_data:
-		_cached_atmo_config = AtmosphereConfig.from_planet_data(planet_data)
 	return _cached_atmo_config
+
+
+## Get total terrain chunk count across all 6 faces.
+func get_total_chunk_count() -> int:
+	var total: int = 0
+	for face in _faces:
+		total += face.get_chunk_count()
+	return total
 
 
 ## Free all resources.

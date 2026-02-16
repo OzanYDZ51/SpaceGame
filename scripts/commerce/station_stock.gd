@@ -23,6 +23,7 @@ static func get_available_ships(station_type: int) -> Array[StringName]:
 		var data := ShipRegistry.get_ship_data(sid)
 		if data and data.sold_at_station_types.has(st_name):
 			result.append(sid)
+	result.sort_custom(func(a, b): return ShipRegistry.get_ship_data(a).price < ShipRegistry.get_ship_data(b).price)
 	return result
 
 
@@ -35,6 +36,7 @@ static func get_available_weapons(station_type: int) -> Array[StringName]:
 		var w := WeaponRegistry.get_weapon(wn)
 		if w and w.sold_at_station_types.has(st_name):
 			result.append(wn)
+	result.sort_custom(func(a, b): return WeaponRegistry.get_weapon(a).price < WeaponRegistry.get_weapon(b).price)
 	return result
 
 
@@ -47,6 +49,7 @@ static func get_available_shields(station_type: int) -> Array[StringName]:
 		var s := ShieldRegistry.get_shield(sn)
 		if s and s.sold_at_station_types.has(st_name):
 			result.append(sn)
+	result.sort_custom(func(a, b): return ShieldRegistry.get_shield(a).price < ShieldRegistry.get_shield(b).price)
 	return result
 
 
@@ -59,6 +62,7 @@ static func get_available_engines(station_type: int) -> Array[StringName]:
 		var e := EngineRegistry.get_engine(en)
 		if e and e.sold_at_station_types.has(st_name):
 			result.append(en)
+	result.sort_custom(func(a, b): return EngineRegistry.get_engine(a).price < EngineRegistry.get_engine(b).price)
 	return result
 
 
@@ -71,4 +75,5 @@ static func get_available_modules(station_type: int) -> Array[StringName]:
 		var m := ModuleRegistry.get_module(mn)
 		if m and m.sold_at_station_types.has(st_name):
 			result.append(mn)
+	result.sort_custom(func(a, b): return ModuleRegistry.get_module(a).price < ModuleRegistry.get_module(b).price)
 	return result

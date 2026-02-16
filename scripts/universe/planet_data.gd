@@ -68,17 +68,6 @@ func get_render_radius() -> float:
 			return clampf(log(radius / 1000.0) * 6500.0, 25_000.0, 80_000.0)
 
 
-## Visual scale multiplier — how much bigger the planet appears from space
-## compared to its actual terrain radius. Makes planets look impressive.
-func get_visual_scale() -> float:
-	match type:
-		PlanetType.GAS_GIANT: return 30.0
-		PlanetType.OCEAN: return 15.0
-		PlanetType.ICE: return 12.0
-		PlanetType.LAVA: return 10.0
-		_: return 10.0  # ROCKY
-
-
 ## Get terrain amplitude (fraction of render_radius). Auto from type if not set.
 func get_terrain_amplitude() -> float:
 	if terrain_amplitude > 0.0:

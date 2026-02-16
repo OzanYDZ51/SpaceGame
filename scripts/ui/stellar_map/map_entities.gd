@@ -30,6 +30,7 @@ var route_dest_ux: float = 0.0
 var route_dest_uz: float = 0.0
 var route_target_entity_id: String = ""  # If set, route tracks this entity's position
 var route_is_follow: bool = false  # True = follow (cyan), false + target = attack (red)
+var route_virtual_positions: Dictionary = {}  # virtual_id -> [ux, uz] for MP client ships
 
 # Waypoint flash (universe coords, set by StellarMap)
 var waypoint_ux: float = 0.0
@@ -937,14 +938,21 @@ func _draw_route_line(entities: Dictionary) -> void:
 	var col =Color(base_col.r, base_col.g, base_col.b, 0.5)
 	var last_dest_sp =camera.universe_to_screen(default_dest_ux, default_dest_uz)
 	for ship_id in route_ship_ids:
+		var from_sp: Vector2
 		var ship_ent: Dictionary = {}
-		if entities.has(ship_id):
-			ship_ent = entities[ship_id]
+		# Check virtual positions first (MP client fallback for ships without local entity)
+		if route_virtual_positions.has(ship_id):
+			var vpos: Array = route_virtual_positions[ship_id]
+			from_sp = camera.universe_to_screen(vpos[0], vpos[1])
+			# Use empty ship_ent — no mining state overrides for virtual ships
 		else:
-			ship_ent = EntityRegistry.get_entity(ship_id)
-		if ship_ent.is_empty():
-			continue
-		var from_sp =camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
+			if entities.has(ship_id):
+				ship_ent = entities[ship_id]
+			else:
+				ship_ent = EntityRegistry.get_entity(ship_id)
+			if ship_ent.is_empty():
+				continue
+			from_sp = camera.universe_to_screen(ship_ent["pos_x"], ship_ent["pos_z"])
 		# Per-ship destination override (mining autonomous travel)
 		var ship_dux =default_dest_ux
 		var ship_duz =default_dest_uz

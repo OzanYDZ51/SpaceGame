@@ -58,27 +58,6 @@ static func create_basic(pd: PlanetData, planet_radius: float) -> ShaderMaterial
 	return mat
 
 
-## Create ocean surface material.
-static func create_ocean(pd: PlanetData) -> ShaderMaterial:
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://shaders/planet/planet_ocean.gdshader")
-
-	var type_key: String = pd.get_type_string()
-	var palette: Dictionary = PALETTES.get(type_key, PALETTES["ocean"])
-
-	mat.set_shader_parameter("ocean_color_shallow", Color(palette["ocean"]).lightened(0.3))
-	mat.set_shader_parameter("ocean_color_deep", palette["ocean"])
-
-	return mat
-
-
-## Create lava surface material.
-static func create_lava(_pd: PlanetData) -> ShaderMaterial:
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://shaders/planet/planet_lava.gdshader")
-	return mat
-
-
 # =========================================================================
 # Internal
 # =========================================================================

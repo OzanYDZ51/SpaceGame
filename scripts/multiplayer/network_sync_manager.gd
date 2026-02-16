@@ -78,6 +78,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
 	NetworkManager.remote_mining_beam_received.connect(_on_remote_mining_beam)
 	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
+	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
 
 	# Auto-connect
@@ -641,6 +642,13 @@ func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
 			ast.node_ref._on_depleted()
 
 
+func _on_asteroid_health_batch(batch: Array) -> void:
+	var field_mgr = GameManager._asteroid_field_mgr
+	if field_mgr == null:
+		return
+	field_mgr.apply_server_health_batch(batch)
+
+
 # =============================================================================
 # SYSTEM TRANSITION HELPERS
 # =============================================================================
@@ -664,6 +672,8 @@ func on_system_unloading(_system_id: int) -> void:
 ## Sends all NPCs to a peer after a short delay so the client has time to finish
 ## its system jump before receiving NPC data. Uses a SceneTreeTimer (1 second).
 func _deferred_send_npcs_to_peer(peer_id: int, _fallback_system_id: int) -> void:
+	# Capture expected system before the delay
+	var expected_sys: int = NetworkManager.peers[peer_id].system_id if NetworkManager.peers.has(peer_id) else -1
 	await get_tree().create_timer(1.0).timeout
 	if not is_inside_tree():
 		return
@@ -671,7 +681,11 @@ func _deferred_send_npcs_to_peer(peer_id: int, _fallback_system_id: int) -> void
 		return  # Peer disconnected during the delay
 	# Use the peer's actual system (may differ from server's current system)
 	var peer_sys: int = NetworkManager.peers[peer_id].system_id
+	if peer_sys != expected_sys:
+		return  # Peer changed system during delay — abort to avoid sending wrong NPCs
 	if npc_authority:
 		# Ensure NPCs exist for the peer's system (spawns remote NPCs if needed)
 		npc_authority.ensure_system_npcs(peer_sys)
 		npc_authority.send_all_npcs_to_peer(peer_id, peer_sys)
+		# Send current asteroid health state (cooperative mining sync)
+		npc_authority.send_asteroid_health_to_peer(peer_id, peer_sys)

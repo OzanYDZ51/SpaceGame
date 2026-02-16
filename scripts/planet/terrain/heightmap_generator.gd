@@ -78,13 +78,3 @@ func get_heights(points: PackedVector3Array) -> PackedFloat32Array:
 	for i in points.size():
 		heights[i] = get_height(points[i])
 	return heights
-
-
-func _type_to_key(pt: PlanetData.PlanetType) -> String:
-	match pt:
-		PlanetData.PlanetType.ROCKY: return "rocky"
-		PlanetData.PlanetType.LAVA: return "lava"
-		PlanetData.PlanetType.OCEAN: return "ocean"
-		PlanetData.PlanetType.ICE: return "ice"
-		PlanetData.PlanetType.GAS_GIANT: return "gas_giant"
-	return "rocky"

@@ -17,12 +17,23 @@ const MAX_SYNC_DISTANCE: float = 15000.0  # 5-15km = slow sync
 const HIT_VALIDATION_RANGE: float = 5000.0
 const HIT_DAMAGE_TOLERANCE: float = 0.5  # ±50% damage variance allowed
 
+# Asteroid health sync (cooperative mining)
+const ASTEROID_HEALTH_BATCH_INTERVAL: float = 0.5  # 2Hz broadcast
+const MINING_MAX_DPS: float = 30.0  # Max reasonable mining DPS (tolerance ×1.5 applied)
+const ASTEROID_RESPAWN_TIME_CLEANUP: float = 300.0  # 5min stale entry cleanup
+
 var _active: bool = false
 var _batch_timer: float = 0.0
 var _slow_batch_timer: float = 0.0
 var _fleet_sync_timer: float = 0.0
 const FLEET_SYNC_INTERVAL: float = 30.0
 var _backend_client: ServerBackendClient = null
+
+# Asteroid health tracking (server-side, cooperative mining)
+var _asteroid_health_timer: float = 0.0
+var _asteroid_health: Dictionary = {}    # system_id -> { asteroid_id -> { hp, hm, t } }
+var _peer_mining_dps: Dictionary = {}    # peer_id -> { asteroid_id -> { dmg, t0 } }
+var _asteroid_health_cleanup_timer: float = 0.0
 
 # npc_id -> { system_id, ship_id, faction, node_ref (if LOD0/1) }
 var _npcs: Dictionary = {}
@@ -34,6 +45,12 @@ var _npcs_by_system: Dictionary = {}
 var _remote_npcs: Dictionary = {}
 # Peer system tracking: peer_id -> last known system_id (detect system changes).
 var _peer_systems: Dictionary = {}
+
+# Encounter respawn tracking: "system_id:encounter_key" -> respawn_unix_timestamp
+var _destroyed_encounter_npcs: Dictionary = {}
+const ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 minutes
+var _respawn_cleanup_timer: float = 60.0
+var _dead_remote_cleanup_timer: float = 10.0
 
 # Fleet NPC tracking: npc_id -> { owner_uuid, owner_pid, fleet_index }
 var _fleet_npcs: Dictionary = {}
@@ -93,10 +110,28 @@ func _physics_process(delta: float) -> void:
 		_broadcast_npc_states(do_full, do_slow)
 		_broadcast_remote_npc_states(do_slow)
 
+	# Asteroid health batch broadcast (2Hz)
+	_asteroid_health_timer -= delta
+	if _asteroid_health_timer <= 0.0:
+		_asteroid_health_timer = ASTEROID_HEALTH_BATCH_INTERVAL
+		_broadcast_asteroid_health_batch()
+
+	# Periodic stale asteroid health cleanup (every 60s)
+	_asteroid_health_cleanup_timer -= delta
+	if _asteroid_health_cleanup_timer <= 0.0:
+		_asteroid_health_cleanup_timer = 60.0
+		_cleanup_stale_asteroid_health()
+
 	# Periodic fleet sync to backend (30s)
 	if _fleet_sync_timer <= 0.0:
 		_fleet_sync_timer = FLEET_SYNC_INTERVAL
 		_sync_fleet_to_backend()
+
+	# Periodic encounter respawn cleanup (every 60s)
+	_respawn_cleanup_timer -= delta
+	if _respawn_cleanup_timer <= 0.0:
+		_respawn_cleanup_timer = 60.0
+		_cleanup_expired_respawns()
 
 
 # =========================================================================
@@ -136,6 +171,7 @@ func clear_system_npcs(system_id: int) -> void:
 			_npcs.erase(npc_id)
 		_npcs_by_system.erase(system_id)
 	_remote_npcs.erase(system_id)
+	clear_system_asteroid_health(system_id)
 
 
 ## Connect NPC weapon_fired signal to relay fire events to remote clients.
@@ -368,11 +404,13 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		return
 
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-	if lod_mgr == null:
-		return
+	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
-	if lod_data == null or lod_data.is_dead:
+	# If NPC is not in the LOD manager, it's a remote system NPC
+	if lod_data == null:
+		validate_remote_npc_hit(sender_pid, target_npc, claimed_damage, hit_dir)
+		return
+	if lod_data.is_dead:
 		return
 
 	# 2. Distance check: peer must be within range
@@ -401,12 +439,13 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	var shield_absorbed: bool = false
 
 	# If the NPC has a node (LOD0/1), apply via HealthSystem
-	# For LOD0/1: apply_damage triggers ship_destroyed → ship_factory lambda handles
-	# broadcast + unregister (checks _npcs.has to avoid double broadcast).
-	# We call _on_npc_killed to broadcast with correct killer_pid BEFORE the lambda runs.
+	# For LOD0/1: apply_damage triggers ship_destroyed synchronously → ship_factory lambda
+	# would broadcast_npc_death with killer_pid=0. We set _player_killing flag so the lambda
+	# skips, letting _on_npc_killed handle death with the correct killer_pid.
 	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
 		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
 		if health:
+			_npcs[npc_id]["_player_killing"] = true
 			var hit_result =health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
 			shield_absorbed = hit_result.get("shield_absorbed", false)
 			lod_data.hull_ratio = health.get_hull_ratio()
@@ -414,6 +453,8 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			if health.is_dead():
 				lod_data.is_dead = true
 				_on_npc_killed(npc_id, sender_pid, weapon_name)
+			elif _npcs.has(npc_id):
+				_npcs[npc_id].erase("_player_killing")
 	else:
 		# Data-only NPC (LOD2/3) — apply damage to ratios
 		shield_absorbed = lod_data.shield_ratio > 0.0
@@ -436,13 +477,18 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 	var info: Dictionary = _npcs[npc_id]
 	var system_id: int = info.get("system_id", -1)
 
-	# Get death position
+	# Get death position (from LOD data or remote NPC dict)
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var death_pos: Array = [0.0, 0.0, 0.0]
 	if lod_mgr:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			death_pos = FloatingOrigin.to_universe_pos(lod_data.position)
+	if death_pos == [0.0, 0.0, 0.0] and _remote_npcs.has(system_id):
+		for rnpc in _remote_npcs[system_id]:
+			if rnpc.get("nid", "") == String(npc_id):
+				death_pos = [rnpc.get("px", 0.0), rnpc.get("py", 0.0), rnpc.get("pz", 0.0)]
+				break
 
 	# Roll loot from ship class
 	var ship_data =ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
@@ -452,6 +498,11 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 
 	# Report kill to Discord via EventReporter
 	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
+
+	# Record encounter NPC death for respawn tracking
+	var encounter_key: String = info.get("encounter_key", "")
+	if encounter_key != "":
+		_destroyed_encounter_npcs[encounter_key] = Time.get_unix_time_from_system() + ENCOUNTER_RESPAWN_DELAY
 
 	# Broadcast death to all peers in the system
 	broadcast_npc_death(npc_id, killer_pid, death_pos, loot, system_id)
@@ -589,6 +640,8 @@ func on_player_disconnected(uuid: String, old_pid: int) -> void:
 		for npc_id in _fleet_npcs_by_owner[uuid]:
 			if _fleet_npcs.has(npc_id):
 				_fleet_npcs[npc_id]["owner_pid"] = -1
+	# Clean up mining DPS tracking for this peer
+	clean_peer_mining_tracking(old_pid)
 	print("NpcAuthority: Player %s (pid=%d) disconnected — fleet NPCs persist" % [uuid, old_pid])
 
 
@@ -1044,12 +1097,24 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 	var configs =EncounterConfig.get_danger_config(danger_level)
 
 	var npcs: Array = []
+	var cfg_idx: int = 0
+	var now: float = Time.get_unix_time_from_system()
 	for config in configs:
 		var count: int = config["count"]
 		var ship_id: StringName = config["ship"]
 		var faction: StringName = config["fac"]
 		var radius: float = config["radius"]
 		for i in count:
+			# Deterministic encounter key for respawn tracking
+			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
+
+			# Skip NPCs still on respawn cooldown
+			if _destroyed_encounter_npcs.has(encounter_key):
+				if now < _destroyed_encounter_npcs[encounter_key]:
+					continue
+				else:
+					_destroyed_encounter_npcs.erase(encounter_key)
+
 			var angle: float = (float(i) / float(count)) * TAU
 			var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
 			var pos =base_pos + offset
@@ -1064,24 +1129,172 @@ func _spawn_remote_system_npcs(system_id: int) -> void:
 				"vx": vel.x, "vy": vel.y, "vz": vel.z,
 				"rx": 0.0, "ry": randf() * 360.0, "rz": 0.0,
 				"hull": 1.0, "shd": 1.0,
-				"thr": 0.5, "ai": 0, "tid": "",
+				"thr": 0.5, "ai": RemoteNpcAI.State.PATROL, "tid": "",
 				"t": Time.get_ticks_msec() / 1000.0,
 			})
 			register_npc(npc_id, system_id, ship_id, faction)
+			# Store encounter key on the NPC registration for death tracking
+			_npcs[npc_id]["encounter_key"] = encounter_key
+		cfg_idx += 1
 
 	_remote_npcs[system_id] = npcs
 	print("NpcAuthority: Spawned %d remote NPCs for system %d" % [npcs.size(), system_id])
 
 
-## Simple velocity-based position update for remote system NPCs.
+## AI-driven update for remote system NPCs.
+## NPCs in systems with players get full AI; empty systems get simple drift.
 func _update_remote_npcs(delta: float) -> void:
+	# Build peers-by-system lookup once
+	var peers_by_sys: Dictionary = {}
+	for pid in NetworkManager.peers:
+		var pstate = NetworkManager.peers[pid]
+		if pstate.is_dead:
+			continue
+		if not peers_by_sys.has(pstate.system_id):
+			peers_by_sys[pstate.system_id] = {}
+		peers_by_sys[pstate.system_id][pid] = pstate
+
 	for system_id in _remote_npcs:
 		var npcs: Array = _remote_npcs[system_id]
-		for npc in npcs:
-			npc["px"] += npc.get("vx", 0.0) * delta
-			npc["py"] += npc.get("vy", 0.0) * delta
-			npc["pz"] += npc.get("vz", 0.0) * delta
-			npc["t"] = Time.get_ticks_msec() / 1000.0
+		var peers = peers_by_sys.get(system_id, {})
+
+		if peers.is_empty():
+			# No players — simple drift only
+			for npc in npcs:
+				if npc.get("is_dead", false):
+					continue
+				npc["px"] += npc.get("vx", 0.0) * delta
+				npc["py"] += npc.get("vy", 0.0) * delta
+				npc["pz"] += npc.get("vz", 0.0) * delta
+				npc["t"] = Time.get_ticks_msec() / 1000.0
+		else:
+			# Players present — full AI simulation
+			for npc in npcs:
+				if npc.get("is_dead", false):
+					continue
+				RemoteNpcAI.tick(npc, peers, npcs, delta)
+				# Handle fire events
+				var fire = npc.get("_pending_fire")
+				if fire:
+					_relay_remote_npc_fire(fire, system_id, peers)
+					npc.erase("_pending_fire")
+
+	# Periodic cleanup of dead remote NPCs to prevent memory leak
+	_dead_remote_cleanup_timer -= delta
+	if _dead_remote_cleanup_timer <= 0.0:
+		_dead_remote_cleanup_timer = 10.0
+		for sys_id in _remote_npcs:
+			_remote_npcs[sys_id] = _remote_npcs[sys_id].filter(
+				func(n): return not n.get("is_dead", false))
+
+
+## Relay a remote NPC fire event: send visual fire to peers + apply damage to target.
+func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary) -> void:
+	var npc_id: String = fire.get("npc_id", "")
+	var target_pid: int = fire.get("target_pid", -1)
+	var fire_pos: Array = fire.get("pos", [0.0, 0.0, 0.0])
+	var fire_dir: Array = fire.get("dir", [0.0, 0.0, -1.0])
+	var damage: float = fire.get("damage", 10.0)
+	var dist: float = fire.get("dist", 999.0)
+
+	# Cap damage based on ship's lod_combat_dps
+	var npc_ship_id: String = ""
+	for rnpc in _remote_npcs.get(system_id, []):
+		if rnpc.get("nid", "") == npc_id:
+			npc_ship_id = rnpc.get("sid", "")
+			break
+	if npc_ship_id != "":
+		var sd = ShipRegistry.get_ship_data(StringName(npc_ship_id))
+		if sd:
+			damage = minf(damage, sd.lod_combat_dps)
+
+	# Send fire visual to all peers in this system
+	for pid in peers:
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.npc_fire_received.emit(npc_id, "remote_npc", fire_pos, fire_dir)
+		else:
+			NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, "remote_npc", fire_pos, fire_dir)
+
+	# Apply damage to target player (server-authoritative)
+	if target_pid < 0 or not NetworkManager.peers.has(target_pid):
+		return
+	var target_state = NetworkManager.peers[target_pid]
+	if target_state.is_docked or target_state.is_dead:
+		return
+
+	# Hit probability based on distance (100% at close range, 30% at max engagement)
+	var hit_chance: float = clampf(1.0 - (dist / RemoteNpcAI.ENGAGEMENT_RANGE) * 0.7, 0.3, 1.0)
+	if randf() > hit_chance:
+		return
+
+	# Calculate hit direction relative to target
+	var hit_dir: Array = [-fire_dir[0], -fire_dir[1], -fire_dir[2]]
+
+	# Send damage to target
+	if target_pid == 1 and not NetworkManager.is_dedicated_server:
+		NetworkManager.player_damage_received.emit(-1, "remote_npc", damage, hit_dir)
+	else:
+		NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, "remote_npc", damage, hit_dir)
+
+	# Send hit effect to other peers
+	var target_label: String = "player_%d" % target_pid
+	for pid in peers:
+		if pid == target_pid:
+			continue
+		if pid == 1 and not NetworkManager.is_dedicated_server:
+			NetworkManager.hit_effect_received.emit(target_label, hit_dir, false)
+		else:
+			NetworkManager._rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
+
+
+## Handle remote NPC getting hit by a player (validates and applies damage to dict).
+func validate_remote_npc_hit(sender_pid: int, target_npc_id: String, damage: float, hit_dir: Array) -> void:
+	# Find the NPC in remote systems
+	var npc_id := StringName(target_npc_id)
+	if not _npcs.has(npc_id):
+		return
+	var info: Dictionary = _npcs[npc_id]
+	var system_id: int = info.get("system_id", -1)
+	if not _remote_npcs.has(system_id):
+		return
+
+	var npcs: Array = _remote_npcs[system_id]
+	for npc in npcs:
+		if npc.get("nid", "") != target_npc_id:
+			continue
+		if npc.get("is_dead", false):
+			return
+
+		# Apply damage
+		var shield_absorbed: bool = npc.get("shd", 0.0) > 0.0
+		if npc.get("shd", 0.0) > 0.0:
+			npc["shd"] = maxf(npc.get("shd", 1.0) - damage * 0.008, 0.0)
+		else:
+			npc["hull"] = maxf(npc.get("hull", 1.0) - damage * 0.012, 0.0)
+
+		if npc.get("hull", 0.0) <= 0.0:
+			npc["is_dead"] = true
+			_on_npc_killed(npc_id, sender_pid)
+
+		# Broadcast hit effect
+		broadcast_hit_effect(target_npc_id, sender_pid, hit_dir, shield_absorbed, system_id)
+
+		# Trigger evasion on hit
+		if npc.get("ai", 0) == RemoteNpcAI.State.ATTACK and randf() < 0.3:
+			npc["ai"] = RemoteNpcAI.State.EVADE
+			npc["_evade_timer"] = RemoteNpcAI.EVADE_DURATION
+		return
+
+
+## Remove expired entries from the encounter respawn tracker.
+func _cleanup_expired_respawns() -> void:
+	var now: float = Time.get_unix_time_from_system()
+	var expired: Array = []
+	for key in _destroyed_encounter_npcs:
+		if now >= _destroyed_encounter_npcs[key]:
+			expired.append(key)
+	for key in expired:
+		_destroyed_encounter_npcs.erase(key)
 
 
 ## Broadcast state of NPCs in remote systems (not managed by LOD manager).
@@ -1104,11 +1317,16 @@ func _broadcast_remote_npc_states(slow_sync: bool) -> void:
 		if npcs.is_empty():
 			continue
 
+		# Filter out dead NPCs from broadcast
+		var alive_npcs: Array = npcs.filter(func(n): return not n.get("is_dead", false))
+		if alive_npcs.is_empty():
+			continue
+
 		for pid in peer_ids:
 			if pid == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.npc_batch_received.emit(npcs)
+				NetworkManager.npc_batch_received.emit(alive_npcs)
 			else:
-				NetworkManager._rpc_npc_batch.rpc_id(pid, npcs)
+				NetworkManager._rpc_npc_batch.rpc_id(pid, alive_npcs)
 
 
 ## Detect when peers change systems and spawn NPCs for the new system.
@@ -1155,6 +1373,182 @@ func broadcast_asteroid_depleted(asteroid_id: String, system_id: int, sender_pid
 			NetworkManager.asteroid_depleted_received.emit(asteroid_id)
 		else:
 			NetworkManager._rpc_receive_asteroid_depleted.rpc_id(pid, asteroid_id)
+
+
+# =========================================================================
+# ASTEROID HEALTH TRACKING (cooperative mining sync)
+# =========================================================================
+
+## Server receives batched mining damage claims from a client.
+func handle_mining_damage_claims(sender_pid: int, claims: Array) -> void:
+	if not _active:
+		return
+	var sender_state = NetworkManager.peers.get(sender_pid)
+	if sender_state == null:
+		return
+	# Reject if player is docked or dead
+	if sender_state.is_docked or sender_state.is_dead:
+		return
+
+	var system_id: int = sender_state.system_id
+	var now: float = Time.get_ticks_msec() / 1000.0
+
+	for claim in claims:
+		if not claim is Dictionary:
+			continue
+		var asteroid_id: String = claim.get("aid", "")
+		var damage: float = claim.get("dmg", 0.0)
+		var health_max: float = claim.get("hm", 100.0)
+
+		if asteroid_id == "" or damage <= 0.0:
+			continue
+
+		# DPS validation: track accumulated damage per peer per asteroid (2s window)
+		if not _peer_mining_dps.has(sender_pid):
+			_peer_mining_dps[sender_pid] = {}
+		var peer_tracking: Dictionary = _peer_mining_dps[sender_pid]
+		if not peer_tracking.has(asteroid_id):
+			peer_tracking[asteroid_id] = { "dmg": 0.0, "t0": now }
+		var track: Dictionary = peer_tracking[asteroid_id]
+
+		var elapsed: float = now - track["t0"]
+		if elapsed > 2.0:
+			# Reset window
+			track["dmg"] = damage
+			track["t0"] = now
+		else:
+			track["dmg"] += damage
+
+		# Check DPS: reject if exceeds MINING_MAX_DPS * 1.5
+		var window_dps: float = track["dmg"] / maxf(elapsed, 0.1)
+		if window_dps > MINING_MAX_DPS * 1.5:
+			continue
+
+		_apply_asteroid_damage(system_id, asteroid_id, damage, now, health_max)
+
+
+## Apply validated mining damage to server-side asteroid health tracker.
+func _apply_asteroid_damage(system_id: int, asteroid_id: String, damage: float, timestamp: float, health_max_hint: float) -> void:
+	if not _asteroid_health.has(system_id):
+		_asteroid_health[system_id] = {}
+	var sys_health: Dictionary = _asteroid_health[system_id]
+
+	if not sys_health.has(asteroid_id):
+		# Lazy init: first claim creates the entry, clamp health_max [50, 800]
+		var hm: float = clampf(health_max_hint, 50.0, 800.0)
+		sys_health[asteroid_id] = { "hp": hm, "hm": hm, "t": timestamp }
+
+	var entry: Dictionary = sys_health[asteroid_id]
+	entry["hp"] = maxf(entry["hp"] - damage, 0.0)
+	entry["t"] = timestamp
+
+	# Depletion: broadcast reliable + mark entry
+	if entry["hp"] <= 0.0:
+		broadcast_asteroid_depleted(asteroid_id, system_id, -1)
+
+
+## Broadcast asteroid health ratios to all peers (2Hz, per-system).
+func _broadcast_asteroid_health_batch() -> void:
+	if _asteroid_health.is_empty():
+		return
+
+	# Group peers by system
+	var peers_by_sys: Dictionary = {}
+	for pid in NetworkManager.peers:
+		var pstate = NetworkManager.peers[pid]
+		if not peers_by_sys.has(pstate.system_id):
+			peers_by_sys[pstate.system_id] = []
+		peers_by_sys[pstate.system_id].append(pid)
+
+	for system_id in _asteroid_health:
+		if not peers_by_sys.has(system_id):
+			continue
+		var sys_health: Dictionary = _asteroid_health[system_id]
+		if sys_health.is_empty():
+			continue
+
+		# Build batch of damaged asteroids (hp_ratio < 1.0)
+		var batch: Array = []
+		for asteroid_id in sys_health:
+			var entry: Dictionary = sys_health[asteroid_id]
+			var hm: float = entry["hm"]
+			if hm <= 0.0:
+				continue
+			var ratio: float = entry["hp"] / hm
+			if ratio >= 1.0:
+				continue
+			batch.append({ "aid": asteroid_id, "hp": ratio })
+
+		if batch.is_empty():
+			continue
+
+		var peer_ids: Array = peers_by_sys[system_id]
+		for pid in peer_ids:
+			if pid == 1 and not NetworkManager.is_dedicated_server:
+				NetworkManager.asteroid_health_batch_received.emit(batch)
+			else:
+				NetworkManager._rpc_asteroid_health_batch.rpc_id(pid, batch)
+
+
+## Send current asteroid health state to a newly joined peer.
+func send_asteroid_health_to_peer(peer_id: int, system_id: int) -> void:
+	if not _asteroid_health.has(system_id):
+		return
+	var sys_health: Dictionary = _asteroid_health[system_id]
+	if sys_health.is_empty():
+		return
+
+	var batch: Array = []
+	for asteroid_id in sys_health:
+		var entry: Dictionary = sys_health[asteroid_id]
+		var hm: float = entry["hm"]
+		if hm <= 0.0:
+			continue
+		var ratio: float = entry["hp"] / hm
+		if ratio >= 1.0:
+			continue
+		batch.append({ "aid": asteroid_id, "hp": ratio })
+
+	if batch.is_empty():
+		return
+
+	if peer_id == 1 and not NetworkManager.is_dedicated_server:
+		NetworkManager.asteroid_health_batch_received.emit(batch)
+	else:
+		NetworkManager._rpc_asteroid_health_batch.rpc_id(peer_id, batch)
+
+
+## Clear asteroid health data when a system unloads.
+func clear_system_asteroid_health(system_id: int) -> void:
+	_asteroid_health.erase(system_id)
+
+
+## Clean up DPS tracking when a peer disconnects.
+func clean_peer_mining_tracking(peer_id: int) -> void:
+	_peer_mining_dps.erase(peer_id)
+
+
+## AI fleet mining damage: update server tracker (called from AIMiningBehavior on server).
+func apply_ai_mining_damage(system_id: int, asteroid_id: String, damage: float, health_max: float) -> void:
+	if not _active:
+		return
+	_apply_asteroid_damage(system_id, asteroid_id, damage, Time.get_ticks_msec() / 1000.0, health_max)
+
+
+## Remove asteroid health entries older than respawn time (5min).
+func _cleanup_stale_asteroid_health() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	for system_id in _asteroid_health.keys():
+		var sys_health: Dictionary = _asteroid_health[system_id]
+		var expired: Array = []
+		for asteroid_id in sys_health:
+			var entry: Dictionary = sys_health[asteroid_id]
+			if now - entry["t"] > ASTEROID_RESPAWN_TIME_CLEANUP:
+				expired.append(asteroid_id)
+		for asteroid_id in expired:
+			sys_health.erase(asteroid_id)
+		if sys_health.is_empty():
+			_asteroid_health.erase(system_id)
 
 
 # =========================================================================
@@ -1252,7 +1646,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 			"vx": 0.0, "vy": 0.0, "vz": 0.0,
 			"rx": 0.0, "ry": 0.0, "rz": 0.0,
 			"hull": hull, "shd": shield,
-			"thr": 0.5, "ai": 0, "tid": "",
+			"thr": 0.5, "ai": RemoteNpcAI.State.PATROL, "tid": "",
 			"t": Time.get_ticks_msec() / 1000.0,
 		})
 

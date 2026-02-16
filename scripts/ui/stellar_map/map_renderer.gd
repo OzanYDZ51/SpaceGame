@@ -286,7 +286,6 @@ func _draw_asteroid_belts() -> void:
 			px = entities[parent_id]["pos_x"]
 			pz = entities[parent_id]["pos_z"]
 
-		var _center_screen: Vector2 = camera.universe_to_screen(px, pz)
 		var radius_px: float = orbital_r * camera.zoom
 		if radius_px < 3.0:
 			continue

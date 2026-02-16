@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"interceptor_vex"
+ship_name = &"Interceptor Vex"
+ship_class = &"Interceptor"
+model_path = "res://assets/models/interceptor_vex.glb"
+model_scale = 1.5
+exhaust_scale = 1.2
+ship_scene_path = "res://scenes/ships/interceptor_vex.tscn"
+default_loadout = Array[StringName]([&"Laser Mk1", &"Laser Mk1", &"Turret Mk1"])
+hull_hp = 1500.0
+shield_hp = 800.0
+shield_regen_rate = 20.0
+shield_regen_delay = 5.0
+shield_damage_bleedthrough = 0.08
+armor_rating = 8.0
+mass = 80000.0
+accel_forward = 70.0
+accel_backward = 40.0
+accel_strafe = 30.0
+accel_vertical = 30.0
+max_speed_normal = 350.0
+max_speed_boost = 700.0
+max_speed_cruise = 700000.0
+rotation_pitch_speed = 25.0
+rotation_yaw_speed = 22.0
+rotation_roll_speed = 45.0
+max_speed_lateral = 110.0
+max_speed_vertical = 110.0
+rotation_damp_min_factor = 0.12
+energy_capacity = 140.0
+energy_regen_rate = 28.0
+boost_energy_drain = 20.0
+shield_slot_size = "M"
+engine_slot_size = "M"
+module_slots = Array[String](["S", "S", "M"])
+price = 80000
+cargo_capacity = 50
+sensor_range = 3500.0
+engagement_range = 1700.0
+disengage_range = 4500.0
+default_shield = &"Bouclier Basique Mk1"
+default_engine = &"Propulseur Standard Mk1"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Condensateur d'Energie", &"Amplificateur de Bouclier"])
+loot_credits_min = 300
+loot_credits_max = 700
+loot_mat_count_min = 2
+loot_mat_count_max = 3
+loot_weapon_part_chance = 0.1
+lod_combat_dps = 35.0
+npc_tier = 1
+sold_at_station_types = Array[StringName]([&"repair", &"military"])
+resource_cost = {
+&"iron": 80,
+&"copper": 40,
+&"titanium": 20
+}

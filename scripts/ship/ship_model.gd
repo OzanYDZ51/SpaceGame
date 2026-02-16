@@ -33,6 +33,9 @@ var external_model_instance: Node3D = null
 var vfx_engine_positions: Array[Vector3] = []
 
 var _engine_lights: Array[OmniLight3D] = []
+var _engine_fill_lights: Array[OmniLight3D] = []
+var _cockpit_light: OmniLight3D = null
+var _nav_lights: NavLights = null
 var _engine_glow_intensity: float = 0.0
 var _model_instance: Node3D = null
 var _model_pivot: Node3D = null
@@ -41,6 +44,9 @@ var _visual_aabb_cache: AABB
 var _visual_aabb_cached: bool = false
 var _weapon_meshes: Array[Node3D] = []  # Weapon model instances attached to this ship
 var _weapon_mount_root: Node3D = null  # Wrapper with root_basis for correct weapon positioning
+
+## Rim light material instance for this ship (needed for dynamic rim color updates)
+var _rim_material: ShaderMaterial = null
 
 ## Rim light shader (loaded once, shared by all instances)
 static var _rim_shader: Shader = null
@@ -54,6 +60,8 @@ func _ready() -> void:
 		_load_model()
 	_enhance_materials()
 	_add_engine_lights()
+	_add_cockpit_glow()
+	_add_nav_lights()
 
 
 func _use_external_model() -> void:
@@ -124,10 +132,14 @@ func _enhance_materials() -> void:
 
 	var rim_mat := ShaderMaterial.new()
 	rim_mat.shader = _rim_shader
+	_rim_material = rim_mat
 	rim_mat.set_shader_parameter("rim_color", rim_col)
 	rim_mat.set_shader_parameter("rim_power", 3.0)
 	rim_mat.set_shader_parameter("rim_intensity", 0.8)
-	rim_mat.set_shader_parameter("ambient_boost", 0.025)
+	rim_mat.set_shader_parameter("rim_power_soft", 1.5)
+	rim_mat.set_shader_parameter("rim_intensity_soft", 0.25)
+	rim_mat.set_shader_parameter("hemisphere_bias", 0.03)
+	rim_mat.set_shader_parameter("ambient_boost", 0.04)
 
 	for child in _get_all_descendants(_model_instance):
 		if child is MeshInstance3D:
@@ -217,21 +229,65 @@ func _add_engine_lights() -> void:
 			positions.append(Vector3(1.5 * side, 0.0, 5.0) * model_scale)
 
 	for i in positions.size():
+		# Primary engine light (sharp, close)
 		var light := OmniLight3D.new()
 		light.light_color = engine_light_color
-		light.light_energy = 2.0
-		light.omni_range = 8.0 * model_scale
+		light.light_energy = 3.0
+		light.omni_range = 15.0 * model_scale
+		light.shadow_enabled = false
 		light.position = positions[i]
 		light.name = "EngineLight_%d" % i
 		add_child(light)
 		_engine_lights.append(light)
 
+		# Fill light (large, soft) — illuminates hull broadly
+		var fill := OmniLight3D.new()
+		fill.light_color = engine_light_color.lightened(0.3)
+		fill.light_energy = 1.0
+		fill.omni_range = 25.0 * model_scale
+		fill.omni_attenuation = 1.5
+		fill.shadow_enabled = false
+		fill.position = positions[i]
+		fill.name = "EngineFill_%d" % i
+		add_child(fill)
+		_engine_fill_lights.append(fill)
+
+
+func _add_cockpit_glow() -> void:
+	var aabb := get_visual_aabb()
+	var center := aabb.get_center()
+	# Cockpit: slightly forward (-Z) and above center
+	var cockpit_pos := Vector3(
+		center.x,
+		center.y + aabb.size.y * 0.25,
+		center.z - aabb.size.z * 0.3
+	)
+	_cockpit_light = OmniLight3D.new()
+	_cockpit_light.name = "CockpitGlow"
+	_cockpit_light.light_color = Color(1.0, 0.8, 0.4)  # Warm amber
+	_cockpit_light.light_energy = 1.0
+	_cockpit_light.omni_range = 5.0 * model_scale
+	_cockpit_light.shadow_enabled = false
+	_cockpit_light.position = cockpit_pos
+	add_child(_cockpit_light)
+
+
+func _add_nav_lights() -> void:
+	var aabb := get_visual_aabb()
+	_nav_lights = NavLights.new()
+	_nav_lights.name = "NavLights"
+	_nav_lights.setup(aabb, model_scale)
+	add_child(_nav_lights)
 
 
 func update_engine_glow(thrust_amount: float) -> void:
 	_engine_glow_intensity = lerp(_engine_glow_intensity, thrust_amount, 0.1)
+	var primary_energy: float = 0.8 + _engine_glow_intensity * 5.5
+	var fill_energy: float = 0.3 + _engine_glow_intensity * 0.7
 	for light in _engine_lights:
-		light.light_energy = 0.5 + _engine_glow_intensity * 4.0
+		light.light_energy = primary_energy
+	for fill in _engine_fill_lights:
+		fill.light_energy = fill_energy
 
 
 func get_visual_aabb() -> AABB:

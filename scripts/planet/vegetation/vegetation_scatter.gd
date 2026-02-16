@@ -104,7 +104,7 @@ func _evaluate_cells() -> void:
 			if ang_dist * _planet_radius <= LOAD_RADIUS:
 				desired[Vector2i(clat, clon)] = cell_sp
 
-	# Unload distant cells (hysteresis)
+	# Unload distant cells (hysteresis) — includes null entries to prevent unbounded growth
 	var to_remove: Array[Vector2i] = []
 	for key: Vector2i in _loaded_cells:
 		if desired.has(key):
@@ -149,7 +149,7 @@ func _load_cell(key: Vector2i, cell_sp: Vector3) -> void:
 		var count: int = recipe[vtype]
 		var xforms: Array[Transform3D] = []
 		for _i in count:
-			var t := _make_instance(key, cell_sp, cell_surface, rng, vtype)
+			var t := _make_instance(key, cell_surface, rng, vtype)
 			if t != Transform3D.IDENTITY:
 				xforms.append(t)
 		if not xforms.is_empty():
@@ -167,7 +167,7 @@ func _load_cell(key: Vector2i, cell_sp: Vector3) -> void:
 	_loaded_cells[key] = cell
 
 
-func _make_instance(cell_key: Vector2i, _cell_sp: Vector3, cell_surface: Vector3,
+func _make_instance(cell_key: Vector2i, cell_surface: Vector3,
 		rng: RandomNumberGenerator, vtype: int) -> Transform3D:
 	var off_lat := rng.randf_range(-0.5, 0.5) * _angular_cell
 	var off_lon := rng.randf_range(-0.5, 0.5) * _angular_cell

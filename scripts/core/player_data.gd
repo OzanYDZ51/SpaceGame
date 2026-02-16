@@ -215,32 +215,45 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	if system_transition and sys_id != system_transition.current_system_id:
 		system_transition.jump_to_system(sys_id)
 
-	# Position — place near the closest station (by orbital radius) instead of
-	# restoring absolute coords. Stations orbit in real-time (unix timestamp),
-	# so between sessions they drift to different positions, making saved
-	# absolute coordinates produce 100km+ offsets from any landmark.
-	if player_ship and state.has("pos_x") and system_transition and system_transition.current_system_data:
+	# Position — restore exact saved universe coordinates.
+	# Check for collision with planets/stations and offset if inside one.
+	if player_ship and state.has("pos_x"):
 		var abs_x: float = float(state.get("pos_x", 0.0))
+		var abs_y: float = float(state.get("pos_y", 0.0))
 		var abs_z: float = float(state.get("pos_z", 0.0))
-		var stations = system_transition.current_system_data.stations
-		if stations.size() > 0:
-			# Match saved distance-from-center to station orbital radii (constant over time)
-			var best_idx: int = 0
-			if abs_x != 0.0 or abs_z != 0.0:
-				var saved_dist: float = sqrt(abs_x * abs_x + abs_z * abs_z)
-				var best_diff: float = absf(stations[0].orbital_radius - saved_dist)
-				for i in range(1, stations.size()):
-					var diff: float = absf(stations[i].orbital_radius - saved_dist)
-					if diff < best_diff:
-						best_diff = diff
-						best_idx = i
-			# Place near this station's current orbital position
-			var st: StationData = stations[best_idx]
-			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-			var st_x: float = cos(angle) * st.orbital_radius
-			var st_z: float = sin(angle) * st.orbital_radius
-			var st_local: Vector3 = FloatingOrigin.to_local_pos([st_x, 0.0, st_z])
-			player_ship.global_position = st_local + Vector3(0, 100, 500)
+		var spawn_pos: Vector3 = FloatingOrigin.to_local_pos([abs_x, abs_y, abs_z])
+
+		# Check planet collisions — don't spawn inside a planet
+		var sys_data = system_transition.current_system_data if system_transition else null
+		if sys_data:
+			for planet in sys_data.planets:
+				var p_angle: float = EntityRegistrySystem.compute_orbital_angle(
+					planet.orbital_angle, planet.orbital_period)
+				var p_x: float = cos(p_angle) * planet.orbital_radius
+				var p_z: float = sin(p_angle) * planet.orbital_radius
+				var p_local: Vector3 = FloatingOrigin.to_local_pos([p_x, 0.0, p_z])
+				var safe_r: float = planet.get_render_radius() + 500.0
+				var dist: float = spawn_pos.distance_to(p_local)
+				if dist < safe_r:
+					var dir: Vector3 = (spawn_pos - p_local)
+					if dir.length_squared() < 1.0:
+						dir = Vector3.FORWARD
+					spawn_pos = p_local + dir.normalized() * (planet.get_render_radius() + 1000.0)
+
+			# Check station collisions (200m safe radius)
+			for st in sys_data.stations:
+				var st_angle: float = EntityRegistrySystem.compute_orbital_angle(
+					st.orbital_angle, st.orbital_period)
+				var st_x: float = cos(st_angle) * st.orbital_radius
+				var st_z: float = sin(st_angle) * st.orbital_radius
+				var st_local: Vector3 = FloatingOrigin.to_local_pos([st_x, 0.0, st_z])
+				if spawn_pos.distance_to(st_local) < 200.0:
+					var dir: Vector3 = (spawn_pos - st_local)
+					if dir.length_squared() < 1.0:
+						dir = Vector3.FORWARD
+					spawn_pos = st_local + dir.normalized() * 500.0
+
+		player_ship.global_position = spawn_pos
 
 	# Rotation
 	if player_ship and state.has("rotation_x"):

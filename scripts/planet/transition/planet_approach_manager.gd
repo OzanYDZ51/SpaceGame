@@ -14,7 +14,6 @@ signal altitude_changed(altitude: float, planet_name: String)
 ## Transition zones (distances from planet surface in meters)
 const ZONE_APPROACH: float = 100_000.0   # 100 km — terrain starts loading
 const ZONE_EXTERIOR: float = 10_000.0    # 10 km — cruise force off, light gravity
-const ZONE_ATMOSPHERE: float = 0.0       # At atmosphere edge — full gravity + drag
 const ZONE_SURFACE: float = 1_000.0      # 1 km — strong drag, speed limit
 
 ## Zone enum for signals
@@ -63,7 +62,7 @@ func _process(delta: float) -> void:
 	_update_timer = 0.0
 
 	# Find nearest active planet body
-	var body =_planet_lod_mgr.get_nearest_body(_ship.global_position)
+	var body = _planet_lod_mgr.get_nearest_body(_ship.global_position)
 
 	if body == null:
 		# Unfreeze previous planet orbit if we had one
@@ -119,7 +118,7 @@ func _process(delta: float) -> void:
 
 
 func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
-	var old_zone =current_zone
+	var old_zone = current_zone
 	current_zone = new_zone
 
 	if body:
@@ -130,7 +129,7 @@ func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
 	# Force cruise off in atmosphere zones
 	if new_zone >= Zone.EXTERIOR and _ship:
 		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
-			_ship._exit_cruise()
+			_ship.exit_cruise()
 
 	# Freeze/unfreeze planet orbital motion when player is nearby.
 	# Prevents terrain from sliding under the ship due to orbit updates.
@@ -141,25 +140,33 @@ func _transition_to_zone(new_zone: int, body: PlanetBody) -> void:
 			EntityRegistry.unfreeze_orbit(body.entity_id)
 
 
-func _compute_physics(_body: PlanetBody, _atmo_edge: float) -> void:
-	# Gravity and drag disabled — ships fly freely near planets.
-	# Zone transitions still function for cruise lock and atmosphere visuals.
-	# Speed caps are distance-based for safety (prevents tunneling).
-	gravity_strength = 0.0
-	drag_factor = 0.0
+func _compute_physics(body: PlanetBody, atmo_edge: float) -> void:
+	# Progressive gravity + drag by zone. Uses AtmosphereDragZone for drag curve.
+	var atmo_density: float = body.planet_data.atmosphere_density if body.planet_data else 1.0
 	match current_zone:
 		Zone.SPACE:
+			gravity_strength = 0.0
+			drag_factor = 0.0
 			max_speed_override = 0.0
 		Zone.APPROACH:
-			# Gentle hint cap during approach (main safety is the per-frame guard in ShipController)
-			max_speed_override = 0.0  # Guard handles it per-frame
+			gravity_strength = 0.0
+			drag_factor = 0.0
+			max_speed_override = 0.0
 		Zone.EXTERIOR:
-			var t: float = 1.0 - clampf((current_altitude - _atmo_edge) / (ZONE_EXTERIOR - _atmo_edge), 0.0, 1.0)
+			# Light gravity ramp: 0 at ZONE_EXTERIOR edge, 0.3 at atmo_edge
+			var t: float = 1.0 - clampf((current_altitude - atmo_edge) / maxf(ZONE_EXTERIOR - atmo_edge, 1.0), 0.0, 1.0)
+			gravity_strength = lerpf(0.0, 0.3, t)
+			drag_factor = 0.0
 			max_speed_override = lerpf(500.0, 300.0, t)
 		Zone.ATMOSPHERE:
-			var t: float = 1.0 - clampf((current_altitude - ZONE_SURFACE) / maxf(_atmo_edge - ZONE_SURFACE, 1.0), 0.0, 1.0)
+			# Strong gravity ramp: 0.3 at atmo_edge, 0.8 at ZONE_SURFACE
+			var t: float = 1.0 - clampf((current_altitude - ZONE_SURFACE) / maxf(atmo_edge - ZONE_SURFACE, 1.0), 0.0, 1.0)
+			gravity_strength = lerpf(0.3, 0.8, t)
+			drag_factor = AtmosphereDragZone.compute_drag(current_altitude, atmo_edge, atmo_density)
 			max_speed_override = lerpf(300.0, 100.0, t)
 		Zone.SURFACE:
+			gravity_strength = 1.0
+			drag_factor = AtmosphereDragZone.compute_drag(current_altitude, atmo_edge, atmo_density)
 			max_speed_override = 100.0
 
 
@@ -169,16 +176,13 @@ func _apply_to_ship() -> void:
 	_ship.planetary_gravity = gravity_direction * gravity_strength * 9.8
 	_ship.atmospheric_drag = drag_factor
 	_ship.planetary_max_speed_override = max_speed_override
-	_ship._near_planet_surface = current_zone >= Zone.EXTERIOR
+	_ship.set_near_planet_surface(current_zone >= Zone.EXTERIOR)
 
 	# Planet ref for cruise warp exit (terrain collision handles surface contact)
 	if current_planet and current_zone >= Zone.APPROACH:
-		_ship._planet_guard_body = current_planet
-		_ship._planet_guard_center = current_planet.global_position
-		_ship._planet_guard_radius = current_planet.planet_radius
+		_ship.set_planet_guard(current_planet, current_planet.global_position, current_planet.planet_radius)
 	else:
-		_ship._planet_guard_body = null
-		_ship._planet_guard_radius = 0.0
+		_ship.clear_planet_guard()
 
 	# Frame-dragging disabled — planet orbit is frozen when player is nearby,
 	# so no orbital velocity compensation is needed.
@@ -215,17 +219,19 @@ func _update_atmosphere_env(body: PlanetBody, zone: int) -> void:
 		return
 
 	# Configure for this planet's atmosphere
-	var atmo_cfg =body.get_atmosphere_config()
+	var atmo_cfg = body.get_atmosphere_config()
 	if atmo_cfg:
 		_atmo_env.configure_for_planet(atmo_cfg)
 
 	# Blend based on zone and altitude
+	var render_radius: float = body.planet_radius
+	var atmo_height: float = render_radius * (body.planet_data.atmosphere_density * 0.08 if body.planet_data else 0.05)
 	match zone:
 		Zone.EXTERIOR:
 			var t: float = 1.0 - clampf(current_altitude / ZONE_EXTERIOR, 0.0, 1.0)
 			_atmo_env.set_target_blend(t * 0.3)  # Subtle start
 		Zone.ATMOSPHERE:
-			var t: float = 1.0 - clampf(current_altitude / ZONE_EXTERIOR, 0.0, 1.0)
+			var t: float = 1.0 - clampf(current_altitude / maxf(atmo_height, 1.0), 0.0, 1.0)
 			_atmo_env.set_target_blend(clampf(t, 0.3, 0.85))
 		Zone.SURFACE:
 			_atmo_env.set_target_blend(1.0)

@@ -38,8 +38,8 @@ func NewBot(
 	}
 
 	s.Identify.Intents = discordgo.IntentsGuildMessages |
-		discordgo.IntentsGuildMembers |
-		discordgo.IntentsDirectMessages
+		discordgo.IntentsDirectMessages |
+		discordgo.IntentsMessageContent
 
 	commands := NewCommandHandler(playerRepo, clanRepo, discordRepo, wsHub)
 	clanSync := NewClanSync(s, guildID, clanRepo, discordRepo)

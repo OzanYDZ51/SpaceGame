@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="FactionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/factions/faction_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+faction_id = &"pirate"
+faction_name = "Pirates"
+description = "Hors-la-loi et mercenaires sans allégeance"
+color_primary = Color(0.8, 0.6, 0.1, 1)
+color_secondary = Color(0.6, 0.4, 0.1, 1)
+is_playable = false
+enemy_faction_ids = Array[StringName]([&"nova_terra", &"kharsis"])

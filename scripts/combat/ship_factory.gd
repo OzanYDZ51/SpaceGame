@@ -293,7 +293,10 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 		# Server only: broadcast death via NpcAuthority (clients get loot via RPC)
 		if NetworkManager.is_server():
 			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-			if npc_auth and npc_auth._npcs.has(npc_name):
+			var info: Dictionary = npc_auth._npcs.get(npc_name, {}) if npc_auth else {}
+			if info.get("_player_killing", false):
+				pass  # _on_npc_killed handles death with correct killer_pid — skip
+			elif npc_auth and npc_auth._npcs.has(npc_name):
 				var upos =FloatingOrigin.to_universe_pos(death_pos)
 				var drops =LootTable.roll_drops_for_ship(ship.ship_data)
 				# killer_pid=0 means killed by local AI/combat bridge (no player killer)

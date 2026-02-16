@@ -777,3 +777,38 @@ func _tick_scan_expiry() -> void:
 
 	if any_expired:
 		_dots_dirty = true
+
+
+# === Server Health Sync ===
+
+## Apply server-authoritative health batch to local asteroids.
+## batch: [{ "aid": asteroid_id, "hp": health_ratio 0.0-1.0 }]
+func apply_server_health_batch(batch: Array) -> void:
+	for entry in batch:
+		if not entry is Dictionary:
+			continue
+		var aid: StringName = StringName(entry.get("aid", ""))
+		var hp_ratio: float = entry.get("hp", 1.0)
+
+		var ast = _all_asteroids.get(aid)
+		if ast == null:
+			continue
+
+		# Snap health to server value
+		var new_hp: float = ast.health_max * hp_ratio
+		ast.health_current = new_hp
+
+		if hp_ratio <= 0.0 and not ast.is_depleted:
+			# Server says depleted
+			ast.is_depleted = true
+			ast.health_current = 0.0
+			ast.respawn_timer = Constants.ASTEROID_RESPAWN_TIME
+			on_asteroid_depleted(aid)
+			if ast.node_ref and is_instance_valid(ast.node_ref):
+				ast.node_ref._on_depleted()
+				ast.node_ref.depleted.emit(aid)
+		elif hp_ratio > 0.0 and not ast.is_depleted:
+			# Update visual (scale tween + label)
+			if ast.node_ref and is_instance_valid(ast.node_ref):
+				ast.node_ref.apply_health_visual_update(hp_ratio)
+				ast.node_ref._update_label_text()

@@ -1322,6 +1322,7 @@ func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float)
 	_entity_layer.route_target_entity_id = ""  # Reset; caller sets for attack/follow
 	_entity_layer.route_is_follow = false
 	_entity_layer.route_ship_ids.clear()
+	_entity_layer.route_virtual_positions.clear()
 	if _fleet_panel._fleet == null:
 		return
 	for fleet_index in fleet_indices:
@@ -1333,6 +1334,11 @@ func _set_route_lines(fleet_indices: Array[int], dest_ux: float, dest_uz: float)
 			var fs = _fleet_panel._fleet.ships[fleet_index]
 			if fs.deployed_npc_id != &"":
 				_entity_layer.route_ship_ids.append(String(fs.deployed_npc_id))
+			elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.last_known_pos.size() >= 3:
+				# MP client fallback: NPC spawns server-side, use virtual position
+				var vid: String = "fleet_virtual_%d" % fleet_index
+				_entity_layer.route_virtual_positions[vid] = [fs.last_known_pos[0], fs.last_known_pos[2]]
+				_entity_layer.route_ship_ids.append(vid)
 	_dirty = true
 
 
@@ -1357,6 +1363,7 @@ func _clear_route_line() -> void:
 	_entity_layer.route_ship_ids.clear()
 	_entity_layer.route_target_entity_id = ""
 	_entity_layer.route_is_follow = false
+	_entity_layer.route_virtual_positions.clear()
 	_dirty = true
 
 

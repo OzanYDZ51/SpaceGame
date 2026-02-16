@@ -6,10 +6,7 @@ extends RefCounted
 # Uses the normalized-cube method for near-uniform cell distribution.
 # =============================================================================
 
-## 6 cube faces: +X, -X, +Y, -Y, +Z, -Z
-enum Face { POS_X, NEG_X, POS_Y, NEG_Y, POS_Z, NEG_Z }
-
-## Face axes: [right, up, forward] for each face
+## Face axes: [right, up, forward] for each face (indices 0-5: +X, -X, +Y, -Y, +Z, -Z)
 const FACE_AXES: Array[Array] = [
 	[Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(1, 0, 0)],   # +X
 	[Vector3(0, 0, 1), Vector3(0, 1, 0), Vector3(-1, 0, 0)],    # -X

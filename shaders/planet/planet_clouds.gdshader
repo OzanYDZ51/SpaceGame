@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode cull_disabled, blend_mix, shadows_disabled, depth_draw_opaque;
+render_mode cull_disabled, blend_mix, shadows_disabled, depth_draw_never;
 
 // =============================================================================
 // Planet Clouds — Animated procedural cloud layer

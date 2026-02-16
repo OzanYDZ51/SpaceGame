@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="FactionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/factions/faction_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+faction_id = &"neutral"
+faction_name = "Indépendants"
+description = "Systèmes et stations sans affiliation"
+color_primary = Color(0.5, 0.5, 0.6, 1)
+color_secondary = Color(0.6, 0.6, 0.7, 1)
+is_playable = false
+enemy_faction_ids = Array[StringName]([])

@@ -71,9 +71,9 @@ func _process(delta: float) -> void:
 	if not _is_setup or _space_env == null:
 		return
 
-	# Smooth interpolation toward target
+	# Smooth interpolation toward target (frame-rate independent exponential decay)
 	var speed: float = 1.5 if _target_blend > _blend else 2.5  # Faster exit
-	_blend = lerpf(_blend, _target_blend, delta * speed)
+	_blend = lerpf(_blend, _target_blend, 1.0 - exp(-speed * delta))
 
 	# Clamp tiny values
 	if _blend < 0.001:

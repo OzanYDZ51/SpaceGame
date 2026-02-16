@@ -81,7 +81,9 @@ func _check_distances() -> void:
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 
 		var render_radius: float = (planet["data"] as PlanetData).get_render_radius()
+		# Ensure body spawns before PlanetApproachManager's ZONE_APPROACH (100km)
 		var spawn_dist: float = maxf(BODY_SPAWN_DISTANCE, render_radius * 3.0)
+		spawn_dist = maxf(spawn_dist, PlanetApproachManager.ZONE_APPROACH + 20_000.0)
 		var despawn_dist: float = spawn_dist * 1.2
 
 		match planet["state"]:
@@ -110,10 +112,7 @@ func _update_fades(delta: float) -> void:
 				var body_ready: bool = planet["wait_t"] >= BODY_READY_WAIT
 				if body and is_instance_valid(body):
 					# Check if body has built at least a few chunks
-					var chunk_count: int = 0
-					for face in body._faces:
-						chunk_count += face.get_chunk_count()
-					if chunk_count >= 6:
+					if body.get_total_chunk_count() >= 6:
 						body_ready = true
 				if body_ready:
 					# Body ready: hide body initially for the crossfade
@@ -170,7 +169,7 @@ func _spawn_body(planet: Dictionary) -> void:
 		float(pos[2]) - float(FloatingOrigin.origin_offset_z)
 	)
 	# Start HIDDEN — LOD manager will make it visible when terrain chunks are ready
-	body._is_active = true
+	body.activate()
 	body.visible = false
 
 	planet["body"] = body

@@ -413,6 +413,11 @@ func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 			fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
 			fs.deployed_command = cmd
 			fs.deployed_command_params = params
+			# Set last_known_pos from station position (for map route restoration)
+			if fs.docked_station_id != "":
+				var ent = EntityRegistry.get_entity(fs.docked_station_id)
+				if not ent.is_empty():
+					fs.last_known_pos = [ent["pos_x"], ent["pos_y"], ent["pos_z"]]
 			_fleet.fleet_changed.emit()
 		var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
 		var ship_data_json: String = JSON.stringify(ship_data)

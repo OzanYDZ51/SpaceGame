@@ -53,6 +53,7 @@ signal hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed: b
 # Mining sync signals
 signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Array, target_pos: Array)
 signal asteroid_depleted_received(asteroid_id: String)
+signal asteroid_health_batch_received(batch: Array)
 
 # Structure (station) sync signals
 signal structure_hit_claimed(sender_pid: int, target_id: String, weapon: String, damage: float, hit_dir: Array)
@@ -1050,6 +1051,25 @@ func _rpc_asteroid_depleted(asteroid_id_str: String) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_asteroid_depleted(asteroid_id_str: String) -> void:
 	asteroid_depleted_received.emit(asteroid_id_str)
+
+
+## Client -> Server: batch of mining damage claims (0.5s interval).
+## claims: [{ "aid": asteroid_id, "dmg": damage, "hm": health_max }]
+@rpc("any_peer", "unreliable_ordered")
+func _rpc_mining_damage_claim(claims: Array) -> void:
+	if not is_server():
+		return
+	var sender_id = multiplayer.get_remote_sender_id()
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	if npc_auth:
+		npc_auth.handle_mining_damage_claims(sender_id, claims)
+
+
+## Server -> Client: batch of asteroid health ratios (2Hz).
+## batch: [{ "aid": asteroid_id, "hp": health_ratio 0.0-1.0 }]
+@rpc("authority", "unreliable_ordered")
+func _rpc_asteroid_health_batch(batch: Array) -> void:
+	asteroid_health_batch_received.emit(batch)
 
 
 # =============================================================================

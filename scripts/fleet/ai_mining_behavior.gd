@@ -734,6 +734,13 @@ func _do_physical_mining_tick() -> void:
 			"quantity": _mining_target.get_yield_per_hit(),
 		}
 
+	# Update server-side asteroid health tracker (AI mining)
+	if NetworkManager.is_server():
+		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+		if npc_auth:
+			var sys_id: int = GameManager.current_system_id_safe()
+			npc_auth.apply_ai_mining_damage(sys_id, String(_mining_target.id), damage, _mining_target.health_max)
+
 	_store_yield(yield_data)
 	if _state == MiningState.RETURNING:
 		return  # Cargo full — _store_yield already transitioned

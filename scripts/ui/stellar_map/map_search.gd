@@ -69,7 +69,7 @@ func _input(event: InputEvent) -> void:
 			return
 
 		if event.physical_keycode == KEY_DOWN:
-			_selected_index = mini(_selected_index + 1, _results.size() - 1)
+			_selected_index = mini(_selected_index + 1, maxi(_results.size() - 1, 0))
 			queue_redraw()
 			get_viewport().set_input_as_handled()
 			return
@@ -115,8 +115,9 @@ func _update_results() -> void:
 				"name": ent["name"],
 				"type": ent["type"],
 			})
-			if _results.size() >= MAX_RESULTS:
-				break
+	_results.sort_custom(func(a, b): return a["name"].naturalcasecmp_to(b["name"]) < 0)
+	if _results.size() > MAX_RESULTS:
+		_results.resize(MAX_RESULTS)
 
 
 func _draw() -> void:

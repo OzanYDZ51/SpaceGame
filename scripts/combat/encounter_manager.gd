@@ -70,16 +70,22 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 		var radial_dir =station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
 		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
 
+	# Get current system_id for encounter key generation
+	var sys_trans = GameManager._system_transition
+	var system_id: int = sys_trans.current_system_id if sys_trans else 0
+
 	var configs =EncounterConfig.get_danger_config(danger_level)
 	if danger_level == 5 and configs.size() >= 2:
 		# Danger 5: formation (leader + wingmen)
 		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"])
 	else:
+		var cfg_idx: int = 0
 		for cfg in configs:
-			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"])
+			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"], system_id, cfg_idx)
+			cfg_idx += 1
 
 
-func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile") -> void:
+func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1) -> void:
 	_encounter_counter += 1
 	var eid =_encounter_counter
 
@@ -93,7 +99,20 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 	if cam:
 		cam_pos = cam.global_position
 
+	# Get NpcAuthority for respawn checking
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	var now: float = Time.get_unix_time_from_system()
+
 	for i in count:
+		# Check respawn cooldown if encounter key is available
+		if system_id >= 0 and cfg_idx >= 0 and npc_auth:
+			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
+			if npc_auth._destroyed_encounter_npcs.has(encounter_key):
+				if now < npc_auth._destroyed_encounter_npcs[encounter_key]:
+					continue
+				else:
+					npc_auth._destroyed_encounter_npcs.erase(encounter_key)
+
 		var angle: float = (float(i) / float(count)) * TAU
 		var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
 		var pos: Vector3 = center + offset
@@ -108,6 +127,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 				lod_mgr.register_ship(lod_data.id, lod_data)
 				_active_npc_ids.append(lod_data.id)
 				_register_npc_on_server(lod_data.id, ship_id, faction)
+				_store_encounter_key(lod_data.id, system_id, cfg_idx, i)
 		else:
 			var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
 			if ship:
@@ -117,6 +137,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 				_active_npc_ids.append(StringName(ship.name))
 				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
 				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
+				_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
 
 	encounter_started.emit(eid)
 
@@ -250,6 +271,15 @@ func _get_lod_manager():
 	if mgr and mgr.has_method("register_npc"):
 		return mgr
 	return null
+
+
+## Store encounter key on NpcAuthority's NPC record for respawn tracking.
+func _store_encounter_key(npc_id: StringName, system_id: int, cfg_idx: int, spawn_idx: int) -> void:
+	if system_id < 0 or cfg_idx < 0:
+		return
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	if npc_auth and npc_auth._npcs.has(npc_id):
+		npc_auth._npcs[npc_id]["encounter_key"] = "%d:enc_%d_%d" % [system_id, cfg_idx, spawn_idx]
 
 
 ## Register NPC with NpcAuthority (server only) and notify connected clients.

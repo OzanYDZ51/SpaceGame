@@ -3,8 +3,9 @@ extends RefCounted
 
 # =============================================================================
 # Terrain Mesh Builder — Generates ArrayMesh for a single quadtree chunk
-# Uses SurfaceTool to build a GRID_SIZE x GRID_SIZE vertex grid projected
-# onto the sphere surface with heightmap displacement.
+# Uses SurfaceTool with INDEXED geometry to build a GRID_SIZE x GRID_SIZE
+# vertex grid projected onto the sphere surface with heightmap displacement.
+# Indexed mesh shares vertices via indices: 1089 verts + indices vs 6144 verts.
 #
 # GEO-MORPHING: Each vertex stores morph deltas in two custom channels:
 #   CUSTOM0 (RGBA_FLOAT) = position delta  (fine_pos - coarse_pos)
@@ -42,11 +43,25 @@ static func build_chunk(
 		(uv_max.y - uv_min.y) / float(GRID_SIZE - 1),
 	)
 
+	var count: int = GRID_SIZE * GRID_SIZE
+
+	# Compute all sphere points first
+	var sphere_points := PackedVector3Array()
+	sphere_points.resize(count)
+	for gy in GRID_SIZE:
+		for gx in GRID_SIZE:
+			var idx: int = gy * GRID_SIZE + gx
+			var u: float = uv_min.x + float(gx) * step.x
+			var v: float = uv_min.y + float(gy) * step.y
+			sphere_points[idx] = CubeSphere.cube_to_sphere(face, u, v)
+
+	# Batch heightmap query (1089 points at once instead of individual calls)
+	var heights := heightmap.get_heights(sphere_points)
+
 	# Generate vertex grid
 	var vertices := PackedVector3Array()
 	var normals_arr := PackedVector3Array()
 	var uvs := PackedVector2Array()
-	var count: int = GRID_SIZE * GRID_SIZE
 	vertices.resize(count)
 	normals_arr.resize(count)
 	uvs.resize(count)
@@ -54,10 +69,8 @@ static func build_chunk(
 	for gy in GRID_SIZE:
 		for gx in GRID_SIZE:
 			var idx: int = gy * GRID_SIZE + gx
-			var u: float = uv_min.x + float(gx) * step.x
-			var v: float = uv_min.y + float(gy) * step.y
-			var sphere_pt: Vector3 = CubeSphere.cube_to_sphere(face, u, v)
-			var h: float = heightmap.get_height(sphere_pt)
+			var sphere_pt: Vector3 = sphere_points[idx]
+			var h: float = heights[idx]
 			var pos: Vector3 = sphere_pt * (planet_radius * (1.0 + h))
 			vertices[idx] = pos
 			normals_arr[idx] = sphere_pt  # Will recompute after
@@ -77,8 +90,8 @@ static func build_chunk(
 				normals_arr[idx] = n.normalized()
 
 	# --- Geo-morph deltas (position + normal) ---
-	# Even-indexed vertices are shared with the parent LOD → delta = 0.
-	# Odd-indexed vertices are new at this LOD → delta = fine - coarse
+	# Even-indexed vertices are shared with the parent LOD -> delta = 0.
+	# Odd-indexed vertices are new at this LOD -> delta = fine - coarse
 	# where coarse = bilinear interpolation of even neighbors.
 	var pos_deltas := PackedVector3Array()
 	var nrm_deltas := PackedVector3Array()
@@ -116,31 +129,87 @@ static func build_chunk(
 				pos_deltas[idx] = vertices[idx] - (vertices[tl] + vertices[top_r] + vertices[bl] + vertices[br]) * 0.25
 				nrm_deltas[idx] = normals_arr[idx] - (normals_arr[tl] + normals_arr[top_r] + normals_arr[bl] + normals_arr[br]).normalized()
 
-	# Build triangles
+	# Emit all grid vertices once (shared via indices — 1089 instead of 6144)
+	for gy in GRID_SIZE:
+		for gx in GRID_SIZE:
+			var idx: int = gy * GRID_SIZE + gx
+			_add_vertex(st, vertices[idx], normals_arr[idx], uvs[idx], pos_deltas[idx], nrm_deltas[idx])
+
+	# Build triangle indices for main grid
 	for gy in GRID_SIZE - 1:
 		for gx in GRID_SIZE - 1:
 			var i00: int = gy * GRID_SIZE + gx
 			var i10: int = i00 + 1
 			var i01: int = i00 + GRID_SIZE
 			var i11: int = i01 + 1
-
 			# Triangle 1
-			_add_vertex(st, vertices[i00], normals_arr[i00], uvs[i00], pos_deltas[i00], nrm_deltas[i00])
-			_add_vertex(st, vertices[i01], normals_arr[i01], uvs[i01], pos_deltas[i01], nrm_deltas[i01])
-			_add_vertex(st, vertices[i10], normals_arr[i10], uvs[i10], pos_deltas[i10], nrm_deltas[i10])
-
+			st.add_index(i00)
+			st.add_index(i01)
+			st.add_index(i10)
 			# Triangle 2
-			_add_vertex(st, vertices[i10], normals_arr[i10], uvs[i10], pos_deltas[i10], nrm_deltas[i10])
-			_add_vertex(st, vertices[i01], normals_arr[i01], uvs[i01], pos_deltas[i01], nrm_deltas[i01])
-			_add_vertex(st, vertices[i11], normals_arr[i11], uvs[i11], pos_deltas[i11], nrm_deltas[i11])
+			st.add_index(i10)
+			st.add_index(i01)
+			st.add_index(i11)
 
-	# Skirt: extra triangles hanging down on all 4 edges (hides seams between LODs)
+	# Skirt: dropped edge vertices + indexed triangles (hides seams between LODs)
 	if include_skirt:
 		var skirt_drop: float = planet_radius * SKIRT_DEPTH
-		_add_skirt_edge(st, vertices, normals_arr, uvs, pos_deltas, nrm_deltas, skirt_drop, true, true)   # top
-		_add_skirt_edge(st, vertices, normals_arr, uvs, pos_deltas, nrm_deltas, skirt_drop, true, false)  # bottom
-		_add_skirt_edge(st, vertices, normals_arr, uvs, pos_deltas, nrm_deltas, skirt_drop, false, true)  # left
-		_add_skirt_edge(st, vertices, normals_arr, uvs, pos_deltas, nrm_deltas, skirt_drop, false, false) # right
+		var base_idx: int = count
+
+		# Top edge (row=0)
+		for gx in GRID_SIZE:
+			var gi: int = gx
+			var drop_pos: Vector3 = vertices[gi] - vertices[gi].normalized() * skirt_drop
+			_add_vertex(st, drop_pos, normals_arr[gi], uvs[gi], pos_deltas[gi], nrm_deltas[gi])
+		for gx in GRID_SIZE - 1:
+			var e0: int = gx
+			var e1: int = gx + 1
+			var d0: int = base_idx + gx
+			var d1: int = base_idx + gx + 1
+			st.add_index(e0); st.add_index(d0); st.add_index(e1)
+			st.add_index(e1); st.add_index(d0); st.add_index(d1)
+		base_idx += GRID_SIZE
+
+		# Bottom edge (row=GRID_SIZE-1)
+		for gx in GRID_SIZE:
+			var gi: int = (GRID_SIZE - 1) * GRID_SIZE + gx
+			var drop_pos: Vector3 = vertices[gi] - vertices[gi].normalized() * skirt_drop
+			_add_vertex(st, drop_pos, normals_arr[gi], uvs[gi], pos_deltas[gi], nrm_deltas[gi])
+		for gx in GRID_SIZE - 1:
+			var e0: int = (GRID_SIZE - 1) * GRID_SIZE + gx
+			var e1: int = e0 + 1
+			var d0: int = base_idx + gx
+			var d1: int = base_idx + gx + 1
+			st.add_index(e0); st.add_index(e1); st.add_index(d0)
+			st.add_index(e1); st.add_index(d1); st.add_index(d0)
+		base_idx += GRID_SIZE
+
+		# Left edge (col=0)
+		for gy in GRID_SIZE:
+			var gi: int = gy * GRID_SIZE
+			var drop_pos: Vector3 = vertices[gi] - vertices[gi].normalized() * skirt_drop
+			_add_vertex(st, drop_pos, normals_arr[gi], uvs[gi], pos_deltas[gi], nrm_deltas[gi])
+		for gy in GRID_SIZE - 1:
+			var e0: int = gy * GRID_SIZE
+			var e1: int = (gy + 1) * GRID_SIZE
+			var d0: int = base_idx + gy
+			var d1: int = base_idx + gy + 1
+			st.add_index(e0); st.add_index(e1); st.add_index(d0)
+			st.add_index(e1); st.add_index(d1); st.add_index(d0)
+		base_idx += GRID_SIZE
+
+		# Right edge (col=GRID_SIZE-1)
+		for gy in GRID_SIZE:
+			var gi: int = gy * GRID_SIZE + GRID_SIZE - 1
+			var drop_pos: Vector3 = vertices[gi] - vertices[gi].normalized() * skirt_drop
+			_add_vertex(st, drop_pos, normals_arr[gi], uvs[gi], pos_deltas[gi], nrm_deltas[gi])
+		for gy in GRID_SIZE - 1:
+			var e0: int = gy * GRID_SIZE + GRID_SIZE - 1
+			var e1: int = (gy + 1) * GRID_SIZE + GRID_SIZE - 1
+			var d0: int = base_idx + gy
+			var d1: int = base_idx + gy + 1
+			st.add_index(e0); st.add_index(d0); st.add_index(e1)
+			st.add_index(e1); st.add_index(d0); st.add_index(d1)
 
 	st.generate_tangents()
 	return st.commit()
@@ -153,52 +222,3 @@ static func _add_vertex(st: SurfaceTool, pos: Vector3, normal: Vector3, uv: Vect
 	st.set_custom(0, Color(pos_delta.x, pos_delta.y, pos_delta.z, 0.0))
 	st.set_custom(1, Color(nrm_delta.x, nrm_delta.y, nrm_delta.z, 0.0))
 	st.add_vertex(pos)
-
-
-static func _add_skirt_edge(
-	st: SurfaceTool,
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	uvs: PackedVector2Array,
-	pos_deltas: PackedVector3Array,
-	nrm_deltas: PackedVector3Array,
-	drop: float,
-	is_horizontal: bool,
-	is_start: bool
-) -> void:
-	for i in GRID_SIZE - 1:
-		var idx0: int
-		var idx1: int
-
-		if is_horizontal:
-			var row: int = 0 if is_start else (GRID_SIZE - 1)
-			idx0 = row * GRID_SIZE + i
-			idx1 = row * GRID_SIZE + i + 1
-		else:
-			var col: int = 0 if is_start else (GRID_SIZE - 1)
-			idx0 = i * GRID_SIZE + col
-			idx1 = (i + 1) * GRID_SIZE + col
-
-		var v0: Vector3 = vertices[idx0]
-		var v1: Vector3 = vertices[idx1]
-		var n0: Vector3 = normals[idx0]
-		var n1: Vector3 = normals[idx1]
-		var uv0: Vector2 = uvs[idx0]
-		var uv1: Vector2 = uvs[idx1]
-		var pd0: Vector3 = pos_deltas[idx0]
-		var pd1: Vector3 = pos_deltas[idx1]
-		var nd0: Vector3 = nrm_deltas[idx0]
-		var nd1: Vector3 = nrm_deltas[idx1]
-
-		# Drop vertices toward planet center
-		var v0_drop: Vector3 = v0 - v0.normalized() * drop
-		var v1_drop: Vector3 = v1 - v1.normalized() * drop
-
-		# Two triangles per segment — skirt vertices share morph deltas with source edge vertex
-		_add_vertex(st, v0, n0, uv0, pd0, nd0)
-		_add_vertex(st, v0_drop, n0, uv0, pd0, nd0)
-		_add_vertex(st, v1, n1, uv1, pd1, nd1)
-
-		_add_vertex(st, v1, n1, uv1, pd1, nd1)
-		_add_vertex(st, v0_drop, n0, uv0, pd0, nd0)
-		_add_vertex(st, v1_drop, n1, uv1, pd1, nd1)

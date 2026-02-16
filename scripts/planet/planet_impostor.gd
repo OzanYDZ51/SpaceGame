@@ -154,5 +154,9 @@ func _process(_delta: float) -> void:
 		visible = fade_alpha > 0.01
 		if _ring_instance:
 			_ring_instance.visible = fade_alpha > 0.01
+			if _ring_material:
+				_ring_material.set_shader_parameter("impostor_alpha", fade_alpha)
 	elif _surface_material.get_shader_parameter("impostor_alpha") != null:
 		_surface_material.set_shader_parameter("impostor_alpha", 1.0)
+		if _ring_material:
+			_ring_material.set_shader_parameter("impostor_alpha", 1.0)

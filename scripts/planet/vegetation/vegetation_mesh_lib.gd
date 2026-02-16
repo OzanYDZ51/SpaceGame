@@ -74,9 +74,18 @@ static func _has_glb(vtype: int) -> bool:
 ## Try to load a mesh from GLB for this VegType.
 ## For CONIFER: picks the biggest mesh (main tree).
 ## For BUSH: if conifer GLB has a second smaller mesh, uses that.
+## For LOD.LOW: tries _low.glb variant first, falls back to normal.
 ## Returns null if no GLB available.
-static func _try_load_glb_mesh(vtype: int, _lod: int) -> Mesh:
+static func _try_load_glb_mesh(vtype: int, lod: int) -> Mesh:
 	var path: String = GLB_PATHS.get(vtype, "")
+
+	# For LOW LOD, try _low.glb variant first
+	if lod == LOD.LOW and path != "":
+		var low_path: String = path.replace(".glb", "_low.glb")
+		if ResourceLoader.exists(low_path):
+			var low_entries := _get_glb_meshes(low_path)
+			if not low_entries.is_empty():
+				return low_entries[0]["mesh"]
 
 	# Special case: BUSH can fall back to smaller meshes from CONIFER GLB
 	if not _has_glb(vtype) and vtype == VegType.BUSH:
@@ -126,8 +135,9 @@ static func _get_glb_meshes(path: String) -> Array:
 	# Sort biggest first
 	entries.sort_custom(func(a, b): return a["volume"] > b["volume"])
 
-	# Free the temporary scene instance (meshes are Resource, they persist)
-	root.queue_free()
+	# Free the temporary scene instance (meshes are Resource, they persist).
+	# root is not in the scene tree, so use free() instead of queue_free().
+	root.free()
 
 	_glb_cache[path] = entries
 	return entries
