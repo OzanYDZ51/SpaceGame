@@ -23,7 +23,7 @@ var refinery_manager = null
 func initialize(galaxy) -> void:
 	# Economy (hardcoded starting values for testing)
 	economy = PlayerEconomy.new()
-	economy.add_credits(1000000)
+	economy.add_credits(10000000)
 
 	# Inventory with starting weapons + equipment
 	inventory = PlayerInventory.new()
@@ -41,15 +41,15 @@ func initialize(galaxy) -> void:
 	# Fleet (starts with one ship — cargo lives on the ship)
 	fleet = PlayerFleet.new()
 	var starting_ship =FleetShip.from_ship_data(ShipRegistry.get_ship_data(Constants.DEFAULT_SHIP_ID))
-	# Starting resources on the ship (generous for testing)
-	starting_ship.add_resource(&"ice", 50)
-	starting_ship.add_resource(&"iron", 100)
-	starting_ship.add_resource(&"copper", 100)
-	starting_ship.add_resource(&"titanium", 100)
-	starting_ship.add_resource(&"gold", 50)
-	starting_ship.add_resource(&"crystal", 50)
-	starting_ship.add_resource(&"uranium", 50)
-	starting_ship.add_resource(&"platinum", 50)
+	# Starting resources on the ship (x10 for testing)
+	starting_ship.add_resource(&"ice", 500)
+	starting_ship.add_resource(&"iron", 1000)
+	starting_ship.add_resource(&"copper", 1000)
+	starting_ship.add_resource(&"titanium", 1000)
+	starting_ship.add_resource(&"gold", 500)
+	starting_ship.add_resource(&"crystal", 500)
+	starting_ship.add_resource(&"uranium", 500)
+	starting_ship.add_resource(&"platinum", 500)
 	fleet.add_ship(starting_ship)
 	fleet.active_ship_changed.connect(_on_active_ship_changed)
 
