@@ -45,6 +45,9 @@ static func _ensure_loaded() -> void:
 	_equip_camera_data = {}
 	_station_center = Vector3.ZERO
 
+	if not ResourceLoader.exists(STATION_SCENE_PATH):
+		push_warning("StationHardpointConfig: Station scene not found: %s" % STATION_SCENE_PATH)
+		return
 	var packed: PackedScene = load(STATION_SCENE_PATH) as PackedScene
 	if packed == null:
 		push_warning("StationHardpointConfig: Could not load station scene '%s'" % STATION_SCENE_PATH)

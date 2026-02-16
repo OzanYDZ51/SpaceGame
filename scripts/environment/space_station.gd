@@ -78,9 +78,12 @@ func _process(delta: float) -> void:
 
 
 func _load_model() -> void:
+	if not ResourceLoader.exists("res://assets/models/babbage_station.glb"):
+		push_warning("SpaceStation: babbage_station.glb not found, using fallback")
+		_build_fallback()
+		return
 	var scene: PackedScene = load("res://assets/models/babbage_station.glb")
 	if scene == null:
-		push_warning("SpaceStation: Could not load Babbage model, using fallback")
 		_build_fallback()
 		return
 

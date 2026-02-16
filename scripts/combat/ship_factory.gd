@@ -459,6 +459,16 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		_equip_camera_cache[ship_id] = {}
 		return
 	if not _scene_cache.has(data.ship_scene_path):
+		if not ResourceLoader.exists(data.ship_scene_path):
+			push_warning("ShipFactory: Ship scene not found: %s" % data.ship_scene_path)
+			_config_cache[ship_id] = [] as Array[Dictionary]
+			_rotation_cache[ship_id] = Vector3.ZERO
+			_root_basis_cache[ship_id] = Basis.IDENTITY
+			_model_scale_cache[ship_id] = 1.0
+			_center_offset_cache[ship_id] = Vector3.ZERO
+			_vfx_points_cache[ship_id] = [] as Array[Dictionary]
+			_equip_camera_cache[ship_id] = {}
+			return
 		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
 		if packed == null:
 			_config_cache[ship_id] = [] as Array[Dictionary]
