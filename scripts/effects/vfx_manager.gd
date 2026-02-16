@@ -189,7 +189,7 @@ func _get_vfx_points() -> Array[Dictionary]:
 	return [] as Array[Dictionary]
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if _ship == null:
 		return
 

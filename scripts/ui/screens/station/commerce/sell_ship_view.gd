@@ -382,7 +382,6 @@ func _draw_ship_card(font: Font, rect: Rect2, idx: int) -> void:
 # =========================================================================
 
 func _draw_detail_panel(font: Font, detail_x: float) -> void:
-	var s: Vector2 = size
 	var fs: FleetShip = _fleet_ships[_selected_index]
 	var ship_data: ShipData = ShipRegistry.get_ship_data(fs.ship_id)
 	if ship_data == null: return

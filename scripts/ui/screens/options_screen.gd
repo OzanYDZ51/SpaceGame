@@ -429,7 +429,7 @@ func _set_action_key(action: String, keycode: int) -> void:
 			InputMap.action_erase_event(action, ev)
 	# Add new key
 	var new_event := InputEventKey.new()
-	new_event.physical_keycode = keycode
+	new_event.physical_keycode = keycode as Key
 	InputMap.action_add_event(action, new_event)
 
 
@@ -551,7 +551,7 @@ static func apply_settings_dict(data: Dictionary) -> void:
 				if ev is InputEventKey:
 					InputMap.action_erase_event(action, ev)
 			var new_event := InputEventKey.new()
-			new_event.physical_keycode = keycode
+			new_event.physical_keycode = keycode as Key
 			InputMap.action_add_event(action, new_event)
 	# Write to local cache for offline fallback
 	var cfg := ConfigFile.new()
