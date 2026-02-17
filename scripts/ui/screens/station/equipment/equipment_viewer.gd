@@ -355,6 +355,12 @@ func _auto_fit_camera() -> void:
 
 	var half_fov =deg_to_rad(_viewer_camera.fov * 0.5) if _viewer_camera else deg_to_rad(20.0)
 	var ideal =max_radius / tan(half_fov) * 1.3
+	# Account for viewport aspect ratio — narrow viewports need more distance
+	if _viewport_container and _viewport_container.size.x > 0 and _viewport_container.size.y > 0:
+		var aspect: float = _viewport_container.size.x / _viewport_container.size.y
+		if aspect < 1.0:
+			var half_fov_h: float = atan(tan(half_fov) * aspect)
+			ideal = maxf(ideal, max_radius / tan(half_fov_h) * 1.3)
 	orbit_distance = ideal
 	_orbit_min_dist = ideal * 0.4
 	_orbit_max_dist = ideal * 3.0

@@ -180,6 +180,7 @@ func set_preview(entities: Dictionary, system_name: String, system_id: int = -1)
 	_preview_system_name = system_name
 	_preview_system_id = system_id
 	_entity_layer.preview_entities = _preview_entities
+	_entity_layer.preview_system_id = system_id
 	_renderer.preview_entities = _preview_entities
 	_renderer._belt_dot_cache.clear()
 	_info_panel.preview_entities = _preview_entities
@@ -191,6 +192,7 @@ func clear_preview() -> void:
 	_preview_system_name = ""
 	_preview_system_id = -1
 	_entity_layer.preview_entities = {}
+	_entity_layer.preview_system_id = -1
 	_renderer.preview_entities = {}
 	_renderer._belt_dot_cache.clear()
 	_info_panel.preview_entities = {}

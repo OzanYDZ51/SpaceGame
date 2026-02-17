@@ -126,7 +126,7 @@ func leave_clan() -> void:
 			push_warning("ClanManager: leave_clan failed — %s" % result.get("error", "unknown"))
 			return
 
-	_log_activity(ClanActivity.EventType.LEAVE, player_member.display_name, "", "A quitte le clan")
+	var pname: String = player_member.display_name
 	members.erase(player_member)
 	player_member = null
 	clan_data = null
@@ -134,6 +134,7 @@ func leave_clan() -> void:
 	diplomacy.clear()
 	activity_log.clear()
 	transactions.clear()
+	clan_loaded.emit()
 
 
 func invite_member(id: String, dname: String) -> bool:
@@ -371,6 +372,73 @@ func refresh_from_backend() -> void:
 		return
 	if has_clan():
 		await _load_clan_from_api(clan_data.clan_id)
+	else:
+		# Re-check if player now has a clan
+		await _load_from_backend()
+
+
+## Search for clans by name/tag. Returns array of { id, name, tag, members, is_recruiting }.
+func search_clans(query: String) -> Array:
+	if not AuthManager.is_authenticated:
+		return _mock_search_results(query)
+
+	var result := await ApiClient.get_async("/api/v1/clans/search?q=%s" % query.uri_encode())
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: search_clans failed — %s" % result.get("error", "unknown"))
+		return []
+
+	var clans: Array = []
+	var arr: Array = []
+	if result.has("clans"):
+		arr = result["clans"]
+	else:
+		for key in result:
+			if key != "_status_code" and result[key] is Array:
+				arr = result[key]
+				break
+	for c in arr:
+		if c is Dictionary:
+			clans.append({
+				"id": str(c.get("id", "")),
+				"name": str(c.get("clan_name", "")),
+				"tag": str(c.get("clan_tag", "")),
+				"members": int(c.get("member_count", 0)),
+				"is_recruiting": bool(c.get("is_recruiting", false)),
+			})
+	return clans
+
+
+## Join an existing clan by ID. Returns true on success.
+func join_clan(cid: String) -> bool:
+	if has_clan():
+		return false
+
+	if AuthManager.is_authenticated:
+		var body := {"player_id": AuthManager.player_id}
+		var result := await ApiClient.post_async("/api/v1/clans/%s/members" % cid, body)
+		if result.get("_status_code", 0) != 201:
+			push_warning("ClanManager: join_clan failed — %s" % result.get("error", "unknown"))
+			return false
+		await _load_clan_from_api(cid)
+		return has_clan()
+
+	return false
+
+
+func _mock_search_results(query: String) -> Array:
+	var results: Array = []
+	var mock_clans := [
+		{"id": "clan_iron_wolves", "name": "Iron Wolves", "tag": "IW", "members": 24, "is_recruiting": true},
+		{"id": "clan_star_merchants", "name": "Star Merchants Guild", "tag": "SM", "members": 42, "is_recruiting": true},
+		{"id": "clan_crimson_fleet", "name": "Crimson Fleet", "tag": "CF", "members": 18, "is_recruiting": false},
+		{"id": "clan_nova_guard", "name": "Nova Guard", "tag": "NG", "members": 31, "is_recruiting": true},
+		{"id": "clan_dark_nebula", "name": "Dark Nebula", "tag": "DN", "members": 12, "is_recruiting": true},
+	]
+	var q := query.to_lower()
+	for c in mock_clans:
+		if q == "" or q in c["name"].to_lower() or q in c["tag"].to_lower():
+			results.append(c)
+	return results
 
 
 # =============================================================================
@@ -391,7 +459,8 @@ func _load_from_backend() -> void:
 	if pid_clan_id == "" or pid_clan_id == "<null>" or pid_clan_id == "null":
 		# Player has no clan
 		_loading = false
-		_generate_mock_data()
+		clan_data = null
+		clan_loaded.emit()
 		return
 
 	await _load_clan_from_api(pid_clan_id)

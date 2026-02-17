@@ -10,6 +10,10 @@ var _emblem: ClanEmblem = null
 var _btn_motd: UIButton = null
 var _btn_leave: UIButton = null
 var _btn_recruit: UIButton = null
+var _leave_modal: UIModal = null
+var _motd_input: UITextInput = null
+var _btn_motd_save: UIButton = null
+var _motd_editing: bool = false
 
 const LEFT_W =300.0
 const RIGHT_W =300.0
@@ -38,6 +42,27 @@ func _ready() -> void:
 	_btn_recruit.text = "Recrutement: ---"
 	_btn_recruit.pressed.connect(_on_recruit_pressed)
 	add_child(_btn_recruit)
+
+	# Leave confirmation modal
+	_leave_modal = UIModal.new()
+	_leave_modal.title = "Quitter le clan"
+	_leave_modal.body = "Voulez-vous vraiment quitter le clan ?"
+	_leave_modal.confirm_text = "QUITTER"
+	_leave_modal.cancel_text = "ANNULER"
+	_leave_modal.confirmed.connect(_on_leave_confirmed)
+	add_child(_leave_modal)
+
+	# MOTD editing
+	_motd_input = UITextInput.new()
+	_motd_input.placeholder = "Nouveau message du jour..."
+	_motd_input.visible = false
+	add_child(_motd_input)
+
+	_btn_motd_save = UIButton.new()
+	_btn_motd_save.text = "Sauvegarder"
+	_btn_motd_save.visible = false
+	_btn_motd_save.pressed.connect(_on_motd_save)
+	add_child(_btn_motd_save)
 
 
 func refresh(cm) -> void:
@@ -68,6 +93,13 @@ func _process(_delta: float) -> void:
 	_btn_leave.size = Vector2(170, 30)
 	_btn_recruit.position = Vector2(m + 180, bot + 6)
 	_btn_recruit.size = Vector2(210, 30)
+
+	# MOTD input (in right column, above motd save btn)
+	if _motd_editing:
+		_motd_input.position = Vector2(right_x + m, bot - 76)
+		_motd_input.size = Vector2(RIGHT_W - m * 2, 30)
+		_btn_motd_save.position = Vector2(right_x + m, bot - 36)
+		_btn_motd_save.size = Vector2(RIGHT_W - m * 2, 30)
 
 
 func _draw() -> void:
@@ -256,13 +288,39 @@ func _format_num(val: float) -> String:
 
 
 func _on_motd_pressed() -> void:
-	if _cm:
-		_cm.set_motd("MOTD modifie a " + Time.get_time_string_from_system())
-		queue_redraw()
+	if _cm == null:
+		return
+	_motd_editing = not _motd_editing
+	_motd_input.visible = _motd_editing
+	_btn_motd_save.visible = _motd_editing
+	if _motd_editing:
+		_motd_input.set_text(_cm.clan_data.motd)
+		_btn_motd.text = "Annuler"
+	else:
+		_btn_motd.text = "Modifier MOTD"
+
+
+func _on_motd_save() -> void:
+	if _cm == null:
+		return
+	var new_text: String = _motd_input.get_text().strip_edges()
+	if new_text != "":
+		_cm.set_motd(new_text)
+	_motd_editing = false
+	_motd_input.visible = false
+	_btn_motd_save.visible = false
+	_btn_motd.text = "Modifier MOTD"
+	queue_redraw()
 
 
 func _on_leave_pressed() -> void:
-	pass
+	if _leave_modal:
+		_leave_modal.show_modal()
+
+
+func _on_leave_confirmed() -> void:
+	if _cm:
+		_cm.leave_clan()
 
 
 func _on_recruit_pressed() -> void:

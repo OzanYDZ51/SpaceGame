@@ -14,6 +14,7 @@ var _hover_id: String = ""
 var _pulse_t: float = 0.0
 var _player_id: String = ""
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
+var preview_system_id: int = -1       # System ID being previewed (-1 = live view)
 var trails: MapTrails = null
 var marquee: MarqueeSelect = null
 
@@ -114,6 +115,9 @@ func _draw() -> void:
 
 	# Galaxy autopilot route line (player → next gate)
 	_draw_galaxy_route_line(entities)
+
+	# Preview route line (arrival gate → final destination in previewed system)
+	_draw_preview_route_line(entities)
 
 	# Post-arrival autopilot line (player → final destination, gold dashed)
 	_draw_autopilot_line(entities)
@@ -373,18 +377,31 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var col =Color(0.15, 0.6, 1.0, 0.9)
 	var s: float = 6.0
 
-	# Check if this is the route gate
+	# Check if this is the route gate (departure) or arrival gate (preview)
 	var is_route_gate: bool = false
+	var is_arrival_gate: bool = false
 	var rm = GameManager._route_manager if GameManager else null
-	if rm and rm.is_route_active() and ent["id"] == rm.next_gate_entity_id:
-		is_route_gate = true
+	if rm and rm.is_route_active():
+		if ent["id"] == rm.next_gate_entity_id:
+			is_route_gate = true
+		elif preview_system_id >= 0 and rm.target_system_id == preview_system_id and rm.route.size() >= 2:
+			var penultimate_id: int = rm.route[rm.route.size() - 2]
+			if ent.get("extra", {}).get("target_system_id", -1) == penultimate_id:
+				is_arrival_gate = true
 
-	# Route gate highlight: pulsing gold ring
+	# Route gate highlight: pulsing gold ring (departure)
 	if is_route_gate:
 		var route_pulse: float = sin(_pulse_t * 3.0) * 0.3 + 0.7
 		var route_col =Color(1.0, 0.8, 0.0, route_pulse * 0.6)
 		draw_arc(pos, s + 6.0 + route_pulse * 3.0, 0, TAU, 24, route_col, 2.5, true)
 		draw_arc(pos, s + 2.0, 0, TAU, 20, Color(1.0, 0.8, 0.0, 0.3), 1.5, true)
+
+	# Arrival gate highlight: pulsing cyan ring (preview destination)
+	if is_arrival_gate:
+		var route_pulse: float = sin(_pulse_t * 3.0) * 0.3 + 0.7
+		var route_col =Color(0.0, 0.9, 1.0, route_pulse * 0.6)
+		draw_arc(pos, s + 6.0 + route_pulse * 3.0, 0, TAU, 24, route_col, 2.5, true)
+		draw_arc(pos, s + 2.0, 0, TAU, 20, Color(0.0, 0.9, 1.0, 0.3), 1.5, true)
 
 	# Outer ring
 	draw_arc(pos, s, 0, TAU, 16, col, 2.0, true)
@@ -397,14 +414,18 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var target_name: String = ent.get("extra", {}).get("target_system_name", ent["name"])
 	var name_text: String = target_name if target_name.length() < 30 else ent["name"]
 	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var label_col =Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else Color(col.r, col.g, col.b, 0.7)
+	var label_col =Color(1.0, 0.8, 0.0, 0.9) if is_route_gate else (Color(0.0, 0.9, 1.0, 0.9) if is_arrival_gate else Color(col.r, col.g, col.b, 0.7))
 	draw_string(font, pos + Vector2(-tw * 0.5, s + 14), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
-	# Route label
+	# Route label (departure or arrival)
 	if is_route_gate:
 		var route_label ="PROCHAIN SAUT"
 		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.8, 0.0, 0.8))
+	elif is_arrival_gate:
+		var arrival_label ="ARRIVÉE"
+		var atw: float = font.get_string_size(arrival_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, pos + Vector2(-atw * 0.5, -s - 8), arrival_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.0, 0.9, 1.0, 0.8))
 
 
 # =============================================================================
@@ -863,6 +884,61 @@ func _draw_galaxy_route_line(entities: Dictionary) -> void:
 	var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var label_pos =to_sp + Vector2(-tw * 0.5, -22)
 	draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))
+
+
+# =============================================================================
+# PREVIEW ROUTE LINE (arrival gate → final destination in previewed system)
+# =============================================================================
+func _draw_preview_route_line(entities: Dictionary) -> void:
+	if camera == null or preview_system_id < 0:
+		return
+	var rm = GameManager._route_manager if GameManager else null
+	if rm == null or not rm.is_route_active() or rm.target_system_id != preview_system_id:
+		return
+	if not rm.has_final_dest:
+		return
+	if rm.route.size() < 2:
+		return
+
+	# Find arrival gate (gate connecting back to penultimate system)
+	var penultimate_id: int = rm.route[rm.route.size() - 2]
+	var arrival_gate_ent: Dictionary = {}
+	for ent in entities.values():
+		if ent["type"] == EntityRegistrySystem.EntityType.JUMP_GATE:
+			if ent.get("extra", {}).get("target_system_id", -1) == penultimate_id:
+				arrival_gate_ent = ent
+				break
+	if arrival_gate_ent.is_empty():
+		return
+
+	var from_sp: Vector2 = camera.universe_to_screen(arrival_gate_ent["pos_x"], arrival_gate_ent["pos_z"])
+	var to_sp: Vector2 = camera.universe_to_screen(rm.final_dest_x, rm.final_dest_z)
+
+	# Dashed cyan line
+	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
+	var col: Color = Color(0.0, 0.9, 1.0, 0.4 * pulse)
+	_draw_dashed_line(from_sp, to_sp, col, 2.0, 10.0, 6.0)
+
+	# Destination label
+	if rm.final_dest_name != "":
+		var font: Font = UITheme.get_font()
+		var dest_name: String = rm.final_dest_name
+		if dest_name.length() > 20:
+			dest_name = dest_name.substr(0, 18) + ".."
+		var label: String = "→ " + dest_name
+		var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var label_pos: Vector2 = to_sp + Vector2(-tw * 0.5, -22)
+		draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))
+
+	# Destination marker (small pulsing diamond)
+	var ds: float = 5.0
+	var marker_col: Color = Color(0.0, 0.9, 1.0, 0.6 * pulse)
+	var diamond: PackedVector2Array = PackedVector2Array([
+		to_sp + Vector2(0, -ds), to_sp + Vector2(ds, 0),
+		to_sp + Vector2(0, ds), to_sp + Vector2(-ds, 0),
+	])
+	var colors: PackedColorArray = PackedColorArray([marker_col, marker_col, marker_col, marker_col])
+	draw_primitive(diamond, colors, PackedVector2Array())
 
 
 func _draw_autopilot_line(entities: Dictionary) -> void:

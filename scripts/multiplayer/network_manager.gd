@@ -434,6 +434,10 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 					_player_last_system.erase(old_pid)
 				_peer_to_uuid.erase(old_pid)
 				peers.erase(old_pid)  # Safety: remove stale peer entry
+				# Notify all clients to remove the ghost of the old peer_id
+				_rpc_player_left.rpc(old_pid)
+				if not is_dedicated_server:
+					peer_disconnected.emit(old_pid)
 				is_reconnect = true
 		_uuid_to_peer[player_uuid] = sender_id
 		_peer_to_uuid[sender_id] = player_uuid
@@ -483,6 +487,9 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
 func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> void:
+	# Never add ourselves to our own peers dict (causes ghost self-player)
+	if pid == local_peer_id:
+		return
 	if peers.has(pid):
 		return
 	var state =NetworkState.new()

@@ -93,36 +93,34 @@ func handle_undock() -> bool:
 	if state_val != Constants.GameState.DOCKED:
 		return false
 
-	# 1. Compute exit position BEFORE any state change
+	# Automatically find a clear exit position (bay exit + ring around station)
 	var exit_info: Dictionary = _compute_exit_position()
-
-	# 2. Check if exit zone is clear BEFORE any state change
-	if exit_info.get("valid", false) and not _is_exit_clear(exit_info):
+	if not exit_info.get("valid", false):
 		if notif:
 			notif.general.undock_blocked()
 		return false
 
-	# 3. Close station UI (only if exit OK)
+	# Close station UI
 	if screen_manager:
 		screen_manager.close_screen("station")
 
-	# 4. Leave isolated solo instance (unfreeze world)
+	# Leave isolated solo instance (unfreeze world)
 	dock_instance.leave(_build_dock_context(""))
 
-	# 5. Re-enable ship controls
+	# Re-enable ship controls
 	var ship = player_ship
 	if ship:
 		ship.is_player_controlled = true
 
-	# 6. Teleport to pre-computed position
+	# Teleport to exit position
 	_reposition_at_station(exit_info)
 
-	# 7. Show flight HUD
-	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
+	# Show flight HUD
+	var hud = main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
 		hud.visible = true
 
-	# 8. Undock from docking system
+	# Undock from docking system
 	if docking_system:
 		docking_system.request_undock()
 
@@ -132,34 +130,44 @@ func handle_undock() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Smart undock: AABB-based exit distance + clearance check
+# Smart undock: ship-size-aware exit distance + multi-candidate clearance
 # ---------------------------------------------------------------------------
-const UNDOCK_EXIT_MARGIN: float = 100.0      ## Safety buffer on top of ship size
+const UNDOCK_EXIT_MARGIN: float = 100.0      ## Base safety buffer on top of ship size
 const UNDOCK_MIN_EXIT_DIST: float = 200.0    ## Minimum exit distance (small ships)
 const UNDOCK_CLEARANCE_BUFFER: float = 50.0  ## Extra margin for obstacle check
+const UNDOCK_RING_SLOTS: int = 8             ## Candidate positions around station
+const UNDOCK_RING_MIN_DIST: float = 1000.0   ## Minimum ring distance from station center
 
 
-func _compute_exit_distance() -> float:
-	## Compute exit distance from the player ship's actual AABB.
+func _get_ship_half_extent() -> float:
+	## Returns the player ship's half-extent from its visual AABB.
 	if player_ship == null:
-		return UNDOCK_MIN_EXIT_DIST
+		return 50.0
 	var ship_model = player_ship.get_node_or_null("ShipModel")
 	if ship_model and ship_model.has_method("get_visual_aabb"):
 		var aabb: AABB = ship_model.get_visual_aabb()
 		if aabb.size.length() > 0.1:
-			var half_extent: float = aabb.size.length() * 0.5
-			return maxf(half_extent + UNDOCK_EXIT_MARGIN, UNDOCK_MIN_EXIT_DIST)
-	return UNDOCK_MIN_EXIT_DIST
+			return aabb.size.length() * 0.5
+	return 50.0
+
+
+func _compute_exit_distance(ship_half: float) -> float:
+	## Compute how far from the exit point the ship should be placed.
+	## Margin grows with ship size — larger ships get more clearance.
+	var margin: float = maxf(UNDOCK_EXIT_MARGIN, ship_half * 0.5)
+	return maxf(ship_half + margin, UNDOCK_MIN_EXIT_DIST)
 
 
 func _compute_exit_position() -> Dictionary:
-	## Compute exit position without modifying any state. Returns a dict:
-	## {valid: bool, position: Vector3, away_dir: Vector3, ship_half_extent: float}
+	## Automatically finds a clear exit position near the docked station.
+	## Tries bay exit first, then a ring of positions around the station.
+	## Distance scales with ship size. Returns first unblocked candidate.
+	## Result: {valid, position, away_dir, ship_half_extent, use_bay}.
 	if player_ship == null:
 		return {"valid": false}
 
-	var exit_dist: float = _compute_exit_distance()
-	var ship_half: float = exit_dist - UNDOCK_EXIT_MARGIN  # Reverse the margin to get raw half
+	var ship_half: float = _get_ship_half_extent()
+	var exit_dist: float = _compute_exit_distance(ship_half)
 
 	# Resolve station node — prefer live node, fallback to EntityRegistry
 	var station_node: Node3D = null
@@ -187,22 +195,46 @@ func _compute_exit_position() -> Dictionary:
 	if not found:
 		return {"valid": false}
 
-	# Prefer exiting from bay if station has get_bay_exit_global()
+	# Build candidate exit positions ordered by priority
+	var candidates: Array[Dictionary] = []
+
+	# Priority 1: Bay exit (straight out of the docking bay)
 	if station_node and station_node.has_method("get_bay_exit_global"):
 		var bay_exit: Vector3 = station_node.get_bay_exit_global()
 		var away_dir: Vector3 = (bay_exit - station_pos).normalized()
 		if away_dir.length_squared() < 0.01:
-			away_dir = Vector3.FORWARD
-		var new_pos: Vector3 = bay_exit + away_dir * exit_dist
-		return {"valid": true, "position": new_pos, "away_dir": away_dir, "ship_half_extent": ship_half, "use_bay": true}
-	else:
-		# Fallback: random position around station
-		var angle: float = randf() * TAU
-		var dist: float = randf_range(1800.0, 2200.0)
-		var offset = Vector3(cos(angle) * dist, randf_range(-100.0, 100.0), sin(angle) * dist)
-		var new_pos: Vector3 = station_pos + offset
-		var away_dir: Vector3 = offset.normalized()
-		return {"valid": true, "position": new_pos, "away_dir": away_dir, "ship_half_extent": ship_half, "use_bay": false}
+			away_dir = Vector3.UP
+		candidates.append({
+			"valid": true,
+			"position": bay_exit + away_dir * exit_dist,
+			"away_dir": away_dir,
+			"ship_half_extent": ship_half,
+			"use_bay": true,
+		})
+
+	# Priority 2: Ring of positions around station (horizontal plane)
+	# Distance scales with ship size so large ships spawn further out
+	var ring_dist: float = maxf(exit_dist + 800.0, UNDOCK_RING_MIN_DIST)
+	for i in UNDOCK_RING_SLOTS:
+		var angle: float = i * TAU / float(UNDOCK_RING_SLOTS)
+		var offset := Vector3(cos(angle) * ring_dist, 0.0, sin(angle) * ring_dist)
+		var pos: Vector3 = station_pos + offset
+		pos.y += randf_range(-50.0, 50.0)
+		candidates.append({
+			"valid": true,
+			"position": pos,
+			"away_dir": offset.normalized(),
+			"ship_half_extent": ship_half,
+			"use_bay": false,
+		})
+
+	# Return the first candidate with a clear exit zone
+	for candidate in candidates:
+		if _is_exit_clear(candidate):
+			return candidate
+
+	# All slots occupied
+	return {"valid": false}
 
 
 func _is_exit_clear(exit_info: Dictionary) -> bool:
@@ -227,14 +259,12 @@ func _is_exit_clear(exit_info: Dictionary) -> bool:
 	for etype in types:
 		var entities: Array[Dictionary] = EntityRegistry.get_by_type(etype)
 		for ent in entities:
-			# Skip our own player ship
 			if ent.get("id", "") == "player_ship":
 				continue
 			var dx: float = ent["pos_x"] - exit_ux
 			var dy: float = ent["pos_y"] - exit_uy
 			var dz: float = ent["pos_z"] - exit_uz
-			var dist_sq: float = dx * dx + dy * dy + dz * dz
-			if dist_sq < block_radius_sq:
+			if dx * dx + dy * dy + dz * dz < block_radius_sq:
 				return false
 	return true
 
@@ -245,15 +275,12 @@ func _reposition_at_station(exit_info: Dictionary = {}) -> void:
 
 	if exit_info.get("valid", false):
 		player_ship.global_position = exit_info["position"]
-		var away_dir: Vector3 = exit_info["away_dir"]
-		var new_pos: Vector3 = exit_info["position"]
-		player_ship.look_at(new_pos + away_dir, Vector3.UP)
+		player_ship.look_at(exit_info["position"] + exit_info["away_dir"], Vector3.UP)
 	else:
-		# Fallback: recompute (should not happen in normal flow)
-		var fallback_info: Dictionary = _compute_exit_position()
-		if fallback_info.get("valid", false):
-			player_ship.global_position = fallback_info["position"]
-			player_ship.look_at(fallback_info["position"] + fallback_info["away_dir"], Vector3.UP)
+		var fallback: Dictionary = _compute_exit_position()
+		if fallback.get("valid", false):
+			player_ship.global_position = fallback["position"]
+			player_ship.look_at(fallback["position"] + fallback["away_dir"], Vector3.UP)
 
 	player_ship.linear_velocity = Vector3.ZERO
 	player_ship.angular_velocity = Vector3.ZERO

@@ -9,6 +9,7 @@ extends Node3D
 
 var peer_id: int = -1
 var player_name: String = ""
+var clan_tag: String = ""
 var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
 var _was_dead: bool = false
@@ -53,7 +54,7 @@ func _setup_model() -> void:
 func _setup_name_label() -> void:
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"
-	_name_label.text = player_name if player_name != "" else "Pilote"
+	_name_label.text = _build_display_name()
 	_name_label.font_size = 64
 	_name_label.pixel_size = 0.04
 	_name_label.outline_size = 8
@@ -97,6 +98,11 @@ func change_ship_model(new_ship_id: StringName) -> void:
 
 ## Called when we receive a new state snapshot from the network.
 func receive_state(state) -> void:
+	# Detect clan tag change
+	if state.clan_tag != clan_tag:
+		clan_tag = state.clan_tag
+		_update_name_display()
+
 	# Detect ship change from state
 	if state.ship_id != &"" and state.ship_id != ship_id:
 		change_ship_model(state.ship_id)
@@ -253,5 +259,16 @@ func hide_mining_beam() -> void:
 ## Update the name label text.
 func set_player_name(pname: String) -> void:
 	player_name = pname
+	_update_name_display()
+
+
+func _build_display_name() -> String:
+	var base: String = player_name if player_name != "" else "Pilote"
+	if clan_tag != "":
+		return "[%s] %s" % [clan_tag, base]
+	return base
+
+
+func _update_name_display() -> void:
 	if _name_label:
-		_name_label.text = pname
+		_name_label.text = _build_display_name()

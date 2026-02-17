@@ -122,8 +122,10 @@ func apply_state(state: Dictionary) -> void:
 		GameManager._gameplay_integrator.apply_save_state(state)
 
 	# Ship change (must happen after fleet is restored by PlayerData)
+	# Uses rebuild_ship_for_respawn which bypasses the DOCKED state check —
+	# on reconnect the player is in PLAYING state, not DOCKED.
 	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
-	var ship =GameManager.player_ship
+	var ship = GameManager.player_ship
 	if ship and ship_id != "":
 		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else Constants.DEFAULT_SHIP_ID)
 		if current_sid != ship_id and GameManager.player_fleet:
@@ -134,7 +136,8 @@ func apply_state(state: Dictionary) -> void:
 					if str(GameManager.player_fleet.ships[i].ship_id) == ship_id:
 						target_idx = i
 						break
-			GameManager._on_ship_change_requested(target_idx)
+			if GameManager._ship_change_mgr:
+				GameManager._ship_change_mgr.rebuild_ship_for_respawn(target_idx)
 
 
 # --- Collect current state ---
