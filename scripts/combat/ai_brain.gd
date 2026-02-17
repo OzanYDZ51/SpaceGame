@@ -3,12 +3,12 @@ extends Node
 
 # =============================================================================
 # AI Brain - High-level behavior state machine for NPC ships
-# States: IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, DEAD
+# States: IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, LOOT_PICKUP, DEAD
 # Ticks at 10Hz for performance.
 # Environment-aware: adapts to asteroid belts, stations, nearby obstacles.
 # =============================================================================
 
-enum State { IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, DEAD }
+enum State { IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, LOOT_PICKUP, DEAD }
 
 var current_state: State = State.PATROL
 var target: Node3D = null
@@ -57,6 +57,7 @@ const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 var _ship = null
 var _pilot = null
 var _health = null
+var _loot_pickup = null  # LootPickupSystem (same component as player)
 var _evade_timer: float = 0.0
 var _debug_timer: float = 0.0
 var _cached_lod_mgr = null
@@ -92,6 +93,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_pilot = _ship.get_node_or_null("AIPilot") if _ship else null
 	_health = _ship.get_node_or_null("HealthSystem") if _ship else null
+	_loot_pickup = _ship.get_node_or_null("LootPickupSystem") if _ship else null
 
 	# Read per-ship AI ranges from ShipData (same data for player & NPC)
 	if _ship and _ship.ship_data:
@@ -176,6 +178,8 @@ func _process(delta: float) -> void:
 			_tick_formation()
 		State.MINING:
 			_tick_mining()
+		State.LOOT_PICKUP:
+			_tick_loot_pickup()
 
 	_debug_timer -= TICK_INTERVAL
 
@@ -265,6 +269,11 @@ func _tick_patrol() -> void:
 	_detect_threats()
 	if target:
 		current_state = State.PURSUE
+		return
+
+	# Loot pickup: if a crate is in range, go grab it (same system as player)
+	if _loot_pickup and _loot_pickup.can_pickup and _loot_pickup.nearest_crate:
+		current_state = State.LOOT_PICKUP
 		return
 
 	# Guard ships: recenter patrol if too far from station
@@ -437,6 +446,32 @@ func _tick_mining() -> void:
 	# Mining behavior is handled by AIMiningBehavior node (attached to fleet NPCs).
 	# This state just keeps the ship idle — AIMiningBehavior drives AIPilot directly.
 	pass
+
+
+func _tick_loot_pickup() -> void:
+	# Combat always takes priority over looting
+	_detect_threats()
+	if target:
+		current_state = State.PURSUE
+		return
+
+	# Crate gone or out of range? Back to patrol
+	if _loot_pickup == null or not _loot_pickup.can_pickup:
+		current_state = State.PATROL
+		return
+
+	var crate: CargoCrate = _loot_pickup.nearest_crate
+	if crate == null or not is_instance_valid(crate):
+		current_state = State.PATROL
+		return
+
+	var crate_pos: Vector3 = crate.global_position
+	_pilot.fly_toward(crate_pos, 30.0)
+
+	# Collect when close — uses pickup_range fraction, no hardcoded distance
+	if _pilot.get_distance_to(crate_pos) < _loot_pickup.pickup_range * 0.15:
+		crate.collect()
+		current_state = State.PATROL
 
 
 # =============================================================================

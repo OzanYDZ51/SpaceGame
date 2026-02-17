@@ -21,6 +21,7 @@ var _route: HudRoute = null
 var _planetary: HudPlanetary = null
 var _faction_panel: HudFactionPanel = null
 var _group_panel: HudGroupPanel = null
+var _comm_panel: HudCommPanel = null
 
 # --- Shared animation state ---
 var _scan_line_y: float = 0.0
@@ -114,6 +115,11 @@ func _build_components() -> void:
 	_group_panel.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(_group_panel)
 
+	# Comm panel: Star Citizen-style radio transmission alerts
+	_comm_panel = HudCommPanel.new()
+	_comm_panel.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(_comm_panel)
+
 
 # =============================================================================
 # SETTERS — same API as before, routes to components
@@ -195,6 +201,14 @@ func set_faction_manager(fm: FactionManager) -> void:
 	_faction_panel.faction_manager = fm
 
 
+func show_comm_transmission(evt_tier: int, evt_color: Color) -> void:
+	_comm_panel.show_transmission(evt_tier, evt_color)
+
+
+func show_comm_completion(evt_tier: int) -> void:
+	_comm_panel.show_completion(evt_tier)
+
+
 ## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.
 func rewire_to_ship(ship) -> void:
 	set_ship(ship)
@@ -248,6 +262,8 @@ func _process(delta: float) -> void:
 	_faction_panel.scan_line_y = _scan_line_y
 	_group_panel.pulse_t = _pulse_t
 	_group_panel.scan_line_y = _scan_line_y
+	_comm_panel.pulse_t = _pulse_t
+	_comm_panel.scan_line_y = _scan_line_y
 
 	# Detect cockpit mode
 	var cam =get_viewport().get_camera_3d()
@@ -262,6 +278,9 @@ func _process(delta: float) -> void:
 
 	# Update damage feedback (marker decay)
 	_damage_feedback.update_markers(delta)
+
+	# Update comm panel animation
+	_comm_panel.update(delta)
 
 	# Update targeting (flash decay, signal tracking)
 	_targeting.update(delta, is_cockpit)

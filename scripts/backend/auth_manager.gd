@@ -15,6 +15,7 @@ signal logged_out()
 
 var player_id: String = ""
 var username: String = ""
+var role: String = "player"
 var is_authenticated: bool = false
 
 var _access_token: String = ""
@@ -279,6 +280,7 @@ func _parse_jwt_claims(token: String) -> void:
 	if parsed.parse(decoded) == OK and parsed.data is Dictionary:
 		player_id = str(parsed.data.get("sub", ""))
 		username = str(parsed.data.get("username", ""))
+		role = str(parsed.data.get("role", "player"))
 
 
 func _save_tokens() -> void:
@@ -292,6 +294,7 @@ func _clear_session() -> void:
 	_refresh_token = ""
 	player_id = ""
 	username = ""
+	role = "player"
 	is_authenticated = false
 	_refresh_timer.stop()
 	ApiClient.clear_token()

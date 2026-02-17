@@ -262,6 +262,12 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	targeting.name = "TargetingSystem"
 	ship.add_child(targeting)
 
+	# Loot Pickup System (same component as player — NPCs auto-collect nearby crates)
+	var lps =LootPickupSystem.new()
+	lps.name = "LootPickupSystem"
+	lps.override_peer_id = 0  # NPCs only loot unowned/abandoned crates
+	ship.add_child(lps)
+
 	# AI Brain
 	var brain =AIBrain.new()
 	brain.name = "AIBrain"

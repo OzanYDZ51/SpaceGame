@@ -397,6 +397,9 @@ func corporationError(c *fiber.Ctx, err error) error {
 		return c.Status(409).JSON(fiber.Map{"error": "already applied to this corporation"})
 	case errors.Is(err, service.ErrApplicationNotFound):
 		return c.Status(404).JSON(fiber.Map{"error": "application not found"})
+	case errors.Is(err, service.ErrNameTooLong), errors.Is(err, service.ErrNameTooShort),
+		errors.Is(err, service.ErrTagTooLong), errors.Is(err, service.ErrTagTooShort):
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	default:
 		errStr := err.Error()
 		// Handle PostgreSQL unique constraint violations

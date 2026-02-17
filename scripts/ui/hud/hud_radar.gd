@@ -21,6 +21,7 @@ const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
 const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
+const NAV_COL_GROUP: Color = Color(0.3, 1.0, 0.6, 0.9)
 
 var _radar: Control = null
 
@@ -160,7 +161,11 @@ func _draw_radar(ctrl: Control) -> void:
 			if data == null or data.is_dead:
 				continue
 			var rel: Vector3 = data.position - ship.global_position
-			var col =_get_faction_nav_color(data.faction)
+			var col: Color
+			if data.peer_id > 0 and NetworkManager.is_peer_in_my_group(data.peer_id):
+				col = NAV_COL_GROUP
+			else:
+				col = _get_faction_nav_color(data.faction)
 			if rel.length() > RADAR_RANGE:
 				var lx: float = rel.dot(ship_basis.x)
 				var lz: float = rel.dot(ship_basis.z)
@@ -174,7 +179,11 @@ func _draw_radar(ctrl: Control) -> void:
 			if ship_node == ship or not is_instance_valid(ship_node) or not ship_node is Node3D:
 				continue
 			var rel: Vector3 = (ship_node as Node3D).global_position - ship.global_position
-			var col =_get_npc_nav_color(ship_node)
+			var col: Color
+			if ship_node is RemotePlayerShip and NetworkManager.is_peer_in_my_group(ship_node.peer_id):
+				col = NAV_COL_GROUP
+			else:
+				col = _get_npc_nav_color(ship_node)
 			if rel.length() > RADAR_RANGE:
 				var lx: float = rel.dot(ship_basis.x)
 				var lz: float = rel.dot(ship_basis.z)

@@ -25,7 +25,7 @@ func (h *ServerHandler) ValidateToken(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	playerID, username, err := h.authSvc.ValidateAccessToken(req.Token)
+	playerID, username, role, err := h.authSvc.ValidateAccessToken(req.Token)
 	if err != nil {
 		return c.JSON(model.ValidateTokenResponse{Valid: false})
 	}
@@ -34,6 +34,7 @@ func (h *ServerHandler) ValidateToken(c *fiber.Ctx) error {
 		Valid:    true,
 		PlayerID: playerID,
 		Username: username,
+		Role:     role,
 	})
 }
 

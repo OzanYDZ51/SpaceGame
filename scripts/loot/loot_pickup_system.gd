@@ -2,8 +2,8 @@ class_name LootPickupSystem
 extends Node
 
 # =============================================================================
-# Loot Pickup System - Child of PlayerShip, scans for nearby cargo crates
-# Same pattern as DockingSystem (periodic scan of EntityRegistry).
+# Loot Pickup System - Scans for nearby cargo crates via EntityRegistry.
+# Used by both PlayerShip (manual X pickup) and NPC ships (auto-collect).
 # =============================================================================
 
 signal crate_in_range(crate: CargoCrate)
@@ -11,6 +11,10 @@ signal crate_out_of_range()
 
 @export var pickup_range: float = 200.0
 @export var scan_interval: float = 0.25
+
+## Override peer_id for loot ownership check. -1 = use local player peer.
+## NPCs set this to 0 so they only loot unowned/abandoned crates.
+var override_peer_id: int = -1
 
 var nearest_crate: CargoCrate = null
 var can_pickup: bool = false
@@ -52,7 +56,8 @@ func _scan_crates() -> void:
 
 	var was_available: bool = can_pickup
 
-	if best_crate and best_dist < pickup_range and best_crate.can_be_looted_by(NetworkManager.local_peer_id):
+	var peer_id: int = override_peer_id if override_peer_id >= 0 else NetworkManager.local_peer_id
+	if best_crate and best_dist < pickup_range and best_crate.can_be_looted_by(peer_id):
 		can_pickup = true
 		nearest_crate = best_crate
 		if not was_available:

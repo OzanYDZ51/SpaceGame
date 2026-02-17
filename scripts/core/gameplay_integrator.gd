@@ -266,11 +266,19 @@ func _on_event_npc_killed(npc_id: StringName, evt: EventData) -> void:
 
 
 func _on_event_started(evt: EventData) -> void:
-	if _notif:
+	var hud = _get_flight_hud()
+	if hud:
+		hud.show_comm_transmission(evt.tier, evt.get_color())
+	elif _notif:
 		_notif.toast("%s détecté dans le système!" % evt.get_display_name())
 
 
 func _on_event_completed(evt: EventData) -> void:
+	# Comm panel completion message (before rewards toast)
+	var hud = _get_flight_hud()
+	if hud:
+		hud.show_comm_completion(evt.tier)
+
 	# Bonus credits for destroying the convoy leader
 	var bonus: int = EventDefinitions.get_leader_bonus_credits(evt.tier)
 	if _player_data and _player_data.economy:
@@ -323,6 +331,13 @@ func _get_current_danger_level() -> int:
 		var sys_dict: Dictionary = GameManager._galaxy.get_system(st.current_system_id)
 		return int(sys_dict.get("danger_level", 1))
 	return 1
+
+
+func _get_flight_hud():
+	var main_scene = get_tree().current_scene
+	if main_scene:
+		return main_scene.get_node_or_null("UI/FlightHUD")
+	return null
 
 
 func _get_docked_station_type() -> int:

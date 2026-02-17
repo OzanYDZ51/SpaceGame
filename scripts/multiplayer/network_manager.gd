@@ -17,7 +17,7 @@ signal connection_succeeded
 signal connection_failed(reason: String)
 signal server_connection_lost(reason: String)  ## Emitted only when a LIVE connection drops (not initial failures)
 signal player_state_received(peer_id: int, state)
-signal chat_message_received(sender_name: String, channel: int, text: String, corp_tag: String)
+signal chat_message_received(sender_name: String, channel: int, text: String, corp_tag: String, sender_role: String)
 signal whisper_received(sender_name: String, text: String)
 signal chat_history_received(history: Array)
 signal player_list_updated
@@ -312,14 +312,17 @@ func _on_peer_disconnected(id: int) -> void:
 	var left_name ="Pilote #%d" % id
 	if peers.has(id):
 		left_name = peers[id].player_name
+
+	# Handle group disconnect BEFORE erasing peer data (needs peer names for updates)
+	if is_server():
+		_handle_group_disconnect(id)
+
+	if peers.has(id):
 		peers.erase(id)
 	# Keep _player_last_system[id] for reconnect persistence (don't erase)
 	# Keep _peer_to_uuid / _uuid_to_peer for fleet NPC reconnect (don't erase)
 
 	if is_server():
-		# Handle group disconnect before erasing peer data
-		_handle_group_disconnect(id)
-
 		_rpc_player_left.rpc(id)
 		# Broadcast system chat: player left
 		var leave_sys: int = _player_last_system.get(id, -1)
@@ -346,7 +349,8 @@ func _on_connected_to_server() -> void:
 		local_player_name = AuthManager.username
 	# Register with the server (include UUID for fleet persistence)
 	var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
-	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid)
+	var player_role: String = AuthManager.role if AuthManager.is_authenticated else "player"
+	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid, player_role)
 	connection_succeeded.emit()
 
 
@@ -364,6 +368,9 @@ func _on_server_disconnected() -> void:
 	connection_state = ConnectionState.DISCONNECTED
 	local_peer_id = -1
 	_is_server = false
+	# Clear local group state
+	local_group_id = 0
+	local_group_data = {}
 	# Emit peer_disconnected for each peer so NetworkSyncManager can clean up puppets
 	var peer_ids =peers.keys()
 	peers.clear()
@@ -394,7 +401,7 @@ func _attempt_reconnect() -> void:
 
 ## Client -> Server: Register as a new player.
 @rpc("any_peer", "reliable")
-func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid: String = "") -> void:
+func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid: String = "", player_role: String = "player") -> void:
 	if not is_server():
 		return
 	var sender_id =multiplayer.get_remote_sender_id()
@@ -402,6 +409,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 	state.peer_id = sender_id
 	state.player_name = player_name
 	state.ship_id = StringName(ship_id_str)
+	state.role = player_role
 	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 
@@ -567,13 +575,15 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 	var sender_id =multiplayer.get_remote_sender_id()
 	var sender_name ="Unknown"
 	var sender_ctag: String = ""
+	var sender_role: String = "player"
 	if peers.has(sender_id):
 		sender_name = peers[sender_id].player_name
 		sender_ctag = peers[sender_id].corporation_tag
+		sender_role = peers[sender_id].role
 	print("[Chat] sender_id=%d sender_name='%s' peers_count=%d" % [sender_id, sender_name, peers.size()])
 
 	if is_server():
-		_store_chat_message(channel, sender_name, text, -1, sender_ctag)
+		_store_chat_message(channel, sender_name, text, -1, sender_ctag, sender_role)
 		# Channel-scoped routing — never relay back to sender (they already showed it locally)
 		match channel:
 			1:  # SYSTEM → only peers in same system
@@ -583,7 +593,7 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 				for pid in sys_peers:
 					if pid == sender_id:
 						continue
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
+					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
 				return
 			5:  # GROUP → only peers in same group
 				var gid: int = _player_group.get(sender_id, 0)
@@ -592,7 +602,7 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 					for pid in members:
 						if pid == sender_id:
 							continue
-						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
+						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
 				return
 			_:  # GLOBAL, TRADE, CORP, etc. → broadcast to all except sender
 				print("[Chat] GLOBAL relay: all peers=%s" % [str(peers.keys())])
@@ -600,13 +610,13 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 					if pid == sender_id:
 						continue
 					print("[Chat] Relaying to peer %d" % pid)
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
+					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
 
 
 ## Server -> All/Some clients: Chat message broadcast.
 @rpc("authority", "reliable")
-func _rpc_receive_chat(sender_name: String, channel: int, text: String, corp_tag: String = "") -> void:
-	chat_message_received.emit(sender_name, channel, text, corp_tag)
+func _rpc_receive_chat(sender_name: String, channel: int, text: String, corp_tag: String = "", sender_role: String = "player") -> void:
+	chat_message_received.emit(sender_name, channel, text, corp_tag, sender_role)
 
 
 ## Server -> Client: Chat history on connect.
@@ -642,7 +652,7 @@ func _rpc_receive_whisper(sender_name: String, text: String) -> void:
 
 
 ## Store a chat message: buffer in RAM first (always), then persist to backend (fire-and-forget).
-func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1, corp_tag: String = "") -> void:
+func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1, corp_tag: String = "", sender_role: String = "player") -> void:
 	if not is_server():
 		return
 	if channel == 4:  # PRIVATE — not stored
@@ -666,7 +676,7 @@ func _store_chat_message(channel: int, sender_name: String, text: String, overri
 	# 1) Always buffer in RAM (primary source for history on connect)
 	var now: Dictionary = Time.get_time_dict_from_system()
 	var ts: String = "%02d:%02d" % [now["hour"], now["minute"]]
-	var entry: Dictionary = {"s": sender_name, "t": text, "ts": ts, "ch": channel, "sys": sys_id, "ctag": corp_tag}
+	var entry: Dictionary = {"s": sender_name, "t": text, "ts": ts, "ch": channel, "sys": sys_id, "ctag": corp_tag, "rl": sender_role}
 	_chat_buffer.append(entry)
 	if _chat_buffer.size() > CHAT_BUFFER_SIZE:
 		_chat_buffer = _chat_buffer.slice(-CHAT_BUFFER_SIZE)
@@ -1421,7 +1431,7 @@ func _rpc_receive_group_error(msg: String) -> void:
 	# Display as a toast or system chat message
 	group_dissolved.emit("")  # empty reason = just an error, not a dissolve
 	# Route to chat as system message
-	chat_message_received.emit("SYSTÈME", 1, msg, "")
+	chat_message_received.emit("SYSTÈME", 1, msg, "", "player")
 
 
 # --- Server-side group helpers ---

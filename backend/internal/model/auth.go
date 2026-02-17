@@ -38,4 +38,5 @@ type ValidateTokenResponse struct {
 	Valid    bool   `json:"valid"`
 	PlayerID string `json:"player_id,omitempty"`
 	Username string `json:"username,omitempty"`
+	Role     string `json:"role,omitempty"`
 }

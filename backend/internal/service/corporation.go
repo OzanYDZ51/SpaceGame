@@ -21,6 +21,10 @@ var (
 	ErrInsufficientFunds         = errors.New("insufficient funds")
 	ErrAlreadyApplied            = errors.New("already applied to this corporation")
 	ErrApplicationNotFound       = errors.New("application not found")
+	ErrNameTooLong               = errors.New("corporation name must be 32 characters or less")
+	ErrTagTooLong                = errors.New("corporation tag must be 5 characters or less")
+	ErrNameTooShort              = errors.New("corporation name must be at least 3 characters")
+	ErrTagTooShort               = errors.New("corporation tag must be at least 2 characters")
 )
 
 type CorporationService struct {
@@ -33,6 +37,22 @@ func NewCorporationService(corpRepo *repository.CorporationRepository, playerRep
 }
 
 func (s *CorporationService) Create(ctx context.Context, playerID string, req *model.CreateCorporationRequest) (*model.Corporation, error) {
+	// Validate lengths
+	req.CorporationName = strings.TrimSpace(req.CorporationName)
+	req.CorporationTag = strings.TrimSpace(req.CorporationTag)
+	if len(req.CorporationName) < 3 {
+		return nil, ErrNameTooShort
+	}
+	if len(req.CorporationName) > 32 {
+		return nil, ErrNameTooLong
+	}
+	if len(req.CorporationTag) < 2 {
+		return nil, ErrTagTooShort
+	}
+	if len(req.CorporationTag) > 5 {
+		return nil, ErrTagTooLong
+	}
+
 	// Check player not already in a corporation
 	existingCorporationID, err := s.playerRepo.GetCorporationID(ctx, playerID)
 	if err != nil {

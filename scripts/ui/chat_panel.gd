@@ -66,6 +66,7 @@ var _messages: Dictionary = {}  # Channel -> Array of {text, author, time, color
 # State
 var _is_focused: bool = false
 var _panel_height: float = 260.0
+var _panel_width: float = 364.0
 var _fade_alpha: float = 0.6
 var _target_alpha: float = 0.6
 var _max_messages_per_channel: int = 100
@@ -74,6 +75,17 @@ var _bg_redraw_timer: float = 0.0
 var _private_target: String = ""  # Target player name for PRIVATE channel
 var _submit_frame: int = -10  # Frame when last message was submitted (anti key-repeat)
 var _scroll_pending: bool = false  # True when we need to auto-scroll after content resize
+
+# Resize
+enum ResizeEdge { NONE, TOP, RIGHT, TOP_RIGHT }
+var _resize_dragging: ResizeEdge = ResizeEdge.NONE
+var _resize_start_mouse: Vector2 = Vector2.ZERO
+var _resize_start_size: Vector2 = Vector2.ZERO  # (width, height) at drag start
+const RESIZE_HANDLE_SIZE: float = 6.0
+const PANEL_MIN_W: float = 280.0
+const PANEL_MAX_W: float = 700.0
+const PANEL_MIN_H: float = 150.0
+const PANEL_MAX_H: float = 600.0
 
 # Slash command autocomplete
 var _autocomplete_popup: Control = null
@@ -143,7 +155,7 @@ func _build_chat() -> void:
 	anchor_bottom = 1.0
 	offset_left = 16
 	offset_top = -_panel_height - 16
-	offset_right = 380
+	offset_right = 16 + _panel_width
 	offset_bottom = -16
 
 	# === Background drawing control ===
@@ -152,6 +164,7 @@ func _build_chat() -> void:
 	_panel_bg.anchor_bottom = 1.0
 	_panel_bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	_panel_bg.draw.connect(_draw_panel_bg.bind(_panel_bg))
+	_panel_bg.gui_input.connect(_on_panel_gui_input)
 	add_child(_panel_bg)
 
 	# === Tab bar ===
@@ -348,6 +361,24 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Global mouse handling for resize drag (continues even outside the panel)
+	if _resize_dragging != ResizeEdge.NONE:
+		if event is InputEventMouseMotion:
+			var delta: Vector2 = get_global_mouse_position() - _resize_start_mouse
+			var new_w: float = _resize_start_size.x
+			var new_h: float = _resize_start_size.y
+			if _resize_dragging == ResizeEdge.RIGHT or _resize_dragging == ResizeEdge.TOP_RIGHT:
+				new_w = clampf(_resize_start_size.x + delta.x, PANEL_MIN_W, PANEL_MAX_W)
+			if _resize_dragging == ResizeEdge.TOP or _resize_dragging == ResizeEdge.TOP_RIGHT:
+				new_h = clampf(_resize_start_size.y - delta.y, PANEL_MIN_H, PANEL_MAX_H)
+			_apply_resize(new_w, new_h)
+			get_viewport().set_input_as_handled()
+			return
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			_resize_dragging = ResizeEdge.NONE
+			_panel_bg.queue_redraw()
+			return
+
 	if not (event is InputEventKey and event.pressed):
 		return
 
@@ -479,13 +510,15 @@ func _on_message_submitted(text: String) -> void:
 	if corp_mgr and corp_mgr.has_corporation():
 		corp_tag = corp_mgr.corporation_data.corporation_tag
 
-	add_message(_current_channel, player_name, text, Color(0.3, 0.85, 1.0), corp_tag)
+	var local_role: String = AuthManager.role if AuthManager.is_authenticated else "player"
+	var local_color := Color(1.0, 0.25, 0.25) if local_role == "admin" else Color(0.3, 0.85, 1.0)
+	add_message(_current_channel, player_name, text, local_color, corp_tag, local_role)
 	message_sent.emit(CHANNEL_NAMES[_current_channel], text)
 
 	_input_field.grab_focus()
 
 
-func add_message(channel: int, author: String, text: String, author_color: Color = Color.WHITE, corp_tag: String = "") -> void:
+func add_message(channel: int, author: String, text: String, author_color: Color = Color.WHITE, corp_tag: String = "", role: String = "player") -> void:
 	var timestamp =Time.get_time_string_from_system().substr(0, 5)  # HH:MM
 	var msg ={
 		"author": author,
@@ -494,6 +527,7 @@ func add_message(channel: int, author: String, text: String, author_color: Color
 		"channel": channel,
 		"color": author_color,
 		"corp_tag": corp_tag,
+		"role": role,
 	}
 	_messages[channel].append(msg)
 
@@ -556,20 +590,22 @@ func _create_message_label(msg: Dictionary) -> RichTextLabel:
 	var time_hex =COL_TIMESTAMP.to_html(false)
 	var author_hex: String = msg["color"].to_html(false)
 	var tag: String = msg.get("corp_tag", "")
+	var is_admin: bool = msg.get("role", "player") == "admin"
+	var crown: String = "♛ " if is_admin else ""
 
 	var bbcode: String
 	if tag != "":
 		var tag_hex: String = Color(0.4, 1.0, 0.5).to_html(false)
-		bbcode = "[color=#%s]%s[/color] [color=#%s][%s][/color] [color=#%s]%s:[/color] %s" % [
+		bbcode = "[color=#%s]%s[/color] [color=#%s][%s][/color] [color=#%s]%s%s:[/color] %s" % [
 			time_hex, msg["time"],
 			tag_hex, tag,
-			author_hex, msg["author"],
+			author_hex, crown, msg["author"],
 			msg["text"]
 		]
 	else:
-		bbcode = "[color=#%s]%s[/color] [color=#%s]%s:[/color] %s" % [
+		bbcode = "[color=#%s]%s[/color] [color=#%s]%s%s:[/color] %s" % [
 			time_hex, msg["time"],
-			author_hex, msg["author"],
+			author_hex, crown, msg["author"],
 			msg["text"]
 		]
 	rtl.text = bbcode
@@ -589,7 +625,7 @@ func _draw_panel_bg(ctrl: Control) -> void:
 	ctrl.draw_rect(rect, COL_BORDER, false, 1.0)
 
 	# Corner accents
-	var cl =12.0
+	var cl: float = 12.0
 	ctrl.draw_line(Vector2(0, 0), Vector2(cl, 0), COL_CORNER, 1.5)
 	ctrl.draw_line(Vector2(0, 0), Vector2(0, cl), COL_CORNER, 1.5)
 	ctrl.draw_line(Vector2(ctrl.size.x, 0), Vector2(ctrl.size.x - cl, 0), COL_CORNER, 1.5)
@@ -599,9 +635,81 @@ func _draw_panel_bg(ctrl: Control) -> void:
 	ctrl.draw_line(Vector2(ctrl.size.x, ctrl.size.y), Vector2(ctrl.size.x - cl, ctrl.size.y), COL_CORNER, 1.5)
 	ctrl.draw_line(Vector2(ctrl.size.x, ctrl.size.y), Vector2(ctrl.size.x, ctrl.size.y - cl), COL_CORNER, 1.5)
 
+	# Resize grip — top-right corner (3 diagonal lines)
+	var grip_col: Color = COL_CORNER if _resize_dragging == ResizeEdge.NONE else Color(0.2, 0.8, 1.0, 0.7)
+	var gx: float = ctrl.size.x
+	for i in 3:
+		var off: float = 4.0 + i * 4.0
+		ctrl.draw_line(Vector2(gx - off, 0), Vector2(gx, off), grip_col, 1.0)
+
 	# Subtle scan line
 	var scan_y =fmod(Time.get_ticks_msec() / 30.0, ctrl.size.y)
 	ctrl.draw_line(Vector2(0, scan_y), Vector2(ctrl.size.x, scan_y), Color(0.1, 0.5, 0.7, 0.02), 1.0)
+
+
+# =============================================================================
+# RESIZE HANDLING
+# =============================================================================
+func _get_resize_edge(local_pos: Vector2) -> ResizeEdge:
+	var sz: Vector2 = _panel_bg.size
+	var on_top: bool = local_pos.y < RESIZE_HANDLE_SIZE
+	var on_right: bool = local_pos.x > sz.x - RESIZE_HANDLE_SIZE
+	if on_top and on_right:
+		return ResizeEdge.TOP_RIGHT
+	if on_top:
+		return ResizeEdge.TOP
+	if on_right:
+		return ResizeEdge.RIGHT
+	return ResizeEdge.NONE
+
+
+func _on_panel_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				var edge: ResizeEdge = _get_resize_edge(event.position)
+				if edge != ResizeEdge.NONE:
+					_resize_dragging = edge
+					_resize_start_mouse = get_global_mouse_position()
+					_resize_start_size = Vector2(_panel_width, _panel_height)
+					_panel_bg.accept_event()
+			else:
+				if _resize_dragging != ResizeEdge.NONE:
+					_resize_dragging = ResizeEdge.NONE
+					_panel_bg.queue_redraw()
+					_panel_bg.accept_event()
+
+	elif event is InputEventMouseMotion:
+		if _resize_dragging != ResizeEdge.NONE:
+			var delta: Vector2 = get_global_mouse_position() - _resize_start_mouse
+			var new_w: float = _resize_start_size.x
+			var new_h: float = _resize_start_size.y
+			if _resize_dragging == ResizeEdge.RIGHT or _resize_dragging == ResizeEdge.TOP_RIGHT:
+				new_w = clampf(_resize_start_size.x + delta.x, PANEL_MIN_W, PANEL_MAX_W)
+			if _resize_dragging == ResizeEdge.TOP or _resize_dragging == ResizeEdge.TOP_RIGHT:
+				new_h = clampf(_resize_start_size.y - delta.y, PANEL_MIN_H, PANEL_MAX_H)
+			_apply_resize(new_w, new_h)
+			_panel_bg.accept_event()
+		else:
+			# Update cursor based on hover position
+			var edge: ResizeEdge = _get_resize_edge(event.position)
+			match edge:
+				ResizeEdge.TOP_RIGHT:
+					_panel_bg.mouse_default_cursor_shape = Control.CURSOR_BDIAGSIZE
+				ResizeEdge.TOP:
+					_panel_bg.mouse_default_cursor_shape = Control.CURSOR_VSIZE
+				ResizeEdge.RIGHT:
+					_panel_bg.mouse_default_cursor_shape = Control.CURSOR_HSIZE
+				_:
+					_panel_bg.mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+
+func _apply_resize(w: float, h: float) -> void:
+	_panel_width = w
+	_panel_height = h
+	offset_right = 16 + _panel_width
+	offset_top = -_panel_height - 16
+	_panel_bg.queue_redraw()
 
 
 # =============================================================================
@@ -877,13 +985,17 @@ func load_history(history: Array) -> void:
 		if ch < 0 or ch >= Channel.size():
 			continue
 		var author: String = entry.get("s", "???")
+		var entry_role: String = entry.get("rl", "player")
 		var color: Color = Color(0.3, 0.85, 1.0)
 		# Apply same transformations as NetworkChatRelay._on_network_chat_received
 		if ch == Channel.SYSTEM:
 			author = "SYSTÈME"
 			color = Color(1.0, 0.85, 0.3)
+			entry_role = "player"
 		elif ch == Channel.PRIVATE:
 			color = Color(0.85, 0.5, 1.0)
+		if entry_role == "admin":
+			color = Color(1.0, 0.25, 0.25)
 		var msg ={
 			"author": author,
 			"text": entry.get("t", ""),
@@ -891,6 +1003,7 @@ func load_history(history: Array) -> void:
 			"channel": ch,
 			"color": color,
 			"corp_tag": entry.get("ctag", ""),
+			"role": entry_role,
 		}
 		_messages[ch].append(msg)
 

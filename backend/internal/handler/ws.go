@@ -30,7 +30,7 @@ func (h *WSHandler) Upgrade(c *fiber.Ctx) error {
 		}
 
 		authSvc := service.NewAuthService(nil, nil, h.jwtSecret)
-		playerID, username, err := authSvc.ValidateAccessToken(token)
+		playerID, username, _, err := authSvc.ValidateAccessToken(token)
 		if err != nil {
 			return c.Status(401).JSON(fiber.Map{"error": "invalid token"})
 		}

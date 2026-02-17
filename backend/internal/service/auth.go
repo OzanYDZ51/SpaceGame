@@ -73,7 +73,7 @@ func (s *AuthService) Register(ctx context.Context, req *model.RegisterRequest) 
 	}
 
 	// Generate tokens
-	tokens, err := s.generateTokenPair(ctx, player.ID, player.Username)
+	tokens, err := s.generateTokenPair(ctx, player.ID, player.Username, player.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (s *AuthService) Login(ctx context.Context, req *model.LoginRequest) (*mode
 		return nil, ErrInvalidCredentials
 	}
 
-	tokens, err := s.generateTokenPair(ctx, player.ID, player.Username)
+	tokens, err := s.generateTokenPair(ctx, player.ID, player.Username, player.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		return nil, ErrBanned
 	}
 
-	return s.generateTokenPair(ctx, playerID, player.Username)
+	return s.generateTokenPair(ctx, playerID, player.Username, player.Role)
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
@@ -144,7 +144,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	return s.sessionRepo.RevokeRefreshToken(ctx, tokenHash)
 }
 
-func (s *AuthService) ValidateAccessToken(tokenString string) (string, string, error) {
+func (s *AuthService) ValidateAccessToken(tokenString string) (string, string, string, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -152,29 +152,31 @@ func (s *AuthService) ValidateAccessToken(tokenString string) (string, string, e
 		return s.jwtSecret, nil
 	})
 	if err != nil {
-		return "", "", ErrInvalidToken
+		return "", "", "", ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return "", "", ErrInvalidToken
+		return "", "", "", ErrInvalidToken
 	}
 
 	playerID, _ := claims["sub"].(string)
 	username, _ := claims["username"].(string)
+	role, _ := claims["role"].(string)
 	if playerID == "" {
-		return "", "", ErrInvalidToken
+		return "", "", "", ErrInvalidToken
 	}
 
-	return playerID, username, nil
+	return playerID, username, role, nil
 }
 
-func (s *AuthService) generateTokenPair(ctx context.Context, playerID, username string) (*model.TokenPair, error) {
+func (s *AuthService) generateTokenPair(ctx context.Context, playerID, username, role string) (*model.TokenPair, error) {
 	// Access token
 	now := time.Now()
 	accessClaims := jwt.MapClaims{
 		"sub":      playerID,
 		"username": username,
+		"role":     role,
 		"iat":      now.Unix(),
 		"exp":      now.Add(accessTokenDuration).Unix(),
 	}

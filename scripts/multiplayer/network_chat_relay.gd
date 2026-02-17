@@ -21,6 +21,10 @@ func _ready() -> void:
 	NetworkManager.whisper_received.connect(_on_whisper_received)
 	NetworkManager.chat_history_received.connect(_on_chat_history_received)
 
+	# Group (party) signals → show/hide GROUP chat tab
+	NetworkManager.group_updated.connect(_on_group_updated)
+	NetworkManager.group_dissolved.connect(_on_group_dissolved)
+
 	# Note: join/leave messages are broadcast by the server via SYSTEM channel chat RPCs.
 	# No need to listen to peer_connected/peer_disconnected here.
 
@@ -53,7 +57,7 @@ func _on_local_message_sent(channel_name: String, text: String) -> void:
 
 
 ## Server relayed a chat message → display in ChatPanel.
-func _on_network_chat_received(sender_name: String, channel: int, text: String, corp_tag: String = "") -> void:
+func _on_network_chat_received(sender_name: String, channel: int, text: String, corp_tag: String = "", sender_role: String = "player") -> void:
 	if _chat_panel == null:
 		return
 	# Don't duplicate our own messages (already shown locally)
@@ -65,7 +69,12 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String, 
 		color = Color(1.0, 0.85, 0.3)
 		sender_name = "SYSTÈME"
 		corp_tag = ""
-	_chat_panel.add_message(channel, sender_name, text, color, corp_tag)
+		sender_role = "player"
+	elif channel == ChatPanel.Channel.GROUP:
+		color = Color(0.3, 1.0, 0.6)
+	if sender_role == "admin":
+		color = Color(1.0, 0.25, 0.25)
+	_chat_panel.add_message(channel, sender_name, text, color, corp_tag, sender_role)
 
 
 ## Received a whisper from another player.
@@ -88,11 +97,22 @@ func _on_chat_history_received(history: Array) -> void:
 	_chat_panel.load_history(history)
 
 
+func _on_group_updated(_gdata: Dictionary) -> void:
+	if _chat_panel:
+		_chat_panel.set_group_tab_visible(true)
+
+
+func _on_group_dissolved(_reason: String) -> void:
+	if _chat_panel:
+		_chat_panel.set_group_tab_visible(false)
+
+
 func _channel_name_to_int(channel_name: String) -> int:
 	match channel_name:
 		"GÉNÉRAL": return ChatPanel.Channel.GLOBAL
 		"SYSTÈME": return ChatPanel.Channel.SYSTEM
 		"COMMERCE": return ChatPanel.Channel.TRADE
+		"GROUPE": return ChatPanel.Channel.GROUP
 	# CORP tab name is dynamic (shows the tag), check the current name
 	if _chat_panel and channel_name == _chat_panel.CHANNEL_NAMES[ChatPanel.Channel.CORP]:
 		return ChatPanel.Channel.CORP

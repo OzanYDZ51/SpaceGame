@@ -51,11 +51,11 @@ func _ready() -> void:
 
 	# ─── Create panel inputs ───
 	_input_name = UITextInput.new()
-	_input_name.placeholder = "Nom de la corporation (3+ caracteres)"
+	_input_name.placeholder = "Nom de la corporation (3-32 caracteres)"
 	add_child(_input_name)
 
 	_input_tag = UITextInput.new()
-	_input_tag.placeholder = "Tag (2-4 lettres)"
+	_input_tag.placeholder = "Tag (2-5 lettres)"
 	add_child(_input_tag)
 
 	_btn_create = UIButton.new()
@@ -355,13 +355,13 @@ func _on_create_pressed() -> void:
 	var cname: String = _input_name.get_text().strip_edges()
 	var tag: String = _input_tag.get_text().strip_edges().to_upper()
 
-	if cname.length() < 3:
-		_status_text = "Le nom de la corporation doit contenir au moins 3 caracteres"
+	if cname.length() < 3 or cname.length() > 32:
+		_status_text = "Le nom doit contenir entre 3 et 32 caracteres"
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
 
-	if tag.length() < 2 or tag.length() > 4:
+	if tag.length() < 2 or tag.length() > 5:
 		_status_text = "Le tag doit contenir entre 2 et 4 caracteres"
 		_status_color = UITheme.DANGER
 		queue_redraw()
