@@ -50,6 +50,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git add launcher/package.json
           git commit -m "ci: bump launcher version to ${{ steps.version.outputs.version }}"
           git pull --rebase
