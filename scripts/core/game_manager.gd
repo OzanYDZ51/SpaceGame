@@ -917,24 +917,6 @@ func _on_network_reconnected() -> void:
 	_load_backend_state()
 
 
-func _show_loading_overlay() -> void:
-	if _system_transition:
-		var overlay: ColorRect = _system_transition.get_transition_overlay()
-		if overlay:
-			overlay.visible = true
-			overlay.modulate.a = 1.0
-			overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-
-
-func _hide_loading_overlay() -> void:
-	if _system_transition:
-		var overlay: ColorRect = _system_transition.get_transition_overlay()
-		if overlay:
-			overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var tw := create_tween()
-			tw.tween_property(overlay, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-			tw.tween_callback(func(): overlay.visible = false)
-
 
 func _show_faction_selection() -> void:
 	if _gameplay_integrator == null or _gameplay_integrator.faction_manager == null:
@@ -978,6 +960,8 @@ func _load_backend_state() -> void:
 	if not AuthManager.is_authenticated:
 		return
 	_crash_log("_load_backend_state: fetching player state...")
+	if _splash:
+		_splash.set_step("SYNCHRONISATION DU JOUEUR...", 0.80)
 	var state: Dictionary = await SaveManager.load_player_state()
 	_crash_log("_load_backend_state: got state, keys=%d error=%s" % [state.size(), state.has("error")])
 	if not state.is_empty() and not state.has("error"):
