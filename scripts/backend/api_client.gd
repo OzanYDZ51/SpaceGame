@@ -11,6 +11,7 @@ const REQUEST_TIMEOUT: float = 10.0
 
 var access_token: String = ""
 var _http_pool: Array[HTTPRequest] = []
+var _http_busy: Array[bool] = []
 var _request_queue: Array[Dictionary] = []
 var _pending: int = 0
 
@@ -28,6 +29,7 @@ func _ready() -> void:
 		http.timeout = REQUEST_TIMEOUT
 		add_child(http)
 		_http_pool.append(http)
+		_http_busy.append(false)
 
 
 func set_token(token: String) -> void:
@@ -79,6 +81,9 @@ func _request(method: String, path: String, body: Dictionary, use_auth: bool) ->
 
 
 func _execute_request(http: HTTPRequest, method: String, path: String, body: Dictionary, use_auth: bool) -> Dictionary:
+	var idx: int = _http_pool.find(http)
+	if idx >= 0:
+		_http_busy[idx] = true
 	_pending += 1
 
 	var url: String = base_url + path
@@ -101,11 +106,15 @@ func _execute_request(http: HTTPRequest, method: String, path: String, body: Dic
 	var err := http.request(url, headers, http_method, body_str)
 	if err != OK:
 		_pending -= 1
+		if idx >= 0:
+			_http_busy[idx] = false
 		_process_queue()
 		return {"error": "request_failed", "status_code": 0}
 
 	var response: Array = await http.request_completed
 	_pending -= 1
+	if idx >= 0:
+		_http_busy[idx] = false
 
 	# response: [result, response_code, headers, body]
 	var result_code: int = response[0]
@@ -132,10 +141,9 @@ func _execute_request(http: HTTPRequest, method: String, path: String, body: Dic
 
 
 func _get_available_http() -> HTTPRequest:
-	for http in _http_pool:
-		if http.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED or \
-		   http.get_http_client_status() == HTTPClient.STATUS_CONNECTED:
-			return http
+	for i in _http_pool.size():
+		if not _http_busy[i]:
+			return _http_pool[i]
 	return null
 
 

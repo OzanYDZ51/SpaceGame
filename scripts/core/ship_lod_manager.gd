@@ -267,6 +267,14 @@ func _process(delta: float) -> void:
 	if _camera == null or not is_instance_valid(_camera):
 		_camera = get_viewport().get_camera_3d()
 		if _camera == null:
+			# Dedicated server (headless): no camera — skip visual LOD/multimesh
+			# but still sync positions and tick AI so NPCs move and combat works.
+			if NetworkManager.is_server():
+				_sync_node_positions()
+				_ai_tick_timer -= delta
+				if _ai_tick_timer <= 0.0:
+					_ai_tick_timer = AI_TICK_INTERVAL
+					_tick_data_only_ai(AI_TICK_INTERVAL)
 			return
 
 	_sync_node_positions()

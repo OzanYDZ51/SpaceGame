@@ -77,6 +77,9 @@ func set_token_from_launcher(access_token: String) -> void:
 	ApiClient.set_token(_access_token)
 	_parse_jwt_claims(_access_token)
 	is_authenticated = true
+	# Atomically update network display name so it's never stale
+	if username != "":
+		NetworkManager.local_player_name = username
 	_start_refresh_timer()
 	# Try to get refresh token from saved file (launcher may have saved it)
 	var config := ConfigFile.new()
@@ -181,8 +184,8 @@ func _try_restore_session() -> void:
 			is_authenticated = true
 			_save_tokens()
 			_start_refresh_timer()
-			# Update multiplayer name if it wasn't already set
-			if username != "" and NetworkManager.local_player_name == "Pilote":
+			# Always sync multiplayer name from authenticated username
+			if username != "":
 				NetworkManager.local_player_name = username
 			login_succeeded.emit({"id": player_id, "username": username})
 			print("AuthManager: Session restored for '%s'" % username)

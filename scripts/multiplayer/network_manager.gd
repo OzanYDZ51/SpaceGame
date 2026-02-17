@@ -316,6 +316,9 @@ func _on_connected_to_server() -> void:
 	connection_state = ConnectionState.CONNECTED
 	local_peer_id = multiplayer.get_unique_id()
 	_reconnect_attempts = 0
+	# Use AuthManager username as source of truth (local_player_name may be stale)
+	if AuthManager.is_authenticated and AuthManager.username != "":
+		local_player_name = AuthManager.username
 	# Register with the server (include UUID for fleet persistence)
 	var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
 	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid)

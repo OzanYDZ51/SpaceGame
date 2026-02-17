@@ -145,7 +145,10 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 		if station_node:
 			patrol_radius = clampf(radius, 500.0, 1000.0)
 
-		if lod_mgr and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE:
+		# On dedicated server, always spawn full nodes — no rendering overhead
+		# and camera distance is meaningless on headless (cam_pos always zero).
+		var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
+		if spawn_data_only:
 			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
 			if lod_data:
 				lod_data.ai_patrol_center = center

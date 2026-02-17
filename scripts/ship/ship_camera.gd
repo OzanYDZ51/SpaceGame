@@ -85,6 +85,15 @@ const FREE_LOOK_SENSITIVITY: float = 0.15
 const FREE_LOOK_PITCH_MAX: float = 80.0
 const FREE_LOOK_RETURN_SPEED: float = 4.0
 
+## Ship-size camera scaling — base values saved from @export defaults
+const CAMERA_REF_SCALE: float = 2.0  ## Reference model_scale (fighters)
+var _base_distance_default: float
+var _base_distance_min: float
+var _base_distance_max: float
+var _base_height: float
+var _base_zoom_step: float
+var _base_cockpit_offset: Vector3
+
 
 func _ready() -> void:
 	_ship = get_parent()
@@ -98,6 +107,17 @@ func _ready() -> void:
 		return
 
 	set_as_top_level(true)
+
+	# Snapshot @export defaults as base reference for ship-size scaling
+	_base_distance_default = cam_distance_default
+	_base_distance_min = cam_distance_min
+	_base_distance_max = cam_distance_max
+	_base_height = cam_height
+	_base_zoom_step = cam_zoom_step
+	_base_cockpit_offset = cockpit_offset
+
+	# Auto-scale camera params to ship size
+	adapt_to_ship_size()
 
 	# Sync runtime vars from export defaults
 	target_distance = cam_distance_default
@@ -113,6 +133,9 @@ func _ready() -> void:
 	# Camera is top_level so floating origin shifts don't move it automatically.
 	# We must shift it manually to avoid the camera lagging behind after each shift.
 	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
+
+	# Re-adapt camera when player switches ships
+	GameManager.player_ship_rebuilt.connect(_on_ship_rebuilt)
 
 	# Find combat systems after scene is ready
 	_find_combat_systems.call_deferred()
@@ -130,6 +153,36 @@ func _find_combat_systems() -> void:
 		_ship.cruise_punch_triggered.connect(_on_cruise_punch)
 	if _ship.has_signal("cruise_exit_triggered") and not _ship.cruise_exit_triggered.is_connected(_on_cruise_exit):
 		_ship.cruise_exit_triggered.connect(_on_cruise_exit)
+
+
+## Auto-scale camera distance, height, zoom bounds to match ship visual size.
+## Uses model_scale from ShipData — larger ships get proportionally farther camera.
+## All values are derived from the saved @export base values × a sub-linear factor.
+func adapt_to_ship_size() -> void:
+	if _ship == null:
+		return
+	var ship_data = _ship.get("ship_data")
+	if ship_data == null:
+		return
+	var model_scale: float = ship_data.model_scale
+	if model_scale <= 0.0:
+		return
+	var ratio: float = model_scale / CAMERA_REF_SCALE
+	# Sub-linear curve: pow(ratio, 0.7) prevents absurd distances on huge ships
+	var factor: float = pow(maxf(ratio, 1.0), 0.7)
+	cam_distance_default = _base_distance_default * factor
+	cam_distance_min = _base_distance_min * factor
+	cam_distance_max = _base_distance_max * factor
+	cam_height = _base_height * factor
+	cam_zoom_step = _base_zoom_step * maxf(factor * 0.6, 1.0)
+	cockpit_offset = _base_cockpit_offset * factor
+
+
+func _on_ship_rebuilt(_ship_ref) -> void:
+	adapt_to_ship_size()
+	# Smoothly transition to new default distance
+	target_distance = cam_distance_default
+	_find_combat_systems()
 
 
 func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
