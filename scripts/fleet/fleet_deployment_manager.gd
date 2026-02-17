@@ -34,6 +34,15 @@ func _sync_deployed_positions() -> void:
 	for fleet_index in _deployed_ships:
 		var npc = _deployed_ships[fleet_index]
 		if not is_instance_valid(npc):
+			# NPC was LOD-demoted — try to get position from LOD data
+			if fleet_index >= 0 and fleet_index < _fleet.ships.size():
+				var fs = _fleet.ships[fleet_index]
+				if fs.deployed_npc_id != &"":
+					var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+					if lod_mgr:
+						var lod_data = lod_mgr.get_ship_data(fs.deployed_npc_id)
+						if lod_data:
+							fs.last_known_pos = FloatingOrigin.to_universe_pos(lod_data.position)
 			continue
 		if fleet_index >= 0 and fleet_index < _fleet.ships.size():
 			var fs = _fleet.ships[fleet_index]
@@ -85,6 +94,19 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 		# Resolve spawn position from station + random offset
 		var station_local_pos =Vector3.ZERO
 		var station_id: String = fs.docked_station_id
+		# Fallback: if docked_station_id is empty, use the active ship's station
+		if station_id == "":
+			var active_fs = _fleet.get_active()
+			if active_fs and active_fs.docked_station_id != "":
+				station_id = active_fs.docked_station_id
+				fs.docked_station_id = station_id
+		# Last resort: find any station in EntityRegistry
+		if station_id == "":
+			for ent_val in EntityRegistry.get_all().values():
+				if ent_val.get("type", -1) == EntityRegistrySystem.EntityType.STATION:
+					station_id = ent_val.get("id", "")
+					fs.docked_station_id = station_id
+					break
 		if station_id != "":
 			var ent =EntityRegistry.get_entity(station_id)
 			if not ent.is_empty():
@@ -235,12 +257,16 @@ func retrieve_ship(fleet_index: int) -> bool:
 			var bridge = npc.get_node_or_null("FleetAIBridge")
 			if bridge and bridge._station_id != "":
 				fs.docked_station_id = bridge._station_id
-			EntityRegistry.unregister(npc.name)
-			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-			if lod_mgr:
-				lod_mgr.unregister_ship(StringName(npc.name))
 			npc.queue_free()
 		_deployed_ships.erase(fleet_index)
+
+	# Always cleanup by npc_id (handles LOD-demoted NPCs where node is freed)
+	var npc_id: StringName = fs.deployed_npc_id
+	if npc_id != &"":
+		EntityRegistry.unregister(String(npc_id))
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+		if lod_mgr:
+			lod_mgr.unregister_ship(npc_id)
 
 	# Update FleetShip data
 	fs.deployment_state = FleetShip.DeploymentState.DOCKED
@@ -317,12 +343,16 @@ func release_scene_nodes() -> void:
 	for fleet_index in _deployed_ships.keys():
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
-			var npc = npc_ref
-			EntityRegistry.unregister(npc.name)
-			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-			if lod_mgr:
-				lod_mgr.unregister_ship(StringName(npc.name))
-			npc.queue_free()
+			npc_ref.queue_free()
+		# Always cleanup by npc_id (handles LOD-demoted NPCs where node is freed)
+		if fleet_index >= 0 and fleet_index < _fleet.ships.size():
+			var fs = _fleet.ships[fleet_index]
+			var npc_id: StringName = fs.deployed_npc_id
+			if npc_id != &"":
+				EntityRegistry.unregister(String(npc_id))
+				var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+				if lod_mgr:
+					lod_mgr.unregister_ship(npc_id)
 	_deployed_ships.clear()
 
 
@@ -356,6 +386,15 @@ func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return
 	var fs = _fleet.ships[fleet_index]
+
+	# Cleanup LOD + EntityRegistry before clearing state (handles LOD-demoted NPCs too)
+	var npc_id: StringName = fs.deployed_npc_id
+	if npc_id != &"":
+		EntityRegistry.unregister(String(npc_id))
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+		if lod_mgr:
+			lod_mgr.unregister_ship(npc_id)
+
 	fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 	fs.deployed_npc_id = &""
 	fs.deployed_command = &""
@@ -479,7 +518,7 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 				if GameManager._notif:
 					GameManager._notif.fleet.lost(fs.custom_name)
 
-	# Confirm alive ships — restore positions from server
+	# Confirm alive ships — restore positions and NPC IDs from server
 	for entry in alive:
 		var fi: int = int(entry.get("fleet_index", -1))
 		if fi >= 0 and fi < _fleet.ships.size():
@@ -488,6 +527,10 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 			var pz: float = float(entry.get("pos_z", 0.0))
 			if px != 0.0 or py != 0.0 or pz != 0.0:
 				_fleet.ships[fi].last_known_pos = [px, py, pz]
+			# Update NPC ID from server (may differ after server restart)
+			var npc_id_str: String = entry.get("npc_id", "")
+			if npc_id_str != "":
+				_fleet.ships[fi].deployed_npc_id = StringName(npc_id_str)
 
 	# Mark locally DEPLOYED ships as DESTROYED if missing from both alive and deaths.
 	# After server restart, _fleet_deaths_while_offline is empty, but the DB state is

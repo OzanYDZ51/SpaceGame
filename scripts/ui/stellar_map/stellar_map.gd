@@ -55,6 +55,7 @@ var _last_click_id: String = ""
 
 # Fleet move mode (multi-select)
 var _fleet_selected_indices: Array[int] = []
+var _fleet_virtual_timer: float = 0.0
 
 # Right-click hold detection for context menu
 var _right_hold_start: float = 0.0
@@ -260,6 +261,9 @@ func open() -> void:
 		_select_entity(_player_id)
 		_sync_fleet_selection_from_entity(_player_id)
 
+	# Build virtual fleet entities for deployed ships without EntityRegistry entries
+	_update_fleet_virtual_entities()
+
 
 func close() -> void:
 	if not _is_open:
@@ -274,6 +278,7 @@ func close() -> void:
 	_cancel_rename()
 	_clear_route_line()
 	_entity_layer.show_hint = false
+	_entity_layer.fleet_virtual_entities.clear()
 	_search.close()
 
 	# Restore mouse capture (skip when managed — UIScreenManager handles it)
@@ -387,6 +392,12 @@ func _process(delta: float) -> void:
 
 	# Sync follow state to renderer toolbar
 	_renderer.follow_enabled = _camera.follow_enabled
+
+	# Refresh virtual fleet entities periodically (remove once real entities appear from LOD sync)
+	_fleet_virtual_timer += delta
+	if _fleet_virtual_timer >= 2.0:
+		_fleet_virtual_timer = 0.0
+		_update_fleet_virtual_entities()
 
 	# Always redraw while open so entity positions update in real-time
 	_renderer.queue_redraw()
@@ -926,6 +937,42 @@ func set_fleet(fleet, galaxy) -> void:
 	_fleet_panel.set_fleet(fleet)
 	_fleet_panel.set_galaxy(galaxy)
 	_sync_squadron_data()
+	_update_fleet_virtual_entities()
+
+
+## Build virtual fleet entities for deployed ships that don't have EntityRegistry entries.
+## This handles MP clients (NPC exists server-side) and timing gaps after reconnect/reload.
+func _update_fleet_virtual_entities() -> void:
+	_entity_layer.fleet_virtual_entities.clear()
+	if _fleet_panel._fleet == null:
+		return
+	var all_entities: Dictionary = EntityRegistry.get_all()
+	for i in _fleet_panel._fleet.ships.size():
+		var fs = _fleet_panel._fleet.ships[i]
+		if fs.deployment_state != FleetShip.DeploymentState.DEPLOYED:
+			continue
+		# Skip if real entity already exists in registry
+		if fs.deployed_npc_id != &"" and all_entities.has(String(fs.deployed_npc_id)):
+			continue
+		if fs.last_known_pos.size() < 3:
+			continue
+		var vid: String = "fleet_virtual_%d" % i
+		var display_name: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+		_entity_layer.fleet_virtual_entities[vid] = {
+			"id": vid,
+			"name": display_name,
+			"type": EntityRegistrySystem.EntityType.SHIP_FLEET,
+			"pos_x": fs.last_known_pos[0],
+			"pos_y": fs.last_known_pos[1],
+			"pos_z": fs.last_known_pos[2],
+			"extra": {
+				"fleet_index": i,
+				"owner_name": "Player",
+				"command": String(fs.deployed_command),
+				"arrived": false,
+				"faction": "player_fleet",
+			},
+		}
 
 
 func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
@@ -946,12 +993,32 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 			_follow_entity(String(fs.deployed_npc_id))
 			_restore_route_for_fleet_selection(fleet_index)
 			return
+		# NPC entity not in registry — check virtual entity (MP client / timing)
+		var vid: String = "fleet_virtual_%d" % fleet_index
+		var virt: Dictionary = _entity_layer.fleet_virtual_entities.get(vid, {})
+		if not virt.is_empty():
+			_camera.center_x = virt["pos_x"]
+			_camera.center_z = virt["pos_z"]
+			_camera.follow_enabled = false
+			_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+			_restore_route_for_fleet_selection(fleet_index)
+			_dirty = true
+			return
 	# Docked ship = center on its station (static, no follow needed)
 	if fs.docked_station_id != "":
 		var ent =EntityRegistry.get_entity(fs.docked_station_id)
 		if not ent.is_empty():
 			_center_on_entity(fs.docked_station_id)
 			return
+	# Fallback: center on last_known_pos (ship in another system or not yet synced)
+	if fs.last_known_pos.size() >= 3:
+		_camera.center_x = fs.last_known_pos[0]
+		_camera.center_z = fs.last_known_pos[2]
+		_camera.follow_enabled = false
+		_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+		_restore_route_for_fleet_selection(fleet_index)
+		_dirty = true
+		return
 
 
 func _on_fleet_selection_changed(fleet_indices: Array) -> void:

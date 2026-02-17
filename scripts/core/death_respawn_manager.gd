@@ -142,6 +142,7 @@ func _find_respawn_ship(fleet) -> int:
 			continue
 		var fs =fleet.ships[i]
 		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+			var npc_id: StringName = fs.deployed_npc_id
 			# Force-recall: mark as DOCKED
 			fs.deployment_state = FleetShip.DeploymentState.DOCKED
 			fs.deployed_npc_id = &""
@@ -151,9 +152,14 @@ func _find_respawn_ship(fleet) -> int:
 			if fleet_deployment_mgr:
 				var npc = fleet_deployment_mgr.get_deployed_npc(i)
 				if npc and is_instance_valid(npc):
-					EntityRegistry.unregister(npc.name)
 					npc.queue_free()
 				fleet_deployment_mgr._deployed_ships.erase(i)
+			# Always cleanup by npc_id (handles LOD-demoted NPCs where node is freed)
+			if npc_id != &"":
+				EntityRegistry.unregister(String(npc_id))
+				var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+				if lod_mgr:
+					lod_mgr.unregister_ship(npc_id)
 			return i
 
 	return -1
@@ -169,6 +175,10 @@ func _grant_starter_ship(fleet) -> int:
 	starter_fs.deployment_state = FleetShip.DeploymentState.DOCKED
 	var sys_id: int = system_transition.current_system_id if system_transition else 0
 	starter_fs.docked_system_id = sys_id
+	# Set docked_station_id to nearest station (prevents deploying at origin/star)
+	var stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	if not stations.is_empty():
+		starter_fs.docked_station_id = stations[0].get("id", "")
 	var idx =fleet.add_ship(starter_fs)
 
 	# Toast notification

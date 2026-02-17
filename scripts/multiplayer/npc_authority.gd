@@ -3,7 +3,7 @@ extends Node
 
 # =============================================================================
 # NPC Authority - Server-side NPC management and combat validation.
-# Runs ONLY on the server (listen-server host or dedicated).
+# Runs ONLY on the dedicated server.
 # - Registers/unregisters NPCs per system
 # - Batches NPC states and broadcasts to clients in the same system
 # - Validates hit claims from clients
@@ -23,6 +23,8 @@ const MINING_MAX_DPS: float = 30.0  # Max reasonable mining DPS (tolerance ×1.5
 const ASTEROID_RESPAWN_TIME_CLEANUP: float = 300.0  # 5min stale entry cleanup
 
 var _active: bool = false
+var _fleet_backend_loaded: bool = false  # True once _load_deployed_fleet_ships_from_backend() completes
+var _pending_reconnects: Array = []  # [{uuid, pid}] queued while backend fleet loads
 var _batch_timer: float = 0.0
 var _slow_batch_timer: float = 0.0
 var _fleet_sync_timer: float = 0.0
@@ -649,6 +651,18 @@ func on_player_disconnected(uuid: String, old_pid: int) -> void:
 func on_player_reconnected(uuid: String, new_pid: int) -> void:
 	if uuid == "":
 		return
+
+	# If backend fleet data hasn't loaded yet, queue this reconnect for later
+	if not _fleet_backend_loaded:
+		_pending_reconnects.append({"uuid": uuid, "pid": new_pid})
+		print("NpcAuthority: Queuing reconnect for %s (pid=%d) — backend fleet not loaded yet" % [uuid, new_pid])
+		return
+
+	_send_fleet_reconnect_status(uuid, new_pid)
+
+
+## Actually build and send the fleet reconnect status.
+func _send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 	# Re-associate owner_pid for all fleet NPCs
 	if _fleet_npcs_by_owner.has(uuid):
 		for npc_id in _fleet_npcs_by_owner[uuid]:

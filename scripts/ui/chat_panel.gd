@@ -554,6 +554,10 @@ func _handle_command(text: String) -> void:
 ## Load chat history received from the server on (re)connect.
 ## Clears existing messages and populates channels without triggering unread indicators.
 func load_history(history: Array) -> void:
+	# Don't wipe local messages if the server sent an empty history (bug guard)
+	if history.is_empty():
+		return
+
 	# Clear all channels
 	for ch in Channel.values():
 		_messages[ch].clear()

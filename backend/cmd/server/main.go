@@ -177,6 +177,10 @@ func main() {
 	clans.Post("/:id/treasury/deposit", clanH.Deposit)
 	clans.Post("/:id/treasury/withdraw", clanH.Withdraw)
 	clans.Get("/:id/activity", clanH.GetActivity)
+	clans.Get("/:id/ranks", clanH.GetRanks)
+	clans.Post("/:id/ranks", clanH.AddRank)
+	clans.Put("/:id/ranks/:rid", clanH.UpdateRank)
+	clans.Delete("/:id/ranks/:rid", clanH.RemoveRank)
 	clans.Get("/:id/diplomacy", clanH.GetDiplomacy)
 	clans.Put("/:id/diplomacy", clanH.SetDiplomacy)
 

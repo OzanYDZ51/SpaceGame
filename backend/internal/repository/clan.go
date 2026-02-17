@@ -250,6 +250,33 @@ func (r *ClanRepository) GetRanks(ctx context.Context, clanID string) ([]*model.
 	return ranks, nil
 }
 
+func (r *ClanRepository) InsertRank(ctx context.Context, clanID, rankName string, priority, permissions int) (*model.ClanRank, error) {
+	rank := &model.ClanRank{}
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO clan_ranks (clan_id, rank_name, priority, permissions)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, clan_id, rank_name, priority, permissions
+	`, clanID, rankName, priority, permissions).Scan(
+		&rank.ID, &rank.ClanID, &rank.RankName, &rank.Priority, &rank.Permissions,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return rank, nil
+}
+
+func (r *ClanRepository) UpdateRank(ctx context.Context, rankID int64, rankName string, permissions int) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE clan_ranks SET rank_name = $2, permissions = $3 WHERE id = $1
+	`, rankID, rankName, permissions)
+	return err
+}
+
+func (r *ClanRepository) DeleteRank(ctx context.Context, rankID int64) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM clan_ranks WHERE id = $1`, rankID)
+	return err
+}
+
 // --- Treasury ---
 
 func (r *ClanRepository) UpdateTreasury(ctx context.Context, clanID string, amount int64) (int64, error) {

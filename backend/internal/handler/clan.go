@@ -225,6 +225,75 @@ func (h *ClanHandler) SetDiplomacy(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
+func (h *ClanHandler) GetRanks(c *fiber.Ctx) error {
+	clanID := c.Params("id")
+
+	ranks, err := h.clanSvc.GetRanks(c.Context(), clanID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to get ranks"})
+	}
+	if ranks == nil {
+		ranks = []*model.ClanRank{}
+	}
+	return c.JSON(ranks)
+}
+
+func (h *ClanHandler) AddRank(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	clanID := c.Params("id")
+
+	var req model.CreateRankRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	if req.RankName == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "rank_name is required"})
+	}
+
+	rank, err := h.clanSvc.AddRank(c.Context(), playerID, clanID, req.RankName, req.Priority, req.Permissions)
+	if err != nil {
+		return clanError(c, err)
+	}
+
+	return c.Status(201).JSON(rank)
+}
+
+func (h *ClanHandler) UpdateRank(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	clanID := c.Params("id")
+	rankID, err := strconv.ParseInt(c.Params("rid"), 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid rank id"})
+	}
+
+	var req model.UpdateRankRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	if err := h.clanSvc.UpdateRank(c.Context(), playerID, clanID, rankID, req.RankName, req.Permissions); err != nil {
+		return clanError(c, err)
+	}
+
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+func (h *ClanHandler) RemoveRank(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	clanID := c.Params("id")
+	rankID, err := strconv.ParseInt(c.Params("rid"), 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid rank id"})
+	}
+
+	if err := h.clanSvc.RemoveRank(c.Context(), playerID, clanID, rankID); err != nil {
+		return clanError(c, err)
+	}
+
+	return c.JSON(fiber.Map{"ok": true})
+}
+
 func clanError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, service.ErrClanNotFound):

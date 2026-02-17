@@ -2,7 +2,7 @@ class_name ServerAuthority
 extends Node
 
 # =============================================================================
-# Server Authority - Runs on the server (listen-server host OR dedicated).
+# Server Authority - Runs on the dedicated server.
 # Validates client actions, manages game state, broadcasts world updates.
 # Stays dormant until NetworkManager.is_server() becomes true.
 #

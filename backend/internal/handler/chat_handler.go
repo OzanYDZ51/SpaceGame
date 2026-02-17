@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"strconv"
 	"strings"
 
@@ -27,16 +28,20 @@ func (h *ChatHandler) PostMessage(c *fiber.Ctx) error {
 	}
 
 	if req.SenderName == "" || req.Text == "" {
+		log.Printf("[Chat] PostMessage rejected: empty sender_name or text")
 		return c.Status(400).JSON(fiber.Map{"error": "sender_name and text are required"})
 	}
 	if req.Channel < 0 || req.Channel > 3 {
+		log.Printf("[Chat] PostMessage rejected: invalid channel %d", req.Channel)
 		return c.Status(400).JSON(fiber.Map{"error": "channel must be 0-3"})
 	}
 
 	if err := h.chatRepo.InsertMessage(c.Context(), req); err != nil {
+		log.Printf("[Chat] PostMessage DB error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "failed to store message"})
 	}
 
+	log.Printf("[Chat] Stored: ch=%d sys=%d sender='%s' text='%.40s'", req.Channel, req.SystemID, req.SenderName, req.Text)
 	return c.JSON(fiber.Map{"ok": true})
 }
 
@@ -65,8 +70,11 @@ func (h *ChatHandler) GetHistory(c *fiber.Ctx) error {
 		limit = 50
 	}
 
+	log.Printf("[Chat] GetHistory: channels=%v system_id=%d limit=%d", channels, systemID, limit)
+
 	msgs, err := h.chatRepo.GetHistory(c.Context(), channels, systemID, limit)
 	if err != nil {
+		log.Printf("[Chat] GetHistory DB error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "failed to get history"})
 	}
 
@@ -74,5 +82,6 @@ func (h *ChatHandler) GetHistory(c *fiber.Ctx) error {
 		msgs = []model.ChatMessage{}
 	}
 
+	log.Printf("[Chat] GetHistory: returning %d messages", len(msgs))
 	return c.JSON(fiber.Map{"messages": msgs})
 }

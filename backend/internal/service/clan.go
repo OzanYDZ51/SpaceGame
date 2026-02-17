@@ -260,6 +260,66 @@ func (s *ClanService) SetDiplomacy(ctx context.Context, playerID, clanID, target
 	return s.clanRepo.SetDiplomacy(ctx, clanID, targetClanID, relation)
 }
 
+// --- Ranks ---
+
+func (s *ClanService) GetRanks(ctx context.Context, clanID string) ([]*model.ClanRank, error) {
+	return s.clanRepo.GetRanks(ctx, clanID)
+}
+
+func (s *ClanService) AddRank(ctx context.Context, playerID, clanID, rankName string, priority, permissions int) (*model.ClanRank, error) {
+	if err := s.requireRank(ctx, playerID, clanID, 3); err != nil {
+		return nil, err
+	}
+	return s.clanRepo.InsertRank(ctx, clanID, rankName, priority, permissions)
+}
+
+func (s *ClanService) UpdateRank(ctx context.Context, playerID, clanID string, rankID int64, rankName string, permissions int) error {
+	if err := s.requireRank(ctx, playerID, clanID, 3); err != nil {
+		return err
+	}
+	return s.clanRepo.UpdateRank(ctx, rankID, rankName, permissions)
+}
+
+func (s *ClanService) RemoveRank(ctx context.Context, playerID, clanID string, rankID int64) error {
+	if err := s.requireRank(ctx, playerID, clanID, 3); err != nil {
+		return err
+	}
+
+	// Find the rank to get its priority
+	ranks, err := s.clanRepo.GetRanks(ctx, clanID)
+	if err != nil {
+		return err
+	}
+
+	var deletedPriority int = -1
+	var lowestPriority int = 0
+	for _, r := range ranks {
+		if r.ID == rankID {
+			deletedPriority = r.Priority
+		}
+		if r.Priority < lowestPriority || lowestPriority == 0 {
+			lowestPriority = r.Priority
+		}
+	}
+
+	if deletedPriority < 0 {
+		return ErrClanNotFound
+	}
+
+	// Reassign members on the deleted rank to the lowest priority rank
+	members, err := s.clanRepo.GetMembers(ctx, clanID)
+	if err != nil {
+		return err
+	}
+	for _, m := range members {
+		if m.RankPriority == deletedPriority {
+			_ = s.clanRepo.SetMemberRank(ctx, m.PlayerID, lowestPriority)
+		}
+	}
+
+	return s.clanRepo.DeleteRank(ctx, rankID)
+}
+
 // requireRank checks that the player has at least the given rank priority in the clan
 func (s *ClanService) requireRank(ctx context.Context, playerID, clanID string, minRank int) error {
 	member, err := s.clanRepo.GetMember(ctx, playerID)

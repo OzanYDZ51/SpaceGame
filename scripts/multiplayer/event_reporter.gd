@@ -4,7 +4,7 @@ extends Node
 # =============================================================================
 # Event Reporter
 # Sends notable game events to the backend API for Discord integration.
-# Active on the game server (headless) or host (player acting as server).
+# Active on the dedicated game server (headless).
 # Checks server status lazily on each send — no timing issues with init order.
 # Uses X-Server-Key auth (server-to-server), not player JWT.
 # =============================================================================

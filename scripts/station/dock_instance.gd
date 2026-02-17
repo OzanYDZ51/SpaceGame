@@ -62,40 +62,44 @@ func enter(ctx: Dictionary) -> void:
 		if node:
 			node.visible = false
 
-	# --- 4. LOAD HANGAR ---
-	var hangar_packed: PackedScene = load("res://scenes/station/hangar_interior.tscn")
-	hangar_scene = hangar_packed.instantiate()
-	main_scene.add_child(hangar_scene)
-	hangar_scene.activate()
+	# --- 4. LOAD HANGAR (skip on dedicated server or if asset missing) ---
+	if not OS.has_feature("dedicated_server"):
+		var hangar_packed = load("res://scenes/station/hangar_interior.tscn") as PackedScene
+		if hangar_packed:
+			hangar_scene = hangar_packed.instantiate()
+			main_scene.add_child(hangar_scene)
+			hangar_scene.activate()
 
-	# Display player ship model in hangar (with equipped weapons)
-	var ship_model = player_ship.get_node_or_null("ShipModel")
-	var wm = player_ship.get_node_or_null("WeaponManager")
-	if ship_model:
-		var hp_configs: Array[Dictionary] = []
-		var weapon_names: Array[StringName] = []
-		if wm:
-			for hp in wm.hardpoints:
-				hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
-				weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
-		# Get root_basis from HardpointRoot node for correct weapon positioning
-		var root_basis: Basis = Basis.IDENTITY
-		var hp_root =player_ship.get_node_or_null("HardpointRoot") as Node3D
-		if hp_root:
-			root_basis = hp_root.transform.basis
+			# Display player ship model in hangar (with equipped weapons)
+			var ship_model = player_ship.get_node_or_null("ShipModel")
+			var wm = player_ship.get_node_or_null("WeaponManager")
+			if ship_model:
+				var hp_configs: Array[Dictionary] = []
+				var weapon_names: Array[StringName] = []
+				if wm:
+					for hp in wm.hardpoints:
+						hp_configs.append({"position": hp.position, "rotation_degrees": hp.rotation_degrees, "id": hp.slot_id, "size": hp.slot_size, "is_turret": hp.is_turret})
+						weapon_names.append(hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+				# Get root_basis from HardpointRoot node for correct weapon positioning
+				var root_basis: Basis = Basis.IDENTITY
+				var hp_root =player_ship.get_node_or_null("HardpointRoot") as Node3D
+				if hp_root:
+					root_basis = hp_root.transform.basis
 
-		hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
+				hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
-	# Setup ship selection cycling (A/D keys) — only owned ships
-	var fleet_indices: Array = _get_switchable_fleet_indices()
-	var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
-	hangar_scene.setup_ship_selection(active_idx, fleet_indices)
-	if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
-		hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
+			# Setup ship selection cycling (A/D keys) — only owned ships
+			var fleet_indices: Array = _get_switchable_fleet_indices()
+			var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
+			hangar_scene.setup_ship_selection(active_idx, fleet_indices)
+			if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
+				hangar_scene.ship_selected.connect(_on_hangar_ship_selected)
 
-	# Refresh hangar list when fleet changes (e.g. buying a new ship)
-	if GameManager.player_fleet and not GameManager.player_fleet.fleet_changed.is_connected(_on_fleet_changed):
-		GameManager.player_fleet.fleet_changed.connect(_on_fleet_changed)
+			# Refresh hangar list when fleet changes (e.g. buying a new ship)
+			if GameManager.player_fleet and not GameManager.player_fleet.fleet_changed.is_connected(_on_fleet_changed):
+				GameManager.player_fleet.fleet_changed.connect(_on_fleet_changed)
+		else:
+			push_warning("DockInstance: hangar_interior.tscn failed to load — skipping hangar visuals")
 
 	entered.emit(station_name)
 

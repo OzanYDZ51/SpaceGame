@@ -83,26 +83,11 @@ func _send_state() -> void:
 	# Reliable death/respawn events (detect transitions)
 	if state.is_dead and not _was_dead:
 		_was_dead = true
-		var death_pos =FloatingOrigin.to_universe_pos(_ship.global_position)
-		if NetworkManager.is_host:
-			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-			if npc_auth:
-				# Host: relay death directly to peers in same system
-				for pid in NetworkManager.get_peers_in_system(state.system_id):
-					if pid == 1:
-						continue
-					NetworkManager._rpc_receive_player_died.rpc_id(pid, 1, death_pos)
-		else:
-			NetworkManager._rpc_player_died.rpc_id(1, death_pos)
+		var death_pos = FloatingOrigin.to_universe_pos(_ship.global_position)
+		NetworkManager._rpc_player_died.rpc_id(1, death_pos)
 	elif not state.is_dead and _was_dead:
 		_was_dead = false
-		if NetworkManager.is_host:
-			for pid in NetworkManager.get_peers_in_system(state.system_id):
-				if pid == 1:
-					continue
-				NetworkManager._rpc_receive_player_respawned.rpc_id(pid, 1, state.system_id)
-		else:
-			NetworkManager._rpc_player_respawned.rpc_id(1, state.system_id)
+		NetworkManager._rpc_player_respawned.rpc_id(1, state.system_id)
 
 	# Combat state
 	var health = _ship.get_node_or_null("HealthSystem")
@@ -115,16 +100,8 @@ func _send_state() -> void:
 			state.shield_ratios[2] = health.shield_current[2] / smpf
 			state.shield_ratios[3] = health.shield_current[3] / smpf
 
-	if NetworkManager.is_host:
-		# Host: update our own state directly in the peers dict
-		# (ServerAuthority will broadcast it to other clients)
-		if NetworkManager.peers.has(1):
-			var my_state = NetworkManager.peers[1]
-			my_state.from_dict(state.to_dict())
-			my_state.peer_id = 1
-	else:
-		# Client: send to server via RPC
-		NetworkManager._rpc_sync_state.rpc_id(1, state.to_dict())
+	# Send state to server via RPC
+	NetworkManager._rpc_sync_state.rpc_id(1, state.to_dict())
 
 
 ## Called after ship change to rebind to new WeaponManager.
@@ -156,16 +133,9 @@ func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
 		fire_dir = (-muzzle.basis.z).normalized()
 	var ship_vel = _ship.linear_velocity
 
-	if NetworkManager.is_host:
-		# Host: relay directly via NpcAuthority
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth:
-			npc_auth.relay_fire_event(1, String(weapon_name_str), fire_pos,
-				[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
-	else:
-		NetworkManager._rpc_fire_event.rpc_id(1,
-			String(weapon_name_str), fire_pos,
-			[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
+	NetworkManager._rpc_fire_event.rpc_id(1,
+		String(weapon_name_str), fire_pos,
+		[fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z])
 
 
 ## Send mining beam state at 10Hz (visual only, no damage).
@@ -194,12 +164,7 @@ func _send_mining_state() -> void:
 		if beam._impact_light:
 			target_pos = FloatingOrigin.to_universe_pos(beam._impact_light.global_position)
 
-	if NetworkManager.is_host:
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth:
-			npc_auth.relay_mining_beam(1, true, source_pos, target_pos)
-	else:
-		NetworkManager._rpc_mining_beam.rpc_id(1, true, source_pos, target_pos)
+	NetworkManager._rpc_mining_beam.rpc_id(1, true, source_pos, target_pos)
 
 
 var _was_mining: bool = false
@@ -215,10 +180,5 @@ func _process(_delta: float) -> void:
 	var currently_mining: bool = beam != null and beam._active
 	if _was_mining and not currently_mining:
 		var empty: Array = [0.0, 0.0, 0.0]
-		if NetworkManager.is_host:
-			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-			if npc_auth:
-				npc_auth.relay_mining_beam(1, false, empty, empty)
-		else:
-			NetworkManager._rpc_mining_beam.rpc_id(1, false, empty, empty)
+		NetworkManager._rpc_mining_beam.rpc_id(1, false, empty, empty)
 	_was_mining = currently_mining

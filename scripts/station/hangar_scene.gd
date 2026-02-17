@@ -51,17 +51,36 @@ func _ready() -> void:
 	_cam_base_pos = _camera.position
 	_cam_base_rot = _camera.rotation_degrees
 
-	# Save ShipPreview transform from editor, then remove preview (replaced by display_ship)
-	var spawn_point =get_node_or_null("ShipSpawnPoint") as Marker3D
-	if spawn_point:
-		var preview =spawn_point.get_node_or_null("ShipPreview") as Node3D
-		if preview:
-			_preview_local_pos = preview.position
-			_preview_local_rot = preview.rotation_degrees
-			_preview_local_scale = preview.scale
-			preview.queue_free()
+	# Load hangar 3D model dynamically (avoids broken ext_resource if .glb import is stale)
+	_load_hangar_model()
+
+	# Default ship preview transform (was previously baked from ShipPreview node in .tscn)
+	_preview_local_pos = Vector3(0, -1.1458678, -8.755791)
+	_preview_local_rot = Vector3.ZERO
+	_preview_local_scale = Vector3(0.15, 0.15, 0.15)
 
 	_setup_prompt_overlay()
+
+
+func _load_hangar_model() -> void:
+	var glb_path := "res://assets/models/hangar_interior.glb"
+	if not ResourceLoader.exists(glb_path):
+		push_warning("HangarScene: %s not found — hangar visuals skipped" % glb_path)
+		return
+	var packed: PackedScene = load(glb_path) as PackedScene
+	if packed == null:
+		push_warning("HangarScene: Failed to load %s — hangar visuals skipped" % glb_path)
+		return
+	var model: Node3D = packed.instantiate() as Node3D
+	if model == null:
+		return
+	model.name = "HangarModel"
+	model.transform = Transform3D(
+		Vector3(0.0024, 0, 0), Vector3(0, 0.0024, 0), Vector3(0, 0, 0.0024),
+		Vector3(0, -8.34769, 0)
+	)
+	add_child(model)
+	move_child(model, 0)  # Keep model behind camera/lights in tree
 
 
 func _setup_prompt_overlay() -> void:

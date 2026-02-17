@@ -29,6 +29,7 @@ const PERM_NAMES := {
 @export var rank_name: String = ""
 @export var priority: int = 0
 @export var permissions: int = 0
+var db_id: int = -1
 
 
 func has_permission(perm: int) -> bool:

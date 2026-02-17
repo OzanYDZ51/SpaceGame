@@ -6,14 +6,9 @@ extends Node
 #
 # Transport: WebSocket (runs over HTTP/TCP — deployable on Railway/PaaS).
 #
-# Two modes:
-#   DEV (localhost):  host_and_play() → listen-server on your PC.
-#                     Client connects via ws://127.0.0.1:7777
-#   PROD (Railway):   connect_to_server(railway_url) → dedicated headless server.
-#                     Client connects via wss://xxx.up.railway.app
-#
-# In both cases the server is authoritative (validates, relays).
-# The host in listen-server is peer_id=1 and plays normally.
+# Architecture: Single dedicated server on Railway (headless).
+# All clients connect via wss://xxx.up.railway.app.
+# Server is authoritative (validates, relays).
 # =============================================================================
 
 signal peer_connected(peer_id: int, player_name: String)
@@ -66,10 +61,10 @@ var local_player_name: String = "Pilote"
 var local_ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var local_peer_id: int = -1
 
-## True when this instance is acting as the server (listen-server host OR dedicated).
+## True when this instance is acting as the dedicated server.
 var is_host: bool = false
 
-## True only for headless dedicated server (no local player).
+## True for headless dedicated server (no local player).
 var is_dedicated_server: bool = false
 
 # peer_id -> NetworkState (all remote players)
@@ -97,8 +92,10 @@ var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
 
 # Chat persistence: in-memory buffer (primary) + backend DB (long-term)
 const CHAT_BUFFER_SIZE: int = 200
+const CHAT_HISTORY_LIMIT: int = 50  # Max messages sent to clients on connect
 var _chat_buffer: Array = []  # [{s, t, ts, ch, sys}] — server-side ring buffer
 var _chat_backend_client: ServerBackendClient = null
+var _chat_preload_done: bool = false
 
 
 func _ready() -> void:
@@ -140,50 +137,7 @@ func _parse_galaxy_seed_arg() -> void:
 # PUBLIC API
 # =========================================================================
 
-## Host & Play (listen-server): start a server on your PC and play as peer_id=1.
-## Your friend joins your LAN/public IP. This is the DEV/localhost mode.
-func host_and_play(port: int = Constants.NET_DEFAULT_PORT) -> Error:
-	if connection_state != ConnectionState.DISCONNECTED:
-		disconnect_from_server()
-
-	_server_port = port
-	_peer = WebSocketMultiplayerPeer.new()
-	var err =_peer.create_server(port)
-	if err != OK:
-		push_error("NetworkManager: Failed to host on port %d: %s" % [port, error_string(err)])
-		connection_failed.emit("Impossible d'héberger: " + error_string(err))
-		return err
-
-	multiplayer.multiplayer_peer = _peer
-	connection_state = ConnectionState.CONNECTED
-	local_peer_id = 1
-	is_host = true
-	is_dedicated_server = false
-
-	# Register ourselves as a player on the server
-	var state =NetworkState.new()
-	state.peer_id = 1
-	state.player_name = local_player_name
-	state.ship_id = local_ship_id
-	var sdata: ShipData = ShipRegistry.get_ship_data(local_ship_id)
-	state.ship_class = sdata.ship_class if sdata else &"Fighter"
-	peers[1] = state
-
-	# Register host's UUID so fleet NPCs are tracked by UUID (not just peer_id "1")
-	if AuthManager.is_authenticated and AuthManager.player_id != "":
-		_uuid_to_peer[AuthManager.player_id] = 1
-		_peer_to_uuid[1] = AuthManager.player_id
-
-	_ensure_chat_backend_client()
-	_preload_chat_from_backend()
-	# Send history to the host player after ChatPanel is ready (2 frames delay)
-	_emit_host_chat_history.call_deferred()
-	connection_succeeded.emit()
-	player_list_updated.emit()
-	return OK
-
-
-## Start a pure dedicated server (headless, no local player).
+## Start the dedicated server (headless, no local player).
 ## Used for production Railway deployment.
 func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	# Railway sets PORT env var dynamically
@@ -211,12 +165,12 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	print("  DEDICATED SERVER LISTENING ON PORT %d" % port)
 	print("========================================")
 	_ensure_chat_backend_client()
-	_preload_chat_from_backend()
+	_preload_and_emit_chat_history()
 	connection_succeeded.emit()
 	return OK
 
 
-## Connect to a remote server as a client (join a host or a Railway server).
+## Connect to the Railway server as a client.
 ## address can be:
 ##   - A full URL: "ws://127.0.0.1:7777" or "wss://imperion.up.railway.app"
 ##   - An IP/hostname: "127.0.0.1" (port appended as ws://ip:port)
@@ -561,7 +515,7 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 	player_state_received.emit(pid, state)
 
 
-## Client/Host -> Server: Chat message (scoped by channel).
+## Client -> Server: Chat message (scoped by channel).
 @rpc("any_peer", "reliable")
 func _rpc_chat_message(channel: int, text: String) -> void:
 	if text.strip_edges().is_empty():
@@ -640,37 +594,6 @@ func _rpc_receive_whisper(sender_name: String, text: String) -> void:
 	whisper_received.emit(sender_name, text)
 
 
-## Host helper: deliver a whisper when the host is the sender.
-func _deliver_whisper_from_host(target_name: String, text: String) -> void:
-	var target_pid: int = _find_peer_by_name(target_name)
-	if target_pid == -1:
-		whisper_received.emit("SYSTÈME", "Joueur '%s' introuvable." % target_name)
-		return
-	if target_pid == 1:
-		# Whispering to self (host)
-		whisper_received.emit(local_player_name, text)
-	else:
-		_rpc_receive_whisper.rpc_id(target_pid, local_player_name, text)
-
-
-## Host sends a chat message using the same scoped routing as client messages.
-func _relay_chat_from_host(channel: int, text: String) -> void:
-	var sender_name: String = local_player_name
-	_store_chat_message(channel, sender_name, text)
-	match channel:
-		1:  # SYSTEM → only peers in same system
-			var host_sys: int = peers[1].system_id if peers.has(1) else -1
-			for pid in get_peers_in_system(host_sys):
-				if pid == 1:
-					continue  # Host already showed message locally
-				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
-		_:  # GLOBAL, TRADE, CLAN → all clients (host already showed locally)
-			for pid in peers:
-				if pid == 1:
-					continue
-				_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
-
-
 ## Store a chat message: buffer in RAM first (always), then persist to backend (fire-and-forget).
 func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1) -> void:
 	if not is_server():
@@ -719,31 +642,37 @@ func _send_chat_history(peer_id: int, system_id: int) -> void:
 		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch})
 	if history.is_empty():
 		return
+	# Limit to the last N messages to avoid huge RPC payloads
+	if history.size() > CHAT_HISTORY_LIMIT:
+		history = history.slice(-CHAT_HISTORY_LIMIT)
 	_rpc_chat_history.rpc_id(peer_id, history)
 
 
-## Emit chat history locally for the host player (deferred so ChatPanel is ready).
-func _emit_host_chat_history() -> void:
-	if _chat_buffer.is_empty():
-		return
-	var history: Array = []
-	var host_sys: int = GameManager.current_system_id_safe() if GameManager else 0
-	for entry in _chat_buffer:
-		var ch: int = entry.get("ch", 0)
-		if ch == 1 and entry.get("sys", -1) != host_sys:
-			continue
-		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch})
-	if not history.is_empty():
-		chat_history_received.emit(history)
+## Async helper: preload from backend DB, then send history to any clients that connected while loading.
+## Called from start_dedicated_server() — runs in the background.
+func _preload_and_emit_chat_history() -> void:
+	print("[Chat] Starting async preload from backend...")
+	await _preload_chat_from_backend()
+	print("[Chat] Preload done (buffer=%d, preload_ok=%s)" % [_chat_buffer.size(), str(_chat_preload_done)])
+
+	# Send history to any clients that connected while preloading
+	for pid in peers:
+		if pid == 1:
+			continue  # peer 1 is the server itself
+		var sys_id: int = peers[pid].system_id if peers.has(pid) else 0
+		_send_chat_history(pid, sys_id)
 
 
 ## Preload chat history from backend DB into the in-memory buffer (server startup).
 ## If backend is unavailable, buffer stays empty — new messages accumulate normally.
 func _preload_chat_from_backend() -> void:
 	if not _chat_backend_client:
+		print("[Chat] No backend client — skipping preload")
 		return
-	var backend_msgs: Array = await _chat_backend_client.get_chat_history([0, 1, 2, 3], 0, CHAT_BUFFER_SIZE)
+	# Use system_id=-1 as sentinel: backend loads ALL SYSTEM messages without filtering
+	var backend_msgs: Array = await _chat_backend_client.get_chat_history([0, 1, 2, 3], -1, CHAT_BUFFER_SIZE)
 	if backend_msgs.is_empty():
+		print("[Chat] Backend returned 0 messages (empty or unreachable)")
 		return
 	_chat_buffer.clear()
 	for msg in backend_msgs:
@@ -754,6 +683,7 @@ func _preload_chat_from_backend() -> void:
 		var ch: int = msg.get("channel", 0)
 		var sys: int = msg.get("system_id", 0)
 		_chat_buffer.append({"s": msg.get("sender_name", ""), "t": msg.get("text", ""), "ts": ts, "ch": ch, "sys": sys})
+	_chat_preload_done = true
 	print("[Chat] Preloaded %d messages from backend DB" % _chat_buffer.size())
 
 

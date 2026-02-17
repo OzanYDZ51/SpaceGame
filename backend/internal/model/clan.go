@@ -104,3 +104,14 @@ type SetDiplomacyRequest struct {
 	TargetClanID string `json:"target_clan_id"`
 	Relation     string `json:"relation"`
 }
+
+type CreateRankRequest struct {
+	RankName    string `json:"rank_name"`
+	Priority    int    `json:"priority"`
+	Permissions int    `json:"permissions"`
+}
+
+type UpdateRankRequest struct {
+	RankName    string `json:"rank_name"`
+	Permissions int    `json:"permissions"`
+}

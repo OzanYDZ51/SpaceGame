@@ -331,6 +331,15 @@ func update_rank(index: int, rname: String, perms: int) -> bool:
 		return false
 	if index < 0 or index >= clan_data.ranks.size() or index == 0:
 		return false
+
+	if AuthManager.is_authenticated and clan_data.clan_id != "" and clan_data.ranks[index].db_id >= 0:
+		var body := {"rank_name": rname, "permissions": perms}
+		var result := await ApiClient.put_async(
+			"/api/v1/clans/%s/ranks/%d" % [clan_data.clan_id, clan_data.ranks[index].db_id], body)
+		if result.get("_status_code", 0) != 200:
+			push_warning("ClanManager: update_rank failed — %s" % result.get("error", "unknown"))
+			return false
+
 	clan_data.ranks[index].rank_name = rname
 	clan_data.ranks[index].permissions = perms
 	_log_activity(ClanActivity.EventType.RANK_CHANGE, player_member.display_name if player_member else "?", "", "Rang modifie: %s" % rname)
@@ -341,10 +350,35 @@ func update_rank(index: int, rname: String, perms: int) -> bool:
 func add_rank(rname: String, perms: int) -> bool:
 	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS):
 		return false
+
+	# New rank gets lowest priority (inserted at end of list = index 0 in backend priority)
+	var new_priority: int = 0
+	if not clan_data.ranks.is_empty():
+		# Find the lowest existing priority and go one below
+		var min_p: int = clan_data.ranks[0].priority
+		for r in clan_data.ranks:
+			if r.priority < min_p:
+				min_p = r.priority
+		new_priority = maxi(min_p - 1, 0)
+		# If min is already 0, shift all priorities up by 1 to make room
+		if min_p == 0:
+			new_priority = 0
+			for r in clan_data.ranks:
+				r.priority += 1
+
 	var r := ClanRank.new()
 	r.rank_name = rname
-	r.priority = clan_data.ranks.size()
+	r.priority = new_priority
 	r.permissions = perms
+
+	if AuthManager.is_authenticated and clan_data.clan_id != "":
+		var body := {"rank_name": rname, "priority": new_priority, "permissions": perms}
+		var result := await ApiClient.post_async("/api/v1/clans/%s/ranks" % clan_data.clan_id, body)
+		if result.get("_status_code", 0) != 201:
+			push_warning("ClanManager: add_rank failed — %s" % result.get("error", "unknown"))
+			return false
+		r.db_id = int(result.get("id", -1))
+
 	clan_data.ranks.append(r)
 	_log_activity(ClanActivity.EventType.RANK_CHANGE, player_member.display_name if player_member else "?", "", "Nouveau rang: %s" % rname)
 	rank_updated.emit(clan_data.ranks.size() - 1)
@@ -356,6 +390,15 @@ func remove_rank(index: int) -> bool:
 		return false
 	if index <= 0 or index >= clan_data.ranks.size():
 		return false
+
+	if AuthManager.is_authenticated and clan_data.clan_id != "" and clan_data.ranks[index].db_id >= 0:
+		var result := await ApiClient.delete_async(
+			"/api/v1/clans/%s/ranks/%d" % [clan_data.clan_id, clan_data.ranks[index].db_id])
+		var code: int = result.get("_status_code", 0)
+		if code != 200 and code != 204:
+			push_warning("ClanManager: remove_rank failed — %s" % result.get("error", "unknown"))
+			return false
+
 	for m in members:
 		if m.rank_index == index:
 			m.rank_index = mini(index, clan_data.ranks.size() - 2)
@@ -390,14 +433,7 @@ func search_clans(query: String) -> Array:
 		return []
 
 	var clans: Array = []
-	var arr: Array = []
-	if result.has("clans"):
-		arr = result["clans"]
-	else:
-		for key in result:
-			if key != "_status_code" and result[key] is Array:
-				arr = result[key]
-				break
+	var arr: Array = _extract_array(result, "clans")
 	for c in arr:
 		if c is Dictionary:
 			clans.append({
@@ -505,71 +541,43 @@ func _load_clan_from_api(cid: String) -> void:
 	if created_str != "":
 		clan_data.creation_timestamp = _parse_iso_timestamp(created_str)
 
-	# 2. Ranks
+	# 2. Ranks — fetch from dedicated endpoint
 	clan_data.ranks.clear()
-	# Backend stores ranks in clan_ranks table; fetch via members endpoint rank_name field
-	# For now, rebuild ranks from member data. The backend associates rank_priority + rank_name.
-	# We'll build ranks after loading members.
+	var ranks_result := await ApiClient.get_async("/api/v1/clans/%s/ranks" % cid)
+	if ranks_result.get("_status_code", 0) == 200:
+		var ranks_arr: Array = _extract_array(ranks_result, "ranks")
+		# Sort by priority descending so index 0 = highest priority = Leader
+		ranks_arr.sort_custom(func(a, b): return int(a.get("priority", 0)) > int(b.get("priority", 0)))
+		for rd in ranks_arr:
+			if not rd is Dictionary:
+				continue
+			var r := ClanRank.new()
+			r.db_id = int(rd.get("id", -1))
+			r.rank_name = str(rd.get("rank_name", ""))
+			r.priority = int(rd.get("priority", 0))
+			r.permissions = int(rd.get("permissions", 0))
+			clan_data.ranks.append(r)
+
+	# Fallback defaults if no ranks fetched
+	if clan_data.ranks.is_empty():
+		var leader := ClanRank.new()
+		leader.rank_name = "Chef"
+		leader.priority = 4
+		leader.permissions = ClanRank.ALL_PERMISSIONS
+		clan_data.ranks.append(leader)
+		var recruit := ClanRank.new()
+		recruit.rank_name = "Recrue"
+		recruit.priority = 0
+		recruit.permissions = 0
+		clan_data.ranks.append(recruit)
 
 	# 3. Members
 	members.clear()
 	player_member = null
 	var members_result := await ApiClient.get_async("/api/v1/clans/%s/members" % cid)
 	if members_result.get("_status_code", 0) == 200:
-		# Response is { "members": [...] } or directly an array
-		var members_arr: Array = []
-		if members_result.has("members"):
-			members_arr = members_result["members"]
-		else:
-			# Try to find array values in the dict (API might return array)
-			for key in members_result:
-				if key != "_status_code" and members_result[key] is Array:
-					members_arr = members_result[key]
-					break
+		var members_arr: Array = _extract_array(members_result, "members")
 
-		# Build rank map from members (rank_priority -> rank_name)
-		var rank_map: Dictionary = {}  # priority -> rank_name
-		for md in members_arr:
-			if md is Dictionary:
-				var rp: int = int(md.get("rank_priority", 0))
-				var rn: String = str(md.get("rank_name", ""))
-				if rn != "" and not rank_map.has(rp):
-					rank_map[rp] = rn
-
-		# Build ranks sorted by priority
-		var priorities := rank_map.keys()
-		priorities.sort()
-		for p in priorities:
-			var r := ClanRank.new()
-			r.rank_name = rank_map[p]
-			r.priority = p
-			# Default permissions based on priority
-			if p == 0:
-				r.permissions = ClanRank.ALL_PERMISSIONS
-			elif p == 1:
-				r.permissions = ClanRank.PERM_INVITE | ClanRank.PERM_KICK | ClanRank.PERM_PROMOTE | ClanRank.PERM_DEMOTE | ClanRank.PERM_EDIT_MOTD | ClanRank.PERM_DIPLOMACY
-			elif p == 2:
-				r.permissions = ClanRank.PERM_INVITE | ClanRank.PERM_KICK | ClanRank.PERM_EDIT_MOTD
-			elif p == 3:
-				r.permissions = ClanRank.PERM_INVITE
-			else:
-				r.permissions = 0
-			clan_data.ranks.append(r)
-
-		# If no ranks found, add defaults
-		if clan_data.ranks.is_empty():
-			var leader := ClanRank.new()
-			leader.rank_name = "Chef"
-			leader.priority = 0
-			leader.permissions = ClanRank.ALL_PERMISSIONS
-			clan_data.ranks.append(leader)
-			var recruit := ClanRank.new()
-			recruit.rank_name = "Recrue"
-			recruit.priority = 1
-			recruit.permissions = 0
-			clan_data.ranks.append(recruit)
-
-		# Parse members
 		for md in members_arr:
 			if not md is Dictionary:
 				continue
@@ -579,9 +587,9 @@ func _load_clan_from_api(cid: String) -> void:
 			m.contribution_total = float(md.get("contribution", 0))
 			m.is_online = bool(md.get("is_online", false))
 
-			# Map rank_priority to rank_index
-			var member_priority: int = int(md.get("rank_priority", clan_data.ranks.size() - 1))
-			m.rank_index = 0
+			# Map rank_priority to rank_index (ranks sorted by priority desc)
+			var member_priority: int = int(md.get("rank_priority", 0))
+			m.rank_index = clan_data.ranks.size() - 1  # default to lowest
 			for ri in clan_data.ranks.size():
 				if clan_data.ranks[ri].priority == member_priority:
 					m.rank_index = ri
@@ -599,11 +607,7 @@ func _load_clan_from_api(cid: String) -> void:
 	diplomacy.clear()
 	var diplo_result := await ApiClient.get_async("/api/v1/clans/%s/diplomacy" % cid)
 	if diplo_result.get("_status_code", 0) == 200:
-		var diplo_arr: Array = []
-		for key in diplo_result:
-			if key != "_status_code" and diplo_result[key] is Array:
-				diplo_arr = diplo_result[key]
-				break
+		var diplo_arr: Array = _extract_array(diplo_result, "diplomacy")
 		for dd in diplo_arr:
 			if not dd is Dictionary:
 				continue
@@ -622,11 +626,7 @@ func _load_clan_from_api(cid: String) -> void:
 	activity_log.clear()
 	var activity_result := await ApiClient.get_async("/api/v1/clans/%s/activity?limit=50" % cid)
 	if activity_result.get("_status_code", 0) == 200:
-		var act_arr: Array = []
-		for key in activity_result:
-			if key != "_status_code" and activity_result[key] is Array:
-				act_arr = activity_result[key]
-				break
+		var act_arr: Array = _extract_array(activity_result, "activity")
 		for ad in act_arr:
 			if not ad is Dictionary:
 				continue
@@ -647,6 +647,19 @@ func _load_clan_from_api(cid: String) -> void:
 # =============================================================================
 # HELPERS
 # =============================================================================
+
+## Extract an array from an API response Dictionary.
+## Tries named key first, then "data" (ApiClient wraps bare arrays there), then any Array value.
+func _extract_array(result: Dictionary, preferred_key: String = "") -> Array:
+	if preferred_key != "" and result.has(preferred_key) and result[preferred_key] is Array:
+		return result[preferred_key]
+	if result.has("data") and result["data"] is Array:
+		return result["data"]
+	for key in result:
+		if key != "_status_code" and result[key] is Array:
+			return result[key]
+	return []
+
 
 func _log_activity(etype: ClanActivity.EventType, actor: String, target: String, detail: String) -> void:
 	var entry := ClanActivity.new()

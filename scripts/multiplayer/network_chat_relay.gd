@@ -34,7 +34,7 @@ func _find_chat_panel() -> void:
 		_chat_panel.message_sent.connect(_on_local_message_sent)
 
 
-## Local player typed a message → send to server (or handle locally if host).
+## Local player typed a message → send to server.
 func _on_local_message_sent(channel_name: String, text: String) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
@@ -46,12 +46,7 @@ func _on_local_message_sent(channel_name: String, text: String) -> void:
 		return
 
 	var channel: int = _channel_name_to_int(channel_name)
-	if NetworkManager.is_host:
-		# Host: route through scoped relay logic
-		NetworkManager._relay_chat_from_host(channel, text)
-	else:
-		# Client: send to server
-		NetworkManager._rpc_chat_message.rpc_id(1, channel, text)
+	NetworkManager._rpc_chat_message.rpc_id(1, channel, text)
 
 
 ## Server relayed a chat message → display in ChatPanel.
@@ -73,10 +68,7 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String) 
 func _send_whisper(target_name: String, text: String) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
-	if NetworkManager.is_host:
-		NetworkManager._deliver_whisper_from_host(target_name, text)
-	else:
-		NetworkManager._rpc_whisper.rpc_id(1, target_name, text)
+	NetworkManager._rpc_whisper.rpc_id(1, target_name, text)
 
 
 ## Received a whisper from another player.

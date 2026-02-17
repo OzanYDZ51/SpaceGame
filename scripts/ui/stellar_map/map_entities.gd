@@ -33,6 +33,9 @@ var route_target_entity_id: String = ""  # If set, route tracks this entity's po
 var route_is_follow: bool = false  # True = follow (cyan), false + target = attack (red)
 var route_virtual_positions: Dictionary = {}  # virtual_id -> [ux, uz] for MP client ships
 
+# Virtual fleet entities (deployed ships without EntityRegistry entries — MP client / timing)
+var fleet_virtual_entities: Dictionary = {}  # virtual_id -> entity dict
+
 # Waypoint flash (universe coords, set by StellarMap)
 var waypoint_ux: float = 0.0
 var waypoint_uz: float = 0.0
@@ -65,7 +68,17 @@ func _process(delta: float) -> void:
 
 
 func _get_entities() -> Dictionary:
-	return preview_entities if not preview_entities.is_empty() else EntityRegistry.get_all()
+	if not preview_entities.is_empty():
+		return preview_entities
+	var base: Dictionary = EntityRegistry.get_all()
+	if fleet_virtual_entities.is_empty():
+		return base
+	# Merge virtual fleet entities (only those missing from real registry)
+	var merged: Dictionary = base.duplicate(false)
+	for k in fleet_virtual_entities:
+		if not merged.has(k):
+			merged[k] = fleet_virtual_entities[k]
+	return merged
 
 
 func _draw() -> void:

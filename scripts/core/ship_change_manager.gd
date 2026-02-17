@@ -145,18 +145,7 @@ func rebuild_ship_for_respawn(fleet_index: int) -> void:
 	# Notify multiplayer peers
 	NetworkManager.local_ship_id = ship_id
 	if NetworkManager.is_connected_to_server():
-		if NetworkManager.is_host:
-			if NetworkManager.peers.has(1):
-				var my_state = NetworkManager.peers[1]
-				my_state.ship_id = ship_id
-				var sdata_net =ShipRegistry.get_ship_data(ship_id)
-				my_state.ship_class = sdata_net.ship_class if sdata_net else &"Fighter"
-			for pid in NetworkManager.peers:
-				if pid == 1:
-					continue
-				NetworkManager._rpc_receive_player_ship_changed.rpc_id(pid, 1, String(ship_id))
-		else:
-			NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
+		NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
 
 	print("ShipChangeManager: Respawn rebuild -> '%s' (%s)" % [data.ship_name, ship_id])
 
@@ -264,18 +253,7 @@ func handle_ship_change(fleet_index: int) -> void:
 	# Notify multiplayer peers
 	NetworkManager.local_ship_id = ship_id
 	if NetworkManager.is_connected_to_server():
-		if NetworkManager.is_host:
-			if NetworkManager.peers.has(1):
-				var my_state = NetworkManager.peers[1]
-				my_state.ship_id = ship_id
-				var sdata_net =ShipRegistry.get_ship_data(ship_id)
-				my_state.ship_class = sdata_net.ship_class if sdata_net else &"Fighter"
-			for pid in NetworkManager.peers:
-				if pid == 1:
-					continue
-				NetworkManager._rpc_receive_player_ship_changed.rpc_id(pid, 1, String(ship_id))
-		else:
-			NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
+		NetworkManager._rpc_player_ship_changed.rpc_id(1, String(ship_id))
 
 	SaveManager.trigger_save("ship_changed")
 	print("ShipChangeManager: Ship changed to '%s' (%s)" % [data.ship_name, ship_id])

@@ -103,14 +103,11 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 	var pid: int = data.get("pid", -1)
 	var sys_id: int = data.get("sys", -1)
 	var is_self: bool = (pid == NetworkManager.local_peer_id)
-	var is_hosting: bool = (pid == 1)
 
-	var col =UITheme.ACCENT if is_self else UITheme.TEXT
-	var suffix =""
+	var col = UITheme.ACCENT if is_self else UITheme.TEXT
+	var suffix = ""
 	if is_self:
 		suffix = " (toi)"
-	elif is_hosting:
-		suffix = " (hôte)"
 	ctrl.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + rect.size.y - 5), pname + suffix, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 120, UITheme.FONT_SIZE_LABEL, col)
 	# Show system ID on the right
 	if sys_id >= 0:

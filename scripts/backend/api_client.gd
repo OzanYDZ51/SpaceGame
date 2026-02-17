@@ -125,6 +125,8 @@ func _execute_request(http: HTTPRequest, method: String, path: String, body: Dic
 	var data: Dictionary = {}
 	if parsed.data is Dictionary:
 		data = parsed.data
+	elif parsed.data is Array:
+		data = {"data": parsed.data}
 	data["_status_code"] = status_code
 	return data
 

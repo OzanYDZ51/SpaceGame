@@ -12,7 +12,7 @@ var _tabs: Array[UIComponent] = []
 var _no_clan_view: ClanNoClanView = null
 var _clan_manager = null
 
-const TAB_NAMES = ["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Tresor", "Log"]
+const TAB_NAMES = ["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Proprietes", "Log"]
 
 
 func _ready() -> void:
@@ -31,7 +31,7 @@ func _ready() -> void:
 	var members_tab = ClanTabMembers.new()
 	var ranks = ClanTabRanks.new()
 	var diplo = ClanTabDiplomacy.new()
-	var treasury = ClanTabTreasury.new()
+	var treasury = ClanTabProperties.new()
 	var log_tab = ClanTabLog.new()
 
 	_tabs = [overview, members_tab, ranks, diplo, treasury, log_tab]

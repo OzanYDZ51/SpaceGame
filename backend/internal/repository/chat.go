@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"spacegame-backend/internal/model"
@@ -63,9 +64,14 @@ func (r *ChatRepository) GetHistory(ctx context.Context, channels []int, systemI
 	}
 
 	if hasSystem {
-		conditions = append(conditions, fmt.Sprintf("(channel = 1 AND system_id = $%d)", argIdx))
-		args = append(args, systemID)
-		argIdx++
+		if systemID < 0 {
+			// Sentinel value: load ALL system messages regardless of system_id
+			conditions = append(conditions, "channel = 1")
+		} else {
+			conditions = append(conditions, fmt.Sprintf("(channel = 1 AND system_id = $%d)", argIdx))
+			args = append(args, systemID)
+			argIdx++
+		}
 	}
 
 	where := strings.Join(conditions, " OR ")
@@ -83,6 +89,7 @@ func (r *ChatRepository) GetHistory(ctx context.Context, channels []int, systemI
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
+		log.Printf("[Chat] GetHistory query error: %v (query=%s args=%v)", err, query, args)
 		return nil, err
 	}
 	defer rows.Close()

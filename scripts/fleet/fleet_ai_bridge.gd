@@ -43,11 +43,10 @@ var _initialized: bool = false
 
 func _ready() -> void:
 	_ship = get_parent()
-	# If tree is disabled (player is docked), defer init until _process fires.
-	if _ship and not _ship.can_process():
-		return
-	await get_tree().process_frame
-	_do_init()
+	# Use call_deferred: runs at end of current frame, after all sibling _ready()
+	# and after deploy_ship() has finished setting process_mode.
+	# Safer than await (works even if tree was disabled when added).
+	call_deferred("_do_init")
 
 
 func _exit_tree() -> void:

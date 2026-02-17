@@ -149,29 +149,44 @@ func _hide_editor() -> void:
 func _on_save() -> void:
 	if _cm == null or _selected_rank_index < 0:
 		return
-	var new_name =_name_input.get_text().strip_edges()
+	var new_name = _name_input.get_text().strip_edges()
 	if new_name == "":
 		return
-	var perms =0
+	var perms = 0
 	for i in _perm_toggles.size():
 		if _perm_toggles[i].is_on:
 			perms |= _perm_bits[i]
-	_cm.update_rank(_selected_rank_index, new_name, perms)
+	_btn_save.enabled = false
+	var ok: bool = await _cm.update_rank(_selected_rank_index, new_name, perms)
+	_btn_save.enabled = true
+	_show_toast("Rang sauvegarde" if ok else "Erreur lors de la sauvegarde du rang", ok)
 	refresh(_cm)
 
 
 func _on_add_rank() -> void:
 	if _cm == null:
 		return
-	_cm.add_rank("Nouveau rang", 0)
+	_btn_add.enabled = false
+	var ok: bool = await _cm.add_rank("Nouveau rang", 0)
+	_btn_add.enabled = true
+	_show_toast("Rang ajoute" if ok else "Erreur lors de l'ajout du rang", ok)
 	refresh(_cm)
 
 
 func _on_remove_rank() -> void:
 	if _cm == null or _selected_rank_index <= 0:
 		return
-	_cm.remove_rank(_selected_rank_index)
+	_btn_remove.enabled = false
+	var ok: bool = await _cm.remove_rank(_selected_rank_index)
+	_btn_remove.enabled = true
+	_show_toast("Rang supprime" if ok else "Erreur lors de la suppression du rang", ok)
 	refresh(_cm)
+
+
+func _show_toast(msg: String, success: bool) -> void:
+	var notif = GameManager.get_node_or_null("NotificationService")
+	if notif:
+		notif.toast(msg, UIToast.ToastType.SUCCESS if success else UIToast.ToastType.ERROR)
 
 
 func _process(_delta: float) -> void:

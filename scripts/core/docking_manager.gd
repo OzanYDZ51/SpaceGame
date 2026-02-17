@@ -130,7 +130,7 @@ func handle_undock() -> bool:
 		var active_fs = fleet.get_active()
 		if active_fs:
 			active_fs.docked_station_id = ""
-			active_fs.docked_system_id = -1
+			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	undocked.emit()

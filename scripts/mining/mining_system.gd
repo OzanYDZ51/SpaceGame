@@ -330,15 +330,8 @@ func _do_mining_tick() -> void:
 func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
-	var id_str =String(asteroid_id)
-	if NetworkManager.is_host:
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth:
-			var sys_trans = GameManager._system_transition
-			var sys_id: int = sys_trans.current_system_id if sys_trans else -1
-			npc_auth.broadcast_asteroid_depleted(id_str, sys_id, 1)
-	else:
-		NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)
+	var id_str = String(asteroid_id)
+	NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)
 
 
 ## Send accumulated mining damage claims to the server.
@@ -353,10 +346,4 @@ func _send_mining_claims() -> void:
 	_pending_claims.clear()
 	_claim_send_timer = 0.0
 
-	if NetworkManager.is_host:
-		# Host: apply directly to NpcAuthority
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth:
-			npc_auth.handle_mining_damage_claims(1, claims)
-	else:
-		NetworkManager._rpc_mining_damage_claim.rpc_id(1, claims)
+	NetworkManager._rpc_mining_damage_claim.rpc_id(1, claims)
