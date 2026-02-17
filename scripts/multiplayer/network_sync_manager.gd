@@ -90,7 +90,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 		elif args[i] == "--name" and i + 1 < args.size():
 			NetworkManager.local_player_name = args[i + 1]
 
-	if NetworkManager.is_dedicated_server:
+	if NetworkManager.is_server():
 		NetworkManager.start_dedicated_server(port)
 	else:
 		if Constants.NET_GAME_SERVER_URL != "":
@@ -262,9 +262,6 @@ func _populate_wormhole_targets() -> void:
 # =============================================================================
 
 func _on_npc_spawned(data: Dictionary) -> void:
-	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
-		return
-
 	var npc_id =StringName(data.get("nid", ""))
 	if npc_id == &"" or remote_npcs.has(npc_id):
 		return
@@ -303,9 +300,6 @@ func _on_npc_spawned(data: Dictionary) -> void:
 
 
 func _on_npc_batch_received(batch: Array) -> void:
-	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
-		return
-
 	for state_dict in batch:
 		var npc_id =StringName(state_dict.get("nid", ""))
 		if npc_id == &"":
@@ -366,14 +360,10 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 
 
 func _on_remote_fleet_deployed(_owner_pid: int, _fleet_idx: int, _npc_id_str: String, spawn_data: Dictionary) -> void:
-	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
-		return
 	_on_npc_spawned(spawn_data)
 
 
 func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: String) -> void:
-	if NetworkManager.is_server() and not NetworkManager.is_dedicated_server:
-		return
 	var npc_id =StringName(npc_id_str)
 	if lod_manager:
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)

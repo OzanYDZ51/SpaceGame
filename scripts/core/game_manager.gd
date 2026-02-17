@@ -659,8 +659,8 @@ func _initialize_game() -> void:
 	# Audio buses (must exist before music player)
 	_setup_audio_buses()
 
-	# Background music (skip on dedicated server — no audio needed)
-	if not NetworkManager.is_dedicated_server:
+	# Background music (skip on server — no audio needed)
+	if not NetworkManager.is_server():
 		_music_player = AudioStreamPlayer.new()
 		_music_player.stream = load("res://assets/audio/game_background_music.mp3")
 		_music_player.volume_db = -35.0

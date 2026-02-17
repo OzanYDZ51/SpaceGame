@@ -64,8 +64,4 @@ func _broadcast_world_state() -> void:
 				if not NetworkManager.peers.has(other_pid):
 					continue
 				var state = NetworkManager.peers[other_pid]
-				if pid == 1 and not NetworkManager.is_dedicated_server:
-					# Host is local — deliver via signal, not RPC
-					NetworkManager.player_state_received.emit(other_pid, state)
-				else:
-					NetworkManager._rpc_receive_remote_state.rpc_id(pid, other_pid, state.to_dict())
+				NetworkManager._rpc_receive_remote_state.rpc_id(pid, other_pid, state.to_dict())

@@ -75,14 +75,6 @@ func _check_activation() -> void:
 		_backend_client.name = "ServerBackendClient"
 		add_child(_backend_client)
 		_fleet_sync_timer = FLEET_SYNC_INTERVAL
-		# Connect fleet reconnect signal for host (non-dedicated)
-		# RPC path handles remote clients, but the host needs a signal connection
-		if not NetworkManager.is_dedicated_server:
-			_fleet_reconnect_status.connect(func(alive: Array, deaths: Array) -> void:
-				var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
-				if fleet_mgr:
-					fleet_mgr.apply_reconnect_fleet_status(alive, deaths)
-			)
 		print("NpcAuthority: Activated (server mode)")
 		# Load previously deployed fleet ships from backend (async)
 		_load_deployed_fleet_ships_from_backend()
@@ -208,8 +200,6 @@ func _relay_npc_fire(npc_id: StringName, system_id: int, ship_node: Node3D, hard
 	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	var dir_arr: Array = [fire_dir.x, fire_dir.y, fire_dir.z, ship_vel.x, ship_vel.y, ship_vel.z]
 	for pid in peers_in_sys:
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			continue  # Host already sees NPC fire locally
 		NetworkManager._rpc_npc_fire.rpc_id(pid, String(npc_id), String(weapon_name_str), fire_pos, dir_arr)
 
 
@@ -237,11 +227,7 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 
 	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			# Host — deliver locally
-			NetworkManager.npc_spawned.emit(spawn_dict)
-		else:
-			NetworkManager._rpc_npc_spawned.rpc_id(pid, spawn_dict)
+		NetworkManager._rpc_npc_spawned.rpc_id(pid, spawn_dict)
 
 
 ## Send all NPC spawns for a system to a specific peer (join mid-combat).
@@ -271,18 +257,12 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 				spawn_dict["hull"] = lod_data.hull_ratio
 				spawn_dict["shd"] = lod_data.shield_ratio
 
-			if peer_id == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.npc_spawned.emit(spawn_dict)
-			else:
-				NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
+			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
 
 	# Send remote system NPCs (data-only, not in LOD manager)
 	if _remote_npcs.has(system_id):
 		for npc_data in _remote_npcs[system_id]:
-			if peer_id == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.npc_spawned.emit(npc_data)
-			else:
-				NetworkManager._rpc_npc_spawned.rpc_id(peer_id, npc_data)
+			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, npc_data)
 
 
 # =========================================================================
@@ -334,10 +314,7 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 			if batch.is_empty():
 				continue
 
-			if pid == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.npc_batch_received.emit(batch)
-			else:
-				NetworkManager._rpc_npc_batch.rpc_id(pid, batch)
+			NetworkManager._rpc_npc_batch.rpc_id(pid, batch)
 
 
 func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Dictionary:
@@ -388,10 +365,7 @@ func relay_fire_event(sender_pid: int, weapon_name: String, fire_pos: Array, fir
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.remote_fire_received.emit(sender_pid, weapon_name, fire_pos, fire_dir)
-		else:
-			NetworkManager._rpc_remote_fire.rpc_id(pid, sender_pid, weapon_name, fire_pos, fire_dir)
+		NetworkManager._rpc_remote_fire.rpc_id(pid, sender_pid, weapon_name, fire_pos, fire_dir)
 
 
 ## Server validates a hit claim from a client.
@@ -555,10 +529,7 @@ func broadcast_hit_effect(target_id: String, exclude_pid: int, hit_dir: Array, s
 	for pid in peers_in_sys:
 		if pid == exclude_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.hit_effect_received.emit(target_id, hit_dir, shield_absorbed)
-		else:
-			NetworkManager._rpc_hit_effect.rpc_id(pid, target_id, hit_dir, shield_absorbed)
+		NetworkManager._rpc_hit_effect.rpc_id(pid, target_id, hit_dir, shield_absorbed)
 
 
 ## Broadcast NPC death to all peers in the NPC's system.
@@ -568,10 +539,7 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 
 	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.npc_died.emit(String(npc_id), killer_pid, death_pos, loot)
-		else:
-			NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), killer_pid, death_pos, loot)
+		NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), killer_pid, death_pos, loot)
 
 	# Track death for offline owners + report to backend + clean up fleet tracking
 	if _fleet_npcs.has(npc_id):
@@ -695,15 +663,9 @@ func _send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 	_fleet_deaths_while_offline.erase(uuid)
 
 	# Send status to the reconnected client
-	if new_pid == 1 and not NetworkManager.is_dedicated_server:
-		_fleet_reconnect_status.emit(alive_list, deaths)
-	else:
-		_rpc_fleet_reconnect_status.rpc_id(new_pid, alive_list, deaths)
+	_rpc_fleet_reconnect_status.rpc_id(new_pid, alive_list, deaths)
 
 	print("NpcAuthority: Player %s reconnected (pid=%d) — %d alive, %d died offline" % [uuid, new_pid, alive_list.size(), deaths.size()])
-
-
-signal _fleet_reconnect_status(alive: Array, deaths: Array)
 
 
 ## Server -> Client: Fleet status on reconnect (alive NPCs + offline deaths).
@@ -729,28 +691,15 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	var ship_id: StringName
 	var sys_id: int = GameManager.current_system_id_safe()
 
-	# Local host: use FleetDeploymentManager (has full local fleet data)
-	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
-	if is_local_host:
-		var success: bool = fleet_mgr.deploy_ship(fleet_index, cmd, params)
-		if not success:
-			return
-		var fleet = GameManager.player_fleet
-		if fleet == null or fleet_index >= fleet.ships.size():
-			return
-		var fs = fleet.ships[fleet_index]
-		npc_id = fs.deployed_npc_id
-		ship_id = fs.ship_id
-	else:
-		# Remote client or dedicated server: spawn NPC using ship_data from RPC
-		if ship_data.is_empty():
-			push_warning("NpcAuthority: Fleet deploy from pid=%d — no ship_data" % sender_pid)
-			return
-		var result: Dictionary = _spawn_remote_fleet_npc(sender_pid, fleet_index, cmd, params, ship_data, sys_id)
-		if result.is_empty():
-			return
-		npc_id = result["npc_id"]
-		ship_id = StringName(ship_data.get("ship_id", ""))
+	# Spawn NPC using ship_data from RPC
+	if ship_data.is_empty():
+		push_warning("NpcAuthority: Fleet deploy from pid=%d — no ship_data" % sender_pid)
+		return
+	var result: Dictionary = _spawn_remote_fleet_npc(sender_pid, fleet_index, cmd, params, ship_data, sys_id)
+	if result.is_empty():
+		return
+	npc_id = result["npc_id"]
+	ship_id = StringName(ship_data.get("ship_id", ""))
 
 	# Register as fleet NPC for tracking
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
@@ -772,12 +721,7 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 			spawn_data["pz"] = upos[2]
 
 	# Register with NPC authority for state sync
-	if not is_local_host:
-		register_npc(npc_id, sys_id, ship_id, &"player_fleet")
-	else:
-		# Host: deploy_ship already registered via LOD, but ensure NPC authority knows
-		if not _npcs.has(npc_id):
-			register_npc(npc_id, sys_id, ship_id, &"player_fleet")
+	register_npc(npc_id, sys_id, ship_id, &"player_fleet")
 
 	# Broadcast to all peers in system
 	_broadcast_fleet_event_deploy(sender_pid, fleet_index, npc_id, spawn_data, sys_id)
@@ -796,42 +740,25 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 		return
 
 	var sys_id: int = GameManager.current_system_id_safe()
-	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
 
-	if is_local_host:
-		# Host: use FleetDeploymentManager (has local fleet data)
-		var fleet = GameManager.player_fleet
-		if fleet == null or fleet_index >= fleet.ships.size():
-			return
-		var fs = fleet.ships[fleet_index]
-		var npc_id: StringName = fs.deployed_npc_id
+	# Look up NPC by owner + fleet_index
+	var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
+	if npc_id == &"":
+		push_warning("NpcAuthority: Fleet retrieve pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
+		return
 
-		var success: bool = fleet_mgr.retrieve_ship(fleet_index)
-		if not success:
-			return
+	# Despawn the NPC node
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(npc_id)
+		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			EntityRegistry.unregister(String(npc_id))
+			lod_data.node_ref.queue_free()
+		lod_mgr.unregister_ship(npc_id)
 
-		unregister_npc(npc_id)
-		_unregister_fleet_npc(npc_id)
-		_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
-	else:
-		# Remote client: look up NPC by owner + fleet_index
-		var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
-		if npc_id == &"":
-			push_warning("NpcAuthority: Fleet retrieve pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
-			return
-
-		# Despawn the NPC node
-		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-		if lod_mgr:
-			var lod_data = lod_mgr.get_ship_data(npc_id)
-			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
-				EntityRegistry.unregister(String(npc_id))
-				lod_data.node_ref.queue_free()
-			lod_mgr.unregister_ship(npc_id)
-
-		unregister_npc(npc_id)
-		_unregister_fleet_npc(npc_id)
-		_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
+	unregister_npc(npc_id)
+	_unregister_fleet_npc(npc_id)
+	_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
 
 
 ## Server handles command change request from a client (or host).
@@ -844,49 +771,35 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 		return
 
 	var sys_id: int = GameManager.current_system_id_safe()
-	var is_local_host: bool = (sender_pid == NetworkManager.local_peer_id and not NetworkManager.is_dedicated_server)
 
-	if is_local_host:
-		# Host: use FleetDeploymentManager
-		var fleet = GameManager.player_fleet
-		if fleet == null or fleet_index >= fleet.ships.size():
-			return
-		var fs = fleet.ships[fleet_index]
-		var npc_id: StringName = fs.deployed_npc_id
+	# Look up NPC and update its AI
+	var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
+	if npc_id == &"":
+		push_warning("NpcAuthority: Fleet command pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
+		return
 
-		var success: bool = fleet_mgr.change_command(fleet_index, cmd, params)
-		if not success:
-			return
-		_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
-	else:
-		# Remote client: look up NPC and update its AI
-		var npc_id: StringName = _find_fleet_npc_id(sender_pid, fleet_index)
-		if npc_id == &"":
-			push_warning("NpcAuthority: Fleet command pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
-			return
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(npc_id)
+		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			var npc = lod_data.node_ref
+			var bridge = npc.get_node_or_null("FleetAIBridge")
+			if bridge:
+				bridge.apply_command(cmd, params)
+			# Manage AIMiningBehavior lifecycle
+			var existing_mining = npc.get_node_or_null("AIMiningBehavior")
+			if cmd == &"mine":
+				if existing_mining:
+					existing_mining.update_params(params)
+				else:
+					var mining_behavior = AIMiningBehavior.new()
+					mining_behavior.name = "AIMiningBehavior"
+					mining_behavior.fleet_index = fleet_index
+					npc.add_child(mining_behavior)
+			elif existing_mining:
+				existing_mining.queue_free()
 
-		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-		if lod_mgr:
-			var lod_data = lod_mgr.get_ship_data(npc_id)
-			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
-				var npc = lod_data.node_ref
-				var bridge = npc.get_node_or_null("FleetAIBridge")
-				if bridge:
-					bridge.apply_command(cmd, params)
-				# Manage AIMiningBehavior lifecycle
-				var existing_mining = npc.get_node_or_null("AIMiningBehavior")
-				if cmd == &"mine":
-					if existing_mining:
-						existing_mining.update_params(params)
-					else:
-						var mining_behavior = AIMiningBehavior.new()
-						mining_behavior.name = "AIMiningBehavior"
-						mining_behavior.fleet_index = fleet_index
-						npc.add_child(mining_behavior)
-				elif existing_mining:
-					existing_mining.queue_free()
-
-		_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
+	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
 
 
 func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: StringName, spawn_data: Dictionary, system_id: int) -> void:
@@ -894,10 +807,7 @@ func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: Strin
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue  # Owner already sees it locally
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.fleet_ship_deployed.emit(owner_pid, fleet_idx, String(npc_id), spawn_data)
-		else:
-			NetworkManager._rpc_fleet_deployed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), spawn_data)
+		NetworkManager._rpc_fleet_deployed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), spawn_data)
 
 
 func _broadcast_fleet_event_retrieve(owner_pid: int, fleet_idx: int, npc_id: StringName, system_id: int) -> void:
@@ -905,10 +815,7 @@ func _broadcast_fleet_event_retrieve(owner_pid: int, fleet_idx: int, npc_id: Str
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.fleet_ship_retrieved.emit(owner_pid, fleet_idx, String(npc_id))
-		else:
-			NetworkManager._rpc_fleet_retrieved.rpc_id(pid, owner_pid, fleet_idx, String(npc_id))
+		NetworkManager._rpc_fleet_retrieved.rpc_id(pid, owner_pid, fleet_idx, String(npc_id))
 
 
 func _broadcast_fleet_event_command(owner_pid: int, fleet_idx: int, npc_id: StringName, cmd: StringName, params: Dictionary, system_id: int) -> void:
@@ -916,10 +823,7 @@ func _broadcast_fleet_event_command(owner_pid: int, fleet_idx: int, npc_id: Stri
 	for pid in peers_in_sys:
 		if pid == owner_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.fleet_command_changed.emit(owner_pid, fleet_idx, String(npc_id), String(cmd), params)
-		else:
-			NetworkManager._rpc_fleet_command_changed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), String(cmd), params)
+		NetworkManager._rpc_fleet_command_changed.rpc_id(pid, owner_pid, fleet_idx, String(npc_id), String(cmd), params)
 
 
 func _get_peer_name(pid: int) -> String:
@@ -1224,10 +1128,7 @@ func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary)
 
 	# Send fire visual to all peers in this system
 	for pid in peers:
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.npc_fire_received.emit(npc_id, "remote_npc", fire_pos, fire_dir)
-		else:
-			NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, "remote_npc", fire_pos, fire_dir)
+		NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, "remote_npc", fire_pos, fire_dir)
 
 	# Apply damage to target player (server-authoritative)
 	if target_pid < 0 or not NetworkManager.peers.has(target_pid):
@@ -1245,20 +1146,14 @@ func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary)
 	var hit_dir: Array = [-fire_dir[0], -fire_dir[1], -fire_dir[2]]
 
 	# Send damage to target
-	if target_pid == 1 and not NetworkManager.is_dedicated_server:
-		NetworkManager.player_damage_received.emit(-1, "remote_npc", damage, hit_dir)
-	else:
-		NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, "remote_npc", damage, hit_dir)
+	NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, "remote_npc", damage, hit_dir)
 
 	# Send hit effect to other peers
 	var target_label: String = "player_%d" % target_pid
 	for pid in peers:
 		if pid == target_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.hit_effect_received.emit(target_label, hit_dir, false)
-		else:
-			NetworkManager._rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
+		NetworkManager._rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
 
 
 ## Handle remote NPC getting hit by a player (validates and applies damage to dict).
@@ -1337,10 +1232,7 @@ func _broadcast_remote_npc_states(slow_sync: bool) -> void:
 			continue
 
 		for pid in peer_ids:
-			if pid == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.npc_batch_received.emit(alive_npcs)
-			else:
-				NetworkManager._rpc_npc_batch.rpc_id(pid, alive_npcs)
+			NetworkManager._rpc_npc_batch.rpc_id(pid, alive_npcs)
 
 
 ## Detect when peers change systems and spawn NPCs for the new system.
@@ -1369,10 +1261,7 @@ func relay_mining_beam(sender_pid: int, is_active: bool, source_pos: Array, targ
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.remote_mining_beam_received.emit(sender_pid, is_active, source_pos, target_pos)
-		else:
-			NetworkManager._rpc_remote_mining_beam.rpc_id(pid, sender_pid, is_active, source_pos, target_pos)
+		NetworkManager._rpc_remote_mining_beam.rpc_id(pid, sender_pid, is_active, source_pos, target_pos)
 
 
 ## Broadcast asteroid depletion to all peers in the system.
@@ -1383,10 +1272,7 @@ func broadcast_asteroid_depleted(asteroid_id: String, system_id: int, sender_pid
 	for pid in peers_in_sys:
 		if pid == sender_pid:
 			continue
-		if pid == 1 and not NetworkManager.is_dedicated_server:
-			NetworkManager.asteroid_depleted_received.emit(asteroid_id)
-		else:
-			NetworkManager._rpc_receive_asteroid_depleted.rpc_id(pid, asteroid_id)
+		NetworkManager._rpc_receive_asteroid_depleted.rpc_id(pid, asteroid_id)
 
 
 # =========================================================================
@@ -1498,10 +1384,7 @@ func _broadcast_asteroid_health_batch() -> void:
 
 		var peer_ids: Array = peers_by_sys[system_id]
 		for pid in peer_ids:
-			if pid == 1 and not NetworkManager.is_dedicated_server:
-				NetworkManager.asteroid_health_batch_received.emit(batch)
-			else:
-				NetworkManager._rpc_asteroid_health_batch.rpc_id(pid, batch)
+			NetworkManager._rpc_asteroid_health_batch.rpc_id(pid, batch)
 
 
 ## Send current asteroid health state to a newly joined peer.
@@ -1526,10 +1409,7 @@ func send_asteroid_health_to_peer(peer_id: int, system_id: int) -> void:
 	if batch.is_empty():
 		return
 
-	if peer_id == 1 and not NetworkManager.is_dedicated_server:
-		NetworkManager.asteroid_health_batch_received.emit(batch)
-	else:
-		NetworkManager._rpc_asteroid_health_batch.rpc_id(peer_id, batch)
+	NetworkManager._rpc_asteroid_health_batch.rpc_id(peer_id, batch)
 
 
 ## Clear asteroid health data when a system unloads.
@@ -1618,11 +1498,15 @@ func _report_fleet_death_to_backend(uuid: String, fleet_index: int) -> void:
 ## Load previously deployed fleet ships from the backend on server startup.
 func _load_deployed_fleet_ships_from_backend() -> void:
 	if _backend_client == null:
+		_fleet_backend_loaded = true
+		_process_pending_reconnects()
 		return
 
 	var ships: Array = await _backend_client.get_deployed_fleet_ships()
 	if ships.is_empty():
 		print("NpcAuthority: No deployed fleet ships to restore from backend")
+		_fleet_backend_loaded = true
+		_process_pending_reconnects()
 		return
 
 	print("NpcAuthority: Restoring %d deployed fleet ships from backend..." % ships.size())
@@ -1665,3 +1549,15 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		})
 
 	print("NpcAuthority: Restored %d fleet NPCs from backend" % ships.size())
+	_fleet_backend_loaded = true
+	_process_pending_reconnects()
+
+
+## Process any reconnections that were queued while backend fleet was loading.
+func _process_pending_reconnects() -> void:
+	if _pending_reconnects.is_empty():
+		return
+	print("NpcAuthority: Processing %d pending reconnects" % _pending_reconnects.size())
+	for entry in _pending_reconnects:
+		_send_fleet_reconnect_status(entry["uuid"], entry["pid"])
+	_pending_reconnects.clear()

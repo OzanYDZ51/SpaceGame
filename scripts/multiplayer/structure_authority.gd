@@ -147,11 +147,7 @@ func _broadcast_batch() -> void:
 			continue
 		var sys_id: int = ps.system_id
 		if by_system.has(sys_id) and not by_system[sys_id].is_empty():
-			if peer_id == 1 and not NetworkManager.is_dedicated_server:
-				# Host — deliver locally
-				apply_batch(by_system[sys_id])
-			else:
-				NetworkManager._rpc_structure_batch.rpc_id(peer_id, by_system[sys_id])
+			NetworkManager._rpc_structure_batch.rpc_id(peer_id, by_system[sys_id])
 
 
 func _broadcast_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
@@ -164,10 +160,7 @@ func _broadcast_structure_destroyed(struct_id: String, killer_pid: int, pos: Arr
 	var target_peers =NetworkManager.get_peers_in_system(sys_id) if sys_id >= 0 else NetworkManager.peers.keys()
 	for peer_id in target_peers:
 		var loot_for_peer: Array = loot if peer_id == killer_pid else []
-		if peer_id == 1 and not NetworkManager.is_dedicated_server:
-			apply_structure_destroyed(struct_id, killer_pid, pos, loot_for_peer)
-		else:
-			NetworkManager._rpc_structure_destroyed.rpc_id(peer_id, struct_id, killer_pid, pos, loot_for_peer)
+		NetworkManager._rpc_structure_destroyed.rpc_id(peer_id, struct_id, killer_pid, pos, loot_for_peer)
 
 
 # =============================================================================
