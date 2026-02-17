@@ -33,7 +33,14 @@ func _ready() -> void:
 	_refresh_timer.timeout.connect(_on_refresh_timer)
 	add_child(_refresh_timer)
 
-	# Try to restore session from saved tokens
+	# Skip session restore if the launcher is passing an auth token via CLI.
+	# _try_restore_session sends old tokens to the backend which can invalidate
+	# them (rotating refresh tokens), breaking the fresh token from the launcher.
+	if _has_cli_auth_token():
+		print("AuthManager: CLI --auth-token detected, skipping session restore")
+		return
+
+	# Try to restore session from saved tokens (editor / standalone only)
 	_try_restore_session()
 
 
@@ -109,6 +116,15 @@ func get_access_token() -> String:
 
 
 # --- Internal ---
+
+## Check if --auth-token is present in CLI args (before GameManager processes them).
+func _has_cli_auth_token() -> bool:
+	var all_args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for arg in all_args:
+		if arg == "--auth-token":
+			return true
+	return false
+
 
 func _handle_auth_success(result: Dictionary) -> void:
 	_access_token = result.get("access_token", "")

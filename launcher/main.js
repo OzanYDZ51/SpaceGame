@@ -690,7 +690,7 @@ ipcMain.handle("launch-game", async () => {
   if (!fs.existsSync(exePath)) return { error: "ImperionOnline.exe introuvable" };
 
   // Pass auth token and settings to game
-  const auth = getSavedAuth();
+  let auth = getSavedAuth();
   const settings = getSettings();
   const args = [];
 
@@ -702,6 +702,25 @@ ipcMain.handle("launch-game", async () => {
   // Resolution
   if (settings.resolution && settings.resolution !== "auto") {
     args.push("--resolution", settings.resolution);
+  }
+
+  // Refresh access token before launch to ensure it's fresh
+  if (auth?.refresh_token) {
+    try {
+      const res = await httpRequest("POST", `${BACKEND_URL}/api/v1/auth/refresh`, {
+        refresh_token: auth.refresh_token,
+      });
+      if (res.status === 200 && res.data?.access_token) {
+        auth.access_token = res.data.access_token;
+        if (res.data.refresh_token) auth.refresh_token = res.data.refresh_token;
+        saveAuth(auth);
+        console.log("[Launcher] Token refreshed before launch");
+      } else {
+        console.log("[Launcher] Token refresh failed (status=" + res.status + ") — using existing token");
+      }
+    } catch (err) {
+      console.log("[Launcher] Token refresh error: " + err.message);
+    }
   }
 
   // Auth tokens (after --)
