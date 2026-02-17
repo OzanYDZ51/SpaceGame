@@ -122,11 +122,16 @@ func _ready() -> void:
 
 
 func _read_auth_token_from_cli() -> void:
-	var args =OS.get_cmdline_args()
-	for i in args.size():
-		if args[i] == "--auth-token" and i + 1 < args.size():
-			var token: String = args[i + 1]
+	# Check both engine args and user args (after "--" separator).
+	# The launcher passes: -- --auth-token <jwt>
+	# OS.get_cmdline_args() only returns args BEFORE "--"
+	# OS.get_cmdline_user_args() returns args AFTER "--"
+	var all_args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	for i in all_args.size():
+		if all_args[i] == "--auth-token" and i + 1 < all_args.size():
+			var token: String = all_args[i + 1]
 			AuthManager.set_token_from_launcher(token)
+			print("GameManager: Auth token found in CLI args, username='%s'" % AuthManager.username)
 			break
 	# Set multiplayer display name from authenticated username
 	if AuthManager.is_authenticated and AuthManager.username != "":

@@ -427,27 +427,28 @@ ipcMain.handle("check-updates", async () => {
 ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
   const tempDir = app.getPath("temp");
   const installerPath = path.join(tempDir, "ImperionOnlineLauncherSetup.exe");
-  const batPath = path.join(tempDir, "imperion_launcher_update.bat");
+  const vbsPath = path.join(tempDir, "imperion_launcher_update.vbs");
 
   await downloadFile(downloadUrl, installerPath, (received, total) => {
     if (mainWindow && !mainWindow.isDestroyed())
       mainWindow.webContents.send("progress", { phase: "launcher", received, total });
   });
 
-  // Resolve the launcher install dir so silent update installs to the same place
+  // VBScript runs the installer silently — no console window flash
   const launcherExe = process.execPath;
   const launcherDir = path.dirname(launcherExe);
-  const bat = [
-    `@echo off`,
-    `timeout /t 3 /nobreak >nul`,
-    `"${installerPath}" /S /D=${launcherDir}`,
-    `timeout /t 2 /nobreak >nul`,
-    `start "" "${launcherExe}"`,
-    `del "${batPath}"`,
+  const vbs = [
+    `Set WshShell = CreateObject("WScript.Shell")`,
+    `WScript.Sleep 3000`,
+    `WshShell.Run """${installerPath}"" /S /D=${launcherDir}", 0, True`,
+    `WScript.Sleep 2000`,
+    `WshShell.Run """${launcherExe}""", 1, False`,
+    `Set fso = CreateObject("Scripting.FileSystemObject")`,
+    `fso.DeleteFile WScript.ScriptFullName, True`,
   ].join("\r\n");
-  fs.writeFileSync(batPath, bat);
+  fs.writeFileSync(vbsPath, vbs);
 
-  const child = spawn("cmd.exe", ["/c", batPath], { detached: true, stdio: "ignore", windowsHide: true });
+  const child = spawn("wscript.exe", [vbsPath], { detached: true, stdio: "ignore" });
   child.unref();
   app.quit();
   return { success: true };

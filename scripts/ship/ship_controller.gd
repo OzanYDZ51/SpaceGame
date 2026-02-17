@@ -85,6 +85,7 @@ var _current_roll_rate: float = 0.0
 # --- Mouse ---
 var _mouse_delta: Vector2 = Vector2.ZERO
 var cruise_look_delta: Vector2 = Vector2.ZERO  ## Mouse delta redirected to camera during cruise free look
+var free_look_active: bool = false              ## True while in cruise or Alt held — camera should NOT snap back
 
 # --- Cached refs ---
 var _cached_energy_sys = null
@@ -231,7 +232,8 @@ func _read_input() -> void:
 		else:
 			_run_autopilot()
 			# In cruise or Alt held, redirect mouse to free look camera before clearing
-			if speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT):
+			free_look_active = speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT)
+			if free_look_active:
 				cruise_look_delta = _mouse_delta
 			else:
 				cruise_look_delta = Vector2.ZERO
@@ -266,7 +268,8 @@ func _read_input() -> void:
 	throttle_input = thrust
 
 	# === ROTATION from mouse (cruise or Alt held → free look) ===
-	if speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT):
+	free_look_active = speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT)
+	if free_look_active:
 		# Free look: redirect mouse delta to camera, ship flies straight
 		cruise_look_delta = _mouse_delta
 		_mouse_delta = Vector2.ZERO
