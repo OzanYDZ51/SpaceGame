@@ -58,7 +58,7 @@ func _ready() -> void:
 	add_child(_qty_up_btn)
 
 	_launch_btn = UIButton.new()
-	_launch_btn.text = "LANCER"
+	_launch_btn.text = Locale.t("refinery.launch")
 	_launch_btn.accent_color = UITheme.ACCENT
 	_launch_btn.pressed.connect(_on_launch)
 	_launch_btn.visible = false
@@ -239,7 +239,7 @@ func _draw() -> void:
 	draw_line(Vector2(dx, 0), Vector2(dx, s.y), UITheme.BORDER, 1.0)
 
 	if _selected_recipe == null:
-		draw_string(font, Vector2(dx + 12, 60), "Selectionnez une recette",
+		draw_string(font, Vector2(dx + 12, 60), Locale.t("refinery.select_recipe"),
 			HORIZONTAL_ALIGNMENT_LEFT, int(DETAIL_W - 24), UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
@@ -257,7 +257,7 @@ func _draw() -> void:
 
 	# Inputs
 	var iy: float = 62.0
-	draw_string(font, Vector2(dx + 12, iy), "INPUTS:",
+	draw_string(font, Vector2(dx + 12, iy), Locale.t("refinery.inputs"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_KEY)
 	iy += 18
 
@@ -278,7 +278,7 @@ func _draw() -> void:
 
 	# Output
 	iy += 6
-	draw_string(font, Vector2(dx + 12, iy), "OUTPUT:",
+	draw_string(font, Vector2(dx + 12, iy), Locale.t("refinery.output"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_KEY)
 	iy += 18
 	var out_name: String = RefineryRegistry.get_display_name(r.output_id)
@@ -302,7 +302,7 @@ func _draw() -> void:
 
 	# Quantity display
 	var qty_y: float = s.y - 70
-	draw_string(font, Vector2(dx + 12, qty_y), "Quantite: %d" % _quantity,
+	draw_string(font, Vector2(dx + 12, qty_y), Locale.t("refinery.quantity") % _quantity,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 

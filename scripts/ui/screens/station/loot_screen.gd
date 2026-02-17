@@ -26,24 +26,24 @@ const MAX_VISIBLE_ROWS := 8
 
 
 func _ready() -> void:
-	screen_title = "SOUTE RECUPEREE"
+	screen_title = Locale.t("loot.title")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
 	_take_all_btn = UIButton.new()
-	_take_all_btn.text = "TOUT PRENDRE"
+	_take_all_btn.text = Locale.t("loot.take_all")
 	_take_all_btn.visible = false
 	_take_all_btn.pressed.connect(_on_take_all)
 	add_child(_take_all_btn)
 
 	_take_btn = UIButton.new()
-	_take_btn.text = "PRENDRE"
+	_take_btn.text = Locale.t("loot.take")
 	_take_btn.visible = false
 	_take_btn.pressed.connect(_on_take_selected)
 	add_child(_take_btn)
 
 	_leave_btn = UIButton.new()
-	_leave_btn.text = "ABANDONNER"
+	_leave_btn.text = Locale.t("loot.abandon")
 	_leave_btn.accent_color = UITheme.WARNING
 	_leave_btn.visible = false
 	_leave_btn.pressed.connect(_on_leave)
@@ -140,14 +140,14 @@ func _draw() -> void:
 		return
 
 	# Title
-	draw_string(font, Vector2(0, 38), "SOUTE RECUPEREE",
+	draw_string(font, Vector2(0, 38), Locale.t("loot.title"),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 20, UITheme.PRIMARY)
 
 	# Subtitle: item count
 	var total: int = 0
 	for item in _crate_contents:
 		total += item.get("quantity", 1)
-	draw_string(font, Vector2(0, 58), "%d objet%s" % [total, "s" if total > 1 else ""],
+	draw_string(font, Vector2(0, 58), Locale.t("loot.item_count") % [total, "s" if total > 1 else ""],
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)
 
 	# Panel background

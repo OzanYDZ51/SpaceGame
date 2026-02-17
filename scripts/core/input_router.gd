@@ -56,7 +56,6 @@ func _setup_input_actions() -> void:
 		"pip_reset": KEY_DOWN,
 		"dock": KEY_F,
 		"toggle_multiplayer": KEY_P,
-		"gate_jump": KEY_J,
 		"wormhole_jump": KEY_W,
 		"build": KEY_B,
 		"scanner_pulse": KEY_H,
@@ -171,12 +170,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			var crate =loot_pickup.request_pickup()
 			if crate:
 				loot_pickup_requested.emit(crate)
-			get_viewport().set_input_as_handled()
-			return
-
-	if event.is_action_pressed("gate_jump") and state == Constants.GameState.PLAYING:
-		if system_transition and system_transition.can_gate_jump():
-			system_transition.initiate_gate_jump(system_transition.get_gate_target_id())
 			get_viewport().set_input_as_handled()
 			return
 

@@ -86,8 +86,6 @@ func _ready() -> void:
 	_btn_apply.pressed.connect(_on_apply_pressed)
 	add_child(_btn_apply)
 
-	Locale.language_changed.connect(_on_language_changed)
-
 
 func _rebuild_locale() -> void:
 	COLOR_NAMES = [Locale.t("corp.color_cyan"), Locale.t("corp.color_green"), Locale.t("corp.color_orange"), Locale.t("corp.color_purple"), Locale.t("corp.color_yellow"), Locale.t("corp.color_red")]

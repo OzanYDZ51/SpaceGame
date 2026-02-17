@@ -48,7 +48,7 @@ func _ready() -> void:
 	add_child(_ship_list)
 
 	_configure_btn = UIButton.new()
-	_configure_btn.text = "ACHETER"
+	_configure_btn.text = Locale.t("hud.buy")
 	_configure_btn.visible = false
 	_configure_btn.pressed.connect(_on_buy_pressed)
 	add_child(_configure_btn)
@@ -342,7 +342,7 @@ func _draw() -> void:
 	# Section: FLIGHT
 	if y < max_stats_y:
 		y = _draw_stat_section(font, stats_x, y, Locale.t("ship.flight_section"), [
-			["Vitesse", "%.0f m/s" % data.max_speed_normal],
+			[Locale.t("stat.speed"), "%.0f m/s" % data.max_speed_normal],
 			["Boost", "%.0f m/s" % data.max_speed_boost],
 			["Accel", "%.0f" % data.accel_forward],
 		])
@@ -359,8 +359,8 @@ func _draw() -> void:
 				hp_text += "%dx %s  " % [hp_sizes[sz_key], sz_key]
 
 		var slot_lines: Array = [["Hardpoints", hp_text.strip_edges()]]
-		slot_lines.append(["Bouclier", data.shield_slot_size])
-		slot_lines.append(["Moteur", data.engine_slot_size])
+		slot_lines.append([Locale.t("shop.shield_slot"), data.shield_slot_size])
+		slot_lines.append([Locale.t("shop.engine_slot"), data.engine_slot_size])
 		var mod_sizes: Dictionary = {}
 		for ms in data.module_slots:
 			mod_sizes[ms] = mod_sizes.get(ms, 0) + 1
@@ -395,7 +395,7 @@ func _draw() -> void:
 		if _commerce_manager and _commerce_manager.player_data and _commerce_manager.player_data.fleet:
 			active_ship = _commerce_manager.player_data.fleet.get_active()
 		draw_rect(Rect2(stats_x + 10, by, 2, 10), UITheme.PRIMARY)
-		draw_string(font, Vector2(stats_x + 16, by + 9), "RESSOURCES",
+		draw_string(font, Vector2(stats_x + 16, by + 9), Locale.t("shop.resources"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_HEADER)
 		by += 16.0
 		for res_id in data.resource_cost:
@@ -426,10 +426,10 @@ func _draw() -> void:
 		if _configure_btn:
 			_configure_btn.enabled = can_buy
 		if not credits_ok:
-			draw_string(font, Vector2(stats_x + 10, by), "CREDITS INSUFFISANTS",
+			draw_string(font, Vector2(stats_x + 10, by), Locale.t("shop.insufficient_credits"),
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 		elif missing_resources:
-			draw_string(font, Vector2(stats_x + 10, by), "RESSOURCES INSUFFISANTES",
+			draw_string(font, Vector2(stats_x + 10, by), Locale.t("shop.insufficient_resources"),
 				HORIZONTAL_ALIGNMENT_CENTER, STATS_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 
 

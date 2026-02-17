@@ -753,5 +753,9 @@ static func _get_faction_map_color(faction: StringName) -> Color:
 	match faction:
 		&"hostile": return MapColors.NPC_HOSTILE
 		&"friendly": return MapColors.NPC_FRIENDLY
-		&"player_fleet": return Color(0.4, 0.6, 1.0)
+		&"player_fleet": return MapColors.FLEET_SHIP
+		&"nova_terra": return Color(0.2, 0.6, 1.0, 0.9)
+		&"kharsis": return Color(0.9, 0.15, 0.15, 0.9)
+		&"pirate": return Color(0.8, 0.6, 0.1, 0.9)
+		&"neutral": return MapColors.NPC_SHIP
 	return MapColors.NPC_NEUTRAL

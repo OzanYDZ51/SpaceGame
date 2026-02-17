@@ -34,7 +34,7 @@ const CARD_GAP: float = 16.0
 
 
 func _ready() -> void:
-	screen_title = "RAFFINERIE"
+	screen_title = Locale.t("refinery.title")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -47,7 +47,7 @@ func _ready() -> void:
 	add_child(_queue_view)
 
 	_view_back_btn = UIButton.new()
-	_view_back_btn.text = "RETOUR"
+	_view_back_btn.text = Locale.t("btn.back")
 	_view_back_btn.accent_color = UITheme.WARNING
 	_view_back_btn.visible = false
 	_view_back_btn.pressed.connect(_return_to_hub)
@@ -58,7 +58,7 @@ func setup(pdata, station_key: String, sname: String) -> void:
 	_player_data = pdata
 	_station_key = station_key
 	_station_name = sname
-	screen_title = "RAFFINERIE — " + sname.to_upper()
+	screen_title = Locale.t("refinery.title_prefix") + sname.to_upper()
 	var mgr = pdata.refinery_manager if pdata else null
 	if _recipe_view:
 		_recipe_view.setup(mgr, station_key, pdata)
@@ -84,7 +84,7 @@ func _show_hub() -> void:
 	_view_back_btn.visible = false
 	_hovered_card = -1
 	_back_hovered = false
-	screen_title = "RAFFINERIE — " + _station_name.to_upper()
+	screen_title = Locale.t("refinery.title_prefix") + _station_name.to_upper()
 	queue_redraw()
 
 
@@ -196,7 +196,7 @@ func _draw_hub(s: Vector2) -> void:
 		var storage = _player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
-		draw_string(font, Vector2(30, 55), "Stockage: %d / %d" % [total, cap],
+		draw_string(font, Vector2(30, 55), Locale.t("storage.usage") % [total, cap],
 			HORIZONTAL_ALIGNMENT_LEFT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Section header
@@ -205,16 +205,16 @@ func _draw_hub(s: Vector2) -> void:
 	var header_y: float = _card_rects[0].position.y - 26.0
 	draw_rect(Rect2(grid_x, header_y + 2, 3, UITheme.FONT_SIZE_LABEL), UITheme.PRIMARY)
 	draw_string(font, Vector2(grid_x + 8, header_y + UITheme.FONT_SIZE_LABEL),
-		"RAFFINERIE", HORIZONTAL_ALIGNMENT_LEFT, grid_w - 8, UITheme.FONT_SIZE_LABEL, UITheme.PRIMARY)
+		Locale.t("refinery.header"), HORIZONTAL_ALIGNMENT_LEFT, grid_w - 8, UITheme.FONT_SIZE_LABEL, UITheme.PRIMARY)
 	draw_line(Vector2(grid_x, header_y + UITheme.FONT_SIZE_LABEL + 4),
 		Vector2(grid_x + grid_w, header_y + UITheme.FONT_SIZE_LABEL + 4), UITheme.BORDER, 1.0)
 
 	# Card: RECETTES
-	_draw_hub_card(_card_rects[0], "RECETTES", "Parcourir les recettes de raffinage", 0, UITheme.PRIMARY)
+	_draw_hub_card(_card_rects[0], Locale.t("refinery.recipes"), Locale.t("refinery.recipes_desc"), 0, UITheme.PRIMARY)
 	# Card: FILE D'ATTENTE
 	var queue_count: int = _get_queue_count()
-	var queue_desc: String = "%d/10 jobs en cours" % queue_count
-	_draw_hub_card(_card_rects[1], "FILE D'ATTENTE", queue_desc, 1, UITheme.ACCENT)
+	var queue_desc: String = Locale.t("refinery.queue_desc") % queue_count
+	_draw_hub_card(_card_rects[1], Locale.t("refinery.queue"), queue_desc, 1, UITheme.ACCENT)
 
 	# Separator + back button
 	var sep_y: float = _back_rect.position.y - 12.0
@@ -282,7 +282,7 @@ func _draw_back_button() -> void:
 	draw_corners(r, 6.0, bc)
 	var font: Font = UITheme.get_font()
 	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
-	draw_string(font, Vector2(r.position.x, ty), "RETOUR",
+	draw_string(font, Vector2(r.position.x, ty), Locale.t("btn.back"),
 		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
@@ -291,14 +291,14 @@ func _draw_view_mode(s: Vector2) -> void:
 	var bottom_h: float = 50.0
 	draw_line(Vector2(0, s.y - bottom_h), Vector2(s.x, s.y - bottom_h), UITheme.BORDER, 1.0)
 	if _player_data and _player_data.economy:
-		var cr_text: String = "Credits: %s CR" % PlayerEconomy.format_credits(_player_data.economy.credits)
+		var cr_text: String = Locale.t("storage.credits") % PlayerEconomy.format_credits(_player_data.economy.credits)
 		draw_string(font, Vector2(140, s.y - bottom_h + 22), cr_text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 	if _player_data and _player_data.refinery_manager:
 		var storage = _player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
-		draw_string(font, Vector2(s.x - 220, s.y - bottom_h + 22), "Stockage: %d / %d" % [total, cap],
+		draw_string(font, Vector2(s.x - 220, s.y - bottom_h + 22), Locale.t("storage.usage") % [total, cap],
 			HORIZONTAL_ALIGNMENT_RIGHT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	var scan_y: float = fmod(UITheme.scanline_y, s.y)
 	draw_line(Vector2(0, scan_y), Vector2(s.x, scan_y),

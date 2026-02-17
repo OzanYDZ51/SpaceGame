@@ -232,6 +232,8 @@ func _ensure_entity_registered(id: StringName, data) -> void:
 	var ent_type: int = EntityRegistrySystem.EntityType.SHIP_NPC
 	if data.is_remote_player:
 		ent_type = EntityRegistrySystem.EntityType.SHIP_PLAYER
+	elif data.fleet_index >= 0:
+		ent_type = EntityRegistrySystem.EntityType.SHIP_FLEET
 	var upos: Array = FloatingOrigin.to_universe_pos(data.position)
 	EntityRegistry.register(sid, {
 		"name": data.display_name,

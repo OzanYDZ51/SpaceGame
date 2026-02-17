@@ -28,18 +28,18 @@ func _ready() -> void:
 	add_child(_emblem)
 
 	_btn_motd = UIButton.new()
-	_btn_motd.text = "Modifier MOTD"
+	_btn_motd.text = Locale.t("corp.edit_motd")
 	_btn_motd.pressed.connect(_on_motd_pressed)
 	add_child(_btn_motd)
 
 	_btn_leave = UIButton.new()
-	_btn_leave.text = "Quitter la corporation"
+	_btn_leave.text = Locale.t("corp.leave_corp")
 	_btn_leave.accent_color = UITheme.DANGER
 	_btn_leave.pressed.connect(_on_leave_pressed)
 	add_child(_btn_leave)
 
 	_btn_recruit = UIButton.new()
-	_btn_recruit.text = "Recrutement: ---"
+	_btn_recruit.text = Locale.t("corp.recruitment_default")
 	_btn_recruit.pressed.connect(_on_recruit_pressed)
 	add_child(_btn_recruit)
 
@@ -54,12 +54,12 @@ func _ready() -> void:
 
 	# MOTD editing
 	_motd_input = UITextInput.new()
-	_motd_input.placeholder = "Nouveau message du jour..."
+	_motd_input.placeholder = Locale.t("corp.motd_placeholder")
 	_motd_input.visible = false
 	add_child(_motd_input)
 
 	_btn_motd_save = UIButton.new()
-	_btn_motd_save.text = "Sauvegarder"
+	_btn_motd_save.text = Locale.t("corp.save")
 	_btn_motd_save.visible = false
 	_btn_motd_save.pressed.connect(_on_motd_save)
 	add_child(_btn_motd_save)
@@ -72,7 +72,7 @@ func refresh(cm) -> void:
 	_emblem.corporation_color = _cm.corporation_data.corporation_color
 	_emblem.emblem_id = _cm.corporation_data.emblem_id
 	_btn_motd.visible = _cm.player_has_permission(CorporationRank.PERM_EDIT_MOTD)
-	_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.corporation_data.is_recruiting else "FERME")
+	_btn_recruit.text = Locale.t("corp.recruitment_status") % (Locale.t("corp.recruitment_open") if _cm.corporation_data.is_recruiting else Locale.t("corp.recruitment_closed"))
 	queue_redraw()
 
 
@@ -105,7 +105,7 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if _cm == null or not _cm.has_corporation():
 		var no_corporation_font: Font = UITheme.get_font()
-		draw_string(no_corporation_font, Vector2(0, size.y * 0.5), "Aucune corporation", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
+		draw_string(no_corporation_font, Vector2(0, size.y * 0.5), Locale.t("corp.no_corporation"), HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
 		return
 
 	var font: Font = UITheme.get_font()
@@ -151,18 +151,18 @@ func _draw() -> void:
 	var center_rect =Rect2(center_x, 0, center_w, bot - 8)
 	draw_panel_bg(center_rect)
 
-	var sy =_draw_rich_header(center_x + m, m, center_w - m * 2, "STATISTIQUES DE LA CORPORATION")
+	var sy =_draw_rich_header(center_x + m, m, center_w - m * 2, Locale.t("corp.stats_header"))
 
-	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "Membres", "%d / %d" % [_cm.members.size(), cd.max_members], float(_cm.members.size()) / float(cd.max_members), UITheme.PRIMARY)
-	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "En ligne", str(_cm.get_online_count()), float(_cm.get_online_count()) / maxf(1.0, float(_cm.members.size())), UITheme.ACCENT)
+	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_members"), "%d / %d" % [_cm.members.size(), cd.max_members], float(_cm.members.size()) / float(cd.max_members), UITheme.PRIMARY)
+	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_online"), str(_cm.get_online_count()), float(_cm.get_online_count()) / maxf(1.0, float(_cm.members.size())), UITheme.ACCENT)
 
 	sy += 6
 	draw_line(Vector2(center_x + m, sy), Vector2(center_x + center_w - m, sy), UITheme.BORDER, 1.0)
 	sy += 10
 
 	# Key-value pairs with bigger font
-	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "Tresorerie", "%s cr" % _format_num(cd.treasury_balance), UITheme.ACCENT)
-	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "Reputation", str(cd.reputation_score), UITheme.PRIMARY)
+	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_treasury"), "%s cr" % _format_num(cd.treasury_balance), UITheme.ACCENT)
+	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_reputation"), str(cd.reputation_score), UITheme.PRIMARY)
 
 	# Combat stats
 	sy += 6
@@ -176,15 +176,15 @@ func _draw() -> void:
 		total_k += member.kills
 		total_d += member.deaths
 	var avg_kd: float = float(total_k) / maxf(1.0, float(total_d))
-	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "K/D moyen", "%.1f" % avg_kd, UITheme.WARNING if avg_kd < 1.0 else UITheme.ACCENT)
-	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "Kills total", str(total_k), UITheme.TARGET)
-	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, "Morts total", str(total_d), UITheme.DANGER)
+	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_avg_kd"), "%.1f" % avg_kd, UITheme.WARNING if avg_kd < 1.0 else UITheme.ACCENT)
+	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_total_kills"), str(total_k), UITheme.TARGET)
+	sy = _draw_kv_big(center_x + m, sy, center_w - m * 2, Locale.t("corp.stat_total_deaths"), str(total_d), UITheme.DANGER)
 
 	# ─── RIGHT COLUMN: MOTD ─────────────────────────────────────────────
 	var right_rect =Rect2(right_x, 0, RIGHT_W, bot - 8)
 	draw_panel_bg(right_rect)
 
-	var motd_y =_draw_rich_header(right_x + m, m, RIGHT_W - m * 2, "MESSAGE DU JOUR")
+	var motd_y =_draw_rich_header(right_x + m, m, RIGHT_W - m * 2, Locale.t("corp.motd_header"))
 
 	# MOTD background panel
 	var motd_panel =Rect2(right_x + m - 2, motd_y, RIGHT_W - m * 2 + 4, bot - motd_y - 56)
@@ -295,9 +295,9 @@ func _on_motd_pressed() -> void:
 	_btn_motd_save.visible = _motd_editing
 	if _motd_editing:
 		_motd_input.set_text(_cm.corporation_data.motd)
-		_btn_motd.text = "Annuler"
+		_btn_motd.text = Locale.t("btn.cancel")
 	else:
-		_btn_motd.text = "Modifier MOTD"
+		_btn_motd.text = Locale.t("corp.edit_motd")
 
 
 func _on_motd_save() -> void:
@@ -309,7 +309,7 @@ func _on_motd_save() -> void:
 	_motd_editing = false
 	_motd_input.visible = false
 	_btn_motd_save.visible = false
-	_btn_motd.text = "Modifier MOTD"
+	_btn_motd.text = Locale.t("corp.edit_motd")
 	queue_redraw()
 
 
@@ -317,9 +317,9 @@ func _on_leave_pressed() -> void:
 	if _cm == null or not _cm.has_corporation():
 		return
 	if _cm.members.size() <= 1:
-		_leave_modal.body = "Vous etes le dernier membre.\nLa corporation sera dissoute definitivement."
+		_leave_modal.body = Locale.t("corp.leave_last_member")
 	else:
-		_leave_modal.body = "Voulez-vous vraiment quitter la corporation ?"
+		_leave_modal.body = Locale.t("corp.leave_confirm")
 	_leave_modal.show_modal()
 
 
@@ -329,11 +329,11 @@ func _on_leave_confirmed() -> void:
 		if not success:
 			var notif = GameManager.get_node_or_null("NotificationService")
 			if notif:
-				notif.toast("Erreur: impossible de quitter la corporation", UIToast.ToastType.ERROR)
+				notif.toast(Locale.t("corp.leave_error"), UIToast.ToastType.ERROR)
 
 
 func _on_recruit_pressed() -> void:
 	if _cm:
 		_cm.toggle_recruitment()
-		_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.corporation_data.is_recruiting else "FERME")
+		_btn_recruit.text = Locale.t("corp.recruitment_status") % (Locale.t("corp.recruitment_open") if _cm.corporation_data.is_recruiting else Locale.t("corp.recruitment_closed"))
 		queue_redraw()

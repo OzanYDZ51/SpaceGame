@@ -69,7 +69,7 @@ func _draw() -> void:
 
 	# Header
 	draw_rect(Rect2(0, 0, 3, 14), UITheme.PRIMARY)
-	draw_string(font, Vector2(10, 16), "FILE DE RAFFINAGE",
+	draw_string(font, Vector2(10, 16), Locale.t("refinery.queue_header"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
 
 	var queue: RefineryQueue = null
@@ -88,7 +88,7 @@ func _draw() -> void:
 	draw_line(Vector2(0, 28), Vector2(s.x, 28), UITheme.BORDER, 1.0)
 
 	if job_count == 0:
-		draw_string(font, Vector2(12, 70), "Aucun job en cours.",
+		draw_string(font, Vector2(12, 70), Locale.t("refinery.no_jobs"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 
@@ -112,14 +112,14 @@ func _draw_job_row(ctrl: Control, _idx: int, rect: Rect2, item: Variant) -> void
 	var progress: float = job.get_progress()
 
 	if job.is_complete():
-		status_text = "TERMINE"
+		status_text = Locale.t("refinery.status_done")
 		status_col = UITheme.ACCENT
 	elif job.started_at > 0.0:
 		var remaining: float = maxf(0.0, job.complete_at - Time.get_unix_time_from_system())
-		status_text = "EN COURS — %s" % RecipeBrowserView._format_time(remaining)
+		status_text = Locale.t("refinery.status_active") % RecipeBrowserView._format_time(remaining)
 		status_col = UITheme.PRIMARY
 	else:
-		status_text = "EN ATTENTE"
+		status_text = Locale.t("refinery.status_pending")
 		status_col = UITheme.TEXT_DIM
 
 	# Name + qty

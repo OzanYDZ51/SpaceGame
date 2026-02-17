@@ -36,7 +36,7 @@ const CARD_GAP: float = 16.0
 
 
 func _ready() -> void:
-	screen_title = "CHANTIER NAVAL"
+	screen_title = Locale.t("station.shipyard")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -50,7 +50,7 @@ func _ready() -> void:
 	add_child(_sell_ship)
 
 	_view_back_btn = UIButton.new()
-	_view_back_btn.text = "RETOUR"
+	_view_back_btn.text = Locale.t("btn.back")
 	_view_back_btn.accent_color = UITheme.WARNING
 	_view_back_btn.visible = false
 	_view_back_btn.pressed.connect(_return_to_hub)
@@ -62,7 +62,7 @@ func setup(mgr, stype: int, sname: String, sid: String = "") -> void:
 	station_type = stype
 	station_name = sname
 	station_id = sid
-	screen_title = "CHANTIER NAVAL — " + sname.to_upper()
+	screen_title = Locale.t("screen.shipyard_prefix") + sname.to_upper()
 	if _ship_shop:
 		_ship_shop.setup(mgr, stype)
 	if _sell_ship:
@@ -91,7 +91,7 @@ func _show_hub() -> void:
 	_view_back_btn.visible = false
 	_hovered_card = -1
 	_back_hovered = false
-	screen_title = "CHANTIER NAVAL — " + station_name.to_upper()
+	screen_title = Locale.t("screen.shipyard_prefix") + station_name.to_upper()
 	queue_redraw()
 
 
@@ -197,14 +197,14 @@ func _draw_hub(s: Vector2) -> void:
 	var header_y: float = _card_rects[0].position.y - 26.0
 	draw_rect(Rect2(grid_x, header_y + 2, 3, UITheme.FONT_SIZE_LABEL), UITheme.PRIMARY)
 	draw_string(font, Vector2(grid_x + 8, header_y + UITheme.FONT_SIZE_LABEL),
-		"CHANTIER NAVAL", HORIZONTAL_ALIGNMENT_LEFT, grid_w - 8, UITheme.FONT_SIZE_LABEL, UITheme.PRIMARY)
+		Locale.t("station.shipyard"), HORIZONTAL_ALIGNMENT_LEFT, grid_w - 8, UITheme.FONT_SIZE_LABEL, UITheme.PRIMARY)
 	draw_line(Vector2(grid_x, header_y + UITheme.FONT_SIZE_LABEL + 4),
 		Vector2(grid_x + grid_w, header_y + UITheme.FONT_SIZE_LABEL + 4), UITheme.BORDER, 1.0)
 
-	# Card: ACHETER
-	_draw_hub_card(_card_rects[0], "ACHETER", "Parcourir les vaisseaux disponibles", 0, UITheme.PRIMARY)
-	# Card: VENDRE
-	_draw_hub_card(_card_rects[1], "VENDRE", "Vendre vos vaisseaux de flotte", 1, UITheme.WARNING)
+	# Card: BUY
+	_draw_hub_card(_card_rects[0], Locale.t("shop.cat_buy"), Locale.t("shipyard.browse_ships"), 0, UITheme.PRIMARY)
+	# Card: SELL
+	_draw_hub_card(_card_rects[1], Locale.t("shop.cat_sell"), Locale.t("shipyard.sell_ships"), 1, UITheme.WARNING)
 
 	# Separator + back button
 	var sep_y: float = _back_rect.position.y - 12.0
@@ -277,7 +277,7 @@ func _draw_back_button() -> void:
 	draw_corners(r, 6.0, bc)
 	var font: Font = UITheme.get_font()
 	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
-	draw_string(font, Vector2(r.position.x, ty), "RETOUR",
+	draw_string(font, Vector2(r.position.x, ty), Locale.t("btn.back"),
 		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
@@ -287,7 +287,7 @@ func _draw_view_mode(s: Vector2) -> void:
 	draw_rect(Rect2(0, s.y - bottom_h, s.x, bottom_h), Color(0.01, 0.02, 0.04, 0.7))
 	draw_line(Vector2(0, s.y - bottom_h), Vector2(s.x, s.y - bottom_h), UITheme.BORDER, 1.0)
 	if commerce_manager and commerce_manager.player_economy:
-		var credits_text = "Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
+		var credits_text = Locale.t("ui.credits_label") + PriceCatalog.format_price(commerce_manager.player_economy.credits)
 		draw_string(font, Vector2(180, s.y - 18), credits_text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)
 	draw_corners(Rect2(20, 20, s.x - 40, s.y - 40), 15.0, UITheme.CORNER)

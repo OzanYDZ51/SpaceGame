@@ -17,6 +17,12 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	if use_panel_shader:
 		material = UIShaderCache.get_panel_material()
+	Locale.language_changed.connect(_on_language_changed)
+
+
+## Called when language changes. Override for extra logic beyond redraw.
+func _on_language_changed(_lang: String) -> void:
+	queue_redraw()
 
 
 ## Draw a panel background with border, top glow, gradient overlay, corners, and scanline.

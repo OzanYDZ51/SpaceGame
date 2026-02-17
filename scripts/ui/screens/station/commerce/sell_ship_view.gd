@@ -35,7 +35,7 @@ func _ready() -> void:
 	resized.connect(_layout)
 
 	_sell_btn = UIButton.new()
-	_sell_btn.text = "VENDRE VAISSEAU"
+	_sell_btn.text = Locale.t("btn.sell_ship")
 	_sell_btn.accent_color = UITheme.DANGER
 	_sell_btn.visible = false
 	_sell_btn.pressed.connect(_on_sell_pressed)
@@ -89,22 +89,22 @@ func _refresh_items() -> void:
 
 		if is_active:
 			_ship_can_sell.append(false)
-			_ship_status.append("ACTIF")
+			_ship_status.append("active")
 		elif is_destroyed:
 			_ship_can_sell.append(false)
-			_ship_status.append("DETRUIT")
+			_ship_status.append("destroyed")
 		elif is_deployed:
 			_ship_can_sell.append(false)
-			_ship_status.append("DEPLOYE")
+			_ship_status.append("deployed")
 		elif is_docked and not is_here:
 			_ship_can_sell.append(false)
-			_ship_status.append("AILLEURS")
+			_ship_status.append("elsewhere")
 		elif is_here and is_only_ship:
 			_ship_can_sell.append(false)
-			_ship_status.append("DERNIER")
+			_ship_status.append("last")
 		elif is_here:
 			_ship_can_sell.append(true)
-			_ship_status.append("ICI")
+			_ship_status.append("here")
 		else:
 			_ship_can_sell.append(false)
 			_ship_status.append("")
@@ -200,24 +200,35 @@ func _gui_input(event: InputEvent) -> void:
 
 func _get_status_color(status: String) -> Color:
 	match status:
-		"ACTIF": return UITheme.PRIMARY
-		"ICI": return Color(0.2, 0.9, 0.3)
-		"AILLEURS": return UITheme.TEXT_DIM
-		"DEPLOYE": return Color(0.3, 0.6, 1.0)
-		"DETRUIT": return UITheme.DANGER
-		"DERNIER": return UITheme.WARNING
+		"active": return UITheme.PRIMARY
+		"here": return Color(0.2, 0.9, 0.3)
+		"elsewhere": return UITheme.TEXT_DIM
+		"deployed": return Color(0.3, 0.6, 1.0)
+		"destroyed": return UITheme.DANGER
+		"last": return UITheme.WARNING
 		_: return UITheme.TEXT_DIM
+
+
+func _get_status_display(status: String) -> String:
+	match status:
+		"active": return Locale.t("shop.status_active")
+		"here": return Locale.t("shop.status_here")
+		"elsewhere": return Locale.t("shop.status_elsewhere")
+		"deployed": return Locale.t("shop.status_deployed")
+		"destroyed": return Locale.t("shop.status_destroyed")
+		"last": return Locale.t("shop.status_last")
+		_: return ""
 
 
 func _get_sell_reason(idx: int) -> String:
 	if idx < 0 or idx >= _ship_status.size():
 		return ""
 	match _ship_status[idx]:
-		"ACTIF": return "Vaisseau en cours d'utilisation.\nChangez de vaisseau pour le vendre."
-		"DEPLOYE": return "Vaisseau actuellement deploye.\nRappelez-le d'abord."
-		"DETRUIT": return "Vaisseau detruit."
-		"AILLEURS": return "Vaisseau docke dans une autre\nstation. Rendez-vous sur place."
-		"DERNIER": return "Impossible de vendre votre\ndernier vaisseau."
+		"active": return Locale.t("shop.reason_active")
+		"deployed": return Locale.t("shop.reason_deployed")
+		"destroyed": return Locale.t("shop.reason_destroyed")
+		"elsewhere": return Locale.t("shop.reason_elsewhere")
+		"last": return Locale.t("shop.reason_last")
 		_: return ""
 
 
@@ -238,12 +249,12 @@ func _draw() -> void:
 	draw_line(Vector2(detail_x, 0), Vector2(detail_x, s.y), UITheme.BORDER, 1.0)
 
 	if _fleet_ships.is_empty():
-		draw_string(font, Vector2(detail_x + 10, 30), "Aucun vaisseau",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("shop.no_ships"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
 	if _selected_index < 0 or _selected_index >= _fleet_ships.size():
-		draw_string(font, Vector2(detail_x + 10, 30), "Selectionnez un vaisseau",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("ui.select_ship"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		# Fleet summary
 		var total_ships: int = _fleet_ships.size()
@@ -251,13 +262,13 @@ func _draw() -> void:
 		for can in _ship_can_sell:
 			if can:
 				sellable_count += 1
-		draw_string(font, Vector2(detail_x + 10, 54), "Flotte: %d vaisseau%s" % [total_ships, "x" if total_ships > 1 else ""],
+		draw_string(font, Vector2(detail_x + 10, 54), Locale.t("shop.fleet_count") % [total_ships, "x" if total_ships > 1 else ""],
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 		if sellable_count > 0:
-			draw_string(font, Vector2(detail_x + 10, 72), "%d vendable%s ici" % [sellable_count, "s" if sellable_count > 1 else ""],
+			draw_string(font, Vector2(detail_x + 10, 72), Locale.t("shop.sellable_count") % [sellable_count, "s" if sellable_count > 1 else ""],
 				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, Color(0.2, 0.9, 0.3))
 		else:
-			draw_string(font, Vector2(detail_x + 10, 72), "Aucun vendable ici",
+			draw_string(font, Vector2(detail_x + 10, 72), Locale.t("shop.none_sellable"),
 				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.WARNING)
 		return
 
@@ -319,13 +330,14 @@ func _draw_ship_card(font: Font, rect: Rect2, idx: int) -> void:
 	var y: float = rect.position.y
 
 	# --- Status badge (top-left) ---
-	var badge_w: float = minf(font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x + 12.0, rect.size.x * 0.45)
+	var status_display: String = _get_status_display(status)
+	var badge_w: float = minf(font.get_string_size(status_display, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x + 12.0, rect.size.x * 0.45)
 	var badge_rect: Rect2 = Rect2(rect.position.x + 4, y + 4, badge_w, 16)
 	draw_rect(badge_rect, Color(status_col.r, status_col.g, status_col.b, 0.15 * alpha))
 	draw_rect(Rect2(badge_rect.position.x, badge_rect.position.y, 3, badge_rect.size.y),
 		Color(status_col.r, status_col.g, status_col.b, alpha))
 	draw_string(font, Vector2(badge_rect.position.x + 6, badge_rect.position.y + 12),
-		status, HORIZONTAL_ALIGNMENT_LEFT, badge_w - 8,
+		status_display, HORIZONTAL_ALIGNMENT_LEFT, badge_w - 8,
 		UITheme.FONT_SIZE_TINY, Color(status_col.r, status_col.g, status_col.b, alpha))
 
 	# --- Ship name (centered, below badge) ---
@@ -346,7 +358,7 @@ func _draw_ship_card(font: Font, rect: Rect2, idx: int) -> void:
 	var hull_ratio: float = clampf(ship_data.hull_hp / 2000.0, 0.0, 1.0)
 	draw_stat_mini_bar(
 		Rect2(bar_x, y + 62, bar_w, bar_h),
-		hull_ratio, Color(0.2, 0.8, 0.3, alpha), "PV", "%.0f" % ship_data.hull_hp)
+		hull_ratio, Color(0.2, 0.8, 0.3, alpha), Locale.t("stat.hp_short"), "%.0f" % ship_data.hull_hp)
 
 	# --- Weapon slots mini bar ---
 	var weapon_count: int = 0
@@ -395,7 +407,7 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 	draw_rect(Rect2(detail_x + 10, y, DETAIL_W - 20, 18),
 		Color(status_col.r, status_col.g, status_col.b, 0.15))
 	draw_rect(Rect2(detail_x + 10, y, 3, 18), status_col)
-	draw_string(font, Vector2(detail_x + 18, y + 13), status,
+	draw_string(font, Vector2(detail_x + 18, y + 13), _get_status_display(status),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 30, UITheme.FONT_SIZE_TINY, status_col)
 	y += 24.0
 
@@ -405,16 +417,16 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 	y += 24.0
 
 	# Ship class
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Classe",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.class"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), String(ship_data.ship_class),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Hull HP
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Coque",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.hull_label"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
-	draw_string(font, Vector2(detail_x + 95, y + 12), "%.0f PV" % ship_data.hull_hp,
+	draw_string(font, Vector2(detail_x + 95, y + 12), "%.0f %s" % [ship_data.hull_hp, Locale.t("stat.hp_short")],
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
@@ -423,7 +435,7 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 	for wn in fs.weapons:
 		if wn != &"":
 			weapon_count += 1
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Armes",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.weapons_label"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), "%d/%d" % [weapon_count, fs.weapons.size()],
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
@@ -432,7 +444,7 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 	# Equipment value
 	var equip_val: int = fs.get_total_equipment_value()
 	if equip_val > 0:
-		draw_string(font, Vector2(detail_x + 10, y + 12), "Equip.",
+		draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.equip_label"),
 			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(detail_x + 95, y + 12), PriceCatalog.format_price(equip_val),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
@@ -458,18 +470,18 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 
 		# Section header
 		draw_rect(Rect2(detail_x + 10, y, 2, 10), PlayerEconomy.CREDITS_COLOR)
-		draw_string(font, Vector2(detail_x + 16, y + 9), "ESTIMATION",
+		draw_string(font, Vector2(detail_x + 16, y + 9), Locale.t("shop.estimation"),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_HEADER)
 		y += 18.0
 
-		draw_string(font, Vector2(detail_x + 10, y + 12), "Coque",
+		draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.hull_label"),
 			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(detail_x + 95, y + 12), "+" + PriceCatalog.format_price(hull_price),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
 		y += 16.0
 
 		if equip_price > 0:
-			draw_string(font, Vector2(detail_x + 10, y + 12), "Equip.",
+			draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.equip_label"),
 				HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 			draw_string(font, Vector2(detail_x + 95, y + 12), "+" + PriceCatalog.format_price(equip_price),
 				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)
@@ -488,7 +500,7 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 		# Cargo loss warning
 		if fs.cargo and fs.cargo.get_total_count() > 0:
 			y += 36.0
-			draw_string(font, Vector2(detail_x + 10, y + 10), "Cargo perdu a la vente!",
+			draw_string(font, Vector2(detail_x + 10, y + 10), Locale.t("shop.cargo_lost"),
 				HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 	else:
 		# Non-sellable: show reason

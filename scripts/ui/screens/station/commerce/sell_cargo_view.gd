@@ -45,14 +45,14 @@ func _ready() -> void:
 	add_child(_ship_dropdown)
 
 	_sell_one_btn = UIButton.new()
-	_sell_one_btn.text = "VENDRE x1"
+	_sell_one_btn.text = Locale.t("btn.sell_x1")
 	_sell_one_btn.accent_color = UITheme.WARNING
 	_sell_one_btn.visible = false
 	_sell_one_btn.pressed.connect(_on_sell_one)
 	add_child(_sell_one_btn)
 
 	_sell_all_btn = UIButton.new()
-	_sell_all_btn.text = "VENDRE TOUT"
+	_sell_all_btn.text = Locale.t("btn.sell_all")
 	_sell_all_btn.accent_color = UITheme.WARNING
 	_sell_all_btn.visible = false
 	_sell_all_btn.pressed.connect(_on_sell_all)
@@ -266,12 +266,12 @@ func _draw() -> void:
 	draw_line(Vector2(detail_x, 0), Vector2(detail_x, s.y), UITheme.BORDER, 1.0)
 
 	if _cargo_items.is_empty():
-		draw_string(font, Vector2(detail_x + 10, 30), "Soute vide",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("shop.cargo_empty"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
 	if _selected_index < 0 or _selected_index >= _cargo_items.size():
-		draw_string(font, Vector2(detail_x + 10, 30), "Selectionnez un objet",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("ui.select_item"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
@@ -297,21 +297,21 @@ func _draw() -> void:
 
 	# Type
 	if item_type != "":
-		draw_string(font, Vector2(detail_x + 10, y + 12), "Type",
+		draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("stat.type"),
 			HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 		draw_string(font, Vector2(detail_x + 95, y + 12), item_type,
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 		y += 18.0
 
 	# Quantity
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Quantite",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.quantity"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), str(qty),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Unit price
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Prix/u",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.price_per_unit"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), PriceCatalog.format_price(unit_price),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

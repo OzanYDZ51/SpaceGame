@@ -216,7 +216,7 @@ func _draw() -> void:
 
 	# Draw selected item details
 	if _selected_index < 0 or _selected_index >= _available_items.size():
-		draw_string(font, Vector2(detail_x + 10, 30), "Selectionnez un objet",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("ui.select_item"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
@@ -239,7 +239,7 @@ func _draw() -> void:
 			3: count = _commerce_manager.player_inventory.get_module_count(item_name)
 		if count > 0:
 			draw_string(font, Vector2(detail_x + 10, y + 14),
-				"En stock: %d" % count, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				Locale.t("equip.in_stock") % count, HORIZONTAL_ALIGNMENT_LEFT, -1,
 				UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 
@@ -272,7 +272,7 @@ func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
 			if w:
 				size_str = ["S", "M", "L"][w.slot_size]
 				var dps: float = w.damage_per_hit * w.fire_rate
-				stat_label = "DPS"
+				stat_label = Locale.t("stat.dps")
 				stat_val = "%.0f" % dps
 				stat_ratio = clampf(dps / 500.0, 0.0, 1.0)
 				price = w.price
@@ -281,7 +281,7 @@ func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
 			var sh = ShieldRegistry.get_shield(item_name)
 			if sh:
 				size_str = ["S", "M", "L"][sh.slot_size]
-				stat_label = "PV"
+				stat_label = Locale.t("stat.hp_short")
 				stat_val = "%.0f" % sh.shield_hp_per_facing
 				stat_ratio = clampf(sh.shield_hp_per_facing / 1000.0, 0.0, 1.0)
 				price = sh.price
@@ -290,7 +290,7 @@ func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
 			var en = EngineRegistry.get_engine(item_name)
 			if en:
 				size_str = ["S", "M", "L"][en.slot_size]
-				stat_label = "VIT"
+				stat_label = Locale.t("stat.speed_short")
 				stat_val = "x%.1f" % en.speed_mult
 				stat_ratio = clampf(en.speed_mult / 3.0, 0.0, 1.0)
 				price = en.price
@@ -400,13 +400,13 @@ func _draw_weapon_detail(font: Font, x: float, y: float, wn: StringName) -> floa
 	draw_string(font, Vector2(x + 10, y + 14), String(wn).to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 24.0
-	var type_str: String = ["Laser", "Plasma", "Missile", "Railgun", "Mine", "Tourelle", "Laser Minier"][w.weapon_type]
+	var type_str: String = [Locale.t("weapon.laser"), Locale.t("weapon.plasma"), Locale.t("weapon.missile"), Locale.t("weapon.railgun"), Locale.t("weapon.mine"), Locale.t("weapon.turret"), Locale.t("weapon.mining_laser")][w.weapon_type]
 	y = _draw_detail_rows(font, x, y, [
-		["Type", type_str], ["Taille", ["S", "M", "L"][w.slot_size]],
-		["Degats", "%.0f/tir" % w.damage_per_hit], ["Cadence", "%.1f/s" % w.fire_rate],
-		["DPS", "%.0f" % (w.damage_per_hit * w.fire_rate)],
-		["Energie", "%.0f/tir" % w.energy_cost_per_shot],
-		["Portee", "%.0fm" % (w.projectile_speed * w.projectile_lifetime)],
+		[Locale.t("stat.type"), type_str], [Locale.t("stat.size"), ["S", "M", "L"][w.slot_size]],
+		[Locale.t("stat.damage"), "%.0f/tir" % w.damage_per_hit], [Locale.t("stat.fire_rate"), "%.1f/s" % w.fire_rate],
+		[Locale.t("stat.dps"), "%.0f" % (w.damage_per_hit * w.fire_rate)],
+		[Locale.t("stat.energy_cost"), "%.0f/tir" % w.energy_cost_per_shot],
+		[Locale.t("stat.range"), "%.0fm" % (w.projectile_speed * w.projectile_lifetime)],
 	])
 	return _draw_price_box(font, x, y, w.price)
 
@@ -418,11 +418,11 @@ func _draw_shield_detail(font: Font, x: float, y: float, sn: StringName) -> floa
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 24.0
 	y = _draw_detail_rows(font, x, y, [
-		["Taille", ["S", "M", "L"][sh.slot_size]],
-		["PV/face", "%.0f" % sh.shield_hp_per_facing],
-		["PV total", "%.0f" % (sh.shield_hp_per_facing * 4)],
-		["Regen", "%.0f/s" % sh.regen_rate], ["Delai", "%.1fs" % sh.regen_delay],
-		["Perforation", "%.0f%%" % (sh.bleedthrough * 100)],
+		[Locale.t("stat.size"), ["S", "M", "L"][sh.slot_size]],
+		[Locale.t("stat.hp_short") + "/face", "%.0f" % sh.shield_hp_per_facing],
+		[Locale.t("stat.hp_short") + " total", "%.0f" % (sh.shield_hp_per_facing * 4)],
+		[Locale.t("stat.regen"), "%.0f/s" % sh.regen_rate], [Locale.t("stat.delay"), "%.1fs" % sh.regen_delay],
+		[Locale.t("stat.perforation"), "%.0f%%" % (sh.bleedthrough * 100)],
 	])
 	return _draw_price_box(font, x, y, sh.price)
 
@@ -434,10 +434,10 @@ func _draw_engine_detail(font: Font, x: float, y: float, en: StringName) -> floa
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 24.0
 	y = _draw_detail_rows(font, x, y, [
-		["Taille", ["S", "M", "L"][e.slot_size]],
-		["Acceleration", "x%.2f" % e.accel_mult], ["Vitesse", "x%.2f" % e.speed_mult],
-		["Rotation", "x%.2f" % e.rotation_mult], ["Cruise", "x%.2f" % e.cruise_mult],
-		["Conso boost", "x%.2f" % e.boost_drain_mult],
+		[Locale.t("stat.size"), ["S", "M", "L"][e.slot_size]],
+		[Locale.t("stat.acceleration"), "x%.2f" % e.accel_mult], [Locale.t("stat.speed"), "x%.2f" % e.speed_mult],
+		[Locale.t("stat.rotation"), "x%.2f" % e.rotation_mult], [Locale.t("stat.cruise"), "x%.2f" % e.cruise_mult],
+		[Locale.t("stat.boost_drain_short"), "x%.2f" % e.boost_drain_mult],
 	])
 	return _draw_price_box(font, x, y, e.price)
 
@@ -448,7 +448,7 @@ func _draw_module_detail(font: Font, x: float, y: float, mn: StringName) -> floa
 	draw_string(font, Vector2(x + 10, y + 14), String(mn).to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 24.0
-	var rows: Array = [["Taille", ["S", "M", "L"][m.slot_size]]]
+	var rows: Array = [[Locale.t("stat.size"), ["S", "M", "L"][m.slot_size]]]
 	for bonus in m.get_bonuses_text():
 		rows.append(["Bonus", bonus])
 	y = _draw_detail_rows(font, x, y, rows)
@@ -475,7 +475,7 @@ func _draw_price_box(font: Font, x: float, y: float, price: int) -> float:
 	y += 36.0
 	if _commerce_manager and _commerce_manager.player_economy:
 		if _commerce_manager.player_economy.credits < price:
-			draw_string(font, Vector2(x + 10, y + 10), "CREDITS INSUFFISANTS",
+			draw_string(font, Vector2(x + 10, y + 10), Locale.t("shop.insufficient_credits"),
 				HORIZONTAL_ALIGNMENT_CENTER, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
 			y += 18.0
 	return y

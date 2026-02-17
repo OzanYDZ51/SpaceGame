@@ -21,6 +21,8 @@ var _invite_visible: bool = false
 var _invite_name: String = ""
 var _invite_group_id: int = 0
 var _invite_timer: float = 0.0
+var _btn_accept: Button = null
+var _btn_decline: Button = null
 
 const PANEL_W: float = 180.0
 const PANEL_H_PER_MEMBER: float = 22.0
@@ -56,26 +58,37 @@ func _ready() -> void:
 	add_child(_invite_panel)
 
 	# Accept/Decline buttons inside invite panel
-	var btn_accept := Button.new()
-	btn_accept.text = Locale.t("hud.accept")
-	btn_accept.position = Vector2(20, 42)
-	btn_accept.custom_minimum_size = Vector2(100, 24)
-	btn_accept.add_theme_font_size_override("font_size", 12)
-	btn_accept.pressed.connect(_on_invite_accept)
-	_invite_panel.add_child(btn_accept)
+	_btn_accept = Button.new()
+	_btn_accept.text = Locale.t("hud.accept")
+	_btn_accept.position = Vector2(20, 42)
+	_btn_accept.custom_minimum_size = Vector2(100, 24)
+	_btn_accept.add_theme_font_size_override("font_size", 12)
+	_btn_accept.pressed.connect(_on_invite_accept)
+	_invite_panel.add_child(_btn_accept)
 
-	var btn_decline := Button.new()
-	btn_decline.text = Locale.t("hud.decline")
-	btn_decline.position = Vector2(140, 42)
-	btn_decline.custom_minimum_size = Vector2(100, 24)
-	btn_decline.add_theme_font_size_override("font_size", 12)
-	btn_decline.pressed.connect(_on_invite_decline)
-	_invite_panel.add_child(btn_decline)
+	_btn_decline = Button.new()
+	_btn_decline.text = Locale.t("hud.decline")
+	_btn_decline.position = Vector2(140, 42)
+	_btn_decline.custom_minimum_size = Vector2(100, 24)
+	_btn_decline.add_theme_font_size_override("font_size", 12)
+	_btn_decline.pressed.connect(_on_invite_decline)
+	_invite_panel.add_child(_btn_decline)
+
+	Locale.language_changed.connect(_on_language_changed)
 
 	# Connect to NetworkManager signals
 	NetworkManager.group_invite_received.connect(_on_group_invite)
 	NetworkManager.group_updated.connect(_on_group_updated)
 	NetworkManager.group_dissolved.connect(_on_group_dissolved)
+
+
+func _on_language_changed(_lang: String) -> void:
+	if _btn_accept:
+		_btn_accept.text = Locale.t("hud.accept")
+	if _btn_decline:
+		_btn_decline.text = Locale.t("hud.decline")
+	_panel.queue_redraw()
+	_invite_panel.queue_redraw()
 
 
 func _process(delta: float) -> void:

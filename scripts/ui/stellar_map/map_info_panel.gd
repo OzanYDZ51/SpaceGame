@@ -90,7 +90,7 @@ func _draw() -> void:
 	var value_x: float = panel_x + 90.0
 
 	# Header: entity name
-	var name_text: String = ent.get("name", "INCONNU")
+	var name_text: String = ent.get("name", Locale.t("map.info.unknown"))
 	draw_string(font, Vector2(x, y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, MapColors.PANEL_HEADER)
 	y += 6
 	draw_line(Vector2(x, y), Vector2(panel_x + PANEL_WIDTH - 14, y), MapColors.PANEL_BORDER, 1.0)
@@ -98,12 +98,12 @@ func _draw() -> void:
 
 	# Type
 	var type_text: String = _type_to_string(ent["type"])
-	_draw_row(font, x, value_x, y, "TYPE", type_text)
+	_draw_row(font, x, value_x, y, Locale.t("map.info.type"), type_text)
 	y += 18
 
 	# Position
 	var pos_text: String = "%.0f, %.0f" % [ent["pos_x"], ent["pos_z"]]
-	_draw_row(font, x, value_x, y, "POS", pos_text)
+	_draw_row(font, x, value_x, y, Locale.t("map.info.pos"), pos_text)
 	y += 18
 
 	# Distance from player (skip in preview mode — no live player)
@@ -113,60 +113,60 @@ func _draw() -> void:
 			var dx: float = ent["pos_x"] - player["pos_x"]
 			var dz: float = ent["pos_z"] - player["pos_z"]
 			var dist: float = sqrt(dx * dx + dz * dz)
-			_draw_row(font, x, value_x, y, "DIST", camera.format_distance(dist))
+			_draw_row(font, x, value_x, y, Locale.t("map.info.dist"), camera.format_distance(dist))
 			y += 18
 
 	# Speed (for ships)
 	if speed > 0.5:
-		_draw_row(font, x, value_x, y, "VIT", "%.1f m/s" % speed)
+		_draw_row(font, x, value_x, y, Locale.t("map.info.speed"), "%.1f m/s" % speed)
 		y += 18
 
 	# Orbital info (for planets)
 	if ent["orbital_radius"] > 0.0:
-		_draw_row(font, x, value_x, y, "ORBITE", camera.format_distance(ent["orbital_radius"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.orbit"), camera.format_distance(ent["orbital_radius"]))
 		y += 18
 		if ent["orbital_period"] > 0.0:
 			var period_min: float = ent["orbital_period"] / 60.0
 			if period_min > 60.0:
-				_draw_row(font, x, value_x, y, "PÉRIODE", "%.1f h" % (period_min / 60.0))
+				_draw_row(font, x, value_x, y, Locale.t("map.info.period"), "%.1f h" % (period_min / 60.0))
 			else:
-				_draw_row(font, x, value_x, y, "PÉRIODE", "%.0f min" % period_min)
+				_draw_row(font, x, value_x, y, Locale.t("map.info.period"), "%.0f min" % period_min)
 			y += 18
 
 	# Type-specific extras
 	if extra.has("spectral_class"):
-		_draw_row(font, x, value_x, y, "CLASSE", extra["spectral_class"])
+		_draw_row(font, x, value_x, y, Locale.t("map.info.class"), extra["spectral_class"])
 		y += 18
 	if extra.has("temperature"):
-		_draw_row(font, x, value_x, y, "TEMP", "%d K" % int(extra["temperature"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.temp"), "%d K" % int(extra["temperature"]))
 		y += 18
 	if extra.has("planet_type"):
-		_draw_row(font, x, value_x, y, "CORPS", _planet_type_to_french(extra["planet_type"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.body"), _planet_type_to_label(extra["planet_type"]))
 		y += 18
 	if extra.has("station_type"):
-		_draw_row(font, x, value_x, y, "SERVICE", _station_type_to_french(extra["station_type"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.service"), _station_type_to_label(extra["station_type"]))
 		y += 18
 	if extra.has("dominant_resource"):
-		_draw_row(font, x, value_x, y, "RESSOURCE", _resource_label(extra["dominant_resource"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.resource"), _resource_label(extra["dominant_resource"]))
 		y += 18
 	if extra.has("secondary_resource") and extra["secondary_resource"] != "":
-		_draw_row(font, x, value_x, y, "SECONDAIRE", _resource_label(extra["secondary_resource"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.secondary"), _resource_label(extra["secondary_resource"]))
 		y += 18
 	if extra.has("zone"):
-		_draw_row(font, x, value_x, y, "ZONE", _zone_to_french(extra["zone"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.zone"), _zone_to_label(extra["zone"]))
 		y += 18
 
 	# NPC ship extras: faction + class
 	if extra.has("faction"):
-		_draw_row(font, x, value_x, y, "FACTION", _faction_to_label(extra["faction"]))
+		_draw_row(font, x, value_x, y, Locale.t("map.info.faction_label"), _faction_to_label(extra["faction"]))
 		y += 18
 	if extra.has("ship_class"):
-		_draw_row(font, x, value_x, y, "CLASSE", extra["ship_class"])
+		_draw_row(font, x, value_x, y, Locale.t("map.info.class"), extra["ship_class"])
 		y += 18
 	if extra.has("event_tier"):
-		var tier_labels: Array = ["", "FACILE", "MOYEN", "DIFFICILE"]
+		var tier_labels: Array = ["", Locale.t("map.info.tier_easy"), Locale.t("map.info.tier_medium"), Locale.t("map.info.tier_hard")]
 		var tier_val: int = clampi(int(extra["event_tier"]), 1, 3)
-		_draw_row(font, x, value_x, y, "DANGER", tier_labels[tier_val])
+		_draw_row(font, x, value_x, y, Locale.t("map.info.danger"), tier_labels[tier_val])
 		y += 18
 	if extra.has("event_id"):
 		var evt_mgr = GameManager.get_node_or_null("GameplayIntegrator")
@@ -180,7 +180,7 @@ func _draw() -> void:
 				@warning_ignore("integer_division")
 				var mins: int = total_secs / 60
 				var secs: int = total_secs % 60
-				_draw_row(font, x, value_x, y, "TEMPS", "%d:%02d" % [mins, secs])
+				_draw_row(font, x, value_x, y, Locale.t("map.info.time"), "%d:%02d" % [mins, secs])
 				y += 18
 
 	# Scanline decoration
@@ -200,59 +200,51 @@ func _draw_row(font: Font, x: float, vx: float, y: float, key: String, value: St
 
 func _type_to_string(type: int) -> String:
 	match type:
-		EntityRegistrySystem.EntityType.STAR: return "ÉTOILE"
-		EntityRegistrySystem.EntityType.PLANET: return "PLANÈTE"
-		EntityRegistrySystem.EntityType.STATION: return "STATION"
-		EntityRegistrySystem.EntityType.SHIP_PLAYER: return "VAISSEAU JOUEUR"
-		EntityRegistrySystem.EntityType.SHIP_NPC: return "VAISSEAU PNJ"
-		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "CEINTURE D'ASTÉROÏDES"
-		EntityRegistrySystem.EntityType.JUMP_GATE: return "PORTAIL HYPERSPATIAL"
-		EntityRegistrySystem.EntityType.EVENT: return "ÉVÉNEMENT"
-	return "INCONNU"
+		EntityRegistrySystem.EntityType.STAR: return Locale.t("map.type.star")
+		EntityRegistrySystem.EntityType.PLANET: return Locale.t("map.type.planet")
+		EntityRegistrySystem.EntityType.STATION: return Locale.t("map.type.station")
+		EntityRegistrySystem.EntityType.SHIP_PLAYER: return Locale.t("map.type.player_ship")
+		EntityRegistrySystem.EntityType.SHIP_NPC: return Locale.t("map.type.npc_ship")
+		EntityRegistrySystem.EntityType.ASTEROID_BELT: return Locale.t("map.type.asteroid_belt")
+		EntityRegistrySystem.EntityType.JUMP_GATE: return Locale.t("map.type.jump_gate")
+		EntityRegistrySystem.EntityType.EVENT: return Locale.t("map.type.event")
+	return Locale.t("map.type.unknown")
 
 
-func _planet_type_to_french(ptype: String) -> String:
-	match ptype:
-		"rocky": return "Rocheux"
-		"gas_giant": return "Géante gazeuse"
-		"ice": return "Glacé"
-		"ocean": return "Océanique"
-		"lava": return "Volcanique"
-	return ptype
+func _planet_type_to_label(ptype: String) -> String:
+	var key: String = "map.planet." + ptype
+	var result: String = Locale.t(key)
+	if result == key:
+		return ptype
+	return result
 
 
 func _faction_to_label(f: String) -> String:
 	match f:
-		"hostile": return "Hostile"
-		"friendly": return "Allié"
-	return "Neutre"
+		"hostile": return Locale.t("map.faction.hostile")
+		"friendly": return Locale.t("map.faction.friendly")
+	return Locale.t("map.faction.neutral")
 
 
-func _station_type_to_french(stype: String) -> String:
-	match stype:
-		"repair": return "Réparation"
-		"trade": return "Commerce"
-		"military": return "Militaire"
-		"mining": return "Extraction"
-	return stype.capitalize()
+func _station_type_to_label(stype: String) -> String:
+	var key: String = "map.station_type." + stype
+	var result: String = Locale.t(key)
+	if result == key:
+		return stype.capitalize()
+	return result
 
 
 func _resource_label(res_id: String) -> String:
-	match res_id:
-		"ice": return "Glace"
-		"iron": return "Fer"
-		"copper": return "Cuivre"
-		"titanium": return "Titane"
-		"gold": return "Or"
-		"crystal": return "Cristal"
-		"uranium": return "Uranium"
-		"platinum": return "Platine"
-	return res_id.capitalize()
+	var key: String = "map.ore_" + res_id
+	var result: String = Locale.t(key)
+	if result == key:
+		return res_id.capitalize()
+	return result
 
 
-func _zone_to_french(zone: String) -> String:
-	match zone:
-		"inner": return "Intérieure"
-		"mid": return "Médiane"
-		"outer": return "Extérieure"
-	return zone.capitalize()
+func _zone_to_label(zone: String) -> String:
+	var key: String = "map.zone." + zone
+	var result: String = Locale.t(key)
+	if result == key:
+		return zone.capitalize()
+	return result

@@ -20,11 +20,13 @@ const RELATION_COLORS ={
 	"NEUTRE": Color(0.45, 0.65, 0.78, 0.7),
 }
 
-const RELATION_LABELS ={
-	"ALLIE": "ALLIANCE",
-	"ENNEMI": "EN GUERRE",
-	"NEUTRE": "NEUTRE",
-}
+static var RELATION_LABELS: Dictionary:
+	get:
+		return {
+			"ALLIE": Locale.t("corp.diplo_relation_ally"),
+			"ENNEMI": Locale.t("corp.diplo_relation_enemy"),
+			"NEUTRE": Locale.t("corp.diplo_relation_neutral"),
+		}
 
 const LEFT_W =300.0
 const GAP =16.0

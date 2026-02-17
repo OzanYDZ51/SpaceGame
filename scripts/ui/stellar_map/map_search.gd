@@ -167,7 +167,7 @@ func _draw() -> void:
 		# No results message
 		var dy: float = by + BAR_HEIGHT
 		draw_rect(Rect2(bx, dy, BAR_WIDTH, ROW_HEIGHT + 4), MapColors.BG_PANEL)
-		draw_string(font, Vector2(bx + 10, dy + 17), "Aucun résultat", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
+		draw_string(font, Vector2(bx + 10, dy + 17), Locale.t("map.search.no_results"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MapColors.TEXT_DIM)
 
 
 func _type_prefix(type: int) -> String:

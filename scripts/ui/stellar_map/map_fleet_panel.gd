@@ -156,7 +156,7 @@ func _rebuild() -> void:
 	sys_ids.sort()
 	for sys_id in sys_ids:
 		var data: Dictionary = sys_map[sys_id]
-		var sys_name: String = "Inconnu"
+		var sys_name: String = Locale.t("map.fleet.unknown_system")
 		if _galaxy and sys_id >= 0:
 			sys_name = _galaxy.get_system_name(sys_id)
 
@@ -584,7 +584,7 @@ func _draw() -> void:
 
 	# Header
 	var ship_count: int = _fleet.ships.size()
-	var header_text ="FLOTTE (%d)" % ship_count
+	var header_text = Locale.t("map.fleet.header") % ship_count
 	draw_string(font, Vector2(MARGIN, HEADER_H - 8), header_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_HEADER, MapColors.TEXT_HEADER)
 	draw_line(Vector2(MARGIN, HEADER_H), Vector2(PANEL_W - MARGIN, HEADER_H), MapColors.PANEL_BORDER, 1.0)
 
@@ -607,9 +607,9 @@ func _draw() -> void:
 	if sel_count > 0:
 		var hint_text: String
 		if sel_count == 1:
-			hint_text = "CLIC DROIT MAP > AUTOPILOT" if _selected_fleet_indices[0] == _active_index else "CLIC DROIT MAP > DEPLACER"
+			hint_text = Locale.t("map.fleet.hint_autopilot") if _selected_fleet_indices[0] == _active_index else Locale.t("map.fleet.hint_move")
 		else:
-			hint_text = "CLIC DROIT MAP > DEPLACER %d" % sel_count
+			hint_text = Locale.t("map.fleet.hint_move_n") % sel_count
 		var hint_y: float = size.y - 16.0
 		if hint_y > HEADER_H + 20:
 			draw_rect(Rect2(0, hint_y - 14, PANEL_W, 20), Color(0.0, 0.05, 0.1, 0.8))
@@ -660,7 +660,7 @@ func _draw_cargo_tooltip(font: Font) -> void:
 		var qty: int = fs.ship_resources.get(res_id, 0)
 		if qty > 0:
 			if not has_resources:
-				content_lines.append({"text": "MINERAIS (%d)" % res_total, "color": MapColors.TEXT_DIM, "swatch": Color()})
+				content_lines.append({"text": Locale.t("map.fleet.ores_count") % res_total, "color": MapColors.TEXT_DIM, "swatch": Color()})
 				has_resources = true
 			var def: Dictionary = PlayerEconomy.RESOURCE_DEFS[res_id]
 			content_lines.append({"text": "  %s  %d" % [def["name"], qty], "color": MapColors.LABEL_VALUE, "swatch": def["color"]})
@@ -672,7 +672,7 @@ func _draw_cargo_tooltip(font: Font) -> void:
 			var qty: int = item.get("quantity", 0)
 			if qty > 0:
 				if not has_cargo:
-					content_lines.append({"text": "OBJETS (%d)" % cargo_used, "color": MapColors.TEXT_DIM, "swatch": Color()})
+					content_lines.append({"text": Locale.t("map.fleet.cargo_items") % cargo_used, "color": MapColors.TEXT_DIM, "swatch": Color()})
 					has_cargo = true
 				content_lines.append({"text": "  %s  x%d" % [item.get("name", "?"), qty], "color": MapColors.LABEL_VALUE, "swatch": Color()})
 
@@ -723,7 +723,7 @@ func _draw_cargo_tooltip(font: Font) -> void:
 	cy += 4
 
 	# Capacity text: SOUTE  12 / 50
-	var cap_text ="SOUTE  %d / %d" % [total_stored, cargo_max]
+	var cap_text = Locale.t("map.fleet.cargo_capacity") % [total_stored, cargo_max]
 	var cap_col: Color = MapColors.LABEL_VALUE if fill_ratio < 0.85 else UITheme.WARNING
 	draw_string(font, Vector2(tx, cy + LINE_H - 3), cap_text, HORIZONTAL_ALIGNMENT_LEFT, inner_w, UITheme.FONT_SIZE_SMALL, cap_col)
 	cy += LINE_H
@@ -780,7 +780,7 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 		var disband_rect := Rect2(PANEL_W - MARGIN - disband_w, y + 2, disband_w, SHIP_H - 4)
 		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.15))
 		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.5), false, 1.0)
-		draw_string(font, Vector2(disband_rect.position.x + 4, y + SHIP_H - 5), "DISSOUDRE", HORIZONTAL_ALIGNMENT_LEFT, disband_w - 8, UITheme.FONT_SIZE_TINY, Color(0.9, 0.3, 0.2))
+		draw_string(font, Vector2(disband_rect.position.x + 4, y + SHIP_H - 5), Locale.t("map.fleet.disband"), HORIZONTAL_ALIGNMENT_LEFT, disband_w - 8, UITheme.FONT_SIZE_TINY, Color(0.9, 0.3, 0.2))
 		_sq_disband_btn_rect = disband_rect
 	y += SHIP_H
 
@@ -804,13 +804,13 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 
 	# Leader line: "* VOUS (CHEF)"
 	if _in_clip(y, SHIP_H, clip):
-		draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), "* VOUS (CHEF)", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
+		draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), Locale.t("map.fleet.you_leader"), HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
 	y += SHIP_H
 
 	# Members
 	if sq.member_fleet_indices.is_empty():
 		if _in_clip(y, SHIP_H, clip):
-			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), "Aucun membre — utilisez +", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_TINY, Color(MapColors.TEXT_DIM, 0.5))
+			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), Locale.t("map.fleet.no_members"), HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_TINY, Color(MapColors.TEXT_DIM, 0.5))
 		y += SHIP_H
 	else:
 		for member_idx in sq.member_fleet_indices:
@@ -897,7 +897,7 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 	sq_ids.sort()
 	for sq_id in sq_ids:
 		var sq_entries: Array = squadroned[sq_id]
-		var sq_name ="ESCADRON"
+		var sq_name = Locale.t("map.fleet.squadron_label")
 		if _fleet:
 			var sq = _fleet.get_squadron(sq_id)
 			if sq:

@@ -342,13 +342,13 @@ func _draw_no_selection_msg(parent: Control, font: Font, px: float, start_y: flo
 	parent.draw_line(Vector2(center_x, center_y + cr - 5), Vector2(center_x, center_y + cr + 5), UITheme.TEXT_DIM, 1.0)
 	parent.draw_string(font, Vector2(px, center_y + 22), msg,
 		HORIZONTAL_ALIGNMENT_CENTER, pw, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	parent.draw_string(font, Vector2(px, center_y + 38), "Double-clic = equipement rapide",
+	parent.draw_string(font, Vector2(px, center_y + 38), Locale.t("equip.quick_equip"),
 		HORIZONTAL_ALIGNMENT_CENTER, pw, UITheme.FONT_SIZE_TINY, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.35))
 
 
 func _draw_weapon_comparison(parent: Control, font: Font, px: float, start_y: float, pw: float, selected_weapon: StringName) -> void:
 	if _selected_hardpoint < 0 or selected_weapon == &"":
-		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un point d'emport et une arme")
+		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.select_weapon"))
 		return
 
 	var new_weapon =WeaponRegistry.get_weapon(selected_weapon)
@@ -371,18 +371,18 @@ func _draw_weapon_comparison(parent: Control, font: Font, px: float, start_y: fl
 	var new_range =new_weapon.projectile_speed * new_weapon.projectile_lifetime
 
 	var stats: Array = [
-		["DEGATS", cur_dmg, new_dmg, true],
-		["CADENCE", cur_rate, new_rate, true],
-		["DPS", cur_dps, new_dps, true],
-		["ENERGIE", cur_energy, new_energy, false],
-		["PORTEE", cur_range, new_range, true],
+		["stat.damage", cur_dmg, new_dmg, true],
+		["stat.fire_rate", cur_rate, new_rate, true],
+		["stat.dps", cur_dps, new_dps, true],
+		["stat.energy_cost", cur_energy, new_energy, false],
+		["stat.range", cur_range, new_range, true],
 	]
 	_draw_stat_rows(parent, font, px, start_y, pw, stats)
 
 
 func _draw_shield_comparison(parent: Control, font: Font, px: float, start_y: float, pw: float, selected_shield: StringName) -> void:
 	if selected_shield == &"":
-		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un bouclier")
+		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.select_shield"))
 		return
 
 	var new_shield =ShieldRegistry.get_shield(selected_shield)
@@ -392,17 +392,17 @@ func _draw_shield_comparison(parent: Control, font: Font, px: float, start_y: fl
 	var cur: ShieldResource = _adapter.get_equipped_shield() if _adapter else null
 
 	var stats: Array = [
-		["CAPACITE", cur.shield_hp_per_facing if cur else 0.0, new_shield.shield_hp_per_facing, true],
-		["REGEN", cur.regen_rate if cur else 0.0, new_shield.regen_rate, true],
-		["DELAI", cur.regen_delay if cur else 0.0, new_shield.regen_delay, false],
-		["INFILTRATION", (cur.bleedthrough * 100) if cur else 0.0, new_shield.bleedthrough * 100, false],
+		["stat.capacity", cur.shield_hp_per_facing if cur else 0.0, new_shield.shield_hp_per_facing, true],
+		["stat.regen", cur.regen_rate if cur else 0.0, new_shield.regen_rate, true],
+		["stat.delay", cur.regen_delay if cur else 0.0, new_shield.regen_delay, false],
+		["stat.infiltration", (cur.bleedthrough * 100) if cur else 0.0, new_shield.bleedthrough * 100, false],
 	]
 	_draw_stat_rows(parent, font, px, start_y, pw, stats)
 
 
 func _draw_engine_comparison(parent: Control, font: Font, px: float, start_y: float, pw: float, selected_engine: StringName) -> void:
 	if selected_engine == &"":
-		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un moteur")
+		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.select_engine"))
 		return
 
 	var new_engine =EngineRegistry.get_engine(selected_engine)
@@ -412,11 +412,11 @@ func _draw_engine_comparison(parent: Control, font: Font, px: float, start_y: fl
 	var cur: EngineResource = _adapter.get_equipped_engine() if _adapter else null
 
 	var stats: Array = [
-		[Locale.t("stat.acceleration"), cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
-		[Locale.t("stat.speed"), cur.speed_mult if cur else 1.0, new_engine.speed_mult, true],
-		[Locale.t("stat.cruise"), cur.cruise_mult if cur else 1.0, new_engine.cruise_mult, true],
-		[Locale.t("stat.rotation"), cur.rotation_mult if cur else 1.0, new_engine.rotation_mult, true],
-		[Locale.t("stat.boost_drain"), cur.boost_drain_mult if cur else 1.0, new_engine.boost_drain_mult, false],
+		["stat.acceleration", cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
+		["stat.speed", cur.speed_mult if cur else 1.0, new_engine.speed_mult, true],
+		["stat.cruise", cur.cruise_mult if cur else 1.0, new_engine.cruise_mult, true],
+		["stat.rotation", cur.rotation_mult if cur else 1.0, new_engine.rotation_mult, true],
+		["stat.boost_drain", cur.boost_drain_mult if cur else 1.0, new_engine.boost_drain_mult, false],
 	]
 	_draw_stat_rows(parent, font, px, start_y, pw, stats)
 
@@ -436,21 +436,21 @@ func _draw_module_comparison(parent: Control, font: Font, px: float, start_y: fl
 
 	var stats: Array = []
 	if new_mod.hull_bonus > 0 or (cur and cur.hull_bonus > 0):
-		stats.append([Locale.t("stat.hull"), cur.hull_bonus if cur else 0.0, new_mod.hull_bonus, true])
+		stats.append(["stat.hull", cur.hull_bonus if cur else 0.0, new_mod.hull_bonus, true])
 	if new_mod.armor_bonus > 0 or (cur and cur.armor_bonus > 0):
-		stats.append([Locale.t("stat.armor"), cur.armor_bonus if cur else 0.0, new_mod.armor_bonus, true])
+		stats.append(["stat.armor", cur.armor_bonus if cur else 0.0, new_mod.armor_bonus, true])
 	if new_mod.energy_cap_bonus > 0 or (cur and cur.energy_cap_bonus > 0):
-		stats.append([Locale.t("stat.energy_max"), cur.energy_cap_bonus if cur else 0.0, new_mod.energy_cap_bonus, true])
+		stats.append(["stat.energy_max", cur.energy_cap_bonus if cur else 0.0, new_mod.energy_cap_bonus, true])
 	if new_mod.energy_regen_bonus > 0 or (cur and cur.energy_regen_bonus > 0):
-		stats.append([Locale.t("stat.energy_regen"), cur.energy_regen_bonus if cur else 0.0, new_mod.energy_regen_bonus, true])
+		stats.append(["stat.energy_regen", cur.energy_regen_bonus if cur else 0.0, new_mod.energy_regen_bonus, true])
 	if new_mod.shield_regen_mult != 1.0 or (cur and cur.shield_regen_mult != 1.0):
-		stats.append([Locale.t("stat.shield_regen"), (cur.shield_regen_mult if cur else 1.0) * 100, new_mod.shield_regen_mult * 100, true])
+		stats.append(["stat.shield_regen", (cur.shield_regen_mult if cur else 1.0) * 100, new_mod.shield_regen_mult * 100, true])
 	if new_mod.shield_cap_mult != 1.0 or (cur and cur.shield_cap_mult != 1.0):
-		stats.append([Locale.t("stat.shield_cap"), (cur.shield_cap_mult if cur else 1.0) * 100, new_mod.shield_cap_mult * 100, true])
+		stats.append(["stat.shield_cap", (cur.shield_cap_mult if cur else 1.0) * 100, new_mod.shield_cap_mult * 100, true])
 	if new_mod.weapon_energy_mult != 1.0 or (cur and cur.weapon_energy_mult != 1.0):
-		stats.append([Locale.t("stat.weapon_drain"), (cur.weapon_energy_mult if cur else 1.0) * 100, new_mod.weapon_energy_mult * 100, false])
+		stats.append(["stat.weapon_drain", (cur.weapon_energy_mult if cur else 1.0) * 100, new_mod.weapon_energy_mult * 100, false])
 	if new_mod.weapon_range_mult != 1.0 or (cur and cur.weapon_range_mult != 1.0):
-		stats.append([Locale.t("stat.weapon_range"), (cur.weapon_range_mult if cur else 1.0) * 100, new_mod.weapon_range_mult * 100, true])
+		stats.append(["stat.weapon_range", (cur.weapon_range_mult if cur else 1.0) * 100, new_mod.weapon_range_mult * 100, true])
 
 	if stats.is_empty():
 		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.no_bonus"))
@@ -484,7 +484,7 @@ func _draw_stat_rows(parent: Control, font: Font, px: float, start_y: float, pw:
 		var is_better: bool = (delta > 0.01 and higher_better) or (delta < -0.01 and not higher_better)
 		var is_worse: bool = (delta > 0.01 and not higher_better) or (delta < -0.01 and higher_better)
 
-		parent.draw_string(font, Vector2(label_x, ry + 10), label,
+		parent.draw_string(font, Vector2(label_x, ry + 10), Locale.t(label),
 			HORIZONTAL_ALIGNMENT_LEFT, 90, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 		parent.draw_string(font, Vector2(val_x, ry + 10), EC.format_stat(cur_val, label),
 			HORIZONTAL_ALIGNMENT_LEFT, 60, UITheme.FONT_SIZE_LABEL, UITheme.TEXT)

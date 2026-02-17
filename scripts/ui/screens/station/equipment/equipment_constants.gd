@@ -75,21 +75,21 @@ static func get_weapon_type_color(weapon_type: int) -> Color:
 	return TYPE_COLORS.get(weapon_type, UITheme.PRIMARY)
 
 
-static func format_stat(val: float, label: String) -> String:
-	match label:
-		"CADENCE":
+static func format_stat(val: float, key: String) -> String:
+	match key:
+		"stat.fire_rate":
 			return "%.1f/s" % val
-		"PORTEE":
+		"stat.range":
 			if val >= 1000.0:
 				return "%.1f km" % (val / 1000.0)
 			return "%.0f m" % val
-		"ENERGIE", "DELAI":
+		"stat.energy_cost", "stat.delay":
 			return "%.1f" % val
-		"ACCELERATION", "VITESSE", "CRUISE", "ROTATION", "CONSO BOOST":
+		"stat.acceleration", "stat.speed", "stat.cruise", "stat.rotation", "stat.boost_drain":
 			return "x%.2f" % val
-		"INFILTRATION":
+		"stat.infiltration":
 			return "%.0f%%" % val
-		"REGEN BOUCLIER", "CAP BOUCLIER", "CONSO ARMES", "PORTEE ARMES":
+		"stat.shield_regen", "stat.shield_cap", "stat.weapon_drain", "stat.weapon_range":
 			return "%.0f%%" % val
 	if absf(val) >= 100:
 		return "%.0f" % val
@@ -101,16 +101,16 @@ static func get_engine_best_stat(engine: EngineResource) -> String:
 	var best_val := 0.0
 	if absf(engine.accel_mult - 1.0) > best_val:
 		best_val = absf(engine.accel_mult - 1.0)
-		best = "%+.0f%% ACCEL" % ((engine.accel_mult - 1.0) * 100)
+		best = "%+.0f%% %s" % [((engine.accel_mult - 1.0) * 100), Locale.t("stat.acceleration")]
 	if absf(engine.speed_mult - 1.0) > best_val:
 		best_val = absf(engine.speed_mult - 1.0)
-		best = "%+.0f%% VITESSE" % ((engine.speed_mult - 1.0) * 100)
+		best = "%+.0f%% %s" % [((engine.speed_mult - 1.0) * 100), Locale.t("stat.speed")]
 	if absf(engine.cruise_mult - 1.0) > best_val:
 		best_val = absf(engine.cruise_mult - 1.0)
-		best = "%+.0f%% CRUISE" % ((engine.cruise_mult - 1.0) * 100)
+		best = "%+.0f%% %s" % [((engine.cruise_mult - 1.0) * 100), Locale.t("stat.cruise")]
 	if absf(engine.rotation_mult - 1.0) > best_val:
 		best_val = absf(engine.rotation_mult - 1.0)
-		best = "%+.0f%% ROTATION" % ((engine.rotation_mult - 1.0) * 100)
+		best = "%+.0f%% %s" % [((engine.rotation_mult - 1.0) * 100), Locale.t("stat.rotation")]
 	if best == "":
 		best = "Standard"
 	return best

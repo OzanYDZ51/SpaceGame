@@ -55,7 +55,7 @@ const CARD_GAP: float = 6.0
 
 
 func _ready() -> void:
-	screen_title = "ENTREPOT"
+	screen_title = Locale.t("storage.title")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -74,7 +74,7 @@ func _ready() -> void:
 	add_child(_transfer_to_ship_btn)
 
 	_transfer_all_to_ship_btn = UIButton.new()
-	_transfer_all_to_ship_btn.text = "<- TOUT"
+	_transfer_all_to_ship_btn.text = Locale.t("storage.transfer_all_to_ship")
 	_transfer_all_to_ship_btn.accent_color = UITheme.ACCENT
 	_transfer_all_to_ship_btn.pressed.connect(_on_transfer_all_to_ship)
 	_transfer_all_to_ship_btn.visible = false
@@ -88,7 +88,7 @@ func _ready() -> void:
 	add_child(_transfer_to_station_btn)
 
 	_transfer_all_to_station_btn = UIButton.new()
-	_transfer_all_to_station_btn.text = "TOUT ->"
+	_transfer_all_to_station_btn.text = Locale.t("storage.transfer_all_to_station")
 	_transfer_all_to_station_btn.accent_color = UITheme.PRIMARY
 	_transfer_all_to_station_btn.pressed.connect(_on_transfer_all_to_station)
 	_transfer_all_to_station_btn.visible = false
@@ -96,7 +96,7 @@ func _ready() -> void:
 
 	# Back button
 	_back_btn = UIButton.new()
-	_back_btn.text = "RETOUR"
+	_back_btn.text = Locale.t("btn.back")
 	_back_btn.accent_color = UITheme.WARNING
 	_back_btn.visible = false
 	_back_btn.pressed.connect(_on_back_pressed)
@@ -107,7 +107,7 @@ func setup(pdata, station_key: String, sname: String) -> void:
 	_player_data = pdata
 	_station_key = station_key
 	_station_name = sname
-	screen_title = "ENTREPOT — " + sname.to_upper()
+	screen_title = Locale.t("storage.title_prefix") + sname.to_upper()
 	_selected_fleet_index = pdata.fleet.active_index if pdata and pdata.fleet else 0
 	_rebuild_fleet_dropdown()
 
@@ -519,11 +519,11 @@ func _draw() -> void:
 
 	# Column headers
 	draw_rect(Rect2(4, CONTENT_TOP + 8, 3, 14), UITheme.PRIMARY)
-	draw_string(font, Vector2(14, CONTENT_TOP + 22), "STOCKAGE STATION",
+	draw_string(font, Vector2(14, CONTENT_TOP + 22), Locale.t("storage.station_header"),
 		HORIZONTAL_ALIGNMENT_LEFT, int(left_w), UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
 
 	draw_rect(Rect2(right_x + 4, CONTENT_TOP + 8, 3, 14), UITheme.ACCENT)
-	draw_string(font, Vector2(right_x + 14, CONTENT_TOP + 22), "SOUTE VAISSEAU",
+	draw_string(font, Vector2(right_x + 14, CONTENT_TOP + 22), Locale.t("storage.ship_header"),
 		HORIZONTAL_ALIGNMENT_LEFT, int(left_w), UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
 
 	# Separator under headers
@@ -533,7 +533,7 @@ func _draw() -> void:
 	draw_rect(Rect2(left_w, list_top, CENTER_W, s.y - list_top - BOTTOM_H), Color(0.02, 0.015, 0.01, 0.3))
 
 	# Transfer label in center
-	draw_string(font, Vector2(left_w + 8, list_top + 20), "TRANSFERT",
+	draw_string(font, Vector2(left_w + 8, list_top + 20), Locale.t("storage.transfer"),
 		HORIZONTAL_ALIGNMENT_LEFT, int(CENTER_W - 16), UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# Draw card grids
@@ -543,11 +543,11 @@ func _draw() -> void:
 	# Empty state messages
 	if _station_items.is_empty():
 		draw_string(font, Vector2(_station_grid_area.position.x + 8, _station_grid_area.position.y + 24),
-			"Aucun objet", HORIZONTAL_ALIGNMENT_LEFT, int(_station_grid_area.size.x),
+			Locale.t("storage.no_items"), HORIZONTAL_ALIGNMENT_LEFT, int(_station_grid_area.size.x),
 			UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	if _ship_items.is_empty():
 		draw_string(font, Vector2(_ship_grid_area.position.x + 8, _ship_grid_area.position.y + 24),
-			"Soute vide", HORIZONTAL_ALIGNMENT_LEFT, int(_ship_grid_area.size.x),
+			Locale.t("storage.hold_empty"), HORIZONTAL_ALIGNMENT_LEFT, int(_ship_grid_area.size.x),
 			UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Bottom bar
@@ -555,7 +555,7 @@ func _draw() -> void:
 
 	# Credits display
 	if _player_data and _player_data.economy:
-		var cr_text: String = "Credits: %s CR" % PlayerEconomy.format_credits(_player_data.economy.credits)
+		var cr_text: String = Locale.t("storage.credits") % PlayerEconomy.format_credits(_player_data.economy.credits)
 		draw_string(font, Vector2(120, s.y - BOTTOM_H + 22), cr_text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 
@@ -564,7 +564,7 @@ func _draw() -> void:
 		var storage = _player_data.refinery_manager.get_storage(_station_key)
 		var total: int = storage.get_total()
 		var cap: int = storage.capacity
-		var st_text: String = "Stockage: %d / %d" % [total, cap]
+		var st_text: String = Locale.t("storage.usage") % [total, cap]
 		draw_string(font, Vector2(s.x - 220, s.y - BOTTOM_H + 22), st_text,
 			HORIZONTAL_ALIGNMENT_RIGHT, 200, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 

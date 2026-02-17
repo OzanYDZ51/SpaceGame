@@ -16,7 +16,7 @@ var follow_enabled: bool = true
 var preview_entities: Dictionary = {}  # When non-empty, overrides EntityRegistry
 var _scan_line_y: float = 0.0
 var _pulse_t: float = 0.0
-var _system_name: String = "SYSTÈME INCONNU"
+var _system_name: String = ""
 
 # Cache for asteroid belt dot positions (universe coords)
 # Key: entity id, Value: Array of [ux, uz] pairs
@@ -33,11 +33,11 @@ var _toolbar_hovered: int = -1  # index into TOOLBAR_BUTTONS
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	TOOLBAR_BUTTONS = [
-		{"label": "Orbites", "key": -1},
-		{"label": "Planetes", "key": EntityRegistrySystem.EntityType.PLANET},
-		{"label": "Stations", "key": EntityRegistrySystem.EntityType.STATION},
-		{"label": "PNJ", "key": EntityRegistrySystem.EntityType.SHIP_NPC},
-		{"label": "Suivre", "key": -99},
+		{"label_key": "map.filter.orbits", "key": -1},
+		{"label_key": "map.filter.planets", "key": EntityRegistrySystem.EntityType.PLANET},
+		{"label_key": "map.filter.stations", "key": EntityRegistrySystem.EntityType.STATION},
+		{"label_key": "map.filter.npcs", "key": EntityRegistrySystem.EntityType.SHIP_NPC},
+		{"label_key": "map.filter.follow", "key": -99},
 	]
 
 
@@ -72,7 +72,7 @@ func _get_toolbar_rects() -> Array[Rect2]:
 	var ty: float = MapLayout.TOOLBAR_Y
 
 	for btn in TOOLBAR_BUTTONS:
-		var tw: float = font.get_string_size(btn["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+		var tw: float = font.get_string_size(Locale.t(btn["label_key"]), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 		var btn_w: float = tw + TOOLBAR_BTN_INNER_PAD * 2
 		rects.append(Rect2(tx, ty, btn_w, TOOLBAR_BTN_H))
 		tx += btn_w + TOOLBAR_BTN_PAD
@@ -144,7 +144,7 @@ func _draw_toolbar() -> void:
 		else:
 			text_col = MapColors.FILTER_INACTIVE if not is_hovered else Color(0.5, 0.5, 0.6, 0.6)
 
-		draw_string(font, Vector2(r.position.x + TOOLBAR_BTN_INNER_PAD, r.position.y + TOOLBAR_BTN_H - 5), btn["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, text_col)
+		draw_string(font, Vector2(r.position.x + TOOLBAR_BTN_INNER_PAD, r.position.y + TOOLBAR_BTN_H - 5), Locale.t(btn["label_key"]), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, text_col)
 
 
 # =============================================================================
@@ -361,7 +361,8 @@ func _draw_header() -> void:
 	var vp_right: float = MapLayout.viewport_right(size.x)
 
 	# System name
-	draw_string(font, Vector2(hx, MapLayout.HEADER_Y), _system_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_HEADER, MapColors.TEXT_HEADER)
+	var display_name: String = _system_name if _system_name != "" else Locale.t("map.system_unknown")
+	draw_string(font, Vector2(hx, MapLayout.HEADER_Y), display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_HEADER, MapColors.TEXT_HEADER)
 
 	# Zoom level label
 	var zoom_text: String = "ZOOM : " + camera.get_zoom_label()

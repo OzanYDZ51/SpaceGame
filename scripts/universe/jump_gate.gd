@@ -2,9 +2,9 @@ class_name JumpGate
 extends Node3D
 
 # =============================================================================
-# Jump Gate - Massive tunnel-shaped portal for inter-system travel.
-# Custom gate.glb model with animated portal energy, lighting effects, and
-# automatic jump when the player flies through the tunnel for 3 seconds.
+# Jump Gate - Inter-system portal with blue vortex activation.
+# New GLB model with integrated vortex mesh. The vortex activates when the
+# player approaches, and jumping happens by flying through the gate.
 # The wider end of the tunnel always faces the star (system center).
 # =============================================================================
 
@@ -13,18 +13,23 @@ signal player_left()
 signal auto_jump_requested(target_system_id: int)
 
 @export var trigger_radius: float = 2000.0
+@export var vortex_activation_radius: float = 3000.0
 @export var emission_color: Color = Color(0.15, 0.6, 1.0)
 
-const GATE_MODEL_PATH: String = "res://assets/models/gate.glb"
+const GATE_MODEL_PATH: String = "res://assets/models/gate_new.glb"
 const MODEL_SCALE: float = 5.0
-# Offset to center the portal opening at the node's origin.
-# Portal energy field (prim 1) center is at (-6.2, 166.5, -82.7) in model space.
-const MODEL_OFFSET: Vector3 = Vector3(6.2, -166.5, 82.7)
+const MODEL_OFFSET: Vector3 = Vector3.ZERO
 
-# Tunnel auto-jump detection (world-space units at scale 5.0)
-const TUNNEL_RADIUS: float = 450.0
-const TUNNEL_HALF_DEPTH: float = 600.0
-const AUTO_JUMP_TIME: float = 3.0
+# Tunnel auto-jump detection (world-space units at MODEL_SCALE)
+const TUNNEL_RADIUS: float = 800.0
+const TUNNEL_HALF_DEPTH: float = 1000.0
+const AUTO_JUMP_TIME: float = 1.5
+
+# Vortex intensity levels
+const VORTEX_BASE_ALPHA: float = 0.12
+const VORTEX_BASE_EMISSION: float = 1.5
+const VORTEX_ACTIVE_ALPHA: float = 0.6
+const VORTEX_ACTIVE_EMISSION: float = 5.0
 
 var target_system_id: int = -1
 var target_system_name: String = ""
@@ -32,12 +37,15 @@ var gate_name: String = ""
 
 var _model_pivot: Node3D = null
 var _label: Label3D = null
-var _portal_material: StandardMaterial3D = null
+var _vortex_materials: Array[StandardMaterial3D] = []  # All vortex surfaces
 var _player_inside: bool = false
 var _inside_tunnel: bool = false
 var _tunnel_timer: float = 0.0
 var _jump_triggered: bool = false
 var _auto_jump_cooldown: float = 4.0  # Prevent re-jump on arrival
+var _vortex_active: bool = false
+var _vortex_intensity: float = 0.0  # 0 = dim base, 1 = full active
+var _vortex_tween: Tween = null
 
 
 func _ready() -> void:
@@ -62,50 +70,73 @@ func _build_model() -> void:
 	model.position = MODEL_OFFSET
 	_model_pivot.add_child(model)
 
-	# Find the MeshInstance3D and set up materials
-	var mesh_instance: MeshInstance3D = _find_mesh_instance(model)
-	if mesh_instance == null or mesh_instance.mesh == null:
+	# Find ALL MeshInstance3D nodes in the model tree
+	var meshes: Array[MeshInstance3D] = []
+	_collect_mesh_instances(model, meshes)
+
+	if meshes.is_empty():
+		push_warning("JumpGate: No MeshInstance3D found in gate model")
 		return
 
-	var surf_count: int = mesh_instance.mesh.get_surface_count()
+	print("JumpGate: Found %d mesh instance(s)" % meshes.size())
 
-	# Portal energy field (surface 1) — animated emission + transparency
-	if surf_count > 1:
-		var mat = mesh_instance.mesh.surface_get_material(1)
-		if mat is StandardMaterial3D:
-			_portal_material = mat.duplicate() as StandardMaterial3D
-			_portal_material.albedo_color = Color(emission_color.r, emission_color.g, emission_color.b, 0.3)
-			_portal_material.emission_enabled = true
-			_portal_material.emission = emission_color
-			_portal_material.emission_energy_multiplier = 3.0
-			_portal_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			_portal_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-			mesh_instance.set_surface_override_material(1, _portal_material)
+	# Leave all original materials as-is. Only identify vortex surfaces
+	# (those that already have alpha transparency in the GLB) for animation.
+	for mesh_inst in meshes:
+		if mesh_inst.mesh == null:
+			continue
+		var surf_count: int = mesh_inst.mesh.get_surface_count()
+		print("  Mesh '%s': %d surface(s)" % [mesh_inst.name, surf_count])
 
-	# Structure materials (surfaces 0, 2, 3) — subtle powered glow
-	for surf_idx in [0, 2, 3]:
-		if surf_idx < surf_count:
-			var struct_mat = mesh_instance.mesh.surface_get_material(surf_idx)
-			if struct_mat is StandardMaterial3D:
-				var sm: StandardMaterial3D = struct_mat.duplicate() as StandardMaterial3D
-				sm.emission_enabled = true
-				sm.emission = Color(emission_color.r * 0.2, emission_color.g * 0.2, emission_color.b * 0.2)
-				sm.emission_energy_multiplier = 0.4
-				mesh_instance.set_surface_override_material(surf_idx, sm)
+		for surf_idx in surf_count:
+			var mat = mesh_inst.mesh.surface_get_material(surf_idx)
+			if mat == null:
+				continue
+
+			var is_vortex: bool = _is_vortex_surface(mat)
+			print("    Surface %d: '%s' (%s) transp=%d emit=%s cull=%d -> %s" % [
+				surf_idx, mat.resource_name, mat.get_class(),
+				mat.transparency if mat is StandardMaterial3D else -1,
+				str(mat.emission_energy_multiplier) if mat is StandardMaterial3D and mat.emission_enabled else "off",
+				mat.cull_mode if mat is StandardMaterial3D else -1,
+				"VORTEX" if is_vortex else "structure"])
+
+			if is_vortex:
+				_setup_vortex_surface(mesh_inst, surf_idx, mat)
 
 
-func _find_mesh_instance(node: Node) -> MeshInstance3D:
+func _collect_mesh_instances(node: Node, result: Array[MeshInstance3D]) -> void:
 	if node is MeshInstance3D:
-		return node
+		result.append(node)
 	for child in node.get_children():
-		var found = _find_mesh_instance(child)
-		if found:
-			return found
-	return null
+		_collect_mesh_instances(child, result)
+
+
+func _is_vortex_surface(mat: Material) -> bool:
+	# Only match surfaces that ALREADY have alpha transparency in the GLB.
+	# This avoids turning opaque structure surfaces into transparent ones.
+	if mat is StandardMaterial3D:
+		var sm: StandardMaterial3D = mat as StandardMaterial3D
+		if sm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA \
+				or sm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_HASH \
+				or sm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS:
+			return true
+	return false
+
+
+func _setup_vortex_surface(mesh_inst: MeshInstance3D, surf_idx: int, mat: Material) -> void:
+	if not mat is StandardMaterial3D:
+		return
+	# Duplicate the original material and just hook into emission for animation
+	var vm: StandardMaterial3D = (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+	vm.emission_enabled = true
+	vm.emission = emission_color
+	vm.emission_energy_multiplier = VORTEX_BASE_EMISSION
+	mesh_inst.set_surface_override_material(surf_idx, vm)
+	_vortex_materials.append(vm)
 
 
 func _build_lights() -> void:
-	# Central portal glow — large omni illuminating the tunnel interior
 	var portal_light := OmniLight3D.new()
 	portal_light.name = "PortalLight"
 	portal_light.light_color = emission_color
@@ -115,7 +146,6 @@ func _build_lights() -> void:
 	portal_light.position = Vector3.ZERO
 	add_child(portal_light)
 
-	# Accent lights around the ring (4 cardinal positions)
 	var accent_r: float = 400.0
 	for i in 4:
 		var angle: float = float(i) * TAU / 4.0
@@ -153,7 +183,6 @@ func setup(data: Dictionary) -> void:
 	_orient_toward_center()
 
 
-## Setup from typed JumpGateData resource.
 func setup_from_data(data: JumpGateData) -> void:
 	target_system_id = data.target_system_id
 	target_system_name = data.target_system_name
@@ -165,19 +194,53 @@ func setup_from_data(data: JumpGateData) -> void:
 
 
 func _orient_toward_center() -> void:
-	# The wider end of the tunnel (model -Z) faces the star at system center.
-	# look_at makes -Z point toward the target, which is exactly what we want.
 	if global_position.length_squared() > 1.0:
 		look_at(Vector3.ZERO, Vector3.UP)
 
 
-func _process(_delta: float) -> void:
-	if _portal_material == null:
+# --- Vortex activation ---
+
+func _activate_vortex() -> void:
+	if _vortex_active or _vortex_materials.is_empty():
 		return
+	_vortex_active = true
+	if _vortex_tween:
+		_vortex_tween.kill()
+	_vortex_tween = create_tween()
+	_vortex_tween.tween_property(self, "_vortex_intensity", 1.0, 1.2) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _deactivate_vortex() -> void:
+	if not _vortex_active or _vortex_materials.is_empty():
+		return
+	_vortex_active = false
+	if _vortex_tween:
+		_vortex_tween.kill()
+	_vortex_tween = create_tween()
+	_vortex_tween.tween_property(self, "_vortex_intensity", 0.0, 0.8) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+
+# --- Frame updates ---
+
+func _process(_delta: float) -> void:
+	if _vortex_materials.is_empty():
+		return
+
 	var t: float = Time.get_ticks_msec() * 0.001
 	var pulse: float = (sin(t * 2.0) + 1.0) * 0.5
-	_portal_material.emission_energy_multiplier = 2.0 + pulse * 3.0
-	_portal_material.albedo_color.a = 0.15 + pulse * 0.2
+
+	# Interpolate between base and active states
+	var alpha: float = lerpf(VORTEX_BASE_ALPHA, VORTEX_ACTIVE_ALPHA, _vortex_intensity)
+	var emission_e: float = lerpf(VORTEX_BASE_EMISSION, VORTEX_ACTIVE_EMISSION, _vortex_intensity)
+	# Add pulse modulation (stronger when active)
+	var pulse_strength: float = lerpf(0.3, 2.0, _vortex_intensity)
+	emission_e += pulse * pulse_strength
+
+	for vm in _vortex_materials:
+		vm.albedo_color.a = alpha + pulse * 0.05 * (1.0 + _vortex_intensity)
+		vm.emission_energy_multiplier = emission_e
 
 
 func _physics_process(delta: float) -> void:
@@ -190,7 +253,13 @@ func _physics_process(delta: float) -> void:
 
 	var dist_sq: float = global_position.distance_squared_to(ship.global_position)
 
-	# --- Proximity detection (HUD prompt: "SAUT [J]") ---
+	# --- Vortex intensifies on approach ---
+	if dist_sq <= vortex_activation_radius * vortex_activation_radius:
+		_activate_vortex()
+	elif _vortex_active:
+		_deactivate_vortex()
+
+	# --- Proximity detection (HUD prompt) ---
 	var inside: bool = dist_sq <= trigger_radius * trigger_radius
 	if inside and not _player_inside:
 		_player_inside = true
@@ -202,7 +271,7 @@ func _physics_process(delta: float) -> void:
 		_jump_triggered = false
 		player_left.emit()
 
-	# --- Tunnel detection (auto-jump after 3 seconds inside) ---
+	# --- Tunnel detection (auto-jump when flying through) ---
 	if not _player_inside or _jump_triggered or _auto_jump_cooldown > 0.0:
 		return
 
@@ -213,6 +282,11 @@ func _physics_process(delta: float) -> void:
 	var radial_dist: float = lateral.length()
 
 	var in_tunnel: bool = radial_dist < TUNNEL_RADIUS and absf(depth) < TUNNEL_HALF_DEPTH
+
+	# Debug: print tunnel detection values every ~1s
+	if Engine.get_physics_frames() % 60 == 0:
+		print("JumpGate tunnel: dist=%.0f radial=%.0f depth=%.0f inside=%s in_tunnel=%s timer=%.1f cooldown=%.1f" % [
+			sqrt(dist_sq), radial_dist, depth, _player_inside, in_tunnel, _tunnel_timer, _auto_jump_cooldown])
 
 	if in_tunnel:
 		if not _inside_tunnel:

@@ -46,21 +46,21 @@ func _ready() -> void:
 	add_child(_ship_dropdown)
 
 	_sell_1_btn = UIButton.new()
-	_sell_1_btn.text = "VENDRE x1"
+	_sell_1_btn.text = Locale.t("btn.sell_x1")
 	_sell_1_btn.accent_color = UITheme.WARNING
 	_sell_1_btn.visible = false
 	_sell_1_btn.pressed.connect(_on_sell_1)
 	add_child(_sell_1_btn)
 
 	_sell_10_btn = UIButton.new()
-	_sell_10_btn.text = "VENDRE x10"
+	_sell_10_btn.text = Locale.t("btn.sell_x10")
 	_sell_10_btn.accent_color = UITheme.WARNING
 	_sell_10_btn.visible = false
 	_sell_10_btn.pressed.connect(_on_sell_10)
 	add_child(_sell_10_btn)
 
 	_sell_all_btn = UIButton.new()
-	_sell_all_btn.text = "VENDRE TOUT"
+	_sell_all_btn.text = Locale.t("btn.sell_all")
 	_sell_all_btn.accent_color = UITheme.WARNING
 	_sell_all_btn.visible = false
 	_sell_all_btn.pressed.connect(_on_sell_all)
@@ -283,12 +283,12 @@ func _draw() -> void:
 
 	# Detail panel content
 	if _resource_ids.is_empty():
-		draw_string(font, Vector2(detail_x + 10, 30), "Aucun minerai",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("shop.no_ores"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
 	if _selected_index < 0 or _selected_index >= _resource_ids.size():
-		draw_string(font, Vector2(detail_x + 10, 30), "Selectionnez un minerai",
+		draw_string(font, Vector2(detail_x + 10, 30), Locale.t("ui.select_ore"),
 			HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		return
 
@@ -405,22 +405,22 @@ func _draw_detail_panel(font: Font, detail_x: float) -> void:
 		y += 18.0
 
 	# Rarity
-	var rarity_str: String = ["Commun", "Peu commun", "Rare", "Tres rare", "Legendaire"][res_data.rarity]
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Rarete",
+	var rarity_str: String = [Locale.t("shop.rarity_common"), Locale.t("shop.rarity_uncommon"), Locale.t("shop.rarity_rare"), Locale.t("shop.rarity_very_rare"), Locale.t("shop.rarity_legendary")][res_data.rarity]
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.rarity"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), rarity_str,
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Quantity
-	draw_string(font, Vector2(detail_x + 10, y + 12), "En stock",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.in_stock"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), str(qty),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, UITheme.LABEL_VALUE)
 	y += 18.0
 
 	# Unit price
-	draw_string(font, Vector2(detail_x + 10, y + 12), "Prix/u",
+	draw_string(font, Vector2(detail_x + 10, y + 12), Locale.t("shop.price_per_unit"),
 		HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_KEY)
 	draw_string(font, Vector2(detail_x + 95, y + 12), PriceCatalog.format_price(unit_price),
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 105, UITheme.FONT_SIZE_LABEL, PlayerEconomy.CREDITS_COLOR)

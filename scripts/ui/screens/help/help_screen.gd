@@ -197,7 +197,7 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 		["C", Locale.t("help.flight.cruise")]], font, font_bold, vt, vb)
 	y = _draw_kb(x, y + 10, col_w, Locale.t("help.nav.title"), [
 		["M", Locale.t("help.nav.system_map")], ["G", Locale.t("help.nav.galaxy_map")],
-		["F", Locale.t("help.nav.dock")], ["J", Locale.t("help.nav.gate_jump")],
+		["F", Locale.t("help.nav.dock")],
 		["W", Locale.t("help.nav.wormhole")]], font, font_bold, vt, vb)
 
 	# Right column: COMBAT + MISC

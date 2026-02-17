@@ -40,18 +40,20 @@ const CARD_GAP: float = 12.0
 
 enum ICO { ARMURERIE, EQUIPEMENTS, SELL_EQUIP, SELL_CARGO, SELL_MINERAI }
 
-const CARDS: Array[Dictionary] = [
-	{label = "ARMURERIE", desc = "Armes et tourelles", icon = ICO.ARMURERIE, cat = 0, view_idx = 0},
-	{label = "EQUIPEMENTS", desc = "Boucliers, moteurs, modules", icon = ICO.EQUIPEMENTS, cat = 0, view_idx = 1},
-	{label = "EQUIPEMENT", desc = "Vendre equipement", icon = ICO.SELL_EQUIP, cat = 1, view_idx = 2},
-	{label = "CARGO", desc = "Vendre cargaison", icon = ICO.SELL_CARGO, cat = 1, view_idx = 3},
-	{label = "MINERAIS", desc = "Vendre minerais", icon = ICO.SELL_MINERAI, cat = 1, view_idx = 4},
-]
-const CAT_LABELS: PackedStringArray = ["ACHETER", "VENDRE"]
+static var CARDS: Array[Dictionary]:
+	get: return [
+		{label = Locale.t("shop.armory"), desc = Locale.t("shop.armory_desc"), icon = ICO.ARMURERIE, cat = 0, view_idx = 0},
+		{label = Locale.t("shop.equipment"), desc = Locale.t("shop.equipment_desc"), icon = ICO.EQUIPEMENTS, cat = 0, view_idx = 1},
+		{label = Locale.t("shop.sell_equipment"), desc = Locale.t("shop.sell_equipment_desc"), icon = ICO.SELL_EQUIP, cat = 1, view_idx = 2},
+		{label = Locale.t("shop.sell_cargo"), desc = Locale.t("shop.sell_cargo_desc"), icon = ICO.SELL_CARGO, cat = 1, view_idx = 3},
+		{label = Locale.t("shop.sell_resources"), desc = Locale.t("shop.sell_resources_desc"), icon = ICO.SELL_MINERAI, cat = 1, view_idx = 4},
+	]
+static var CAT_LABELS: Array[String]:
+	get: return [Locale.t("shop.cat_buy"), Locale.t("shop.cat_sell")]
 
 
 func _ready() -> void:
-	screen_title = "COMMERCE"
+	screen_title = Locale.t("screen.commerce")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -74,7 +76,7 @@ func _ready() -> void:
 
 	# Back button for sub-views
 	_view_back_btn = UIButton.new()
-	_view_back_btn.text = "RETOUR"
+	_view_back_btn.text = Locale.t("btn.back")
 	_view_back_btn.accent_color = UITheme.WARNING
 	_view_back_btn.visible = false
 	_view_back_btn.pressed.connect(_return_to_hub)
@@ -86,7 +88,7 @@ func setup(mgr, stype: int, sname: String, sid: String = "") -> void:
 	station_type = stype
 	station_name = sname
 	station_id = sid
-	screen_title = "COMMERCE — " + sname.to_upper()
+	screen_title = Locale.t("screen.commerce_prefix") + sname.to_upper()
 	if _equipment_shop:
 		_equipment_shop.setup(mgr, stype)
 	if _sell_equipment:
@@ -115,7 +117,7 @@ func _show_hub() -> void:
 	_view_back_btn.visible = false
 	_hovered_card = -1
 	_back_hovered = false
-	screen_title = "COMMERCE — " + station_name.to_upper()
+	screen_title = Locale.t("screen.commerce_prefix") + station_name.to_upper()
 	queue_redraw()
 
 
@@ -372,7 +374,7 @@ func _draw_back_button() -> void:
 	draw_corners(r, 6.0, bc)
 	var font: Font = UITheme.get_font()
 	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
-	draw_string(font, Vector2(r.position.x, ty), "RETOUR",
+	draw_string(font, Vector2(r.position.x, ty), Locale.t("btn.back"),
 		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
@@ -386,7 +388,7 @@ func _draw_view_mode(s: Vector2) -> void:
 
 	# Credits display
 	if commerce_manager and commerce_manager.player_economy:
-		var credits_text = "Credits: " + PriceCatalog.format_price(commerce_manager.player_economy.credits)
+		var credits_text = Locale.t("ui.credits_label") + PriceCatalog.format_price(commerce_manager.player_economy.credits)
 		draw_string(font, Vector2(180, s.y - 18),
 			credits_text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)

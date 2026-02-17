@@ -14,9 +14,9 @@ config/name="Imperion Online"
 config/description="Open-world multiplayer space MMORPG"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
-config/icon="res://icon.png"
 boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/show_image=false
+config/icon="res://icon.png"
 
 [autoload]
 

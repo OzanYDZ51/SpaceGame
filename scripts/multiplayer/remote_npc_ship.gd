@@ -81,7 +81,7 @@ func _setup_name_label() -> void:
 	# Position label above the actual model (using visual AABB, not hardcoded collision_size)
 	var label_height: float = 15.0
 	if _ship_model:
-		var aabb := _ship_model.get_visual_aabb()
+		var aabb: AABB = _ship_model.get_visual_aabb()
 		label_height = aabb.position.y + aabb.size.y + 5.0
 		if label_height < 10.0:
 			label_height = 15.0

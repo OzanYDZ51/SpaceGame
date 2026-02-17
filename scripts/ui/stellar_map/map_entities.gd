@@ -437,11 +437,11 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 
 	# Route label (departure or arrival)
 	if is_route_gate:
-		var route_label ="PROCHAIN SAUT"
+		var route_label = Locale.t("map.route.next_jump")
 		var rtw: float = font.get_string_size(route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(font, pos + Vector2(-rtw * 0.5, -s - 8), route_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.8, 0.0, 0.8))
 	elif is_arrival_gate:
-		var arrival_label ="ARRIVÉE"
+		var arrival_label = Locale.t("map.route.arrival")
 		var atw: float = font.get_string_size(arrival_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(font, pos + Vector2(-atw * 0.5, -s - 8), arrival_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.0, 0.9, 1.0, 0.8))
 
@@ -590,26 +590,26 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 		match cmd_name:
 			"move_to":
 				var arrived: bool = extra.get("arrived", false)
-				status_tag = "[EN POSITION]" if arrived else "[EN ROUTE]"
+				status_tag = Locale.t("map.fleet_status.in_position") if arrived else Locale.t("map.fleet_status.en_route")
 			"patrol":
-				status_tag = "[PATROUILLE]"
+				status_tag = Locale.t("map.fleet_status.patrol")
 			"attack":
-				status_tag = "[ATTAQUE]"
+				status_tag = Locale.t("map.fleet_status.attack")
 			"return_to_station":
-				status_tag = "[RAPPEL]"
+				status_tag = Locale.t("map.fleet_status.recall")
 			"construction":
 				var arrived: bool = extra.get("arrived", false)
-				status_tag = "[CONSTRUCTION]" if arrived else "[LIVRAISON]"
+				status_tag = Locale.t("map.fleet_status.construction") if arrived else Locale.t("map.fleet_status.delivery")
 			"mine":
 				var mining_state: String = extra.get("mining_state", "")
 				if mining_state == "returning":
-					status_tag = "[VENTE]"
+					status_tag = Locale.t("map.fleet_status.selling")
 				elif mining_state == "docked":
-					status_tag = "[DOCKE]"
+					status_tag = Locale.t("map.fleet_status.docked")
 				elif mining_state == "departing":
-					status_tag = "[RETOUR MINE]"
+					status_tag = Locale.t("map.fleet_status.return_mine")
 				else:
-					status_tag = "[MINAGE]"
+					status_tag = Locale.t("map.fleet_status.mining")
 		if status_tag != "":
 			label_text += " " + status_tag
 		var tw: float = font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
@@ -814,17 +814,17 @@ func _draw_hover_tooltip(entities: Dictionary, font: Font) -> void:
 
 func _type_label(type: int) -> String:
 	match type:
-		EntityRegistrySystem.EntityType.STAR: return "Étoile"
-		EntityRegistrySystem.EntityType.PLANET: return "Planète"
-		EntityRegistrySystem.EntityType.STATION: return "Station"
-		EntityRegistrySystem.EntityType.SHIP_PLAYER: return "Vaisseau joueur"
-		EntityRegistrySystem.EntityType.SHIP_NPC: return "Vaisseau PNJ"
-		EntityRegistrySystem.EntityType.SHIP_FLEET: return "Vaisseau flotte"
-		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "Ceinture"
-		EntityRegistrySystem.EntityType.JUMP_GATE: return "Portail"
-		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: return "Site de construction"
-		EntityRegistrySystem.EntityType.EVENT: return "Événement"
-	return "Inconnu"
+		EntityRegistrySystem.EntityType.STAR: return Locale.t("map.type_label.star")
+		EntityRegistrySystem.EntityType.PLANET: return Locale.t("map.type_label.planet")
+		EntityRegistrySystem.EntityType.STATION: return Locale.t("map.type_label.station")
+		EntityRegistrySystem.EntityType.SHIP_PLAYER: return Locale.t("map.type_label.player_ship")
+		EntityRegistrySystem.EntityType.SHIP_NPC: return Locale.t("map.type_label.npc_ship")
+		EntityRegistrySystem.EntityType.SHIP_FLEET: return Locale.t("map.type_label.fleet_ship")
+		EntityRegistrySystem.EntityType.ASTEROID_BELT: return Locale.t("map.type_label.asteroid_belt")
+		EntityRegistrySystem.EntityType.JUMP_GATE: return Locale.t("map.type_label.jump_gate")
+		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: return Locale.t("map.type_label.construction_site")
+		EntityRegistrySystem.EntityType.EVENT: return Locale.t("map.type_label.event")
+	return Locale.t("map.type_label.unknown")
 
 
 # =============================================================================
@@ -1234,7 +1234,7 @@ func _draw_construction_markers() -> void:
 		draw_string(font, sp + Vector2(-tw * 0.5, 30), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 		# Tag: [CONSTRUCTION]
-		var tag ="[CONSTRUCTION]"
+		var tag = Locale.t("map.fleet_status.construction")
 		var tag_w: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 		draw_string(font, sp + Vector2(-tag_w * 0.5, 43), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(col.r, col.g, col.b, 0.6))
 

@@ -53,7 +53,6 @@ const REBINDABLE_ACTIONS: Array = [
 	["pip_engines", "key.pip_engines", KEY_RIGHT],
 	["pip_reset", "key.pip_reset", KEY_DOWN],
 	["dock", "key.dock", KEY_F],
-	["gate_jump", "key.gate_jump", KEY_J],
 	["build", "key.build", KEY_B],
 	["scanner_pulse", "key.scanner", KEY_H],
 	["toggle_weapon_1", "key.weapon_1", KEY_1],

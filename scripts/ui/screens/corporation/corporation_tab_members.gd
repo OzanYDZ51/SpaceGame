@@ -30,45 +30,45 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_search = UITextInput.new()
-	_search.placeholder = "Rechercher un membre..."
+	_search.placeholder = Locale.t("corp.search_member")
 	_search.text_changed.connect(_on_search_changed)
 	add_child(_search)
 
 	_filter_dropdown = UIDropdown.new()
-	_filter_dropdown.options.assign(["Tous les rangs"])
+	_filter_dropdown.options.assign([Locale.t("corp.all_ranks")])
 	_filter_dropdown.option_selected.connect(_on_filter_changed)
 	add_child(_filter_dropdown)
 
 	_table = UIDataTable.new()
 	_table._row_height = 24.0
 	_table.columns = [
-		{ "label": "Nom", "width_ratio": 0.22 },
-		{ "label": "Rang", "width_ratio": 0.15 },
-		{ "label": "Statut", "width_ratio": 0.10 },
-		{ "label": "Contribution", "width_ratio": 0.18 },
-		{ "label": "Kills", "width_ratio": 0.10 },
-		{ "label": "Derniere connexion", "width_ratio": 0.25 },
+		{ "label": Locale.t("corp.col_name"), "width_ratio": 0.22 },
+		{ "label": Locale.t("corp.col_rank"), "width_ratio": 0.15 },
+		{ "label": Locale.t("corp.col_status_header"), "width_ratio": 0.10 },
+		{ "label": Locale.t("corp.col_contribution"), "width_ratio": 0.18 },
+		{ "label": Locale.t("corp.col_kills"), "width_ratio": 0.10 },
+		{ "label": Locale.t("corp.col_last_seen"), "width_ratio": 0.25 },
 	]
 	_table.row_selected.connect(_on_row_selected)
 	_table.column_sort_requested.connect(_on_sort_requested)
 	add_child(_table)
 
 	_btn_promote = UIButton.new()
-	_btn_promote.text = "Promouvoir"
+	_btn_promote.text = Locale.t("corp.promote")
 	_btn_promote.accent_color = UITheme.ACCENT
 	_btn_promote.pressed.connect(_on_promote)
 	_btn_promote.visible = false
 	add_child(_btn_promote)
 
 	_btn_demote = UIButton.new()
-	_btn_demote.text = "Retrograder"
+	_btn_demote.text = Locale.t("corp.demote")
 	_btn_demote.accent_color = UITheme.WARNING
 	_btn_demote.pressed.connect(_on_demote)
 	_btn_demote.visible = false
 	add_child(_btn_demote)
 
 	_btn_kick = UIButton.new()
-	_btn_kick.text = "Expulser"
+	_btn_kick.text = Locale.t("corp.kick")
 	_btn_kick.accent_color = UITheme.DANGER
 	_btn_kick.pressed.connect(_on_kick)
 	_btn_kick.visible = false
@@ -87,7 +87,7 @@ func refresh(cm) -> void:
 	if _cm == null or not _cm.has_corporation():
 		return
 
-	var rank_names: Array[String] = ["Tous les rangs"]
+	var rank_names: Array[String] = [Locale.t("corp.all_ranks")]
 	for r in _cm.corporation_data.ranks:
 		rank_names.append(r.rank_name)
 	_filter_dropdown.options.assign(rank_names)
@@ -122,7 +122,7 @@ func _rebuild_table() -> void:
 	_table.rows.clear()
 	for m in _filtered_members:
 		var rank_name: String = _cm.corporation_data.ranks[m.rank_index].rank_name if m.rank_index < _cm.corporation_data.ranks.size() else "?"
-		var status: String = "EN LIGNE" if m.is_online else "HORS LIGNE"
+		var status: String = Locale.t("corp.status_online") if m.is_online else Locale.t("corp.status_offline")
 		var contrib_str =_format_num(m.contribution_total)
 		var vu =_format_last_seen(m)
 		_table.rows.append([m.display_name, rank_name, status, contrib_str, str(m.kills), vu])
@@ -203,20 +203,20 @@ func _hide_actions() -> void:
 
 func _format_last_seen(m: CorporationMember) -> String:
 	if m.is_online:
-		return "Maintenant"
+		return Locale.t("corp.seen_now")
 	if m.last_online_timestamp <= 0:
-		return "Inconnu"
+		return Locale.t("corp.seen_unknown")
 	var now := int(Time.get_unix_time_from_system())
 	var diff := now - m.last_online_timestamp
 	if diff < 0:
-		return "Maintenant"
+		return Locale.t("corp.seen_now")
 	if diff < 3600:
-		return "Il y a %d min" % int(diff / 60.0)
+		return Locale.t("corp.seen_minutes") % int(diff / 60.0)
 	if diff < 86400:
-		return "Il y a %d h" % int(diff / 3600.0)
+		return Locale.t("corp.seen_hours") % int(diff / 3600.0)
 	if diff < 86400 * 365:
-		return "Il y a %d j" % int(diff / 86400.0)
-	return "Il y a longtemps"
+		return Locale.t("corp.seen_days") % int(diff / 86400.0)
+	return Locale.t("corp.seen_long_ago")
 
 
 func _format_num(val: float) -> String:
@@ -380,7 +380,7 @@ func _draw() -> void:
 	if _applications.size() > 0 and _cm and _cm.player_has_permission(CorporationRank.PERM_INVITE):
 		var badge_x: float = size.x - 200
 		var badge_y: float = m + 4
-		var badge_text: String = "CANDIDATURES (%d)" % _applications.size() if not _show_applications else "MEMBRES"
+		var badge_text: String = Locale.t("corp.applications_badge") % _applications.size() if not _show_applications else Locale.t("tab.members").to_upper()
 		var badge_col: Color = UITheme.WARNING if not _show_applications else UITheme.PRIMARY
 		var badge_rect := Rect2(badge_x, badge_y, 190, 24)
 		draw_rect(badge_rect, Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
@@ -398,7 +398,7 @@ func _draw() -> void:
 			draw_rect(Rect2(0, bar_y, size.x, size.y - bar_y), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.02))
 
 			if _selected_member:
-				var info_str: String = "Selectionne: %s" % _selected_member.display_name
+				var info_str: String = Locale.t("corp.selected_member") % _selected_member.display_name
 				draw_string(font, Vector2(size.x - 260, size.y - 16), info_str, HORIZONTAL_ALIGNMENT_RIGHT, 250, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
@@ -412,7 +412,7 @@ func _draw_applications_panel(m: float, font: Font) -> void:
 
 	# Header
 	draw_rect(Rect2(m, panel_y, size.x - m * 2, 28), Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.1))
-	draw_string(font, Vector2(m + 8, panel_y + 19), "CANDIDATURES EN ATTENTE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
+	draw_string(font, Vector2(m + 8, panel_y + 19), Locale.t("corp.applications_header"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 
 	# Table headers
 	var hdr_y: float = panel_y + 30
@@ -420,10 +420,10 @@ func _draw_applications_panel(m: float, font: Font) -> void:
 	var col_note_x: float = m + 180
 	var col_date_x: float = size.x - 260
 	var col_actions_x: float = size.x - 140
-	draw_string(font, Vector2(col_name_x, hdr_y + 14), "JOUEUR", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_note_x, hdr_y + 14), "NOTE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_date_x, hdr_y + 14), "DATE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_actions_x, hdr_y + 14), "ACTIONS", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_name_x, hdr_y + 14), Locale.t("corp.app_col_player"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_note_x, hdr_y + 14), Locale.t("corp.app_col_note"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_date_x, hdr_y + 14), Locale.t("corp.app_col_date"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_actions_x, hdr_y + 14), Locale.t("corp.app_col_actions"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	draw_line(Vector2(m, hdr_y + 20), Vector2(size.x - m, hdr_y + 20), UITheme.BORDER, 1.0)
 
 	# Rows
@@ -453,7 +453,7 @@ func _draw_applications_panel(m: float, font: Font) -> void:
 		if note.length() > 60:
 			note = note.substr(0, 57) + "..."
 		if note == "":
-			note = "(aucune note)"
+			note = Locale.t("corp.app_no_note")
 		var note_col: Color = UITheme.TEXT_DIM if app.get("note", "") == "" else UITheme.TEXT
 		draw_string(font, Vector2(col_note_x, ry + 20), note, HORIZONTAL_ALIGNMENT_LEFT, col_date_x - col_note_x - 10, UITheme.FONT_SIZE_SMALL, note_col)
 
@@ -465,16 +465,16 @@ func _draw_applications_panel(m: float, font: Font) -> void:
 		var accept_rect := Rect2(col_actions_x, ry + 5, 50, 22)
 		draw_rect(accept_rect, Color(UITheme.ACCENT.r, UITheme.ACCENT.g, UITheme.ACCENT.b, 0.2))
 		draw_rect(accept_rect, UITheme.ACCENT, false, 1.0)
-		draw_string(font, Vector2(col_actions_x + 4, ry + 21), "OUI", HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+		draw_string(font, Vector2(col_actions_x + 4, ry + 21), Locale.t("corp.app_accept"), HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
 
 		# Reject button
 		var reject_rect := Rect2(col_actions_x + 58, ry + 5, 50, 22)
 		draw_rect(reject_rect, Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.2))
 		draw_rect(reject_rect, UITheme.DANGER, false, 1.0)
-		draw_string(font, Vector2(col_actions_x + 62, ry + 21), "NON", HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.DANGER)
+		draw_string(font, Vector2(col_actions_x + 62, ry + 21), Locale.t("corp.app_reject"), HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.DANGER)
 
 	if _applications.is_empty():
-		draw_string(font, Vector2(0, panel_y + panel_h * 0.4), "Aucune candidature en attente", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(0, panel_y + panel_h * 0.4), Locale.t("corp.app_none"), HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
 func _format_app_date(app: Dictionary) -> String:
