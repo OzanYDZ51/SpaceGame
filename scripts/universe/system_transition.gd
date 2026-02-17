@@ -244,6 +244,8 @@ func _cleanup_current_system() -> void:
 				child.player_nearby.disconnect(_on_gate_player_nearby)
 			if child.player_left.is_connected(_on_gate_player_left):
 				child.player_left.disconnect(_on_gate_player_left)
+			if child.auto_jump_requested.is_connected(_on_gate_auto_jump):
+				child.auto_jump_requested.disconnect(_on_gate_auto_jump)
 			child.set_physics_process(false)
 		elif child is WormholeGate:
 			for conn in child.player_nearby_wormhole.get_connections():
@@ -349,6 +351,7 @@ func _populate_system() -> void:
 		gate.name = "JumpGate_%d" % i
 		gate.player_nearby.connect(_on_gate_player_nearby)
 		gate.player_left.connect(_on_gate_player_left)
+		gate.auto_jump_requested.connect(_on_gate_auto_jump)
 		universe.add_child(gate)
 		gate.setup_from_data(gd)
 
@@ -477,7 +480,7 @@ func _position_player() -> void:
 				var gate_pos =Vector3(gd.pos_x, gd.pos_y, gd.pos_z)
 				# Spawn 500m behind gate (away from system center)
 				var dir_from_center =gate_pos.normalized()
-				ship.global_position = gate_pos + dir_from_center * 500.0
+				ship.global_position = gate_pos + dir_from_center * 2500.0
 				# Orient toward system center
 				var look_target =Vector3.ZERO
 				var forward =(look_target - ship.global_position).normalized()
@@ -555,7 +558,7 @@ func _register_system_entities() -> void:
 			"pos_x": gd.pos_x,
 			"pos_y": gd.pos_y,
 			"pos_z": gd.pos_z,
-			"radius": 55.0,
+			"radius": 80.0,
 			"color": MapColors.JUMP_GATE,
 			"extra": {
 				"target_system_id": gd.target_system_id,
@@ -634,6 +637,11 @@ func _on_gate_player_left() -> void:
 		return
 	_active_gate_target_id = -1
 	_active_gate_target_name = ""
+
+
+func _on_gate_auto_jump(target_id: int) -> void:
+	if not _is_transitioning:
+		initiate_gate_jump(target_id)
 
 
 # === Wormhole proximity API ===

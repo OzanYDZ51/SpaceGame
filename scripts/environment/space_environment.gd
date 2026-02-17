@@ -16,6 +16,7 @@ extends Node3D
 
 var _current_env_data = null
 var _sun_direction: Vector3 = Vector3(0.0, -1.0, -0.5).normalized()
+var _fill_light: DirectionalLight3D = null
 
 
 func _ready() -> void:
@@ -29,6 +30,15 @@ func _ready() -> void:
 		star_light.directional_shadow_max_distance = 50000.0  # 50 km — covers combat, docking, station approach
 		star_light.directional_shadow_fade_start = 0.9
 		star_light.shadow_blur = 1.0
+
+	# Fill light — subtle opposite-sun light simulating nebula/dust bounce
+	_fill_light = DirectionalLight3D.new()
+	_fill_light.name = "FillLight"
+	_fill_light.light_color = Color(0.4, 0.45, 0.6)
+	_fill_light.light_energy = 0.15
+	_fill_light.light_specular = 0.0
+	_fill_light.shadow_enabled = false
+	add_child(_fill_light)
 
 
 ## Called by SystemTransition when entering a new system.
@@ -77,7 +87,7 @@ func apply_environment(env_data) -> void:
 	# In space, the shadow side should be nearly black — only a faint fill.
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = env_data.ambient_color
-	env.ambient_light_energy = env_data.ambient_energy
+	env.ambient_light_energy = maxf(env_data.ambient_energy, 0.35)
 	# Keep sky reflections for specular highlights (directional, not uniform)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 
@@ -169,6 +179,13 @@ func update_sun_direction(direction: Vector3) -> void:
 		# Safe up vector: avoid gimbal lock when sun is near vertical
 		var up =Vector3.RIGHT if absf(light_dir.dot(Vector3.UP)) > 0.99 else Vector3.UP
 		star_light.look_at(target, up)
+
+	# Fill light shines from the opposite direction (toward the shadow side)
+	if _fill_light:
+		var fill_dir = _sun_direction  # Points TOWARD sun = opposite of star light
+		var fill_target = _fill_light.global_position + fill_dir
+		var fill_up = Vector3.RIGHT if absf(fill_dir.dot(Vector3.UP)) > 0.99 else Vector3.UP
+		_fill_light.look_at(fill_target, fill_up)
 
 	# Update skybox shader
 	if world_env and world_env.environment and world_env.environment.sky:

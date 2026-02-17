@@ -13,7 +13,7 @@ signal mission_board_closed
 # --- Tab constants ---
 const TAB_AVAILABLE: int = 0
 const TAB_ACTIVE: int = 1
-static var TAB_LABELS: PackedStringArray = PackedStringArray(["DISPONIBLES", "EN COURS"])
+static var TAB_LABELS: PackedStringArray = PackedStringArray()
 
 # --- Card layout ---
 const CARD_MARGIN_X: float = 40.0
@@ -32,9 +32,16 @@ var _flash: Dictionary = {}
 
 
 func _ready() -> void:
-	screen_title = "MISSIONS"
+	screen_title = Locale.t("screen.missions")
 	screen_mode = ScreenMode.FULLSCREEN
+	TAB_LABELS = PackedStringArray([Locale.t("tab.available"), Locale.t("tab.active")])
 	super._ready()
+
+
+func _on_language_changed(_lang: String) -> void:
+	screen_title = Locale.t("screen.missions")
+	TAB_LABELS = PackedStringArray([Locale.t("tab.available"), Locale.t("tab.active")])
+	queue_redraw()
 
 
 ## Called before opening to inject data.
@@ -161,7 +168,7 @@ func _draw_tabs() -> void:
 func _draw_empty_state(content: Rect2) -> void:
 	var font: Font = UITheme.get_font()
 	var cy: float = content.position.y + content.size.y * 0.4
-	var msg: String = "Aucune mission disponible" if _active_tab == TAB_AVAILABLE else "Aucune mission en cours"
+	var msg: String = Locale.t("mission.none_available") if _active_tab == TAB_AVAILABLE else Locale.t("mission.none_active")
 	draw_string(font, Vector2(content.position.x, cy), msg,
 		HORIZONTAL_ALIGNMENT_CENTER, content.size.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
 
@@ -265,11 +272,11 @@ func _on_button_clicked(mission: MissionData) -> void:
 			return
 		var success: bool = _mission_manager.accept_mission(mission)
 		if success and GameManager._notif:
-			GameManager._notif.toast("MISSION ACCEPTEE: " + mission.title)
+			GameManager._notif.toast(Locale.t("notif.mission_accepted") % mission.title)
 	else:
 		_mission_manager.abandon_mission(mission.mission_id)
 		if GameManager._notif:
-			GameManager._notif.toast("MISSION ABANDONNEE: " + mission.title)
+			GameManager._notif.toast(Locale.t("notif.mission_abandoned") % mission.title)
 	queue_redraw()
 
 

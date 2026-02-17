@@ -9,6 +9,7 @@ extends Node
 var _ship = null
 var _send_timer: float = 0.0
 var _was_dead: bool = false
+var _last_system_id: int = -1
 var _mining_send_timer: float = 0.0
 const MINING_BEAM_SEND_RATE: float = 0.1  # 10Hz
 
@@ -74,6 +75,11 @@ func _send_state() -> void:
 	var sys_trans = GameManager._system_transition
 	if sys_trans:
 		state.system_id = sys_trans.current_system_id
+
+	# Reliable system change notification (detect jump gate / wormhole transitions)
+	if _last_system_id >= 0 and state.system_id != _last_system_id:
+		NetworkManager._rpc_player_system_changed.rpc_id(1, _last_system_id, state.system_id)
+	_last_system_id = state.system_id
 
 	# Status flags
 	state.is_docked = GameManager.current_state == Constants.GameState.DOCKED

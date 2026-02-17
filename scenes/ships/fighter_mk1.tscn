@@ -1,8 +1,9 @@
 [gd_scene format=3 uid="uid://dwixth8psaw7v"]
 
-[ext_resource type="PackedScene" path="res://assets/models/tie.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
+[ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
 
 [node name="FighterMk1" type="Node3D" unique_id=155803000]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
@@ -31,6 +32,31 @@ preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 transform = Transform3D(50, 0, 0, 0, 50, 0, 0, 0, 50, -0.17226934, 15.184415, -3)
 script = ExtResource("3_vfx")
 nozzle_size = 2.0
+
+[node name="HullLight_Dorsal" type="Marker3D" parent="." unique_id=48280564]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6057916e-07, 20.639475, 0.16318846)
+script = ExtResource("4_hlight")
+light_color = Color(1, 0.95, 0.85, 1)
+light_energy = 0.6
+light_range = 20.0
+
+[node name="HullLight_Ventral" type="Marker3D" parent="." unique_id=1550846463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 11.267114, 0)
+script = ExtResource("4_hlight")
+light_color = Color(0.85, 0.9, 1, 1)
+light_energy = 0.4
+
+[node name="HullLight_Port" type="Marker3D" parent="." unique_id=241932469]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.020026, 15.991219, -8.759785e-07)
+script = ExtResource("4_hlight")
+light_energy = 0.3
+light_range = 12.0
+
+[node name="HullLight_Starboard" type="Marker3D" parent="." unique_id=783122826]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.270864, 15.836484, 8.9790746e-07)
+script = ExtResource("4_hlight")
+light_energy = 0.3
+light_range = 12.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=702473366]
 transform = Transform3D(1, 0, 0, 0, 0.34202015, 0.9396926, 0, -0.9396926, 0.34202015, -3.1354443e-07, 48.673046, 13.586531)

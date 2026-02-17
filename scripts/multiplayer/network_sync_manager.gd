@@ -76,6 +76,8 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.player_died_received.connect(_on_remote_player_died)
 	NetworkManager.player_respawned_received.connect(_on_remote_player_respawned)
 	NetworkManager.player_ship_changed_received.connect(_on_remote_player_ship_changed)
+	NetworkManager.player_left_system_received.connect(_on_player_left_system)
+	NetworkManager.player_entered_system_received.connect(_on_player_entered_system)
 	NetworkManager.remote_mining_beam_received.connect(_on_remote_mining_beam)
 	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
 	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
@@ -129,13 +131,14 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		rdata.current_lod = ShipLODData.LODLevel.LOD0
 		lod_manager.register_ship(StringName(remote.name), rdata)
 
-	# Register on system map
+	# Register on system map (hidden until first state arrives with real position)
 	EntityRegistry.register("remote_player_%d" % peer_id, {
 		"name": player_name,
 		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
 		"node": remote,
 		"color": MapColors.REMOTE_PLAYER,
 		"radius": 12.0,
+		"extra": {"hidden": true},
 	})
 
 	# Send all NPCs to the new peer after a short delay.
@@ -148,6 +151,21 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	remove_remote_player(peer_id)
+
+
+func _on_player_left_system(peer_id: int) -> void:
+	remove_remote_player(peer_id)
+
+
+func _on_player_entered_system(peer_id: int, _ship_id: StringName) -> void:
+	if peer_id == NetworkManager.local_peer_id:
+		return
+	# Create puppet if not already present (first state update will position it)
+	if not remote_players.has(peer_id):
+		var pname: String = "Pilote"
+		if NetworkManager.peers.has(peer_id):
+			pname = NetworkManager.peers[peer_id].player_name
+		_on_peer_connected(peer_id, pname)
 
 
 func remove_remote_player(peer_id: int) -> void:
@@ -185,6 +203,8 @@ func _on_state_received(peer_id: int, state) -> void:
 		if rdata:
 			rdata.position = FloatingOrigin.to_local_pos([state.pos_x, state.pos_y, state.pos_z])
 			rdata.velocity = state.velocity
+			rdata.is_docked = state.is_docked
+			rdata.is_dead = state.is_dead
 
 	# Update map entity velocity + visibility
 	var map_ent_id ="remote_player_%d" % peer_id

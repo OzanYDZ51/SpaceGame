@@ -188,7 +188,11 @@ static func deserialize(data: Dictionary):
 	else:
 		var saved_weapons: Array = data.get("weapons", []) if data.get("weapons") is Array else []
 		for w in saved_weapons:
-			fs.weapons.append(StringName(w))
+			var wn := StringName(w)
+			if wn != &"" and not WeaponRegistry.has_weapon(wn):
+				push_warning("FleetShip.deserialize: unknown weapon '%s' on ship '%s', clearing slot" % [wn, fs.ship_id])
+				wn = &""
+			fs.weapons.append(wn)
 		fs.shield_name = StringName(data.get("shield", ""))
 		fs.engine_name = StringName(data.get("engine", ""))
 		var saved_mods: Array = data.get("modules", []) if data.get("modules") is Array else []

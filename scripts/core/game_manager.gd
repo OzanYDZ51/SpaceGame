@@ -91,6 +91,7 @@ var _gameplay_integrator = null
 var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipment
 
 
+var _splash: SplashScreen = null
 var _quitting: bool = false
 var _crash_log_path: String = ""
 
@@ -115,6 +116,13 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 
+	# Show loading screen immediately (covers ALL init + backend load)
+	if not NetworkManager.is_server():
+		_splash = SplashScreen.new()
+		_splash.name = "SplashScreen"
+		add_child(_splash)
+		_splash.set_step("AUTHENTIFICATION...", 0.05)
+
 	print("GameManager: _ready() started — auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
 	# Clear previous crash trace on fresh start
 	var cl_path := OS.get_user_data_dir() + "/crash_trace.log"
@@ -133,6 +141,8 @@ func _ready() -> void:
 	if not _is_dedicated_server and not AuthManager.is_authenticated and OS.has_feature("editor"):
 		await _dev_auto_login()
 
+	if _splash:
+		_splash.set_step("GENERATION DE LA GALAXIE...", 0.15)
 	print("GameManager: Initializing game...")
 	_crash_log("Initializing game...")
 	_initialize_game()
@@ -141,23 +151,26 @@ func _ready() -> void:
 
 	if _is_dedicated_server:
 		pass  # Server doesn't load player state
-	elif AuthManager.is_authenticated:
-		# Show black overlay while loading backend state to avoid seeing
-		# the default spawn position before the saved position is restored.
-		_show_loading_overlay()
+	else:
+		if _splash:
+			_splash.set_step("CONNEXION AU SERVEUR...", 0.65)
 		print("GameManager: Loading backend state...")
 		_crash_log("Loading backend state...")
 		await _load_backend_state()
 		print("GameManager: Backend state loaded OK")
 		_crash_log("Backend state loaded OK")
-		_hide_loading_overlay()
+		if _splash:
+			_splash.set_step("PRET !", 1.0)
+		# Dismiss splash (fades out after minimum display time + progress reaches 1.0)
+		if _splash:
+			_splash.dismiss()
+			await _splash.finished
+			_splash = null
 		print("GameManager: Showing faction selection...")
 		_crash_log("Showing faction selection...")
 		await _show_faction_selection()
 		print("GameManager: Faction selection done")
 		_crash_log("Faction selection done")
-	else:
-		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 
 
 func _read_auth_token_from_cli() -> void:
@@ -395,6 +408,9 @@ func _initialize_game() -> void:
 
 	# Generate galaxy (needed before PlayerData.initialize)
 	_galaxy = GalaxyGenerator.generate(Constants.galaxy_seed)
+
+	if _splash:
+		_splash.set_step("INITIALISATION DES SYSTEMES...", 0.35)
 
 	# Player data facade (economy, inventory, cargo, fleet, station services)
 	player_data = PlayerData.new()
@@ -661,6 +677,9 @@ func _initialize_game() -> void:
 	var hud_fac = main_scene.get_node_or_null("UI/FlightHUD")
 	if hud_fac and _gameplay_integrator.faction_manager:
 		hud_fac.set_faction_manager(_gameplay_integrator.faction_manager)
+
+	if _splash:
+		_splash.set_step("CHARGEMENT DU SYSTEME...", 0.50)
 
 	# Load starting system (replaces hardcoded seed=42)
 	_system_transition.jump_to_system(_galaxy.player_home_system)

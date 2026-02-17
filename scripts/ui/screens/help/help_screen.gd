@@ -31,6 +31,13 @@ func _init() -> void:
 func _ready() -> void:
 	super._ready()
 
+
+func _on_language_changed(_lang: String) -> void:
+	screen_title = Locale.t("screen.help")
+	_rebuild_data()
+	queue_redraw()
+
+
 func _on_opened() -> void:
 	_active_tab = 0
 	_scroll_offset = 0.0
@@ -41,66 +48,71 @@ func _on_opened() -> void:
 func _on_closed() -> void:
 	_scroll_offset = 0.0
 
-static func _build_combat() -> Array:
+func _rebuild_data() -> void:
+	TAB_LABELS = PackedStringArray([Locale.t("tab.controls"), Locale.t("tab.combat"), Locale.t("tab.economy"), Locale.t("tab.fleet")])
+	_tab_data = [null, _build_combat(), _build_economy(), _build_fleet()]
+
+
+func _build_combat() -> Array:
 	return [
-		{"t": "BOUCLIERS DIRECTIONNELS", "l": [
-			"Votre vaisseau a 4 boucliers: AVANT, ARRIERE, GAUCHE, DROITE",
-			"Les tirs ennemis endommagent le bouclier face a l'impact",
-			"Si un bouclier tombe, les degats passent directement a la coque"]},
-		{"t": "ENERGIE (PIPS)", "l": [
-			"Maintenez Tab + 1/2/3 pour redistribuer l'energie",
-			"ARMES:     Plus de pips = tirs moins couteux en energie",
-			"BOUCLIERS: Plus de pips = regeneration plus rapide",
-			"MOTEURS:   Plus de pips = turbo moins couteux"]},
-		{"t": "CIBLAGE", "l": [
-			"Tab pour cycler les cibles proches",
-			"T pour cibler l'ennemi le plus proche",
-			"L'indicateur de visee montre ou tirer pour toucher"]},
-		{"t": "MODE CROISIERE", "l": [
-			"C active la croisiere (jusqu'a 1000 km/s)",
-			"Tirer ou recevoir des degats bloque la croisiere 5s",
-			"Utilisez la croisiere pour les longs trajets"]},
+		{"t": Locale.t("help.combat.shields_title"), "l": [
+			Locale.t("help.combat.shields_1"),
+			Locale.t("help.combat.shields_2"),
+			Locale.t("help.combat.shields_3")]},
+		{"t": Locale.t("help.combat.energy_title"), "l": [
+			Locale.t("help.combat.energy_1"),
+			Locale.t("help.combat.energy_2"),
+			Locale.t("help.combat.energy_3"),
+			Locale.t("help.combat.energy_4")]},
+		{"t": Locale.t("help.combat.targeting_title"), "l": [
+			Locale.t("help.combat.targeting_1"),
+			Locale.t("help.combat.targeting_2"),
+			Locale.t("help.combat.targeting_3")]},
+		{"t": Locale.t("help.combat.cruise_title"), "l": [
+			Locale.t("help.combat.cruise_1"),
+			Locale.t("help.combat.cruise_2"),
+			Locale.t("help.combat.cruise_3")]},
 	]
 
 
-static func _build_economy() -> Array:
+func _build_economy() -> Array:
 	return [
-		{"t": "COMMERCE", "l": [
-			"Amarrez-vous (F) a une station pour acceder aux services",
-			"Achetez et vendez des equipements et ressources",
-			"Les prix varient selon l'offre et la demande"]},
-		{"t": "MINAGE", "l": [
-			"Equipez un laser de minage",
-			"Visez un asteroide et maintenez le tir (clic gauche)",
-			"Attention a la surchauffe ! Relachez pour refroidir",
-			"8 minerais: Glace, Fer, Cuivre, Titane, Or, Cristal, Uranium, Platine"]},
-		{"t": "RAFFINERIE", "l": [
-			"Disponible dans les stations (service a debloquer)",
-			"Transformez les minerais bruts en materiaux raffines",
-			"18 recettes sur 3 niveaux de complexite"]},
-		{"t": "SERVICES DE STATION", "l": [
-			"Chaque station offre des services a debloquer avec des credits",
-			"Commerce, Equipement, Reparation, Chantier Naval, Raffinerie, Entrepot"]},
+		{"t": Locale.t("help.economy.trade_title"), "l": [
+			Locale.t("help.economy.trade_1"),
+			Locale.t("help.economy.trade_2"),
+			Locale.t("help.economy.trade_3")]},
+		{"t": Locale.t("help.economy.mining_title"), "l": [
+			Locale.t("help.economy.mining_1"),
+			Locale.t("help.economy.mining_2"),
+			Locale.t("help.economy.mining_3"),
+			Locale.t("help.economy.mining_4")]},
+		{"t": Locale.t("help.economy.refinery_title"), "l": [
+			Locale.t("help.economy.refinery_1"),
+			Locale.t("help.economy.refinery_2"),
+			Locale.t("help.economy.refinery_3")]},
+		{"t": Locale.t("help.economy.station_title"), "l": [
+			Locale.t("help.economy.station_1"),
+			Locale.t("help.economy.station_2")]},
 	]
 
 
-static func _build_fleet() -> Array:
+func _build_fleet() -> Array:
 	return [
-		{"t": "GESTION DE FLOTTE", "l": [
-			"Achetez des vaisseaux au Chantier Naval",
-			"Deployez-les depuis la carte (M) avec clic droit",
-			"Les vaisseaux deployes suivent vos ordres automatiquement"]},
-		{"t": "ORDRES", "l": [
-			"Clic droit sur la carte pour envoyer un vaisseau",
-			"Les vaisseaux peuvent patrouiller, miner, escorter"]},
-		{"t": "ESCADRONS", "l": [
-			"Groupez vos vaisseaux en escadrons depuis la carte",
-			"5 roles: Suivre, Attaquer, Defendre, Intercepter, Imiter",
-			"5 formations: Ligne, V, Diamant, Echelon, Cercle"]},
-		{"t": "RESPAWN", "l": [
-			"Si votre vaisseau est detruit, appuyez sur R",
-			"Vous respawnez a la station de reparation la plus proche",
-			"Un vaisseau de secours est fourni si tous sont detruits"]},
+		{"t": Locale.t("help.fleet.management_title"), "l": [
+			Locale.t("help.fleet.management_1"),
+			Locale.t("help.fleet.management_2"),
+			Locale.t("help.fleet.management_3")]},
+		{"t": Locale.t("help.fleet.orders_title"), "l": [
+			Locale.t("help.fleet.orders_1"),
+			Locale.t("help.fleet.orders_2")]},
+		{"t": Locale.t("help.fleet.squadron_title"), "l": [
+			Locale.t("help.fleet.squadron_1"),
+			Locale.t("help.fleet.squadron_2"),
+			Locale.t("help.fleet.squadron_3")]},
+		{"t": Locale.t("help.fleet.respawn_title"), "l": [
+			Locale.t("help.fleet.respawn_1"),
+			Locale.t("help.fleet.respawn_2"),
+			Locale.t("help.fleet.respawn_3")]},
 	]
 
 
@@ -144,7 +156,7 @@ func _draw() -> void:
 		draw_rect(Rect2(content_rect.end.x - 4, by, 3, bh), UITheme.PRIMARY_DIM)
 
 	# Close hint
-	draw_string(font, Vector2(margin, s.y - margin), "ECHAP POUR FERMER",
+	draw_string(font, Vector2(margin, s.y - margin), Locale.t("common.close_hint"),
 		HORIZONTAL_ALIGNMENT_CENTER, content_rect.size.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# Outer decorative frame with pulse
@@ -177,28 +189,28 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 	var y0: float = rect.position.y + UITheme.MARGIN_PANEL - _scroll_offset
 	var col_w: float = minf(w * 0.5 - 10, 380.0)
 
-	# Left column: VOL + NAVIGATION
-	var y: float = _draw_kb(x, y0, col_w, "VOL", [
-		["W / S", "Avancer / Reculer"], ["A / D", "Translation laterale"],
-		["Espace / Ctrl", "Monter / Descendre"], ["Q / E", "Roulis"],
-		["Souris", "Orientation"], ["Shift", "Turbo (maintenir)"],
-		["C", "Mode Croisiere"]], font, font_bold, vt, vb)
-	y = _draw_kb(x, y + 10, col_w, "NAVIGATION", [
-		["M", "Carte systeme"], ["G", "Carte galaxie"],
-		["F", "Amarrage / Desamarrage"], ["J", "Saut portail"],
-		["W", "Trou de ver"]], font, font_bold, vt, vb)
+	# Left column: FLIGHT + NAVIGATION
+	var y: float = _draw_kb(x, y0, col_w, Locale.t("help.flight.title"), [
+		["W / S", Locale.t("help.flight.forward_back")], ["A / D", Locale.t("help.flight.strafe")],
+		["Space / Ctrl", Locale.t("help.flight.up_down")], ["Q / E", Locale.t("help.flight.roll")],
+		["Mouse", Locale.t("help.flight.orientation")], ["Shift", Locale.t("help.flight.boost")],
+		["C", Locale.t("help.flight.cruise")]], font, font_bold, vt, vb)
+	y = _draw_kb(x, y + 10, col_w, Locale.t("help.nav.title"), [
+		["M", Locale.t("help.nav.system_map")], ["G", Locale.t("help.nav.galaxy_map")],
+		["F", Locale.t("help.nav.dock")], ["J", Locale.t("help.nav.gate_jump")],
+		["W", Locale.t("help.nav.wormhole")]], font, font_bold, vt, vb)
 
-	# Right column: COMBAT + DIVERS
+	# Right column: COMBAT + MISC
 	var rx: float = x + col_w + 20
-	var ry: float = _draw_kb(rx, y0, col_w, "COMBAT", [
-		["Clic gauche", "Tir primaire"], ["Clic droit", "Tir secondaire"],
-		["Tab", "Cible suivante"], ["T", "Cible la plus proche"],
-		["Y", "Annuler cible"], ["Tab + 1/2/3", "Energie: Armes/Boucliers/Moteurs"]],
+	var ry: float = _draw_kb(rx, y0, col_w, Locale.t("help.combat.title"), [
+		["LMB", Locale.t("help.combat.primary")], ["RMB", Locale.t("help.combat.secondary")],
+		["Tab", Locale.t("help.combat.target_next")], ["T", Locale.t("help.combat.target_nearest")],
+		["Y", Locale.t("help.combat.target_clear")], ["Tab + 1/2/3", Locale.t("help.combat.pips")]],
 		font, font_bold, vt, vb)
-	ry = _draw_kb(rx, ry + 10, col_w, "DIVERS", [
-		["X", "Ramasser butin"], ["R", "Respawn"], ["N", "Corporation"],
-		["P", "Multijoueur"], ["F1", "Aide"], ["Echap", "Pause"],
-		["F12", "Rapport de bug"]], font, font_bold, vt, vb)
+	ry = _draw_kb(rx, ry + 10, col_w, Locale.t("help.misc.title"), [
+		["X", Locale.t("help.misc.loot")], ["R", Locale.t("help.misc.respawn")], ["N", Locale.t("help.misc.corporation")],
+		["P", Locale.t("help.misc.multiplayer")], ["F1", Locale.t("help.misc.help")], ["Esc", Locale.t("help.misc.pause")],
+		["F12", Locale.t("help.misc.bug_report")]], font, font_bold, vt, vb)
 
 	return maxf(y, ry) - y0 + UITheme.MARGIN_PANEL
 

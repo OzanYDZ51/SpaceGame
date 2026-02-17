@@ -13,20 +13,20 @@ func _init(svc: NotificationService) -> void:
 
 
 func created(squadron_name: String) -> void:
-	_svc.toast("ESCADRON CREE: %s" % squadron_name, UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.squadron_created") % squadron_name, UIToast.ToastType.SUCCESS)
 
 
 func disbanded() -> void:
-	_svc.toast("ESCADRON DISSOUS")
+	_svc.toast(Locale.t("notif.squadron_dissolved"))
 
 
 func renamed(squadron_name: String) -> void:
-	_svc.toast("ESCADRON RENOMME: %s" % squadron_name)
+	_svc.toast(Locale.t("notif.squadron_renamed") % squadron_name)
 
 
 func formation(display_name: String) -> void:
-	_svc.toast("FORMATION: %s" % display_name)
+	_svc.toast(Locale.t("notif.squadron_formation") % display_name)
 
 
 func new_leader(ship_name: String) -> void:
-	_svc.toast("NOUVEAU CHEF: %s" % ship_name, UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.squadron_new_leader") % ship_name, UIToast.ToastType.SUCCESS)

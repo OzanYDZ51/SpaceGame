@@ -367,7 +367,7 @@ func _draw_galaxy() -> void:
 func _draw_galaxy_title(s: Vector2, font: Font) -> void:
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = UITheme.MARGIN_SCREEN + fsize
-	var title_text ="GALAXY MAP"
+	var title_text = Locale.t("map.galaxy_map")
 	var vp_left: float = MapLayout.viewport_left()
 	var vp_right: float = MapLayout.viewport_right(s.x)
 	var vp_w: float = vp_right - vp_left
@@ -423,7 +423,7 @@ func _draw_view_indicator() -> void:
 	draw_string(font, Vector2(cx - 135, text_y), "[TAB]", HORIZONTAL_ALIGNMENT_LEFT, 50, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# SYSTEM label
-	var sys_label: String = "SYSTEM"
+	var sys_label: String = Locale.t("tab.system")
 	var sys_col: Color = UITheme.PRIMARY if current_view == ViewMode.SYSTEM else UITheme.TEXT_DIM
 	draw_string(font, Vector2(cx - 75, text_y), sys_label, HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, sys_col)
 	# Underline active
@@ -435,7 +435,7 @@ func _draw_view_indicator() -> void:
 
 	# GALAXY label
 	var gal_col: Color = UITheme.PRIMARY if current_view == ViewMode.GALAXY else UITheme.TEXT_DIM
-	draw_string(font, Vector2(cx + 15, text_y), "GALAXY", HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, gal_col)
+	draw_string(font, Vector2(cx + 15, text_y), Locale.t("tab.galaxy"), HORIZONTAL_ALIGNMENT_LEFT, 80, UITheme.FONT_SIZE_BODY, gal_col)
 	if current_view == ViewMode.GALAXY:
 		draw_line(Vector2(cx + 15, text_y + 3), Vector2(cx + 80, text_y + 3), UITheme.PRIMARY, 2.0)
 
@@ -551,7 +551,7 @@ func _draw_current_system_marker(cx: float, cy: float) -> void:
 
 	# "ICI" marker
 	var font: Font = UITheme.get_font()
-	draw_string(font, pos + Vector2(-15, -ring_radius - 6), "ICI", HORIZONTAL_ALIGNMENT_CENTER, 30, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(font, pos + Vector2(-15, -ring_radius - 6), Locale.t("common.here"), HORIZONTAL_ALIGNMENT_CENTER, 30, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 
 func _draw_route_path(cx: float, cy: float) -> void:
@@ -641,12 +641,12 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 	y += line_h
 
 	# Star type
-	_draw_kv(font, x, y, kv_w, "CLASSE", _info_system.get("spectral_class", "?") + "-class")
+	_draw_kv(font, x, y, kv_w, Locale.t("map.class"), _info_system.get("spectral_class", "?") + "-class")
 	y += line_h
 
 	# Faction
 	var faction: String = str(_info_system.get("faction", &"neutral"))
-	_draw_kv(font, x, y, kv_w, "FACTION", faction.capitalize())
+	_draw_kv(font, x, y, kv_w, Locale.t("map.faction"), faction.capitalize())
 	y += line_h
 
 	# Danger
@@ -654,21 +654,21 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 	var danger_bar: String = ""
 	for i in 5:
 		danger_bar += "|" if i < danger else "."
-	_draw_kv(font, x, y, kv_w, "DANGER", danger_bar + "  (%d/5)" % danger)
+	_draw_kv(font, x, y, kv_w, Locale.t("map.danger"), danger_bar + "  (%d/5)" % danger)
 	y += line_h
 
 	# Station
 	var has_station: bool = _info_system.get("has_station", false)
-	_draw_kv(font, x, y, kv_w, "STATION", "Oui" if has_station else "Non")
+	_draw_kv(font, x, y, kv_w, Locale.t("map.station"), Locale.t("common.yes") if has_station else Locale.t("common.no"))
 	y += line_h
 
 	# Connections
-	_draw_kv(font, x, y, kv_w, "PORTAILS", str(connections.size()))
+	_draw_kv(font, x, y, kv_w, Locale.t("map.gates"), str(connections.size()))
 	y += line_h
 
 	# Visited
 	var visited: bool = system_transition != null and system_transition.has_visited(sys_id)
-	_draw_kv(font, x, y, kv_w, "VISITE", "Oui" if visited or sys_id == current_id else "Non")
+	_draw_kv(font, x, y, kv_w, Locale.t("map.visited"), Locale.t("common.yes") if visited or sys_id == current_id else Locale.t("common.no"))
 	y += line_h
 
 	# Fleet ships in this system
@@ -685,12 +685,12 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 					deployed_count += 1
 			var fleet_text: String = ""
 			if docked_count > 0:
-				fleet_text += "%d docke%s" % [docked_count, "s" if docked_count > 1 else ""]
+				fleet_text += Locale.t("map.docked") % docked_count
 			if deployed_count > 0:
 				if fleet_text != "":
 					fleet_text += ", "
-				fleet_text += "%d deploye%s" % [deployed_count, "s" if deployed_count > 1 else ""]
-			_draw_kv(font, x, y, kv_w, "FLOTTE", fleet_text)
+				fleet_text += Locale.t("map.deployed") % deployed_count
+			_draw_kv(font, x, y, kv_w, Locale.t("map.fleet"), fleet_text)
 			y += line_h
 
 	# --- Resolved StarSystemData details ---
@@ -708,19 +708,19 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 			var parts: Array[String] = []
 			for pt_name in planet_types:
 				parts.append("%d %s" % [planet_types[pt_name], _planet_type_short(pt_name)])
-			_draw_kv(font, x, y, kv_w, "PLANÈTES", "%d  (%s)" % [_resolved_data.planets.size(), ", ".join(parts)])
+			_draw_kv(font, x, y, kv_w, Locale.t("map.planets"), "%d  (%s)" % [_resolved_data.planets.size(), ", ".join(parts)])
 			y += line_h
 
 		# Stations with types
 		if _resolved_data.stations.size() > 0:
 			for sd in _resolved_data.stations:
 				var type_label: String = _station_type_label(sd.get_type_string())
-				_draw_kv(font, x, y, kv_w, "STATION", "%s  [%s]" % [sd.station_name, type_label])
+				_draw_kv(font, x, y, kv_w, Locale.t("map.station"), "%s  [%s]" % [sd.station_name, type_label])
 				y += line_h
 
 		# Asteroid belts with resources
 		if _resolved_data.asteroid_belts.size() > 0:
-			draw_string(font, Vector2(x, y), "Ceintures d'astéroides: %d" % _resolved_data.asteroid_belts.size(), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			draw_string(font, Vector2(x, y), Locale.t("map.asteroid_belts") % _resolved_data.asteroid_belts.size(), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 			y += line_h - 2
 			var belt_count: int = 0
 			for bd in _resolved_data.asteroid_belts:
@@ -736,7 +736,7 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 	# Connected system names
 	if connections.size() > 0 and _cam_zoom > 1.0:
 		y += 4
-		draw_string(font, Vector2(x, y), "Connexions:", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(x, y), Locale.t("map.connections"), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		y += 14
 		for conn_id in connections:
 			var conn_name: String = galaxy.get_system_name(conn_id)
@@ -752,11 +752,11 @@ func _draw_info_panel(s: Vector2, font: Font) -> void:
 		var cur_sys: Dictionary = galaxy.get_system(current_id)
 		if not cur_sys.is_empty() and sys_id in cur_sys["connections"]:
 			y += 4
-			draw_string(font, Vector2(x, y), "Rejoignez le portail pour sauter", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+			draw_string(font, Vector2(x, y), Locale.t("map.gate_hint"), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
 			y += line_h
 		# Autopilot hint
 		y += 4
-		draw_string(font, Vector2(x, y), "[ENTRER] = Autopilote", HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.PRIMARY)
+		draw_string(font, Vector2(x, y), Locale.t("map.autopilot_hint"), HORIZONTAL_ALIGNMENT_LEFT, kv_w, UITheme.FONT_SIZE_SMALL, UITheme.PRIMARY)
 
 
 func _draw_kv(font: Font, x: float, y: float, w: float, key: String, value: String) -> void:
@@ -766,33 +766,33 @@ func _draw_kv(font: Font, x: float, y: float, w: float, key: String, value: Stri
 
 func _planet_type_short(pt: String) -> String:
 	match pt:
-		"rocky": return "Roc."
-		"lava": return "Volc."
-		"ocean": return "Océan."
-		"gas_giant": return "Géante"
-		"ice": return "Glace"
+		"rocky": return Locale.t("map.planet_rocky")
+		"lava": return Locale.t("map.planet_volcanic")
+		"ocean": return Locale.t("map.planet_ocean")
+		"gas_giant": return Locale.t("map.planet_gas")
+		"ice": return Locale.t("map.planet_ice")
 	return pt
 
 
 func _station_type_label(stype: String) -> String:
 	match stype:
-		"repair": return "Réparation"
-		"trade": return "Commerce"
-		"military": return "Militaire"
-		"mining": return "Extraction"
+		"repair": return Locale.t("map.station_repair")
+		"trade": return Locale.t("map.station_commerce")
+		"military": return Locale.t("map.station_military")
+		"mining": return Locale.t("map.station_extraction")
 	return stype.capitalize()
 
 
 func _resource_short(res_id: String) -> String:
 	match res_id:
-		"ice": return "Glace"
-		"iron": return "Fer"
-		"copper": return "Cuivre"
-		"titanium": return "Titane"
-		"gold": return "Or"
-		"crystal": return "Cristal"
-		"uranium": return "Uranium"
-		"platinum": return "Platine"
+		"ice": return Locale.t("map.ore_ice")
+		"iron": return Locale.t("map.ore_iron")
+		"copper": return Locale.t("map.ore_copper")
+		"titanium": return Locale.t("map.ore_titanium")
+		"gold": return Locale.t("map.ore_gold")
+		"crystal": return Locale.t("map.ore_crystal")
+		"uranium": return Locale.t("map.ore_uranium")
+		"platinum": return Locale.t("map.ore_platinum")
 	return res_id.capitalize()
 
 
@@ -800,7 +800,7 @@ func _draw_galaxy_legend(s: Vector2, font: Font) -> void:
 	var vp_left: float = MapLayout.viewport_left()
 	var y: float = s.y - UITheme.MARGIN_SCREEN - 100
 
-	draw_string(font, Vector2(vp_left, y), "Click = Selectionner | Double-clic = Voir systeme | Entrer = Autopilote | Scroll = Zoom | MMB = Deplacer", HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(vp_left, y), Locale.t("map.help_bar"), HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	y += 16
 
 	# Spectral class legend
@@ -819,7 +819,7 @@ func _draw_current_label(s: Vector2, font: Font) -> void:
 	var sys: Dictionary = galaxy.get_system(current_id)
 	if sys.is_empty():
 		return
-	var label: String = "Systeme actuel: " + sys["name"] + " (" + sys["spectral_class"] + "-class)"
+	var label: String = Locale.t("map.current_system") + sys["name"] + " (" + sys["spectral_class"] + "-class)"
 	draw_string(font, Vector2(MapLayout.viewport_left(), s.y - UITheme.MARGIN_SCREEN - 48), label, HORIZONTAL_ALIGNMENT_LEFT, 500, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 

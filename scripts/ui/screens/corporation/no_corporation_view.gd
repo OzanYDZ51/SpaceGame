@@ -42,48 +42,67 @@ const COLOR_PRESETS: Array[Color] = [
 	Color(1.0, 0.85, 0.0),    # Yellow
 	Color(1.0, 0.15, 0.1),    # Red
 ]
-const COLOR_NAMES: Array[String] = ["Cyan", "Vert", "Orange", "Violet", "Jaune", "Rouge"]
+var COLOR_NAMES: Array[String] = []
 
 
 func _ready() -> void:
 	super._ready()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_rebuild_locale()
 
 	# ─── Create panel inputs ───
 	_input_name = UITextInput.new()
-	_input_name.placeholder = "Nom de la corporation (3-32 caracteres)"
+	_input_name.placeholder = Locale.t("corp.create_name_hint")
 	add_child(_input_name)
 
 	_input_tag = UITextInput.new()
-	_input_tag.placeholder = "Tag (2-5 lettres)"
+	_input_tag.placeholder = Locale.t("corp.create_tag_hint")
 	add_child(_input_tag)
 
 	_btn_create = UIButton.new()
-	_btn_create.text = "Creer la corporation"
+	_btn_create.text = Locale.t("btn.create_corp")
 	_btn_create.pressed.connect(_on_create_pressed)
 	add_child(_btn_create)
 
 	# ─── Search panel inputs ───
 	_input_search = UITextInput.new()
-	_input_search.placeholder = "Rechercher une corporation..."
+	_input_search.placeholder = Locale.t("corp.search_hint")
 	_input_search.text_submitted.connect(_on_search_submitted)
 	add_child(_input_search)
 
 	_btn_search = UIButton.new()
-	_btn_search.text = "Chercher"
+	_btn_search.text = Locale.t("btn.search")
 	_btn_search.pressed.connect(_on_search_pressed)
 	add_child(_btn_search)
 
 	_input_note = UITextInput.new()
-	_input_note.placeholder = "Note de candidature (optionnel)..."
+	_input_note.placeholder = Locale.t("corp.apply_hint")
 	_input_note.visible = false
 	add_child(_input_note)
 
 	_btn_apply = UIButton.new()
-	_btn_apply.text = "Postuler"
+	_btn_apply.text = Locale.t("btn.apply")
 	_btn_apply.visible = false
 	_btn_apply.pressed.connect(_on_apply_pressed)
 	add_child(_btn_apply)
+
+	Locale.language_changed.connect(_on_language_changed)
+
+
+func _rebuild_locale() -> void:
+	COLOR_NAMES = [Locale.t("corp.color_cyan"), Locale.t("corp.color_green"), Locale.t("corp.color_orange"), Locale.t("corp.color_purple"), Locale.t("corp.color_yellow"), Locale.t("corp.color_red")]
+
+
+func _on_language_changed(_lang: String) -> void:
+	_rebuild_locale()
+	_input_name.placeholder = Locale.t("corp.create_name_hint")
+	_input_tag.placeholder = Locale.t("corp.create_tag_hint")
+	_btn_create.text = Locale.t("btn.create_corp")
+	_input_search.placeholder = Locale.t("corp.search_hint")
+	_btn_search.text = Locale.t("btn.search")
+	_input_note.placeholder = Locale.t("corp.apply_hint")
+	_btn_apply.text = Locale.t("btn.apply")
+	queue_redraw()
 
 
 func refresh(cm) -> void:
@@ -96,7 +115,7 @@ func refresh(cm) -> void:
 	_my_applications.clear()
 	queue_redraw()
 	if _cm != null and AuthManager.is_authenticated:
-		_status_text = "Chargement..."
+		_status_text = Locale.t("common.loading")
 		_status_color = UITheme.PRIMARY
 		queue_redraw()
 		# Fetch corps and player's pending applications in parallel
@@ -108,10 +127,10 @@ func refresh(cm) -> void:
 				if cid != "":
 					_my_applications[cid] = app
 		if _search_results.size() > 0:
-			_status_text = "%d corporation(s) trouvee(s)" % _search_results.size()
+			_status_text = Locale.t("corp.results_count") % _search_results.size()
 			_status_color = UITheme.ACCENT
 		else:
-			_status_text = "Aucune corporation trouvee"
+			_status_text = Locale.t("corp.no_corps_found")
 			_status_color = UITheme.TEXT_DIM
 		queue_redraw()
 
@@ -160,19 +179,19 @@ func _draw() -> void:
 
 	if not AuthManager.is_authenticated:
 		draw_panel_bg(Rect2(0, 0, size.x, size.y))
-		draw_string(font, Vector2(0, size.y * 0.4), "CONNEXION REQUISE", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
-		draw_string(font, Vector2(0, size.y * 0.4 + 28), "Connectez-vous pour creer ou rejoindre une corporation", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+		draw_string(font, Vector2(0, size.y * 0.4), Locale.t("corp.login_required_title"), HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(0, size.y * 0.4 + 28), Locale.t("corp.login_required_body"), HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
 		return
 
 	# ─── LEFT PANEL: Create ────────────────────────────────────────────
 	var left_rect := Rect2(0, 0, half_w, size.y)
 	draw_panel_bg(left_rect)
 
-	var _header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UNE CORPORATION")
+	var _header_y := _draw_section_header(m, m, half_w - m * 2, Locale.t("corp.create_title"))
 
 	# Color selector
 	var color_y: float = 80.0 + 80.0
-	draw_string(font, Vector2(m, color_y + 14), "Couleur:", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(m, color_y + 14), Locale.t("corp.color_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 	var cx: float = m + 70
 	for i in COLOR_PRESETS.size():
 		var col: Color = COLOR_PRESETS[i]
@@ -182,14 +201,14 @@ func _draw() -> void:
 		draw_rect(btn_rect, col)
 		draw_rect(btn_rect, Color(1, 1, 1, 0.15), false, 1.0)
 
-	draw_string(font, Vector2(m, color_y + 44), "Selectionnee: %s" % COLOR_NAMES[_selected_color_idx], HORIZONTAL_ALIGNMENT_LEFT, half_w - m * 2, UITheme.FONT_SIZE_SMALL, COLOR_PRESETS[_selected_color_idx])
+	draw_string(font, Vector2(m, color_y + 44), Locale.t("corp.color_selected") % COLOR_NAMES[_selected_color_idx], HORIZONTAL_ALIGNMENT_LEFT, half_w - m * 2, UITheme.FONT_SIZE_SMALL, COLOR_PRESETS[_selected_color_idx])
 
 	# ─── RIGHT PANEL: Search & Apply ──────────────────────────────────
 	var rx: float = half_w + GAP
 	var right_rect := Rect2(rx, 0, half_w, size.y)
 	draw_panel_bg(right_rect)
 
-	_draw_section_header(rx + m, m, half_w - m * 2, "CORPORATIONS")
+	_draw_section_header(rx + m, m, half_w - m * 2, Locale.t("corp.search_title"))
 
 	# Results table
 	var table_y: float = 80.0 + 42.0
@@ -202,10 +221,10 @@ func _draw() -> void:
 	var col_name_x: float = rx + m + 60
 	var col_members_x: float = rx + half_w - m - 120
 	var col_status_x: float = rx + half_w - m - 55
-	draw_string(font, Vector2(col_tag_x, table_y + 18), "TAG", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_name_x, table_y + 18), "NOM", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_members_x, table_y + 18), "MEMBRES", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(col_status_x, table_y + 18), "STATUT", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_tag_x, table_y + 18), Locale.t("corp.col_tag"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_name_x, table_y + 18), Locale.t("corp.col_name"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_members_x, table_y + 18), Locale.t("corp.col_members"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_status_x, table_y + 18), Locale.t("corp.col_status"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Rows
 	var visible_rows: int = int(table_h / row_h) - 1
@@ -236,19 +255,19 @@ func _draw() -> void:
 		var status_text: String
 		var status_col: Color
 		if has_applied:
-			status_text = "POSTULE"
+			status_text = Locale.t("corp.status_applied")
 			status_col = UITheme.WARNING
 		elif r.get("is_recruiting", false):
-			status_text = "OUVERT"
+			status_text = Locale.t("corp.status_open")
 			status_col = UITheme.ACCENT
 		else:
-			status_text = "FERME"
+			status_text = Locale.t("corp.status_closed")
 			status_col = UITheme.DANGER
 		draw_string(font, Vector2(col_status_x, ry + 18), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, status_col)
 
-	if _search_results.is_empty() and _status_text != "Chargement...":
+	if _search_results.is_empty() and _status_text != Locale.t("common.loading"):
 		var empty_y: float = table_y + table_h * 0.4
-		draw_string(font, Vector2(rx + m, empty_y), "Aucune corporation disponible", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx + m, empty_y), Locale.t("corp.no_results"), HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# ─── Status text ───────────────────────────────────────────────────
 	if _status_text != "":
@@ -334,10 +353,10 @@ func _update_apply_button() -> void:
 	_btn_apply.visible = true
 	_input_note.visible = not has_applied
 	if has_applied:
-		_btn_apply.text = "Candidature en attente..."
+		_btn_apply.text = Locale.t("corp.pending")
 		_btn_apply.enabled = false
 	else:
-		_btn_apply.text = "Postuler"
+		_btn_apply.text = Locale.t("corp.apply_btn")
 		_btn_apply.enabled = true
 
 
@@ -347,7 +366,7 @@ func _update_apply_button() -> void:
 
 func _on_create_pressed() -> void:
 	if _cm == null or not AuthManager.is_authenticated:
-		_status_text = "Connexion requise"
+		_status_text = Locale.t("corp.login_needed")
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
@@ -356,18 +375,18 @@ func _on_create_pressed() -> void:
 	var tag: String = _input_tag.get_text().strip_edges().to_upper()
 
 	if cname.length() < 3 or cname.length() > 32:
-		_status_text = "Le nom doit contenir entre 3 et 32 caracteres"
+		_status_text = Locale.t("corp.err_name_length")
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
 
 	if tag.length() < 2 or tag.length() > 5:
-		_status_text = "Le tag doit contenir entre 2 et 4 caracteres"
+		_status_text = Locale.t("corp.err_tag_length")
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
 
-	_status_text = "Creation de la corporation en cours..."
+	_status_text = Locale.t("corp.creating")
 	_status_color = UITheme.PRIMARY
 	queue_redraw()
 
@@ -376,7 +395,7 @@ func _on_create_pressed() -> void:
 		_status_text = ""
 		corporation_action_completed.emit()
 	else:
-		_status_text = "Erreur lors de la creation de la corporation"
+		_status_text = Locale.t("corp.err_create")
 		_status_color = UITheme.DANGER
 		queue_redraw()
 
@@ -387,13 +406,13 @@ func _on_search_submitted(_text: String) -> void:
 
 func _on_search_pressed() -> void:
 	if _cm == null or not AuthManager.is_authenticated:
-		_status_text = "Connexion requise"
+		_status_text = Locale.t("corp.login_needed")
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
 
 	var query: String = _input_search.get_text().strip_edges()
-	_status_text = "Recherche..."
+	_status_text = Locale.t("corp.searching")
 	_status_color = UITheme.PRIMARY
 	_selected_result_idx = -1
 	_btn_apply.visible = false
@@ -401,7 +420,7 @@ func _on_search_pressed() -> void:
 	queue_redraw()
 
 	_search_results = await _cm.search_corporations(query)
-	_status_text = "%d corporation(s) trouvee(s)" % _search_results.size() if _search_results.size() > 0 else "Aucune corporation trouvee"
+	_status_text = Locale.t("corp.results_count") % _search_results.size() if _search_results.size() > 0 else Locale.t("corp.no_corps_found")
 	_status_color = UITheme.ACCENT if _search_results.size() > 0 else UITheme.TEXT_DIM
 	queue_redraw()
 
@@ -414,25 +433,25 @@ func _on_apply_pressed() -> void:
 	var corp_id: String = str(corporation.get("id", ""))
 
 	if _my_applications.has(corp_id):
-		_status_text = "Vous avez deja postule a cette corporation"
+		_status_text = Locale.t("corp.already_applied")
 		_status_color = UITheme.WARNING
 		queue_redraw()
 		return
 
 	var note: String = _input_note.get_text().strip_edges() if _input_note else ""
 
-	_status_text = "Envoi de la candidature..."
+	_status_text = Locale.t("corp.sending_application")
 	_status_color = UITheme.PRIMARY
 	queue_redraw()
 
 	var success: bool = await _cm.apply_to_corporation(corp_id, note)
 	if success:
-		_status_text = "Candidature envoyee!"
+		_status_text = Locale.t("corp.application_sent")
 		_status_color = UITheme.ACCENT
 		_my_applications[corp_id] = {"corporation_id": corp_id}
 		_btn_apply.visible = false
 		_input_note.visible = false
 	else:
-		_status_text = "Erreur lors de l'envoi de la candidature"
+		_status_text = Locale.t("corp.err_application")
 		_status_color = UITheme.DANGER
 	queue_redraw()

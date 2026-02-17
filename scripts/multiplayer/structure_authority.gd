@@ -102,9 +102,13 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	if damage > 500.0 or damage < 0.1:
 		return
 
-	# Apply damage
-	var dir =Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
-	health.apply_damage(damage, &"thermal", dir, null)
+	# Apply damage — resolve attacker node so StationDefenseAI can retaliate
+	var dir = Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
+	var attacker: Node3D = null
+	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
+	if sync_mgr and sync_mgr.remote_players.has(sender_pid):
+		attacker = sync_mgr.remote_players[sender_pid]
+	health.apply_damage(damage, &"thermal", dir, attacker)
 
 	# If destroyed, broadcast death
 	if health.is_dead():
@@ -185,7 +189,7 @@ func apply_batch(batch: Array) -> void:
 		health.shield_changed.emit(health.shield_current, health.shield_max)
 
 
-func apply_structure_destroyed(struct_id: String, _killer_pid: int, _pos: Array, _loot: Array) -> void:
+func apply_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
 	if not _structures.has(struct_id):
 		return
 	var node_ref = _structures[struct_id].get("node_ref")
@@ -197,3 +201,12 @@ func apply_structure_destroyed(struct_id: String, _killer_pid: int, _pos: Array,
 		health.hull_current = 0.0
 		health._is_dead = true
 		health.structure_destroyed.emit()
+	# Spawn local loot crate for the killer
+	if not loot.is_empty() and killer_pid == NetworkManager.local_peer_id:
+		var crate := CargoCrate.new()
+		crate.global_position = FloatingOrigin.to_local_pos(pos) + Vector3(0, 50, 0)
+		crate.contents.assign(loot)
+		crate.owner_peer_id = killer_pid
+		var universe = GameManager.universe_node
+		if universe:
+			universe.add_child(crate)

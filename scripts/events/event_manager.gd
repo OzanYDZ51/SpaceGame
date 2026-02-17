@@ -279,15 +279,22 @@ func _check_event_timeouts() -> void:
 
 
 func _npc_exists(npc_id: StringName) -> bool:
-	# Check EntityRegistry (covers both node-based and LOD data-only NPCs)
-	var ent: Dictionary = EntityRegistry.get_entity(String(npc_id))
-	if not ent.is_empty():
-		return true
-	# Check LOD manager directly
+	# Check LOD manager first (most authoritative for LOD-managed ships)
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-	if lod_mgr and lod_mgr._ships.has(npc_id):
-		return true
-	return false
+	if lod_mgr:
+		if lod_mgr._ships.has(npc_id):
+			var data = lod_mgr._ships[npc_id]
+			if data.is_dead:
+				return false
+			# Promoted to full node but node was freed (killed)
+			if data.node_ref != null and not is_instance_valid(data.node_ref):
+				return false
+			return true
+		# Not in LOD manager — might have been unregistered (dead)
+		return false
+	# Fallback: check EntityRegistry
+	var ent: Dictionary = EntityRegistry.get_entity(String(npc_id))
+	return not ent.is_empty()
 
 
 func _cleanup_event(event_id: String, was_completed: bool) -> void:
@@ -325,19 +332,14 @@ func _cleanup_event(event_id: String, was_completed: bool) -> void:
 # =============================================================================
 
 func _find_safe_spawn_position() -> Vector3:
-	# Try up to 10 random positions
+	var candidate := Vector3.ZERO
 	for _attempt in 10:
 		var angle: float = randf() * TAU
 		var dist: float = randf_range(MIN_SPAWN_RADIUS, MAX_SPAWN_RADIUS)
-		var candidate := Vector3(cos(angle) * dist, 0.0, sin(angle) * dist)
-
+		candidate = Vector3(cos(angle) * dist, 0.0, sin(angle) * dist)
 		if _is_far_from_objects(candidate):
 			return candidate
-
-	# Fallback: just use the last candidate
-	var angle: float = randf() * TAU
-	var dist: float = MAX_SPAWN_RADIUS
-	return Vector3(cos(angle) * dist, 0.0, sin(angle) * dist)
+	return candidate
 
 
 func _is_far_from_objects(pos: Vector3) -> bool:
@@ -360,7 +362,7 @@ func _is_far_from_objects(pos: Vector3) -> bool:
 
 func _get_lod_manager():
 	var mgr = GameManager.get_node_or_null("ShipLODManager")
-	if mgr and mgr.has_method("register_npc"):
+	if mgr and mgr.has_method("register_ship"):
 		return mgr
 	return null
 

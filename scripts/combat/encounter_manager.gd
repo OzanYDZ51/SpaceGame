@@ -307,7 +307,7 @@ func _on_npc_removed(npc_id: StringName) -> void:
 
 func _get_lod_manager():
 	var mgr = GameManager.get_node_or_null("ShipLODManager")
-	if mgr and mgr.has_method("register_npc"):
+	if mgr and mgr.has_method("register_ship"):
 		return mgr
 	return null
 

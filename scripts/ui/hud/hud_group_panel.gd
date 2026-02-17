@@ -159,14 +159,14 @@ func _draw_group_panel(ctrl: Control) -> void:
 	var members: Array = _group_data.get("members", [])
 	var y: float = PANEL_HEADER + PANEL_PADDING
 	for m in members:
-		var name: String = m.get("name", "???")
+		var member_name: String = m.get("name", "???")
 		var hull: float = m.get("hull", 1.0)
 		var is_leader: bool = m.get("is_leader", false)
 
 		# Leader star prefix
-		var display_name: String = name
+		var display_name: String = member_name
 		if is_leader:
-			display_name = "★ " + name
+			display_name = "★ " + member_name
 		var name_col: Color = COL_LEADER if is_leader else COL_MEMBER
 
 		# Name

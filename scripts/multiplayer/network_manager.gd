@@ -27,6 +27,11 @@ signal server_config_received(config: Dictionary)
 signal group_invite_received(inviter_name: String, group_id: int)
 signal group_updated(group_data: Dictionary)
 signal group_dissolved(reason: String)
+signal group_error(msg: String)
+
+# System change sync (reliable)
+signal player_left_system_received(peer_id: int)
+signal player_entered_system_received(peer_id: int, ship_id: StringName)
 
 # Player death/respawn sync (reliable)
 signal player_died_received(peer_id: int, death_pos: Array)
@@ -372,12 +377,13 @@ func _on_server_disconnected() -> void:
 	local_group_id = 0
 	local_group_data = {}
 	# Emit peer_disconnected for each peer so NetworkSyncManager can clean up puppets
-	var peer_ids =peers.keys()
+	var peer_ids = peers.keys()
 	peers.clear()
 	for pid in peer_ids:
 		peer_disconnected.emit(pid)
 	player_list_updated.emit()
-	_reconnect_attempts += 1
+	# Reset counter for a fresh reconnect sequence (don't accumulate across disconnects)
+	_reconnect_attempts = 1
 	_reconnect_timer = RECONNECT_DELAY
 	var reason := "Serveur déconnecté. Reconnexion..."
 	connection_failed.emit(reason)
@@ -457,7 +463,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 			npc_auth.on_player_reconnected(player_uuid, sender_id)
 
 	# Notify ALL clients (including new one) about this player
-	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str)
+	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role)
 
 	# Broadcast system chat: player joined (include system ID for diagnostics)
 	print("[Server] Joueur '%s' (peer %d) enregistré dans systeme %d%s" % [player_name, sender_id, spawn_sys, " (reconnexion)" if is_reconnect else ""])
@@ -477,7 +483,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
-func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> void:
+func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player_role: String = "player") -> void:
 	# Never add ourselves to our own peers dict (causes ghost self-player)
 	if pid == local_peer_id:
 		return
@@ -487,6 +493,7 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String) -> voi
 	state.peer_id = pid
 	state.player_name = pname
 	state.ship_id = StringName(ship_id_str)
+	state.role = player_role
 	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[pid] = state
@@ -525,11 +532,20 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 		if not peers.has(sender_id):
 			return
 		var state = peers[sender_id]
-		# Preserve server-authoritative fields that the client state sync doesn't send
+		# Preserve ALL server-authoritative fields that from_dict() would overwrite.
+		# These are set by dedicated reliable RPCs and must not be raced by unreliable sync.
 		var saved_name: String = state.player_name
+		var saved_role: String = state.role
+		var saved_group_id: int = state.group_id
+		var saved_system_id: int = state.system_id
+		var saved_ship_id: StringName = state.ship_id
 		state.from_dict(state_dict)
 		state.peer_id = sender_id
 		state.player_name = saved_name
+		state.role = saved_role
+		state.group_id = saved_group_id
+		state.system_id = saved_system_id
+		state.ship_id = saved_ship_id
 		# Track last known system for reconnect persistence
 		_player_last_system[sender_id] = state.system_id
 		# ServerAuthority handles broadcasting to other peers (system-filtered).
@@ -539,16 +555,27 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 ## Server -> Client: Another player's state update.
 @rpc("authority", "unreliable_ordered")
 func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
-	var state =NetworkState.new()
-	state.from_dict(state_dict)
-	state.peer_id = pid
-
 	if peers.has(pid):
-		# Preserve player_name from registration (state sync doesn't include it)
-		state.player_name = peers[pid].player_name
-		peers[pid] = state
-
-	player_state_received.emit(pid, state)
+		# Reuse existing state object to avoid GC pressure (200+ allocs/sec at 10 players)
+		var state = peers[pid]
+		var saved_name: String = state.player_name
+		var saved_role: String = state.role
+		var saved_group_id: int = state.group_id
+		var saved_system_id: int = state.system_id
+		var saved_ship_id: StringName = state.ship_id
+		state.from_dict(state_dict)
+		state.peer_id = pid
+		state.player_name = saved_name
+		state.role = saved_role
+		state.group_id = saved_group_id
+		state.system_id = saved_system_id
+		state.ship_id = saved_ship_id
+		player_state_received.emit(pid, state)
+	else:
+		var state = NetworkState.new()
+		state.from_dict(state_dict)
+		state.peer_id = pid
+		player_state_received.emit(pid, state)
 
 
 ## Public API: send a chat message to the server. Called by NetworkChatRelay.
@@ -604,7 +631,17 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 							continue
 						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
 				return
-			_:  # GLOBAL, TRADE, CORP, etc. → broadcast to all except sender
+			2:  # CORP → only peers with same corporation_tag
+				var sender_tag: String = peers[sender_id].corporation_tag if peers.has(sender_id) else ""
+				if sender_tag == "":
+					return  # Not in a corp, ignore
+				for pid in peers:
+					if pid == sender_id:
+						continue
+					if peers[pid].corporation_tag == sender_tag:
+						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
+				return
+			_:  # GLOBAL, TRADE, etc. → broadcast to all except sender
 				print("[Chat] GLOBAL relay: all peers=%s" % [str(peers.keys())])
 				for pid in peers:
 					if pid == sender_id:
@@ -698,7 +735,7 @@ func _send_chat_history(peer_id: int, system_id: int) -> void:
 		var ch: int = entry.get("ch", 0)
 		if ch == 1 and entry.get("sys", -1) != system_id:
 			continue  # SYSTEM channel from a different system — skip
-		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch, "ctag": entry.get("ctag", "")})
+		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch, "ctag": entry.get("ctag", ""), "rl": entry.get("rl", "player")})
 	print("[Chat] _send_chat_history: after filter=%d (from %d)" % [history.size(), _chat_buffer.size()])
 	if history.is_empty():
 		return
@@ -823,8 +860,8 @@ func _rpc_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: 
 # COMBAT SYNC RPCs
 # =========================================================================
 
-## Client -> Server: Player fired a weapon.
-@rpc("any_peer", "reliable")
+## Client -> Server: Player fired a weapon (visual only, loss-tolerant).
+@rpc("any_peer", "unreliable_ordered")
 func _rpc_fire_event(weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
 	if not is_server():
 		return
@@ -870,10 +907,11 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 	# Reject hits on docked or dead players
 	if target_state.is_docked or target_state.is_dead:
 		return
-	# Distance validation
-	var sender_pos =Vector3(sender_state.pos_x, sender_state.pos_y, sender_state.pos_z)
-	var target_pos =Vector3(target_state.pos_x, target_state.pos_y, target_state.pos_z)
-	if sender_pos.distance_to(target_pos) > 3000.0:
+	# Distance validation (use float64 arithmetic — Vector3 is float32, loses precision at >10km)
+	var dx: float = sender_state.pos_x - target_state.pos_x
+	var dy: float = sender_state.pos_y - target_state.pos_y
+	var dz: float = sender_state.pos_z - target_state.pos_z
+	if dx * dx + dy * dy + dz * dz > 3000.0 * 3000.0:
 		return
 	# Weapon damage bounds — reject unknown weapons entirely
 	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
@@ -1041,6 +1079,47 @@ func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void
 
 
 # =========================================================================
+# SYSTEM CHANGE RPCs (reliable instant notification)
+# =========================================================================
+
+## Client -> Server: I just changed star system (via jump gate/wormhole).
+@rpc("any_peer", "reliable")
+func _rpc_player_system_changed(old_system_id: int, new_system_id: int) -> void:
+	if not is_server():
+		return
+	var sender_id = multiplayer.get_remote_sender_id()
+	var state = peers.get(sender_id)
+	if state == null:
+		return
+	# Update system_id immediately
+	state.system_id = new_system_id
+	_player_last_system[sender_id] = new_system_id
+	# Notify peers in the OLD system: remove puppet
+	for pid in get_peers_in_system(old_system_id):
+		if pid == sender_id:
+			continue
+		_rpc_receive_player_left_system.rpc_id(pid, sender_id)
+	# Notify peers in the NEW system: create puppet
+	var ship_id_str: String = String(state.ship_id)
+	for pid in get_peers_in_system(new_system_id):
+		if pid == sender_id:
+			continue
+		_rpc_receive_player_entered_system.rpc_id(pid, sender_id, ship_id_str)
+
+## Server -> Client: A player left your system (remove puppet immediately).
+@rpc("authority", "reliable")
+func _rpc_receive_player_left_system(pid: int) -> void:
+	player_left_system_received.emit(pid)
+
+## Server -> Client: A player entered your system (create puppet).
+@rpc("authority", "reliable")
+func _rpc_receive_player_entered_system(pid: int, ship_id_str: String) -> void:
+	if peers.has(pid):
+		peers[pid].ship_id = StringName(ship_id_str)
+	player_entered_system_received.emit(pid, StringName(ship_id_str))
+
+
+# =========================================================================
 # FLEET DEPLOYMENT RPCs
 # =========================================================================
 
@@ -1171,7 +1250,7 @@ func _rpc_receive_asteroid_depleted(asteroid_id_str: String) -> void:
 
 ## Client -> Server: batch of mining damage claims (0.5s interval).
 ## claims: [{ "aid": asteroid_id, "dmg": damage, "hm": health_max }]
-@rpc("any_peer", "unreliable_ordered")
+@rpc("any_peer", "reliable")
 func _rpc_mining_damage_claim(claims: Array) -> void:
 	if not is_server():
 		return
@@ -1399,7 +1478,7 @@ func _rpc_request_kick_from_group(target_pid: int) -> void:
 		return
 
 	_remove_member_from_group(gid, target_pid)
-	var kicked_name: String = peers[target_pid].player_name if peers.has(target_pid) else "Pilote"
+	var _kicked_name: String = peers[target_pid].player_name if peers.has(target_pid) else "Pilote"
 	_rpc_receive_group_dissolved.rpc_id(target_pid, "Vous avez été expulsé du groupe.")
 
 
@@ -1425,11 +1504,10 @@ func _rpc_receive_group_dissolved(reason: String) -> void:
 	group_dissolved.emit(reason)
 
 
-## Server -> Client: Error message.
+## Server -> Client: Error message (does NOT dissolve the group).
 @rpc("authority", "reliable")
 func _rpc_receive_group_error(msg: String) -> void:
-	# Display as a toast or system chat message
-	group_dissolved.emit("")  # empty reason = just an error, not a dissolve
+	group_error.emit(msg)
 	# Route to chat as system message
 	chat_message_received.emit("SYSTÈME", 1, msg, "", "player")
 

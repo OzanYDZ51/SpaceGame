@@ -23,6 +23,18 @@ var _compass: Control = null
 var _warnings: Control = null
 
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
+const COMPASS_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
+const COMPASS_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
+const COMPASS_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
+const COMPASS_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
+const COMPASS_COL_TARGET: Color = Color(1.0, 0.3, 0.2, 0.9)
+const COMPASS_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
+const COMPASS_POI_TYPES: Array = [
+	EntityRegistrySystem.EntityType.STATION,
+	EntityRegistrySystem.EntityType.JUMP_GATE,
+	EntityRegistrySystem.EntityType.PLANET,
+	EntityRegistrySystem.EntityType.STAR,
+]
 
 
 func _ready() -> void:
@@ -40,7 +52,7 @@ func _ready() -> void:
 	_top_bar.draw.connect(_draw_top_bar.bind(_top_bar))
 	add_child(_top_bar)
 
-	_compass = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -120, 60, 120, 80)
+	_compass = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -120, 46, 120, 80)
 	_compass.draw.connect(_draw_compass.bind(_compass))
 	add_child(_compass)
 
@@ -234,17 +246,20 @@ func _draw_compass(ctrl: Control) -> void:
 	var w =ctrl.size.x
 	var h =ctrl.size.y
 	var cx =w / 2.0
-	ctrl.draw_rect(Rect2(0, 0, w, h), UITheme.BG_DARK)
+	# Top 14px reserved for POI markers, bottom 20px for compass strip
+	var strip_top: float = 14.0
+	ctrl.draw_rect(Rect2(0, strip_top, w, h - strip_top), UITheme.BG_DARK)
 	ctrl.draw_line(Vector2(0, h - 1), Vector2(w, h - 1), UITheme.BORDER, 1.0)
 
 	var fwd =-ship.global_transform.basis.z
-	var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
-	if heading < 0: heading += 360.0
+	var heading_deg: float = rad_to_deg(atan2(fwd.x, -fwd.z))
+	if heading_deg < 0: heading_deg += 360.0
+	var heading_rad: float = atan2(fwd.x, -fwd.z)
 	var ppd =3.0
 	var labels ={0: "N", 45: "NE", 90: "E", 135: "SE", 180: "S", 225: "SO", 270: "O", 315: "NO"}
 
 	for d in range(-50, 51):
-		var wd: float = fmod(heading + d + 360.0, 360.0)
+		var wd: float = fmod(heading_deg + d + 360.0, 360.0)
 		var sx =cx + d * ppd
 		if sx < 0 or sx > w:
 			continue
@@ -254,8 +269,89 @@ func _draw_compass(ctrl: Control) -> void:
 		if rd in labels and abs(d) < 48:
 			var lbl: String = labels[rd]
 			var lw =font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, UITheme.FONT_SIZE_TINY).x
-			ctrl.draw_string(font, Vector2(sx - lw / 2.0, 12), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
-	ctrl.draw_line(Vector2(cx, 0), Vector2(cx, 4), UITheme.TEXT, 1.5)
+			ctrl.draw_string(font, Vector2(sx - lw / 2.0, strip_top + 12), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.PRIMARY)
+	# Center tick
+	ctrl.draw_line(Vector2(cx, strip_top), Vector2(cx, strip_top + 4), UITheme.TEXT, 1.5)
+
+	# --- POI markers (Star Citizen style chevrons in the top 14px zone) ---
+	var half_fov_deg: float = 40.0
+	var player_upos: Array = FloatingOrigin.to_universe_pos(ship.global_position)
+	var px: float = player_upos[0]
+	var pz: float = player_upos[2]
+
+	# Get current target id
+	var target_id: String = ""
+	if targeting_system and targeting_system.has_method("get_target_id"):
+		target_id = targeting_system.get_target_id()
+	elif targeting_system and "current_target" in targeting_system:
+		var t = targeting_system.current_target
+		if t != null and is_instance_valid(t):
+			var t_ent: Dictionary = EntityRegistry.get_entity(t.name)
+			if not t_ent.is_empty():
+				target_id = t_ent["id"]
+
+	# Collect POI markers: [{bearing_delta, label, color, is_target}]
+	var markers: Array = []
+	for ent in EntityRegistry.get_all().values():
+		var etype: int = ent["type"]
+		var is_target: bool = ent["id"] == target_id and target_id != ""
+		var is_poi: bool = etype in COMPASS_POI_TYPES
+		if not is_poi and not is_target:
+			continue
+
+		var dx: float = ent["pos_x"] - px
+		var dz: float = ent["pos_z"] - pz
+		var bearing: float = atan2(dx, -dz)
+		var delta: float = bearing - heading_rad
+		# Normalize to [-PI, PI]
+		while delta > PI: delta -= TAU
+		while delta < -PI: delta += TAU
+		var delta_deg: float = rad_to_deg(delta)
+
+		if abs(delta_deg) > half_fov_deg:
+			continue
+
+		var marker_col: Color
+		var marker_label: String
+		if is_target:
+			marker_col = COMPASS_COL_TARGET
+			marker_label = "TGT"
+		else:
+			match etype:
+				EntityRegistrySystem.EntityType.STATION:
+					marker_col = COMPASS_COL_STATION
+					marker_label = "STA"
+				EntityRegistrySystem.EntityType.JUMP_GATE:
+					marker_col = COMPASS_COL_GATE
+					marker_label = "JMP"
+				EntityRegistrySystem.EntityType.PLANET:
+					marker_col = COMPASS_COL_PLANET
+					marker_label = "PLN"
+				EntityRegistrySystem.EntityType.STAR:
+					marker_col = COMPASS_COL_STAR
+					marker_label = "SOL"
+				_:
+					marker_col = UITheme.PRIMARY
+					marker_label = "???"
+
+		markers.append({"delta_deg": delta_deg, "label": marker_label, "color": marker_col, "is_target": is_target})
+
+	# Sort: targets on top (drawn last)
+	markers.sort_custom(func(a, b): return not a["is_target"] and b["is_target"])
+
+	for m in markers:
+		var sx: float = cx + m["delta_deg"] * ppd
+		sx = clampf(sx, 6.0, w - 6.0)
+		var mc: Color = m["color"]
+		# Chevron pointing down (▽) at top of compass
+		var cy_m: float = 3.0
+		var cs: float = 4.0 if m["is_target"] else 3.0
+		ctrl.draw_line(Vector2(sx - cs, cy_m), Vector2(sx, cy_m + cs), mc, 1.5 if m["is_target"] else 1.0)
+		ctrl.draw_line(Vector2(sx + cs, cy_m), Vector2(sx, cy_m + cs), mc, 1.5 if m["is_target"] else 1.0)
+		# Small label
+		var lbl: String = m["label"]
+		var lw: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, 8).x
+		ctrl.draw_string(font, Vector2(sx - lw / 2.0, cy_m + cs + 7), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(mc.r, mc.g, mc.b, 0.7))
 
 
 # =============================================================================

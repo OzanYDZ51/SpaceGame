@@ -18,14 +18,19 @@ const SERVICE_NAMES: Dictionary = {
 	Service.ENTREPOT: "entrepot",
 }
 
-const SERVICE_LABELS: Dictionary = {
-	Service.COMMERCE: "COMMERCE",
-	Service.EQUIPMENT: "ÉQUIPEMENT",
-	Service.REPAIR: "RÉPARATIONS",
-	Service.SHIPYARD: "CHANTIER NAVAL",
-	Service.REFINERY: "RAFFINERIE",
-	Service.ENTREPOT: "ENTREPÔT",
+## Locale keys for service labels — use Locale.t(SERVICE_LABEL_KEYS[svc]) to get translated name.
+const SERVICE_LABEL_KEYS: Dictionary = {
+	Service.COMMERCE: "station.commerce",
+	Service.EQUIPMENT: "station.equipment",
+	Service.REPAIR: "station.repair",
+	Service.SHIPYARD: "station.shipyard",
+	Service.REFINERY: "station.refinery",
+	Service.ENTREPOT: "station.storage",
 }
+
+## Returns translated service label.
+static func get_service_label(svc: int) -> String:
+	return Locale.t(SERVICE_LABEL_KEYS.get(svc, ""))
 
 const SERVICE_PRICES: Dictionary = {
 	Service.COMMERCE: 5000,

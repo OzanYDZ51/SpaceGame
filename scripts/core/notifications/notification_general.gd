@@ -14,29 +14,29 @@ func _init(svc: NotificationService) -> void:
 
 func repair(recovered_count: int = 0) -> void:
 	if recovered_count > 0:
-		_svc.toast("FLOTTE RÉPARÉE — %d vaisseau(x) récupéré(s)" % recovered_count, UIToast.ToastType.SUCCESS)
+		_svc.toast(Locale.t("notif.fleet_repaired") % recovered_count, UIToast.ToastType.SUCCESS)
 	else:
-		_svc.toast("VAISSEAU RÉPARÉ", UIToast.ToastType.SUCCESS)
+		_svc.toast(Locale.t("notif.ship_repaired"), UIToast.ToastType.SUCCESS)
 
 
 func cargo_full(lost_count: int) -> void:
-	_svc.toast("SOUTE PLEINE — %d objet(s) perdu(s)" % lost_count, UIToast.ToastType.WARNING)
+	_svc.toast(Locale.t("notif.cargo_full") % lost_count, UIToast.ToastType.WARNING)
 
 
 func service_unlocked(label: String) -> void:
-	_svc.toast("%s DÉBLOQUÉ" % label, UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.service_unlocked") % label, UIToast.ToastType.SUCCESS)
 
 
 func insufficient_credits(required: String) -> void:
-	_svc.toast("CRÉDITS INSUFFISANTS — %s CR requis" % required, UIToast.ToastType.WARNING)
+	_svc.toast(Locale.t("notif.insufficient_credits") % required, UIToast.ToastType.WARNING)
 
 
 func bug_report_sent() -> void:
-	_svc.toast("Bug report envoye!", UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.bug_report_sent"), UIToast.ToastType.SUCCESS)
 
 
 func bug_report_error(code: int) -> void:
-	_svc.toast("Erreur d'envoi (code %d)" % code, UIToast.ToastType.ERROR)
+	_svc.toast(Locale.t("notif.bug_report_error") % code, UIToast.ToastType.ERROR)
 
 
 func bug_report_validation(msg: String) -> void:
@@ -44,4 +44,4 @@ func bug_report_validation(msg: String) -> void:
 
 
 func undock_blocked() -> void:
-	_svc.toast("SORTIE IMPOSSIBLE — Zone bloquée", UIToast.ToastType.WARNING, 3.0)
+	_svc.toast(Locale.t("notif.undock_blocked"), UIToast.ToastType.WARNING, 3.0)

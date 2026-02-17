@@ -307,11 +307,19 @@ func _physics_process(delta: float) -> void:
 # =============================================================================
 
 func _sync_node_positions() -> void:
+	var stale_ids: Array[StringName] = []
 	for id: StringName in _node_ids:
 		var data = _ships[id]
+		if data.is_promoting:
+			continue
 		if data.node_ref and is_instance_valid(data.node_ref):
 			data.position = data.node_ref.global_position
 			_grid.update_position(id, data.position)
+		else:
+			# Node was freed (NPC killed in combat) — mark for cleanup
+			stale_ids.append(id)
+	for sid in stale_ids:
+		unregister_ship(sid)
 
 
 var _sorted_ids: Array[StringName] = []
@@ -512,6 +520,19 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 	if node is RigidBody3D:
 		(node as RigidBody3D).linear_velocity = data.velocity
 
+	# Seed snapshot buffer for remote puppets so they can extrapolate immediately
+	# instead of freezing until the next network tick arrives (up to 50ms).
+	if data.is_remote_player or data.is_server_npc:
+		var upos: Array = FloatingOrigin.to_universe_pos(data.position)
+		var seed_snap: Dictionary = {
+			"pos": upos,
+			"vel": data.velocity,
+			"rot": node.rotation_degrees,
+			"thr": 0.5,
+			"time": Time.get_ticks_msec() / 1000.0,
+		}
+		node._snapshots.append(seed_snap)
+
 	if node is RigidBody3D:
 		var rb =node as RigidBody3D
 		rb.collision_layer = Constants.LAYER_SHIPS
@@ -617,10 +638,10 @@ func _update_multimesh() -> void:
 		return
 
 	var count: int = 0
-	# First pass: count alive LOD3
+	# First pass: count visible LOD3 (alive + not docked)
 	for id: StringName in _lod3_ids:
 		var data = _ships[id]
-		if not data.is_dead:
+		if not data.is_dead and not data.is_docked:
 			count += 1
 
 	if _multimesh.instance_count < count:
@@ -630,7 +651,7 @@ func _update_multimesh() -> void:
 	var idx: int = 0
 	for id: StringName in _lod3_ids:
 		var data = _ships[id]
-		if data.is_dead:
+		if data.is_dead or data.is_docked:
 			continue
 		# Billboard dot — position only, no rotation/scale needed
 		var xform =Transform3D(Basis.IDENTITY, data.position)

@@ -740,13 +740,13 @@ func set_corporation_tab(has_corp: bool, tag: String = "") -> void:
 
 
 ## Show or hide the GROUP tab. Called when joining or leaving a group.
-func set_group_tab_visible(is_visible: bool) -> void:
+func set_group_tab_visible(show_tab: bool) -> void:
 	if Channel.GROUP >= _tab_buttons.size():
 		return
-	_group_tab_visible = is_visible
-	_tab_buttons[Channel.GROUP].visible = is_visible
+	_group_tab_visible = show_tab
+	_tab_buttons[Channel.GROUP].visible = show_tab
 	# If currently on GROUP tab and it disappears, switch to GLOBAL
-	if not is_visible and _current_channel == Channel.GROUP:
+	if not show_tab and _current_channel == Channel.GROUP:
 		_on_tab_pressed(Channel.GLOBAL)
 
 

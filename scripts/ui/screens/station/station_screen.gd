@@ -50,20 +50,24 @@ enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMI
 
 
 func _ready() -> void:
-	screen_title = "STATION"
+	screen_title = Locale.t("screen.station")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
-	_cat_labels = PackedStringArray(["NÉGOCE", "TECHNIQUE", "STATION"])
+	_rebuild_labels()
+
+
+func _rebuild_labels() -> void:
+	_cat_labels = PackedStringArray([Locale.t("cat.trade"), Locale.t("cat.tech"), Locale.t("cat.station")])
 	_cards = [
-		{"svc": StationServices.Service.COMMERCE, "label": "COMMERCE", "icon": ICO.COMMERCE, "cat": 0, "special": ""},
-		{"svc": StationServices.Service.SHIPYARD, "label": "CHANTIER NAVAL", "icon": ICO.SHIPYARD, "cat": 0, "special": ""},
-		{"svc": StationServices.Service.ENTREPOT, "label": "ENTREPÔT", "icon": ICO.STORAGE, "cat": 0, "special": ""},
-		{"svc": StationServices.Service.REPAIR, "label": "RÉPARATIONS", "icon": ICO.REPAIR, "cat": 1, "special": ""},
-		{"svc": StationServices.Service.EQUIPMENT, "label": "ÉQUIPEMENT", "icon": ICO.EQUIP, "cat": 1, "special": ""},
-		{"svc": StationServices.Service.REFINERY, "label": "RAFFINERIE", "icon": ICO.REFINERY, "cat": 1, "special": ""},
-		{"svc": -1, "label": "ÉQUIP. STATION", "icon": ICO.STN_EQUIP, "cat": 2, "special": "station_equip"},
-		{"svc": -1, "label": "ADMINISTRATION", "icon": ICO.ADMIN, "cat": 2, "special": "admin"},
-		{"svc": -1, "label": "MISSIONS", "icon": ICO.MISSIONS, "cat": 2, "special": "missions"},
+		{"svc": StationServices.Service.COMMERCE, "label": Locale.t("station.commerce"), "icon": ICO.COMMERCE, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.SHIPYARD, "label": Locale.t("station.shipyard"), "icon": ICO.SHIPYARD, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.ENTREPOT, "label": Locale.t("station.storage"), "icon": ICO.STORAGE, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.REPAIR, "label": Locale.t("station.repair"), "icon": ICO.REPAIR, "cat": 1, "special": ""},
+		{"svc": StationServices.Service.EQUIPMENT, "label": Locale.t("station.equipment"), "icon": ICO.EQUIP, "cat": 1, "special": ""},
+		{"svc": StationServices.Service.REFINERY, "label": Locale.t("station.refinery"), "icon": ICO.REFINERY, "cat": 1, "special": ""},
+		{"svc": -1, "label": Locale.t("station.station_equip"), "icon": ICO.STN_EQUIP, "cat": 2, "special": "station_equip"},
+		{"svc": -1, "label": Locale.t("station.administration"), "icon": ICO.ADMIN, "cat": 2, "special": "admin"},
+		{"svc": -1, "label": Locale.t("station.missions"), "icon": ICO.MISSIONS, "cat": 2, "special": "missions"},
 	]
 
 
@@ -77,6 +81,11 @@ func setup(services, system_id: int, station_idx: int, economy) -> void:
 	_system_id = system_id
 	_station_idx = station_idx
 	_economy = economy
+	queue_redraw()
+
+
+func _on_language_changed(_lang: String) -> void:
+	_rebuild_labels()
 	queue_redraw()
 
 
@@ -193,7 +202,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(0, name_y), _station_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	var unlocked_count: int = _services.get_unlocked_count(_system_id, _station_idx) if _services else 0
-	draw_string(font, Vector2(0, name_y + 18), "Terminal · %d/6 services" % unlocked_count,
+	draw_string(font, Vector2(0, name_y + 18), Locale.t("station.terminal") % unlocked_count,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# --- Category headers ---
@@ -277,12 +286,12 @@ func _draw_card(rect: Rect2, card: Dictionary, idx: int) -> void:
 
 	# Status / price
 	if is_special:
-		draw_string(font, Vector2(rect.position.x, rect.end.y - 10), "DISPONIBLE",
+		draw_string(font, Vector2(rect.position.x, rect.end.y - 10), Locale.t("common.available"),
 			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_TINY, Color(0.5, 0.6, 1.0, 0.6))
 	elif unlocked:
-		# Small green dot + ACTIF
+		# Small green dot + ACTIVE
 		draw_circle(Vector2(rect.position.x + rect.size.x * 0.5 - 24, rect.end.y - 15), 3.0, UITheme.ACCENT)
-		draw_string(font, Vector2(rect.position.x + 8, rect.end.y - 10), "ACTIF",
+		draw_string(font, Vector2(rect.position.x + 8, rect.end.y - 10), Locale.t("common.active"),
 			HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 16, UITheme.FONT_SIZE_TINY, UITheme.ACCENT)
 	else:
 		var price: int = StationServices.SERVICE_PRICES[card["svc"]]
@@ -373,7 +382,7 @@ func _draw_undock() -> void:
 	draw_corners(r, 6.0, bc)
 	var font: Font = UITheme.get_font()
 	var ty: float = r.position.y + (r.size.y + UITheme.FONT_SIZE_BODY) * 0.5 - 1
-	draw_string(font, Vector2(r.position.x, ty), "QUITTER LE DOCK",
+	draw_string(font, Vector2(r.position.x, ty), Locale.t("btn.leave_dock"),
 		HORIZONTAL_ALIGNMENT_CENTER, r.size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
@@ -467,5 +476,5 @@ func _try_unlock(svc: int) -> void:
 		return
 	if _services.unlock(_system_id, _station_idx, svc, _economy):
 		if GameManager._notif:
-			GameManager._notif.general.service_unlocked(StationServices.SERVICE_LABELS[svc])
+			GameManager._notif.general.service_unlocked(StationServices.get_service_label(svc))
 		queue_redraw()

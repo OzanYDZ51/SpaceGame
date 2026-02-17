@@ -79,7 +79,7 @@ func _ready() -> void:
 
 	# Language dropdown (above tab bar)
 	_dropdown_lang = UIDropdown.new()
-	_dropdown_lang.options = Array(Locale.get_language_labels()) as Array[String]
+	_dropdown_lang.options.assign(Locale.get_language_labels())
 	_dropdown_lang.selected_index = Locale.get_language_index()
 	_dropdown_lang.option_selected.connect(_on_lang_selected)
 	add_child(_dropdown_lang)

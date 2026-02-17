@@ -67,6 +67,8 @@ func register(id: String, data: Dictionary) -> void:
 	if not data.has("orbital_parent"): data["orbital_parent"] = ""
 	# Store seed angle for deterministic orbit from unix time
 	data["orbital_angle_base"] = data["orbital_angle"]
+	if not data.has("fwd_x"): data["fwd_x"] = 0.0
+	if not data.has("fwd_z"): data["fwd_z"] = -1.0  # facing north by default
 	if not data.has("radius"): data["radius"] = 1.0
 	if not data.has("color"): data["color"] = Color.WHITE
 	if not data.has("extra"): data["extra"] = {}
@@ -173,6 +175,10 @@ func _process(delta: float) -> void:
 				ent["pos_x"] = upos[0]
 				ent["pos_y"] = upos[1]
 				ent["pos_z"] = upos[2]
+			# Sync forward direction (works for all Node3D: players, remotes, NPCs)
+			var fwd_vec: Vector3 = -node_ref.global_transform.basis.z
+			ent["fwd_x"] = fwd_vec.x
+			ent["fwd_z"] = fwd_vec.z
 			# Velocity for RigidBody3D (both orbiting and non-orbiting)
 			if node_ref is RigidBody3D:
 				var rb: RigidBody3D = node_ref

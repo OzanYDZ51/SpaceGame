@@ -54,9 +54,5 @@ func _fix_mesh_materials(mi: MeshInstance3D) -> void:
 			if std.cull_mode != BaseMaterial3D.CULL_DISABLED:
 				pass  # Keep Godot's default unless GLB set doubleSided
 
-			# Clamp non-physical metallic to 0 or 1
-			if std.metallic > 0.1 and std.metallic < 0.9:
-				std.metallic = 0.0
-
 			# Ensure no lightmap UV generation artifacts
 			std.uv1_triplanar = false

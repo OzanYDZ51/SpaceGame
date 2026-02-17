@@ -22,6 +22,10 @@ static func get_weapon(weapon_name: StringName) -> WeaponResource:
 	return w
 
 
+static func has_weapon(weapon_name: StringName) -> bool:
+	return _get_registry().get_by_id(weapon_name) != null
+
+
 static func get_all_weapon_names() -> Array[StringName]:
 	return _get_registry().get_all_ids()
 

@@ -12,15 +12,16 @@ var _tabs: Array[UIComponent] = []
 var _no_corporation_view: NoCorporationView = null
 var _corporation_manager = null
 
-const TAB_NAMES = ["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Proprietes", "Log"]
+var TAB_NAMES: Array = []
 
 
 func _ready() -> void:
-	screen_title = "CORPORATION"
+	screen_title = Locale.t("screen.corporation")
 	screen_mode = ScreenMode.FULLSCREEN
 	super._ready()
 
 	# Tab bar
+	TAB_NAMES = [Locale.t("tab.overview"), Locale.t("tab.members"), Locale.t("tab.ranks"), Locale.t("tab.diplomacy"), Locale.t("tab.properties"), Locale.t("tab.log")]
 	_tab_bar = UITabBar.new()
 	_tab_bar.tabs.assign(TAB_NAMES)
 	_tab_bar.tab_changed.connect(_on_tab_changed)
@@ -84,7 +85,7 @@ func _update_view() -> void:
 	_no_corporation_view.visible = not has_corporation
 
 	if has_corporation:
-		screen_title = "CORPORATION: %s [%s]" % [_corporation_manager.corporation_data.corporation_name, _corporation_manager.corporation_data.corporation_tag]
+		screen_title = Locale.t("corp.header_with_tag") % [_corporation_manager.corporation_data.corporation_name, _corporation_manager.corporation_data.corporation_tag]
 		# Show the currently selected tab
 		var current_tab: int = _tab_bar.current_tab if _tab_bar.current_tab >= 0 else 0
 		if current_tab < _tabs.size():
@@ -93,7 +94,7 @@ func _update_view() -> void:
 			if tab.has_method("refresh"):
 				tab.call("refresh", _corporation_manager)
 	else:
-		screen_title = "CORPORATION"
+		screen_title = Locale.t("screen.corporation")
 		_no_corporation_view.refresh(_corporation_manager)
 
 	queue_redraw()

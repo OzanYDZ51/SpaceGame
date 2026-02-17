@@ -269,8 +269,6 @@ func _on_event_started(evt: EventData) -> void:
 	var hud = _get_flight_hud()
 	if hud:
 		hud.show_comm_transmission(evt.tier, evt.get_color())
-	elif _notif:
-		_notif.toast("%s détecté dans le système!" % evt.get_display_name())
 
 
 func _on_event_completed(evt: EventData) -> void:

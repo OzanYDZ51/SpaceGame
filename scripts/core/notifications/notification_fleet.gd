@@ -13,15 +13,15 @@ func _init(svc: NotificationService) -> void:
 
 
 func deployed(ship_name: String) -> void:
-	_svc.toast("DEPLOIEMENT: %s" % ship_name, UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.fleet_deploy") % ship_name, UIToast.ToastType.SUCCESS)
 
 
 func recalled(ship_name: String) -> void:
-	_svc.toast("RAPPEL: %s" % ship_name)
+	_svc.toast(Locale.t("notif.fleet_recall") % ship_name)
 
 
 func lost(ship_name: String) -> void:
-	_svc.toast("VAISSEAU PERDU: %s" % ship_name, UIToast.ToastType.WARNING)
+	_svc.toast(Locale.t("notif.fleet_lost") % ship_name, UIToast.ToastType.WARNING)
 
 
 func deploy_failed(reason: String) -> void:
@@ -29,8 +29,8 @@ func deploy_failed(reason: String) -> void:
 
 
 func earned(ship_name: String, credits: int) -> void:
-	_svc.toast("VENTE: %s — %s CR" % [ship_name, PlayerEconomy.format_credits(credits)], UIToast.ToastType.SUCCESS)
+	_svc.toast(Locale.t("notif.fleet_sold") % [ship_name, PlayerEconomy.format_credits(credits)], UIToast.ToastType.SUCCESS)
 
 
 func destroyed() -> void:
-	_svc.toast("VAISSEAU DETRUIT", UIToast.ToastType.WARNING)
+	_svc.toast(Locale.t("notif.ship_destroyed"), UIToast.ToastType.WARNING)

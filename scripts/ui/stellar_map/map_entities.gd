@@ -451,13 +451,12 @@ func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font)
 	var col: Color = ent.get("color", MapColors.PLAYER)
 	var is_local: bool = ent["id"] == _player_id
 
-	# Get heading from velocity or default to up
+	# Get heading from facing direction (not velocity — 6DOF ships can strafe/drift)
 	var heading_angle: float = -PI / 2.0  # default: pointing up
-	var vel_x: float = ent["vel_x"]
-	var vel_z: float = ent["vel_z"]
-	var speed: float = sqrt(vel_x * vel_x + vel_z * vel_z)
-	if speed > 1.0:
-		heading_angle = atan2(vel_z, vel_x)
+	var fwd_x: float = ent.get("fwd_x", 0.0)
+	var fwd_z: float = ent.get("fwd_z", -1.0)
+	if abs(fwd_x) > 0.001 or abs(fwd_z) > 0.001:
+		heading_angle = atan2(fwd_z, fwd_x)
 
 	# Triangle
 	var s: float = 8.0 if is_local else 6.0
@@ -472,7 +471,10 @@ func _draw_player(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font)
 		var ring_col =Color(col.r, col.g, col.b, pulse * 0.4)
 		draw_arc(pos, 14.0, 0, TAU, 24, ring_col, 1.0, true)
 
-	# Velocity vector
+	# Velocity vector (separate from facing direction — shows movement)
+	var vel_x: float = ent.get("vel_x", 0.0)
+	var vel_z: float = ent.get("vel_z", 0.0)
+	var speed: float = sqrt(vel_x * vel_x + vel_z * vel_z)
 	if speed > 5.0:
 		var vel_end: Vector2 = pos + Vector2(vel_x, vel_z).normalized() * clampf(speed * 0.05, 10.0, 60.0)
 		draw_line(pos, vel_end, Color(col.r, col.g, col.b, 0.4), 1.0)
@@ -496,12 +498,12 @@ func _draw_npc_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font
 	var col: Color = ent.get("color", MapColors.NPC_SHIP)
 	var s: float = 5.0
 
-	# Get heading from velocity
+	# Get heading from facing direction (not velocity — 6DOF ships can strafe/drift)
 	var heading_angle: float = -PI / 2.0  # default: pointing up
-	var vel_x: float = ent["vel_x"]
-	var vel_z: float = ent["vel_z"]
-	if sqrt(vel_x * vel_x + vel_z * vel_z) > 1.0:
-		heading_angle = atan2(vel_z, vel_x)
+	var fwd_x: float = ent.get("fwd_x", 0.0)
+	var fwd_z: float = ent.get("fwd_z", -1.0)
+	if abs(fwd_x) > 0.001 or abs(fwd_z) > 0.001:
+		heading_angle = atan2(fwd_z, fwd_x)
 
 	# Triangle pointing in heading direction
 	var p1: Vector2 = pos + Vector2(cos(heading_angle), sin(heading_angle)) * s * 1.5

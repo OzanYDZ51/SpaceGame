@@ -18,7 +18,7 @@ const PANEL_WIDTH: float = 480.0
 
 
 func _ready() -> void:
-	screen_title = "RÉSEAU"
+	screen_title = Locale.t("screen.network")
 	screen_mode = ScreenMode.FULLSCREEN
 	super._ready()
 
@@ -75,18 +75,18 @@ func _draw() -> void:
 
 	# --- Mode & IP info ---
 	if NetworkManager.is_connected_to_server():
-		var server_text ="CONNECTÉ À %s" % NetworkManager._server_url
+		var server_text = Locale.t("mp.connected_to") % NetworkManager._server_url
 		draw_string(font, Vector2(0, y), server_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_HEADER, UITheme.ACCENT)
 		y += 18
-		var info_text ="Peer ID : %d" % NetworkManager.local_peer_id
+		var info_text = Locale.t("mp.peer_id") % NetworkManager.local_peer_id
 		draw_string(font, Vector2(0, y), info_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	else:
-		draw_string(font, Vector2(0, y), "Connexion à %s..." % Constants.NET_GAME_SERVER_URL, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
+		draw_string(font, Vector2(0, y), Locale.t("mp.connecting") % Constants.NET_GAME_SERVER_URL, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 
 	# --- Player list header ---
 	var list_header_y: float = _player_list.position.y - 20
 	var count: int = _player_list.items.size()
-	draw_string(font, Vector2(left_x, list_header_y), "JOUEURS EN LIGNE (%d)" % count, HORIZONTAL_ALIGNMENT_LEFT, PANEL_WIDTH, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(left_x, list_header_y), Locale.t("mp.players_online") % count, HORIZONTAL_ALIGNMENT_LEFT, PANEL_WIDTH, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
 
 
 func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> void:
@@ -100,11 +100,11 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 	var col = UITheme.ACCENT if is_self else UITheme.TEXT
 	var suffix = ""
 	if is_self:
-		suffix = " (toi)"
+		suffix = Locale.t("mp.you")
 	ctrl.draw_string(font, Vector2(rect.position.x + 8, rect.position.y + rect.size.y - 5), pname + suffix, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 120, UITheme.FONT_SIZE_LABEL, col)
 	# Show system ID on the right
 	if sys_id >= 0:
-		var sys_text := "Sys %d" % sys_id
+		var sys_text := Locale.t("mp.system_id") % sys_id
 		var sys_col: Color = UITheme.ACCENT if is_self else UITheme.TEXT_DIM
 		ctrl.draw_string(font, Vector2(rect.position.x + rect.size.x - 70, rect.position.y + rect.size.y - 5), sys_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_SMALL, sys_col)
 
@@ -112,14 +112,14 @@ func _draw_player_row(ctrl: Control, _index: int, rect: Rect2, item: Variant) ->
 func _update_status() -> void:
 	match NetworkManager.connection_state:
 		NetworkManager.ConnectionState.DISCONNECTED:
-			_status_text = "DÉCONNECTÉ"
+			_status_text = Locale.t("mp.disconnected")
 			_status_color = UITheme.WARNING
 		NetworkManager.ConnectionState.CONNECTING:
-			_status_text = "CONNEXION EN COURS..."
+			_status_text = Locale.t("mp.connecting_status")
 			_status_color = UITheme.PRIMARY
 		NetworkManager.ConnectionState.CONNECTED:
 			var player_count: int = NetworkManager.peers.size() + 1  # peers + self
-			_status_text = "EN LIGNE — %d JOUEUR(S)" % player_count
+			_status_text = Locale.t("mp.online_count") % player_count
 			_status_color = UITheme.ACCENT
 
 
@@ -142,6 +142,11 @@ func _refresh_player_list() -> void:
 
 	_player_list.items = items
 	_player_list.queue_redraw()
+
+
+func _on_language_changed(_lang: String) -> void:
+	screen_title = Locale.t("screen.network")
+	queue_redraw()
 
 
 func _on_connection_changed() -> void:

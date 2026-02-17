@@ -4,6 +4,7 @@ extends Node3D
 # =============================================================================
 # Remote NPC Ship - Visual puppet for a server-authoritative NPC.
 # Receives state snapshots from the server and interpolates smoothly.
+# Uses Hermite interpolation (position + velocity) for smooth curves.
 # Similar to RemotePlayerShip but for NPCs.
 # =============================================================================
 
@@ -14,7 +15,8 @@ var linear_velocity: Vector3 = Vector3.ZERO
 
 # Interpolation buffer
 var _snapshots: Array[Dictionary] = []
-const MAX_SNAPSHOTS: int = 20
+const MAX_SNAPSHOTS: int = 30
+const EXTRAPOLATION_MAX: float = 0.5
 
 # Visual
 var _ship_model = null
@@ -34,7 +36,7 @@ func _ready() -> void:
 
 
 func _setup_model() -> void:
-	var data =ShipRegistry.get_ship_data(ship_id)
+	var data = ShipRegistry.get_ship_data(ship_id)
 	_ship_model = ShipModel.new()
 	_ship_model.name = "ShipModel"
 	if data:
@@ -63,7 +65,7 @@ func _setup_model() -> void:
 
 
 func _setup_name_label() -> void:
-	var data =ShipRegistry.get_ship_data(ship_id)
+	var data = ShipRegistry.get_ship_data(ship_id)
 	var display_name: String = String(data.ship_name) if data else String(ship_id)
 	if faction == &"player_fleet":
 		display_name += " [FLOTTE]"
@@ -136,10 +138,7 @@ func _sync_health(hull_ratio: float, shield_ratio: float) -> void:
 
 ## Receive a state snapshot from the server (via NPCSyncState dict).
 func receive_state(state_dict: Dictionary) -> void:
-	# Stamp with LOCAL arrival time — server's timestamp is from a different clock
-	# (each Godot process has its own Time.get_ticks_msec starting at 0).
-	# Using local time ensures render_time and snapshot times share the same clock.
-	var snapshot ={
+	var snapshot: Dictionary = {
 		"pos": [state_dict.get("px", 0.0), state_dict.get("py", 0.0), state_dict.get("pz", 0.0)],
 		"vel": Vector3(state_dict.get("vx", 0.0), state_dict.get("vy", 0.0), state_dict.get("vz", 0.0)),
 		"rot": Vector3(state_dict.get("rx", 0.0), state_dict.get("ry", 0.0), state_dict.get("rz", 0.0)),
@@ -164,13 +163,23 @@ func _process(_delta: float) -> void:
 	var render_time: float = (Time.get_ticks_msec() / 1000.0) - Constants.NET_INTERPOLATION_DELAY
 
 	if _snapshots.size() < 2:
+		# Single snapshot — extrapolate with velocity
 		var snap: Dictionary = _snapshots[0]
-		global_position = FloatingOrigin.to_local_pos(snap["pos"])
+		var dt: float = clampf(render_time - snap["time"], 0.0, EXTRAPOLATION_MAX)
+		var vel: Vector3 = snap["vel"]
+		var pos_arr: Array = snap["pos"]
+		var extrap_pos: Array = [
+			pos_arr[0] + vel.x * dt,
+			pos_arr[1] + vel.y * dt,
+			pos_arr[2] + vel.z * dt,
+		]
+		global_position = FloatingOrigin.to_local_pos(extrap_pos)
 		rotation_degrees = snap["rot"]
-		linear_velocity = snap["vel"]
+		linear_velocity = vel
 		_update_engine_glow(snap.get("thr", 0.0))
 		return
 
+	# Find two snapshots to interpolate between (search from end — most recent first)
 	var from_idx: int = -1
 	for i in range(_snapshots.size() - 2, -1, -1):
 		if _snapshots[i]["time"] <= render_time and _snapshots[i + 1]["time"] >= render_time:
@@ -178,21 +187,41 @@ func _process(_delta: float) -> void:
 			break
 
 	if from_idx >= 0:
-		_interpolate_between(_snapshots[from_idx], _snapshots[from_idx + 1], render_time)
+		_hermite_interpolate(_snapshots[from_idx], _snapshots[from_idx + 1], render_time)
+	elif render_time > _snapshots.back()["time"]:
+		# render_time past all snapshots — extrapolate with decay
+		_extrapolate_smooth(render_time)
 	else:
-		_extrapolate(_snapshots.back(), render_time)
+		# render_time before all snapshots — use earliest
+		var snap: Dictionary = _snapshots[0]
+		global_position = FloatingOrigin.to_local_pos(snap["pos"])
+		rotation_degrees = snap["rot"]
+		linear_velocity = snap["vel"]
+		_update_engine_glow(snap.get("thr", 0.0))
 
 
-func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) -> void:
-	var t_range: float = to["time"] - from["time"]
-	var t: float = clampf((render_time - from["time"]) / t_range, 0.0, 1.0) if t_range > 0.001 else 1.0
+## Hermite interpolation using position + velocity at both endpoints.
+func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) -> void:
+	var dt: float = to["time"] - from["time"]
+	var t: float = clampf((render_time - from["time"]) / dt, 0.0, 1.0) if dt > 0.001 else 1.0
 
-	var pos_from =from["pos"] as Array
-	var pos_to =to["pos"] as Array
+	# Hermite basis functions
+	var t2: float = t * t
+	var t3: float = t2 * t
+	var h00: float = 2.0 * t3 - 3.0 * t2 + 1.0
+	var h10: float = t3 - 2.0 * t2 + t
+	var h01: float = -2.0 * t3 + 3.0 * t2
+	var h11: float = t3 - t2
+
+	var pos_from: Array = from["pos"]
+	var pos_to: Array = to["pos"]
+	var vel_from: Vector3 = from["vel"]
+	var vel_to: Vector3 = to["vel"]
+
 	var interp_pos: Array = [
-		lerpf(pos_from[0], pos_to[0], t),
-		lerpf(pos_from[1], pos_to[1], t),
-		lerpf(pos_from[2], pos_to[2], t),
+		h00 * pos_from[0] + h10 * dt * vel_from.x + h01 * pos_to[0] + h11 * dt * vel_to.x,
+		h00 * pos_from[1] + h10 * dt * vel_from.y + h01 * pos_to[1] + h11 * dt * vel_to.y,
+		h00 * pos_from[2] + h10 * dt * vel_from.z + h01 * pos_to[2] + h11 * dt * vel_to.z,
 	]
 	global_position = FloatingOrigin.to_local_pos(interp_pos)
 
@@ -204,23 +233,48 @@ func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) 
 		lerp_angle(deg_to_rad(rot_from.z), deg_to_rad(rot_to.z), t),
 	) * (180.0 / PI)
 
-	linear_velocity = from["vel"].lerp(to["vel"], t)
+	# Interpolate velocity (linear is fine for velocity — Hermite derivative would amplify noise)
+	linear_velocity = vel_from.lerp(vel_to, t)
 	_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
 
 
-func _extrapolate(snap: Dictionary, render_time: float) -> void:
-	var dt: float = clampf(render_time - snap["time"], 0.0, 0.25)
-	var vel: Vector3 = snap["vel"]
-	var pos_arr: Array = snap["pos"]
+## Smooth extrapolation with velocity decay to prevent infinite drift.
+func _extrapolate_smooth(render_time: float) -> void:
+	var last: Dictionary = _snapshots.back()
+	var dt: float = clampf(render_time - last["time"], 0.0, EXTRAPOLATION_MAX)
+	var vel: Vector3 = last["vel"]
+
+	# Quadratic decay: full speed at t=0, zero at EXTRAPOLATION_MAX
+	var decay: float = 1.0 - (dt / EXTRAPOLATION_MAX)
+	decay = decay * decay
+
+	var pos_arr: Array = last["pos"]
+	var T: float = EXTRAPOLATION_MAX
+	var integrated_dt: float = dt - (dt * dt) / T + (dt * dt * dt) / (3.0 * T * T)
 	var extrap_pos: Array = [
-		pos_arr[0] + vel.x * dt,
-		pos_arr[1] + vel.y * dt,
-		pos_arr[2] + vel.z * dt,
+		pos_arr[0] + vel.x * integrated_dt,
+		pos_arr[1] + vel.y * integrated_dt,
+		pos_arr[2] + vel.z * integrated_dt,
 	]
 	global_position = FloatingOrigin.to_local_pos(extrap_pos)
-	rotation_degrees = snap["rot"]
-	linear_velocity = vel
-	_update_engine_glow(snap.get("thr", 0.0))
+
+	# Extrapolate rotation from last two snapshots
+	if _snapshots.size() >= 2:
+		var prev: Dictionary = _snapshots[_snapshots.size() - 2]
+		var snap_dt: float = last["time"] - prev["time"]
+		if snap_dt > 0.001:
+			var rot_rate: Vector3 = (last["rot"] - prev["rot"]) / snap_dt
+			rot_rate.x = wrapf(rot_rate.x, -180.0, 180.0) if absf(rot_rate.x) > 180.0 else rot_rate.x
+			rot_rate.y = wrapf(rot_rate.y, -180.0, 180.0) if absf(rot_rate.y) > 180.0 else rot_rate.y
+			rot_rate.z = wrapf(rot_rate.z, -180.0, 180.0) if absf(rot_rate.z) > 180.0 else rot_rate.z
+			rotation_degrees = last["rot"] + rot_rate * dt * decay
+		else:
+			rotation_degrees = last["rot"]
+	else:
+		rotation_degrees = last["rot"]
+
+	linear_velocity = vel * decay
+	_update_engine_glow(last.get("thr", 0.0) * decay)
 
 
 func _update_engine_glow(throttle_amount: float) -> void:
@@ -231,11 +285,11 @@ func _update_engine_glow(throttle_amount: float) -> void:
 ## Play death animation and clean up.
 func play_death() -> void:
 	# Spawn explosion effect
-	var explosion =ExplosionEffect.new()
+	var explosion = ExplosionEffect.new()
 	get_tree().current_scene.add_child(explosion)
 	explosion.global_position = global_position
 
 	# Scale down and free
-	var tween =create_tween()
+	var tween = create_tween()
 	tween.tween_property(self, "scale", Vector3.ZERO, 0.5)
 	tween.tween_callback(queue_free)

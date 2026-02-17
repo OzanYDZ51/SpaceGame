@@ -13,20 +13,20 @@ func _init(svc: NotificationService) -> void:
 
 
 func route_started(sys_name: String, jumps: int) -> void:
-	_svc.toast("ROUTE VERS %s — %d saut%s" % [sys_name, jumps, "s" if jumps > 1 else ""])
+	_svc.toast(Locale.t("notif.route_to") % [sys_name, jumps, "s" if jumps > 1 else ""])
 
 
 func route_completed() -> void:
-	_svc.toast("DESTINATION ATTEINTE")
+	_svc.toast(Locale.t("notif.destination_reached"))
 
 
 func route_not_found() -> void:
-	_svc.toast("AUCUNE ROUTE TROUVEE")
+	_svc.toast(Locale.t("notif.no_route"))
 
 
 func route_cancelled() -> void:
-	_svc.toast("ROUTE ANNULEE")
+	_svc.toast(Locale.t("notif.route_cancelled"))
 
 
 func already_here() -> void:
-	_svc.toast("DEJA SUR PLACE")
+	_svc.toast(Locale.t("notif.already_there"))

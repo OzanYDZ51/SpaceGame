@@ -32,6 +32,9 @@ var external_model_instance: Node3D = null
 ## Engine positions from VFX attach points (already in ShipModel space). If empty, uses defaults.
 var vfx_engine_positions: Array[Vector3] = []
 
+## Hull light configs from HullLightPoint nodes in the ship scene. If empty, uses AABB defaults.
+var hull_light_configs: Array[Dictionary] = []
+
 var _engine_lights: Array[OmniLight3D] = []
 var _engine_fill_lights: Array[OmniLight3D] = []
 var _cockpit_light: OmniLight3D = null
@@ -61,6 +64,7 @@ func _ready() -> void:
 	_enhance_materials()
 	_add_engine_lights()
 	_add_cockpit_glow()
+	_add_hull_lights()
 	_add_nav_lights()
 
 
@@ -270,6 +274,49 @@ func _add_cockpit_glow() -> void:
 	_cockpit_light.shadow_enabled = false
 	_cockpit_light.position = cockpit_pos
 	add_child(_cockpit_light)
+
+
+func _add_hull_lights() -> void:
+	if not hull_light_configs.is_empty():
+		# Use designer-placed HullLightPoint configs from the ship .tscn
+		for i in hull_light_configs.size():
+			var cfg: Dictionary = hull_light_configs[i]
+			var light := OmniLight3D.new()
+			light.name = "HullLight_%d" % i
+			light.light_color = cfg.get("color", Color(0.95, 0.95, 1.0))
+			light.light_energy = cfg.get("energy", 0.5)
+			light.omni_range = cfg.get("range", 15.0) * model_scale
+			light.omni_attenuation = cfg.get("attenuation", 1.8)
+			light.shadow_enabled = false
+			light.position = cfg.get("position", Vector3.ZERO)
+			add_child(light)
+		return
+
+	# Fallback: auto-generate 4 hull lights from AABB (ships without HullLightPoint nodes)
+	var aabb := get_visual_aabb()
+	var center := aabb.get_center()
+	var half := aabb.size * 0.5
+
+	var defaults: Array[Dictionary] = [
+		{"name": "HullDorsal", "color": Color(1.0, 0.95, 0.85), "energy": 0.6, "range": 20.0,
+			"pos": Vector3(center.x, center.y + half.y * 0.8, center.z - half.z * 0.4)},
+		{"name": "HullVentral", "color": Color(0.85, 0.9, 1.0), "energy": 0.4, "range": 15.0,
+			"pos": Vector3(center.x, center.y - half.y * 0.7, center.z)},
+		{"name": "HullPort", "color": Color(0.95, 0.95, 1.0), "energy": 0.3, "range": 12.0,
+			"pos": Vector3(center.x - half.x * 0.7, center.y, center.z)},
+		{"name": "HullStarboard", "color": Color(0.95, 0.95, 1.0), "energy": 0.3, "range": 12.0,
+			"pos": Vector3(center.x + half.x * 0.7, center.y, center.z)},
+	]
+	for d in defaults:
+		var light := OmniLight3D.new()
+		light.name = d["name"]
+		light.light_color = d["color"]
+		light.light_energy = d["energy"]
+		light.omni_range = d["range"] * model_scale
+		light.omni_attenuation = 1.8
+		light.shadow_enabled = false
+		light.position = d["pos"]
+		add_child(light)
 
 
 func _add_nav_lights() -> void:

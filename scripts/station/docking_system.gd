@@ -172,8 +172,10 @@ func _try_connect_bay_signals(station: Node3D) -> void:
 		return
 	if not station.has_signal("ship_entered_bay"):
 		return
-	station.ship_entered_bay.connect(_on_ship_entered_bay.bind(station))
-	station.ship_exited_bay.connect(_on_ship_exited_bay.bind(station))
+	if not station.ship_entered_bay.is_connected(_on_ship_entered_bay.bind(station)):
+		station.ship_entered_bay.connect(_on_ship_entered_bay.bind(station))
+	if not station.ship_exited_bay.is_connected(_on_ship_exited_bay.bind(station)):
+		station.ship_exited_bay.connect(_on_ship_exited_bay.bind(station))
 	_connected_stations.append(station)
 
 

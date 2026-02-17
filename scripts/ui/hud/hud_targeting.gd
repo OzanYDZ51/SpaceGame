@@ -171,14 +171,15 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 		var hdr_pulse =sin(pulse_t * 3.0) * 0.3 + 0.7
 		var hdr_col =Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, hdr_pulse)
 		ctrl.draw_rect(Rect2(x, y - 11, 3, 14), hdr_col)
-		ctrl.draw_string(font, Vector2(x + 9, y), "CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, hdr_col)
-		var tw =font.get_string_size("CIBLE VERROUILLÉE", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var lock_text: String = Locale.t("hud.target_locked")
+		ctrl.draw_string(font, Vector2(x + 9, y), lock_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, hdr_col)
+		var tw =font.get_string_size(lock_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		var lx =x + 9 + tw + 8
 		if lx < x + w:
 			ctrl.draw_line(Vector2(lx, y - 4), Vector2(x + w, y - 4), Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.3), 1.0)
 		y += 18
 	else:
-		y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "CIBLE")
+		y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, Locale.t("hud.target"))
 	y += 4
 
 	# Target name (prominent)
@@ -201,7 +202,7 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	elif target.get("ship_class") != null and str(target.ship_class) != "":
 		class_text = str(target.ship_class)
 	elif t_struct:
-		class_text = "STATION"
+		class_text = Locale.t("hud.station")
 	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 
 	var dist =targeting_system.get_target_distance()
@@ -241,7 +242,7 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 
 		var hull_r =t_health.get_hull_ratio() if t_health else 0.0
 		var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-		ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 		var hp ="%d%%" % int(hull_r * 100)
 		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 		y += 8
@@ -468,7 +469,7 @@ func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: fl
 	# Shield bar
 	var shd_r =sh.get_shield_ratio()
 	var shd_c =_shield_ratio_color(shd_r)
-	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.shield"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var sp ="%d%%" % int(shd_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, shd_c)
 	y += 8
@@ -484,7 +485,7 @@ func _draw_structure_health(ctrl: Control, font: Font, x: float, y: float, w: fl
 	# Hull bar
 	var hull_r =sh.get_hull_ratio()
 	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var hp ="%d%%" % int(hull_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8

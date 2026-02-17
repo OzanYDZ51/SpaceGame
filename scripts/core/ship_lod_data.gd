@@ -28,6 +28,7 @@ var model_scale: float = 1.0
 var hull_ratio: float = 1.0
 var shield_ratio: float = 1.0
 var is_dead: bool = false
+var is_docked: bool = false
 
 # --- Per-ship AI ranges (from ShipData) ---
 var sensor_range: float = Constants.AI_DETECTION_RANGE
@@ -63,7 +64,7 @@ var is_promoting: bool = false
 
 
 func tick_simple_ai(delta: float) -> void:
-	if is_dead:
+	if is_dead or is_docked:
 		return
 
 	# Dead reckoning: advance position
@@ -92,6 +93,8 @@ func capture_from_node(ship: Node3D) -> void:
 	rotation_basis = ship.global_transform.basis
 	if ship is RigidBody3D:
 		velocity = (ship as RigidBody3D).linear_velocity
+	elif "linear_velocity" in ship:
+		velocity = ship.linear_velocity
 
 	var health = ship.get_node_or_null("HealthSystem")
 	if health:

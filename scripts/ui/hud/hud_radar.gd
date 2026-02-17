@@ -158,7 +158,7 @@ func _draw_radar(ctrl: Control) -> void:
 			if npc_id == &"player_ship":
 				continue
 			var data = lod_mgr.get_ship_data(npc_id)
-			if data == null or data.is_dead:
+			if data == null or data.is_dead or data.is_docked:
 				continue
 			var rel: Vector3 = data.position - ship.global_position
 			var col: Color

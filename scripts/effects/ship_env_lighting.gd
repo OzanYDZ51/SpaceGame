@@ -31,15 +31,15 @@ var _base_rim_color: Color = Color(0.35, 0.5, 0.7)
 
 const UPDATE_INTERVAL: float = 0.15
 const PLANET_LIGHT_RANGE: float = 400.0
-const STATION_LIGHT_RANGE: float = 300.0
+const STATION_LIGHT_RANGE: float = 800.0
 const NEBULA_FILL_RANGE: float = 600.0
-const STATION_MAX_DIST: float = 3000.0
+const STATION_MAX_DIST: float = 5000.0
 const LERP_SPEED: float = 0.12
 
 
 func _ready() -> void:
 	_planet_light = _make_light("PlanetBounce", Color.BLACK, 0.0, PLANET_LIGHT_RANGE, 1.2)
-	_station_light = _make_light("StationGlow", Color(0.75, 0.82, 1.0), 0.0, STATION_LIGHT_RANGE, 1.5)
+	_station_light = _make_light("StationGlow", Color(0.75, 0.82, 1.0), 0.0, STATION_LIGHT_RANGE, 1.2)
 	_nebula_fill = _make_light("NebulaFill", Color(0.08, 0.06, 0.1), 0.08, NEBULA_FILL_RANGE, 2.0)
 
 	_ship_model = get_parent().get_node_or_null("ShipModel")
@@ -141,16 +141,16 @@ func _update_station_glow() -> void:
 		_target_station_energy = 0.0
 		return
 
-	# Smooth falloff: quadratic, max 2.0 at ~200m, zero at 3000m
+	# Smooth falloff: quadratic, max 3.5 at ~200m, zero at 5000m
 	var t: float = clampf(1.0 - best_dist / STATION_MAX_DIST, 0.0, 1.0)
-	_target_station_energy = t * t * 2.0
+	_target_station_energy = t * t * 3.5
 
 	# Station interior light color (blueish white, matching bay lights)
 	_target_station_color = Color(0.75, 0.82, 1.0)
 
 	# Point light toward station
 	var dir: Vector3 = (best_node.global_position - ship_pos).normalized()
-	_station_light.position = dir * 12.0
+	_station_light.position = dir * 20.0
 
 
 # =============================================================================

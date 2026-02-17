@@ -8,10 +8,10 @@ extends UIComponent
 signal confirmed
 signal cancelled
 
-var title: String = "Confirm"
-var body: String = "Are you sure?"
-var confirm_text: String = "CONFIRM"
-var cancel_text: String = "CANCEL"
+var title: String = ""
+var body: String = ""
+var confirm_text: String = ""
+var cancel_text: String = ""
 
 var _hovered_btn: int = -1  # 0 = confirm, 1 = cancel
 
@@ -23,6 +23,8 @@ const BTN_HEIGHT := 30.0
 
 func _ready() -> void:
 	super._ready()
+	confirm_text = Locale.t("btn.confirm")
+	cancel_text = Locale.t("btn.cancel")
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	anchor_left = 0.0
 	anchor_top = 0.0

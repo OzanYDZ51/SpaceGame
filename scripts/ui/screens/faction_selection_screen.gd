@@ -25,7 +25,7 @@ var _btn_confirm: UIButton = null
 
 
 func _init() -> void:
-	screen_title = "CHOISISSEZ VOTRE FACTION"
+	screen_title = Locale.t("screen.faction_select")
 	screen_mode = ScreenMode.FULLSCREEN
 
 
@@ -34,7 +34,7 @@ func _ready() -> void:
 
 	# Confirm button (hidden until selection)
 	_btn_confirm = UIButton.new()
-	_btn_confirm.text = "CONFIRMER"
+	_btn_confirm.text = Locale.t("btn.confirm")
 	_btn_confirm.custom_minimum_size = Vector2(BTN_W, BTN_H)
 	_btn_confirm.visible = false
 	_btn_confirm.pressed.connect(_on_confirm)
@@ -126,7 +126,7 @@ func _draw() -> void:
 	# Subtitle
 	var font: Font = UITheme.get_font()
 	var subtitle_y: float = title_y + 28.0
-	draw_string(font, Vector2(0, subtitle_y), "Votre allégeance détermine vos alliés et vos ennemis.", HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(0, subtitle_y), Locale.t("faction.subtitle"), HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# Faction cards
 	var rects := _get_card_rects()
@@ -143,7 +143,7 @@ func _draw() -> void:
 	# Bottom hint
 	if _selected_index < 0:
 		var hint_y: float = s.y - 40.0
-		draw_string(font, Vector2(0, hint_y), "Sélectionnez une faction pour continuer", HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_SMALL, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.5 + sin(UITheme.scanline_y * 0.02) * 0.3))
+		draw_string(font, Vector2(0, hint_y), Locale.t("faction.select_to_continue"), HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_SMALL, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.5 + sin(UITheme.scanline_y * 0.02) * 0.3))
 
 
 func _draw_faction_card(rect: Rect2, fac: FactionResource, is_selected: bool, is_hovered: bool) -> void:
@@ -201,9 +201,9 @@ func _draw_faction_card(rect: Rect2, fac: FactionResource, is_selected: bool, is
 	# Status label at bottom
 	var status_y: float = rect.end.y - 30.0
 	if is_selected:
-		draw_string(font_bold, Vector2(rect.position.x, status_y), "SELECTIONNEE", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_SMALL, col)
+		draw_string(font_bold, Vector2(rect.position.x, status_y), Locale.t("faction.selected"), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_SMALL, col)
 	elif is_hovered:
-		draw_string(font, Vector2(rect.position.x, status_y), "CLIQUEZ POUR SELECTIONNER", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_TINY, Color(col.r, col.g, col.b, 0.7))
+		draw_string(font, Vector2(rect.position.x, status_y), Locale.t("faction.click_to_select"), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, UITheme.FONT_SIZE_TINY, Color(col.r, col.g, col.b, 0.7))
 
 
 func _draw_faction_emblem(center: Vector2, radius: float, col: Color, faction_id: StringName) -> void:

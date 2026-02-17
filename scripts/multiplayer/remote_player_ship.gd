@@ -4,6 +4,7 @@ extends Node3D
 # =============================================================================
 # Remote Player Ship - Visual puppet for a remote player.
 # Receives state snapshots and interpolates smoothly between them.
+# Uses Hermite interpolation (position + velocity) for smooth curves.
 # No physics simulation — purely visual.
 # =============================================================================
 
@@ -14,11 +15,13 @@ var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
 var linear_velocity: Vector3 = Vector3.ZERO
 var _was_dead: bool = false
+var _is_cruising: bool = false
 var _remote_beam = null
 
 # Interpolation buffer (ring buffer of snapshots)
 var _snapshots: Array[Dictionary] = []
-const MAX_SNAPSHOTS: int = 20
+const MAX_SNAPSHOTS: int = 30
+const EXTRAPOLATION_MAX: float = 0.5  # Max extrapolation time (seconds)
 
 # Visual
 var _ship_model = null
@@ -39,7 +42,7 @@ func _ready() -> void:
 
 
 func _setup_model() -> void:
-	var data =ShipRegistry.get_ship_data(ship_id)
+	var data = ShipRegistry.get_ship_data(ship_id)
 	_ship_model = ShipModel.new()
 	_ship_model.name = "ShipModel"
 	if data:
@@ -76,12 +79,12 @@ func _setup_name_label() -> void:
 
 func _setup_collision() -> void:
 	var data = ShipRegistry.get_ship_data(ship_id)
-	var body =StaticBody3D.new()
+	var body = StaticBody3D.new()
 	body.name = "HitBody"
 	body.collision_layer = 0  # Starts disabled — enabled by receive_state() when visible
 	body.collision_mask = 0  # Doesn't detect anything, only gets hit
 	add_child(body)
-	var shape =CollisionShape3D.new()
+	var shape = CollisionShape3D.new()
 	shape.name = "HitShape"
 	var box := BoxShape3D.new()
 	box.size = data.collision_size if data else Vector3(28, 12, 36)
@@ -136,21 +139,30 @@ func receive_state(state) -> void:
 	if state.ship_id != &"" and state.ship_id != ship_id:
 		change_ship_model(state.ship_id)
 
-	# Hide puppet when the remote player is docked, dead, or in cruise warp
-	var should_hide: bool = state.is_docked or state.is_dead or state.is_cruising
+	# Track cruise state for visual effects (engine glow)
+	_is_cruising = state.is_cruising
+
+	# Hide puppet only when docked or dead — cruise stays visible (LOD handles distance)
+	var should_hide: bool = state.is_docked or state.is_dead
 	if visible != (not should_hide):
+		# When becoming visible: teleport to correct position FIRST,
+		# otherwise the puppet flashes at stale (0,0,0) = near spawn station
+		if not visible and not should_hide:
+			global_position = FloatingOrigin.to_local_pos([state.pos_x, state.pos_y, state.pos_z])
+			rotation_degrees = state.rotation_deg
+			_snapshots.clear()
 		visible = not should_hide
 		# Remove from targeting group + disable collision when hidden
 		if should_hide:
 			if is_in_group("ships"):
 				remove_from_group("ships")
-			var hit_body =get_node_or_null("HitBody") as StaticBody3D
+			var hit_body = get_node_or_null("HitBody") as StaticBody3D
 			if hit_body:
 				hit_body.collision_layer = 0
 		else:
 			if not is_in_group("ships"):
 				add_to_group("ships")
-			var hit_body =get_node_or_null("HitBody") as StaticBody3D
+			var hit_body = get_node_or_null("HitBody") as StaticBody3D
 			if hit_body:
 				hit_body.collision_layer = Constants.LAYER_SHIPS
 
@@ -181,13 +193,11 @@ func receive_state(state) -> void:
 	# Stamp with LOCAL arrival time — sender's timestamp is from a different clock
 	# (each Godot process has its own Time.get_ticks_msec starting at 0).
 	# Using local time ensures render_time and snapshot times share the same clock.
-	var snapshot ={
+	var snapshot: Dictionary = {
 		"pos": [state.pos_x, state.pos_y, state.pos_z],
 		"vel": state.velocity,
 		"rot": state.rotation_deg,
 		"thr": state.throttle,
-		"hull": state.hull_ratio,
-		"shd": state.shield_ratios,
 		"time": Time.get_ticks_msec() / 1000.0,
 	}
 
@@ -203,11 +213,19 @@ func _process(_delta: float) -> void:
 	var render_time: float = (Time.get_ticks_msec() / 1000.0) - Constants.NET_INTERPOLATION_DELAY
 
 	if _snapshots.size() < 2:
-		# Single snapshot — place directly, no smoothing
+		# Single snapshot — place at snapshot position, extrapolate with velocity
 		var snap: Dictionary = _snapshots[0]
-		global_position = FloatingOrigin.to_local_pos(snap["pos"])
+		var dt: float = clampf(render_time - snap["time"], 0.0, EXTRAPOLATION_MAX)
+		var vel: Vector3 = snap["vel"]
+		var pos_arr: Array = snap["pos"]
+		var extrap_pos: Array = [
+			pos_arr[0] + vel.x * dt,
+			pos_arr[1] + vel.y * dt,
+			pos_arr[2] + vel.z * dt,
+		]
+		global_position = FloatingOrigin.to_local_pos(extrap_pos)
 		rotation_degrees = snap["rot"]
-		linear_velocity = snap["vel"]
+		linear_velocity = vel
 		_update_engine_glow(snap.get("thr", 0.0))
 		return
 
@@ -219,25 +237,47 @@ func _process(_delta: float) -> void:
 			break
 
 	if from_idx >= 0:
-		_interpolate_between(_snapshots[from_idx], _snapshots[from_idx + 1], render_time)
+		_hermite_interpolate(_snapshots[from_idx], _snapshots[from_idx + 1], render_time)
+	elif render_time > _snapshots.back()["time"]:
+		# render_time past all snapshots — extrapolate from last two snapshots
+		_extrapolate_smooth(render_time)
 	else:
-		# render_time past all snapshots — extrapolate from last snapshot using velocity
-		_extrapolate(_snapshots.back(), render_time)
+		# render_time before all snapshots — use earliest
+		var snap: Dictionary = _snapshots[0]
+		global_position = FloatingOrigin.to_local_pos(snap["pos"])
+		rotation_degrees = snap["rot"]
+		linear_velocity = snap["vel"]
+		_update_engine_glow(snap.get("thr", 0.0))
 
 
-func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) -> void:
-	var t_range: float = to["time"] - from["time"]
-	var t: float = clampf((render_time - from["time"]) / t_range, 0.0, 1.0) if t_range > 0.001 else 1.0
+## Hermite interpolation using position + velocity at both endpoints.
+## Produces smooth curves that respect velocity direction and magnitude.
+func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) -> void:
+	var dt: float = to["time"] - from["time"]
+	var t: float = clampf((render_time - from["time"]) / dt, 0.0, 1.0) if dt > 0.001 else 1.0
 
-	var pos_from =from["pos"] as Array
-	var pos_to =to["pos"] as Array
+	# Hermite basis functions
+	var t2: float = t * t
+	var t3: float = t2 * t
+	var h00: float = 2.0 * t3 - 3.0 * t2 + 1.0  # Position at start
+	var h10: float = t3 - 2.0 * t2 + t            # Tangent at start
+	var h01: float = -2.0 * t3 + 3.0 * t2         # Position at end
+	var h11: float = t3 - t2                       # Tangent at end
+
+	var pos_from: Array = from["pos"]
+	var pos_to: Array = to["pos"]
+	var vel_from: Vector3 = from["vel"]
+	var vel_to: Vector3 = to["vel"]
+
+	# Hermite position: H(t) = h00*P0 + h10*dt*V0 + h01*P1 + h11*dt*V1
 	var interp_pos: Array = [
-		lerpf(pos_from[0], pos_to[0], t),
-		lerpf(pos_from[1], pos_to[1], t),
-		lerpf(pos_from[2], pos_to[2], t),
+		h00 * pos_from[0] + h10 * dt * vel_from.x + h01 * pos_to[0] + h11 * dt * vel_to.x,
+		h00 * pos_from[1] + h10 * dt * vel_from.y + h01 * pos_to[1] + h11 * dt * vel_to.y,
+		h00 * pos_from[2] + h10 * dt * vel_from.z + h01 * pos_to[2] + h11 * dt * vel_to.z,
 	]
 	global_position = FloatingOrigin.to_local_pos(interp_pos)
 
+	# Smooth rotation via lerp_angle (handles wrapping correctly)
 	var rot_from: Vector3 = from["rot"]
 	var rot_to: Vector3 = to["rot"]
 	rotation_degrees = Vector3(
@@ -246,23 +286,62 @@ func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) 
 		lerp_angle(deg_to_rad(rot_from.z), deg_to_rad(rot_to.z), t),
 	) * (180.0 / PI)
 
-	linear_velocity = from["vel"].lerp(to["vel"], t)
-	_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
+	# Use linear velocity interpolation (NOT Hermite derivative which amplifies noise
+	# through position/dt division — causes lead indicator jitter on targeting HUD)
+	linear_velocity = vel_from.lerp(vel_to, t)
+
+	# Engine glow: use cruise state for max glow, otherwise interpolate throttle
+	if _is_cruising:
+		_update_engine_glow(1.0)
+	else:
+		_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
 
 
-func _extrapolate(snap: Dictionary, render_time: float) -> void:
-	var dt: float = clampf(render_time - snap["time"], 0.0, 0.25)
-	var vel: Vector3 = snap["vel"]
-	var pos_arr: Array = snap["pos"]
+## Smooth extrapolation using velocity from the last two snapshots.
+## Blends from full velocity to zero over EXTRAPOLATION_MAX seconds to
+## prevent infinite drift when packets stop arriving.
+func _extrapolate_smooth(render_time: float) -> void:
+	var last: Dictionary = _snapshots.back()
+	var dt: float = clampf(render_time - last["time"], 0.0, EXTRAPOLATION_MAX)
+	var vel: Vector3 = last["vel"]
+
+	# Decay factor: full speed at t=0, zero at EXTRAPOLATION_MAX
+	var decay: float = 1.0 - (dt / EXTRAPOLATION_MAX)
+	decay = decay * decay  # Quadratic ease-out
+
+	var pos_arr: Array = last["pos"]
+	# Integrate velocity with decay: integral of vel*(1-(t/T))^2 dt
+	# = vel * (t - t²/T + t³/(3T²))
+	var T: float = EXTRAPOLATION_MAX
+	var integrated_dt: float = dt - (dt * dt) / T + (dt * dt * dt) / (3.0 * T * T)
 	var extrap_pos: Array = [
-		pos_arr[0] + vel.x * dt,
-		pos_arr[1] + vel.y * dt,
-		pos_arr[2] + vel.z * dt,
+		pos_arr[0] + vel.x * integrated_dt,
+		pos_arr[1] + vel.y * integrated_dt,
+		pos_arr[2] + vel.z * integrated_dt,
 	]
 	global_position = FloatingOrigin.to_local_pos(extrap_pos)
-	rotation_degrees = snap["rot"]
-	linear_velocity = vel
-	_update_engine_glow(snap.get("thr", 0.0))
+
+	# Extrapolate rotation using the rate between the last two snapshots
+	if _snapshots.size() >= 2:
+		var prev: Dictionary = _snapshots[_snapshots.size() - 2]
+		var snap_dt: float = last["time"] - prev["time"]
+		if snap_dt > 0.001:
+			var rot_rate: Vector3 = (last["rot"] - prev["rot"]) / snap_dt
+			# Wrap rate components to avoid jumps from 359->1 deg
+			rot_rate.x = wrapf(rot_rate.x, -180.0, 180.0) if absf(rot_rate.x) > 180.0 else rot_rate.x
+			rot_rate.y = wrapf(rot_rate.y, -180.0, 180.0) if absf(rot_rate.y) > 180.0 else rot_rate.y
+			rot_rate.z = wrapf(rot_rate.z, -180.0, 180.0) if absf(rot_rate.z) > 180.0 else rot_rate.z
+			rotation_degrees = last["rot"] + rot_rate * dt * decay
+		else:
+			rotation_degrees = last["rot"]
+	else:
+		rotation_degrees = last["rot"]
+
+	linear_velocity = vel * decay
+	if _is_cruising:
+		_update_engine_glow(1.0)
+	else:
+		_update_engine_glow(last.get("thr", 0.0) * decay)
 
 
 func _update_engine_glow(throttle_amount: float) -> void:
@@ -272,11 +351,11 @@ func _update_engine_glow(throttle_amount: float) -> void:
 
 ## Spawn a death explosion at this puppet's location.
 func show_death_explosion() -> void:
-	var pos =global_position
-	var scene_root =get_tree().current_scene
+	var pos = global_position
+	var scene_root = get_tree().current_scene
 	if scene_root == null:
 		return
-	var explosion =ExplosionEffect.new()
+	var explosion = ExplosionEffect.new()
 	scene_root.add_child(explosion)
 	explosion.global_position = pos
 	explosion.scale = Vector3.ONE * 3.0
@@ -284,8 +363,8 @@ func show_death_explosion() -> void:
 
 ## Show a remote mining beam from source to target (universe positions).
 func show_mining_beam(source_pos: Array, target_pos: Array) -> void:
-	var local_src =FloatingOrigin.to_local_pos(source_pos)
-	var local_tgt =FloatingOrigin.to_local_pos(target_pos)
+	var local_src = FloatingOrigin.to_local_pos(source_pos)
+	var local_tgt = FloatingOrigin.to_local_pos(target_pos)
 	if _remote_beam == null:
 		_remote_beam = MiningLaserBeam.new()
 		_remote_beam.name = "RemoteMiningBeam"

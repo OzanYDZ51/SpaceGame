@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cj5eyy14di2lx"
-path="res://.godot/imported/frigate_mk1.glb-aacd57fa83f62607a6280dafbceac7e0.scn"
+uid="uid://bhjsf10jhg7xi"
+path="res://.godot/imported/gate.glb-29e8655d8f16ec950f9e00dcef01184e.scn"
 
 [deps]
 
-source_file="res://assets/models/frigate_mk1.glb"
-dest_files=["res://.godot/imported/frigate_mk1.glb-aacd57fa83f62607a6280dafbceac7e0.scn"]
+source_file="res://assets/models/gate.glb"
+dest_files=["res://.godot/imported/gate.glb-29e8655d8f16ec950f9e00dcef01184e.scn"]
 
 [params]
 
@@ -22,18 +22,18 @@ nodes/import_as_skeleton_bones=false
 nodes/use_name_suffixes=true
 nodes/use_node_type_suffixes=true
 meshes/ensure_tangents=true
-meshes/generate_lods=false
+meshes/generate_lods=true
 meshes/create_shadow_meshes=true
-meshes/light_baking=0
+meshes/light_baking=1
 meshes/lightmap_texel_size=0.2
-meshes/force_disable_compression=true
+meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
 animation/trimming=false
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
-import_script/path="res://scripts/tools/ship_model_post_import.gd"
+import_script/path=""
 materials/extract=0
 materials/extract_format=0
 materials/extract_path=""

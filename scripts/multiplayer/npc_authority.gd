@@ -61,6 +61,9 @@ var _fleet_npcs_by_owner: Dictionary = {}
 # owner_uuid -> Array[Dictionary] { fleet_index, npc_id, death_time }
 var _fleet_deaths_while_offline: Dictionary = {}
 
+# Effective HP cache: ship_id -> { "shield_total": float, "hull_total": float }
+var _effective_hp_cache: Dictionary = {}
+
 
 func _ready() -> void:
 	NetworkManager.connection_succeeded.connect(_check_activation)
@@ -78,6 +81,59 @@ func _check_activation() -> void:
 		print("NpcAuthority: Activated (server mode)")
 		# Load previously deployed fleet ships from backend (async)
 		_load_deployed_fleet_ships_from_backend()
+
+
+## Compute effective shield+hull totals for a ship with best-in-slot equipment.
+## Mirrors EquipmentManager logic: shield from best ShieldResource, hull/cap bonuses from modules.
+## Results are cached per ship_id.
+func _get_effective_hp(ship_id: StringName) -> Dictionary:
+	if _effective_hp_cache.has(ship_id):
+		return _effective_hp_cache[ship_id]
+
+	var sd: ShipData = ShipRegistry.get_ship_data(ship_id)
+	if sd == null:
+		return {"shield_total": 500.0, "hull_total": 1000.0}
+
+	# --- Best shield for this ship's slot size ---
+	var shield_slot_int: int = _slot_str_to_int(sd.shield_slot_size)
+	var best_shield_hp: float = sd.shield_hp / 4.0  # base (no equipment)
+	for sname in ShieldRegistry.get_all_shield_names():
+		var s: ShieldResource = ShieldRegistry.get_shield(sname)
+		if s and s.slot_size <= shield_slot_int and s.shield_hp_per_facing > best_shield_hp:
+			best_shield_hp = s.shield_hp_per_facing
+
+	# --- Best modules for each slot (maximize defense: hull_bonus + shield_cap_mult) ---
+	var hull_bonus: float = 0.0
+	var shield_cap_mult: float = 1.0
+	for slot_str in sd.module_slots:
+		var slot_int: int = _slot_str_to_int(slot_str)
+		var best_mod: ModuleResource = null
+		var best_score: float = 0.0
+		for mname in ModuleRegistry.get_all_module_names():
+			var m: ModuleResource = ModuleRegistry.get_module(mname)
+			if m == null or m.slot_size > slot_int:
+				continue
+			# Combined defense score: hull_bonus + shield_cap contribution (normalized)
+			var score: float = m.hull_bonus + (m.shield_cap_mult - 1.0) * 1000.0
+			if score > best_score:
+				best_score = score
+				best_mod = m
+		if best_mod:
+			hull_bonus += best_mod.hull_bonus
+			shield_cap_mult *= best_mod.shield_cap_mult
+
+	var shield_total: float = best_shield_hp * shield_cap_mult * 4.0
+	var hull_total: float = sd.hull_hp + hull_bonus
+	var result: Dictionary = {"shield_total": shield_total, "hull_total": hull_total}
+	_effective_hp_cache[ship_id] = result
+	return result
+
+
+static func _slot_str_to_int(slot: String) -> int:
+	match slot:
+		"M": return 1
+		"L": return 2
+		_: return 0  # "S" or default
 
 
 func _physics_process(delta: float) -> void:
@@ -213,19 +269,25 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-	var spawn_dict ={
+	var spawn_dict: Dictionary = {
 		"nid": String(npc_id),
 		"sid": String(info.get("ship_id", "")),
 		"fac": String(info.get("faction", "hostile")),
 		"px": 0.0, "py": 0.0, "pz": 0.0,
+		"vx": 0.0, "vy": 0.0, "vz": 0.0,
 	}
 	if lod_data:
-		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
+		var upos = FloatingOrigin.to_universe_pos(lod_data.position)
 		spawn_dict["px"] = upos[0]
 		spawn_dict["py"] = upos[1]
 		spawn_dict["pz"] = upos[2]
+		spawn_dict["vx"] = lod_data.velocity.x
+		spawn_dict["vy"] = lod_data.velocity.y
+		spawn_dict["vz"] = lod_data.velocity.z
+		spawn_dict["hull"] = lod_data.hull_ratio
+		spawn_dict["shd"] = lod_data.shield_ratio
 
-	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
+	var peers_in_sys = NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
 		NetworkManager._rpc_npc_spawned.rpc_id(pid, spawn_dict)
 
@@ -243,17 +305,21 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 			var info: Dictionary = _npcs[npc_id]
 			var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-			var spawn_dict ={
+			var spawn_dict: Dictionary = {
 				"nid": String(npc_id),
 				"sid": String(info.get("ship_id", "")),
 				"fac": String(info.get("faction", "hostile")),
 				"px": 0.0, "py": 0.0, "pz": 0.0,
+				"vx": 0.0, "vy": 0.0, "vz": 0.0,
 			}
 			if lod_data:
-				var upos =FloatingOrigin.to_universe_pos(lod_data.position)
+				var upos = FloatingOrigin.to_universe_pos(lod_data.position)
 				spawn_dict["px"] = upos[0]
 				spawn_dict["py"] = upos[1]
 				spawn_dict["pz"] = upos[2]
+				spawn_dict["vx"] = lod_data.velocity.x
+				spawn_dict["vy"] = lod_data.velocity.y
+				spawn_dict["vz"] = lod_data.velocity.z
 				spawn_dict["hull"] = lod_data.hull_ratio
 				spawn_dict["shd"] = lod_data.shield_ratio
 
@@ -432,12 +498,17 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			elif _npcs.has(npc_id):
 				_npcs[npc_id].erase("_player_killing")
 	else:
-		# Data-only NPC (LOD2/3) — apply damage to ratios
+		# Data-only NPC (LOD2/3) — apply damage using effective HP (same as equipped ship)
 		shield_absorbed = lod_data.shield_ratio > 0.0
+		var npc_info: Dictionary = _npcs[npc_id]
+		var npc_ship_id: StringName = StringName(npc_info.get("ship_id", ""))
+		var eff_hp: Dictionary = _get_effective_hp(npc_ship_id)
 		if lod_data.shield_ratio > 0.0:
-			lod_data.shield_ratio = maxf(lod_data.shield_ratio - claimed_damage * 0.008, 0.0)
+			var shield_dmg_ratio: float = claimed_damage / eff_hp["shield_total"]
+			lod_data.shield_ratio = maxf(lod_data.shield_ratio - shield_dmg_ratio, 0.0)
 		else:
-			lod_data.hull_ratio = maxf(lod_data.hull_ratio - claimed_damage * 0.012, 0.0)
+			var hull_dmg_ratio: float = claimed_damage / eff_hp["hull_total"]
+			lod_data.hull_ratio = maxf(lod_data.hull_ratio - hull_dmg_ratio, 0.0)
 		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
 			_on_npc_killed(npc_id, sender_pid, weapon_name)
@@ -1168,20 +1239,25 @@ func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary)
 	var damage: float = fire.get("damage", 10.0)
 	var dist: float = fire.get("dist", 999.0)
 
-	# Cap damage based on ship's lod_combat_dps
+	# Cap damage based on ship's lod_combat_dps and resolve weapon name
 	var npc_ship_id: String = ""
 	for rnpc in _remote_npcs.get(system_id, []):
 		if rnpc.get("nid", "") == npc_id:
 			npc_ship_id = rnpc.get("sid", "")
 			break
+	var weapon_id: String = ""
 	if npc_ship_id != "":
 		var sd = ShipRegistry.get_ship_data(StringName(npc_ship_id))
 		if sd:
 			damage = minf(damage, sd.lod_combat_dps)
+			if sd.default_loadout.size() > 0:
+				weapon_id = sd.default_loadout[0]
+	if weapon_id == "":
+		weapon_id = "Laser Mk1 S"
 
 	# Send fire visual to all peers in this system
 	for pid in peers:
-		NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, "remote_npc", fire_pos, fire_dir)
+		NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, weapon_id, fire_pos, fire_dir)
 
 	# Apply damage to target player (server-authoritative)
 	if target_pid < 0 or not NetworkManager.peers.has(target_pid):
@@ -1199,7 +1275,7 @@ func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary)
 	var hit_dir: Array = [-fire_dir[0], -fire_dir[1], -fire_dir[2]]
 
 	# Send damage to target
-	NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, "remote_npc", damage, hit_dir)
+	NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, weapon_id, damage, hit_dir)
 
 	# Send hit effect to other peers
 	var target_label: String = "player_%d" % target_pid
@@ -1227,12 +1303,16 @@ func validate_remote_npc_hit(sender_pid: int, target_npc_id: String, damage: flo
 		if npc.get("is_dead", false):
 			return
 
-		# Apply damage
+		# Apply damage using effective HP (same as equipped ship, best gear)
 		var shield_absorbed: bool = npc.get("shd", 0.0) > 0.0
+		var rnpc_ship_id: StringName = StringName(npc.get("sid", ""))
+		var eff_hp: Dictionary = _get_effective_hp(rnpc_ship_id)
 		if npc.get("shd", 0.0) > 0.0:
-			npc["shd"] = maxf(npc.get("shd", 1.0) - damage * 0.008, 0.0)
+			var s_ratio: float = damage / eff_hp["shield_total"]
+			npc["shd"] = maxf(npc.get("shd", 1.0) - s_ratio, 0.0)
 		else:
-			npc["hull"] = maxf(npc.get("hull", 1.0) - damage * 0.012, 0.0)
+			var h_ratio: float = damage / eff_hp["hull_total"]
+			npc["hull"] = maxf(npc.get("hull", 1.0) - h_ratio, 0.0)
 
 		if npc.get("hull", 0.0) <= 0.0:
 			npc["is_dead"] = true
