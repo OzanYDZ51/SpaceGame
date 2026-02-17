@@ -200,8 +200,10 @@ static func danger_color(level: int) -> Color:
 static func format_time(seconds: float) -> String:
 	if seconds <= 0.0:
 		return "0:00"
-	var mins: int = int(seconds) / 60
-	var secs: int = int(seconds) % 60
+	var total: int = int(seconds)
+	@warning_ignore("integer_division")
+	var mins: int = total / 60
+	var secs: int = total % 60
 	return "%d:%02d" % [mins, secs]
 
 

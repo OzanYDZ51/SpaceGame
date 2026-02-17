@@ -87,4 +87,9 @@ type PlayerState struct {
 	Fleet           json.RawMessage  `json:"fleet,omitempty"`
 	StationServices json.RawMessage  `json:"station_services,omitempty"`
 	Settings        json.RawMessage  `json:"settings,omitempty"`
+	// Gameplay integrator state (stored as single gameplay_state JSONB column)
+	Missions   json.RawMessage `json:"missions,omitempty"`
+	Factions   json.RawMessage `json:"factions,omitempty"`
+	EconomySim json.RawMessage `json:"economy_sim,omitempty"`
+	Pois       json.RawMessage `json:"pois,omitempty"`
 }

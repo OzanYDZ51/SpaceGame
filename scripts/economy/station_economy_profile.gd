@@ -129,7 +129,7 @@ func remove_stock(item: String, amount: int) -> bool:
 	return true
 
 
-func get_max_stock(item: String) -> int:
+func get_max_stock(_item: String) -> int:
 	if station_type == 1:  # Trade stations have higher caps
 		return TRADE_MAX_STOCK
 	return DEFAULT_MAX_STOCK

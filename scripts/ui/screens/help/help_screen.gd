@@ -204,7 +204,7 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 
 
 # Generic tab renderer for text-based sections (combat, economy, fleet)
-func _draw_generic_tab(sections: Array, rect: Rect2, font: Font, font_bold: Font, vt: float, vb: float) -> float:
+func _draw_generic_tab(sections: Array, rect: Rect2, font: Font, _font_bold: Font, vt: float, vb: float) -> float:
 	var x: float = rect.position.x + UITheme.MARGIN_PANEL
 	var w: float = rect.size.x - UITheme.MARGIN_PANEL * 2
 	var y: float = rect.position.y + UITheme.MARGIN_PANEL - _scroll_offset

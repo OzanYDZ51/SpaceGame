@@ -112,9 +112,9 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		return nil, err
 	}
 
-	// Fleet + StationServices + Settings (JSONB columns on players table)
-	var fleetRaw, stationServicesRaw, settingsRaw []byte
-	_ = r.pool.QueryRow(ctx, `SELECT fleet, station_services, settings FROM players WHERE id = $1`, playerID).Scan(&fleetRaw, &stationServicesRaw, &settingsRaw)
+	// Fleet + StationServices + Settings + GameplayState (JSONB columns on players table)
+	var fleetRaw, stationServicesRaw, settingsRaw, gameplayStateRaw []byte
+	_ = r.pool.QueryRow(ctx, `SELECT fleet, station_services, settings, gameplay_state FROM players WHERE id = $1`, playerID).Scan(&fleetRaw, &stationServicesRaw, &settingsRaw, &gameplayStateRaw)
 
 	state := &model.PlayerState{
 		CurrentShipID: p.CurrentShipID,
@@ -132,6 +132,17 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		Fleet:           json.RawMessage(fleetRaw),
 		StationServices: json.RawMessage(stationServicesRaw),
 		Settings:        json.RawMessage(settingsRaw),
+	}
+
+	// Unbundle gameplay_state JSONB into individual fields
+	if len(gameplayStateRaw) > 2 { // more than "{}"
+		var gp map[string]json.RawMessage
+		if err := json.Unmarshal(gameplayStateRaw, &gp); err == nil {
+			state.Missions = gp["missions"]
+			state.Factions = gp["factions"]
+			state.EconomySim = gp["economy_sim"]
+			state.Pois = gp["pois"]
+		}
 	}
 
 	// Resources
@@ -215,6 +226,22 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 		settingsJSON = json.RawMessage(`{}`)
 	}
 
+	// Bundle gameplay state (missions, factions, economy_sim, pois) into single JSONB
+	gameplayState := map[string]json.RawMessage{}
+	if state.Missions != nil {
+		gameplayState["missions"] = state.Missions
+	}
+	if state.Factions != nil {
+		gameplayState["factions"] = state.Factions
+	}
+	if state.EconomySim != nil {
+		gameplayState["economy_sim"] = state.EconomySim
+	}
+	if state.Pois != nil {
+		gameplayState["pois"] = state.Pois
+	}
+	gameplayJSON, _ := json.Marshal(gameplayState)
+
 	// Update player core fields
 	_, err = tx.Exec(ctx, `
 		UPDATE players SET
@@ -223,12 +250,13 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 			rotation_x = $8, rotation_y = $9, rotation_z = $10,
 			credits = $11, kills = $12, deaths = $13,
 			fleet = $14, station_services = $15, settings = $16,
+			gameplay_state = $18,
 			last_save_at = $17, updated_at = $17
 		WHERE id = $1
 	`, playerID, state.CurrentShipID, state.GalaxySeed, state.SystemID,
 		state.PosX, state.PosY, state.PosZ,
 		state.RotationX, state.RotationY, state.RotationZ,
-		state.Credits, state.Kills, state.Deaths, fleetJSON, stationServicesJSON, settingsJSON, now)
+		state.Credits, state.Kills, state.Deaths, fleetJSON, stationServicesJSON, settingsJSON, now, gameplayJSON)
 	if err != nil {
 		return err
 	}

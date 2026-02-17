@@ -23,7 +23,7 @@ static var _white_mat: StandardMaterial3D = null
 static var _bulb_mesh: SphereMesh = null
 
 
-func setup(aabb: AABB, scale: float) -> void:
+func setup(aabb: AABB, light_scale: float) -> void:
 	var center: Vector3 = aabb.get_center()
 
 	# Port (left, -X) — red
@@ -31,7 +31,7 @@ func setup(aabb: AABB, scale: float) -> void:
 		"NavPort",
 		Color(1.0, 0.1, 0.05),
 		Vector3(aabb.position.x, center.y, center.z),
-		4.0 * scale,
+		4.0 * light_scale,
 		2.0
 	)
 
@@ -40,7 +40,7 @@ func setup(aabb: AABB, scale: float) -> void:
 		"NavStarboard",
 		Color(0.05, 1.0, 0.1),
 		Vector3(aabb.position.x + aabb.size.x, center.y, center.z),
-		4.0 * scale,
+		4.0 * light_scale,
 		2.0
 	)
 
@@ -49,7 +49,7 @@ func setup(aabb: AABB, scale: float) -> void:
 		"NavStrobe",
 		Color(1.0, 1.0, 0.95),
 		Vector3(center.x, aabb.position.y + aabb.size.y, aabb.position.z + aabb.size.z * 0.8),
-		6.0 * scale,
+		6.0 * light_scale,
 		3.0
 	)
 

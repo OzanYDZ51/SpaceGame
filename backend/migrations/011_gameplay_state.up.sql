@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN gameplay_state JSONB NOT NULL DEFAULT '{}';

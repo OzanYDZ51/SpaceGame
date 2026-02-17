@@ -164,6 +164,8 @@ func remove_remote_player(peer_id: int) -> void:
 
 
 func _on_state_received(peer_id: int, state) -> void:
+	if peer_id == NetworkManager.local_peer_id:
+		return
 	var local_sys_id: int = system_transition.current_system_id if system_transition else -1
 	if state.system_id != local_sys_id:
 		# Log once per peer to help diagnose "can't see each other" issues
