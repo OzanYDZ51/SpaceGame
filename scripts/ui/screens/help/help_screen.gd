@@ -11,7 +11,7 @@ var _scroll_offset: float = 0.0
 var _tab_hovered: int = -1
 var _max_scroll: float = 0.0
 
-const TAB_LABELS: PackedStringArray = ["CONTROLES", "COMBAT", "ECONOMIE", "FLOTTE"]
+var TAB_LABELS: PackedStringArray = []
 const LINE_H: float = 20.0
 const SCROLL_STEP: float = 48.0
 const TAB_H: float = 30.0
@@ -23,9 +23,9 @@ var _tab_data: Array = []
 
 
 func _init() -> void:
-	screen_title = "AIDE"
+	screen_title = Locale.t("screen.help")
 	screen_mode = ScreenMode.FULLSCREEN
-	_tab_data = [null, _build_combat(), _build_economy(), _build_fleet()]
+	_rebuild_data()
 
 
 func _ready() -> void:

@@ -19,6 +19,7 @@ config/icon="res://icon.png"
 [autoload]
 
 Constants="*res://scripts/core/constants.gd"
+Locale="*res://scripts/core/locale.gd"
 FloatingOrigin="*res://scripts/core/floating_origin.gd"
 ApiClient="*res://scripts/backend/api_client.gd"
 AuthManager="*res://scripts/backend/auth_manager.gd"

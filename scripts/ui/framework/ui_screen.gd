@@ -37,6 +37,9 @@ func _ready() -> void:
 	_particles = UIParticles.new()
 	add_child(_particles)
 
+	# Locale reactivity: redraw when language changes
+	Locale.language_changed.connect(_on_language_changed)
+
 
 ## Called by UIScreenManager to open this screen.
 func open() -> void:
@@ -98,6 +101,11 @@ func _on_opened() -> void:
 ## Override in subclasses for cleanup when screen closes.
 func _on_closed() -> void:
 	pass
+
+
+## Called when language changes. Override for extra logic beyond redraw.
+func _on_language_changed(_lang: String) -> void:
+	queue_redraw()
 
 
 func _draw() -> void:

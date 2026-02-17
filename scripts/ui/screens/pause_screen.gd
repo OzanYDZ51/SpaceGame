@@ -20,7 +20,7 @@ const BTN_GAP: float = 12.0
 
 
 func _init() -> void:
-	screen_title = "PAUSE"
+	screen_title = Locale.t("screen.pause")
 	screen_mode = ScreenMode.OVERLAY
 
 
@@ -28,23 +28,31 @@ func _ready() -> void:
 	super._ready()
 
 	_btn_resume = UIButton.new()
-	_btn_resume.text = "REPRENDRE"
+	_btn_resume.text = Locale.t("btn.resume")
 	_btn_resume.custom_minimum_size = Vector2(BTN_W, BTN_H)
 	_btn_resume.pressed.connect(close)
 	add_child(_btn_resume)
 
 	_btn_options = UIButton.new()
-	_btn_options.text = "OPTIONS"
+	_btn_options.text = Locale.t("btn.options")
 	_btn_options.custom_minimum_size = Vector2(BTN_W, BTN_H)
 	_btn_options.pressed.connect(func(): options_requested.emit())
 	add_child(_btn_options)
 
 	_btn_quit = UIButton.new()
-	_btn_quit.text = "QUITTER"
+	_btn_quit.text = Locale.t("btn.quit")
 	_btn_quit.accent_color = UITheme.DANGER
 	_btn_quit.custom_minimum_size = Vector2(BTN_W, BTN_H)
 	_btn_quit.pressed.connect(func(): quit_requested.emit())
 	add_child(_btn_quit)
+
+
+func _on_language_changed(_lang: String) -> void:
+	screen_title = Locale.t("screen.pause")
+	_btn_resume.text = Locale.t("btn.resume")
+	_btn_options.text = Locale.t("btn.options")
+	_btn_quit.text = Locale.t("btn.quit")
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -63,10 +71,11 @@ func _draw() -> void:
 	var font: Font = UITheme.get_font_bold()
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = py + UITheme.MARGIN_PANEL + fsize
-	draw_string(font, Vector2(px, title_y), "PAUSE", HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, fsize, UITheme.TEXT_HEADER)
+	var title_text: String = Locale.t("screen.pause")
+	draw_string(font, Vector2(px, title_y), title_text, HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, fsize, UITheme.TEXT_HEADER)
 
 	# Decorative lines beside title
-	var title_w: float = font.get_string_size("PAUSE", HORIZONTAL_ALIGNMENT_CENTER, -1, fsize).x
+	var title_w: float = font.get_string_size(title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, fsize).x
 	var cx: float = px + PANEL_W * 0.5
 	var line_y: float = title_y - fsize * 0.35
 	var half: float = title_w * 0.5 + 16
@@ -91,4 +100,4 @@ func _draw() -> void:
 	# Close hint
 	var hint_font: Font = UITheme.get_font()
 	var hint_y: float = py + PANEL_H - 14
-	draw_string(hint_font, Vector2(px, hint_y), "ECHAP POUR FERMER", HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(hint_font, Vector2(px, hint_y), Locale.t("common.close_hint"), HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)

@@ -174,7 +174,7 @@ function clearAuth() {
   try { fs.unlinkSync(AUTH_FILE); } catch {}
 }
 
-function httpRequest(method, urlStr, body) {
+function httpRequest(method, urlStr, body, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
     const mod = url.protocol === "https:" ? https : http;
@@ -183,6 +183,7 @@ function httpRequest(method, urlStr, body) {
       port: url.port || (url.protocol === "https:" ? 443 : 80),
       path: url.pathname + url.search,
       method,
+      timeout: timeoutMs,
       headers: {
         "User-Agent": "ImperionOnlineLauncher/1.0",
         "Content-Type": "application/json",
@@ -202,6 +203,10 @@ function httpRequest(method, urlStr, body) {
       });
       res.on("error", reject);
     });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Request timeout"));
+    });
     req.on("error", reject);
 
     if (body) req.write(JSON.stringify(body));
@@ -209,7 +214,7 @@ function httpRequest(method, urlStr, body) {
   });
 }
 
-function httpRequestAuth(method, urlStr, token, body) {
+function httpRequestAuth(method, urlStr, token, body, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const url = new URL(urlStr);
     const mod = url.protocol === "https:" ? https : http;
@@ -218,6 +223,7 @@ function httpRequestAuth(method, urlStr, token, body) {
       port: url.port || (url.protocol === "https:" ? 443 : 80),
       path: url.pathname + url.search,
       method,
+      timeout: timeoutMs,
       headers: {
         "User-Agent": "ImperionOnlineLauncher/1.0",
         "Content-Type": "application/json",
@@ -237,6 +243,10 @@ function httpRequestAuth(method, urlStr, token, body) {
         }
       });
       res.on("error", reject);
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Request timeout"));
     });
     req.on("error", reject);
 
@@ -427,6 +437,10 @@ ipcMain.handle("check-updates", async () => {
 
   try {
     const res = await httpRequest("GET", `${BACKEND_URL}/api/v1/updates`);
+    if (res.status !== 200 || !res.data || res.data.error) {
+      const msg = res.data?.error || `HTTP ${res.status}`;
+      return { launcherVersion, gameVersion, gameInstalled, remote: null, error: msg };
+    }
     const updates = res.data;
 
     const launcherNeedsUpdate =

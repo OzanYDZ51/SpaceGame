@@ -662,15 +662,9 @@ setInterval(async () => {
     const info = await window.launcher.checkUpdates();
     if (info.error) return;
 
-    // Launcher update detected — block play and start update
-    if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
-      checkUpdatesAndPrepare();
-      return;
-    }
-
-    // Game update detected — trigger update flow
-    if (info.gameNeedsUpdate && info.remote?.game?.download_url) {
-      checkUpdatesAndPrepare();
+    // Update detected — pass info to avoid redundant second HTTP call
+    if (info.launcherNeedsUpdate || info.gameNeedsUpdate) {
+      checkUpdatesAndPrepare(info);
     }
   } catch {
     // Silent fail — will retry next interval

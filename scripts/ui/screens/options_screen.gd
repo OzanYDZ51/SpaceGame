@@ -10,6 +10,7 @@ extends UIScreen
 
 var _tab_bar: UITabBar
 var _current_tab: int = 0
+var _dropdown_lang: UIDropdown
 
 # --- Audio ---
 var _slider_master: UISlider
@@ -26,39 +27,39 @@ const PANEL_H: float = 540.0
 const ROW_H: float = 28.0
 const SETTINGS_PATH: String = "user://settings.cfg"
 
-# Rebindable actions: [action_name, french_label, default_keycode]
+# Rebindable actions: [action_name, locale_key, default_keycode]
 const REBINDABLE_ACTIONS: Array = [
-	["move_forward", "AVANCER", KEY_W],
-	["move_backward", "RECULER", KEY_S],
-	["strafe_left", "GAUCHE", KEY_A],
-	["strafe_right", "DROITE", KEY_D],
-	["strafe_up", "MONTER", KEY_SPACE],
-	["strafe_down", "DESCENDRE", KEY_CTRL],
-	["roll_left", "ROULIS GAUCHE", KEY_Q],
-	["roll_right", "ROULIS DROIT", KEY_E],
-	["boost", "TURBO", KEY_SHIFT],
-	["toggle_cruise", "CROISIERE", KEY_C],
-	["toggle_camera", "VUE CAMERA", KEY_V],
-	["toggle_flight_assist", "ASSIST. VOL", KEY_Z],
-	["toggle_map", "CARTE SYSTEME", KEY_M],
-	["toggle_corporation", "CORPORATION", KEY_N],
-	["toggle_galaxy_map", "CARTE GALAXIE", KEY_G],
-	["toggle_multiplayer", "MULTIJOUEUR", KEY_P],
-	["target_cycle", "CIBLE SUIVANTE", KEY_TAB],
-	["target_nearest", "CIBLE PROCHE", KEY_T],
-	["target_clear", "ANNULER CIBLE", KEY_Y],
-	["pip_weapons", "ENERGIE ARMES", KEY_UP],
-	["pip_shields", "ENERGIE BOUCLIERS", KEY_LEFT],
-	["pip_engines", "ENERGIE MOTEURS", KEY_RIGHT],
-	["pip_reset", "ENERGIE RESET", KEY_DOWN],
-	["dock", "AMARRAGE", KEY_F],
-	["gate_jump", "SAUT PORTAIL", KEY_J],
-	["build", "CONSTRUIRE", KEY_B],
-	["scanner_pulse", "SCANNER", KEY_H],
-	["toggle_weapon_1", "ARME 1", KEY_1],
-	["toggle_weapon_2", "ARME 2", KEY_2],
-	["toggle_weapon_3", "ARME 3", KEY_3],
-	["toggle_weapon_4", "ARME 4", KEY_4],
+	["move_forward", "key.forward", KEY_W],
+	["move_backward", "key.backward", KEY_S],
+	["strafe_left", "key.left", KEY_A],
+	["strafe_right", "key.right", KEY_D],
+	["strafe_up", "key.up", KEY_SPACE],
+	["strafe_down", "key.down", KEY_CTRL],
+	["roll_left", "key.roll_left", KEY_Q],
+	["roll_right", "key.roll_right", KEY_E],
+	["boost", "key.boost", KEY_SHIFT],
+	["toggle_cruise", "key.cruise", KEY_C],
+	["toggle_camera", "key.camera", KEY_V],
+	["toggle_flight_assist", "key.flight_assist", KEY_Z],
+	["toggle_map", "key.system_map", KEY_M],
+	["toggle_corporation", "key.corporation", KEY_N],
+	["toggle_galaxy_map", "key.galaxy_map", KEY_G],
+	["toggle_multiplayer", "key.multiplayer", KEY_P],
+	["target_cycle", "key.target_cycle", KEY_TAB],
+	["target_nearest", "key.target_nearest", KEY_T],
+	["target_clear", "key.target_clear", KEY_Y],
+	["pip_weapons", "key.pip_weapons", KEY_UP],
+	["pip_shields", "key.pip_shields", KEY_LEFT],
+	["pip_engines", "key.pip_engines", KEY_RIGHT],
+	["pip_reset", "key.pip_reset", KEY_DOWN],
+	["dock", "key.dock", KEY_F],
+	["gate_jump", "key.gate_jump", KEY_J],
+	["build", "key.build", KEY_B],
+	["scanner_pulse", "key.scanner", KEY_H],
+	["toggle_weapon_1", "key.weapon_1", KEY_1],
+	["toggle_weapon_2", "key.weapon_2", KEY_2],
+	["toggle_weapon_3", "key.weapon_3", KEY_3],
+	["toggle_weapon_4", "key.weapon_4", KEY_4],
 ]
 
 # Cached layout rects (set in _draw, used in _gui_input)
@@ -69,27 +70,34 @@ var _content_max_h: float = 0.0
 
 
 func _init() -> void:
-	screen_title = "OPTIONS"
+	screen_title = Locale.t("screen.options")
 	screen_mode = ScreenMode.OVERLAY
 
 
 func _ready() -> void:
 	super._ready()
 
+	# Language dropdown (above tab bar)
+	_dropdown_lang = UIDropdown.new()
+	_dropdown_lang.options = Array(Locale.get_language_labels()) as Array[String]
+	_dropdown_lang.selected_index = Locale.get_language_index()
+	_dropdown_lang.option_selected.connect(_on_lang_selected)
+	add_child(_dropdown_lang)
+
 	# Tab bar
 	_tab_bar = UITabBar.new()
-	_tab_bar.tabs = ["AUDIO", "CONTROLES"]
+	_tab_bar.tabs = [Locale.t("tab.audio"), Locale.t("tab.controls")]
 	_tab_bar.tab_changed.connect(_on_tab_changed)
 	add_child(_tab_bar)
 
 	# Audio sliders
-	_slider_master = _create_slider("PRINCIPAL")
+	_slider_master = _create_slider(Locale.t("slider.master"))
 	_slider_master.value_changed.connect(_on_master_changed)
 
-	_slider_music = _create_slider("MUSIQUE")
+	_slider_music = _create_slider(Locale.t("slider.music"))
 	_slider_music.value_changed.connect(_on_music_changed)
 
-	_slider_sfx = _create_slider("EFFETS SONORES")
+	_slider_sfx = _create_slider(Locale.t("slider.sfx"))
 	_slider_sfx.value_changed.connect(_on_sfx_changed)
 
 
@@ -129,6 +137,20 @@ func _on_tab_changed(idx: int) -> void:
 	queue_redraw()
 
 
+func _on_lang_selected(idx: int) -> void:
+	var code: String = Locale.SUPPORTED_LANGUAGES[idx]["code"]
+	Locale.set_language(code)
+
+
+func _on_language_changed(_lang: String) -> void:
+	screen_title = Locale.t("screen.options")
+	_tab_bar.tabs = [Locale.t("tab.audio"), Locale.t("tab.controls")]
+	_slider_master.label_text = Locale.t("slider.master")
+	_slider_music.label_text = Locale.t("slider.music")
+	_slider_sfx.label_text = Locale.t("slider.sfx")
+	queue_redraw()
+
+
 func _update_visibility() -> void:
 	var show_audio: bool = (_current_tab == 0)
 	_slider_master.visible = show_audio
@@ -154,10 +176,11 @@ func _draw() -> void:
 	var font_bold: Font = UITheme.get_font_bold()
 	var fsize: int = UITheme.FONT_SIZE_TITLE
 	var title_y: float = py + UITheme.MARGIN_PANEL + fsize
-	draw_string(font_bold, Vector2(px, title_y), "OPTIONS", HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, fsize, UITheme.TEXT_HEADER)
+	var title_text: String = Locale.t("screen.options")
+	draw_string(font_bold, Vector2(px, title_y), title_text, HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, fsize, UITheme.TEXT_HEADER)
 
 	# Decorative title lines
-	var title_w: float = font_bold.get_string_size("OPTIONS", HORIZONTAL_ALIGNMENT_CENTER, -1, fsize).x
+	var title_w: float = font_bold.get_string_size(title_text, HORIZONTAL_ALIGNMENT_CENTER, -1, fsize).x
 	var cx: float = px + PANEL_W * 0.5
 	var deco_y: float = title_y - fsize * 0.35
 	var half: float = title_w * 0.5 + 16
@@ -167,6 +190,12 @@ func _draw() -> void:
 	# Separator
 	var sep_y: float = title_y + 10
 	draw_line(Vector2(px + 16, sep_y), Vector2(px + PANEL_W - 16, sep_y), UITheme.BORDER, 1.0)
+
+	# Language dropdown (top-right of panel)
+	var lang_w: float = 130.0
+	var lang_h: float = 24.0
+	_dropdown_lang.position = Vector2(px + PANEL_W - UITheme.MARGIN_PANEL - lang_w, py + UITheme.MARGIN_PANEL + 2)
+	_dropdown_lang.size = Vector2(lang_w, lang_h)
 
 	# Tab bar
 	var tab_y: float = sep_y + 8
@@ -186,7 +215,7 @@ func _draw() -> void:
 
 	# Close hint
 	var hint_font: Font = UITheme.get_font()
-	draw_string(hint_font, Vector2(px, py + PANEL_H - 14), "ECHAP POUR FERMER", HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	draw_string(hint_font, Vector2(px, py + PANEL_H - 14), Locale.t("common.close_hint"), HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 
 func _draw_audio_tab() -> void:
@@ -215,7 +244,7 @@ func _draw_controls_tab() -> void:
 
 		var entry: Array = REBINDABLE_ACTIONS[i]
 		var action: String = entry[0]
-		var label: String = entry[1]
+		var label: String = Locale.t(entry[1])
 
 		# Alternating row bg
 		if i % 2 == 0:
@@ -235,7 +264,7 @@ func _draw_controls_tab() -> void:
 		var key_text: String = _get_action_key_name(action)
 		var key_col: Color = UITheme.TEXT
 		if _listening and _listening_action == action:
-			key_text = "APPUYEZ..."
+			key_text = Locale.t("common.press_key")
 			var pulse: float = UITheme.get_pulse(2.0)
 			key_col = UITheme.WARNING.lerp(Color(1.0, 1.0, 0.5, 1.0), pulse)
 			# Highlight border
@@ -258,7 +287,7 @@ func _draw_controls_tab() -> void:
 	draw_rect(reset_rect, UITheme.BG)
 	draw_rect(reset_rect, UITheme.BORDER, false, 1.0)
 	var reset_font: Font = UITheme.get_font()
-	draw_string(reset_font, Vector2(reset_rect.position.x, reset_y + 20), "REINITIALISER", HORIZONTAL_ALIGNMENT_CENTER, reset_w, UITheme.FONT_SIZE_SMALL, UITheme.DANGER)
+	draw_string(reset_font, Vector2(reset_rect.position.x, reset_y + 20), Locale.t("btn.reset"), HORIZONTAL_ALIGNMENT_CENTER, reset_w, UITheme.FONT_SIZE_SMALL, UITheme.DANGER)
 
 
 # =========================================================================

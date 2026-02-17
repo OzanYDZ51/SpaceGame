@@ -176,8 +176,10 @@ func _draw() -> void:
 			var evt: EventData = evt_mgr.get_event(extra["event_id"])
 			if evt:
 				var remaining: float = evt.get_time_remaining()
-				var mins: int = int(remaining) / 60
-				var secs: int = int(remaining) % 60
+				var total_secs: int = int(remaining)
+				@warning_ignore("integer_division")
+				var mins: int = total_secs / 60
+				var secs: int = total_secs % 60
 				_draw_row(font, x, value_x, y, "TEMPS", "%d:%02d" % [mins, secs])
 				y += 18
 
