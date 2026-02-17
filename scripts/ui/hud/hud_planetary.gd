@@ -3,6 +3,7 @@ extends Control
 
 # =============================================================================
 # HUD Planetary — Altimeter + planet name when near a planet surface
+# Positioned above the ChatPanel (bottom-left) to avoid overlap.
 # =============================================================================
 
 var planet_approach_mgr = null
@@ -11,6 +12,8 @@ var _info_ctrl: Control = null
 var _last_altitude: float = INF
 var _last_zone: int = PlanetApproachManager.Zone.SPACE
 var _last_planet_name: String = ""
+var _chat_panel = null  # Cached ref to ChatPanel for dynamic positioning
+var _chat_lookup_done: bool = false
 
 const ZONE_COLORS: Dictionary = {
 	0: Color(0.4, 0.6, 0.8, 0.0),     # SPACE — invisible
@@ -32,7 +35,7 @@ const ZONE_NAMES: Dictionary = {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Bottom-left info display
+	# Bottom-left info display — offset will be adjusted dynamically above chat
 	_info_ctrl = HudDrawHelpers.make_ctrl(0.0, 1.0, 0.0, 1.0, 20, -120, 280, -20)
 	_info_ctrl.draw.connect(_draw_info.bind(_info_ctrl))
 	add_child(_info_ctrl)
@@ -49,7 +52,26 @@ func _process(_delta: float) -> void:
 		_last_altitude = planet_approach_mgr.current_altitude
 		_last_zone = zone
 		_last_planet_name = planet_approach_mgr.current_planet_name
+		_update_position()
 		_info_ctrl.queue_redraw()
+
+
+func _update_position() -> void:
+	# Find ChatPanel once (it lives at UI/ChatPanel in the scene tree)
+	if not _chat_lookup_done:
+		_chat_lookup_done = true
+		var main = get_tree().current_scene
+		if main:
+			_chat_panel = main.get_node_or_null("UI/ChatPanel")
+
+	# Position above the chat panel (chat is bottom-left, resizable)
+	var bottom_offset: float = 20.0  # default: 20px from bottom edge
+	if _chat_panel and _chat_panel.visible:
+		# Chat panel height + its bottom margin (16px) + gap (8px)
+		bottom_offset = _chat_panel._panel_height + 16.0 + 8.0
+	var panel_h: float = 100.0
+	_info_ctrl.offset_top = -(bottom_offset + panel_h)
+	_info_ctrl.offset_bottom = -bottom_offset
 
 
 func _draw_info(ctrl: Control) -> void:
