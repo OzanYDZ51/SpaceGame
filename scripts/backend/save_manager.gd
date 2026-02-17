@@ -97,9 +97,12 @@ func apply_state(state: Dictionary) -> void:
 	if state.is_empty():
 		return
 
+	print("[SaveMgr] apply_state: starting...")
+
 	# Galaxy re-generation (must happen before PlayerData.apply_save_state)
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
 	if gal_seed != Constants.galaxy_seed:
+		print("[SaveMgr] apply_state: regenerating galaxy (seed %d -> %d)" % [Constants.galaxy_seed, gal_seed])
 		Constants.galaxy_seed = gal_seed
 		GameManager._galaxy = GalaxyGenerator.generate(gal_seed)
 		if GameManager._system_transition:
@@ -107,6 +110,7 @@ func apply_state(state: Dictionary) -> void:
 
 	# Delegate bulk state to PlayerData
 	if GameManager.player_data:
+		print("[SaveMgr] apply_state: applying player data...")
 		GameManager.player_data.apply_save_state(
 			state,
 			GameManager.player_ship,
@@ -116,19 +120,24 @@ func apply_state(state: Dictionary) -> void:
 			GameManager._commerce_manager,
 			GameManager._squadron_mgr,
 		)
+		print("[SaveMgr] apply_state: player data applied OK")
 
 	# Gameplay integrator state (factions, missions, economy, POIs)
 	if GameManager._gameplay_integrator:
+		print("[SaveMgr] apply_state: applying gameplay integrator state...")
 		GameManager._gameplay_integrator.apply_save_state(state)
+		print("[SaveMgr] apply_state: gameplay integrator state applied OK")
 
 	# Ship change (must happen after fleet is restored by PlayerData)
 	# Uses rebuild_ship_for_respawn which bypasses the DOCKED state check —
 	# on reconnect the player is in PLAYING state, not DOCKED.
 	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
+	print("[SaveMgr] apply_state: checking ship change (saved=%s)..." % ship_id)
 	var ship = GameManager.player_ship
 	if ship and ship_id != "":
 		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else Constants.DEFAULT_SHIP_ID)
 		if current_sid != ship_id and GameManager.player_fleet:
+			print("[SaveMgr] apply_state: ship change needed %s -> %s" % [current_sid, ship_id])
 			var target_idx: int = GameManager.player_fleet.active_index
 			var active_fs = GameManager.player_fleet.get_active()
 			if active_fs == null or str(active_fs.ship_id) != ship_id:
@@ -138,6 +147,7 @@ func apply_state(state: Dictionary) -> void:
 						break
 			if GameManager._ship_change_mgr:
 				GameManager._ship_change_mgr.rebuild_ship_for_respawn(target_idx)
+	print("[SaveMgr] apply_state: DONE")
 
 
 # --- Collect current state ---

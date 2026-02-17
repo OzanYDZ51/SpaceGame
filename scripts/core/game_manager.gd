@@ -911,9 +911,13 @@ func _show_faction_selection() -> void:
 func _load_backend_state() -> void:
 	if not AuthManager.is_authenticated:
 		return
+	print("[GM] _load_backend_state: fetching player state...")
 	var state: Dictionary = await SaveManager.load_player_state()
+	print("[GM] _load_backend_state: got state, keys=%d error=%s" % [state.size(), state.has("error")])
 	if not state.is_empty() and not state.has("error"):
+		print("[GM] _load_backend_state: applying state...")
 		SaveManager.apply_state(state)
+		print("[GM] _load_backend_state: state applied OK")
 		_backend_state_loaded = true
 
 		# Update network ship ID to match restored ship
@@ -926,17 +930,21 @@ func _load_backend_state() -> void:
 			NetworkManager._rpc_register_player.rpc_id(1, NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
 
 		# Fleet reference was replaced by deserialize — reconnect map panels
+		print("[GM] _load_backend_state: refreshing fleet maps...")
 		_refresh_fleet_on_maps()
 		# Redeploy fleet ships that were deployed in the current system.
 		# apply_state() restores fleet data (positions, commands, deployment_state)
 		# but the system already loaded before the backend responded, so
 		# _on_system_loaded().redeploy_saved_ships() ran with the default fleet.
 		if _fleet_deployment_mgr:
+			print("[GM] _load_backend_state: redeploying fleet ships...")
 			_fleet_deployment_mgr.redeploy_saved_ships()
 
 		# Restore docked state if the player was docked when they disconnected.
 		# apply_state only restores position/fleet — it doesn't re-enter the dock.
+		print("[GM] _load_backend_state: trying restore docked state...")
 		_try_restore_docked_state(state)
+	print("[GM] _load_backend_state: DONE")
 
 
 ## Re-enter dock if the player was docked when they saved/disconnected.
