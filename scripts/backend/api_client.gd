@@ -6,7 +6,7 @@ extends Node
 # Autoload: ApiClient
 # =============================================================================
 
-const POOL_SIZE: int = 4
+const POOL_SIZE: int = 8
 const REQUEST_TIMEOUT: float = 10.0
 
 var access_token: String = ""

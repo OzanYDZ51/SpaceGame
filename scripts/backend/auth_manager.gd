@@ -69,9 +69,9 @@ func login(p_username: String, password: String) -> void:
 		login_failed.emit(error)
 
 
-func set_token_from_launcher(access_token: String) -> void:
+func set_token_from_launcher(access_token: String, refresh_token: String = "") -> void:
 	## Called by GameManager when the launcher passes a JWT via CLI.
-	## The launcher handles login/register; we just receive the token.
+	## The launcher handles login/register; we just receive the tokens.
 	_token_from_launcher = true
 	_access_token = access_token
 	ApiClient.set_token(_access_token)
@@ -80,12 +80,27 @@ func set_token_from_launcher(access_token: String) -> void:
 	# Atomically update network display name so it's never stale
 	if username != "":
 		NetworkManager.local_player_name = username
-	_start_refresh_timer()
-	# Try to get refresh token from saved file (launcher may have saved it)
-	var config := ConfigFile.new()
-	if config.load(_token_file) == OK:
-		_refresh_token = config.get_value("auth", "refresh_token", "")
-	print("AuthManager: Token set from launcher — player=%s (id=%s)" % [username, player_id])
+	# Refresh token: prefer CLI arg, fall back to saved file, then launcher's auth.json
+	if refresh_token != "":
+		_refresh_token = refresh_token
+	else:
+		var config := ConfigFile.new()
+		if config.load(_token_file) == OK:
+			_refresh_token = config.get_value("auth", "refresh_token", "")
+		# Fall back to launcher's auth.json (same machine)
+		if _refresh_token == "":
+			_refresh_token = _read_launcher_refresh_token()
+	# Save refresh token to Godot's auth.cfg so future sessions can use it
+	if _refresh_token != "":
+		_save_tokens()
+	# Check if token is near expiry or already expired — refresh immediately
+	var ttl: float = _get_token_ttl(_access_token)
+	if ttl < 60.0 and _refresh_token != "":
+		print("AuthManager: Token expires in %.0fs — refreshing immediately" % ttl)
+		_refresh_now()
+	else:
+		_start_refresh_timer()
+	print("AuthManager: Token set from launcher — player=%s (id=%s) ttl=%.0fs" % [username, player_id, ttl])
 
 
 func logout() -> void:
@@ -191,8 +206,66 @@ func _try_restore_session() -> void:
 			print("AuthManager: Session restored for '%s'" % username)
 			return
 
+	# Final safety check: don't destroy a launcher-provided session
+	if _token_from_launcher:
+		print("AuthManager: Launcher token already set, skipping session restore")
+		return
 	print("AuthManager: Session restore failed, tokens cleared")
 	_clear_session()
+
+
+## Returns seconds until the JWT expires (0 if already expired or unparseable).
+func _get_token_ttl(token: String) -> float:
+	var parts := token.split(".")
+	if parts.size() < 2:
+		return 0.0
+	var payload := parts[1]
+	while payload.length() % 4 != 0:
+		payload += "="
+	payload = payload.replace("-", "+").replace("_", "/")
+	var decoded := Marshalls.base64_to_utf8(payload)
+	var parsed := JSON.new()
+	if parsed.parse(decoded) == OK and parsed.data is Dictionary:
+		var exp_val = parsed.data.get("exp", 0)
+		var now: float = Time.get_unix_time_from_system()
+		return maxf(float(exp_val) - now, 0.0)
+	return 0.0
+
+
+## Refresh the access token immediately (don't wait for timer).
+func _refresh_now() -> void:
+	if _refresh_token == "":
+		_start_refresh_timer()
+		return
+	var result := await ApiClient.post_async("/api/v1/auth/refresh", {
+		"refresh_token": _refresh_token,
+	}, false)
+	if result.has("access_token"):
+		_access_token = result.get("access_token", "")
+		_refresh_token = result.get("refresh_token", _refresh_token)
+		ApiClient.set_token(_access_token)
+		_save_tokens()
+		_start_refresh_timer()
+		print("AuthManager: Immediate token refresh succeeded")
+	else:
+		push_warning("AuthManager: Immediate token refresh failed — using existing token")
+		_start_refresh_timer()
+
+
+## Try to read the refresh token from the launcher's auth.json file.
+func _read_launcher_refresh_token() -> String:
+	var launcher_auth := OS.get_environment("LOCALAPPDATA").path_join("ImperionOnline").path_join("auth.json")
+	if not FileAccess.file_exists(launcher_auth):
+		return ""
+	var f := FileAccess.open(launcher_auth, FileAccess.READ)
+	if f == null:
+		return ""
+	var text := f.get_as_text()
+	f.close()
+	var parsed := JSON.new()
+	if parsed.parse(text) == OK and parsed.data is Dictionary:
+		return str(parsed.data.get("refresh_token", ""))
+	return ""
 
 
 func _parse_jwt_claims(token: String) -> void:

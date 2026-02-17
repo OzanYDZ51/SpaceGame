@@ -114,6 +114,7 @@ function showMain(username) {
   mainSection.style.display = "block";
   userDisplay.textContent = username.toUpperCase();
   logoArea.classList.add("compact");
+  isLoggedIn = true;
   loadPlayerProfile();
   loadSettings();
 }
@@ -332,6 +333,7 @@ document.getElementById("reg-password").addEventListener("keydown", (e) => {
 document.getElementById("btn-logout").addEventListener("click", async (e) => {
   e.preventDefault();
   await window.launcher.logout();
+  isLoggedIn = false;
   btnPlay.disabled = true;
   btnPlay.classList.remove("ready");
   btnUninstall.style.display = "none";
@@ -424,6 +426,9 @@ btnVerify.addEventListener("click", async () => {
 // UPDATES & LAUNCH
 // =========================================================================
 
+let isUpdating = false;
+let isLoggedIn = false;
+
 async function checkUpdatesAndPrepare() {
   setStatus("Verification des mises a jour...");
 
@@ -462,8 +467,23 @@ async function checkUpdatesAndPrepare() {
     gameVersionEl.classList.add(info.gameNeedsUpdate ? "warning" : (info.gameInstalled ? "ok" : ""));
   }
 
+  // Auto-update launcher (if detected while already open)
+  if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
+    isUpdating = true;
+    btnPlay.disabled = true;
+    btnPlay.classList.remove("ready");
+    setStatus("Mise a jour du launcher...");
+    showProgress("MISE A JOUR DU LAUNCHER");
+    await window.launcher.updateLauncher(info.remote.launcher.download_url);
+    setStatus("Redemarrage...");
+    return;
+  }
+
   // Auto-update game
   if (info.gameNeedsUpdate && info.remote.game.download_url) {
+    isUpdating = true;
+    btnPlay.disabled = true;
+    btnPlay.classList.remove("ready");
     setStatus("Verification des fichiers...");
     showProgress("MISE A JOUR DU JEU");
     try {
@@ -475,6 +495,7 @@ async function checkUpdatesAndPrepare() {
       if (!result.success) {
         setStatus("Erreur: " + (result.error || "Mise a jour echouee"));
         hideProgress();
+        isUpdating = false;
         return;
       }
       if (result.skipped) {
@@ -489,8 +510,10 @@ async function checkUpdatesAndPrepare() {
     } catch (err) {
       setStatus("Erreur: " + err.message);
       hideProgress();
+      isUpdating = false;
       return;
     }
+    isUpdating = false;
   }
 
   // Ready
@@ -574,3 +597,30 @@ async function init() {
 }
 
 init();
+
+// =========================================================================
+// PERIODIC UPDATE CHECK — every 2 minutes while launcher is idle
+// =========================================================================
+
+setInterval(async () => {
+  // Skip if not logged in, already updating, or game is running
+  if (!isLoggedIn || isUpdating || btnPlay.textContent === "EN COURS...") return;
+
+  try {
+    const info = await window.launcher.checkUpdates();
+    if (info.error) return;
+
+    // Launcher update detected — block play and start update
+    if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
+      checkUpdatesAndPrepare();
+      return;
+    }
+
+    // Game update detected — trigger update flow
+    if (info.gameNeedsUpdate && info.remote?.game?.download_url) {
+      checkUpdatesAndPrepare();
+    }
+  } catch {
+    // Silent fail — will retry next interval
+  }
+}, 120000);

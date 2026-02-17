@@ -734,9 +734,12 @@ ipcMain.handle("launch-game", async () => {
     args.push("--resolution", settings.resolution);
   }
 
-  // Auth token (after --)
+  // Auth tokens (after --)
   if (auth?.access_token) {
     args.push("--", "--auth-token", auth.access_token);
+    if (auth.refresh_token) {
+      args.push("--refresh-token", auth.refresh_token);
+    }
   }
 
   try {
