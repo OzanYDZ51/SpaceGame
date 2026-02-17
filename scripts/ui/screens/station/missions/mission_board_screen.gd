@@ -13,7 +13,7 @@ signal mission_board_closed
 # --- Tab constants ---
 const TAB_AVAILABLE: int = 0
 const TAB_ACTIVE: int = 1
-const TAB_LABELS: PackedStringArray = PackedStringArray(["DISPONIBLES", "EN COURS"])
+static var TAB_LABELS: PackedStringArray = PackedStringArray(["DISPONIBLES", "EN COURS"])
 
 # --- Card layout ---
 const CARD_MARGIN_X: float = 40.0

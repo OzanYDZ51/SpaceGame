@@ -8,7 +8,7 @@ extends RefCounted
 # =============================================================================
 
 # --- Kill Mission Templates (French) ---
-const KILL_TITLES: PackedStringArray = PackedStringArray([
+static var KILL_TITLES: PackedStringArray = PackedStringArray([
 	"Chasse aux pirates",
 	"Elimination de menaces",
 	"Nettoyage de secteur",
@@ -19,7 +19,7 @@ const KILL_TITLES: PackedStringArray = PackedStringArray([
 	"Assaut preventif",
 ])
 
-const KILL_DESCRIPTIONS: PackedStringArray = PackedStringArray([
+static var KILL_DESCRIPTIONS: PackedStringArray = PackedStringArray([
 	"Des vaisseaux hostiles ont ete reperes dans le secteur. Eliminez-les pour securiser la zone.",
 	"La faction locale offre une prime pour la destruction de menaces hostiles.",
 	"Un groupe de pirates menace les routes commerciales. Detruisez-les.",
