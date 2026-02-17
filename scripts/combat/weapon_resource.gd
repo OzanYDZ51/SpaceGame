@@ -39,6 +39,8 @@ enum AmmoType { ENERGY, AMMO }
 @export var bolt_length: float = 4.0
 @export var fire_sound_path: String = "res://assets/sounds/laser_fire.mp3"
 @export var weapon_model_scene: String = ""  # Path to 3D mesh scene for weapon visual
+@export var model_scale: float = 1.0        # Scale runtime du modele 3D (S=1.0, M=1.5, L=2.0)
+@export var weapon_family: StringName = &""  # Groupe de variantes (ex: &"laser_mk1")
 
 # --- Commerce ---
 @export var sold_at_station_types: Array[StringName] = []

@@ -307,7 +307,9 @@ func _load_weapon_mesh(weapon: WeaponResource) -> void:
 	if scene == null:
 		return
 	_weapon_mesh_instance = scene.instantiate()
-	# No runtime scaling — weapon scene defines its own size (WYSIWYG with editor)
+	# Apply model_scale for S/M/L weapon size variants
+	if weapon.model_scale != 1.0:
+		_weapon_mesh_instance.scale *= weapon.model_scale
 
 	# Detect TurretBase node: if present, base stays fixed on hardpoint,
 	# only TurretGun (sibling or child) rotates on the pivot.

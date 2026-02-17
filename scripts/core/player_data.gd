@@ -27,9 +27,9 @@ func initialize(galaxy) -> void:
 
 	# Inventory with starting weapons + equipment
 	inventory = PlayerInventory.new()
-	inventory.add_weapon(&"Laser Mk1", 2)
-	inventory.add_weapon(&"Turret Mk1", 1)
-	inventory.add_weapon(&"Mining Laser Mk1", 1)
+	inventory.add_weapon(&"Laser Mk1 S", 2)
+	inventory.add_weapon(&"Turret Mk1 M", 1)
+	inventory.add_weapon(&"Mining Laser S", 1)
 	inventory.add_shield(&"Bouclier Basique Mk2", 1)
 	inventory.add_shield(&"Bouclier Prismatique", 1)
 	inventory.add_engine(&"Propulseur Standard Mk2", 1)

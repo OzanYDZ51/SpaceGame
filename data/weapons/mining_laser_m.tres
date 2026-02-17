@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1")
-weapon_name = &"Mining Laser Mk2"
+weapon_name = &"Mining Laser M"
 weapon_type = 6
 slot_size = 1
 ammo_type = 0
@@ -17,5 +17,7 @@ projectile_lifetime = 0.0
 bolt_color = Color(0.15, 0.9, 0.6, 1)
 bolt_length = 0.0
 weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk2.tscn"
-price = 4000
+model_scale = 1.0
+weapon_family = &"mining_laser"
+price = 1200
 sold_at_station_types = Array[StringName]([&"repair", &"mining"])

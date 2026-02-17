@@ -4,20 +4,22 @@
 
 [resource]
 script = ExtResource("1")
-weapon_name = &"Turret Mk1"
+weapon_name = &"Turret Mk1 L"
 weapon_type = 5
-slot_size = 1
+slot_size = 2
 ammo_type = 0
-damage_per_hit = 25.0
+damage_per_hit = 50.0
 damage_type = &"kinetic"
-fire_rate = 4.0
-energy_cost_per_shot = 4.0
-projectile_speed = 1000.0
+fire_rate = 2.5
+energy_cost_per_shot = 8.0
+projectile_speed = 900.0
 projectile_lifetime = 3.0
 projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
 bolt_color = Color(1, 0.6, 0.2, 1)
 bolt_length = 3.5
 fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
-price = 6000
-sold_at_station_types = Array[StringName]([&"repair", &"military"])
+model_scale = 1.5
+weapon_family = &"turret_mk1"
+price = 15000
+sold_at_station_types = Array[StringName]([&"military"])

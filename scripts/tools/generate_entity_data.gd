@@ -44,7 +44,7 @@ func _build_fighter_mk1() -> ShipData:
 	d.model_path = "res://assets/models/tie.glb"
 	d.model_scale = 2.0
 	d.exhaust_scale = 0.8
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1"]
+	d.default_loadout = [&"Laser Mk1 S", &"Laser Mk1 S"]
 	d.hull_hp = 1000.0; d.shield_hp = 500.0; d.shield_regen_rate = 15.0; d.shield_regen_delay = 4.0
 	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 5.0
 	d.mass = 50000.0
@@ -82,7 +82,7 @@ func _build_frigate_mk1() -> ShipData:
 	d.model_path = "res://assets/models/frigate_mk1.glb"
 	d.model_scale = 1.0
 	d.exhaust_scale = 2.0
-	d.default_loadout = [&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1", &"Turret Mk1"]
+	d.default_loadout = [&"Laser Mk1 S", &"Laser Mk1 S", &"Turret Mk1 M", &"Turret Mk1 M", &"Turret Mk1 M", &"Turret Mk1 M", &"Laser Mk1 L", &"Laser Mk1 L"]
 	d.hull_hp = 5000.0; d.shield_hp = 2500.0; d.shield_regen_rate = 30.0; d.shield_regen_delay = 6.0
 	d.shield_damage_bleedthrough = 0.05; d.armor_rating = 20.0
 	d.mass = 300000.0
@@ -122,16 +122,20 @@ func _save_ship(d: ShipData) -> void:
 # =========================================================================
 
 func _generate_weapons() -> void:
-	_save_weapon(_build_laser_mk1())
-	_save_weapon(_build_turret_mk1())
-	_save_weapon(_build_mining_laser_mk1())
-	_save_weapon(_build_mining_laser_mk2())
-	print("  Weapons: 4 generated")
+	_save_weapon(_build_laser_mk1_s())
+	_save_weapon(_build_laser_mk1_m())
+	_save_weapon(_build_laser_mk1_l())
+	_save_weapon(_build_turret_mk1_s())
+	_save_weapon(_build_turret_mk1_m())
+	_save_weapon(_build_turret_mk1_l())
+	_save_weapon(_build_mining_laser_s())
+	_save_weapon(_build_mining_laser_m())
+	print("  Weapons: 8 generated")
 
 
-func _build_laser_mk1() -> WeaponResource:
+func _build_laser_mk1_s() -> WeaponResource:
 	var w := WeaponResource.new()
-	w.weapon_name = &"Laser Mk1"
+	w.weapon_name = &"Laser Mk1 S"
 	w.weapon_type = WeaponResource.WeaponType.LASER
 	w.slot_size = WeaponResource.SlotSize.S
 	w.ammo_type = WeaponResource.AmmoType.ENERGY
@@ -146,14 +150,88 @@ func _build_laser_mk1() -> WeaponResource:
 	w.bolt_length = 4.0
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+	w.model_scale = 1.0
+	w.weapon_family = &"laser_mk1"
 	w.price = 500
 	w.sold_at_station_types = [&"repair", &"military", &"mining"]
 	return w
 
 
-func _build_turret_mk1() -> WeaponResource:
+func _build_laser_mk1_m() -> WeaponResource:
 	var w := WeaponResource.new()
-	w.weapon_name = &"Turret Mk1"
+	w.weapon_name = &"Laser Mk1 M"
+	w.weapon_type = WeaponResource.WeaponType.LASER
+	w.slot_size = WeaponResource.SlotSize.M
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 45.0
+	w.damage_type = &"thermal"
+	w.fire_rate = 4.5
+	w.energy_cost_per_shot = 6.0
+	w.projectile_speed = 720.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(0.3, 0.7, 1.0)
+	w.bolt_length = 5.2
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+	w.model_scale = 1.5
+	w.weapon_family = &"laser_mk1"
+	w.price = 1500
+	w.sold_at_station_types = [&"repair", &"military"]
+	return w
+
+
+func _build_laser_mk1_l() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Laser Mk1 L"
+	w.weapon_type = WeaponResource.WeaponType.LASER
+	w.slot_size = WeaponResource.SlotSize.L
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 75.0
+	w.damage_type = &"thermal"
+	w.fire_rate = 3.0
+	w.energy_cost_per_shot = 10.0
+	w.projectile_speed = 640.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(0.3, 0.7, 1.0)
+	w.bolt_length = 6.4
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+	w.model_scale = 2.0
+	w.weapon_family = &"laser_mk1"
+	w.price = 4000
+	w.sold_at_station_types = [&"military"]
+	return w
+
+
+func _build_turret_mk1_s() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Turret Mk1 S"
+	w.weapon_type = WeaponResource.WeaponType.TURRET
+	w.slot_size = WeaponResource.SlotSize.S
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 15.0
+	w.damage_type = &"kinetic"
+	w.fire_rate = 5.0
+	w.energy_cost_per_shot = 3.0
+	w.projectile_speed = 1000.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(1.0, 0.6, 0.2)
+	w.bolt_length = 3.5
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+	w.model_scale = 0.7
+	w.weapon_family = &"turret_mk1"
+	w.price = 800
+	w.sold_at_station_types = [&"repair", &"military"]
+	return w
+
+
+func _build_turret_mk1_m() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Turret Mk1 M"
 	w.weapon_type = WeaponResource.WeaponType.TURRET
 	w.slot_size = WeaponResource.SlotSize.M
 	w.ammo_type = WeaponResource.AmmoType.ENERGY
@@ -168,14 +246,40 @@ func _build_turret_mk1() -> WeaponResource:
 	w.bolt_length = 3.5
 	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
 	w.weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+	w.model_scale = 1.0
+	w.weapon_family = &"turret_mk1"
 	w.price = 6000
 	w.sold_at_station_types = [&"repair", &"military"]
 	return w
 
 
-func _build_mining_laser_mk1() -> WeaponResource:
+func _build_turret_mk1_l() -> WeaponResource:
 	var w := WeaponResource.new()
-	w.weapon_name = &"Mining Laser Mk1"
+	w.weapon_name = &"Turret Mk1 L"
+	w.weapon_type = WeaponResource.WeaponType.TURRET
+	w.slot_size = WeaponResource.SlotSize.L
+	w.ammo_type = WeaponResource.AmmoType.ENERGY
+	w.damage_per_hit = 50.0
+	w.damage_type = &"kinetic"
+	w.fire_rate = 2.5
+	w.energy_cost_per_shot = 8.0
+	w.projectile_speed = 900.0
+	w.projectile_lifetime = 3.0
+	w.projectile_scene_path = "res://scenes/weapons/laser_bolt.tscn"
+	w.bolt_color = Color(1.0, 0.6, 0.2)
+	w.bolt_length = 3.5
+	w.fire_sound_path = "res://assets/sounds/laser_fire.mp3"
+	w.weapon_model_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+	w.model_scale = 1.5
+	w.weapon_family = &"turret_mk1"
+	w.price = 15000
+	w.sold_at_station_types = [&"military"]
+	return w
+
+
+func _build_mining_laser_s() -> WeaponResource:
+	var w := WeaponResource.new()
+	w.weapon_name = &"Mining Laser S"
 	w.weapon_type = WeaponResource.WeaponType.MINING_LASER
 	w.slot_size = WeaponResource.SlotSize.S
 	w.ammo_type = WeaponResource.AmmoType.ENERGY
@@ -188,14 +292,16 @@ func _build_mining_laser_mk1() -> WeaponResource:
 	w.bolt_color = Color(0.2, 1.0, 0.5)
 	w.bolt_length = 0.0
 	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk1.tscn"
-	w.price = 1000
+	w.model_scale = 1.0
+	w.weapon_family = &"mining_laser"
+	w.price = 300
 	w.sold_at_station_types = [&"repair", &"mining"]
 	return w
 
 
-func _build_mining_laser_mk2() -> WeaponResource:
+func _build_mining_laser_m() -> WeaponResource:
 	var w := WeaponResource.new()
-	w.weapon_name = &"Mining Laser Mk2"
+	w.weapon_name = &"Mining Laser M"
 	w.weapon_type = WeaponResource.WeaponType.MINING_LASER
 	w.slot_size = WeaponResource.SlotSize.M
 	w.ammo_type = WeaponResource.AmmoType.ENERGY
@@ -208,7 +314,9 @@ func _build_mining_laser_mk2() -> WeaponResource:
 	w.bolt_color = Color(0.15, 0.9, 0.6)
 	w.bolt_length = 0.0
 	w.weapon_model_scene = "res://scenes/weapons/models/mining_laser_mk2.tscn"
-	w.price = 4000
+	w.model_scale = 1.0
+	w.weapon_family = &"mining_laser"
+	w.price = 1200
 	w.sold_at_station_types = [&"repair", &"mining"]
 	return w
 
