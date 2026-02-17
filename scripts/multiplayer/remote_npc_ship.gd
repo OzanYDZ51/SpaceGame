@@ -39,6 +39,7 @@ func _setup_model() -> void:
 	var data = ShipRegistry.get_ship_data(ship_id)
 	_ship_model = ShipModel.new()
 	_ship_model.name = "ShipModel"
+	_ship_model.skip_centering = true  # Match local ships — keeps visual aligned with collision hull
 	if data:
 		_ship_model.model_path = data.model_path
 		_ship_model.model_scale = ShipFactory.get_scene_model_scale(ship_id)
@@ -77,9 +78,13 @@ func _setup_name_label() -> void:
 	_name_label.pixel_size = 0.05
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_name_label.no_depth_test = true
+	# Position label above the actual model (using visual AABB, not hardcoded collision_size)
 	var label_height: float = 15.0
-	if data:
-		label_height = data.collision_size.y * 0.5 + 8.0
+	if _ship_model:
+		var aabb := _ship_model.get_visual_aabb()
+		label_height = aabb.position.y + aabb.size.y + 5.0
+		if label_height < 10.0:
+			label_height = 15.0
 	_name_label.position = Vector3(0, label_height, 0)
 
 	if faction == &"hostile":
@@ -95,18 +100,24 @@ func _setup_name_label() -> void:
 
 
 func _setup_collision() -> void:
-	var data = ShipRegistry.get_ship_data(ship_id)
 	var body := StaticBody3D.new()
 	body.name = "HitBody"
 	body.collision_layer = Constants.LAYER_SHIPS
 	body.collision_mask = 0  # Only gets hit, doesn't detect
 	add_child(body)
-	var shape := CollisionShape3D.new()
-	shape.name = "HitShape"
-	var box := BoxShape3D.new()
-	box.size = data.collision_size if data else Vector3(28, 12, 36)
-	shape.shape = box
-	body.add_child(shape)
+	var col := CollisionShape3D.new()
+	col.name = "HitShape"
+	# Use convex hull from mesh (matches visual model exactly) with fallback to box
+	var convex: ConvexPolygonShape3D = ShipFactory.get_convex_shape_for_ship(ship_id)
+	if convex:
+		col.shape = convex
+		col.rotation_degrees = ShipFactory.get_model_rotation(ship_id)
+	else:
+		var data = ShipRegistry.get_ship_data(ship_id)
+		var box := BoxShape3D.new()
+		box.size = data.collision_size if data else Vector3(28, 12, 36)
+		col.shape = box
+	body.add_child(col)
 
 
 func _setup_health_proxy() -> void:
