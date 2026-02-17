@@ -130,7 +130,10 @@ func capture_from_node(ship: Node3D) -> void:
 		ai_state = brain.current_state
 		ai_patrol_center = brain._patrol_center
 		ai_patrol_radius = brain._patrol_radius
-		ai_route_waypoints = brain._waypoints.duplicate() if not brain._waypoints.is_empty() and brain.route_priority else []
+		var wps: Array[Vector3] = []
+		if not brain._waypoints.is_empty() and brain.route_priority:
+			wps.assign(brain._waypoints)
+		ai_route_waypoints = wps
 		ai_route_priority = brain.route_priority
 		if brain.target and is_instance_valid(brain.target):
 			ai_target_id = StringName(brain.target.name)
