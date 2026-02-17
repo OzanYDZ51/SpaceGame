@@ -434,19 +434,58 @@ ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
       mainWindow.webContents.send("progress", { phase: "launcher", received, total });
   });
 
-  // VBScript runs the installer silently — no console window flash
+  // Show status before closing
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("status", "Installation en cours, le launcher va redemarrer...");
+  }
+
+  // VBScript runs the installer silently — no console window, with a splash HTA
   const launcherExe = process.execPath;
   const launcherDir = path.dirname(launcherExe);
+  const htaPath = path.join(tempDir, "imperion_update_splash.hta");
+
+  // Small splash window shown during install
+  const hta = [
+    `<html>`,
+    `<head><title>Imperion Online</title>`,
+    `<HTA:APPLICATION ID="splash" BORDER="none" BORDERSTYLE="none" CAPTION="no"`,
+    ` SHOWINTASKBAR="yes" SINGLEINSTANCE="yes" SYSMENU="no" WINDOWSTATE="normal" />`,
+    `<style>`,
+    `body { margin:0; background:#0a0e14; color:#e0e0e0; font-family:'Segoe UI',sans-serif;`,
+    `  display:flex; align-items:center; justify-content:center; height:100vh; flex-direction:column; }`,
+    `.title { font-size:18px; color:#f09030; margin-bottom:12px; font-weight:bold; }`,
+    `.msg { font-size:13px; opacity:0.7; }`,
+    `.spinner { width:24px; height:24px; border:3px solid #333; border-top:3px solid #f09030;`,
+    `  border-radius:50%; animation:spin 1s linear infinite; margin-bottom:16px; }`,
+    `@keyframes spin { to { transform:rotate(360deg); } }`,
+    `</style></head><body>`,
+    `<script>window.resizeTo(380,160);window.moveTo((screen.width-380)/2,(screen.height-160)/2);</script>`,
+    `<div class="spinner"></div>`,
+    `<div class="title">IMPERION ONLINE</div>`,
+    `<div class="msg">Mise a jour en cours, veuillez patienter...</div>`,
+    `</body></html>`,
+  ].join("\r\n");
+  fs.writeFileSync(htaPath, hta);
+
   const vbs = [
     `Set WshShell = CreateObject("WScript.Shell")`,
+    `WshShell.Run "mshta.exe """ & "${htaPath.replace(/\\/g, "\\\\")}" & """", 1, False`,
     `WScript.Sleep 3000`,
     `WshShell.Run """${installerPath}"" /S /D=${launcherDir}", 0, True`,
-    `WScript.Sleep 2000`,
+    `WScript.Sleep 1000`,
+    // Close the splash HTA
+    `On Error Resume Next`,
+    `WshShell.Run "taskkill /F /FI ""WINDOWTITLE eq Imperion Online"" /IM mshta.exe", 0, True`,
+    `On Error GoTo 0`,
     `WshShell.Run """${launcherExe}""", 1, False`,
     `Set fso = CreateObject("Scripting.FileSystemObject")`,
+    `fso.DeleteFile "${htaPath.replace(/\\/g, "\\\\")}", True`,
     `fso.DeleteFile WScript.ScriptFullName, True`,
   ].join("\r\n");
   fs.writeFileSync(vbsPath, vbs);
+
+  // Let the user see the status message briefly before quitting
+  await new Promise((r) => setTimeout(r, 1500));
 
   const child = spawn("wscript.exe", [vbsPath], { detached: true, stdio: "ignore" });
   child.unref();

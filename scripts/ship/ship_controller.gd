@@ -165,6 +165,7 @@ func _notification(what: int) -> void:
 		_target_roll_rate = 0.0
 		_mouse_delta = Vector2.ZERO
 		cruise_look_delta = Vector2.ZERO
+		free_look_active = false
 	elif what == NOTIFICATION_WM_WINDOW_FOCUS_IN:
 		# Window regained focus — clear residual rotation smoothing
 		throttle_input = Vector3.ZERO
@@ -247,6 +248,8 @@ func _read_input() -> void:
 		_target_yaw_rate = 0.0
 		_target_roll_rate = 0.0
 		_mouse_delta = Vector2.ZERO
+		cruise_look_delta = Vector2.ZERO
+		free_look_active = false
 		return
 
 	# === THRUST ===
@@ -792,6 +795,7 @@ func reset_flight_state() -> void:
 	_current_roll_rate = 0.0
 	_mouse_delta = Vector2.ZERO
 	cruise_look_delta = Vector2.ZERO
+	free_look_active = false
 
 
 func _run_autopilot() -> void:

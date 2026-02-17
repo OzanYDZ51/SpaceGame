@@ -232,14 +232,16 @@ func _update_third_person(delta: float) -> void:
 	# =========================================================================
 	# FREE LOOK (Alt key or cruise: mouse orbits camera; otherwise smooth return)
 	# =========================================================================
-	var has_free_look_input: bool = _ship.cruise_look_delta.length_squared() > 0.01
-	if has_free_look_input:
+	if _ship.free_look_active:
+		# Accumulate mouse delta while free look is held
 		var md: Vector2 = _ship.cruise_look_delta
-		_free_look_yaw += md.x * FREE_LOOK_SENSITIVITY
-		_free_look_pitch += md.y * FREE_LOOK_SENSITIVITY
-		_free_look_pitch = clampf(_free_look_pitch, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
+		if md.length_squared() > 0.01:
+			_free_look_yaw += md.x * FREE_LOOK_SENSITIVITY
+			_free_look_pitch += md.y * FREE_LOOK_SENSITIVITY
+			_free_look_pitch = clampf(_free_look_pitch, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
 		is_free_looking = true
 	else:
+		# Free look released — smoothly return camera behind ship
 		_free_look_yaw = lerpf(_free_look_yaw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
 		_free_look_pitch = lerpf(_free_look_pitch, 0.0, FREE_LOOK_RETURN_SPEED * delta)
 		if absf(_free_look_yaw) < 0.1:
