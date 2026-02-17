@@ -126,8 +126,11 @@ func _ready() -> void:
 	# Authentication is REQUIRED — the launcher handles login/register.
 	_read_auth_token_from_cli()
 
+	# Dedicated server doesn't need player auth — skip login + backend state
+	var _is_dedicated_server: bool = NetworkManager.is_server()
+
 	# Editor dev auto-login: when running from F5 without launcher, auto-authenticate
-	if not AuthManager.is_authenticated and OS.has_feature("editor"):
+	if not _is_dedicated_server and not AuthManager.is_authenticated and OS.has_feature("editor"):
 		await _dev_auto_login()
 
 	print("GameManager: Initializing game...")
@@ -136,7 +139,9 @@ func _ready() -> void:
 	print("GameManager: Game initialized OK")
 	_crash_log("Game initialized OK")
 
-	if AuthManager.is_authenticated:
+	if _is_dedicated_server:
+		pass  # Server doesn't load player state
+	elif AuthManager.is_authenticated:
 		# Show black overlay while loading backend state to avoid seeing
 		# the default spawn position before the saved position is restored.
 		_show_loading_overlay()
