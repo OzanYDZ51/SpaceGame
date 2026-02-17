@@ -92,7 +92,9 @@ static func build_default_params(order_id: StringName, context: Dictionary) -> D
 				"target_z": ent.get("pos_z", context.get("universe_z", 0.0)),
 			}
 		&"return_to_station":
-			return {}
+			var fs = context.get("fleet_ship")
+			var station_id: String = fs.docked_station_id if fs else ""
+			return {"station_id": station_id} if station_id != "" else {}
 		&"construction":
 			var marker: Dictionary = context.get("construction_marker", {})
 			return {

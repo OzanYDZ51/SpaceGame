@@ -60,32 +60,55 @@ func spawn_deferred() -> void:
 
 
 func _do_spawn_encounters(danger_level: int, system_data) -> void:
-	# Position encounters near the first station if available
-	var base_pos =Vector3(500, 0, -1500)
+	# Collect all station positions and scene nodes
+	var station_positions: Array[Vector3] = []
+	var station_nodes: Array = []  # Node3D or null
 	if system_data and system_data.stations.size() > 0:
-		var st = system_data.stations[0]
-		var orbit_r: float = st.orbital_radius
-		var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-		var station_pos =Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
-		var radial_dir =station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
-		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+		for st in system_data.stations:
+			var orbit_r: float = st.orbital_radius
+			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
+			var station_pos := Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
+			station_positions.append(station_pos)
+			# Find the actual station scene node via EntityRegistry
+			var station_node: Node3D = null
+			var all_stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+			for ent in all_stations:
+				if ent.get("node") and is_instance_valid(ent["node"]):
+					var ent_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					if ent_pos.distance_to(station_pos) < 500.0:
+						station_node = ent["node"]
+						break
+			station_nodes.append(station_node)
+
+	# Fallback if no stations
+	if station_positions.is_empty():
+		station_positions.append(Vector3(500, 0, -1500))
+		station_nodes.append(null)
 
 	# Get current system_id for encounter key generation
 	var sys_trans = GameManager._system_transition
 	var system_id: int = sys_trans.current_system_id if sys_trans else 0
 
-	var configs =EncounterConfig.get_danger_config(danger_level)
+	var configs := EncounterConfig.get_danger_config(danger_level)
 	if danger_level == 5 and configs.size() >= 2:
-		# Danger 5: formation (leader + wingmen)
-		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"])
+		# Danger 5: formation near first station
+		var st_pos: Vector3 = station_positions[0]
+		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+		var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"], station_nodes[0])
 	else:
 		var cfg_idx: int = 0
 		for cfg in configs:
-			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"], system_id, cfg_idx)
+			# Round-robin distribute groups across stations
+			var st_idx: int = cfg_idx % station_positions.size()
+			var st_pos: Vector3 = station_positions[st_idx]
+			var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+			var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"], system_id, cfg_idx, station_nodes[st_idx])
 			cfg_idx += 1
 
 
-func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1) -> void:
+func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1, station_node: Node3D = null) -> void:
 	_encounter_counter += 1
 	var eid =_encounter_counter
 
@@ -118,12 +141,19 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 		var pos: Vector3 = center + offset
 
 		# If LOD manager exists and spawn is far away, use data-only (LOD2)
+		# Clamp patrol radius for station guards
+		var patrol_radius: float = radius
+		if station_node:
+			patrol_radius = clampf(radius, 500.0, 1000.0)
+
 		if lod_mgr and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE:
 			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
 			if lod_data:
 				lod_data.ai_patrol_center = center
-				lod_data.ai_patrol_radius = radius
+				lod_data.ai_patrol_radius = patrol_radius
 				lod_data.velocity = Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
+				if station_node:
+					lod_data.guard_station_name = StringName(station_node.name)
 				lod_mgr.register_ship(lod_data.id, lod_data)
 				_active_npc_ids.append(lod_data.id)
 				_register_npc_on_server(lod_data.id, ship_id, faction)
@@ -133,7 +163,9 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 			if ship:
 				var brain = ship.get_node_or_null("AIBrain")
 				if brain:
-					brain.set_patrol_area(center, radius)
+					brain.set_patrol_area(center, patrol_radius)
+					if station_node:
+						brain.guard_station = station_node
 				_active_npc_ids.append(StringName(ship.name))
 				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
 				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
@@ -218,7 +250,7 @@ func spawn_ambush(ship_ids: Array[StringName], range_dist: float, faction: Strin
 	encounter_started.emit(_encounter_counter)
 
 
-func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile") -> void:
+func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile", station_node: Node3D = null) -> void:
 	_encounter_counter += 1
 
 	var parent =get_tree().current_scene.get_node_or_null("Universe")
@@ -229,6 +261,9 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 	var leader = ShipFactory.spawn_npc_ship(leader_id, &"aggressive", pos, parent, faction)
 	if leader == null:
 		return
+	var leader_brain = leader.get_node_or_null("AIBrain")
+	if leader_brain and station_node:
+		leader_brain.guard_station = station_node
 	_active_npc_ids.append(StringName(leader.name))
 	leader.tree_exiting.connect(_on_npc_removed.bind(StringName(leader.name)))
 	_register_npc_on_server(StringName(leader.name), leader_id, faction, leader)
@@ -248,6 +283,8 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 				brain.formation_leader = leader
 				brain.formation_offset = offset
 				brain.current_state = AIBrain.State.FORMATION
+				if station_node:
+					brain.guard_station = station_node
 			_active_npc_ids.append(StringName(wingman.name))
 			wingman.tree_exiting.connect(_on_npc_removed.bind(StringName(wingman.name)))
 			_register_npc_on_server(StringName(wingman.name), wingman_id, faction, wingman)

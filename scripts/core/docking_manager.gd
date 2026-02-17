@@ -124,6 +124,14 @@ func handle_undock() -> bool:
 	if docking_system:
 		docking_system.request_undock()
 
+	# Clear docking info on fleet ship so save state reflects we're in space
+	var fleet = player_data.fleet if player_data else null
+	if fleet:
+		var active_fs = fleet.get_active()
+		if active_fs:
+			active_fs.docked_station_id = ""
+			active_fs.docked_system_id = -1
+
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	undocked.emit()
 	return true
@@ -251,7 +259,11 @@ func _is_exit_clear(exit_info: Dictionary) -> bool:
 
 func _reposition_at_station(exit_info: Dictionary) -> void:
 	player_ship.global_position = exit_info["position"]
-	player_ship.look_at(exit_info["position"] + exit_info["away_dir"], Vector3.UP)
+	var away: Vector3 = exit_info["away_dir"]
+	var up := Vector3.UP
+	if absf(away.dot(up)) > 0.99:
+		up = Vector3.FORWARD
+	player_ship.look_at(exit_info["position"] + away, up)
 	player_ship.linear_velocity = Vector3.ZERO
 	player_ship.angular_velocity = Vector3.ZERO
 

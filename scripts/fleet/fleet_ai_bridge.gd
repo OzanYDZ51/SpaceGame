@@ -237,6 +237,9 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			if new_station != "":
 				_disconnect_bay_signals()  # Station changed, reconnect later
 				_station_id = new_station
+			# Fallback: find nearest station if _station_id is empty or can't resolve
+			if _station_id == "" or EntityRegistry.get_entity(_station_id).is_empty():
+				_station_id = _find_nearest_station_id()
 			if _station_id != "":
 				_resolve_station_dock_targets()
 				if _bay_target_valid:
@@ -295,6 +298,9 @@ func _process(_delta: float) -> void:
 		if _brain.current_state == AIBrain.State.IDLE:
 			_brain.set_patrol_area(_bay_approach_pos, 50.0)
 			_brain.current_state = AIBrain.State.PATROL
+		elif _brain.current_state == AIBrain.State.PATROL:
+			# Continuously update patrol target (station may be orbiting)
+			_brain.set_patrol_area(_bay_approach_pos, 50.0)
 
 	# Monitor construction arrival (same as move_to)
 	if command == &"construction" and not _arrived:
@@ -352,6 +358,25 @@ func _mark_arrived(target_pos: Vector3) -> void:
 	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
+
+
+func _find_nearest_station_id() -> String:
+	## Finds the nearest station to this ship in the EntityRegistry.
+	if _ship == null:
+		return ""
+	var ship_upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+	var best_id: String = ""
+	var best_dist_sq: float = INF
+	for ent in EntityRegistry.get_all().values():
+		if ent.get("type", -1) != EntityRegistrySystem.EntityType.STATION:
+			continue
+		var dx: float = ent["pos_x"] - ship_upos[0]
+		var dz: float = ent["pos_z"] - ship_upos[2]
+		var dist_sq: float = dx * dx + dz * dz
+		if dist_sq < best_dist_sq:
+			best_dist_sq = dist_sq
+			best_id = ent.get("id", "")
+	return best_id
 
 
 func _on_origin_shifted(_delta: Vector3) -> void:

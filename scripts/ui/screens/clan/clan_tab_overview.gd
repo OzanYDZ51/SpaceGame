@@ -325,7 +325,11 @@ func _on_leave_pressed() -> void:
 
 func _on_leave_confirmed() -> void:
 	if _cm:
-		await _cm.leave_clan()
+		var success: bool = await _cm.leave_clan()
+		if not success:
+			var notif = GameManager.get_node_or_null("NotificationService")
+			if notif:
+				notif.toast("Erreur: impossible de quitter le clan", UIToast.ToastType.ERROR)
 
 
 func _on_recruit_pressed() -> void:

@@ -39,6 +39,7 @@ var ai_state: int = 0  # Maps to AIBrain.State
 var ai_target_id: StringName = &""
 var ai_patrol_center: Vector3 = Vector3.ZERO
 var ai_patrol_radius: float = 300.0
+var guard_station_name: StringName = &""
 
 # --- Network ---
 var is_remote_player: bool = false
@@ -105,6 +106,8 @@ func capture_from_node(ship: Node3D) -> void:
 		ai_patrol_radius = brain._patrol_radius
 		if brain.target and is_instance_valid(brain.target):
 			ai_target_id = StringName(brain.target.name)
+		if brain.guard_station and is_instance_valid(brain.guard_station):
+			guard_station_name = StringName(brain.guard_station.name)
 
 	var model = ship.get_node_or_null("ShipModel")
 	if model:

@@ -25,6 +25,7 @@ var accuracy: float = 0.7
 var formation_discipline: float = 0.8
 var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
+var guard_station: Node3D = null  # Station this NPC is guarding (null = free roam)
 
 # Detection — per-ship from ShipData, fallback to Constants
 var detection_range: float = Constants.AI_DETECTION_RANGE
@@ -265,6 +266,12 @@ func _tick_patrol() -> void:
 	if target:
 		current_state = State.PURSUE
 		return
+
+	# Guard ships: recenter patrol if too far from station
+	if guard_station and is_instance_valid(guard_station) and _ship:
+		var dist_to_station: float = _ship.global_position.distance_to(guard_station.global_position)
+		if dist_to_station > _patrol_radius * 2.0:
+			set_patrol_area(guard_station.global_position, _patrol_radius)
 
 	if _waypoints.is_empty():
 		return
@@ -553,6 +560,12 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 	else:
 		_threat_table[aid] = { "node": attacker, "threat": amount, "last_hit": now }
 
+	# Propagate aggro to station and fellow guards
+	if guard_station and is_instance_valid(guard_station):
+		var defense_ai = guard_station.get_node_or_null("StationDefenseAI")
+		if defense_ai:
+			defense_ai.alert_guards(attacker)
+
 	# If idle or patrolling, immediately engage
 	if current_state == State.IDLE or current_state == State.PATROL:
 		target = attacker
@@ -620,3 +633,23 @@ func _get_highest_threat() -> Node3D:
 				best_threat = entry["threat"]
 				best_node = node
 	return best_node
+
+
+func alert_to_threat(attacker: Node3D) -> void:
+	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
+		return
+	if current_state == State.DEAD or ignore_threats or not weapons_enabled:
+		return
+	# Add threat from station alert
+	var aid: int = attacker.get_instance_id()
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _threat_table.has(aid):
+		_threat_table[aid]["threat"] += 50.0
+		_threat_table[aid]["last_hit"] = now
+		_threat_table[aid]["node"] = attacker
+	else:
+		_threat_table[aid] = { "node": attacker, "threat": 50.0, "last_hit": now }
+	# Engage if idle/patrolling/formation
+	if current_state in [State.IDLE, State.PATROL, State.FORMATION]:
+		target = attacker
+		current_state = State.PURSUE

@@ -1163,9 +1163,17 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 	if not effective_indices.is_empty():
 		for idx in effective_indices:
 			fleet_order_requested.emit(idx, order_id, params)
-		if order_id != &"return_to_station":
-			var ux: float = params.get("target_x", params.get("center_x", 0.0))
-			var uz: float = params.get("target_z", params.get("center_z", 0.0))
+		var ux: float = params.get("target_x", params.get("center_x", 0.0))
+		var uz: float = params.get("target_z", params.get("center_z", 0.0))
+		if order_id == &"return_to_station":
+			# Resolve station position for route line
+			var station_id: String = params.get("station_id", "")
+			if station_id != "":
+				var station_ent = EntityRegistry.get_entity(station_id)
+				if not station_ent.is_empty():
+					ux = station_ent["pos_x"]
+					uz = station_ent["pos_z"]
+		if ux != 0.0 or uz != 0.0:
 			_show_waypoint(ux, uz)
 			_set_route_lines(effective_indices, ux, uz)
 			if order_id == &"attack":
@@ -1412,6 +1420,16 @@ func _restore_route_for_fleet_selection(override_index: int = -1) -> void:
 	var params =first_fs.deployed_command_params
 	var tx: float = params.get("target_x", params.get("center_x", 0.0))
 	var tz: float = params.get("target_z", params.get("center_z", 0.0))
+	# return_to_station: resolve station position (params only has station_id)
+	if first_fs.deployed_command == &"return_to_station" and tx == 0.0 and tz == 0.0:
+		var station_id: String = params.get("station_id", "")
+		if station_id == "":
+			station_id = first_fs.docked_station_id
+		if station_id != "":
+			var station_ent = EntityRegistry.get_entity(station_id)
+			if not station_ent.is_empty():
+				tx = station_ent["pos_x"]
+				tz = station_ent["pos_z"]
 	if tx == 0.0 and tz == 0.0:
 		_clear_route_line()
 		return

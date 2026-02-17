@@ -111,7 +111,11 @@ func _ready() -> void:
 	_initialize_game()
 
 	if AuthManager.is_authenticated:
-		_load_backend_state()
+		# Show black overlay while loading backend state to avoid seeing
+		# the default spawn position before the saved position is restored.
+		_show_loading_overlay()
+		await _load_backend_state()
+		_hide_loading_overlay()
 	else:
 		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 
@@ -811,6 +815,25 @@ func _on_network_reconnected() -> void:
 	_load_backend_state()
 
 
+func _show_loading_overlay() -> void:
+	if _system_transition:
+		var overlay: ColorRect = _system_transition.get_transition_overlay()
+		if overlay:
+			overlay.visible = true
+			overlay.modulate.a = 1.0
+			overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _hide_loading_overlay() -> void:
+	if _system_transition:
+		var overlay: ColorRect = _system_transition.get_transition_overlay()
+		if overlay:
+			overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var tw := create_tween()
+			tw.tween_property(overlay, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_callback(func(): overlay.visible = false)
+
+
 func _load_backend_state() -> void:
 	if not AuthManager.is_authenticated:
 		return
@@ -846,36 +869,43 @@ func _load_backend_state() -> void:
 
 
 ## Re-enter dock if the player was docked when they saved/disconnected.
-func _try_restore_docked_state(state: Dictionary) -> void:
-	if not state.get("is_docked", false):
-		return
+## Reads the active FleetShip's deployment_state + docked_station_id (persisted in fleet JSONB).
+func _try_restore_docked_state(_state: Dictionary) -> void:
 	if current_state == GameState.DOCKED:
-		return  # Already docked somehow
+		return
 
-	# Resolve the station name from active fleet ship's docked_station_id
+	# Check if active fleet ship was DOCKED with a known station
+	if player_fleet == null:
+		return
+	var active_fs = player_fleet.get_active()
+	if active_fs == null:
+		return
+	if active_fs.deployment_state != FleetShip.DeploymentState.DOCKED:
+		return
+	if active_fs.docked_station_id == "":
+		return
+
+	# Resolve station name from EntityRegistry
 	var station_name: String = ""
-	if player_fleet:
-		var active_fs = player_fleet.get_active()
-		if active_fs and active_fs.docked_station_id != "":
-			var ent: Dictionary = EntityRegistry.get_entity(active_fs.docked_station_id)
-			station_name = ent.get("name", "")
+	var ent: Dictionary = EntityRegistry.get_entity(active_fs.docked_station_id)
+	station_name = ent.get("name", "")
 
-	# Fallback: find the nearest station
+	# Fallback: find the nearest station in the current system
 	if station_name == "":
 		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-		if not stations.is_empty():
-			var best_dist: float = INF
-			var ship_pos: Vector3 = player_ship.global_position if player_ship else Vector3.ZERO
-			for ent in stations:
-				var node = ent.get("node")
-				if node != null and is_instance_valid(node):
-					var dist: float = ship_pos.distance_to(node.global_position)
-					if dist < best_dist:
-						best_dist = dist
-						station_name = ent.get("name", "")
+		var best_dist: float = INF
+		var ship_pos: Vector3 = player_ship.global_position if player_ship else Vector3.ZERO
+		for st_ent in stations:
+			var node = st_ent.get("node")
+			if node == null or not is_instance_valid(node):
+				continue
+			var dist: float = ship_pos.distance_to(node.global_position)
+			if dist < best_dist:
+				best_dist = dist
+				station_name = st_ent.get("name", "")
 
 	if station_name == "":
-		push_warning("[GameManager] Cannot restore docked state — no station found")
+		push_warning("[GameManager] Cannot restore docked state — no station found for id '%s'" % active_fs.docked_station_id)
 		return
 
 	print("[GameManager] Restoring docked state at station: %s" % station_name)

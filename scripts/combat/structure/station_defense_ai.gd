@@ -51,12 +51,6 @@ func _process(delta: float) -> void:
 func _on_damage_taken(attacker: Node3D, amount: float) -> void:
 	if attacker == null or not is_instance_valid(attacker):
 		return
-	# Never add player or fleet ships to threat table
-	if attacker == GameManager.player_ship:
-		return
-	var atk_faction: StringName = attacker.faction if "faction" in attacker else &""
-	if atk_faction == &"player_fleet" or atk_faction == &"friendly":
-		return
 	var aid: int = attacker.get_instance_id()
 	if _threat_table.has(aid):
 		_threat_table[aid]["last_hit_time"] = Time.get_ticks_msec() * 0.001
@@ -67,6 +61,7 @@ func _on_damage_taken(attacker: Node3D, amount: float) -> void:
 			"last_hit_time": Time.get_ticks_msec() * 0.001,
 			"total_damage": amount,
 		}
+	alert_guards(attacker)
 
 
 func _decay_threats() -> void:
@@ -111,17 +106,13 @@ func _find_best_target() -> Node3D:
 	for ship in get_tree().get_nodes_in_group("ships"):
 		if ship == null or not is_instance_valid(ship) or ship.is_queued_for_deletion():
 			continue
-		# Skip player and allied fleet ships
-		if ship == GameManager.player_ship:
-			continue
-		var ship_faction: StringName = ship.faction if "faction" in ship else &"neutral"
-		if ship_faction == &"player_fleet" or ship_faction == &"friendly":
-			continue
-		# Only target hostile NPCs (faction check via AIBrain)
+		# Skip our own guards
 		var brain = ship.get_node_or_null("AIBrain")
-		if brain == null:
+		if brain and brain.guard_station == _station:
 			continue
 		# Target ships that are in ATTACK or PURSUE state (actively hostile)
+		if brain == null:
+			continue
 		if brain.current_state != AIBrain.State.ATTACK and brain.current_state != AIBrain.State.PURSUE:
 			continue
 		var dist: float = station_pos.distance_to(ship.global_position)
@@ -134,3 +125,23 @@ func _find_best_target() -> Node3D:
 			best_node = ship
 
 	return best_node
+
+
+func alert_guards(attacker: Node3D) -> void:
+	if attacker == null or not is_instance_valid(attacker):
+		return
+	# Add attacker to station's own threat table (turrets will fire)
+	var aid: int = attacker.get_instance_id()
+	if not _threat_table.has(aid):
+		_threat_table[aid] = {
+			"node_ref": attacker,
+			"last_hit_time": Time.get_ticks_msec() * 0.001,
+			"total_damage": 50.0,
+		}
+	# Alert all guard NPCs
+	for ship in get_tree().get_nodes_in_group("ships"):
+		if ship == null or not is_instance_valid(ship):
+			continue
+		var brain = ship.get_node_or_null("AIBrain")
+		if brain and brain.guard_station == _station:
+			brain.alert_to_threat(attacker)

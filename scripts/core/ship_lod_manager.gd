@@ -522,6 +522,11 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 	if brain:
 		brain.weapons_enabled = true
 		brain.set_patrol_area(data.ai_patrol_center, data.ai_patrol_radius)
+		# Restore guard station reference from saved name
+		if data.guard_station_name != &"" and _universe_node:
+			var station_node = _universe_node.get_node_or_null(NodePath(String(data.guard_station_name)))
+			if station_node:
+				brain.guard_station = station_node
 
 	data.node_ref = node
 	data.current_lod = ShipLODData.LODLevel.LOD1

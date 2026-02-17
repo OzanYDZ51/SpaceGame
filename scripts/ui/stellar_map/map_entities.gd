@@ -382,7 +382,7 @@ func _draw_jump_gate(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Fo
 	var is_arrival_gate: bool = false
 	var rm = GameManager._route_manager if GameManager else null
 	if rm and rm.is_route_active():
-		if ent["id"] == rm.next_gate_entity_id:
+		if preview_system_id < 0 and ent["id"] == rm.next_gate_entity_id:
 			is_route_gate = true
 		elif preview_system_id >= 0 and rm.target_system_id == preview_system_id and rm.route.size() >= 2:
 			var penultimate_id: int = rm.route[rm.route.size() - 2]
@@ -848,7 +848,7 @@ func _draw_trails(entities: Dictionary) -> void:
 # GALAXY AUTOPILOT ROUTE LINE (player → next gate on system map)
 # =============================================================================
 func _draw_galaxy_route_line(entities: Dictionary) -> void:
-	if camera == null or _player_id == "":
+	if camera == null or _player_id == "" or preview_system_id >= 0:
 		return
 	var rm = GameManager._route_manager if GameManager else null
 	if rm == null or not rm.is_route_active() or rm.next_gate_entity_id == "":
