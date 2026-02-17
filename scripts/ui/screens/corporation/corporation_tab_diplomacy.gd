@@ -1,18 +1,18 @@
-class_name ClanTabDiplomacy
+class_name CorporationTabDiplomacy
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Diplomacy - Rich relation list with colored status + action panel
+# Corporation Tab: Diplomacy - Rich relation list with colored status + action panel
 # =============================================================================
 
 var _cm = null
-var _clan_list: UIScrollList = null
+var _corporation_list: UIScrollList = null
 var _btn_ally: UIButton = null
 var _btn_war: UIButton = null
 var _btn_neutral: UIButton = null
 
-var _selected_clan_id: String = ""
-var _clan_ids: Array[String] = []
+var _selected_corporation_id: String = ""
+var _corporation_ids: Array[String] = []
 
 const RELATION_COLORS ={
 	"ALLIE": Color(0.0, 1.0, 0.6, 0.9),
@@ -34,11 +34,11 @@ func _ready() -> void:
 	super._ready()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	_clan_list = UIScrollList.new()
-	_clan_list.row_height = 48.0
-	_clan_list.item_draw_callback = _draw_clan_item
-	_clan_list.item_selected.connect(_on_clan_selected)
-	add_child(_clan_list)
+	_corporation_list = UIScrollList.new()
+	_corporation_list.row_height = 48.0
+	_corporation_list.item_draw_callback = _draw_corporation_item
+	_corporation_list.item_selected.connect(_on_corporation_selected)
+	add_child(_corporation_list)
 
 	_btn_ally = UIButton.new()
 	_btn_ally.text = "Proposer une alliance"
@@ -63,38 +63,38 @@ func _ready() -> void:
 
 func refresh(cm) -> void:
 	_cm = cm
-	_selected_clan_id = ""
-	_clan_ids.clear()
+	_selected_corporation_id = ""
+	_corporation_ids.clear()
 	_btn_ally.visible = false
 	_btn_war.visible = false
 	_btn_neutral.visible = false
 
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
-	_clan_list.items.clear()
-	for clan_id in _cm.diplomacy:
-		_clan_ids.append(clan_id)
-		_clan_list.items.append(clan_id)
-	_clan_list.selected_index = -1
-	_clan_list.queue_redraw()
+	_corporation_list.items.clear()
+	for corporation_id in _cm.diplomacy:
+		_corporation_ids.append(corporation_id)
+		_corporation_list.items.append(corporation_id)
+	_corporation_list.selected_index = -1
+	_corporation_list.queue_redraw()
 	queue_redraw()
 
 
-func _draw_clan_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> void:
+func _draw_corporation_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> void:
 	var font: Font = UITheme.get_font()
-	var clan_id: String = item as String
-	if _cm == null or not _cm.diplomacy.has(clan_id):
+	var corporation_id: String = item as String
+	if _cm == null or not _cm.diplomacy.has(corporation_id):
 		return
 
-	var info: Dictionary = _cm.diplomacy[clan_id]
+	var info: Dictionary = _cm.diplomacy[corporation_id]
 	var cname: String = info.get("name", "?")
 	var tag: String = info.get("tag", "?")
 	var relation: String = info.get("relation", "NEUTRE")
 	var rel_col: Color = RELATION_COLORS.get(relation, UITheme.TEXT_DIM)
 	var rel_label: String = RELATION_LABELS.get(relation, relation)
 
-	# Clan name and tag (bigger font)
+	# Corporation name and tag (bigger font)
 	ctrl.draw_string(font, Vector2(rect.position.x + 16, rect.position.y + 18), "%s [%s]" % [cname, tag], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 32, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 	# Status badge with colored background
@@ -110,17 +110,17 @@ func _draw_clan_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> 
 	ctrl.draw_string(font, Vector2(badge_x + 16, badge_y + 12), rel_label, HORIZONTAL_ALIGNMENT_LEFT, badge_w - 20, UITheme.FONT_SIZE_BODY, rel_col)
 
 
-func _on_clan_selected(index: int) -> void:
-	if index < 0 or index >= _clan_ids.size():
-		_selected_clan_id = ""
+func _on_corporation_selected(index: int) -> void:
+	if index < 0 or index >= _corporation_ids.size():
+		_selected_corporation_id = ""
 		_btn_ally.visible = false
 		_btn_war.visible = false
 		_btn_neutral.visible = false
 		queue_redraw()
 		return
 
-	_selected_clan_id = _clan_ids[index]
-	var can_diplo: bool = _cm.player_has_permission(ClanRank.PERM_DIPLOMACY) if _cm else false
+	_selected_corporation_id = _corporation_ids[index]
+	var can_diplo: bool = _cm.player_has_permission(CorporationRank.PERM_DIPLOMACY) if _cm else false
 	_btn_ally.visible = can_diplo
 	_btn_war.visible = can_diplo
 	_btn_neutral.visible = can_diplo
@@ -128,9 +128,9 @@ func _on_clan_selected(index: int) -> void:
 
 
 func _set_relation(rel: String) -> void:
-	if _cm and _selected_clan_id != "":
-		_cm.set_diplomacy_relation(_selected_clan_id, rel)
-		_clan_list.queue_redraw()
+	if _cm and _selected_corporation_id != "":
+		_cm.set_diplomacy_relation(_selected_corporation_id, rel)
+		_corporation_list.queue_redraw()
 		queue_redraw()
 
 
@@ -142,8 +142,8 @@ func _process(_delta: float) -> void:
 	var rx: float = LEFT_W + GAP
 	var rw: float = size.x - rx
 
-	_clan_list.position = Vector2(0, 0)
-	_clan_list.size = Vector2(LEFT_W, size.y)
+	_corporation_list.position = Vector2(0, 0)
+	_corporation_list.size = Vector2(LEFT_W, size.y)
 
 	_btn_ally.position = Vector2(rx + m, 160)
 	_btn_ally.size = Vector2(rw - m * 2, 32)
@@ -154,7 +154,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	var font: Font = UITheme.get_font()
@@ -168,8 +168,8 @@ func _draw() -> void:
 	# Right panel
 	draw_panel_bg(Rect2(rx, 0, rw, size.y))
 
-	if _selected_clan_id != "" and _cm.diplomacy.has(_selected_clan_id):
-		var info: Dictionary = _cm.diplomacy[_selected_clan_id]
+	if _selected_corporation_id != "" and _cm.diplomacy.has(_selected_corporation_id):
+		var info: Dictionary = _cm.diplomacy[_selected_corporation_id]
 		var cname: String = info.get("name", "?")
 		var tag: String = info.get("tag", "?")
 		var relation: String = info.get("relation", "NEUTRE")
@@ -212,5 +212,5 @@ func _draw() -> void:
 		draw_rect(Rect2(rx + m, y + 2, 3, UITheme.FONT_SIZE_HEADER + 2), UITheme.PRIMARY)
 		draw_string(font, Vector2(rx + m + 10, y + UITheme.FONT_SIZE_HEADER + 1), "ACTIONS DIPLOMATIQUES", HORIZONTAL_ALIGNMENT_LEFT, rw - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 	else:
-		draw_string(font, Vector2(rx, size.y * 0.4), "Selectionnez un clan", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx, size.y * 0.4), "Selectionnez une corporation", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
 		draw_string(font, Vector2(rx, size.y * 0.4 + 24), "pour gerer les relations diplomatiques", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)

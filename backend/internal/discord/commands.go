@@ -15,20 +15,20 @@ import (
 // CommandHandler processes bot prefix commands.
 type CommandHandler struct {
 	playerRepo  *repository.PlayerRepository
-	clanRepo    *repository.ClanRepository
+	corpRepo    *repository.CorporationRepository
 	discordRepo *repository.DiscordRepository
 	wsHub       *service.WSHub
 }
 
 func NewCommandHandler(
 	playerRepo *repository.PlayerRepository,
-	clanRepo *repository.ClanRepository,
+	corpRepo *repository.CorporationRepository,
 	discordRepo *repository.DiscordRepository,
 	wsHub *service.WSHub,
 ) *CommandHandler {
 	return &CommandHandler{
 		playerRepo:  playerRepo,
-		clanRepo:    clanRepo,
+		corpRepo:    corpRepo,
 		discordRepo: discordRepo,
 		wsHub:       wsHub,
 	}
@@ -83,11 +83,11 @@ func (h *CommandHandler) cmdPlayer(ctx context.Context, s *discordgo.Session, m 
 		return
 	}
 
-	clanName := "Aucun"
-	if player.ClanID != nil {
-		clan, err := h.clanRepo.GetByID(ctx, *player.ClanID)
-		if err == nil && clan != nil {
-			clanName = fmt.Sprintf("[%s] %s", clan.ClanTag, clan.ClanName)
+	corporationName := "Aucun"
+	if player.CorporationID != nil {
+		corporation, err := h.corpRepo.GetByID(ctx, *player.CorporationID)
+		if err == nil && corporation != nil {
+			corporationName = fmt.Sprintf("[%s] %s", corporation.CorporationTag, corporation.CorporationName)
 		}
 	}
 
@@ -103,7 +103,7 @@ func (h *CommandHandler) cmdPlayer(ctx context.Context, s *discordgo.Session, m 
 		Color: 0x00C8FF,
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Vaisseau", Value: player.CurrentShipID, Inline: true},
-			{Name: "Clan", Value: clanName, Inline: true},
+			{Name: "Corporation", Value: corporationName, Inline: true},
 			{Name: "Kills", Value: fmt.Sprintf("%d", player.Kills), Inline: true},
 			{Name: "Morts", Value: fmt.Sprintf("%d", player.Deaths), Inline: true},
 			{Name: "K/D", Value: kd, Inline: true},

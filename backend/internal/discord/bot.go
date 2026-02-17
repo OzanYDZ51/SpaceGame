@@ -14,7 +14,7 @@ type Bot struct {
 	session    *discordgo.Session
 	guildID    string
 	commands   *CommandHandler
-	clanSync   *ClanSync
+	corpSync   *CorporationSync
 }
 
 // NewBot creates and configures a new Discord bot.
@@ -22,7 +22,7 @@ func NewBot(
 	token string,
 	guildID string,
 	playerRepo *repository.PlayerRepository,
-	clanRepo *repository.ClanRepository,
+	corpRepo *repository.CorporationRepository,
 	discordRepo *repository.DiscordRepository,
 	wsHub *service.WSHub,
 	webhooks *service.DiscordWebhookService,
@@ -41,14 +41,14 @@ func NewBot(
 		discordgo.IntentsGuildMessages |
 		discordgo.IntentsDirectMessages
 
-	commands := NewCommandHandler(playerRepo, clanRepo, discordRepo, wsHub)
-	clanSync := NewClanSync(s, guildID, clanRepo, discordRepo)
+	commands := NewCommandHandler(playerRepo, corpRepo, discordRepo, wsHub)
+	corpSync := NewCorporationSync(s, guildID, corpRepo, discordRepo)
 
 	bot := &Bot{
 		session:  s,
 		guildID:  guildID,
 		commands: commands,
-		clanSync: clanSync,
+		corpSync: corpSync,
 	}
 
 	// Register message handler for prefix commands
@@ -78,12 +78,12 @@ func (b *Bot) Stop() {
 	log.Println("[discord-bot] Bot disconnected")
 }
 
-// ClanSync returns the clan sync manager for external use.
-func (b *Bot) ClanSync() *ClanSync {
+// CorporationSync returns the corporation sync manager for external use.
+func (b *Bot) CorporationSync() *CorporationSync {
 	if b == nil {
 		return nil
 	}
-	return b.clanSync
+	return b.corpSync
 }
 
 func (b *Bot) onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {

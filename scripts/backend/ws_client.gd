@@ -66,8 +66,8 @@ func disconnect_from_backend() -> void:
 	_socket = null
 
 
-func subscribe_to_clan(clan_id: String) -> void:
-	_send_event("subscribe", {"clan_id": clan_id})
+func subscribe_to_corporation(corporation_id: String) -> void:
+	_send_event("subscribe", {"corporation_id": corporation_id})
 
 
 func _process(_delta: float) -> void:

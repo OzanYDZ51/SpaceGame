@@ -11,18 +11,18 @@ import (
 
 // DiscordWebhookService sends rich embeds to Discord channels via webhooks.
 type DiscordWebhookService struct {
-	webhookDevlog string
-	webhookStatus string
-	webhookKills  string
-	webhookEvents string
-	webhookBugs   string
-	webhookClans  string
-	client        *http.Client
+	webhookDevlog       string
+	webhookStatus       string
+	webhookKills        string
+	webhookEvents       string
+	webhookBugs         string
+	webhookCorporations string
+	client              *http.Client
 }
 
-func NewDiscordWebhookService(devlog, status, kills, events, bugs, clans string) *DiscordWebhookService {
+func NewDiscordWebhookService(devlog, status, kills, events, bugs, corporations string) *DiscordWebhookService {
 	configured := 0
-	for _, url := range []string{devlog, status, kills, events, bugs, clans} {
+	for _, url := range []string{devlog, status, kills, events, bugs, corporations} {
 		if url != "" {
 			configured++
 		}
@@ -36,17 +36,17 @@ func NewDiscordWebhookService(devlog, status, kills, events, bugs, clans string)
 		if kills != "" { names = append(names, "kills") }
 		if events != "" { names = append(names, "events") }
 		if bugs != "" { names = append(names, "bugs") }
-		if clans != "" { names = append(names, "clans") }
+		if corporations != "" { names = append(names, "corporations") }
 		log.Printf("[discord-webhook] %d webhooks configured: %v", configured, names)
 	}
 	return &DiscordWebhookService{
-		webhookDevlog: devlog,
-		webhookStatus: status,
-		webhookKills:  kills,
-		webhookEvents: events,
-		webhookBugs:   bugs,
-		webhookClans:  clans,
-		client:        &http.Client{Timeout: 10 * time.Second},
+		webhookDevlog:       devlog,
+		webhookStatus:       status,
+		webhookKills:        kills,
+		webhookEvents:       events,
+		webhookBugs:         bugs,
+		webhookCorporations: corporations,
+		client:              &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -197,12 +197,12 @@ func (s *DiscordWebhookService) SendBugReport(reporter, title, description, syst
 	})
 }
 
-// SendClanEvent posts a clan event to #clan-activity.
-func (s *DiscordWebhookService) SendClanEvent(eventType, clanName, details string) {
-	s.send(s.webhookClans, discordWebhookPayload{
-		Username: "Imperion Online Clans",
+// SendCorporationEvent posts a corporation event to #corporation-activity.
+func (s *DiscordWebhookService) SendCorporationEvent(eventType, corporationName, details string) {
+	s.send(s.webhookCorporations, discordWebhookPayload{
+		Username: "Imperion Online Corporations",
 		Embeds: []discordEmbed{{
-			Title:       fmt.Sprintf("⚔️ [%s] %s", clanName, eventType),
+			Title:       fmt.Sprintf("⚔️ [%s] %s", corporationName, eventType),
 			Description: details,
 			Color:       0x9B59B6, // Purple
 			Timestamp:   time.Now().UTC().Format(time.RFC3339),

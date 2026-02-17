@@ -12,23 +12,23 @@ import (
 
 type AdminHandler struct {
 	playerRepo *repository.PlayerRepository
-	clanRepo   *repository.ClanRepository
+	corpRepo   *repository.CorporationRepository
 	wsHub      *service.WSHub
 }
 
-func NewAdminHandler(playerRepo *repository.PlayerRepository, clanRepo *repository.ClanRepository, wsHub *service.WSHub) *AdminHandler {
-	return &AdminHandler{playerRepo: playerRepo, clanRepo: clanRepo, wsHub: wsHub}
+func NewAdminHandler(playerRepo *repository.PlayerRepository, corpRepo *repository.CorporationRepository, wsHub *service.WSHub) *AdminHandler {
+	return &AdminHandler{playerRepo: playerRepo, corpRepo: corpRepo, wsHub: wsHub}
 }
 
 func (h *AdminHandler) Stats(c *fiber.Ctx) error {
 	totalPlayers, _ := h.playerRepo.CountTotal(c.Context())
-	totalClans, _ := h.clanRepo.CountTotal(c.Context())
+	totalCorporations, _ := h.corpRepo.CountTotal(c.Context())
 	online := h.wsHub.OnlineCount()
 
 	return c.JSON(fiber.Map{
-		"players_total":  totalPlayers,
-		"players_online": online,
-		"clans_total":    totalClans,
+		"players_total":       totalPlayers,
+		"players_online":      online,
+		"corporations_total":  totalCorporations,
 	})
 }
 

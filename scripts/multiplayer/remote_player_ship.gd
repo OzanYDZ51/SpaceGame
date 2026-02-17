@@ -9,7 +9,7 @@ extends Node3D
 
 var peer_id: int = -1
 var player_name: String = ""
-var clan_tag: String = ""
+var corporation_tag: String = ""
 var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
 var _was_dead: bool = false
@@ -98,9 +98,9 @@ func change_ship_model(new_ship_id: StringName) -> void:
 
 ## Called when we receive a new state snapshot from the network.
 func receive_state(state) -> void:
-	# Detect clan tag change
-	if state.clan_tag != clan_tag:
-		clan_tag = state.clan_tag
+	# Detect corporation tag change
+	if state.corporation_tag != corporation_tag:
+		corporation_tag = state.corporation_tag
 		_update_name_display()
 
 	# Detect ship change from state
@@ -264,8 +264,8 @@ func set_player_name(pname: String) -> void:
 
 func _build_display_name() -> String:
 	var base: String = player_name if player_name != "" else "Pilote"
-	if clan_tag != "":
-		return "[%s] %s" % [clan_tag, base]
+	if corporation_tag != "":
+		return "[%s] %s" % [corporation_tag, base]
 	return base
 
 

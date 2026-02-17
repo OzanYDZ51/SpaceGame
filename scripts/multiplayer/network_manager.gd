@@ -533,7 +533,7 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 						continue
 					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 				return
-			_:  # GLOBAL, TRADE, CLAN, etc. → broadcast to all except sender
+			_:  # GLOBAL, TRADE, CORP, etc. → broadcast to all except sender
 				for pid in peers:
 					if pid == sender_id:
 						continue

@@ -35,12 +35,12 @@ func report_discovery(player_name: String, what: String, system_name: String, sy
 	})
 
 
-# --- Clan Events ---
+# --- Corporation Events ---
 
-func report_clan_event(event_type: String, clan_name: String, details: String) -> void:
+func report_corporation_event(event_type: String, corporation_name: String, details: String) -> void:
 	_send_event({
 		"type": event_type,
-		"actor_name": clan_name,
+		"actor_name": corporation_name,
 		"details": details,
 	})
 

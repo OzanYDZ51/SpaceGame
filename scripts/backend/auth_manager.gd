@@ -21,6 +21,7 @@ var _access_token: String = ""
 var _refresh_token: String = ""
 var _refresh_timer: Timer = null
 var _token_file: String = "user://auth.cfg"
+var _token_from_launcher: bool = false  # True when set via CLI --auth-token
 
 const ACCESS_TOKEN_LIFETIME: float = 14.0 * 60.0  # Refresh 1 min before expiry (14 min)
 
@@ -71,6 +72,7 @@ func login(p_username: String, password: String) -> void:
 func set_token_from_launcher(access_token: String) -> void:
 	## Called by GameManager when the launcher passes a JWT via CLI.
 	## The launcher handles login/register; we just receive the token.
+	_token_from_launcher = true
 	_access_token = access_token
 	ApiClient.set_token(_access_token)
 	_parse_jwt_claims(_access_token)
@@ -156,6 +158,11 @@ func _try_restore_session() -> void:
 		"refresh_token": _refresh_token,
 	}, false)
 
+	# If launcher already set a valid token while we were awaiting, don't touch it
+	if _token_from_launcher:
+		print("AuthManager: Launcher token already set, skipping session restore")
+		return
+
 	if result.has("access_token"):
 		_access_token = result.get("access_token", "")
 		_refresh_token = result.get("refresh_token", _refresh_token)
@@ -163,13 +170,20 @@ func _try_restore_session() -> void:
 		# We need to fetch the player data since refresh doesn't return it
 		ApiClient.set_token(_access_token)
 		var state := await ApiClient.get_async("/api/v1/player/state")
+
+		# Re-check after second await — launcher may have set token in the meantime
+		if _token_from_launcher:
+			print("AuthManager: Launcher token already set, skipping session restore")
+			return
+
 		if state.get("_status_code", 0) == 200:
-			# We need the player profile too for player_id and username
-			# Parse the JWT to get sub and username
 			_parse_jwt_claims(_access_token)
 			is_authenticated = true
 			_save_tokens()
 			_start_refresh_timer()
+			# Update multiplayer name if it wasn't already set
+			if username != "" and NetworkManager.local_player_name == "Pilote":
+				NetworkManager.local_player_name = username
 			login_succeeded.emit({"id": player_id, "username": username})
 			print("AuthManager: Session restored for '%s'" % username)
 			return

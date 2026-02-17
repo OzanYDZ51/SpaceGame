@@ -1,8 +1,8 @@
-class_name ClanTabMembers
+class_name CorporationTabMembers
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Members - Searchable, sortable member list with actions
+# Corporation Tab: Members - Searchable, sortable member list with actions
 # Bigger row heights, richer drawing, colored status indicators
 # =============================================================================
 
@@ -14,8 +14,8 @@ var _btn_promote: UIButton = null
 var _btn_demote: UIButton = null
 var _btn_kick: UIButton = null
 
-var _filtered_members: Array[ClanMember] = []
-var _selected_member: ClanMember = null
+var _filtered_members: Array[CorporationMember] = []
+var _selected_member: CorporationMember = null
 
 
 func _ready() -> void:
@@ -75,11 +75,11 @@ func refresh(cm) -> void:
 	_btn_demote.visible = false
 	_btn_kick.visible = false
 
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	var rank_names: Array[String] = ["Tous les rangs"]
-	for r in _cm.clan_data.ranks:
+	for r in _cm.corporation_data.ranks:
 		rank_names.append(r.rank_name)
 	_filter_dropdown.options.assign(rank_names)
 	_filter_dropdown.selected_index = 0
@@ -107,7 +107,7 @@ func _rebuild_table() -> void:
 
 	_table.rows.clear()
 	for m in _filtered_members:
-		var rank_name: String = _cm.clan_data.ranks[m.rank_index].rank_name if m.rank_index < _cm.clan_data.ranks.size() else "?"
+		var rank_name: String = _cm.corporation_data.ranks[m.rank_index].rank_name if m.rank_index < _cm.corporation_data.ranks.size() else "?"
 		var status: String = "EN LIGNE" if m.is_online else "HORS LIGNE"
 		var contrib_str =_format_num(m.contribution_total)
 		var vu =_format_last_seen(m)
@@ -118,7 +118,7 @@ func _rebuild_table() -> void:
 
 
 func _sort_members(col: int, ascending: bool) -> void:
-	_filtered_members.sort_custom(func(a: ClanMember, b: ClanMember) -> bool:
+	_filtered_members.sort_custom(func(a: CorporationMember, b: CorporationMember) -> bool:
 		var va: Variant
 		var vb: Variant
 		match col:
@@ -157,9 +157,9 @@ func _on_row_selected(index: int) -> void:
 	var is_self: bool = (_selected_member == _cm.player_member)
 	var can_act: bool = not is_self and _cm.player_member != null and _selected_member.rank_index > _cm.player_member.rank_index
 
-	_btn_promote.visible = can_act and _cm.player_has_permission(ClanRank.PERM_PROMOTE) and _selected_member.rank_index > 1
-	_btn_demote.visible = can_act and _cm.player_has_permission(ClanRank.PERM_DEMOTE) and _selected_member.rank_index < _cm.clan_data.ranks.size() - 1
-	_btn_kick.visible = can_act and _cm.player_has_permission(ClanRank.PERM_KICK)
+	_btn_promote.visible = can_act and _cm.player_has_permission(CorporationRank.PERM_PROMOTE) and _selected_member.rank_index > 1
+	_btn_demote.visible = can_act and _cm.player_has_permission(CorporationRank.PERM_DEMOTE) and _selected_member.rank_index < _cm.corporation_data.ranks.size() - 1
+	_btn_kick.visible = can_act and _cm.player_has_permission(CorporationRank.PERM_KICK)
 
 
 func _on_promote() -> void:
@@ -187,7 +187,7 @@ func _hide_actions() -> void:
 	_btn_kick.visible = false
 
 
-func _format_last_seen(m: ClanMember) -> String:
+func _format_last_seen(m: CorporationMember) -> String:
 	if m.is_online:
 		return "Maintenant"
 	if m.last_online_timestamp <= 0:

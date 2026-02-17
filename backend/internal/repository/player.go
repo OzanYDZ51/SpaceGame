@@ -28,11 +28,11 @@ func (r *PlayerRepository) Create(ctx context.Context, username, email, password
 		ON CONFLICT DO NOTHING
 		RETURNING id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		          pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		          credits, kills, deaths, clan_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		          credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 	`, username, email, passwordHash).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.ClanID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -48,12 +48,12 @@ func (r *PlayerRepository) GetByID(ctx context.Context, id string) (*model.Playe
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		       pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		       credits, kills, deaths, clan_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		       credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 		FROM players WHERE id = $1
 	`, id).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.ClanID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -66,12 +66,12 @@ func (r *PlayerRepository) GetByUsername(ctx context.Context, username string) (
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		       pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		       credits, kills, deaths, clan_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		       credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 		FROM players WHERE username = $1
 	`, username).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.ClanID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -82,11 +82,11 @@ func (r *PlayerRepository) GetByUsername(ctx context.Context, username string) (
 func (r *PlayerRepository) GetProfile(ctx context.Context, id string) (*model.PlayerProfile, error) {
 	p := &model.PlayerProfile{}
 	err := r.pool.QueryRow(ctx, `
-		SELECT p.id, p.username, p.current_ship_id, p.kills, p.deaths, p.clan_id, c.clan_name, c.clan_tag
+		SELECT p.id, p.username, p.current_ship_id, p.kills, p.deaths, p.corporation_id, c.corporation_name, c.corporation_tag
 		FROM players p
-		LEFT JOIN clans c ON p.clan_id = c.id
+		LEFT JOIN corporations c ON p.corporation_id = c.id
 		WHERE p.id = $1
-	`, id).Scan(&p.ID, &p.Username, &p.CurrentShipID, &p.Kills, &p.Deaths, &p.ClanID, &p.ClanName, &p.ClanTag)
+	`, id).Scan(&p.ID, &p.Username, &p.CurrentShipID, &p.Kills, &p.Deaths, &p.CorporationID, &p.CorporationName, &p.CorporationTag)
 	if err != nil {
 		return nil, err
 	}
@@ -322,18 +322,18 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 	return tx.Commit(ctx)
 }
 
-func (r *PlayerRepository) SetClanID(ctx context.Context, playerID string, clanID *string) error {
-	_, err := r.pool.Exec(ctx, `UPDATE players SET clan_id = $2, updated_at = NOW() WHERE id = $1`, playerID, clanID)
+func (r *PlayerRepository) SetCorporationID(ctx context.Context, playerID string, corporationID *string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE players SET corporation_id = $2, updated_at = NOW() WHERE id = $1`, playerID, corporationID)
 	return err
 }
 
-func (r *PlayerRepository) GetClanID(ctx context.Context, playerID string) (*string, error) {
-	var clanID *string
-	err := r.pool.QueryRow(ctx, `SELECT clan_id FROM players WHERE id = $1`, playerID).Scan(&clanID)
+func (r *PlayerRepository) GetCorporationID(ctx context.Context, playerID string) (*string, error) {
+	var corporationID *string
+	err := r.pool.QueryRow(ctx, `SELECT corporation_id FROM players WHERE id = $1`, playerID).Scan(&corporationID)
 	if err == pgx.ErrNoRows {
-		return nil, nil // Player not found — treat as no clan
+		return nil, nil // Player not found — treat as no corporation
 	}
-	return clanID, err
+	return corporationID, err
 }
 
 // Ensure rows interface is consumed even on error

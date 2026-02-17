@@ -12,15 +12,15 @@ import (
 
 type PublicHandler struct {
 	playerRepo *repository.PlayerRepository
-	clanRepo   *repository.ClanRepository
+	corpRepo   *repository.CorporationRepository
 	eventRepo  *repository.EventRepository
 	wsHub      *service.WSHub
 }
 
-func NewPublicHandler(playerRepo *repository.PlayerRepository, clanRepo *repository.ClanRepository, eventRepo *repository.EventRepository, wsHub *service.WSHub) *PublicHandler {
+func NewPublicHandler(playerRepo *repository.PlayerRepository, corpRepo *repository.CorporationRepository, eventRepo *repository.EventRepository, wsHub *service.WSHub) *PublicHandler {
 	return &PublicHandler{
 		playerRepo: playerRepo,
-		clanRepo:   clanRepo,
+		corpRepo:   corpRepo,
 		eventRepo:  eventRepo,
 		wsHub:      wsHub,
 	}
@@ -31,14 +31,14 @@ func (h *PublicHandler) Stats(c *fiber.Ctx) error {
 	defer cancel()
 
 	totalPlayers, _ := h.playerRepo.CountTotal(ctx)
-	totalClans, _ := h.clanRepo.CountTotal(ctx)
+	totalCorporations, _ := h.corpRepo.CountTotal(ctx)
 	online := h.wsHub.OnlineCount()
 
 	result := fiber.Map{
-		"players_total":  totalPlayers,
-		"players_online": online,
-		"clans_total":    totalClans,
-		"server_status":  "online",
+		"players_total":       totalPlayers,
+		"players_online":      online,
+		"corporations_total":  totalCorporations,
+		"server_status":       "online",
 	}
 
 	// Try to fetch the last notable event (kill)

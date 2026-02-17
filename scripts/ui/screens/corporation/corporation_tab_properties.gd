@@ -1,8 +1,8 @@
-class_name ClanTabProperties
+class_name CorporationTabProperties
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Properties - Clan-owned stations, treasury, and territory
+# Corporation Tab: Properties - Corporation-owned stations, treasury, and territory
 # Replaces the old Treasury tab with a broader assets view
 # =============================================================================
 
@@ -42,9 +42,9 @@ func _ready() -> void:
 
 func refresh(cm) -> void:
 	_cm = cm
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
-	_btn_withdraw.enabled = _cm.player_has_permission(ClanRank.PERM_WITHDRAW)
+	_btn_withdraw.enabled = _cm.player_has_permission(CorporationRank.PERM_WITHDRAW)
 	queue_redraw()
 
 
@@ -89,7 +89,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	var font: Font = UITheme.get_font()
@@ -105,7 +105,7 @@ func _draw() -> void:
 	_draw_section_header(m, m, size.x - m * 2, "TRESORERIE")
 
 	# Big balance
-	var balance: float = _cm.clan_data.treasury_balance
+	var balance: float = _cm.corporation_data.treasury_balance
 	var bal_str := "%s CREDITS" % _format_num(balance)
 	var bal_col: Color = UITheme.ACCENT if balance > 0 else UITheme.TEXT_DIM
 	var glow_alpha: float = 0.8 + pulse * 0.2
@@ -131,14 +131,14 @@ func _draw() -> void:
 	var left_rect := Rect2(0, content_y, half_w, content_h)
 	draw_panel_bg(left_rect)
 
-	var _sy: float = _draw_section_header(m, content_y + m, half_w - m * 2, "STATIONS DU CLAN")
+	var _sy: float = _draw_section_header(m, content_y + m, half_w - m * 2, "STATIONS DE LA CORPORATION")
 
 	# Station list or empty state
 	# TODO: When station ownership is implemented, show owned stations here
 	var empty_y: float = content_y + content_h * 0.35
 	draw_string(font, Vector2(m, empty_y), "Aucune station acquise", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
 	draw_string(font, Vector2(m, empty_y + 24), "Les stations capturees ou construites", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
-	draw_string(font, Vector2(m, empty_y + 42), "par le clan apparaitront ici", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+	draw_string(font, Vector2(m, empty_y + 42), "par la corporation apparaitront ici", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
 
 	# Decorative station icon (simple geometric)
 	var icon_cx: float = half_w * 0.5
@@ -162,8 +162,8 @@ func _draw() -> void:
 	var online_count: int = _cm.get_online_count()
 
 	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Membres actifs", "%d / %d" % [online_count, member_count], UITheme.ACCENT)
-	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Reputation", str(_cm.clan_data.reputation_score), UITheme.PRIMARY)
-	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Recrutement", "OUVERT" if _cm.clan_data.is_recruiting else "FERME", UITheme.ACCENT if _cm.clan_data.is_recruiting else UITheme.DANGER)
+	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Reputation", str(_cm.corporation_data.reputation_score), UITheme.PRIMARY)
+	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Recrutement", "OUVERT" if _cm.corporation_data.is_recruiting else "FERME", UITheme.ACCENT if _cm.corporation_data.is_recruiting else UITheme.DANGER)
 
 	ty += 8
 	draw_line(Vector2(right_x + m, ty), Vector2(right_x + half_w - m, ty), UITheme.BORDER, 1.0)
@@ -173,10 +173,10 @@ func _draw() -> void:
 	_draw_section_header(right_x + m, ty, half_w - m * 2, "TOP CONTRIBUTEURS")
 	ty += 30
 
-	var sorted_members: Array[ClanMember] = []
+	var sorted_members: Array[CorporationMember] = []
 	for member in _cm.members:
 		sorted_members.append(member)
-	sorted_members.sort_custom(func(a: ClanMember, b: ClanMember) -> bool:
+	sorted_members.sort_custom(func(a: CorporationMember, b: CorporationMember) -> bool:
 		return a.contribution_total > b.contribution_total
 	)
 
@@ -184,7 +184,7 @@ func _draw() -> void:
 	var count: int = mini(5, sorted_members.size())
 
 	for i in count:
-		var mem: ClanMember = sorted_members[i]
+		var mem: CorporationMember = sorted_members[i]
 		var bar_ratio: float = mem.contribution_total / maxf(1.0, max_contrib)
 
 		# Medal color

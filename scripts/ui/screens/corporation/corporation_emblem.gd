@@ -1,12 +1,12 @@
-class_name ClanEmblem
+class_name CorporationEmblem
 extends UIComponent
 
 # =============================================================================
-# Clan Emblem - Procedural geometric emblem with double ring, inner glow,
+# Corporation Emblem - Procedural geometric emblem with double ring, inner glow,
 # rotating dashes, and pulsing shape
 # =============================================================================
 
-var clan_color: Color = Color(0.15, 0.85, 1.0)
+var corporation_color: Color = Color(0.15, 0.85, 1.0)
 var emblem_id: int = 0
 var _glow_phase: float = 0.0
 
@@ -24,11 +24,11 @@ func _draw() -> void:
 	var glow: float = (sin(_glow_phase) + 1.0) * 0.5
 
 	# Outer ring (faint)
-	var outer_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.15 + glow * 0.1)
+	var outer_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.15 + glow * 0.1)
 	_draw_circle_outline(center, r, outer_col, 1.0)
 
 	# Rotating dashes around outer ring
-	var dash_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.25 + glow * 0.15)
+	var dash_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.25 + glow * 0.15)
 	var rot_offset := _glow_phase * 0.3
 	for i in 12:
 		var angle: float = (float(i) / 12.0) * TAU + rot_offset
@@ -39,28 +39,28 @@ func _draw() -> void:
 		draw_line(p1, p2, dash_col, 1.5)
 
 	# Middle ring (brighter, thicker)
-	var mid_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.35 + glow * 0.2)
+	var mid_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.35 + glow * 0.2)
 	_draw_circle_outline(center, r * 0.82, mid_col, 2.0)
 
 	# Inner glow fill (radial approximation)
-	var fill_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.04 + glow * 0.03)
+	var fill_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.04 + glow * 0.03)
 	_draw_filled_circle(center, r * 0.8, fill_col)
-	var fill_col2 := Color(clan_color.r, clan_color.g, clan_color.b, 0.06 + glow * 0.04)
+	var fill_col2 := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.06 + glow * 0.04)
 	_draw_filled_circle(center, r * 0.5, fill_col2)
 
 	# Inner shape (pulsing alpha)
 	var shape_idx: int = emblem_id % 16
 	var shape_alpha: float = 0.85 + glow * 0.15
-	var shape_col := Color(clan_color.r, clan_color.g, clan_color.b, shape_alpha)
+	var shape_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, shape_alpha)
 	var ir: float = r * 0.5
 	_draw_shape(center, ir, shape_idx, shape_col)
 
 	# Shape outline glow
-	var outline_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.1 + glow * 0.1)
+	var outline_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.1 + glow * 0.1)
 	_draw_shape(center, ir * 1.1, shape_idx, outline_col)
 
 	# Inner ring (thin, close to shape)
-	var inner_col := Color(clan_color.r, clan_color.g, clan_color.b, 0.2 + glow * 0.1)
+	var inner_col := Color(corporation_color.r, corporation_color.g, corporation_color.b, 0.2 + glow * 0.1)
 	_draw_circle_outline(center, r * 0.35, inner_col, 0.8)
 
 

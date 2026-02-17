@@ -6,39 +6,39 @@ import (
 )
 
 type Player struct {
-	ID            string     `json:"id"`
-	Username      string     `json:"username"`
-	Email         string     `json:"email,omitempty"`
-	PasswordHash  string     `json:"-"`
-	CurrentShipID string     `json:"current_ship_id"`
-	GalaxySeed    int64      `json:"galaxy_seed"`
-	SystemID      int        `json:"system_id"`
-	PosX          float64    `json:"pos_x"`
-	PosY          float64    `json:"pos_y"`
-	PosZ          float64    `json:"pos_z"`
-	RotationX     float64    `json:"rotation_x"`
-	RotationY     float64    `json:"rotation_y"`
-	RotationZ     float64    `json:"rotation_z"`
-	Credits       int64      `json:"credits"`
-	Kills         int        `json:"kills"`
-	Deaths        int        `json:"deaths"`
-	ClanID        *string    `json:"clan_id,omitempty"`
-	IsBanned      bool       `json:"is_banned"`
-	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
-	LastSaveAt    *time.Time `json:"last_save_at,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID              string     `json:"id"`
+	Username        string     `json:"username"`
+	Email           string     `json:"email,omitempty"`
+	PasswordHash    string     `json:"-"`
+	CurrentShipID   string     `json:"current_ship_id"`
+	GalaxySeed      int64      `json:"galaxy_seed"`
+	SystemID        int        `json:"system_id"`
+	PosX            float64    `json:"pos_x"`
+	PosY            float64    `json:"pos_y"`
+	PosZ            float64    `json:"pos_z"`
+	RotationX       float64    `json:"rotation_x"`
+	RotationY       float64    `json:"rotation_y"`
+	RotationZ       float64    `json:"rotation_z"`
+	Credits         int64      `json:"credits"`
+	Kills           int        `json:"kills"`
+	Deaths          int        `json:"deaths"`
+	CorporationID   *string    `json:"corporation_id,omitempty"`
+	IsBanned        bool       `json:"is_banned"`
+	LastLoginAt     *time.Time `json:"last_login_at,omitempty"`
+	LastSaveAt      *time.Time `json:"last_save_at,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type PlayerProfile struct {
-	ID            string  `json:"id"`
-	Username      string  `json:"username"`
-	CurrentShipID string  `json:"current_ship_id"`
-	Kills         int     `json:"kills"`
-	Deaths        int     `json:"deaths"`
-	ClanID        *string `json:"clan_id,omitempty"`
-	ClanName      *string `json:"clan_name,omitempty"`
-	ClanTag       *string `json:"clan_tag,omitempty"`
+	ID              string  `json:"id"`
+	Username        string  `json:"username"`
+	CurrentShipID   string  `json:"current_ship_id"`
+	Kills           int     `json:"kills"`
+	Deaths          int     `json:"deaths"`
+	CorporationID   *string `json:"corporation_id,omitempty"`
+	CorporationName *string `json:"corporation_name,omitempty"`
+	CorporationTag  *string `json:"corporation_tag,omitempty"`
 }
 
 type PlayerResource struct {

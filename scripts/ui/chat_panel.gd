@@ -9,14 +9,14 @@ extends Control
 signal message_sent(channel: String, text: String)
 
 # Chat channels
-enum Channel { GLOBAL, SYSTEM, CLAN, TRADE, PRIVATE }
+enum Channel { GLOBAL, SYSTEM, CORP, TRADE, PRIVATE }
 var _current_channel: int = Channel.GLOBAL
 
 # Colors per channel
 const CHANNEL_COLORS ={
 	Channel.GLOBAL: Color(0.7, 0.92, 1.0),
 	Channel.SYSTEM: Color(1.0, 0.85, 0.3),
-	Channel.CLAN: Color(0.4, 1.0, 0.5),
+	Channel.CORP: Color(0.4, 1.0, 0.5),
 	Channel.TRADE: Color(1.0, 0.6, 0.2),
 	Channel.PRIVATE: Color(0.85, 0.5, 1.0),
 }
@@ -24,7 +24,7 @@ const CHANNEL_COLORS ={
 const CHANNEL_NAMES ={
 	Channel.GLOBAL: "GÉNÉRAL",
 	Channel.SYSTEM: "SYSTÈME",
-	Channel.CLAN: "CLAN",
+	Channel.CORP: "CORP",
 	Channel.TRADE: "COMMERCE",
 	Channel.PRIVATE: "MP",
 }
@@ -32,7 +32,7 @@ const CHANNEL_NAMES ={
 const CHANNEL_PREFIXES ={
 	Channel.GLOBAL: "[G]",
 	Channel.SYSTEM: "[S]",
-	Channel.CLAN: "[C]",
+	Channel.CORP: "[C]",
 	Channel.TRADE: "[T]",
 	Channel.PRIVATE: "[PM]",
 }

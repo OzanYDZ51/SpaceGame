@@ -881,7 +881,7 @@ func _handle_galaxy_input(event: InputEvent) -> void:
 
 		# Click - route through fleet panel first, then galaxy selection
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			if _galaxy_fleet_panel and _galaxy_fleet_panel.handle_click(event.position):
+			if _galaxy_fleet_panel and _galaxy_fleet_panel.handle_click(event.position, event.ctrl_pressed, event.shift_pressed):
 				get_viewport().set_input_as_handled()
 				return
 			_handle_click(event.position)

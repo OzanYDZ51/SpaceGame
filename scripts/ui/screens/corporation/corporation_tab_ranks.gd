@@ -1,8 +1,8 @@
-class_name ClanTabRanks
+class_name CorporationTabRanks
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Ranks - Rank list (left) + permission editor (right)
+# Corporation Tab: Ranks - Rank list (left) + permission editor (right)
 # Rich panels with header bars and visual indicators
 # =============================================================================
 
@@ -16,8 +16,8 @@ var _btn_remove: UIButton = null
 
 var _selected_rank_index: int = -1
 var _perm_bits: Array[int] = [
-	ClanRank.PERM_INVITE, ClanRank.PERM_KICK, ClanRank.PERM_PROMOTE, ClanRank.PERM_DEMOTE,
-	ClanRank.PERM_EDIT_MOTD, ClanRank.PERM_WITHDRAW, ClanRank.PERM_DIPLOMACY, ClanRank.PERM_MANAGE_RANKS,
+	CorporationRank.PERM_INVITE, CorporationRank.PERM_KICK, CorporationRank.PERM_PROMOTE, CorporationRank.PERM_DEMOTE,
+	CorporationRank.PERM_EDIT_MOTD, CorporationRank.PERM_WITHDRAW, CorporationRank.PERM_DIPLOMACY, CorporationRank.PERM_MANAGE_RANKS,
 ]
 
 const LEFT_W =270.0
@@ -36,7 +36,7 @@ func _ready() -> void:
 
 	for bit in _perm_bits:
 		var toggle =UIToggleButton.new()
-		toggle.text = ClanRank.PERM_NAMES.get(bit, "???")
+		toggle.text = CorporationRank.PERM_NAMES.get(bit, "???")
 		toggle.visible = false
 		add_child(toggle)
 		_perm_toggles.append(toggle)
@@ -71,16 +71,16 @@ func refresh(cm) -> void:
 	_selected_rank_index = -1
 	_hide_editor()
 
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	_rank_list.items.clear()
-	for i in _cm.clan_data.ranks.size():
+	for i in _cm.corporation_data.ranks.size():
 		_rank_list.items.append(i)
 	_rank_list.selected_index = -1
 	_rank_list.queue_redraw()
 
-	var can_manage: bool = _cm.player_has_permission(ClanRank.PERM_MANAGE_RANKS)
+	var can_manage: bool = _cm.player_has_permission(CorporationRank.PERM_MANAGE_RANKS)
 	_btn_add.visible = can_manage
 	_btn_add.enabled = can_manage
 
@@ -88,9 +88,9 @@ func refresh(cm) -> void:
 func _draw_rank_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> void:
 	var font: Font = UITheme.get_font()
 	var rank_idx: int = item as int
-	if _cm == null or rank_idx >= _cm.clan_data.ranks.size():
+	if _cm == null or rank_idx >= _cm.corporation_data.ranks.size():
 		return
-	var rank: ClanRank = _cm.clan_data.ranks[rank_idx]
+	var rank: CorporationRank = _cm.corporation_data.ranks[rank_idx]
 
 	# Priority badge background
 	var badge_rect =Rect2(rect.end.x - 36, rect.position.y + 6, 28, rect.size.y - 12)
@@ -109,19 +109,19 @@ func _draw_rank_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> 
 
 
 func _on_rank_selected(index: int) -> void:
-	if _cm == null or index < 0 or index >= _cm.clan_data.ranks.size():
+	if _cm == null or index < 0 or index >= _cm.corporation_data.ranks.size():
 		_hide_editor()
 		return
 
 	_selected_rank_index = index
-	var rank: ClanRank = _cm.clan_data.ranks[index]
+	var rank: CorporationRank = _cm.corporation_data.ranks[index]
 
 	_name_input.visible = true
 	_name_input.set_text(rank.rank_name)
 	_btn_save.visible = true
 
 	var is_leader =(index == 0)
-	var can_manage: bool = _cm.player_has_permission(ClanRank.PERM_MANAGE_RANKS)
+	var can_manage: bool = _cm.player_has_permission(CorporationRank.PERM_MANAGE_RANKS)
 	var editable: bool = not is_leader and can_manage
 
 	for i in _perm_toggles.size():
@@ -224,7 +224,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	var font: Font = UITheme.get_font()
@@ -239,7 +239,7 @@ func _draw() -> void:
 	if _selected_rank_index >= 0:
 		draw_panel_bg(Rect2(rx, 0, rw, size.y - 48))
 
-		var rank: ClanRank = _cm.clan_data.ranks[_selected_rank_index]
+		var rank: CorporationRank = _cm.corporation_data.ranks[_selected_rank_index]
 		var header: String = "RANG: %s" % rank.rank_name.to_upper()
 		if _selected_rank_index == 0:
 			header += " (CHEF - NON MODIFIABLE)"

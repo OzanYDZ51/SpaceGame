@@ -11,12 +11,12 @@ type discordFileConfig struct {
 	BotToken string `json:"bot_token"`
 	GuildID  string `json:"guild_id"`
 	Webhooks struct {
-		Devlog string `json:"devlog"`
-		Status string `json:"status"`
-		Kills  string `json:"kills"`
-		Events string `json:"events"`
-		Bugs   string `json:"bugs"`
-		Clans  string `json:"clans"`
+		Devlog       string `json:"devlog"`
+		Status       string `json:"status"`
+		Kills        string `json:"kills"`
+		Events       string `json:"events"`
+		Bugs         string `json:"bugs"`
+		Corporations string `json:"corporations"`
 	} `json:"webhooks"`
 }
 
@@ -31,14 +31,14 @@ type Config struct {
 	GithubOwner string
 	GithubRepo  string
 	// Discord
-	DiscordBotToken      string
-	DiscordGuildID       string
-	DiscordWebhookDevlog string
-	DiscordWebhookStatus string
-	DiscordWebhookKills  string
-	DiscordWebhookEvents string
-	DiscordWebhookBugs   string
-	DiscordWebhookClans  string
+	DiscordBotToken            string
+	DiscordGuildID             string
+	DiscordWebhookDevlog       string
+	DiscordWebhookStatus       string
+	DiscordWebhookKills        string
+	DiscordWebhookEvents       string
+	DiscordWebhookBugs         string
+	DiscordWebhookCorporations string
 }
 
 func Load() *Config {
@@ -56,14 +56,14 @@ func Load() *Config {
 		GithubOwner: getEnv("GITHUB_OWNER", "OzanYDZ51"),
 		GithubRepo:  getEnv("GITHUB_REPO", "SpaceGame"),
 		// Discord — file first, env var override
-		DiscordBotToken:      getEnvOr("DISCORD_BOT_TOKEN", dc.BotToken),
-		DiscordGuildID:       getEnvOr("DISCORD_GUILD_ID", dc.GuildID),
-		DiscordWebhookDevlog: getEnvOr("DISCORD_WEBHOOK_DEVLOG", dc.Webhooks.Devlog),
-		DiscordWebhookStatus: getEnvOr("DISCORD_WEBHOOK_STATUS", dc.Webhooks.Status),
-		DiscordWebhookKills:  getEnvOr("DISCORD_WEBHOOK_KILLS", dc.Webhooks.Kills),
-		DiscordWebhookEvents: getEnvOr("DISCORD_WEBHOOK_EVENTS", dc.Webhooks.Events),
-		DiscordWebhookBugs:   getEnvOr("DISCORD_WEBHOOK_BUGS", dc.Webhooks.Bugs),
-		DiscordWebhookClans:  getEnvOr("DISCORD_WEBHOOK_CLANS", dc.Webhooks.Clans),
+		DiscordBotToken:            getEnvOr("DISCORD_BOT_TOKEN", dc.BotToken),
+		DiscordGuildID:             getEnvOr("DISCORD_GUILD_ID", dc.GuildID),
+		DiscordWebhookDevlog:       getEnvOr("DISCORD_WEBHOOK_DEVLOG", dc.Webhooks.Devlog),
+		DiscordWebhookStatus:       getEnvOr("DISCORD_WEBHOOK_STATUS", dc.Webhooks.Status),
+		DiscordWebhookKills:        getEnvOr("DISCORD_WEBHOOK_KILLS", dc.Webhooks.Kills),
+		DiscordWebhookEvents:       getEnvOr("DISCORD_WEBHOOK_EVENTS", dc.Webhooks.Events),
+		DiscordWebhookBugs:         getEnvOr("DISCORD_WEBHOOK_BUGS", dc.Webhooks.Bugs),
+		DiscordWebhookCorporations: getEnvOr("DISCORD_WEBHOOK_CORPORATIONS", dc.Webhooks.Corporations),
 	}
 }
 

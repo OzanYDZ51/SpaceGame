@@ -41,7 +41,7 @@ const REBINDABLE_ACTIONS: Array = [
 	["toggle_camera", "VUE CAMERA", KEY_V],
 	["toggle_flight_assist", "ASSIST. VOL", KEY_Z],
 	["toggle_map", "CARTE SYSTEME", KEY_M],
-	["toggle_clan", "CLAN", KEY_N],
+	["toggle_corporation", "CORPORATION", KEY_N],
 	["toggle_galaxy_map", "CARTE GALAXIE", KEY_G],
 	["toggle_multiplayer", "MULTIJOUEUR", KEY_P],
 	["target_cycle", "CIBLE SUIVANTE", KEY_TAB],

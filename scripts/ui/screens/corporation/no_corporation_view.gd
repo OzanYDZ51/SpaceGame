@@ -1,12 +1,12 @@
-class_name ClanNoClanView
+class_name NoCorporationView
 extends UIComponent
 
 # =============================================================================
-# Clan No-Clan View - Create or join a clan when player has none
+# No Corporation View - Create or join a corporation when player has none
 # Two panels: Left = Create, Right = Search & Join
 # =============================================================================
 
-signal clan_action_completed
+signal corporation_action_completed
 
 var _cm = null
 
@@ -47,7 +47,7 @@ func _ready() -> void:
 
 	# ─── Create panel inputs ───
 	_input_name = UITextInput.new()
-	_input_name.placeholder = "Nom du clan (3+ caracteres)"
+	_input_name.placeholder = "Nom de la corporation (3+ caracteres)"
 	add_child(_input_name)
 
 	_input_tag = UITextInput.new()
@@ -55,13 +55,13 @@ func _ready() -> void:
 	add_child(_input_tag)
 
 	_btn_create = UIButton.new()
-	_btn_create.text = "Creer le clan"
+	_btn_create.text = "Creer la corporation"
 	_btn_create.pressed.connect(_on_create_pressed)
 	add_child(_btn_create)
 
 	# ─── Search panel inputs ───
 	_input_search = UITextInput.new()
-	_input_search.placeholder = "Rechercher un clan..."
+	_input_search.placeholder = "Rechercher une corporation..."
 	_input_search.text_submitted.connect(_on_search_submitted)
 	add_child(_input_search)
 
@@ -130,7 +130,7 @@ func _draw() -> void:
 	if not AuthManager.is_authenticated:
 		draw_panel_bg(Rect2(0, 0, size.x, size.y))
 		draw_string(font, Vector2(0, size.y * 0.4), "CONNEXION REQUISE", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
-		draw_string(font, Vector2(0, size.y * 0.4 + 28), "Connectez-vous pour creer ou rejoindre un clan", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+		draw_string(font, Vector2(0, size.y * 0.4 + 28), "Connectez-vous pour creer ou rejoindre une corporation", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
 		return
 
 	# ─── LEFT PANEL: Create ────────────────────────────────────────────
@@ -138,7 +138,7 @@ func _draw() -> void:
 	draw_panel_bg(left_rect)
 
 	# Title
-	var _header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UN CLAN")
+	var _header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UNE CORPORATION")
 
 	# Color selector (below tag input)
 	var color_y: float = 80.0 + 80.0
@@ -160,7 +160,7 @@ func _draw() -> void:
 	var right_rect := Rect2(rx, 0, half_w, size.y)
 	draw_panel_bg(right_rect)
 
-	_draw_section_header(rx + m, m, half_w - m * 2, "REJOINDRE UN CLAN")
+	_draw_section_header(rx + m, m, half_w - m * 2, "REJOINDRE UNE CORPORATION")
 
 	# Results table
 	var table_y: float = 80.0 + 42.0
@@ -207,7 +207,7 @@ func _draw() -> void:
 
 	if _search_results.is_empty():
 		var empty_y: float = table_y + table_h * 0.4
-		draw_string(font, Vector2(rx + m, empty_y), "Cherchez un clan par nom ou tag", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx + m, empty_y), "Cherchez une corporation par nom ou tag", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# ─── Status text ───────────────────────────────────────────────────
 	if _status_text != "":
@@ -297,7 +297,7 @@ func _on_create_pressed() -> void:
 	var tag: String = _input_tag.get_text().strip_edges().to_upper()
 
 	if cname.length() < 3:
-		_status_text = "Le nom du clan doit contenir au moins 3 caracteres"
+		_status_text = "Le nom de la corporation doit contenir au moins 3 caracteres"
 		_status_color = UITheme.DANGER
 		queue_redraw()
 		return
@@ -308,16 +308,16 @@ func _on_create_pressed() -> void:
 		queue_redraw()
 		return
 
-	_status_text = "Creation du clan en cours..."
+	_status_text = "Creation de la corporation en cours..."
 	_status_color = UITheme.PRIMARY
 	queue_redraw()
 
-	var success: bool = await _cm.create_clan(cname, tag, COLOR_PRESETS[_selected_color_idx], 0)
+	var success: bool = await _cm.create_corporation(cname, tag, COLOR_PRESETS[_selected_color_idx], 0)
 	if success:
 		_status_text = ""
-		clan_action_completed.emit()
+		corporation_action_completed.emit()
 	else:
-		_status_text = "Erreur lors de la creation du clan"
+		_status_text = "Erreur lors de la creation de la corporation"
 		_status_color = UITheme.DANGER
 		queue_redraw()
 
@@ -340,8 +340,8 @@ func _on_search_pressed() -> void:
 	_btn_join.visible = false
 	queue_redraw()
 
-	_search_results = await _cm.search_clans(query)
-	_status_text = "%d clan(s) trouve(s)" % _search_results.size() if _search_results.size() > 0 else "Aucun clan trouve"
+	_search_results = await _cm.search_corporations(query)
+	_status_text = "%d corporation(s) trouvee(s)" % _search_results.size() if _search_results.size() > 0 else "Aucune corporation trouvee"
 	_status_color = UITheme.ACCENT if _search_results.size() > 0 else UITheme.TEXT_DIM
 	queue_redraw()
 
@@ -350,22 +350,22 @@ func _on_join_pressed() -> void:
 	if _cm == null or _selected_result_idx < 0 or _selected_result_idx >= _search_results.size():
 		return
 
-	var clan: Dictionary = _search_results[_selected_result_idx]
-	if not clan.get("is_recruiting", false):
-		_status_text = "Ce clan ne recrute pas"
+	var corporation: Dictionary = _search_results[_selected_result_idx]
+	if not corporation.get("is_recruiting", false):
+		_status_text = "Cette corporation ne recrute pas"
 		_status_color = UITheme.WARNING
 		queue_redraw()
 		return
 
-	_status_text = "Rejoindre le clan en cours..."
+	_status_text = "Rejoindre la corporation en cours..."
 	_status_color = UITheme.PRIMARY
 	queue_redraw()
 
-	var success: bool = await _cm.join_clan(str(clan.get("id", "")))
+	var success: bool = await _cm.join_corporation(str(corporation.get("id", "")))
 	if success:
 		_status_text = ""
-		clan_action_completed.emit()
+		corporation_action_completed.emit()
 	else:
-		_status_text = "Erreur lors de la tentative de rejoindre le clan"
+		_status_text = "Erreur lors de la tentative de rejoindre la corporation"
 		_status_color = UITheme.DANGER
 		queue_redraw()

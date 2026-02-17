@@ -1,22 +1,22 @@
-class_name ClanScreen
+class_name CorporationScreen
 extends UIScreen
 
 # =============================================================================
-# Clan Screen - Main shell with UITabBar + 6 tab panels
+# Corporation Screen - Main shell with UITabBar + 6 tab panels
 # Rich holographic frame with decorative borders and glow effects
-# Switches between clan view (tabs) and no-clan view (create/join)
+# Switches between corporation view (tabs) and no-corporation view (create/join)
 # =============================================================================
 
 var _tab_bar: UITabBar = null
 var _tabs: Array[UIComponent] = []
-var _no_clan_view: ClanNoClanView = null
-var _clan_manager = null
+var _no_corporation_view: NoCorporationView = null
+var _corporation_manager = null
 
 const TAB_NAMES = ["Vue d'ensemble", "Membres", "Rangs", "Diplomatie", "Proprietes", "Log"]
 
 
 func _ready() -> void:
-	screen_title = "CLAN"
+	screen_title = "CORPORATION"
 	screen_mode = ScreenMode.FULLSCREEN
 	super._ready()
 
@@ -27,12 +27,12 @@ func _ready() -> void:
 	add_child(_tab_bar)
 
 	# Create the 6 tab panels
-	var overview = ClanTabOverview.new()
-	var members_tab = ClanTabMembers.new()
-	var ranks = ClanTabRanks.new()
-	var diplo = ClanTabDiplomacy.new()
-	var treasury = ClanTabProperties.new()
-	var log_tab = ClanTabLog.new()
+	var overview = CorporationTabOverview.new()
+	var members_tab = CorporationTabMembers.new()
+	var ranks = CorporationTabRanks.new()
+	var diplo = CorporationTabDiplomacy.new()
+	var treasury = CorporationTabProperties.new()
+	var log_tab = CorporationTabLog.new()
 
 	_tabs = [overview, members_tab, ranks, diplo, treasury, log_tab]
 	for tab in _tabs:
@@ -40,77 +40,77 @@ func _ready() -> void:
 		add_child(tab)
 	_tabs[0].visible = true
 
-	# No-clan view (create/join)
-	_no_clan_view = ClanNoClanView.new()
-	_no_clan_view.visible = false
-	_no_clan_view.clan_action_completed.connect(_on_clan_action_completed)
-	add_child(_no_clan_view)
+	# No-corporation view (create/join)
+	_no_corporation_view = NoCorporationView.new()
+	_no_corporation_view.visible = false
+	_no_corporation_view.corporation_action_completed.connect(_on_corporation_action_completed)
+	add_child(_no_corporation_view)
 
 
 func _on_opened() -> void:
-	_clan_manager = GameManager.get_node_or_null("ClanManager")
-	if _clan_manager == null:
-		push_warning("ClanScreen: ClanManager not found")
+	_corporation_manager = GameManager.get_node_or_null("CorporationManager")
+	if _corporation_manager == null:
+		push_warning("CorporationScreen: CorporationManager not found")
 		return
 
-	# Connect clan_loaded for live updates (connect only once)
-	if not _clan_manager.clan_loaded.is_connected(_on_clan_data_refreshed):
-		_clan_manager.clan_loaded.connect(_on_clan_data_refreshed)
+	# Connect corporation_loaded for live updates (connect only once)
+	if not _corporation_manager.corporation_loaded.is_connected(_on_corporation_data_refreshed):
+		_corporation_manager.corporation_loaded.connect(_on_corporation_data_refreshed)
 
 	# Refresh from backend if authenticated
 	if AuthManager.is_authenticated:
-		_clan_manager.refresh_from_backend()
+		_corporation_manager.refresh_from_backend()
 
 	_update_view()
 
 
 func _on_closed() -> void:
-	if _clan_manager and _clan_manager.clan_loaded.is_connected(_on_clan_data_refreshed):
-		_clan_manager.clan_loaded.disconnect(_on_clan_data_refreshed)
+	if _corporation_manager and _corporation_manager.corporation_loaded.is_connected(_on_corporation_data_refreshed):
+		_corporation_manager.corporation_loaded.disconnect(_on_corporation_data_refreshed)
 
 
 func _update_view() -> void:
-	if _clan_manager == null:
+	if _corporation_manager == null:
 		return
 
-	var has_clan: bool = _clan_manager.has_clan()
+	var has_corporation: bool = _corporation_manager.has_corporation()
 
-	# Toggle between clan tabs and no-clan view
-	_tab_bar.visible = has_clan
+	# Toggle between corporation tabs and no-corporation view
+	_tab_bar.visible = has_corporation
 	for tab in _tabs:
 		tab.visible = false
-	_no_clan_view.visible = not has_clan
+	_no_corporation_view.visible = not has_corporation
 
-	if has_clan:
-		screen_title = "CLAN: %s [%s]" % [_clan_manager.clan_data.clan_name, _clan_manager.clan_data.clan_tag]
+	if has_corporation:
+		screen_title = "CORPORATION: %s [%s]" % [_corporation_manager.corporation_data.corporation_name, _corporation_manager.corporation_data.corporation_tag]
 		# Show the currently selected tab
 		var current_tab: int = _tab_bar.current_tab if _tab_bar.current_tab >= 0 else 0
 		if current_tab < _tabs.size():
 			_tabs[current_tab].visible = true
 		for tab in _tabs:
 			if tab.has_method("refresh"):
-				tab.call("refresh", _clan_manager)
+				tab.call("refresh", _corporation_manager)
 	else:
-		screen_title = "CLAN"
-		_no_clan_view.refresh(_clan_manager)
+		screen_title = "CORPORATION"
+		_no_corporation_view.refresh(_corporation_manager)
 
 	queue_redraw()
 
 
-func _on_clan_data_refreshed() -> void:
+func _on_corporation_data_refreshed() -> void:
 	_update_view()
 
 
-func _on_clan_action_completed() -> void:
-	# Called when create/join succeeds from the no-clan view
+func _on_corporation_action_completed() -> void:
+	# Called when create/join succeeds from the no-corporation view
 	_update_view()
 
 
 func _on_tab_changed(index: int) -> void:
 	for i in _tabs.size():
 		_tabs[i].visible = (i == index)
-	if _clan_manager and _tabs[index].has_method("refresh"):
-		_tabs[index].call("refresh", _clan_manager)
+	if _corporation_manager and _tabs[index].has_method("refresh"):
+		_tabs[index].call("refresh", _corporation_manager)
 
 
 func _process(_delta: float) -> void:
@@ -129,9 +129,9 @@ func _process(_delta: float) -> void:
 		tab.position = Vector2(margin, content_y)
 		tab.size = Vector2(size.x - margin * 2, size.y - content_y - margin)
 
-	if _no_clan_view.visible:
-		_no_clan_view.position = Vector2(margin, content_y)
-		_no_clan_view.size = Vector2(size.x - margin * 2, size.y - content_y - margin)
+	if _no_corporation_view.visible:
+		_no_corporation_view.position = Vector2(margin, content_y)
+		_no_corporation_view.size = Vector2(size.x - margin * 2, size.y - content_y - margin)
 
 
 func _draw() -> void:

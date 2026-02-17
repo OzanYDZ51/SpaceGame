@@ -96,7 +96,7 @@ func _channel_name_to_int(channel_name: String) -> int:
 	match channel_name:
 		"GÉNÉRAL": return ChatPanel.Channel.GLOBAL
 		"SYSTÈME": return ChatPanel.Channel.SYSTEM
-		"CLAN": return ChatPanel.Channel.CLAN
+		"CORP": return ChatPanel.Channel.CORP
 		"COMMERCE": return ChatPanel.Channel.TRADE
 		"MP": return ChatPanel.Channel.PRIVATE
 	return ChatPanel.Channel.GLOBAL

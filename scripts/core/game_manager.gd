@@ -23,7 +23,7 @@ var _screen_manager = null
 var _tooltip_manager = null
 var _toast_manager = null
 var _encounter_manager = null
-var _clan_manager = null
+var _corporation_manager = null
 var _docking_system = null
 var _station_screen = null
 var _dock_instance = null
@@ -207,10 +207,10 @@ func _setup_ui_managers() -> void:
 			_stellar_map.set_squadron_manager(_squadron_mgr)
 			_stellar_map.squadron_action_requested.connect(_on_squadron_action)
 
-	# Register Clan screen
-	var clan_screen =ClanScreen.new()
-	clan_screen.name = "ClanScreen"
-	_screen_manager.register_screen("clan", clan_screen)
+	# Register Corporation screen
+	var corporation_screen =CorporationScreen.new()
+	corporation_screen.name = "CorporationScreen"
+	_screen_manager.register_screen("corporation", corporation_screen)
 
 	# Register Station screen (signal connections deferred to after _docking_mgr creation)
 	_station_screen = StationScreen.new()
@@ -588,10 +588,10 @@ func _initialize_game() -> void:
 	_encounter_manager.name = "EncounterManager"
 	add_child(_encounter_manager)
 
-	# Clan Manager
-	_clan_manager = ClanManager.new()
-	_clan_manager.name = "ClanManager"
-	add_child(_clan_manager)
+	# Corporation Manager
+	_corporation_manager = CorporationManager.new()
+	_corporation_manager.name = "CorporationManager"
+	add_child(_corporation_manager)
 
 	# Setup UI framework managers (needs _galaxy and _system_transition)
 	_setup_ui_managers()

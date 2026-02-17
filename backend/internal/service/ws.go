@@ -11,11 +11,11 @@ import (
 )
 
 type WSClient struct {
-	Conn     *websocket.Conn
-	PlayerID string
-	Username string
-	ClanID   string
-	Send     chan []byte
+	Conn          *websocket.Conn
+	PlayerID      string
+	Username      string
+	CorporationID string
+	Send          chan []byte
 }
 
 type WSHub struct {
@@ -93,7 +93,7 @@ func (h *WSHub) Broadcast(event *model.WSEvent) {
 	h.broadcast <- data
 }
 
-func (h *WSHub) BroadcastToClan(clanID string, event *model.WSEvent) {
+func (h *WSHub) BroadcastToCorporation(corporationID string, event *model.WSEvent) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return
@@ -103,7 +103,7 @@ func (h *WSHub) BroadcastToClan(clanID string, event *model.WSEvent) {
 	defer h.mu.RUnlock()
 
 	for client := range h.clients {
-		if client.ClanID == clanID {
+		if client.CorporationID == corporationID {
 			select {
 			case client.Send <- data:
 			default:

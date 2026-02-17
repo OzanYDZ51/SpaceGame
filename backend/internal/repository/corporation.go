@@ -10,23 +10,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ClanRepository struct {
+type CorporationRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewClanRepository(pool *pgxpool.Pool) *ClanRepository {
-	return &ClanRepository{pool: pool}
+func NewCorporationRepository(pool *pgxpool.Pool) *CorporationRepository {
+	return &CorporationRepository{pool: pool}
 }
 
-func (r *ClanRepository) Create(ctx context.Context, req *model.CreateClanRequest) (*model.Clan, error) {
-	c := &model.Clan{}
+func (r *CorporationRepository) Create(ctx context.Context, req *model.CreateCorporationRequest) (*model.Corporation, error) {
+	c := &model.Corporation{}
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO clans (clan_name, clan_tag, description, motto, clan_color, emblem_id)
+		INSERT INTO corporations (corporation_name, corporation_tag, description, motto, corporation_color, emblem_id)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, clan_name, clan_tag, description, motto, motd, clan_color, emblem_id,
+		RETURNING id, corporation_name, corporation_tag, description, motto, motd, corporation_color, emblem_id,
 		          treasury, reputation, max_members, is_recruiting, created_at, updated_at
-	`, req.ClanName, req.ClanTag, req.Description, req.Motto, req.ClanColor, req.EmblemID).Scan(
-		&c.ID, &c.ClanName, &c.ClanTag, &c.Description, &c.Motto, &c.MOTD, &c.ClanColor, &c.EmblemID,
+	`, req.CorporationName, req.CorporationTag, req.Description, req.Motto, req.CorporationColor, req.EmblemID).Scan(
+		&c.ID, &c.CorporationName, &c.CorporationTag, &c.Description, &c.Motto, &c.MOTD, &c.CorporationColor, &c.EmblemID,
 		&c.Treasury, &c.Reputation, &c.MaxMembers, &c.IsRecruiting, &c.CreatedAt, &c.UpdatedAt,
 	)
 	if err != nil {
@@ -35,15 +35,15 @@ func (r *ClanRepository) Create(ctx context.Context, req *model.CreateClanReques
 	return c, nil
 }
 
-func (r *ClanRepository) GetByID(ctx context.Context, id string) (*model.Clan, error) {
-	c := &model.Clan{}
+func (r *CorporationRepository) GetByID(ctx context.Context, id string) (*model.Corporation, error) {
+	c := &model.Corporation{}
 	err := r.pool.QueryRow(ctx, `
-		SELECT c.id, c.clan_name, c.clan_tag, c.description, c.motto, c.motd, c.clan_color, c.emblem_id,
+		SELECT c.id, c.corporation_name, c.corporation_tag, c.description, c.motto, c.motd, c.corporation_color, c.emblem_id,
 		       c.treasury, c.reputation, c.max_members, c.is_recruiting, c.created_at, c.updated_at,
-		       (SELECT COUNT(*) FROM clan_members WHERE clan_id = c.id)
-		FROM clans c WHERE c.id = $1
+		       (SELECT COUNT(*) FROM corporation_members WHERE corporation_id = c.id)
+		FROM corporations c WHERE c.id = $1
 	`, id).Scan(
-		&c.ID, &c.ClanName, &c.ClanTag, &c.Description, &c.Motto, &c.MOTD, &c.ClanColor, &c.EmblemID,
+		&c.ID, &c.CorporationName, &c.CorporationTag, &c.Description, &c.Motto, &c.MOTD, &c.CorporationColor, &c.EmblemID,
 		&c.Treasury, &c.Reputation, &c.MaxMembers, &c.IsRecruiting, &c.CreatedAt, &c.UpdatedAt,
 		&c.MemberCount,
 	)
@@ -53,13 +53,13 @@ func (r *ClanRepository) GetByID(ctx context.Context, id string) (*model.Clan, e
 	return c, nil
 }
 
-func (r *ClanRepository) Search(ctx context.Context, query string, limit int) ([]*model.Clan, error) {
+func (r *CorporationRepository) Search(ctx context.Context, query string, limit int) ([]*model.Corporation, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT c.id, c.clan_name, c.clan_tag, c.description, c.motto, c.motd, c.clan_color, c.emblem_id,
+		SELECT c.id, c.corporation_name, c.corporation_tag, c.description, c.motto, c.motd, c.corporation_color, c.emblem_id,
 		       c.treasury, c.reputation, c.max_members, c.is_recruiting, c.created_at, c.updated_at,
-		       (SELECT COUNT(*) FROM clan_members WHERE clan_id = c.id)
-		FROM clans c
-		WHERE c.clan_name ILIKE '%' || $1 || '%' OR c.clan_tag ILIKE '%' || $1 || '%'
+		       (SELECT COUNT(*) FROM corporation_members WHERE corporation_id = c.id)
+		FROM corporations c
+		WHERE c.corporation_name ILIKE '%' || $1 || '%' OR c.corporation_tag ILIKE '%' || $1 || '%'
 		ORDER BY c.reputation DESC
 		LIMIT $2
 	`, query, limit)
@@ -68,24 +68,24 @@ func (r *ClanRepository) Search(ctx context.Context, query string, limit int) ([
 	}
 	defer rows.Close()
 
-	var clans []*model.Clan
+	var corporations []*model.Corporation
 	for rows.Next() {
-		c := &model.Clan{}
+		c := &model.Corporation{}
 		if err := rows.Scan(
-			&c.ID, &c.ClanName, &c.ClanTag, &c.Description, &c.Motto, &c.MOTD, &c.ClanColor, &c.EmblemID,
+			&c.ID, &c.CorporationName, &c.CorporationTag, &c.Description, &c.Motto, &c.MOTD, &c.CorporationColor, &c.EmblemID,
 			&c.Treasury, &c.Reputation, &c.MaxMembers, &c.IsRecruiting, &c.CreatedAt, &c.UpdatedAt,
 			&c.MemberCount,
 		); err != nil {
 			return nil, err
 		}
-		clans = append(clans, c)
+		corporations = append(corporations, c)
 	}
-	return clans, nil
+	return corporations, nil
 }
 
-func (r *ClanRepository) Update(ctx context.Context, id string, req *model.UpdateClanRequest) error {
+func (r *CorporationRepository) Update(ctx context.Context, id string, req *model.UpdateCorporationRequest) error {
 	// Build dynamic update — only set provided fields
-	query := "UPDATE clans SET updated_at = NOW()"
+	query := "UPDATE corporations SET updated_at = NOW()"
 	args := []interface{}{id}
 	i := 2
 
@@ -104,9 +104,9 @@ func (r *ClanRepository) Update(ctx context.Context, id string, req *model.Updat
 		args = append(args, *req.MOTD)
 		i++
 	}
-	if req.ClanColor != nil {
-		query += fmt.Sprintf(", clan_color = $%d", i)
-		args = append(args, *req.ClanColor)
+	if req.CorporationColor != nil {
+		query += fmt.Sprintf(", corporation_color = $%d", i)
+		args = append(args, *req.CorporationColor)
 		i++
 	}
 	if req.EmblemID != nil {
@@ -125,50 +125,50 @@ func (r *ClanRepository) Update(ctx context.Context, id string, req *model.Updat
 	return err
 }
 
-func (r *ClanRepository) Delete(ctx context.Context, id string) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM clans WHERE id = $1`, id)
+func (r *CorporationRepository) Delete(ctx context.Context, id string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM corporations WHERE id = $1`, id)
 	return err
 }
 
-func (r *ClanRepository) CountTotal(ctx context.Context) (int, error) {
+func (r *CorporationRepository) CountTotal(ctx context.Context) (int, error) {
 	var count int
-	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clans`).Scan(&count)
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM corporations`).Scan(&count)
 	return count, err
 }
 
 // --- Members ---
 
-func (r *ClanRepository) AddMember(ctx context.Context, clanID, playerID string, rankPriority int) error {
+func (r *CorporationRepository) AddMember(ctx context.Context, corporationID, playerID string, rankPriority int) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO clan_members (player_id, clan_id, rank_priority) VALUES ($1, $2, $3)
-	`, playerID, clanID, rankPriority)
+		INSERT INTO corporation_members (player_id, corporation_id, rank_priority) VALUES ($1, $2, $3)
+	`, playerID, corporationID, rankPriority)
 	return err
 }
 
-func (r *ClanRepository) RemoveMember(ctx context.Context, playerID string) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM clan_members WHERE player_id = $1`, playerID)
+func (r *CorporationRepository) RemoveMember(ctx context.Context, playerID string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM corporation_members WHERE player_id = $1`, playerID)
 	return err
 }
 
-func (r *ClanRepository) GetMembers(ctx context.Context, clanID string) ([]*model.ClanMember, error) {
+func (r *CorporationRepository) GetMembers(ctx context.Context, corporationID string) ([]*model.CorporationMember, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT cm.player_id, p.username, cm.clan_id, cm.rank_priority,
+		SELECT cm.player_id, p.username, cm.corporation_id, cm.rank_priority,
 		       COALESCE(cr.rank_name, 'Member'), cm.contribution, cm.joined_at
-		FROM clan_members cm
+		FROM corporation_members cm
 		JOIN players p ON cm.player_id = p.id
-		LEFT JOIN clan_ranks cr ON cr.clan_id = cm.clan_id AND cr.priority = cm.rank_priority
-		WHERE cm.clan_id = $1
+		LEFT JOIN corporation_ranks cr ON cr.corporation_id = cm.corporation_id AND cr.priority = cm.rank_priority
+		WHERE cm.corporation_id = $1
 		ORDER BY cm.rank_priority DESC, cm.joined_at ASC
-	`, clanID)
+	`, corporationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var members []*model.ClanMember
+	var members []*model.CorporationMember
 	for rows.Next() {
-		m := &model.ClanMember{}
-		if err := rows.Scan(&m.PlayerID, &m.Username, &m.ClanID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt); err != nil {
+		m := &model.CorporationMember{}
+		if err := rows.Scan(&m.PlayerID, &m.Username, &m.CorporationID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt); err != nil {
 			return nil, err
 		}
 		members = append(members, m)
@@ -176,36 +176,36 @@ func (r *ClanRepository) GetMembers(ctx context.Context, clanID string) ([]*mode
 	return members, nil
 }
 
-func (r *ClanRepository) GetMember(ctx context.Context, playerID string) (*model.ClanMember, error) {
-	m := &model.ClanMember{}
+func (r *CorporationRepository) GetMember(ctx context.Context, playerID string) (*model.CorporationMember, error) {
+	m := &model.CorporationMember{}
 	err := r.pool.QueryRow(ctx, `
-		SELECT cm.player_id, p.username, cm.clan_id, cm.rank_priority,
+		SELECT cm.player_id, p.username, cm.corporation_id, cm.rank_priority,
 		       COALESCE(cr.rank_name, 'Member'), cm.contribution, cm.joined_at
-		FROM clan_members cm
+		FROM corporation_members cm
 		JOIN players p ON cm.player_id = p.id
-		LEFT JOIN clan_ranks cr ON cr.clan_id = cm.clan_id AND cr.priority = cm.rank_priority
+		LEFT JOIN corporation_ranks cr ON cr.corporation_id = cm.corporation_id AND cr.priority = cm.rank_priority
 		WHERE cm.player_id = $1
-	`, playerID).Scan(&m.PlayerID, &m.Username, &m.ClanID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt)
+	`, playerID).Scan(&m.PlayerID, &m.Username, &m.CorporationID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt)
 	if err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (r *ClanRepository) SetMemberRank(ctx context.Context, playerID string, rankPriority int) error {
-	_, err := r.pool.Exec(ctx, `UPDATE clan_members SET rank_priority = $2 WHERE player_id = $1`, playerID, rankPriority)
+func (r *CorporationRepository) SetMemberRank(ctx context.Context, playerID string, rankPriority int) error {
+	_, err := r.pool.Exec(ctx, `UPDATE corporation_members SET rank_priority = $2 WHERE player_id = $1`, playerID, rankPriority)
 	return err
 }
 
-func (r *ClanRepository) GetMemberCount(ctx context.Context, clanID string) (int, error) {
+func (r *CorporationRepository) GetMemberCount(ctx context.Context, corporationID string) (int, error) {
 	var count int
-	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM clan_members WHERE clan_id = $1`, clanID).Scan(&count)
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM corporation_members WHERE corporation_id = $1`, corporationID).Scan(&count)
 	return count, err
 }
 
 // --- Ranks ---
 
-func (r *ClanRepository) CreateDefaultRanks(ctx context.Context, clanID string) error {
+func (r *CorporationRepository) CreateDefaultRanks(ctx context.Context, corporationID string) error {
 	ranks := []struct {
 		name     string
 		priority int
@@ -219,9 +219,9 @@ func (r *ClanRepository) CreateDefaultRanks(ctx context.Context, clanID string) 
 	}
 	for _, rank := range ranks {
 		_, err := r.pool.Exec(ctx, `
-			INSERT INTO clan_ranks (clan_id, rank_name, priority, permissions)
+			INSERT INTO corporation_ranks (corporation_id, rank_name, priority, permissions)
 			VALUES ($1, $2, $3, $4)
-		`, clanID, rank.name, rank.priority, rank.perms)
+		`, corporationID, rank.name, rank.priority, rank.perms)
 		if err != nil {
 			return err
 		}
@@ -229,20 +229,20 @@ func (r *ClanRepository) CreateDefaultRanks(ctx context.Context, clanID string) 
 	return nil
 }
 
-func (r *ClanRepository) GetRanks(ctx context.Context, clanID string) ([]*model.ClanRank, error) {
+func (r *CorporationRepository) GetRanks(ctx context.Context, corporationID string) ([]*model.CorporationRank, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, clan_id, rank_name, priority, permissions FROM clan_ranks
-		WHERE clan_id = $1 ORDER BY priority ASC
-	`, clanID)
+		SELECT id, corporation_id, rank_name, priority, permissions FROM corporation_ranks
+		WHERE corporation_id = $1 ORDER BY priority ASC
+	`, corporationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var ranks []*model.ClanRank
+	var ranks []*model.CorporationRank
 	for rows.Next() {
-		rank := &model.ClanRank{}
-		if err := rows.Scan(&rank.ID, &rank.ClanID, &rank.RankName, &rank.Priority, &rank.Permissions); err != nil {
+		rank := &model.CorporationRank{}
+		if err := rows.Scan(&rank.ID, &rank.CorporationID, &rank.RankName, &rank.Priority, &rank.Permissions); err != nil {
 			return nil, err
 		}
 		ranks = append(ranks, rank)
@@ -250,14 +250,14 @@ func (r *ClanRepository) GetRanks(ctx context.Context, clanID string) ([]*model.
 	return ranks, nil
 }
 
-func (r *ClanRepository) InsertRank(ctx context.Context, clanID, rankName string, priority, permissions int) (*model.ClanRank, error) {
-	rank := &model.ClanRank{}
+func (r *CorporationRepository) InsertRank(ctx context.Context, corporationID, rankName string, priority, permissions int) (*model.CorporationRank, error) {
+	rank := &model.CorporationRank{}
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO clan_ranks (clan_id, rank_name, priority, permissions)
+		INSERT INTO corporation_ranks (corporation_id, rank_name, priority, permissions)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, clan_id, rank_name, priority, permissions
-	`, clanID, rankName, priority, permissions).Scan(
-		&rank.ID, &rank.ClanID, &rank.RankName, &rank.Priority, &rank.Permissions,
+		RETURNING id, corporation_id, rank_name, priority, permissions
+	`, corporationID, rankName, priority, permissions).Scan(
+		&rank.ID, &rank.CorporationID, &rank.RankName, &rank.Priority, &rank.Permissions,
 	)
 	if err != nil {
 		return nil, err
@@ -265,52 +265,52 @@ func (r *ClanRepository) InsertRank(ctx context.Context, clanID, rankName string
 	return rank, nil
 }
 
-func (r *ClanRepository) UpdateRank(ctx context.Context, rankID int64, rankName string, permissions int) error {
+func (r *CorporationRepository) UpdateRank(ctx context.Context, rankID int64, rankName string, permissions int) error {
 	_, err := r.pool.Exec(ctx, `
-		UPDATE clan_ranks SET rank_name = $2, permissions = $3 WHERE id = $1
+		UPDATE corporation_ranks SET rank_name = $2, permissions = $3 WHERE id = $1
 	`, rankID, rankName, permissions)
 	return err
 }
 
-func (r *ClanRepository) DeleteRank(ctx context.Context, rankID int64) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM clan_ranks WHERE id = $1`, rankID)
+func (r *CorporationRepository) DeleteRank(ctx context.Context, rankID int64) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM corporation_ranks WHERE id = $1`, rankID)
 	return err
 }
 
 // --- Treasury ---
 
-func (r *ClanRepository) UpdateTreasury(ctx context.Context, clanID string, amount int64) (int64, error) {
+func (r *CorporationRepository) UpdateTreasury(ctx context.Context, corporationID string, amount int64) (int64, error) {
 	var newBalance int64
 	err := r.pool.QueryRow(ctx, `
-		UPDATE clans SET treasury = treasury + $2, updated_at = NOW()
+		UPDATE corporations SET treasury = treasury + $2, updated_at = NOW()
 		WHERE id = $1 AND treasury + $2 >= 0
 		RETURNING treasury
-	`, clanID, amount).Scan(&newBalance)
+	`, corporationID, amount).Scan(&newBalance)
 	return newBalance, err
 }
 
-func (r *ClanRepository) AddTransaction(ctx context.Context, clanID, playerID, actorName, txType string, amount int64) error {
+func (r *CorporationRepository) AddTransaction(ctx context.Context, corporationID, playerID, actorName, txType string, amount int64) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO clan_transactions (clan_id, player_id, actor_name, tx_type, amount)
+		INSERT INTO corporation_transactions (corporation_id, player_id, actor_name, tx_type, amount)
 		VALUES ($1, $2, $3, $4, $5)
-	`, clanID, playerID, actorName, txType, amount)
+	`, corporationID, playerID, actorName, txType, amount)
 	return err
 }
 
-func (r *ClanRepository) GetTransactions(ctx context.Context, clanID string, limit int) ([]*model.ClanTransaction, error) {
+func (r *CorporationRepository) GetTransactions(ctx context.Context, corporationID string, limit int) ([]*model.CorporationTransaction, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, clan_id, player_id, actor_name, tx_type, amount, created_at
-		FROM clan_transactions WHERE clan_id = $1 ORDER BY created_at DESC LIMIT $2
-	`, clanID, limit)
+		SELECT id, corporation_id, player_id, actor_name, tx_type, amount, created_at
+		FROM corporation_transactions WHERE corporation_id = $1 ORDER BY created_at DESC LIMIT $2
+	`, corporationID, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var txs []*model.ClanTransaction
+	var txs []*model.CorporationTransaction
 	for rows.Next() {
-		tx := &model.ClanTransaction{}
-		if err := rows.Scan(&tx.ID, &tx.ClanID, &tx.PlayerID, &tx.ActorName, &tx.TxType, &tx.Amount, &tx.CreatedAt); err != nil {
+		tx := &model.CorporationTransaction{}
+		if err := rows.Scan(&tx.ID, &tx.CorporationID, &tx.PlayerID, &tx.ActorName, &tx.TxType, &tx.Amount, &tx.CreatedAt); err != nil {
 			return nil, err
 		}
 		txs = append(txs, tx)
@@ -320,28 +320,28 @@ func (r *ClanRepository) GetTransactions(ctx context.Context, clanID string, lim
 
 // --- Activity ---
 
-func (r *ClanRepository) AddActivity(ctx context.Context, clanID string, eventType int, actorName, targetName, details string) error {
+func (r *CorporationRepository) AddActivity(ctx context.Context, corporationID string, eventType int, actorName, targetName, details string) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO clan_activity (clan_id, event_type, actor_name, target_name, details)
+		INSERT INTO corporation_activity (corporation_id, event_type, actor_name, target_name, details)
 		VALUES ($1, $2, $3, $4, $5)
-	`, clanID, eventType, actorName, targetName, details)
+	`, corporationID, eventType, actorName, targetName, details)
 	return err
 }
 
-func (r *ClanRepository) GetActivity(ctx context.Context, clanID string, limit int) ([]*model.ClanActivity, error) {
+func (r *CorporationRepository) GetActivity(ctx context.Context, corporationID string, limit int) ([]*model.CorporationActivity, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, clan_id, event_type, actor_name, target_name, details, created_at
-		FROM clan_activity WHERE clan_id = $1 ORDER BY created_at DESC LIMIT $2
-	`, clanID, limit)
+		SELECT id, corporation_id, event_type, actor_name, target_name, details, created_at
+		FROM corporation_activity WHERE corporation_id = $1 ORDER BY created_at DESC LIMIT $2
+	`, corporationID, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var activities []*model.ClanActivity
+	var activities []*model.CorporationActivity
 	for rows.Next() {
-		a := &model.ClanActivity{}
-		if err := rows.Scan(&a.ID, &a.ClanID, &a.EventType, &a.ActorName, &a.TargetName, &a.Details, &a.CreatedAt); err != nil {
+		a := &model.CorporationActivity{}
+		if err := rows.Scan(&a.ID, &a.CorporationID, &a.EventType, &a.ActorName, &a.TargetName, &a.Details, &a.CreatedAt); err != nil {
 			return nil, err
 		}
 		activities = append(activities, a)
@@ -351,22 +351,22 @@ func (r *ClanRepository) GetActivity(ctx context.Context, clanID string, limit i
 
 // --- Diplomacy ---
 
-func (r *ClanRepository) GetDiplomacy(ctx context.Context, clanID string) ([]*model.ClanDiplomacy, error) {
+func (r *CorporationRepository) GetDiplomacy(ctx context.Context, corporationID string) ([]*model.CorporationDiplomacy, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT d.clan_id, d.target_clan_id, c.clan_name, c.clan_tag, d.relation, d.since
-		FROM clan_diplomacy d
-		JOIN clans c ON d.target_clan_id = c.id
-		WHERE d.clan_id = $1
-	`, clanID)
+		SELECT d.corporation_id, d.target_corporation_id, c.corporation_name, c.corporation_tag, d.relation, d.since
+		FROM corporation_diplomacy d
+		JOIN corporations c ON d.target_corporation_id = c.id
+		WHERE d.corporation_id = $1
+	`, corporationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var relations []*model.ClanDiplomacy
+	var relations []*model.CorporationDiplomacy
 	for rows.Next() {
-		d := &model.ClanDiplomacy{}
-		if err := rows.Scan(&d.ClanID, &d.TargetClanID, &d.TargetName, &d.TargetTag, &d.Relation, &d.Since); err != nil {
+		d := &model.CorporationDiplomacy{}
+		if err := rows.Scan(&d.CorporationID, &d.TargetCorporationID, &d.TargetName, &d.TargetTag, &d.Relation, &d.Since); err != nil {
 			return nil, err
 		}
 		relations = append(relations, d)
@@ -374,12 +374,12 @@ func (r *ClanRepository) GetDiplomacy(ctx context.Context, clanID string) ([]*mo
 	return relations, nil
 }
 
-func (r *ClanRepository) SetDiplomacy(ctx context.Context, clanID, targetClanID, relation string) error {
+func (r *CorporationRepository) SetDiplomacy(ctx context.Context, corporationID, targetCorporationID, relation string) error {
 	now := time.Now()
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO clan_diplomacy (clan_id, target_clan_id, relation, since)
+		INSERT INTO corporation_diplomacy (corporation_id, target_corporation_id, relation, since)
 		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (clan_id, target_clan_id) DO UPDATE SET relation = EXCLUDED.relation, since = EXCLUDED.since
-	`, clanID, targetClanID, relation, now)
+		ON CONFLICT (corporation_id, target_corporation_id) DO UPDATE SET relation = EXCLUDED.relation, since = EXCLUDED.since
+	`, corporationID, targetCorporationID, relation, now)
 	return err
 }

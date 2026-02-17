@@ -30,7 +30,7 @@ var shield_ratios: Array[float] = [1.0, 1.0, 1.0, 1.0]
 var is_docked: bool = false
 var is_dead: bool = false
 var is_cruising: bool = false  ## True when cruise warp is active (phase 2 punch)
-var clan_tag: String = ""
+var corporation_tag: String = ""
 
 # Timing
 var timestamp: float = 0.0
@@ -57,7 +57,7 @@ func to_dict() -> Dictionary:
 		"dk": is_docked,
 		"dead": is_dead,
 		"cr": is_cruising,
-		"ctag": clan_tag,
+		"ctag": corporation_tag,
 		"t": timestamp,
 	}
 
@@ -81,7 +81,7 @@ func from_dict(d: Dictionary) -> void:
 	is_docked = d.get("dk", false)
 	is_dead = d.get("dead", false)
 	is_cruising = d.get("cr", false)
-	clan_tag = d.get("ctag", "")
+	corporation_tag = d.get("ctag", "")
 	timestamp = d.get("t", 0.0)
 
 

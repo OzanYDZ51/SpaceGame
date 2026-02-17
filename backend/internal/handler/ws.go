@@ -90,12 +90,12 @@ func (h *WSHandler) handleConnection(c *websocket.Conn) {
 			default:
 			}
 		case "subscribe":
-			// Client can subscribe to clan channel by sending their clan_id
+			// Client can subscribe to corporation channel by sending their corporation_id
 			var sub struct {
-				ClanID string `json:"clan_id"`
+				CorporationID string `json:"corporation_id"`
 			}
 			if err := json.Unmarshal(event.Data, &sub); err == nil {
-				client.ClanID = sub.ClanID
+				client.CorporationID = sub.CorporationID
 			}
 		default:
 			log.Printf("WS: unknown event type %s from %s", event.Type, username)

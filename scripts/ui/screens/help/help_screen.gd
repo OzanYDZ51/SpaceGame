@@ -196,7 +196,7 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 		["Y", "Annuler cible"], ["Tab + 1/2/3", "Energie: Armes/Boucliers/Moteurs"]],
 		font, font_bold, vt, vb)
 	ry = _draw_kb(rx, ry + 10, col_w, "DIVERS", [
-		["X", "Ramasser butin"], ["R", "Respawn"], ["N", "Clan"],
+		["X", "Ramasser butin"], ["R", "Respawn"], ["N", "Corporation"],
 		["P", "Multijoueur"], ["F1", "Aide"], ["Echap", "Pause"],
 		["F12", "Rapport de bug"]], font, font_bold, vt, vb)
 

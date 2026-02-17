@@ -121,41 +121,41 @@ func (r *DiscordRepository) GetDiscordID(ctx context.Context, playerID string) (
 func (r *DiscordRepository) GetPlayerByDiscordID(ctx context.Context, discordID string) (*model.Player, error) {
 	var p model.Player
 	err := r.db.QueryRow(ctx,
-		`SELECT id, username, current_ship_id, kills, deaths, clan_id FROM players WHERE discord_id = $1`,
+		`SELECT id, username, current_ship_id, kills, deaths, corporation_id FROM players WHERE discord_id = $1`,
 		discordID,
-	).Scan(&p.ID, &p.Username, &p.CurrentShipID, &p.Kills, &p.Deaths, &p.ClanID)
+	).Scan(&p.ID, &p.Username, &p.CurrentShipID, &p.Kills, &p.Deaths, &p.CorporationID)
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
 }
 
-// SetClanMapping stores the Discord role and channel IDs for a clan.
-func (r *DiscordRepository) SetClanMapping(ctx context.Context, clanID, roleID, channelID string) error {
+// SetCorporationMapping stores the Discord role and channel IDs for a corporation.
+func (r *DiscordRepository) SetCorporationMapping(ctx context.Context, corporationID, roleID, channelID string) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO discord_clan_mapping (clan_id, discord_role_id, discord_channel_id)
+		`INSERT INTO discord_corporation_mapping (corporation_id, discord_role_id, discord_channel_id)
 		 VALUES ($1, $2, $3)
-		 ON CONFLICT (clan_id) DO UPDATE SET discord_role_id = $2, discord_channel_id = $3`,
-		clanID, roleID, channelID,
+		 ON CONFLICT (corporation_id) DO UPDATE SET discord_role_id = $2, discord_channel_id = $3`,
+		corporationID, roleID, channelID,
 	)
 	return err
 }
 
-// GetClanMapping returns the Discord mapping for a clan.
-func (r *DiscordRepository) GetClanMapping(ctx context.Context, clanID string) (*model.DiscordClanMapping, error) {
-	var m model.DiscordClanMapping
+// GetCorporationMapping returns the Discord mapping for a corporation.
+func (r *DiscordRepository) GetCorporationMapping(ctx context.Context, corporationID string) (*model.DiscordCorporationMapping, error) {
+	var m model.DiscordCorporationMapping
 	err := r.db.QueryRow(ctx,
-		`SELECT clan_id, discord_role_id, discord_channel_id FROM discord_clan_mapping WHERE clan_id = $1`,
-		clanID,
-	).Scan(&m.ClanID, &m.DiscordRoleID, &m.DiscordChannelID)
+		`SELECT corporation_id, discord_role_id, discord_channel_id FROM discord_corporation_mapping WHERE corporation_id = $1`,
+		corporationID,
+	).Scan(&m.CorporationID, &m.DiscordRoleID, &m.DiscordChannelID)
 	if err != nil {
 		return nil, err
 	}
 	return &m, nil
 }
 
-// DeleteClanMapping removes the Discord mapping for a clan.
-func (r *DiscordRepository) DeleteClanMapping(ctx context.Context, clanID string) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM discord_clan_mapping WHERE clan_id = $1`, clanID)
+// DeleteCorporationMapping removes the Discord mapping for a corporation.
+func (r *DiscordRepository) DeleteCorporationMapping(ctx context.Context, corporationID string) error {
+	_, err := r.db.Exec(ctx, `DELETE FROM discord_corporation_mapping WHERE corporation_id = $1`, corporationID)
 	return err
 }

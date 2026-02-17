@@ -1,8 +1,8 @@
-class_name ClanTabTreasury
+class_name CorporationTabTreasury
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Treasury - Rich balance display, deposit/withdraw, history, top 5
+# Corporation Tab: Treasury - Rich balance display, deposit/withdraw, history, top 5
 # =============================================================================
 
 var _cm = null
@@ -50,10 +50,10 @@ func _ready() -> void:
 
 func refresh(cm) -> void:
 	_cm = cm
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
-	_btn_withdraw.enabled = _cm.player_has_permission(ClanRank.PERM_WITHDRAW)
+	_btn_withdraw.enabled = _cm.player_has_permission(CorporationRank.PERM_WITHDRAW)
 
 	_history_table.rows.clear()
 	for t in _cm.transactions:
@@ -116,7 +116,7 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 
 	var font: Font = UITheme.get_font()
@@ -130,10 +130,10 @@ func _draw() -> void:
 
 	# Title
 	draw_rect(Rect2(m, 6, 3, UITheme.FONT_SIZE_HEADER + 2), UITheme.PRIMARY)
-	draw_string(font, Vector2(m + 10, 6 + UITheme.FONT_SIZE_HEADER), "TRESORERIE DU CLAN", HORIZONTAL_ALIGNMENT_LEFT, size.x * 0.4, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(m + 10, 6 + UITheme.FONT_SIZE_HEADER), "TRESORERIE DE LA CORPORATION", HORIZONTAL_ALIGNMENT_LEFT, size.x * 0.4, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 
 	# Big balance (centered, glowing)
-	var balance = _cm.clan_data.treasury_balance
+	var balance = _cm.corporation_data.treasury_balance
 	var bal_str ="%s CREDITS" % _format_num(balance)
 	var bal_col =UITheme.ACCENT if balance > 0 else UITheme.DANGER
 	var glow_alpha: float = 0.8 + pulse * 0.2
@@ -171,10 +171,10 @@ func _draw() -> void:
 	draw_line(Vector2(right_x - m * 0.5, table_y + 28), Vector2(right_x + right_w + m * 0.5, table_y + 28), UITheme.BORDER, 1.0)
 
 	# Sort members by contribution
-	var sorted_members: Array[ClanMember] = []
+	var sorted_members: Array[CorporationMember] = []
 	for member in _cm.members:
 		sorted_members.append(member)
-	sorted_members.sort_custom(func(a: ClanMember, b: ClanMember) -> bool:
+	sorted_members.sort_custom(func(a: CorporationMember, b: CorporationMember) -> bool:
 		return a.contribution_total > b.contribution_total
 	)
 

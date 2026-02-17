@@ -10,30 +10,30 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// ClanSync manages the synchronization between game clans and Discord roles/channels.
-type ClanSync struct {
+// CorporationSync manages the synchronization between game corporations and Discord roles/channels.
+type CorporationSync struct {
 	session     *discordgo.Session
 	guildID     string
-	clanRepo    *repository.ClanRepository
+	corpRepo    *repository.CorporationRepository
 	discordRepo *repository.DiscordRepository
 }
 
-func NewClanSync(
+func NewCorporationSync(
 	session *discordgo.Session,
 	guildID string,
-	clanRepo *repository.ClanRepository,
+	corpRepo *repository.CorporationRepository,
 	discordRepo *repository.DiscordRepository,
-) *ClanSync {
-	return &ClanSync{
+) *CorporationSync {
+	return &CorporationSync{
 		session:     session,
 		guildID:     guildID,
-		clanRepo:    clanRepo,
+		corpRepo:    corpRepo,
 		discordRepo: discordRepo,
 	}
 }
 
-// OnClanCreated creates a Discord role and private channel for the new clan.
-func (cs *ClanSync) OnClanCreated(clanID, clanName, clanTag string) {
+// OnCorporationCreated creates a Discord role and private channel for the new corporation.
+func (cs *CorporationSync) OnCorporationCreated(corporationID, corporationName, corporationTag string) {
 	if cs == nil || cs.session == nil || cs.guildID == "" {
 		return
 	}
@@ -44,17 +44,17 @@ func (cs *ClanSync) OnClanCreated(clanID, clanName, clanTag string) {
 
 		// Create role
 		role, err := cs.session.GuildRoleCreate(cs.guildID, &discordgo.RoleParams{
-			Name:  "Clan " + clanTag,
+			Name:  "Corporation " + corporationTag,
 			Color: intPtr(0x9B59B6), // Purple
 		})
 		if err != nil {
-			log.Printf("[clan-sync] failed to create role for clan %s: %v", clanName, err)
+			log.Printf("[corporation-sync] failed to create role for corporation %s: %v", corporationName, err)
 			return
 		}
 
 		// Create private channel
 		channel, err := cs.session.GuildChannelCreateComplex(cs.guildID, discordgo.GuildChannelCreateData{
-			Name: "clan-" + sanitizeChannelName(clanTag),
+			Name: "corp-" + sanitizeChannelName(corporationTag),
 			Type: discordgo.ChannelTypeGuildText,
 			PermissionOverwrites: []*discordgo.PermissionOverwrite{
 				{
@@ -70,21 +70,21 @@ func (cs *ClanSync) OnClanCreated(clanID, clanName, clanTag string) {
 			},
 		})
 		if err != nil {
-			log.Printf("[clan-sync] failed to create channel for clan %s: %v", clanName, err)
+			log.Printf("[corporation-sync] failed to create channel for corporation %s: %v", corporationName, err)
 			return
 		}
 
 		// Store mapping
-		if err := cs.discordRepo.SetClanMapping(ctx, clanID, role.ID, channel.ID); err != nil {
-			log.Printf("[clan-sync] failed to store mapping for clan %s: %v", clanName, err)
+		if err := cs.discordRepo.SetCorporationMapping(ctx, corporationID, role.ID, channel.ID); err != nil {
+			log.Printf("[corporation-sync] failed to store mapping for corporation %s: %v", corporationName, err)
 		}
 
-		log.Printf("[clan-sync] Created role %s and channel #%s for clan [%s]", role.Name, channel.Name, clanTag)
+		log.Printf("[corporation-sync] Created role %s and channel #%s for corporation [%s]", role.Name, channel.Name, corporationTag)
 	}()
 }
 
-// OnClanDeleted removes the Discord role and channel for a deleted clan.
-func (cs *ClanSync) OnClanDeleted(clanID string) {
+// OnCorporationDeleted removes the Discord role and channel for a deleted corporation.
+func (cs *CorporationSync) OnCorporationDeleted(corporationID string) {
 	if cs == nil || cs.session == nil || cs.guildID == "" {
 		return
 	}
@@ -93,26 +93,26 @@ func (cs *ClanSync) OnClanDeleted(clanID string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		mapping, err := cs.discordRepo.GetClanMapping(ctx, clanID)
+		mapping, err := cs.discordRepo.GetCorporationMapping(ctx, corporationID)
 		if err != nil {
 			return
 		}
 
 		// Delete channel and role
 		if _, err := cs.session.ChannelDelete(mapping.DiscordChannelID); err != nil {
-			log.Printf("[clan-sync] failed to delete channel %s: %v", mapping.DiscordChannelID, err)
+			log.Printf("[corporation-sync] failed to delete channel %s: %v", mapping.DiscordChannelID, err)
 		}
 		if err := cs.session.GuildRoleDelete(cs.guildID, mapping.DiscordRoleID); err != nil {
-			log.Printf("[clan-sync] failed to delete role %s: %v", mapping.DiscordRoleID, err)
+			log.Printf("[corporation-sync] failed to delete role %s: %v", mapping.DiscordRoleID, err)
 		}
 
-		_ = cs.discordRepo.DeleteClanMapping(ctx, clanID)
-		log.Printf("[clan-sync] Cleaned up Discord resources for clan %s", clanID)
+		_ = cs.discordRepo.DeleteCorporationMapping(ctx, corporationID)
+		log.Printf("[corporation-sync] Cleaned up Discord resources for corporation %s", corporationID)
 	}()
 }
 
-// OnMemberJoined assigns the clan's Discord role to a player (if their account is linked).
-func (cs *ClanSync) OnMemberJoined(clanID, playerID string) {
+// OnMemberJoined assigns the corporation's Discord role to a player (if their account is linked).
+func (cs *CorporationSync) OnMemberJoined(corporationID, playerID string) {
 	if cs == nil || cs.session == nil || cs.guildID == "" {
 		return
 	}
@@ -126,19 +126,19 @@ func (cs *ClanSync) OnMemberJoined(clanID, playerID string) {
 			return
 		}
 
-		mapping, err := cs.discordRepo.GetClanMapping(ctx, clanID)
+		mapping, err := cs.discordRepo.GetCorporationMapping(ctx, corporationID)
 		if err != nil {
 			return
 		}
 
 		if err := cs.session.GuildMemberRoleAdd(cs.guildID, discordID, mapping.DiscordRoleID); err != nil {
-			log.Printf("[clan-sync] failed to add role to %s: %v", discordID, err)
+			log.Printf("[corporation-sync] failed to add role to %s: %v", discordID, err)
 		}
 	}()
 }
 
-// OnMemberLeft removes the clan's Discord role from a player.
-func (cs *ClanSync) OnMemberLeft(clanID, playerID string) {
+// OnMemberLeft removes the corporation's Discord role from a player.
+func (cs *CorporationSync) OnMemberLeft(corporationID, playerID string) {
 	if cs == nil || cs.session == nil || cs.guildID == "" {
 		return
 	}
@@ -152,13 +152,13 @@ func (cs *ClanSync) OnMemberLeft(clanID, playerID string) {
 			return
 		}
 
-		mapping, err := cs.discordRepo.GetClanMapping(ctx, clanID)
+		mapping, err := cs.discordRepo.GetCorporationMapping(ctx, corporationID)
 		if err != nil {
 			return
 		}
 
 		if err := cs.session.GuildMemberRoleRemove(cs.guildID, discordID, mapping.DiscordRoleID); err != nil {
-			log.Printf("[clan-sync] failed to remove role from %s: %v", discordID, err)
+			log.Printf("[corporation-sync] failed to remove role from %s: %v", discordID, err)
 		}
 	}()
 }

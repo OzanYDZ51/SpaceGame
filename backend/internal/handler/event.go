@@ -38,12 +38,12 @@ func (h *EventHandler) RecordEvent(c *fiber.Ctx) error {
 			details = string(req.Details)
 		}
 		h.eventSvc.RecordEconomyEvent(ctx, req.Type, details)
-	case "clan_created", "clan_deleted", "clan_alliance", "clan_war":
+	case "corporation_created", "corporation_deleted", "corporation_alliance", "corporation_war":
 		details := ""
 		if req.Details != nil {
 			details = string(req.Details)
 		}
-		h.eventSvc.RecordClanEvent(ctx, req.Type, req.ActorName, details)
+		h.eventSvc.RecordCorporationEvent(ctx, req.Type, req.ActorName, details)
 	default:
 		return c.Status(400).JSON(fiber.Map{"error": "unknown event type: " + req.Type})
 	}

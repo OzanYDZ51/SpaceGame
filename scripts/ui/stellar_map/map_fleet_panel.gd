@@ -43,6 +43,7 @@ var _last_header_click_sq: int = -1
 var _last_header_click_time: float = 0.0
 var _last_ship_click_index: int = -1
 var _last_ship_click_time: float = 0.0
+var _last_single_select_index: int = -1  # Anchor for Shift+click range select
 
 
 func _ready() -> void:
@@ -171,7 +172,7 @@ func get_panel_rect() -> Rect2:
 	return Rect2(0, 0, PANEL_W, size.y)
 
 
-func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
+func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool = false) -> bool:
 	if pos.x > PANEL_W or pos.x < 0:
 		return false
 	if _fleet == null or _fleet.ships.is_empty():
@@ -193,6 +194,8 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 				# Select all ships in the squadron
 				var all_indices: Array[int] = sq.get_all_indices()
 				_selected_fleet_indices = all_indices
+				if not all_indices.is_empty():
+					_last_single_select_index = all_indices[-1]
 				selection_changed.emit(_selected_fleet_indices.duplicate())
 				squadron_header_clicked.emit(hit_sq_id)
 			queue_redraw()
@@ -208,19 +211,40 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false) -> bool:
 		else:
 			_last_ship_click_index = hit_index
 			_last_ship_click_time = now
-		if ctrl_pressed:
+		if shift_pressed and _last_single_select_index >= 0:
+			# Shift+click = range select from anchor to clicked item
+			var visible_order: Array[int] = _get_visible_fleet_indices()
+			var anchor_pos: int = visible_order.find(_last_single_select_index)
+			var click_pos: int = visible_order.find(hit_index)
+			if anchor_pos >= 0 and click_pos >= 0:
+				var from_idx: int = mini(anchor_pos, click_pos)
+				var to_idx: int = maxi(anchor_pos, click_pos)
+				if ctrl_pressed:
+					# Shift+Ctrl = add range to existing selection
+					for i in range(from_idx, to_idx + 1):
+						if not _selected_fleet_indices.has(visible_order[i]):
+							_selected_fleet_indices.append(visible_order[i])
+				else:
+					# Shift only = replace selection with range
+					_selected_fleet_indices.clear()
+					for i in range(from_idx, to_idx + 1):
+						_selected_fleet_indices.append(visible_order[i])
+			# Don't update anchor on shift-click (standard behavior)
+		elif ctrl_pressed:
 			# Ctrl+click = toggle in multi-select
 			var idx: int = _selected_fleet_indices.find(hit_index)
 			if idx >= 0:
 				_selected_fleet_indices.remove_at(idx)
 			else:
 				_selected_fleet_indices.append(hit_index)
+			_last_single_select_index = hit_index
 		else:
 			# Normal click = toggle single selection
 			if _selected_fleet_indices.size() == 1 and _selected_fleet_indices[0] == hit_index:
 				_selected_fleet_indices.clear()
 			else:
 				_selected_fleet_indices = [hit_index]
+			_last_single_select_index = hit_index
 		selection_changed.emit(_selected_fleet_indices.duplicate())
 		if _selected_fleet_indices.size() == 1:
 			ship_move_selected.emit(_selected_fleet_indices[0])
@@ -433,6 +457,36 @@ func _get_system_id_for_fleet_index(fleet_index: int) -> int:
 			if entry["fleet_index"] == fleet_index:
 				return group["system_id"]
 	return -1
+
+
+## Returns all fleet indices in the order they appear visually in the panel.
+func _get_visible_fleet_indices() -> Array[int]:
+	var result: Array[int] = []
+	for group in _groups:
+		if group["collapsed"]:
+			continue
+		for st in group["stations"]:
+			for entry in st["ships"]:
+				result.append(entry["fleet_index"])
+		# Deployed: same squadron grouping order as _draw_group
+		var squadroned: Dictionary = {}
+		var unsquadroned: Array = []
+		for entry in group["deployed"]:
+			var fs = entry["ship"]
+			if fs.squadron_id >= 0:
+				if not squadroned.has(fs.squadron_id):
+					squadroned[fs.squadron_id] = []
+				squadroned[fs.squadron_id].append(entry)
+			else:
+				unsquadroned.append(entry)
+		var sq_ids: Array = squadroned.keys()
+		sq_ids.sort()
+		for sq_id in sq_ids:
+			for entry in squadroned[sq_id]:
+				result.append(entry["fleet_index"])
+		for entry in unsquadroned:
+			result.append(entry["fleet_index"])
+	return result
 
 
 static func _compare_ships_by_name(a: Dictionary, b: Dictionary) -> bool:

@@ -74,12 +74,12 @@ func (s *EventService) RecordBugReport(ctx context.Context, reporter, title, des
 	s.webhooks.SendBugReport(reporter, title, description, system, position, gameVersion)
 }
 
-// RecordClanEvent saves a clan event and sends it to the clan-activity webhook.
-func (s *EventService) RecordClanEvent(ctx context.Context, eventType, clanName, details string) {
-	detailsJSON, _ := json.Marshal(map[string]string{"clan": clanName, "info": details})
-	_, err := s.eventRepo.Create(ctx, "clan_"+eventType, clanName, "", detailsJSON, 0)
+// RecordCorporationEvent saves a corporation event and sends it to the corporation-activity webhook.
+func (s *EventService) RecordCorporationEvent(ctx context.Context, eventType, corporationName, details string) {
+	detailsJSON, _ := json.Marshal(map[string]string{"corporation": corporationName, "info": details})
+	_, err := s.eventRepo.Create(ctx, "corporation_"+eventType, corporationName, "", detailsJSON, 0)
 	if err != nil {
-		log.Printf("[events] failed to record clan event: %v", err)
+		log.Printf("[events] failed to record corporation event: %v", err)
 	}
-	s.webhooks.SendClanEvent(eventType, clanName, details)
+	s.webhooks.SendCorporationEvent(eventType, corporationName, details)
 }

@@ -77,10 +77,10 @@ func _send_state() -> void:
 	state.is_dead = GameManager.current_state == Constants.GameState.DEAD
 	state.is_cruising = _ship.cruise_warp_active
 
-	# Clan tag
-	var clan_mgr = GameManager.get_node_or_null("ClanManager")
-	if clan_mgr and clan_mgr.has_clan():
-		state.clan_tag = clan_mgr.clan_data.clan_tag
+	# Corporation tag
+	var corp_mgr = GameManager.get_node_or_null("CorporationManager")
+	if corp_mgr and corp_mgr.has_corporation():
+		state.corporation_tag = corp_mgr.corporation_data.corporation_tag
 
 	# Reliable death/respawn events (detect transitions)
 	if state.is_dead and not _was_dead:

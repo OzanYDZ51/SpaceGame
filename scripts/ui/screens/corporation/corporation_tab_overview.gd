@@ -1,12 +1,12 @@
-class_name ClanTabOverview
+class_name CorporationTabOverview
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Overview - Rich holographic layout with emblem, stats, MOTD
+# Corporation Tab: Overview - Rich holographic layout with emblem, stats, MOTD
 # =============================================================================
 
 var _cm = null
-var _emblem: ClanEmblem = null
+var _emblem: CorporationEmblem = null
 var _btn_motd: UIButton = null
 var _btn_leave: UIButton = null
 var _btn_recruit: UIButton = null
@@ -24,7 +24,7 @@ func _ready() -> void:
 	super._ready()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	_emblem = ClanEmblem.new()
+	_emblem = CorporationEmblem.new()
 	add_child(_emblem)
 
 	_btn_motd = UIButton.new()
@@ -33,7 +33,7 @@ func _ready() -> void:
 	add_child(_btn_motd)
 
 	_btn_leave = UIButton.new()
-	_btn_leave.text = "Quitter le clan"
+	_btn_leave.text = "Quitter la corporation"
 	_btn_leave.accent_color = UITheme.DANGER
 	_btn_leave.pressed.connect(_on_leave_pressed)
 	add_child(_btn_leave)
@@ -45,8 +45,8 @@ func _ready() -> void:
 
 	# Leave confirmation modal
 	_leave_modal = UIModal.new()
-	_leave_modal.title = "Quitter le clan"
-	_leave_modal.body = "Voulez-vous vraiment quitter le clan ?"
+	_leave_modal.title = "Quitter la corporation"
+	_leave_modal.body = "Voulez-vous vraiment quitter la corporation ?"
 	_leave_modal.confirm_text = "QUITTER"
 	_leave_modal.cancel_text = "ANNULER"
 	_leave_modal.confirmed.connect(_on_leave_confirmed)
@@ -67,12 +67,12 @@ func _ready() -> void:
 
 func refresh(cm) -> void:
 	_cm = cm
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
-	_emblem.clan_color = _cm.clan_data.clan_color
-	_emblem.emblem_id = _cm.clan_data.emblem_id
-	_btn_motd.visible = _cm.player_has_permission(ClanRank.PERM_EDIT_MOTD)
-	_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.clan_data.is_recruiting else "FERME")
+	_emblem.corporation_color = _cm.corporation_data.corporation_color
+	_emblem.emblem_id = _cm.corporation_data.emblem_id
+	_btn_motd.visible = _cm.player_has_permission(CorporationRank.PERM_EDIT_MOTD)
+	_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.corporation_data.is_recruiting else "FERME")
 	queue_redraw()
 
 
@@ -103,9 +103,9 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	if _cm == null or not _cm.has_clan():
-		var no_clan_font: Font = UITheme.get_font()
-		draw_string(no_clan_font, Vector2(0, size.y * 0.5), "Aucun clan", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
+	if _cm == null or not _cm.has_corporation():
+		var no_corporation_font: Font = UITheme.get_font()
+		draw_string(no_corporation_font, Vector2(0, size.y * 0.5), "Aucune corporation", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
 		return
 
 	var font: Font = UITheme.get_font()
@@ -114,20 +114,20 @@ func _draw() -> void:
 	var center_w: float = size.x - LEFT_W - RIGHT_W - GAP * 2
 	var right_x: float = size.x - RIGHT_W
 	var bot: float = size.y - 48
-	var cd = _cm.clan_data
+	var cd = _cm.corporation_data
 	var pulse: float = UITheme.get_pulse(0.5)
 
 	# ─── LEFT COLUMN: Identity ──────────────────────────────────────────
 	var left_rect =Rect2(0, 0, LEFT_W, bot - 8)
 	draw_panel_bg(left_rect)
 
-	# Clan name (large) — pushed below emblem child (ends at y=140)
+	# Corporation name (large) — pushed below emblem child (ends at y=140)
 	var name_y: float = m + 156
-	draw_string(font, Vector2(m, name_y), cd.clan_name.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, LEFT_W - m * 2, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(m, name_y), cd.corporation_name.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, LEFT_W - m * 2, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_HEADER)
 
 	# Tag with bracket decoration
 	var tag_y: float = name_y + 24
-	var tag_str ="[%s]" % cd.clan_tag
+	var tag_str ="[%s]" % cd.corporation_tag
 	draw_string(font, Vector2(m, tag_y), tag_str, HORIZONTAL_ALIGNMENT_CENTER, LEFT_W - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.PRIMARY)
 	# Small accent lines around tag
 	var tag_w: float = font.get_string_size(tag_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_HEADER).x
@@ -151,7 +151,7 @@ func _draw() -> void:
 	var center_rect =Rect2(center_x, 0, center_w, bot - 8)
 	draw_panel_bg(center_rect)
 
-	var sy =_draw_rich_header(center_x + m, m, center_w - m * 2, "STATISTIQUES DU CLAN")
+	var sy =_draw_rich_header(center_x + m, m, center_w - m * 2, "STATISTIQUES DE LA CORPORATION")
 
 	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "Membres", "%d / %d" % [_cm.members.size(), cd.max_members], float(_cm.members.size()) / float(cd.max_members), UITheme.PRIMARY)
 	sy = _draw_stat_row(center_x + m, sy, center_w - m * 2, "En ligne", str(_cm.get_online_count()), float(_cm.get_online_count()) / maxf(1.0, float(_cm.members.size())), UITheme.ACCENT)
@@ -294,7 +294,7 @@ func _on_motd_pressed() -> void:
 	_motd_input.visible = _motd_editing
 	_btn_motd_save.visible = _motd_editing
 	if _motd_editing:
-		_motd_input.set_text(_cm.clan_data.motd)
+		_motd_input.set_text(_cm.corporation_data.motd)
 		_btn_motd.text = "Annuler"
 	else:
 		_btn_motd.text = "Modifier MOTD"
@@ -314,26 +314,26 @@ func _on_motd_save() -> void:
 
 
 func _on_leave_pressed() -> void:
-	if _cm == null or not _cm.has_clan():
+	if _cm == null or not _cm.has_corporation():
 		return
 	if _cm.members.size() <= 1:
-		_leave_modal.body = "Vous etes le dernier membre.\nLe clan sera dissous definitivement."
+		_leave_modal.body = "Vous etes le dernier membre.\nLa corporation sera dissoute definitivement."
 	else:
-		_leave_modal.body = "Voulez-vous vraiment quitter le clan ?"
+		_leave_modal.body = "Voulez-vous vraiment quitter la corporation ?"
 	_leave_modal.show_modal()
 
 
 func _on_leave_confirmed() -> void:
 	if _cm:
-		var success: bool = await _cm.leave_clan()
+		var success: bool = await _cm.leave_corporation()
 		if not success:
 			var notif = GameManager.get_node_or_null("NotificationService")
 			if notif:
-				notif.toast("Erreur: impossible de quitter le clan", UIToast.ToastType.ERROR)
+				notif.toast("Erreur: impossible de quitter la corporation", UIToast.ToastType.ERROR)
 
 
 func _on_recruit_pressed() -> void:
 	if _cm:
 		_cm.toggle_recruitment()
-		_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.clan_data.is_recruiting else "FERME")
+		_btn_recruit.text = "Recrutement: %s" % ("OUVERT" if _cm.corporation_data.is_recruiting else "FERME")
 		queue_redraw()

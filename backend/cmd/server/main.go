@@ -37,7 +37,7 @@ func main() {
 
 	// Repositories
 	playerRepo := repository.NewPlayerRepository(db)
-	clanRepo := repository.NewClanRepository(db)
+	corpRepo := repository.NewCorporationRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
 	changelogRepo := repository.NewChangelogRepository(db)
 	eventRepo := repository.NewEventRepository(db)
@@ -48,7 +48,7 @@ func main() {
 	// Services
 	authSvc := service.NewAuthService(playerRepo, sessionRepo, cfg.JWTSecret)
 	playerSvc := service.NewPlayerService(playerRepo)
-	clanSvc := service.NewClanService(clanRepo, playerRepo)
+	corpSvc := service.NewCorporationService(corpRepo, playerRepo)
 	wsHub := service.NewWSHub()
 
 	// Discord webhook service
@@ -58,7 +58,7 @@ func main() {
 		cfg.DiscordWebhookKills,
 		cfg.DiscordWebhookEvents,
 		cfg.DiscordWebhookBugs,
-		cfg.DiscordWebhookClans,
+		cfg.DiscordWebhookCorporations,
 	)
 
 	// Event service (records + dispatches to Discord)
@@ -69,7 +69,7 @@ func main() {
 		cfg.DiscordBotToken,
 		cfg.DiscordGuildID,
 		playerRepo,
-		clanRepo,
+		corpRepo,
 		discordRepo,
 		wsHub,
 		webhookSvc,
@@ -104,7 +104,7 @@ func main() {
 	v1.Post("/updates/refresh", updatesH.RefreshCache)
 
 	// Public stats (no auth — website server pulse)
-	publicH := handler.NewPublicHandler(playerRepo, clanRepo, eventRepo, wsHub)
+	publicH := handler.NewPublicHandler(playerRepo, corpRepo, eventRepo, wsHub)
 	pub := v1.Group("/public")
 	pub.Get("/stats", publicH.Stats)
 
@@ -141,7 +141,7 @@ func main() {
 
 	// Admin — registered BEFORE protected group
 	admin := v1.Group("/admin", middleware.AdminKey(cfg.AdminKey))
-	adminH := handler.NewAdminHandler(playerRepo, clanRepo, wsHub)
+	adminH := handler.NewAdminHandler(playerRepo, corpRepo, wsHub)
 	admin.Get("/stats", adminH.Stats)
 	admin.Post("/announce", adminH.Announce)
 	admin.Post("/changelog", changelogH.Create)
@@ -162,27 +162,27 @@ func main() {
 	protected.Post("/player/discord-link", discordH.ConfirmLink)
 	protected.Get("/player/discord-status", discordH.GetStatus)
 
-	// Clans
-	clanH := handler.NewClanHandler(clanSvc)
-	clans := protected.Group("/clans")
-	clans.Post("/", clanH.Create)
-	clans.Get("/search", clanH.Search)
-	clans.Get("/:id", clanH.Get)
-	clans.Put("/:id", clanH.Update)
-	clans.Delete("/:id", clanH.Delete)
-	clans.Get("/:id/members", clanH.GetMembers)
-	clans.Post("/:id/members", clanH.AddMember)
-	clans.Delete("/:id/members/:pid", clanH.RemoveMember)
-	clans.Put("/:id/members/:pid/rank", clanH.SetMemberRank)
-	clans.Post("/:id/treasury/deposit", clanH.Deposit)
-	clans.Post("/:id/treasury/withdraw", clanH.Withdraw)
-	clans.Get("/:id/activity", clanH.GetActivity)
-	clans.Get("/:id/ranks", clanH.GetRanks)
-	clans.Post("/:id/ranks", clanH.AddRank)
-	clans.Put("/:id/ranks/:rid", clanH.UpdateRank)
-	clans.Delete("/:id/ranks/:rid", clanH.RemoveRank)
-	clans.Get("/:id/diplomacy", clanH.GetDiplomacy)
-	clans.Put("/:id/diplomacy", clanH.SetDiplomacy)
+	// Corporations
+	corpH := handler.NewCorporationHandler(corpSvc)
+	corporations := protected.Group("/corporations")
+	corporations.Post("/", corpH.Create)
+	corporations.Get("/search", corpH.Search)
+	corporations.Get("/:id", corpH.Get)
+	corporations.Put("/:id", corpH.Update)
+	corporations.Delete("/:id", corpH.Delete)
+	corporations.Get("/:id/members", corpH.GetMembers)
+	corporations.Post("/:id/members", corpH.AddMember)
+	corporations.Delete("/:id/members/:pid", corpH.RemoveMember)
+	corporations.Put("/:id/members/:pid/rank", corpH.SetMemberRank)
+	corporations.Post("/:id/treasury/deposit", corpH.Deposit)
+	corporations.Post("/:id/treasury/withdraw", corpH.Withdraw)
+	corporations.Get("/:id/activity", corpH.GetActivity)
+	corporations.Get("/:id/ranks", corpH.GetRanks)
+	corporations.Post("/:id/ranks", corpH.AddRank)
+	corporations.Put("/:id/ranks/:rid", corpH.UpdateRank)
+	corporations.Delete("/:id/ranks/:rid", corpH.RemoveRank)
+	corporations.Get("/:id/diplomacy", corpH.GetDiplomacy)
+	corporations.Put("/:id/diplomacy", corpH.SetDiplomacy)
 
 	// WebSocket
 	wsH := handler.NewWSHandler(wsHub, cfg.JWTSecret)

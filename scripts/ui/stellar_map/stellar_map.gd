@@ -539,7 +539,7 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				# Fleet panel gets first priority (left side)
-				if _fleet_panel.handle_click(event.position, event.ctrl_pressed):
+				if _fleet_panel.handle_click(event.position, event.ctrl_pressed, event.shift_pressed):
 					get_viewport().set_input_as_handled()
 					return
 				# Toolbar buttons

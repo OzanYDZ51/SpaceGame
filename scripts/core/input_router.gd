@@ -45,7 +45,7 @@ func _setup_input_actions() -> void:
 		"toggle_flight_assist": KEY_Z,
 		"toggle_mouse_capture": KEY_ESCAPE,
 		"toggle_map": KEY_M,
-		"toggle_clan": KEY_N,
+		"toggle_corporation": KEY_N,
 		"toggle_galaxy_map": KEY_G,
 		"target_cycle": KEY_TAB,
 		"target_nearest": KEY_T,
@@ -134,12 +134,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 
-	# Clan screen (N)
+	# Corporation screen (N)
 	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_N:
 		if screen_manager:
 			var top =screen_manager.get_top_screen()
-			if top == null or top == screen_manager._screens.get("clan"):
-				screen_toggled.emit("clan")
+			if top == null or top == screen_manager._screens.get("corporation"):
+				screen_toggled.emit("corporation")
 				get_viewport().set_input_as_handled()
 				return
 

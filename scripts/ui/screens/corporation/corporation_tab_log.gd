@@ -1,8 +1,8 @@
-class_name ClanTabLog
+class_name CorporationTabLog
 extends UIComponent
 
 # =============================================================================
-# Clan Tab: Activity Log - Rich filtered timeline with bigger items
+# Corporation Tab: Activity Log - Rich filtered timeline with bigger items
 # =============================================================================
 
 var _cm = null
@@ -14,7 +14,7 @@ var _log_list: UIScrollList = null
 
 var _time_filter: int = 0
 var _type_filter: int = -1
-var _filtered_log: Array[ClanActivity] = []
+var _filtered_log: Array[CorporationActivity] = []
 
 
 func _ready() -> void:
@@ -23,8 +23,8 @@ func _ready() -> void:
 
 	_filter_dropdown = UIDropdown.new()
 	var opts: Array[String] = ["Tous les types"]
-	for key in ClanActivity.EVENT_LABELS:
-		opts.append(ClanActivity.EVENT_LABELS[key])
+	for key in CorporationActivity.EVENT_LABELS:
+		opts.append(CorporationActivity.EVENT_LABELS[key])
 	_filter_dropdown.options.assign(opts)
 	_filter_dropdown.option_selected.connect(_on_type_filter_changed)
 	add_child(_filter_dropdown)
@@ -64,7 +64,7 @@ func _on_type_filter_changed(index: int) -> void:
 	if index == 0:
 		_type_filter = -1
 	else:
-		var type_keys =ClanActivity.EVENT_LABELS.keys()
+		var type_keys =CorporationActivity.EVENT_LABELS.keys()
 		if index - 1 < type_keys.size():
 			_type_filter = type_keys[index - 1]
 		else:
@@ -104,9 +104,9 @@ func _draw_log_item(ctrl: Control, _index: int, rect: Rect2, item: Variant) -> v
 	if log_idx >= _filtered_log.size():
 		return
 
-	var entry: ClanActivity = _filtered_log[log_idx]
-	var event_col: Color = ClanActivity.EVENT_COLORS.get(entry.event_type, UITheme.TEXT_DIM)
-	var event_label: String = ClanActivity.EVENT_LABELS.get(entry.event_type, "?")
+	var entry: CorporationActivity = _filtered_log[log_idx]
+	var event_col: Color = CorporationActivity.EVENT_COLORS.get(entry.event_type, UITheme.TEXT_DIM)
+	var event_label: String = CorporationActivity.EVENT_LABELS.get(entry.event_type, "?")
 
 	var tx: float = rect.position.x + 12
 	var cy: float = rect.position.y + rect.size.y * 0.5

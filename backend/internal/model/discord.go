@@ -13,9 +13,9 @@ type DiscordLinkStatus struct {
 	DiscordID string `json:"discord_id,omitempty"`
 }
 
-// DiscordClanMapping stores the relationship between a game clan and Discord role/channel.
-type DiscordClanMapping struct {
-	ClanID           string `json:"clan_id"`
+// DiscordCorporationMapping stores the relationship between a game corporation and Discord role/channel.
+type DiscordCorporationMapping struct {
+	CorporationID    string `json:"corporation_id"`
 	DiscordRoleID    string `json:"discord_role_id"`
 	DiscordChannelID string `json:"discord_channel_id"`
 }
