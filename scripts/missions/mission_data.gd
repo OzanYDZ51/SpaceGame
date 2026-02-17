@@ -109,7 +109,7 @@ static func deserialize(data: Dictionary) -> MissionData:
 	m.time_limit = float(data.get("time_limit", -1.0))
 	m.time_remaining = float(data.get("time_remaining", -1.0))
 
-	var obj_raw: Array = data.get("objectives", [])
+	var obj_raw: Array = data.get("objectives", []) if data.get("objectives") is Array else []
 	m.objectives.clear()
 	for obj in obj_raw:
 		m.objectives.append(obj.duplicate() if obj is Dictionary else {})

@@ -163,12 +163,12 @@ func deserialize(data: Dictionary) -> void:
 	_active_missions.clear()
 	_completed_ids.clear()
 
-	var active_raw: Array = data.get("active_missions", [])
+	var active_raw: Array = data.get("active_missions", []) if data.get("active_missions") is Array else []
 	for raw in active_raw:
 		if raw is Dictionary:
 			var m := MissionData.deserialize(raw)
 			_active_missions.append(m)
 
-	var completed_raw: Array = data.get("completed_ids", [])
+	var completed_raw: Array = data.get("completed_ids", []) if data.get("completed_ids") is Array else []
 	for mid in completed_raw:
 		_completed_ids[mid] = true

@@ -148,7 +148,7 @@ func deserialize(data: Dictionary) -> void:
 	station_key = data.get("station_key", "")
 	station_type = data.get("station_type", 0)
 	price_modifier = data.get("price_modifier", 1.0)
-	var saved_stock: Dictionary = data.get("stock", {})
+	var saved_stock: Dictionary = data.get("stock", {}) if data.get("stock") is Dictionary else {}
 	for key in saved_stock:
 		stock[key] = int(saved_stock[key])
 

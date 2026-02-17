@@ -116,6 +116,17 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 	var fleetRaw, stationServicesRaw, settingsRaw, gameplayStateRaw []byte
 	_ = r.pool.QueryRow(ctx, `SELECT fleet, station_services, settings, gameplay_state FROM players WHERE id = $1`, playerID).Scan(&fleetRaw, &stationServicesRaw, &settingsRaw, &gameplayStateRaw)
 
+	// Default nil JSONB columns to empty JSON to avoid null in API response
+	if fleetRaw == nil {
+		fleetRaw = []byte(`[]`)
+	}
+	if stationServicesRaw == nil {
+		stationServicesRaw = []byte(`[]`)
+	}
+	if settingsRaw == nil {
+		settingsRaw = []byte(`{}`)
+	}
+
 	state := &model.PlayerState{
 		CurrentShipID: p.CurrentShipID,
 		GalaxySeed:    p.GalaxySeed,
@@ -133,6 +144,9 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		Fleet:           json.RawMessage(fleetRaw),
 		StationServices: json.RawMessage(stationServicesRaw),
 		Settings:        json.RawMessage(settingsRaw),
+		Resources:       []model.PlayerResource{},
+		Inventory:       []model.InventoryItem{},
+		Cargo:           []model.CargoItem{},
 	}
 
 	// Unbundle gameplay_state JSONB into individual fields

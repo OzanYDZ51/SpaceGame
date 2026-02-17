@@ -204,13 +204,13 @@ func serialize() -> Dictionary:
 func deserialize(data: Dictionary) -> void:
 	_storages.clear()
 	_queues.clear()
-	var storages_data: Dictionary = data.get("storages", {})
+	var storages_data: Dictionary = data.get("storages", {}) if data.get("storages") is Dictionary else {}
 	for key in storages_data:
 		var s =StationStorage.new()
 		s.station_key = key
 		s.deserialize(storages_data[key])
 		_storages[key] = s
-	var queues_data: Dictionary = data.get("queues", {})
+	var queues_data: Dictionary = data.get("queues", {}) if data.get("queues") is Dictionary else {}
 	for key in queues_data:
 		var q =RefineryQueue.new()
 		q.station_key = key

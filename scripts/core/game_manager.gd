@@ -100,10 +100,13 @@ var _crash_log_path: String = ""
 func _crash_log(msg: String) -> void:
 	if _crash_log_path == "":
 		_crash_log_path = OS.get_user_data_dir() + "/crash_trace.log"
-	var f := FileAccess.open(_crash_log_path, FileAccess.WRITE_READ)
+	# READ_WRITE preserves existing content; WRITE_READ truncates!
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(_crash_log_path) else FileAccess.WRITE
+	var f := FileAccess.open(_crash_log_path, mode)
 	if f:
 		f.seek_end()
 		f.store_line("[%.3f] %s" % [Time.get_ticks_msec() / 1000.0, msg])
+		f.flush()
 
 
 func _ready() -> void:
@@ -113,6 +116,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("GameManager: _ready() started — auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
+	# Clear previous crash trace on fresh start
+	var cl_path := OS.get_user_data_dir() + "/crash_trace.log"
+	if FileAccess.file_exists(cl_path):
+		DirAccess.remove_absolute(cl_path)
 	_crash_log("_ready started auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
 
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
@@ -652,10 +659,12 @@ func _initialize_game() -> void:
 
 	# Load starting system (replaces hardcoded seed=42)
 	_system_transition.jump_to_system(_galaxy.player_home_system)
+	_crash_log("_init: jump_to_system done")
 
 	# Configure stellar map
 	if _stellar_map:
 		_stellar_map.set_player_id("player_ship")
+	_crash_log("_init: stellar_map configured")
 
 	# Wormhole Manager
 	_wormhole_mgr = WormholeManager.new()
@@ -669,6 +678,8 @@ func _initialize_game() -> void:
 	_wormhole_mgr.wormhole_jump_completed.connect(func(new_gal, _spawn: int):
 		_galaxy = new_gal
 	)
+
+	_crash_log("_init: wormhole_mgr created")
 
 	# Input Router
 	_input_router = InputRouter.new()
@@ -695,11 +706,14 @@ func _initialize_game() -> void:
 	# terminal_requested, undock_requested, loot_pickup_requested connected after
 	# _docking_mgr and _loot_mgr are created (see below)
 
+	_crash_log("_init: input_router created")
+
 	# Capture mouse
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 	# Audio buses (must exist before music player)
 	_setup_audio_buses()
+	_crash_log("_init: audio_buses done")
 
 	# Background music (skip on server — no audio needed)
 	if not NetworkManager.is_server():
@@ -712,9 +726,13 @@ func _initialize_game() -> void:
 		_music_player.finished.connect(_music_player.play)
 		_music_player.play()
 
+	_crash_log("_init: music_player done")
+
 	# Visual effects
 	_setup_visual_effects()
+	_crash_log("_init: visual_effects done")
 
+	_crash_log("_init: before NetworkSyncManager")
 	# Network Sync Manager (creates ShipNetworkSync, ServerAuthority, NpcAuthority, etc.)
 	_net_sync_mgr = NetworkSyncManager.new()
 	_net_sync_mgr.name = "NetworkSyncManager"
@@ -727,6 +745,7 @@ func _initialize_game() -> void:
 	_net_sync_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
 	add_child(_net_sync_mgr)
 	_net_sync_mgr.setup(player_ship, self)
+	_crash_log("_init: NetworkSyncManager.setup() done")
 	_net_sync_mgr.server_galaxy_changed.connect(func(new_gal):
 		_galaxy = new_gal
 	)
@@ -746,6 +765,7 @@ func _initialize_game() -> void:
 	_structure_auth.name = "StructureAuthority"
 	add_child(_structure_auth)
 
+	_crash_log("_init: before DockingManager")
 	# Docking Manager (needs screen_manager, station_screen, etc. from _setup_ui_managers)
 	_docking_mgr = DockingManager.new()
 	_docking_mgr.name = "DockingManager"
@@ -827,6 +847,7 @@ func _initialize_game() -> void:
 		])
 	)
 
+	_crash_log("_init: DockingManager wired")
 	# Loot Manager
 	_loot_mgr = LootManager.new()
 	_loot_mgr.name = "LootManager"
@@ -853,12 +874,14 @@ func _initialize_game() -> void:
 	# Reload backend state on reconnect (not first connect — that's handled in _ready)
 	NetworkManager.connection_succeeded.connect(_on_network_reconnected)
 
+	_crash_log("_init: all managers created, setting state PLAYING")
 	current_state = GameState.PLAYING
 	if _discord_rpc:
 		_discord_rpc.update_from_game_state(current_state)
 
 	# Start auto-save timer
 	SaveManager.start_auto_save()
+	_crash_log("_init: _initialize_game DONE")
 
 
 ## Called on every successful connection (initial + reconnects).
@@ -934,6 +957,13 @@ func _load_backend_state() -> void:
 	var state: Dictionary = await SaveManager.load_player_state()
 	_crash_log("_load_backend_state: got state, keys=%d error=%s" % [state.size(), state.has("error")])
 	if not state.is_empty() and not state.has("error"):
+		# Dump full state to file for crash debugging
+		var dump_path := OS.get_user_data_dir() + "/backend_state_dump.json"
+		var dump_file := FileAccess.open(dump_path, FileAccess.WRITE)
+		if dump_file:
+			dump_file.store_string(JSON.stringify(state, "\t"))
+			dump_file = null
+		_crash_log("_load_backend_state: state dumped to %s" % dump_path)
 		_crash_log("_load_backend_state: applying state...")
 		SaveManager.apply_state(state)
 		_crash_log("_load_backend_state: state applied OK")
@@ -1064,20 +1094,24 @@ func _on_system_unloading(system_id: int) -> void:
 
 
 func _on_system_loaded(system_id: int) -> void:
+	_crash_log("_on_system_loaded: start sys=%d" % system_id)
 	# Update stellar map with new system info
 	if _stellar_map and _system_transition.current_system_data:
 		_stellar_map.set_system_name(_system_transition.current_system_data.system_name)
 	# Clear stale route lines from previous system
 	if _stellar_map:
 		_stellar_map._clear_route_line()
+	_crash_log("_on_system_loaded: stellar_map done")
 
 	# Update Discord RPC with current system name
 	if _discord_rpc and _system_transition.current_system_data:
 		_discord_rpc.set_system(_system_transition.current_system_data.system_name)
+	_crash_log("_on_system_loaded: discord done")
 
 	# Notify route manager (continues multi-system autopilot)
 	if _route_manager:
 		_route_manager.on_system_loaded(system_id)
+	_crash_log("_on_system_loaded: route_manager done")
 
 	# Ensure all DOCKED fleet ships have a valid docked_system_id
 	# (starting ship is created before system loads; old saves may lack this field)
@@ -1086,13 +1120,16 @@ func _on_system_loaded(system_id: int) -> void:
 			var fs = player_fleet.ships[i]
 			if fs.deployment_state == FleetShip.DeploymentState.DOCKED and fs.docked_system_id < 0:
 				fs.docked_system_id = system_id
+	_crash_log("_on_system_loaded: fleet docked_system done")
 
 	# Redeploy fleet ships that were deployed in this system (from save)
 	if _fleet_deployment_mgr:
 		_fleet_deployment_mgr.redeploy_saved_ships()
+	_crash_log("_on_system_loaded: fleet redeploy done")
 
 	# Respawn construction beacons for this system
 	_respawn_construction_beacons(system_id)
+	_crash_log("_on_system_loaded: beacons done")
 
 	# Notify gameplay integrator (POIs, missions, etc.)
 	if _gameplay_integrator:
@@ -1101,11 +1138,13 @@ func _on_system_loaded(system_id: int) -> void:
 			var sys_dict: Dictionary = _galaxy.get_system(system_id)
 			danger = int(sys_dict.get("danger_level", 1))
 		_gameplay_integrator.on_system_loaded(system_id, danger)
+	_crash_log("_on_system_loaded: gameplay_integrator done")
 
 	# Update nebula wisps with new system's environment colors/opacity
 	if _vfx_manager and main_scene.get("world_env") != null:
 		var space_env = main_scene
 		_vfx_manager.configure_nebula_environment(space_env._current_env_data)
+	_crash_log("_on_system_loaded: DONE")
 
 
 func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Dictionary) -> void:

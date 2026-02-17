@@ -168,7 +168,8 @@ func serialize() -> Dictionary:
 
 
 func deserialize(data: Dictionary) -> void:
-	_collected_pois = data.get("collected_pois", {}).duplicate()
+	var raw_pois = data.get("collected_pois", {})
+	_collected_pois = raw_pois.duplicate() if raw_pois is Dictionary else {}
 
 
 func _find_poi(poi_id: String) -> POIData:

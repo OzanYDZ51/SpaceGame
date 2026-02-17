@@ -303,13 +303,13 @@ func collect_save_state(state: Dictionary) -> void:
 
 
 func apply_save_state(state: Dictionary) -> void:
-	if faction_manager and state.has("factions"):
+	if faction_manager and state.get("factions") is Dictionary:
 		faction_manager.deserialize(state["factions"])
-	if mission_manager and state.has("missions"):
+	if mission_manager and state.get("missions") is Dictionary:
 		mission_manager.deserialize(state["missions"])
-	if economy_sim and state.has("economy_sim"):
+	if economy_sim and state.get("economy_sim") is Dictionary:
 		economy_sim.deserialize(state["economy_sim"])
-	if poi_manager and state.has("pois"):
+	if poi_manager and state.get("pois") is Dictionary:
 		poi_manager.deserialize(state["pois"])
 
 

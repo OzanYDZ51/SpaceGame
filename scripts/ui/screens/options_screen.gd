@@ -521,7 +521,7 @@ static func apply_settings_dict(data: Dictionary) -> void:
 	if data.is_empty():
 		return
 	# Audio
-	var audio: Dictionary = data.get("audio", {})
+	var audio: Dictionary = data.get("audio", {}) if data.get("audio") is Dictionary else {}
 	if not audio.is_empty():
 		var buses: Array = [["master", "Master"], ["music", "Music"], ["sfx", "SFX"]]
 		for pair in buses:
@@ -539,7 +539,7 @@ static func apply_settings_dict(data: Dictionary) -> void:
 				AudioServer.set_bus_mute(idx, false)
 				AudioServer.set_bus_volume_db(idx, linear_to_db(linear))
 	# Controls
-	var controls: Dictionary = data.get("controls", {})
+	var controls: Dictionary = data.get("controls", {}) if data.get("controls") is Dictionary else {}
 	if not controls.is_empty():
 		for action in controls:
 			var keycode: int = int(controls[action])

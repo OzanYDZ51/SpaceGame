@@ -205,6 +205,8 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	if state.is_empty():
 		return
 
+	GameManager._crash_log("apply_save_state: start keys=%d" % state.size())
+
 	# Position — galaxy + system
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
 	if gal_seed != Constants.galaxy_seed:
@@ -214,6 +216,7 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	var sys_id: int = int(state.get("system_id", 0))
 	if system_transition and sys_id != system_transition.current_system_id:
 		system_transition.jump_to_system(sys_id)
+	GameManager._crash_log("apply_save_state: system jump done")
 
 	# Position — restore exact saved universe coordinates.
 	# Check for collision with planets/stations and offset if inside one.
@@ -254,6 +257,7 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 					spawn_pos = st_local + dir.normalized() * 500.0
 
 		player_ship.global_position = spawn_pos
+	GameManager._crash_log("apply_save_state: position restored")
 
 	# Rotation
 	if player_ship and state.has("rotation_x"):
@@ -274,14 +278,19 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 		# Clear economy resources (will be synced from active ship below)
 		for res_id in economy.resources.keys():
 			economy.resources[res_id] = 0
+	GameManager._crash_log("apply_save_state: credits done")
 
 	# Inventory
 	if inventory:
+		GameManager._crash_log("apply_save_state: clearing inventory...")
 		inventory.clear_all()
-		var items: Array = state.get("inventory", [])
-		for item in items:
+		var items: Array = state.get("inventory", []) if state.get("inventory") is Array else []
+		GameManager._crash_log("apply_save_state: inventory items count=%d" % items.size())
+		for idx in items.size():
+			var item = items[idx]
+			GameManager._crash_log("apply_save_state: item[%d] = %s" % [idx, str(item).left(100)])
 			var category: String = item.get("category", "")
-			var item_name =StringName(str(item.get("item_name", "")))
+			var item_name = StringName(str(item.get("item_name", "")))
 			var qty: int = int(item.get("quantity", 1))
 			match category:
 				"weapon": inventory.add_weapon(item_name, qty)
@@ -289,8 +298,9 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 				"engine": inventory.add_engine(item_name, qty)
 				"module": inventory.add_module(item_name, qty)
 
+	GameManager._crash_log("apply_save_state: inventory done")
 	# Equipment
-	var equipment: Dictionary = state.get("equipment", {})
+	var equipment: Dictionary = state.get("equipment", {}) if state.get("equipment") is Dictionary else {}
 	if not equipment.is_empty() and player_ship:
 		var em = player_ship.get_node_or_null("EquipmentManager")
 		if em:
@@ -304,7 +314,7 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 				var engine_res =EngineRegistry.get_engine(StringName(str(engine_name)))
 				if engine_res:
 					em.equip_engine(engine_res)
-			var saved_modules: Array = equipment.get("modules", [])
+			var saved_modules: Array = equipment.get("modules", []) if equipment.get("modules") is Array else []
 			for i in saved_modules.size():
 				if i >= em.equipped_modules.size():
 					break
@@ -315,20 +325,22 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 						em.equip_module(i, mod_res)
 		var wm = player_ship.get_node_or_null("WeaponManager")
 		if wm:
-			var hardpoints: Array = equipment.get("hardpoints", [])
+			var hardpoints: Array = equipment.get("hardpoints", []) if equipment.get("hardpoints") is Array else []
 			var weapon_names: Array[StringName] = []
 			for wp_name in hardpoints:
 				weapon_names.append(StringName(str(wp_name)) if wp_name != null and str(wp_name) != "" else &"")
 			if not weapon_names.is_empty():
 				wm.equip_weapons(weapon_names)
 
+	GameManager._crash_log("apply_save_state: equipment done")
 	# Station services
-	var svc_data: Array = state.get("station_services", [])
+	var svc_data: Array = state.get("station_services", []) if state.get("station_services") is Array else []
 	if not svc_data.is_empty() and station_services:
 		station_services.deserialize(svc_data)
 
+	GameManager._crash_log("apply_save_state: station_services done")
 	# Fleet
-	var fleet_data: Array = state.get("fleet", [])
+	var fleet_data: Array = state.get("fleet", []) if state.get("fleet") is Array else []
 	if not fleet_data.is_empty():
 		fleet = PlayerFleet.deserialize(fleet_data)
 		fleet.active_ship_changed.connect(_on_active_ship_changed)
@@ -337,8 +349,9 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 		if commerce_manager:
 			commerce_manager.player_fleet = fleet
 
+	GameManager._crash_log("apply_save_state: fleet deserialized")
 	# Squadrons
-	var sq_data: Array = state.get("squadrons", [])
+	var sq_data: Array = state.get("squadrons", []) if state.get("squadrons") is Array else []
 	if not sq_data.is_empty() and fleet:
 		fleet.squadrons.clear()
 		for sq_dict in sq_data:
@@ -349,16 +362,19 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 	if squadron_mgr and fleet:
 		squadron_mgr.initialize(fleet, fleet_deployment_mgr)
 
+	GameManager._crash_log("apply_save_state: squadrons done")
 	# Refinery
-	var refinery_data: Dictionary = state.get("refinery", {})
+	var refinery_data: Dictionary = state.get("refinery", {}) if state.get("refinery") is Dictionary else {}
 	if not refinery_data.is_empty() and refinery_manager:
 		refinery_manager.deserialize(refinery_data)
 
+	GameManager._crash_log("apply_save_state: refinery done")
 	# Player settings (audio + controls) from backend
-	var settings_data: Dictionary = state.get("settings", {})
+	var settings_data: Dictionary = state.get("settings", {}) if state.get("settings") is Dictionary else {}
 	if not settings_data.is_empty():
 		OptionsScreen.apply_settings_dict(settings_data)
 
+	GameManager._crash_log("apply_save_state: settings done")
 	# Migration: old saves stored cargo/resources at top-level — migrate to active ship
 	var old_cargo: Array = state.get("cargo", []) if state.get("cargo") is Array else []
 	var old_resources: Array = state.get("resources", []) if state.get("resources") is Array else []
@@ -388,5 +404,7 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 						if res_id != &"" and qty > 0:
 							active_fs.add_resource(res_id, qty)
 
+	GameManager._crash_log("apply_save_state: migration done")
 	# Sync economy mirror from active ship resources
 	_sync_economy_resources()
+	GameManager._crash_log("apply_save_state: DONE")

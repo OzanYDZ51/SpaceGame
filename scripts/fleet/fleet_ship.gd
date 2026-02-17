@@ -186,20 +186,22 @@ static func deserialize(data: Dictionary):
 				else:
 					fs.modules.append(&"")
 	else:
-		for w in data.get("weapons", []):
+		var saved_weapons: Array = data.get("weapons", []) if data.get("weapons") is Array else []
+		for w in saved_weapons:
 			fs.weapons.append(StringName(w))
 		fs.shield_name = StringName(data.get("shield", ""))
 		fs.engine_name = StringName(data.get("engine", ""))
-		for m in data.get("modules", []):
+		var saved_mods: Array = data.get("modules", []) if data.get("modules") is Array else []
+		for m in saved_mods:
 			fs.modules.append(StringName(m))
 
 	fs.deployment_state = data.get("deployment_state", DeploymentState.DOCKED) as DeploymentState
 	fs.docked_station_id = data.get("docked_station_id", "")
 	fs.docked_system_id = int(data.get("docked_system_id", -1))
 	fs.deployed_command = StringName(data.get("deployed_command", ""))
-	fs.deployed_command_params = data.get("deployed_command_params", {})
-	fs.last_known_pos = data.get("last_known_pos", [])
-	fs.ai_state = data.get("ai_state", {})
+	fs.deployed_command_params = data.get("deployed_command_params", {}) if data.get("deployed_command_params") is Dictionary else {}
+	fs.last_known_pos = data.get("last_known_pos", []) if data.get("last_known_pos") is Array else []
+	fs.ai_state = data.get("ai_state", {}) if data.get("ai_state") is Dictionary else {}
 	fs.squadron_id = int(data.get("squadron_id", -1))
 	fs.squadron_role = StringName(data.get("squadron_role", ""))
 	# If ship was retired and was DEPLOYED, force back to DOCKED
@@ -212,7 +214,7 @@ static func deserialize(data: Dictionary):
 	# Per-ship cargo + resources
 	var cap: int = ship_data.cargo_capacity if ship_data else 50
 	fs._init_cargo(cap)
-	var cargo_items: Array = data.get("cargo", [])
+	var cargo_items: Array = data.get("cargo", []) if data.get("cargo") is Array else []
 	for item in cargo_items:
 		fs.cargo.add_item({
 			"name": item.get("item_name", ""),
@@ -220,7 +222,7 @@ static func deserialize(data: Dictionary):
 			"quantity": item.get("quantity", 1),
 			"icon_color": item.get("icon_color", ""),
 		})
-	var saved_res: Dictionary = data.get("ship_resources", {})
+	var saved_res: Dictionary = data.get("ship_resources", {}) if data.get("ship_resources") is Dictionary else {}
 	for res_key in saved_res:
 		var res_id =StringName(str(res_key))
 		var qty: int = int(saved_res[res_key])
