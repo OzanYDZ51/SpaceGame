@@ -355,6 +355,10 @@ func _evaluate_lod_levels() -> void:
 				_promote_to_lod0(id, data)
 			continue
 
+		# Docked ships stay at current LOD — never promote to visible node
+		if data.is_docked:
+			continue
+
 		var target_lod: int
 		if data.distance_to_camera < LOD0_DISTANCE and lod0_count < LOD0_MAX:
 			target_lod = ShipLODData.LODLevel.LOD0
@@ -478,7 +482,7 @@ func _promote_lod3_to_lod2(id: StringName, data) -> void:
 
 
 func _promote_lod2_to_lod1(id: StringName, data) -> void:
-	if data.is_dead:
+	if data.is_dead or data.is_docked:
 		return
 
 	data.is_promoting = true

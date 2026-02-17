@@ -88,6 +88,7 @@ func set_token_from_launcher(access_token: String, refresh_token: String = "") -
 	# Atomically update network display name so it's never stale
 	if username != "":
 		NetworkManager.local_player_name = username
+	NetworkManager.re_register_identity()
 	# Refresh token from CLI
 	if refresh_token != "":
 		_refresh_token = refresh_token
@@ -134,13 +135,20 @@ func _handle_auth_success(result: Dictionary) -> void:
 	var player: Dictionary = result.get("player", {})
 	player_id = str(player.get("id", ""))
 	username = str(player.get("username", ""))
+	# Parse JWT claims (includes role — admin, player, etc.)
+	_parse_jwt_claims(_access_token)
 	is_authenticated = true
 
 	ApiClient.set_token(_access_token)
 	_save_tokens()
 	_start_refresh_timer()
 
-	print("AuthManager: Logged in as '%s' (id=%s)" % [username, player_id])
+	# Sync multiplayer identity
+	if username != "":
+		NetworkManager.local_player_name = username
+	NetworkManager.re_register_identity()
+
+	print("AuthManager: Logged in as '%s' (id=%s, role=%s)" % [username, player_id, role])
 
 
 func _start_refresh_timer() -> void:
@@ -212,8 +220,9 @@ func _try_restore_session() -> void:
 			# Always sync multiplayer name from authenticated username
 			if username != "":
 				NetworkManager.local_player_name = username
+			NetworkManager.re_register_identity()
 			login_succeeded.emit({"id": player_id, "username": username})
-			print("AuthManager: Session restored for '%s'" % username)
+			print("AuthManager: Session restored for '%s' (role=%s)" % [username, role])
 			return
 
 	# Final safety check: don't destroy a launcher-provided session

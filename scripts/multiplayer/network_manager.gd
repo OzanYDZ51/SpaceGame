@@ -359,6 +359,21 @@ func _on_connected_to_server() -> void:
 	connection_succeeded.emit()
 
 
+## Re-send player identity to the server (called by AuthManager after auth completes).
+## Fixes race condition: multiplayer may connect before auth session is restored,
+## so the initial registration has stale name/role ("Pilote"/"player").
+func re_register_identity() -> void:
+	if not is_connected_to_server() or is_server():
+		return
+	if not AuthManager.is_authenticated:
+		return
+	local_player_name = AuthManager.username if AuthManager.username != "" else local_player_name
+	var uuid: String = AuthManager.player_id
+	var player_role: String = AuthManager.role
+	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid, player_role)
+	print("[Net] Re-registered identity: name='%s' role='%s'" % [local_player_name, player_role])
+
+
 func _on_connection_failed() -> void:
 	connection_state = ConnectionState.DISCONNECTED
 	if _reconnect_attempts < MAX_RECONNECT_ATTEMPTS:
@@ -405,12 +420,29 @@ func _attempt_reconnect() -> void:
 # RPCs
 # =========================================================================
 
-## Client -> Server: Register as a new player.
+## Client -> Server: Register as a new player (or update identity after auth completes).
 @rpc("any_peer", "reliable")
 func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid: String = "", player_role: String = "player") -> void:
 	if not is_server():
 		return
 	var sender_id =multiplayer.get_remote_sender_id()
+
+	# --- Identity update: peer already registered, just update name/role ---
+	if peers.has(sender_id):
+		var existing: NetworkState = peers[sender_id]
+		var name_changed: bool = existing.player_name != player_name
+		existing.player_name = player_name
+		existing.role = player_role
+		if player_uuid != "":
+			_uuid_to_peer[player_uuid] = sender_id
+			_peer_to_uuid[sender_id] = player_uuid
+		if name_changed:
+			# Notify all clients of the name/role update
+			_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role)
+			print("[Server] Identité mise à jour: peer %d → '%s' (role=%s)" % [sender_id, player_name, player_role])
+		return
+
+	# --- First registration: new peer ---
 	var state =NetworkState.new()
 	state.peer_id = sender_id
 	state.player_name = player_name
@@ -487,7 +519,11 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player
 	# Never add ourselves to our own peers dict (causes ghost self-player)
 	if pid == local_peer_id:
 		return
+	# Update existing peer's name/role (identity update after auth)
 	if peers.has(pid):
+		var existing: NetworkState = peers[pid]
+		existing.player_name = pname
+		existing.role = player_role
 		return
 	var state =NetworkState.new()
 	state.peer_id = pid

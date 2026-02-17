@@ -61,7 +61,10 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String, 
 	if _chat_panel == null:
 		return
 	# Don't duplicate our own messages (already shown locally)
+	# Check both NetworkManager name and AuthManager name (may differ during auth race)
 	if sender_name == NetworkManager.local_player_name:
+		return
+	if AuthManager.is_authenticated and sender_name == AuthManager.username:
 		return
 
 	var color := Color(0.3, 0.85, 1.0)  # Default player color

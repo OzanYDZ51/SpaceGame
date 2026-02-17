@@ -504,7 +504,12 @@ func _on_message_submitted(text: String) -> void:
 		_input_field.grab_focus()
 		return
 
-	var player_name: String = NetworkManager.local_player_name
+	# Prefer AuthManager.username (source of truth) over NetworkManager.local_player_name
+	var player_name: String = ""
+	if AuthManager.is_authenticated and AuthManager.username != "":
+		player_name = AuthManager.username
+	else:
+		player_name = NetworkManager.local_player_name
 	var corp_tag: String = ""
 	var corp_mgr = GameManager.get_node_or_null("CorporationManager")
 	if corp_mgr and corp_mgr.has_corporation():

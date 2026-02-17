@@ -285,7 +285,7 @@ func _add_hull_lights() -> void:
 			light.name = "HullLight_%d" % i
 			light.light_color = cfg.get("color", Color(0.95, 0.95, 1.0))
 			light.light_energy = cfg.get("energy", 0.5)
-			light.omni_range = cfg.get("range", 15.0) * model_scale
+			light.omni_range = cfg.get("range", 15.0)
 			light.omni_attenuation = cfg.get("attenuation", 1.8)
 			light.shadow_enabled = false
 			light.position = cfg.get("position", Vector3.ZERO)
