@@ -19,6 +19,7 @@ var _prompts: HudPrompts = null
 var _mining: HudMining = null
 var _route: HudRoute = null
 var _planetary: HudPlanetary = null
+var _faction_panel: HudFactionPanel = null
 
 # --- Shared animation state ---
 var _scan_line_y: float = 0.0
@@ -102,6 +103,11 @@ func _build_components() -> void:
 	_planetary.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(_planetary)
 
+	# Faction: player faction + reputation bars
+	_faction_panel = HudFactionPanel.new()
+	_faction_panel.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(_faction_panel)
+
 
 # =============================================================================
 # SETTERS — same API as before, routes to components
@@ -179,6 +185,10 @@ func set_asteroid_scanner(scanner: AsteroidScanner) -> void:
 	_prompts.asteroid_scanner = scanner
 
 
+func set_faction_manager(fm: FactionManager) -> void:
+	_faction_panel.faction_manager = fm
+
+
 ## Called via GameManager.player_ship_rebuilt signal — rewires all ship-dependent refs.
 func rewire_to_ship(ship) -> void:
 	set_ship(ship)
@@ -228,6 +238,8 @@ func _process(delta: float) -> void:
 	_prompts.pulse_t = _pulse_t
 	_mining.pulse_t = _pulse_t
 	_route.pulse_t = _pulse_t
+	_faction_panel.pulse_t = _pulse_t
+	_faction_panel.scan_line_y = _scan_line_y
 
 	# Detect cockpit mode
 	var cam =get_viewport().get_camera_3d()
@@ -238,6 +250,7 @@ func _process(delta: float) -> void:
 	_status_panels.set_cockpit_mode(is_cockpit)
 	_weapon_panel.set_cockpit_mode(is_cockpit)
 	_cockpit.set_cockpit_mode(is_cockpit)
+	_faction_panel.set_cockpit_mode(is_cockpit)
 
 	# Update damage feedback (marker decay)
 	_damage_feedback.update_markers(delta)
@@ -252,11 +265,12 @@ func _process(delta: float) -> void:
 	_radar.redraw()
 	_cockpit.redraw()
 
-	# Slow: 10 Hz (panels, speed arc, top bar, weapon panel, economy)
+	# Slow: 10 Hz (panels, speed arc, top bar, weapon panel, economy, faction)
 	if _slow_dirty:
 		_gauges.redraw_slow()
 		_status_panels.redraw_slow()
 		_weapon_panel.redraw_slow()
+		_faction_panel.redraw_slow()
 		_slow_dirty = false
 
 	# Prompts + mining + route (conditional visibility)

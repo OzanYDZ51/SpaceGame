@@ -122,6 +122,16 @@ func get_squadron_for_ship(fleet_index: int) -> Squadron:
 	return _fleet.get_ship_squadron(fleet_index)
 
 
+func get_player_squadron() -> Squadron:
+	if _fleet == null:
+		return null
+	return _fleet.get_ship_squadron(-1)
+
+
+func create_player_squadron(sq_name: String = "Mon Escadron") -> Squadron:
+	return create_squadron(-1, sq_name)
+
+
 func rename_squadron(squadron_id: int, new_name: String) -> void:
 	if _fleet == null:
 		return
@@ -207,9 +217,9 @@ func propagate_leader_order(squadron_id: int, order_id: StringName, params: Dict
 			continue
 
 		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
-			_fleet_deployment_mgr.deploy_ship(member_idx, order_id, params)
+			_fleet_deployment_mgr.request_deploy(member_idx, order_id, params)
 		elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-			_fleet_deployment_mgr.change_command(member_idx, order_id, params)
+			_fleet_deployment_mgr.request_change_command(member_idx, order_id, params)
 
 
 # =========================================================================

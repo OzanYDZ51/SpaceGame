@@ -58,14 +58,49 @@ body {
   color: #ff4444;
 }
 
+/* Starfield canvas */
+#starfield {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Holographic border */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 99;
+  border: 1px solid rgba(0, 200, 255, 0.08);
+  background: transparent;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) calc(100% - 3px), rgba(0,0,0,1) 100%),
+              linear-gradient(to right, rgba(0,0,0,1) 0px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) calc(100% - 3px), rgba(0,0,0,1) 100%);
+  animation: holo-glow 8s ease-in-out infinite;
+}
+
+@keyframes holo-glow {
+  0%, 100% { border-color: rgba(0, 200, 255, 0.06); }
+  25% { border-color: rgba(0, 200, 255, 0.15); }
+  50% { border-color: rgba(0, 200, 255, 0.08); }
+  75% { border-color: rgba(0, 200, 255, 0.18); }
+}
+
 /* Container */
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100vh - 32px);
-  padding: 30px 40px;
+  height: calc(100vh - 60px);
+  padding: 20px 40px 0;
   position: relative;
   z-index: 1;
 }
@@ -96,6 +131,22 @@ body {
   letter-spacing: 6px;
   color: rgba(0, 200, 255, 0.35);
   margin-top: 4px;
+}
+
+/* Compact logo when logged in */
+.logo-area.compact {
+  margin-bottom: 10px;
+}
+
+.logo-area.compact .game-title {
+  font-size: 36px;
+  letter-spacing: 8px;
+}
+
+.logo-area.compact .subtitle {
+  font-size: 10px;
+  letter-spacing: 4px;
+  margin-top: 2px;
 }
 
 /* =========================================================================
@@ -175,8 +226,8 @@ body {
   justify-content: space-between;
   align-items: center;
   width: 400px;
-  margin-bottom: 16px;
-  padding: 6px 0;
+  margin-bottom: 8px;
+  padding: 4px 0;
   border-bottom: 1px solid rgba(0, 200, 255, 0.08);
 }
 
@@ -195,6 +246,31 @@ body {
   letter-spacing: 1px;
 }
 
+.user-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-gear {
+  background: transparent;
+  border: none;
+  color: rgba(0, 200, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 2px 4px;
+}
+
+.settings-gear:hover {
+  color: #00c8ff;
+  text-shadow: 0 0 6px rgba(0, 200, 255, 0.4);
+}
+
+.settings-gear.active {
+  color: #00c8ff;
+}
+
 .logout-link:hover {
   color: #ff5555;
 }
@@ -208,8 +284,8 @@ body {
   background: rgba(0, 20, 30, 0.6);
   border: 1px solid rgba(0, 200, 255, 0.12);
   border-radius: 2px;
-  padding: 16px 20px;
-  margin-bottom: 24px;
+  padding: 12px 20px;
+  margin-bottom: 10px;
 }
 
 .status-row {
@@ -281,7 +357,7 @@ body {
 
 .changelog-section {
   width: 400px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .changelog-header {
@@ -289,7 +365,7 @@ body {
 }
 
 .changelog-list {
-  max-height: 120px;
+  max-height: 90px;
   overflow-y: auto;
   background: rgba(0, 20, 30, 0.4);
   border: 1px solid rgba(0, 200, 255, 0.08);
@@ -419,6 +495,277 @@ body {
   );
 }
 
+/* =========================================================================
+   SETTINGS PANEL
+   ========================================================================= */
+
+.settings-panel {
+  width: 400px;
+  background: rgba(0, 20, 30, 0.7);
+  border: 1px solid rgba(0, 200, 255, 0.15);
+  border-radius: 2px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid rgba(0, 200, 255, 0.06);
+}
+
+.settings-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(0, 200, 255, 0.4);
+}
+
+.settings-select {
+  background: rgba(0, 15, 25, 0.8);
+  border: 1px solid rgba(0, 200, 255, 0.15);
+  border-radius: 2px;
+  color: #00c8ff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  border-color: rgba(0, 200, 255, 0.4);
+}
+
+.settings-select option {
+  background: #0a0e14;
+  color: #b0d4e8;
+}
+
+/* =========================================================================
+   PROFILE PANEL
+   ========================================================================= */
+
+.profile-panel {
+  width: 400px;
+  background: rgba(0, 20, 30, 0.5);
+  border: 1px solid rgba(0, 200, 255, 0.1);
+  border-radius: 2px;
+  padding: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.profile-credits-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-credits-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(0, 200, 255, 0.4);
+}
+
+.profile-credits-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  color: #ffd700;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
+.profile-corp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 200, 255, 0.06);
+}
+
+.profile-corp-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #00c8ff;
+  background: rgba(0, 200, 255, 0.1);
+  border: 1px solid rgba(0, 200, 255, 0.2);
+  padding: 1px 6px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+
+.profile-corp-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  color: rgba(176, 212, 232, 0.7);
+}
+
+/* =========================================================================
+   CHANGELOG BADGES
+   ========================================================================= */
+
+.changelog-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.changelog-badge.major {
+  background: rgba(0, 200, 255, 0.15);
+  color: #00c8ff;
+  border: 1px solid rgba(0, 200, 255, 0.3);
+}
+
+.changelog-badge.patch {
+  background: rgba(176, 212, 232, 0.05);
+  color: rgba(176, 212, 232, 0.35);
+  border: 1px solid rgba(176, 212, 232, 0.1);
+}
+
+.changelog-entry.major {
+  background: rgba(0, 200, 255, 0.03);
+  border-left: 2px solid rgba(0, 200, 255, 0.3);
+  padding-left: 10px;
+  margin-left: -12px;
+  padding-right: 0;
+}
+
+/* =========================================================================
+   PLAY BUTTON PULSE
+   ========================================================================= */
+
+.btn-primary.ready {
+  animation: play-pulse 2s ease-in-out infinite;
+}
+
+@keyframes play-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 200, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 200, 255, 0.3), 0 0 40px rgba(0, 200, 255, 0.1);
+    border-color: #00c8ff;
+  }
+}
+
+/* =========================================================================
+   VERIFY / SECONDARY BUTTON
+   ========================================================================= */
+
+.btn-secondary {
+  background: rgba(0, 200, 255, 0.03);
+  border-color: rgba(0, 200, 255, 0.15);
+  color: rgba(0, 200, 255, 0.45);
+  padding: 12px 24px;
+  font-size: 12px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(0, 200, 255, 0.08);
+  border-color: rgba(0, 200, 255, 0.35);
+  color: #00c8ff;
+}
+
+/* =========================================================================
+   SERVER FOOTER
+   ========================================================================= */
+
+.server-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: rgba(0, 12, 20, 0.95);
+  border-top: 1px solid rgba(0, 200, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 50;
+}
+
+.server-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.server-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #555;
+  transition: background 0.3s;
+}
+
+.server-status-dot.online {
+  background: #00ff88;
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.4);
+}
+
+.server-status-dot.offline {
+  background: #ff4444;
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.3);
+}
+
+.server-status-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(0, 200, 255, 0.4);
+}
+
+.server-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.server-stat {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: rgba(176, 212, 232, 0.4);
+  letter-spacing: 1px;
+}
+
+.server-stat span {
+  color: rgba(176, 212, 232, 0.65);
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 20, 30, 0.95);
+  border: 1px solid rgba(0, 200, 255, 0.25);
+  border-radius: 2px;
+  padding: 8px 20px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #b0d4e8;
+  z-index: 200;
+  animation: toast-in 0.3s ease-out;
+}
+
+.toast.success { border-color: rgba(0, 255, 136, 0.3); color: #00ff88; }
+.toast.error { border-color: rgba(255, 68, 68, 0.3); color: #ff5555; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* Corner accents */
 .container::before,
 .container::after {
@@ -432,13 +779,13 @@ body {
 }
 
 .container::before {
-  top: 20px;
+  top: 10px;
   left: 20px;
   border-width: 1px 0 0 1px;
 }
 
 .container::after {
-  bottom: 20px;
+  bottom: 10px;
   right: 20px;
   border-width: 0 1px 1px 0;
 }

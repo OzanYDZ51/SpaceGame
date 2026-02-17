@@ -143,6 +143,11 @@ func _build_children() -> void:
 	_fleet_panel.ship_context_menu_requested.connect(_on_sidebar_context_menu)
 	_fleet_panel.squadron_header_clicked.connect(_on_squadron_header_clicked)
 	_fleet_panel.squadron_rename_requested.connect(_on_squadron_rename_requested)
+	_fleet_panel.squadron_create_player_requested.connect(_on_fp_create_player_sq)
+	_fleet_panel.squadron_disband_requested.connect(_on_fp_disband_sq)
+	_fleet_panel.squadron_remove_member_requested.connect(_on_fp_remove_member)
+	_fleet_panel.squadron_formation_requested.connect(_on_fp_set_formation)
+	_fleet_panel.squadron_add_ship_requested.connect(_on_fp_add_ship)
 	add_child(_fleet_panel)
 
 	# Search bar
@@ -916,6 +921,8 @@ func set_squadron_manager(mgr) -> void:
 	_squadron_mgr = mgr
 	if _squadron_mgr:
 		_squadron_mgr.squadron_changed.connect(_on_squadron_changed)
+	if _fleet_panel:
+		_fleet_panel.set_squadron_manager(mgr)
 	_sync_squadron_data()
 
 
@@ -1092,6 +1099,26 @@ func _on_squadron_header_clicked(_squadron_id: int) -> void:
 
 func _on_squadron_rename_requested(squadron_id: int, screen_pos: Vector2) -> void:
 	_start_squadron_rename(squadron_id, _fleet_panel.global_position + screen_pos)
+
+
+func _on_fp_create_player_sq() -> void:
+	squadron_action_requested.emit(&"create_player", {})
+
+
+func _on_fp_disband_sq(sq_id: int) -> void:
+	squadron_action_requested.emit(&"disband", {"squadron_id": sq_id})
+
+
+func _on_fp_remove_member(fleet_idx: int) -> void:
+	squadron_action_requested.emit(&"remove_member", {"fleet_index": fleet_idx})
+
+
+func _on_fp_set_formation(sq_id: int, formation_type: StringName) -> void:
+	squadron_action_requested.emit(&"set_formation", {"squadron_id": sq_id, "formation_type": formation_type})
+
+
+func _on_fp_add_ship(fleet_idx: int) -> void:
+	squadron_action_requested.emit(&"add_and_deploy", {"fleet_index": fleet_idx})
 
 
 func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:

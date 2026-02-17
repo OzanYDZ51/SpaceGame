@@ -175,9 +175,9 @@ func get_lead_indicator_position() -> Vector3:
 		projectile_speed = wm.hardpoints[0].mounted_weapon.projectile_speed
 
 	var target_pos: Vector3 = _get_target_center()
-	var target_vel =Vector3.ZERO
-	if current_target is RigidBody3D:
-		target_vel = (current_target as RigidBody3D).linear_velocity
+	var target_vel := Vector3.ZERO
+	if "linear_velocity" in current_target:
+		target_vel = current_target.linear_velocity
 
 	var my_vel: Vector3 = ship.linear_velocity
 

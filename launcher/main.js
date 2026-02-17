@@ -18,6 +18,8 @@ const GAME_DIR = path.join(INSTALL_DIR, "game");
 const VERSION_FILE = path.join(INSTALL_DIR, "version.json");
 const AUTH_FILE = path.join(INSTALL_DIR, "auth.json");
 
+const SETTINGS_FILE = path.join(INSTALL_DIR, "settings.json");
+
 let mainWindow;
 let tray = null;
 let gameProcess = null;
@@ -37,6 +39,7 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+  mainWindow.webContents.openDevTools({ mode: "detach" });
 
   // Prevent window close when game is running — minimize to tray instead
   mainWindow.on("close", (e) => {
@@ -187,6 +190,54 @@ function httpRequest(method, urlStr, body) {
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
+}
+
+function httpRequestAuth(method, urlStr, token, body) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlStr);
+    const mod = url.protocol === "https:" ? https : http;
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (url.protocol === "https:" ? 443 : 80),
+      path: url.pathname + url.search,
+      method,
+      headers: {
+        "User-Agent": "ImperionOnlineLauncher/1.0",
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    };
+
+    const req = mod.request(options, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        const text = Buffer.concat(chunks).toString();
+        try {
+          resolve({ status: res.statusCode, data: JSON.parse(text) });
+        } catch {
+          resolve({ status: res.statusCode, data: text });
+        }
+      });
+      res.on("error", reject);
+    });
+    req.on("error", reject);
+
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+function getSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
+  } catch {
+    return { display: "windowed", resolution: "auto", quality: "high" };
+  }
+}
+
+function saveSettings(settings) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf-8");
 }
 
 function downloadFile(url, destPath, progressCb) {
@@ -371,11 +422,10 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version) => {
   if (mainWindow && !mainWindow.isDestroyed())
     mainWindow.webContents.send("status", "Extraction en cours...");
 
-  if (fs.existsSync(GAME_DIR)) fs.rmSync(GAME_DIR, { recursive: true, force: true });
   fs.mkdirSync(GAME_DIR, { recursive: true });
 
   const zip = new AdmZip(zipPath);
-  zip.extractAllTo(GAME_DIR, true);
+  zip.extractAllTo(GAME_DIR, true); // overwrite existing files, keep the rest
   fs.unlinkSync(zipPath);
   setGameVersion(version);
   return { success: true };
@@ -398,6 +448,69 @@ ipcMain.handle("get-changelog", async () => {
 });
 
 // =========================================================================
+// IPC — SERVER STATS / PLAYER STATE / CORPORATION
+// =========================================================================
+
+ipcMain.handle("get-server-stats", async () => {
+  try {
+    const res = await httpRequest("GET", `${BACKEND_URL}/api/v1/public/stats`);
+    if (res.status === 200) return { success: true, stats: res.data };
+    return { error: "stats unavailable" };
+  } catch {
+    return { error: "server unreachable" };
+  }
+});
+
+ipcMain.handle("get-player-state", async () => {
+  const auth = getSavedAuth();
+  if (!auth?.access_token) return { error: "not authenticated" };
+  try {
+    const res = await httpRequestAuth("GET", `${BACKEND_URL}/api/v1/player/state`, auth.access_token);
+    if (res.status === 200) return { success: true, state: res.data };
+    return { error: "state unavailable" };
+  } catch {
+    return { error: "server unreachable" };
+  }
+});
+
+ipcMain.handle("get-corporation", async (_event, corpId) => {
+  const auth = getSavedAuth();
+  if (!auth?.access_token) return { error: "not authenticated" };
+  try {
+    const res = await httpRequestAuth("GET", `${BACKEND_URL}/api/v1/corporations/${corpId}`, auth.access_token);
+    if (res.status === 200) return { success: true, corporation: res.data };
+    return { error: "corporation not found" };
+  } catch {
+    return { error: "server unreachable" };
+  }
+});
+
+// =========================================================================
+// IPC — SETTINGS
+// =========================================================================
+
+ipcMain.handle("get-settings", () => getSettings());
+
+ipcMain.handle("save-settings", (_event, settings) => {
+  saveSettings(settings);
+  return { success: true };
+});
+
+// =========================================================================
+// IPC — VERIFY GAME FILES
+// =========================================================================
+
+ipcMain.handle("verify-game", () => {
+  const missing = [];
+  const exePath = path.join(GAME_DIR, "ImperionOnline.exe");
+  const pckPath = path.join(GAME_DIR, "ImperionOnline.pck");
+  if (!fs.existsSync(exePath)) missing.push("ImperionOnline.exe");
+  if (!fs.existsSync(pckPath)) missing.push("ImperionOnline.pck");
+  if (missing.length === 0) return { success: true, message: "Tous les fichiers sont intacts" };
+  return { success: false, message: "Fichiers manquants: " + missing.join(", ") };
+});
+
+// =========================================================================
 // IPC — LAUNCH (with tray mode + Discord RPC)
 // =========================================================================
 
@@ -405,9 +518,22 @@ ipcMain.handle("launch-game", async () => {
   const exePath = path.join(GAME_DIR, "ImperionOnline.exe");
   if (!fs.existsSync(exePath)) return { error: "ImperionOnline.exe introuvable" };
 
-  // Pass auth token to game if logged in
+  // Pass auth token and settings to game
   const auth = getSavedAuth();
+  const settings = getSettings();
   const args = [];
+
+  // Display mode
+  if (settings.display === "fullscreen") args.push("--fullscreen");
+  else if (settings.display === "borderless") args.push("--fullscreen", "--borderless");
+  else args.push("--windowed");
+
+  // Resolution
+  if (settings.resolution && settings.resolution !== "auto") {
+    args.push("--resolution", settings.resolution);
+  }
+
+  // Auth token (after --)
   if (auth?.access_token) {
     args.push("--", "--auth-token", auth.access_token);
   }

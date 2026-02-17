@@ -189,36 +189,23 @@ func _grant_starter_ship(fleet) -> int:
 
 
 func _auto_dock_at_station() -> void:
-	var station_name: String = ""
-	var chosen_entity: Dictionary = {}
-	var stations =EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var result: Dictionary = _find_alive_station()
 
-	# Prefer repair station
-	for ent in stations:
-		var extra: Dictionary = ent.get("extra", {})
-		if extra.get("station_type", "") == "repair":
-			station_name = ent.get("name", "")
-			chosen_entity = ent
-			break
+	# No alive station in current system — cascade: find nearest system with stations
+	if result.is_empty() and galaxy and system_transition:
+		var current_sys: int = system_transition.current_system_id
+		var fallback_sys: int = galaxy.find_nearest_repair_system(current_sys, [current_sys])
+		if fallback_sys >= 0 and fallback_sys != current_sys:
+			system_transition.jump_to_system(fallback_sys)
+			result = _find_alive_station()
 
-	# Any station
-	if station_name == "" and stations.size() > 0:
-		station_name = stations[0].get("name", "Station")
-		chosen_entity = stations[0]
-
-	# Read from system data if registry empty
-	if station_name == "" and system_transition and system_transition.current_system_data:
-		var sys_stations: Array = system_transition.current_system_data.stations
-		if sys_stations.size() > 0:
-			station_name = sys_stations[0].station_name
-
-	# No station — jump to home system which always has one
-	if station_name == "" and galaxy and system_transition:
+	# Still nothing — last resort: home system
+	if result.is_empty() and galaxy and system_transition:
 		system_transition.jump_to_system(galaxy.player_home_system)
-		stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-		if stations.size() > 0:
-			station_name = stations[0].get("name", "Station")
-			chosen_entity = stations[0]
+		result = _find_alive_station()
+
+	var station_name: String = result.get("name", "")
+	var chosen_entity: Dictionary = result.get("entity", {})
 
 	# Freeze orbit + set DockingSystem state so undock sees correct positions
 	if chosen_entity.size() > 0 and docking_system:
@@ -229,10 +216,40 @@ func _auto_dock_at_station() -> void:
 		var node_ref = chosen_entity.get("node")
 		if node_ref != null and is_instance_valid(node_ref):
 			docking_system.nearest_station_node = node_ref
+			# Connect bay signals so they persist through the dock/undock cycle
+			docking_system._try_connect_bay_signals(node_ref)
 		docking_system.nearest_station_name = station_name
 
 	docking_system.is_docked = true
 	docking_mgr.handle_docked(station_name)
+
+
+## Find the best alive (non-destroyed) station in the current system.
+## Returns {"name": String, "entity": Dictionary} or empty dict if none found.
+func _find_alive_station() -> Dictionary:
+	var stations: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+
+	# Filter out destroyed stations
+	var alive: Array[Dictionary] = []
+	for ent in stations:
+		var node = ent.get("node")
+		if node != null and is_instance_valid(node):
+			var health = node.get_node_or_null("StructureHealth")
+			if health and health.is_dead():
+				continue
+		alive.append(ent)
+
+	if alive.is_empty():
+		return {}
+
+	# Prefer repair station
+	for ent in alive:
+		var extra: Dictionary = ent.get("extra", {})
+		if extra.get("station_type", "") == "repair":
+			return {"name": ent.get("name", ""), "entity": ent}
+
+	# Any alive station
+	return {"name": alive[0].get("name", "Station"), "entity": alive[0]}
 
 
 func _spawn_death_explosion() -> void:

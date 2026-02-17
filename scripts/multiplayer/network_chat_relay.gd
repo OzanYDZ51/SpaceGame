@@ -28,25 +28,28 @@ func _ready() -> void:
 func _find_chat_panel() -> void:
 	var main := get_tree().current_scene
 	if main == null:
+		print("[ChatRelay] _find_chat_panel: current_scene is NULL")
 		return
-	_chat_panel = main.get_node_or_null("UI/ChatPanel") as ChatPanel
+	var node = main.get_node_or_null("UI/ChatPanel")
+	_chat_panel = node as ChatPanel
 	if _chat_panel:
-		_chat_panel.message_sent.connect(_on_local_message_sent)
+		if not _chat_panel.message_sent.is_connected(_on_local_message_sent):
+			_chat_panel.message_sent.connect(_on_local_message_sent)
+			print("[ChatRelay] Connected message_sent signal OK")
+	else:
+		print("[ChatRelay] ChatPanel NOT FOUND at UI/ChatPanel")
 
 
-## Local player typed a message → send to server.
+## Local player typed a message → send to server via NetworkManager public API.
 func _on_local_message_sent(channel_name: String, text: String) -> void:
-	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
-		return
-
 	# Handle whisper commands from ChatPanel
 	if channel_name.begins_with("WHISPER:"):
 		var target_name: String = channel_name.substr(8)
-		_send_whisper(target_name, text)
+		NetworkManager.send_whisper(target_name, text)
 		return
 
 	var channel: int = _channel_name_to_int(channel_name)
-	NetworkManager._rpc_chat_message.rpc_id(1, channel, text)
+	NetworkManager.send_chat_message(channel, text)
 
 
 ## Server relayed a chat message → display in ChatPanel.
@@ -64,13 +67,6 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String) 
 	_chat_panel.add_message(channel, sender_name, text, color)
 
 
-## Send a whisper (private message) to a specific player.
-func _send_whisper(target_name: String, text: String) -> void:
-	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
-		return
-	NetworkManager._rpc_whisper.rpc_id(1, target_name, text)
-
-
 ## Received a whisper from another player.
 func _on_whisper_received(sender_name: String, text: String) -> void:
 	if _chat_panel == null:
@@ -83,11 +79,10 @@ func _on_whisper_received(sender_name: String, text: String) -> void:
 
 ## Server sent chat history on connect → load into ChatPanel.
 func _on_chat_history_received(history: Array) -> void:
-	print("[Chat] Relay received history: %d messages, panel=%s" % [history.size(), str(_chat_panel != null)])
 	if _chat_panel == null:
 		_find_chat_panel()
 	if _chat_panel == null:
-		print("[Chat] Relay: ChatPanel NOT FOUND — history dropped!")
+		print("[ChatRelay] ChatPanel NOT FOUND — history dropped!")
 		return
 	_chat_panel.load_history(history)
 

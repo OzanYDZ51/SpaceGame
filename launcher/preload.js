@@ -16,6 +16,18 @@ contextBridge.exposeInMainWorld("launcher", {
   // Changelog
   getChangelog: () => ipcRenderer.invoke("get-changelog"),
 
+  // Server stats / Player state / Corporation
+  getServerStats: () => ipcRenderer.invoke("get-server-stats"),
+  getPlayerState: () => ipcRenderer.invoke("get-player-state"),
+  getCorporation: (corpId) => ipcRenderer.invoke("get-corporation", corpId),
+
+  // Settings
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
+
+  // Verify
+  verifyGame: () => ipcRenderer.invoke("verify-game"),
+
   // Launch
   launchGame: () => ipcRenderer.invoke("launch-game"),
   uninstall: () => ipcRenderer.invoke("uninstall"),

@@ -10,6 +10,7 @@ extends Node3D
 var npc_id: StringName = &""
 var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var faction: StringName = &"hostile"
+var linear_velocity: Vector3 = Vector3.ZERO
 
 # Interpolation buffer
 var _snapshots: Array[Dictionary] = []
@@ -113,6 +114,7 @@ func _process(_delta: float) -> void:
 		var snap: Dictionary = _snapshots[0]
 		global_position = FloatingOrigin.to_local_pos(snap["pos"])
 		rotation_degrees = snap["rot"]
+		linear_velocity = snap["vel"]
 		_update_engine_glow(snap.get("thr", 0.0))
 		return
 
@@ -149,6 +151,7 @@ func _interpolate_between(from: Dictionary, to: Dictionary, render_time: float) 
 		lerp_angle(deg_to_rad(rot_from.z), deg_to_rad(rot_to.z), t),
 	) * (180.0 / PI)
 
+	linear_velocity = from["vel"].lerp(to["vel"], t)
 	_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
 
 
@@ -163,6 +166,7 @@ func _extrapolate(snap: Dictionary, render_time: float) -> void:
 	]
 	global_position = FloatingOrigin.to_local_pos(extrap_pos)
 	rotation_degrees = snap["rot"]
+	linear_velocity = vel
 	_update_engine_glow(snap.get("thr", 0.0))
 
 

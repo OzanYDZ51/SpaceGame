@@ -267,9 +267,10 @@ func _process(_delta: float) -> void:
 		if _in_bay:
 			var speed: float = _ship.linear_velocity.length()
 			if speed < DockingSystem.BAY_DOCK_MAX_SPEED:
-				var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
-				if fdm:
-					fdm.retrieve_ship(fleet_index)
+				# Route through NpcAuthority (server-side) for proper cleanup + client notification
+				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+				if npc_auth and npc_auth._active:
+					npc_auth.handle_fleet_npc_self_docked(StringName(_ship.name), fleet_index)
 				return
 			# Inside bay but too fast — keep decelerating toward landing pad
 			if _brain.current_state != AIBrain.State.IDLE:

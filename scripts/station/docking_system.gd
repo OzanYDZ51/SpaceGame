@@ -86,7 +86,17 @@ func _scan_stations() -> void:
 			continue
 		# Use untyped var to safely handle freed node references
 		var node_ref = ent.get("node")
-		if node_ref == null or not is_instance_valid(node_ref):
+		if node_ref != null and not is_instance_valid(node_ref):
+			node_ref = null
+		# Try to resolve node from Universe if EntityRegistry ref is stale
+		if node_ref == null:
+			var universe: Node3D = GameManager.universe_node
+			var idx: int = ent.get("extra", {}).get("station_index", -1)
+			if universe and idx >= 0:
+				node_ref = universe.get_node_or_null("Station_%d" % idx)
+				if node_ref != null and is_instance_valid(node_ref):
+					ent["node"] = node_ref  # Fix stale ref in registry
+		if node_ref == null:
 			continue
 		var node: Node3D = node_ref
 		# Can't dock at a destroyed station
@@ -213,7 +223,7 @@ func request_undock() -> void:
 	can_dock = false
 	_in_bay = false
 	_bay_station = null
-	_check_timer = 1.0  # Brief delay before scanning again
+	_check_timer = 0.0  # Scan immediately so bay signals are reconnected
 	undocked.emit()
 
 

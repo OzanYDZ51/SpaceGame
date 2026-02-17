@@ -221,7 +221,7 @@ func _cleanup_current_system() -> void:
 			player_lod.id = &"player_ship"
 			player_lod.ship_id = GameManager.player_ship.ship_data.ship_id if GameManager.player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 			player_lod.ship_class = GameManager.player_ship.ship_data.ship_class if GameManager.player_ship.ship_data else &"Fighter"
-			player_lod.faction = &"neutral"
+			player_lod.faction = &"nova_terra"
 			player_lod.display_name = NetworkManager.local_player_name
 			player_lod.node_ref = GameManager.player_ship
 			player_lod.current_lod = ShipLODData.LODLevel.LOD0

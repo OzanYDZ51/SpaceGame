@@ -43,11 +43,12 @@ func get_connections(id: int) -> Array:
 
 
 ## BFS search for the nearest system with a station (for respawn).
+## exclude_ids: systems to skip (e.g. current system where all stations are destroyed).
 ## Returns the system id, or from_id if none found.
-func find_nearest_repair_system(from_id: int) -> int:
-	# Current system has a station? Use it directly
+func find_nearest_repair_system(from_id: int, exclude_ids: Array[int] = []) -> int:
+	# Current system has a station? Use it directly (unless excluded)
 	var current := get_system(from_id)
-	if not current.is_empty() and current.get("has_station", false):
+	if not current.is_empty() and current.get("has_station", false) and from_id not in exclude_ids:
 		return from_id
 
 	# BFS through jump gate connections
@@ -62,7 +63,7 @@ func find_nearest_repair_system(from_id: int) -> int:
 				continue
 			visited[conn_id] = true
 			var conn_sys := get_system(conn_id)
-			if not conn_sys.is_empty() and conn_sys.get("has_station", false):
+			if not conn_sys.is_empty() and conn_sys.get("has_station", false) and conn_id not in exclude_ids:
 				return conn_id
 			queue.append(conn_id)
 

@@ -116,6 +116,7 @@ func _ready() -> void:
 		_show_loading_overlay()
 		await _load_backend_state()
 		_hide_loading_overlay()
+		await _show_faction_selection()
 	else:
 		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 
@@ -490,7 +491,7 @@ func _initialize_game() -> void:
 	player_lod.id = &"player_ship"
 	player_lod.ship_id = player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 	player_lod.ship_class = player_ship.ship_data.ship_class if player_ship.ship_data else &"Fighter"
-	player_lod.faction = &"neutral"
+	player_lod.faction = &"nova_terra"
 	player_lod.display_name = NetworkManager.local_player_name
 	player_lod.node_ref = player_ship
 	player_lod.current_lod = ShipLODData.LODLevel.LOD0
@@ -608,6 +609,11 @@ func _initialize_game() -> void:
 		"player_data": player_data,
 	})
 
+	# Wire faction manager to HUD
+	var hud_fac = main_scene.get_node_or_null("UI/FlightHUD")
+	if hud_fac and _gameplay_integrator.faction_manager:
+		hud_fac.set_faction_manager(_gameplay_integrator.faction_manager)
+
 	# Load starting system (replaces hardcoded seed=42)
 	_system_transition.jump_to_system(_galaxy.player_home_system)
 
@@ -690,8 +696,8 @@ func _initialize_game() -> void:
 	)
 
 	# Spawn initial NPCs (deferred from system load — NpcAuthority needed first).
-	# Server/offline spawns locally; clients receive NPCs via NpcAuthority sync.
-	if not NetworkManager.is_connected_to_server() or NetworkManager.is_server():
+	# Only the server spawns NPCs; clients receive them via NpcAuthority sync.
+	if NetworkManager.is_server():
 		if _encounter_manager:
 			_encounter_manager.spawn_deferred()
 	# Now that network is set up, inject ship_net_sync into ShipChangeManager + LOD
@@ -832,6 +838,44 @@ func _hide_loading_overlay() -> void:
 			var tw := create_tween()
 			tw.tween_property(overlay, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 			tw.tween_callback(func(): overlay.visible = false)
+
+
+func _show_faction_selection() -> void:
+	if _gameplay_integrator == null or _gameplay_integrator.faction_manager == null:
+		return
+	var fm = _gameplay_integrator.faction_manager
+
+	var faction_screen := FactionSelectionScreen.new()
+	var playable: Array[FactionResource] = []
+	for f in fm.get_all_factions():
+		if f.is_playable:
+			playable.append(f)
+	faction_screen.setup(playable, fm.player_faction)
+
+	var ui_layer = main_scene.get_node_or_null("UI")
+	if ui_layer == null:
+		return
+	ui_layer.add_child(faction_screen)
+	faction_screen.open()
+
+	# Release mouse so user can click
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+	var selected: StringName = await faction_screen.faction_selected
+	fm.set_player_faction(selected)
+
+	# Update player LOD faction
+	if _lod_manager and _lod_manager._ships.has(&"player_ship"):
+		_lod_manager._ships[&"player_ship"].faction = selected
+
+	SaveManager.trigger_save("faction_selected")
+
+	faction_screen.close()
+	await get_tree().create_timer(0.4).timeout
+	faction_screen.queue_free()
+
+	# Re-capture mouse for flight
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 
 func _load_backend_state() -> void:
@@ -1038,61 +1082,21 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		push_warning("FleetOrder: _fleet_deployment_mgr is null!")
 		return
 	var fs = player_fleet.ships[fleet_index]
-	var is_mp_client: bool = _fleet_deployment_mgr._is_multiplayer_client()
 	print("[FleetOrder] idx=%d order=%s state=%d sys=%d cur_sys=%d" % [fleet_index, order_id, fs.deployment_state, fs.docked_system_id, current_system_id_safe()])
-	# Route line helper: use target_x/target_z with fallback to center_x/center_z (mine/patrol orders)
 	var _route_x: float = params.get("target_x", params.get("center_x", 0.0))
 	var _route_z: float = params.get("target_z", params.get("center_z", 0.0))
 
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
-		# Pre-check if deploy is possible
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):
 			if fs.docked_system_id != current_system_id_safe():
 				_notif.fleet.deploy_failed("VAISSEAU DANS UN AUTRE SYSTEME")
 			else:
 				_notif.fleet.deploy_failed("DEPLOIEMENT IMPOSSIBLE")
 			return
-		if is_mp_client:
-			# Multiplayer client: route through server via RPC
-			_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
-			_notif.fleet.deployed(fs.custom_name)
-		else:
-			# Host/offline: deploy locally with success feedback
-			var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
-			if success:
-				_notif.fleet.deployed(fs.custom_name)
-				if _stellar_map:
-					_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
-			else:
-				_notif.fleet.deploy_failed("DEPLOIEMENT ECHOUE")
-				push_warning("FleetDeploy: deploy_ship failed for index %d ship_id '%s'" % [fleet_index, fs.ship_id])
+		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
+		_notif.fleet.deployed(fs.custom_name)
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-		if is_mp_client:
-			# Multiplayer client: route command change through server
-			_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
-		else:
-			# Host/offline: execute locally
-			# Check if the NPC actually exists (may be missing after save/load)
-			var has_npc: bool = _fleet_deployment_mgr.get_deployed_npc(fleet_index) != null
-			if has_npc:
-				_fleet_deployment_mgr.change_command(fleet_index, order_id, params)
-			else:
-				# NPC is gone (save/load, system change) — reset to DOCKED and redeploy
-				fs.deployment_state = FleetShip.DeploymentState.DOCKED
-				fs.deployed_npc_id = &""
-				if fs.docked_system_id != current_system_id_safe():
-					fs.docked_system_id = current_system_id_safe()
-				if _fleet_deployment_mgr.can_deploy(fleet_index):
-					var success: bool = _fleet_deployment_mgr.deploy_ship(fleet_index, order_id, params)
-					if success:
-						_notif.fleet.deployed(fs.custom_name)
-						if _stellar_map:
-							_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
-					else:
-						_notif.fleet.deploy_failed("REDÉPLOIEMENT ÉCHOUÉ")
-				else:
-					_notif.fleet.deploy_failed("REDÉPLOIEMENT IMPOSSIBLE")
-		# Set route lines for deployed ships (all paths — offline, MP, change_command)
+		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
 		if _stellar_map:
 			_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
 
@@ -1145,6 +1149,39 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			_squadron_mgr.promote_leader(sq_id, fleet_idx)
 			if player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
 				_notif.squadron.new_leader(player_fleet.ships[fleet_idx].custom_name)
+		&"create_player":
+			if _squadron_mgr.get_player_squadron() != null:
+				_notif.toast("ESCADRON DEJA ACTIF")
+			else:
+				var sq = _squadron_mgr.create_player_squadron()
+				if sq:
+					_notif.squadron.created(sq.squadron_name)
+		&"set_formation":
+			var sq_id: int = int(data.get("squadron_id", -1))
+			var formation_type: StringName = StringName(data.get("formation_type", "echelon"))
+			_squadron_mgr.set_formation(sq_id, formation_type)
+			_notif.toast("FORMATION: %s" % SquadronFormation.get_formation_display(formation_type))
+		&"add_and_deploy":
+			var fleet_idx: int = int(data.get("fleet_index", -1))
+			if fleet_idx < 0 or fleet_idx >= player_fleet.ships.size():
+				return
+			var sq = _squadron_mgr.get_player_squadron()
+			if sq == null:
+				_notif.toast("AUCUN ESCADRON ACTIF")
+				return
+			var fs = player_fleet.ships[fleet_idx]
+			if fs.squadron_id >= 0 or fleet_idx == player_fleet.active_index:
+				return
+			if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+				return
+			if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+				if fs.docked_system_id != current_system_id_safe():
+					_notif.toast("VAISSEAU TROP LOIN")
+					return
+				if _fleet_deployment_mgr:
+					_fleet_deployment_mgr.request_deploy(fleet_idx, &"move_to", {})
+					_notif.fleet.deployed(fs.custom_name)
+			_squadron_mgr.add_to_squadron(sq.squadron_id, fleet_idx)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:

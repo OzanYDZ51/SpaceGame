@@ -86,7 +86,7 @@ func _on_body_hit(body: Node3D) -> void:
 			var hit_dir =(body.global_position - global_position).normalized()
 			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():
-				# Host: relay damage directly to target client (no self-RPC)
+				# Server: relay damage directly to target client
 				NetworkManager._rpc_receive_player_damage.rpc_id(
 					remote_player.peer_id, 1, String(weapon_name), damage,
 					hit_dir_arr)

@@ -512,15 +512,32 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 	player_state_received.emit(pid, state)
 
 
+## Public API: send a chat message to the server. Called by NetworkChatRelay.
+func send_chat_message(channel: int, text: String) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	print("[Chat] send_chat_message: ch=%d text='%s' peer=%d" % [channel, text, local_peer_id])
+	_rpc_chat_message.rpc_id(1, channel, text)
+
+
+## Public API: send a whisper to the server.
+func send_whisper(target_name: String, text: String) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_whisper.rpc_id(1, target_name, text)
+
+
 ## Client -> Server: Chat message (scoped by channel).
 @rpc("any_peer", "reliable")
 func _rpc_chat_message(channel: int, text: String) -> void:
+	print("[Chat] _rpc_chat_message received: ch=%d text='%s' is_server=%s" % [channel, text, is_server()])
 	if text.strip_edges().is_empty():
 		return
 	var sender_id =multiplayer.get_remote_sender_id()
 	var sender_name ="Unknown"
 	if peers.has(sender_id):
 		sender_name = peers[sender_id].player_name
+	print("[Chat] sender_id=%d sender_name='%s' peers_count=%d" % [sender_id, sender_name, peers.size()])
 
 	if is_server():
 		_store_chat_message(channel, sender_name, text)
@@ -528,15 +545,19 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 		match channel:
 			1:  # SYSTEM → only peers in same system
 				var sender_sys: int = peers[sender_id].system_id if peers.has(sender_id) else -1
-				for pid in get_peers_in_system(sender_sys):
+				var sys_peers = get_peers_in_system(sender_sys)
+				print("[Chat] SYSTEM relay: sender_sys=%d peers_in_sys=%s" % [sender_sys, str(sys_peers)])
+				for pid in sys_peers:
 					if pid == sender_id:
 						continue
 					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 				return
 			_:  # GLOBAL, TRADE, CORP, etc. → broadcast to all except sender
+				print("[Chat] GLOBAL relay: all peers=%s" % [str(peers.keys())])
 				for pid in peers:
 					if pid == sender_id:
 						continue
+					print("[Chat] Relaying to peer %d" % pid)
 					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
 
 

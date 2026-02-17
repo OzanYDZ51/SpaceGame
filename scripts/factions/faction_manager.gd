@@ -17,6 +17,21 @@ var _factions: Dictionary = {}  # faction_id -> FactionResource
 # --- Player reputation ---
 var _reputation: Dictionary = {}  # faction_id -> float (-100.0 to +100.0)
 
+# --- Player faction ---
+var player_faction: StringName = &""
+
+
+func set_player_faction(faction_id: StringName) -> void:
+	var faction: FactionResource = get_faction(faction_id)
+	if faction == null or not faction.is_playable:
+		push_warning("FactionManager: Invalid player faction '%s'" % faction_id)
+		return
+	player_faction = faction_id
+
+
+func get_player_faction_resource() -> FactionResource:
+	return get_faction(player_faction)
+
 
 func _ready() -> void:
 	_load_factions()
@@ -181,7 +196,7 @@ func get_reputation_color(faction_id: StringName) -> Color:
 
 ## Serialize reputation data for saving.
 func serialize() -> Dictionary:
-	var data: Dictionary = {}
+	var data: Dictionary = {"player_faction": String(player_faction)}
 	for faction_id in _reputation:
 		data[String(faction_id)] = _reputation[faction_id]
 	return data
@@ -189,7 +204,10 @@ func serialize() -> Dictionary:
 
 ## Deserialize reputation data from a save.
 func deserialize(data: Dictionary) -> void:
+	if data.has("player_faction"):
+		player_faction = StringName(data["player_faction"])
 	for key in data:
+		if key == "player_faction":
+			continue
 		var faction_id: StringName = StringName(key)
-		var value: float = float(data[key])
-		_reputation[faction_id] = clampf(value, -100.0, 100.0)
+		_reputation[faction_id] = clampf(float(data[key]), -100.0, 100.0)

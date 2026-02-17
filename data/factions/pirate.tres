@@ -6,7 +6,7 @@
 script = ExtResource("1")
 faction_id = &"pirate"
 faction_name = "Pirates"
-description = "Hors-la-loi et mercenaires sans allégeance"
+description = "Pirates, contrebandiers et mercenaires opérant en marge de la loi. Ennemis de toutes les factions, ils pillent les convois et terrorisent les systèmes isolés."
 color_primary = Color(0.8, 0.6, 0.1, 1)
 color_secondary = Color(0.6, 0.4, 0.1, 1)
 is_playable = false

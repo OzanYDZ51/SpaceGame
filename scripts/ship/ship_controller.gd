@@ -195,6 +195,11 @@ func _process(delta: float) -> void:
 
 
 func _read_input() -> void:
+	# Guard: InputRouter registers runtime actions after GameManager._initialize_game().
+	# On the first frame, the PlayerShip._process() can run before those actions exist.
+	if not InputMap.has_action("pip_weapons"):
+		return
+
 	# === COMBAT LOCK UPDATE (always runs) ===
 	combat_locked = (Time.get_ticks_msec() * 0.001 - _last_combat_time) < COMBAT_LOCK_DURATION
 
@@ -313,6 +318,8 @@ func _read_input() -> void:
 
 
 func _handle_player_weapon_input() -> void:
+	if not InputMap.has_action("target_cycle"):
+		return
 	# Lazy-cache: refs may be null if _cache_refs ran before GameManager added children
 	if _cached_targeting == null or _cached_weapon_mgr == null:
 		_cache_refs()

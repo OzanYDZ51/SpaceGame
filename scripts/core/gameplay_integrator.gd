@@ -121,6 +121,14 @@ func _on_npc_destroyed(ship_name: String) -> void:
 	_apply_kill_reputation(faction)
 
 
+## Called by NetworkSyncManager when we (the local player) killed an NPC in multiplayer.
+## Faction is pre-resolved by the caller before LOD cleanup erases the data.
+func on_npc_kill_credited(npc_id_str: String, faction: StringName) -> void:
+	var sys_id: int = GameManager.current_system_id_safe()
+	mission_manager.on_npc_killed(faction, sys_id)
+	_apply_kill_reputation(faction)
+
+
 func _resolve_npc_faction(npc_id: StringName) -> StringName:
 	# Try LOD manager (ShipLODData stores faction)
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
@@ -177,7 +185,7 @@ func _open_mission_board() -> void:
 	var sys_id: int = GameManager.current_system_id_safe()
 	var danger: int = _get_current_danger_level()
 	var station_type: int = _get_docked_station_type()
-	var faction_id: StringName = &"neutral"
+	var faction_id: StringName = faction_manager.player_faction if faction_manager and faction_manager.player_faction != &"" else &"nova_terra"
 
 	var available := MissionGenerator.generate_missions(sys_id, station_type, danger, faction_id)
 	_mission_board_screen.setup(available, mission_manager)
@@ -229,6 +237,7 @@ func _apply_poi_rewards(rewards: Dictionary) -> void:
 func collect_save_state(state: Dictionary) -> void:
 	if faction_manager:
 		state["factions"] = faction_manager.serialize()
+		state["faction_id"] = String(faction_manager.player_faction)
 	if mission_manager:
 		state["missions"] = mission_manager.serialize()
 	if economy_sim:

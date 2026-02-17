@@ -186,9 +186,10 @@ func (r *FleetRepository) BatchUpdatePositions(ctx context.Context, updates []mo
 			UPDATE fleet_ships SET
 				pos_x = $3, pos_y = $4, pos_z = $5,
 				hull_ratio = $6, shield_ratio = $7,
-				updated_at = $8
+				command = CASE WHEN $8 != '' THEN $8 ELSE command END,
+				updated_at = $9
 			WHERE player_id = $1 AND fleet_index = $2 AND deployment_state = 1
-		`, u.PlayerID, u.FleetIndex, u.PosX, u.PosY, u.PosZ, u.HullRatio, u.ShieldRatio, now)
+		`, u.PlayerID, u.FleetIndex, u.PosX, u.PosY, u.PosZ, u.HullRatio, u.ShieldRatio, u.Command, now)
 		if err != nil {
 			return err
 		}

@@ -35,7 +35,7 @@ static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 		0:
 			configs = [{"count": 1, "ship": t0, "fac": &"hostile", "radius": 400.0}]
 		1:
-			configs = [{"count": 2, "ship": t0, "fac": &"neutral", "radius": 300.0}]
+			configs = [{"count": 2, "ship": t0, "fac": &"pirate", "radius": 300.0}]
 		2:
 			configs = [{"count": 2, "ship": t0, "fac": &"hostile", "radius": 400.0}]
 		3:

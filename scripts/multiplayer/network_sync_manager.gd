@@ -326,6 +326,18 @@ func _on_npc_batch_received(batch: Array) -> void:
 func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
 	var npc_id =StringName(npc_id_str)
 
+	# Credit kill to mission/reputation system BEFORE LOD cleanup
+	# Only for multiplayer CLIENTS — host already gets credit via EncounterManager signal
+	if killer_pid == NetworkManager.local_peer_id and not NetworkManager.is_server():
+		var faction: StringName = &"hostile"
+		if lod_manager:
+			var kill_lod: ShipLODData = lod_manager.get_ship_data(npc_id)
+			if kill_lod:
+				faction = kill_lod.faction
+		var gi = GameManager.get_node_or_null("GameplayIntegrator")
+		if gi:
+			gi.on_npc_kill_credited(npc_id_str, faction)
+
 	if lod_manager:
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
 		if lod_data:

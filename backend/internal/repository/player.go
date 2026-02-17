@@ -28,11 +28,11 @@ func (r *PlayerRepository) Create(ctx context.Context, username, email, password
 		ON CONFLICT DO NOTHING
 		RETURNING id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		          pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		          credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		          credits, kills, deaths, faction_id, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 	`, username, email, passwordHash).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -48,12 +48,12 @@ func (r *PlayerRepository) GetByID(ctx context.Context, id string) (*model.Playe
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		       pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		       credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		       credits, kills, deaths, faction_id, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 		FROM players WHERE id = $1
 	`, id).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -66,12 +66,12 @@ func (r *PlayerRepository) GetByUsername(ctx context.Context, username string) (
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		       pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		       credits, kills, deaths, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		       credits, kills, deaths, faction_id, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
 		FROM players WHERE username = $1
 	`, username).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -129,6 +129,7 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 		Credits:       p.Credits,
 		Kills:         p.Kills,
 		Deaths:        p.Deaths,
+		FactionID:     p.FactionID,
 		Fleet:           json.RawMessage(fleetRaw),
 		StationServices: json.RawMessage(stationServicesRaw),
 		Settings:        json.RawMessage(settingsRaw),
@@ -249,14 +250,15 @@ func (r *PlayerRepository) SaveFullState(ctx context.Context, playerID string, s
 			pos_x = $5, pos_y = $6, pos_z = $7,
 			rotation_x = $8, rotation_y = $9, rotation_z = $10,
 			credits = $11, kills = $12, deaths = $13,
-			fleet = $14, station_services = $15, settings = $16,
-			gameplay_state = $18,
-			last_save_at = $17, updated_at = $17
+			faction_id = $14,
+			fleet = $15, station_services = $16, settings = $17,
+			gameplay_state = $19,
+			last_save_at = $18, updated_at = $18
 		WHERE id = $1
 	`, playerID, state.CurrentShipID, state.GalaxySeed, state.SystemID,
 		state.PosX, state.PosY, state.PosZ,
 		state.RotationX, state.RotationY, state.RotationZ,
-		state.Credits, state.Kills, state.Deaths, fleetJSON, stationServicesJSON, settingsJSON, now, gameplayJSON)
+		state.Credits, state.Kills, state.Deaths, state.FactionID, fleetJSON, stationServicesJSON, settingsJSON, now, gameplayJSON)
 	if err != nil {
 		return err
 	}

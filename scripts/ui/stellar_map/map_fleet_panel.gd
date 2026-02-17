@@ -15,6 +15,11 @@ signal selection_changed(fleet_indices: Array)
 signal squadron_header_clicked(squadron_id: int)
 signal squadron_rename_requested(squadron_id: int, screen_pos: Vector2)
 signal ship_context_menu_requested(fleet_index: int, screen_pos: Vector2)
+signal squadron_create_player_requested()
+signal squadron_disband_requested(squadron_id: int)
+signal squadron_remove_member_requested(fleet_index: int)
+signal squadron_formation_requested(squadron_id: int, formation_type: StringName)
+signal squadron_add_ship_requested(fleet_index: int)
 
 const PANEL_W: float = 240.0
 const HEADER_H: float = 32.0
@@ -37,6 +42,15 @@ var _max_scroll: float = 0.0
 
 # Hover tracking for cargo tooltip
 var _hover_fleet_index: int = -1
+
+# Squadron section
+var _squadron_mgr = null
+var _sq_create_btn_rect: Rect2 = Rect2()
+var _sq_disband_btn_rect: Rect2 = Rect2()
+var _sq_formation_btn_rects: Array[Dictionary] = []  # [{rect, formation_id}]
+var _sq_remove_btn_rects: Array[Dictionary] = []  # [{rect, fleet_index}]
+var _sq_add_btn_rects: Array[Dictionary] = []  # [{rect, fleet_index}]
+var _squadron_section_height: float = 0.0
 
 # Double-click header tracking
 var _last_header_click_sq: int = -1
@@ -71,6 +85,10 @@ func _on_active_changed(_ship) -> void:
 func set_galaxy(galaxy) -> void:
 	_galaxy = galaxy
 	_rebuild()
+
+
+func set_squadron_manager(mgr) -> void:
+	_squadron_mgr = mgr
 
 
 func get_selected_fleet_indices() -> Array[int]:
@@ -172,11 +190,53 @@ func get_panel_rect() -> Rect2:
 	return Rect2(0, 0, PANEL_W, size.y)
 
 
+func _check_squadron_section_click(pos: Vector2) -> bool:
+	# Create button
+	if _sq_create_btn_rect.size.x > 0.0 and _sq_create_btn_rect.has_point(pos):
+		squadron_create_player_requested.emit()
+		return true
+	# Disband button
+	if _sq_disband_btn_rect.size.x > 0.0 and _sq_disband_btn_rect.has_point(pos):
+		var sq = _get_player_squadron()
+		if sq:
+			squadron_disband_requested.emit(sq.squadron_id)
+		return true
+	# Formation buttons
+	for entry in _sq_formation_btn_rects:
+		if entry["rect"].has_point(pos):
+			var sq = _get_player_squadron()
+			if sq:
+				squadron_formation_requested.emit(sq.squadron_id, entry["formation_id"])
+			return true
+	# Remove member buttons
+	for entry in _sq_remove_btn_rects:
+		if entry["rect"].has_point(pos):
+			squadron_remove_member_requested.emit(entry["fleet_index"])
+			return true
+	# Add ship buttons
+	for entry in _sq_add_btn_rects:
+		if entry["rect"].has_point(pos):
+			squadron_add_ship_requested.emit(entry["fleet_index"])
+			return true
+	return false
+
+
+func _get_player_squadron():
+	if _fleet == null:
+		return null
+	return _fleet.get_ship_squadron(-1)
+
+
 func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool = false) -> bool:
 	if pos.x > PANEL_W or pos.x < 0:
 		return false
 	if _fleet == null or _fleet.ships.is_empty():
 		return false
+
+	# Check squadron section click first
+	if _check_squadron_section_click(pos):
+		queue_redraw()
+		return true
 
 	# Check squadron header click first
 	var hit_sq_id: int = _get_squadron_header_at(pos)
@@ -252,7 +312,7 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool 
 		return true
 
 	# Check group header collapse
-	var y: float = HEADER_H + MARGIN - _scroll_offset
+	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
 	for g_idx in _groups.size():
 		var group: Dictionary = _groups[g_idx]
 		if _hit_row(pos.y, y, GROUP_H):
@@ -333,7 +393,7 @@ func handle_mouse_move(pos: Vector2) -> bool:
 
 
 func _get_row_y_for_index(fleet_index: int) -> float:
-	var y: float = HEADER_H + MARGIN - _scroll_offset
+	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
 	for group in _groups:
 		y += GROUP_H
 		if group["collapsed"]:
@@ -372,7 +432,7 @@ func _get_row_y_for_index(fleet_index: int) -> float:
 
 
 func _get_squadron_header_at(pos: Vector2) -> int:
-	var y: float = HEADER_H + MARGIN - _scroll_offset
+	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
 	for group in _groups:
 		y += GROUP_H  # system header
 		if group["collapsed"]:
@@ -408,7 +468,7 @@ func _get_squadron_header_at(pos: Vector2) -> int:
 
 
 func _get_fleet_index_at(pos: Vector2) -> int:
-	var y: float = HEADER_H + MARGIN - _scroll_offset
+	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
 	for group in _groups:
 		y += GROUP_H  # system header
 		if group["collapsed"]:
@@ -537,7 +597,12 @@ func _draw() -> void:
 	# Clip region
 	var clip =Rect2(0, HEADER_H + 2, PANEL_W, size.y - HEADER_H - 2)
 
-	var y: float = HEADER_H + MARGIN - _scroll_offset
+	# Squadron section (drawn before groups, affects scroll content)
+	var sq_y: float = HEADER_H + MARGIN - _scroll_offset
+	sq_y = _draw_squadron_section(font, sq_y, clip)
+	_squadron_section_height = sq_y - (HEADER_H + MARGIN - _scroll_offset)
+
+	var y: float = sq_y
 	for group in _groups:
 		y = _draw_group(font, y, group, clip)
 
@@ -696,6 +761,116 @@ func _draw_cargo_tooltip(font: Font) -> void:
 		cy += LINE_H
 
 
+func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
+	if _fleet == null:
+		return y
+	# Clear hit rects
+	_sq_create_btn_rect = Rect2()
+	_sq_disband_btn_rect = Rect2()
+	_sq_formation_btn_rects.clear()
+	_sq_remove_btn_rects.clear()
+	_sq_add_btn_rects.clear()
+
+	var sq = _get_player_squadron()
+	var start_y: float = y
+
+	if sq == null:
+		# No player squadron — show create button
+		if _in_clip(y, SHIP_H + 4, clip):
+			var btn_rect := Rect2(MARGIN, y + 2, PANEL_W - MARGIN * 2, SHIP_H)
+			draw_rect(btn_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12))
+			draw_rect(btn_rect, Color(UITheme.PRIMARY, 0.5), false, 1.0)
+			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 2), "+ CREER MON ESCADRON", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 12, UITheme.FONT_SIZE_SMALL, UITheme.PRIMARY)
+			_sq_create_btn_rect = btn_rect
+		y += SHIP_H + 6
+		# Separator
+		if _in_clip(y, 2, clip):
+			draw_line(Vector2(MARGIN, y), Vector2(PANEL_W - MARGIN, y), Color(MapColors.PANEL_BORDER, 0.4), 1.0)
+		y += 4
+		return y
+
+	# Squadron exists — management section
+	# Header: name + DISSOUDRE button
+	if _in_clip(y, SHIP_H, clip):
+		draw_string(font, Vector2(MARGIN, y + SHIP_H - 4), sq.squadron_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 70, UITheme.FONT_SIZE_BODY, MapColors.SQUADRON_HEADER)
+		# Disband button
+		var disband_w: float = 62.0
+		var disband_rect := Rect2(PANEL_W - MARGIN - disband_w, y + 2, disband_w, SHIP_H - 4)
+		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.15))
+		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.5), false, 1.0)
+		draw_string(font, Vector2(disband_rect.position.x + 4, y + SHIP_H - 5), "DISSOUDRE", HORIZONTAL_ALIGNMENT_LEFT, disband_w - 8, UITheme.FONT_SIZE_TINY, Color(0.9, 0.3, 0.2))
+		_sq_disband_btn_rect = disband_rect
+	y += SHIP_H
+
+	# Formation buttons row
+	var formations: Array[Dictionary] = SquadronFormation.get_available_formations()
+	if _in_clip(y, SHIP_H, clip):
+		var btn_w: float = (PANEL_W - MARGIN * 2 - (formations.size() - 1) * 2) / formations.size()
+		var bx: float = MARGIN
+		for form in formations:
+			var is_active: bool = sq.formation_type == form["id"]
+			var btn_rect := Rect2(bx, y + 1, btn_w, SHIP_H - 2)
+			var bg_col: Color = Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.2) if is_active else Color(0.15, 0.2, 0.25, 0.3)
+			var border_col: Color = UITheme.PRIMARY if is_active else Color(0.3, 0.4, 0.5, 0.4)
+			var text_col: Color = UITheme.PRIMARY if is_active else MapColors.TEXT_DIM
+			draw_rect(btn_rect, bg_col)
+			draw_rect(btn_rect, border_col, false, 1.0)
+			draw_string(font, Vector2(bx + 2, y + SHIP_H - 4), form["display"], HORIZONTAL_ALIGNMENT_CENTER, btn_w - 4, UITheme.FONT_SIZE_TINY, text_col)
+			_sq_formation_btn_rects.append({"rect": btn_rect, "formation_id": form["id"]})
+			bx += btn_w + 2
+	y += SHIP_H + 2
+
+	# Leader line: "* VOUS (CHEF)"
+	if _in_clip(y, SHIP_H, clip):
+		draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), "* VOUS (CHEF)", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
+	y += SHIP_H
+
+	# Members
+	if sq.member_fleet_indices.is_empty():
+		if _in_clip(y, SHIP_H, clip):
+			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), "Aucun membre — utilisez +", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_TINY, Color(MapColors.TEXT_DIM, 0.5))
+		y += SHIP_H
+	else:
+		for member_idx in sq.member_fleet_indices:
+			if member_idx < 0 or member_idx >= _fleet.ships.size():
+				continue
+			var fs = _fleet.ships[member_idx]
+			if _in_clip(y, SHIP_H, clip):
+				# Status badge
+				var badge: String = "[>]"
+				var badge_col: Color = MapColors.FLEET_STATUS_DEPLOYED
+				if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+					badge = "[D]"
+					badge_col = MapColors.FLEET_STATUS_DOCKED
+				elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+					badge = "[X]"
+					badge_col = MapColors.FLEET_STATUS_DESTROYED
+
+				draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 4), badge, HORIZONTAL_ALIGNMENT_LEFT, 28, UITheme.FONT_SIZE_TINY, badge_col)
+
+				# Ship name
+				var name_text: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+				draw_string(font, Vector2(MARGIN + 38, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 70, UITheme.FONT_SIZE_LABEL, MapColors.TEXT_DIM)
+
+				# Ship class (small)
+				var ship_data = ShipRegistry.get_ship_data(fs.ship_id)
+				if ship_data:
+					draw_string(font, Vector2(PANEL_W - MARGIN - 30, y + SHIP_H - 4), String(ship_data.ship_class), HORIZONTAL_ALIGNMENT_RIGHT, 28, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
+
+				# Remove button "x"
+				var x_rect := Rect2(PANEL_W - MARGIN - 2, y + 2, 12, SHIP_H - 4)
+				draw_string(font, Vector2(PANEL_W - MARGIN, y + SHIP_H - 4), "x", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_TINY, Color(0.8, 0.3, 0.2, 0.7))
+				_sq_remove_btn_rects.append({"rect": x_rect, "fleet_index": member_idx})
+			y += SHIP_H
+
+	# Separator
+	y += 2
+	if _in_clip(y, 2, clip):
+		draw_line(Vector2(MARGIN, y), Vector2(PANEL_W - MARGIN, y), Color(MapColors.PANEL_BORDER, 0.4), 1.0)
+	y += 4
+	return y
+
+
 func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 	var collapsed: bool = group["collapsed"]
 	var arrow: String = ">" if collapsed else "v"
@@ -812,11 +987,15 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 	var name_col: Color = UITheme.PRIMARY if is_selected else (MapColors.TEXT if is_active else MapColors.TEXT_DIM)
 	draw_string(font, Vector2(x + role_offset + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - role_offset - 36, UITheme.FONT_SIZE_LABEL, name_col)
 
-	# Ship class (right-aligned, tiny)
+	# Ship class (right-aligned, tiny) — shift left if "+" button will be drawn
 	var ship_data =ShipRegistry.get_ship_data(fs.ship_id)
 	if ship_data:
 		var cls_text =String(ship_data.ship_class)
-		draw_string(font, Vector2(PANEL_W - MARGIN - 2, y + SHIP_H - 4), cls_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
+		var cls_right: float = PANEL_W - MARGIN - 2
+		var player_sq_check = _get_player_squadron()
+		if player_sq_check and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+			cls_right -= 14.0  # Make room for "+" button
+		draw_string(font, Vector2(cls_right, y + SHIP_H - 4), cls_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
 
 	# Cargo fill micro-bar (thin line at bottom of row)
 	var c_max: int = fs.cargo.capacity if fs.cargo else 0
@@ -838,6 +1017,13 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 			else:
 				fc2 = Color(0.9, 0.3, 0.15, 0.5)
 			draw_rect(Rect2(bar_x2, bar_y2, bar_w2 * f2, 1.5), fc2)
+
+	# "+" button: add to player squadron (only if player has a squadron and ship is eligible)
+	var player_sq = _get_player_squadron()
+	if player_sq and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+		var plus_rect := Rect2(PANEL_W - MARGIN - 2, y + 2, 12, SHIP_H - 4)
+		draw_string(font, Vector2(PANEL_W - MARGIN - 1, y + SHIP_H - 4), "+", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY, 0.7))
+		_sq_add_btn_rects.append({"rect": plus_rect, "fleet_index": fleet_index})
 
 
 func _in_clip(y: float, h: float, clip: Rect2) -> bool:

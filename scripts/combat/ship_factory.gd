@@ -303,13 +303,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
 				npc_auth.unregister_npc(npc_name)
 			else:
-				# NPC not registered with NpcAuthority — spawn loot locally (host player)
-				var drops =LootTable.roll_drops_for_ship(ship.ship_data)
-				if not drops.is_empty():
-					var crate =CargoCrate.new()
-					crate.contents = drops
-					crate.global_position = death_pos
-					ship.get_parent().call_deferred("add_child", crate)
+				push_warning("ShipFactory: NPC '%s' died but not registered in NpcAuthority — skipping loot" % String(npc_name))
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system

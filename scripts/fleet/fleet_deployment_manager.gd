@@ -20,6 +20,7 @@ func _ready() -> void:
 	NetworkManager.fleet_deploy_confirmed.connect(_on_deploy_confirmed)
 	NetworkManager.fleet_retrieve_confirmed.connect(_on_retrieve_confirmed)
 	NetworkManager.fleet_command_confirmed.connect(_on_command_confirmed)
+	NetworkManager.npc_died.connect(_on_network_npc_died)
 
 
 func initialize(fleet) -> void:
@@ -369,27 +370,9 @@ func ensure_deployed_visible() -> void:
 
 
 func redeploy_saved_ships() -> void:
-	if _fleet == null:
-		return
-	if _is_multiplayer_client():
-		return  # Server manages fleet NPCs, client sees them via LOD
-	var current_sys: int = GameManager.current_system_id_safe()
-	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-	for i in _fleet.ships.size():
-		var fs = _fleet.ships[i]
-		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.docked_system_id == current_sys:
-			if i == _fleet.active_index:
-				continue
-			# Use saved position if available, otherwise fall back to station + random
-			var saved_pos: Variant = null
-			if fs.last_known_pos.size() == 3:
-				saved_pos = FloatingOrigin.to_local_pos(fs.last_known_pos)
-			# Reset to DOCKED temporarily so deploy_ship can work
-			fs.deployment_state = FleetShip.DeploymentState.DOCKED
-			deploy_ship(i, fs.deployed_command, fs.deployed_command_params, saved_pos)
-			# Register with NpcAuthority for fleet tracking (host mode)
-			if npc_auth and npc_auth._active and fs.deployed_npc_id != &"":
-				npc_auth.register_fleet_npc(fs.deployed_npc_id, NetworkManager.local_peer_id, i)
+	# Server manages all fleet NPCs via NpcAuthority + backend persistence.
+	# Client never spawns fleet NPCs locally — they come via NPC batch sync.
+	pass
 
 
 func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
@@ -422,6 +405,28 @@ func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 	if GameManager._notif:
 		GameManager._notif.fleet.lost(fs.custom_name)
 
+
+## Network handler: fleet NPC died on the server (multiplayer client path).
+## Local deaths go through _on_fleet_npc_died via HealthSystem signal instead.
+func _on_network_npc_died(npc_id_str: String, _killer_pid: int, _death_pos: Array, _loot: Array) -> void:
+	if _fleet == null:
+		return
+	var npc_id := StringName(npc_id_str)
+	for i in _fleet.ships.size():
+		var fs = _fleet.ships[i]
+		if fs.deployed_npc_id == npc_id:
+			fs.deployment_state = FleetShip.DeploymentState.DESTROYED
+			fs.deployed_npc_id = &""
+			fs.deployed_command = &""
+			fs.deployed_command_params = {}
+			_deployed_ships.erase(i)
+			_fleet.fleet_changed.emit()
+			var sq_mgr = GameManager.get_node_or_null("SquadronManager")
+			if sq_mgr:
+				sq_mgr.on_member_destroyed(i)
+			if GameManager._notif:
+				GameManager._notif.fleet.lost(fs.custom_name)
+			break
 
 
 func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
@@ -479,68 +484,26 @@ func get_deployed_npc(fleet_index: int):
 
 
 # =========================================================================
-# MULTIPLAYER-AWARE PUBLIC API
+# PUBLIC API — All requests go through server RPCs
 # =========================================================================
-# These methods route through server RPCs when client,
-# or execute via NpcAuthority when server.
 
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
-	if _is_multiplayer_client():
-		var ship_data: Dictionary = _serialize_ship_data(fleet_index)
-		if ship_data.is_empty():
-			return
-		# NO local state change — wait for server confirmation via _on_deploy_confirmed
-		var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
-		var ship_data_json: String = JSON.stringify(ship_data)
-		NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json, ship_data_json)
-	else:
-		# Host/offline: deploy locally then register with NpcAuthority
-		if not deploy_ship(fleet_index, cmd, params):
-			return
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth and npc_auth._active:
-			var fs = _fleet.ships[fleet_index]
-			if fs.deployed_npc_id != &"":
-				var sys_id: int = GameManager.current_system_id_safe()
-				npc_auth.register_fleet_npc(fs.deployed_npc_id, NetworkManager.local_peer_id, fleet_index)
-				npc_auth.register_npc(fs.deployed_npc_id, sys_id, fs.ship_id, FLEET_FACTION)
-				npc_auth.notify_spawn_to_peers(fs.deployed_npc_id, sys_id)
+	var ship_data: Dictionary = _serialize_ship_data(fleet_index)
+	if ship_data.is_empty():
+		return
+	# Send to server — NO local state change, wait for _on_deploy_confirmed
+	var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
+	var ship_data_json: String = JSON.stringify(ship_data)
+	NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json, ship_data_json)
 
 
 func request_retrieve(fleet_index: int) -> void:
-	if _is_multiplayer_client():
-		NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
-	else:
-		var npc_id_before: StringName = &""
-		if _fleet and fleet_index >= 0 and fleet_index < _fleet.ships.size():
-			npc_id_before = _fleet.ships[fleet_index].deployed_npc_id
-		retrieve_ship(fleet_index)
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth and npc_auth._active and npc_id_before != &"":
-			npc_auth.unregister_npc(npc_id_before)
-			npc_auth._unregister_fleet_npc(npc_id_before)
-			npc_auth._broadcast_fleet_event_retrieve(
-				NetworkManager.local_peer_id, fleet_index, npc_id_before,
-				GameManager.current_system_id_safe())
+	NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
 
 
 func request_change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
-	if _is_multiplayer_client():
-		var params_json =JSON.stringify(params) if not params.is_empty() else ""
-		NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
-	else:
-		change_command(fleet_index, cmd, params)
-		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth and npc_auth._active and _fleet:
-			var npc_id: StringName = _fleet.ships[fleet_index].deployed_npc_id
-			if npc_id != &"":
-				npc_auth._broadcast_fleet_event_command(
-					NetworkManager.local_peer_id, fleet_index, npc_id, cmd, params,
-					GameManager.current_system_id_safe())
-
-
-func _is_multiplayer_client() -> bool:
-	return NetworkManager.is_connected_to_server() and not NetworkManager.is_server()
+	var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
+	NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
 
 
 ## Client-side: apply fleet status from server on reconnect.
@@ -573,6 +536,9 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 			var pz: float = float(entry.get("pos_z", 0.0))
 			if px != 0.0 or py != 0.0 or pz != 0.0:
 				fs.last_known_pos = [px, py, pz]
+			var cmd_str: String = entry.get("command", "")
+			if cmd_str != "":
+				fs.deployed_command = StringName(cmd_str)
 		elif death_set.has(i):
 			# Server says this ship died while we were offline
 			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:

@@ -22,6 +22,7 @@ type Player struct {
 	Credits         int64      `json:"credits"`
 	Kills           int        `json:"kills"`
 	Deaths          int        `json:"deaths"`
+	FactionID       string     `json:"faction_id"`
 	CorporationID   *string    `json:"corporation_id,omitempty"`
 	IsBanned        bool       `json:"is_banned"`
 	LastLoginAt     *time.Time `json:"last_login_at,omitempty"`
@@ -80,6 +81,7 @@ type PlayerState struct {
 	Credits       int64           `json:"credits"`
 	Kills         int             `json:"kills"`
 	Deaths        int             `json:"deaths"`
+	FactionID     string          `json:"faction_id"`
 	Resources     []PlayerResource `json:"resources"`
 	Inventory     []InventoryItem  `json:"inventory"`
 	Cargo         []CargoItem      `json:"cargo"`

@@ -7,26 +7,26 @@
 [node name="ChasseurArrw" type="Node3D" unique_id=505536137]
 
 [node name="ModelPivot" type="Node3D" parent="." unique_id=1699411844]
-transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 0, 0)
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
 [node name="ArrwModel" parent="ModelPivot" unique_id=233068045 instance=ExtResource("1_model")]
 
 [node name="ShipCenter" type="Marker3D" parent="." unique_id=189208906]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.667, -6.667)
 
 [node name="Hardpoint_0" type="Node3D" parent="." unique_id=795321742]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.620251, 2.4609013, -2.1163592)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.4937, 3.2812, -2.8218)
 script = ExtResource("2_hpslot")
 preview_weapon_scene = "uid://bc351fksvydyb"
 
 [node name="Hardpoint_1" type="Node3D" parent="." unique_id=742928641]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.7237844, 2.4823418, -1.8880349)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.2984, 3.3098, -2.5174)
 script = ExtResource("2_hpslot")
 slot_id = 1
 preview_weapon_scene = "uid://bc351fksvydyb"
 
 [node name="Hardpoint_2" type="Node3D" parent="." unique_id=309051158]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7673327, 4.0562835, -3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0231, 5.4084, -4)
 script = ExtResource("2_hpslot")
 slot_id = 2
 slot_size = "M"
@@ -38,15 +38,15 @@ turret_pitch_max = 60.0
 preview_weapon_scene = "uid://c31lr44ihge4w"
 
 [node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=864940952]
-transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -2.013544, 1.178005, 10)
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -2.6847, 1.5707, 13.3333)
 script = ExtResource("3_vfx")
 nozzle_size = 2.0
 
 [node name="VFX_Engine_R" type="Marker3D" parent="." unique_id=1910200863]
-transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, 0.7604127, 1.3655472, 10)
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, 1.0139, 1.8207, 13.3333)
 script = ExtResource("3_vfx")
 nozzle_size = 2.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=1698657210]
-transform = Transform3D(1, 0, 0, 0, 0.42262, 0.90631, 0, -0.90631, 0.42262, 0, 38, 18)
+transform = Transform3D(1, 0, 0, 0, 0.42262, 0.90631, 0, -0.90631, 0.42262, 0, 50.667, 24)
 fov = 45.0

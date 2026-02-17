@@ -35,6 +35,7 @@ var notif: NotificationService = null
 var get_game_state: Callable
 
 var docked_station_idx: int = 0
+var _docked_death_handler: Node = null  # StructureDeathHandler of docked station
 
 
 func handle_docked(station_name: String) -> void:
@@ -73,6 +74,9 @@ func handle_docked(station_name: String) -> void:
 			active_fs.docked_station_id = resolved_station_id
 			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
+	# Connect to station destruction: if our docked station blows up, player dies
+	_connect_station_destruction()
+
 	# Hide flight HUD
 	var hud =main_scene.get_node_or_null("UI/FlightHUD") as Control
 	if hud:
@@ -92,6 +96,8 @@ func handle_undock() -> bool:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != Constants.GameState.DOCKED:
 		return false
+
+	_disconnect_station_destruction()
 
 	# Automatically find a clear exit position (bay exit + ring around station)
 	var exit_info: Dictionary = _compute_exit_position()
@@ -526,3 +532,65 @@ func _build_dock_context(station_name: String) -> Dictionary:
 		"encounter_manager": encounter_manager,
 		"net_sync": ship_net_sync,
 	}
+
+
+# =============================================================================
+# STATION DESTRUCTION WHILE DOCKED
+# =============================================================================
+
+func _connect_station_destruction() -> void:
+	_disconnect_station_destruction()
+	var universe = main_scene.get_node_or_null("Universe") if main_scene else null
+	if universe == null:
+		return
+	var station_node = universe.get_node_or_null("Station_%d" % docked_station_idx)
+	if station_node == null:
+		return
+	var death_handler = station_node.get_node_or_null("StructureDeathHandler")
+	if death_handler and death_handler.has_signal("station_destroyed"):
+		_docked_death_handler = death_handler
+		death_handler.station_destroyed.connect(_on_docked_station_destroyed)
+
+
+func _disconnect_station_destruction() -> void:
+	if _docked_death_handler and is_instance_valid(_docked_death_handler):
+		if _docked_death_handler.station_destroyed.is_connected(_on_docked_station_destroyed):
+			_docked_death_handler.station_destroyed.disconnect(_on_docked_station_destroyed)
+	_docked_death_handler = null
+
+
+func _on_docked_station_destroyed(_station_name: String) -> void:
+	print("DockingManager: Docked station '%s' destroyed — ejecting player!" % _station_name)
+	_disconnect_station_destruction()
+
+	# Close all open station UI screens
+	if screen_manager:
+		while screen_manager.is_any_screen_open():
+			screen_manager.close_top()
+
+	# Force leave dock instance (unfreeze world)
+	if dock_instance:
+		dock_instance.leave(_build_dock_context(""))
+
+	# Clear docked state
+	if docking_system:
+		docking_system.is_docked = false
+
+	# Show flight HUD briefly before death
+	var hud = main_scene.get_node_or_null("UI/FlightHUD") as Control
+	if hud:
+		hud.visible = true
+
+	# Re-enable ship so the death handler can process it
+	var ship = player_ship
+	if ship:
+		ship.is_player_controlled = true
+		var act_ctrl = ship.get_node_or_null("ShipActivationController")
+		if act_ctrl:
+			act_ctrl.activate()
+
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	undocked.emit()
+
+	# Kill the player — triggers death screen → respawn at nearest alive station
+	GameManager._on_player_destroyed()

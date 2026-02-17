@@ -647,8 +647,9 @@ func _send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 				var entry ={
 					"fleet_index": info.get("fleet_index", -1),
 					"npc_id": String(npc_id),
+					"command": info.get("command", ""),
 				}
-				# Include universe position from LOD data
+				# Include universe position + command from live bridge
 				if lod_mgr:
 					var lod_data = lod_mgr.get_ship_data(npc_id)
 					if lod_data:
@@ -656,6 +657,10 @@ func _send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 						entry["pos_x"] = upos[0]
 						entry["pos_y"] = upos[1]
 						entry["pos_z"] = upos[2]
+						if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+							var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
+							if bridge:
+								entry["command"] = String(bridge.command)
 				alive_list.append(entry)
 
 	# Get deaths that happened while offline
@@ -701,8 +706,9 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	npc_id = result["npc_id"]
 	ship_id = StringName(ship_data.get("ship_id", ""))
 
-	# Register as fleet NPC for tracking
+	# Register as fleet NPC for tracking (include command for persistence)
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
+	_fleet_npcs[npc_id]["command"] = String(cmd)
 
 	# Build spawn data for broadcast
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
@@ -767,7 +773,37 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 	NetworkManager._rpc_fleet_retrieve_confirmed.rpc_id(sender_pid, fleet_index)
 
 
-## Server handles command change request from a client (or host).
+## Server-side: a fleet NPC autonomously docked at a station (return_to_station complete).
+## Called by FleetAIBridge when the NPC enters the bay. Cleans up and notifies owner if online.
+func handle_fleet_npc_self_docked(npc_id: StringName, fleet_index: int) -> void:
+	if not _active:
+		return
+	if not _fleet_npcs.has(npc_id):
+		return
+
+	var fleet_info: Dictionary = _fleet_npcs[npc_id]
+	var owner_pid: int = fleet_info.get("owner_pid", -1)
+	var sys_id: int = GameManager.current_system_id_safe()
+
+	# Despawn the NPC node
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(npc_id)
+		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			EntityRegistry.unregister(String(npc_id))
+			lod_data.node_ref.queue_free()
+		lod_mgr.unregister_ship(npc_id)
+
+	unregister_npc(npc_id)
+	_unregister_fleet_npc(npc_id)
+
+	# Notify owner if online
+	if owner_pid > 0 and owner_pid in multiplayer.get_peers():
+		_broadcast_fleet_event_retrieve(owner_pid, fleet_index, npc_id, sys_id)
+		NetworkManager._rpc_fleet_retrieve_confirmed.rpc_id(owner_pid, fleet_index)
+
+
+## Server handles command change request from a client.
 func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
 	if not _active:
 		return
@@ -804,6 +840,10 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 					npc.add_child(mining_behavior)
 			elif existing_mining:
 				existing_mining.queue_free()
+
+	# Track command in fleet NPC dict for backend persistence
+	if _fleet_npcs.has(npc_id):
+		_fleet_npcs[npc_id]["command"] = String(cmd)
 
 	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
 
@@ -1477,6 +1517,13 @@ func _sync_fleet_to_backend() -> void:
 		if lod_data == null or lod_data.is_dead:
 			continue
 		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
+		# Get command from live bridge (preferred) or stored dict (fallback)
+		var cmd: String = fleet_info.get("command", "")
+		if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
+			if bridge:
+				cmd = String(bridge.command)
+				fleet_info["command"] = cmd  # Keep dict in sync
 		updates.append({
 			"player_id": uuid,
 			"fleet_index": fleet_info.get("fleet_index", -1),
@@ -1485,6 +1532,7 @@ func _sync_fleet_to_backend() -> void:
 			"pos_z": upos[2],
 			"hull_ratio": lod_data.hull_ratio,
 			"shield_ratio": lod_data.shield_ratio,
+			"command": cmd,
 		})
 
 	if updates.is_empty():
@@ -1529,7 +1577,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		var pos_z: float = float(ship_data.get("pos_z", 0.0))
 		var hull: float = float(ship_data.get("hull_ratio", 1.0))
 		var shield: float = float(ship_data.get("shield_ratio", 1.0))
-		var _command: String = ship_data.get("command", "")
+		var command: String = ship_data.get("command", "")
 		var faction: StringName = &"player_fleet"
 
 		# Register as data-only NPC (will get a real node when a player enters the system)
@@ -1537,7 +1585,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 
 		# Register in NPC authority
 		register_npc(npc_id, system_id, StringName(ship_id), faction)
-		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index }
+		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index, "command": command }
 		if not _fleet_npcs_by_owner.has(player_id):
 			_fleet_npcs_by_owner[player_id] = []
 		_fleet_npcs_by_owner[player_id].append(npc_id)

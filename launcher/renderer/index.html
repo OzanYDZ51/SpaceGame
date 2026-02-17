@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Starfield background -->
+  <canvas id="starfield"></canvas>
+
   <!-- Custom titlebar -->
   <div class="titlebar">
     <span class="titlebar-title">IMPERION ONLINE LAUNCHER</span>
@@ -70,7 +73,52 @@
       <!-- User bar -->
       <div class="user-bar">
         <span class="user-name" id="user-display"></span>
-        <a href="#" class="logout-link" id="btn-logout">Deconnexion</a>
+        <div class="user-bar-actions">
+          <button class="settings-gear" id="btn-settings" title="Parametres">&#x2699;</button>
+          <a href="#" class="logout-link" id="btn-logout">Deconnexion</a>
+        </div>
+      </div>
+
+      <!-- Settings panel (collapsible) -->
+      <div class="settings-panel" id="settings-panel" style="display: none;">
+        <div class="settings-row">
+          <span class="settings-label">AFFICHAGE</span>
+          <select class="settings-select" id="setting-display">
+            <option value="windowed">Fenetre</option>
+            <option value="fullscreen">Plein ecran</option>
+            <option value="borderless">Sans bordures</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">RESOLUTION</span>
+          <select class="settings-select" id="setting-resolution">
+            <option value="auto">Auto</option>
+            <option value="1920x1080">1920x1080</option>
+            <option value="2560x1440">2560x1440</option>
+            <option value="3840x2160">3840x2160</option>
+            <option value="1280x720">1280x720</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">QUALITE</span>
+          <select class="settings-select" id="setting-quality">
+            <option value="low">Basse</option>
+            <option value="medium">Moyenne</option>
+            <option value="high" selected>Haute</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Player profile panel -->
+      <div class="profile-panel" id="profile-panel" style="display: none;">
+        <div class="profile-credits-row">
+          <span class="profile-credits-label">CREDITS</span>
+          <span class="profile-credits-value" id="profile-credits">--</span>
+        </div>
+        <div class="profile-corp" id="profile-corp" style="display: none;">
+          <span class="profile-corp-tag" id="profile-corp-tag"></span>
+          <span class="profile-corp-name" id="profile-corp-name"></span>
+        </div>
       </div>
 
       <!-- Status panel -->
@@ -109,8 +157,22 @@
       <!-- Action buttons -->
       <div class="button-row">
         <button class="btn btn-primary" id="btn-play" disabled>JOUER</button>
+        <button class="btn btn-secondary" id="btn-verify" style="display: none;">VERIFIER</button>
         <button class="btn btn-danger" id="btn-uninstall" style="display: none;">DESINSTALLER</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Server status footer -->
+  <div class="server-footer" id="server-footer">
+    <div class="server-status">
+      <span class="server-status-dot offline" id="server-dot"></span>
+      <span class="server-status-text" id="server-status-text">SERVEUR</span>
+    </div>
+    <div class="server-stats">
+      <span class="server-stat" id="server-online" title="En ligne">&#x25CF; <span>--</span> en ligne</span>
+      <span class="server-stat" id="server-total" title="Total inscrits">&#x25CB; <span>--</span> joueurs</span>
+      <span class="server-stat" id="server-corps" title="Corporations">&#x2726; <span>--</span> corps</span>
     </div>
   </div>
 

@@ -35,9 +35,8 @@ func clear_all_npcs() -> void:
 
 
 func spawn_system_encounters(danger_level: int, system_data) -> void:
-	# In multiplayer, only the server spawns NPCs. Clients receive them via NpcAuthority sync.
-	# In offline/single-player, is_server() is false but we still need to spawn NPCs.
-	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+	# Only the server spawns NPCs. Clients receive them via NpcAuthority sync.
+	if not NetworkManager.is_server():
 		return
 
 	# During initial load, NetworkSyncManager (and NpcAuthority) don't exist yet.
