@@ -167,11 +167,22 @@ window.launcher.onProgress(({ phase, received, total }) => {
 
 window.launcher.onStatus((msg) => setStatus(msg));
 
-// When game exits, re-enable the play button
+// When launcher is relaunched (second instance), re-check for updates
+window.launcher.onRecheckUpdates(() => {
+  if (isLoggedIn && !isUpdating) {
+    checkUpdatesAndPrepare();
+  }
+});
+
+// When game exits, re-enable play button and re-check for updates
 window.launcher.onGameExited(() => {
   btnPlay.disabled = false;
   btnPlay.textContent = "JOUER";
   btnPlay.classList.add("ready");
+  // A new version may have been released while playing
+  if (isLoggedIn && !isUpdating) {
+    checkUpdatesAndPrepare();
+  }
 });
 
 // =========================================================================
@@ -429,13 +440,14 @@ btnVerify.addEventListener("click", async () => {
 let isUpdating = false;
 let isLoggedIn = false;
 
-async function checkUpdatesAndPrepare() {
+async function checkUpdatesAndPrepare(cachedInfo) {
   setStatus("Verification des mises a jour...");
 
   // Load changelog in parallel
   loadChangelog();
 
-  const info = await window.launcher.checkUpdates();
+  // Re-use cached info from init() if available, otherwise fetch fresh
+  const info = cachedInfo || await window.launcher.checkUpdates();
 
   launcherVersionEl.textContent = "v" + info.launcherVersion;
   gameVersionEl.textContent = info.gameVersion ? "v" + info.gameVersion : "Non installe";
@@ -598,15 +610,17 @@ document.getElementById("btn-close").addEventListener("click", () => window.laun
 // =========================================================================
 
 async function init() {
-  // Step 1: Check if the launcher itself needs an update (before login)
+  // Step 1: Check updates (single call — handles both launcher and game)
+  let cachedUpdateInfo = null;
   try {
-    const info = await window.launcher.checkUpdates();
-    launcherVersionEl.textContent = "v" + info.launcherVersion;
+    cachedUpdateInfo = await window.launcher.checkUpdates();
+    launcherVersionEl.textContent = "v" + cachedUpdateInfo.launcherVersion;
 
-    if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
+    // Launcher self-update must happen before anything else
+    if (cachedUpdateInfo.launcherNeedsUpdate && cachedUpdateInfo.remote?.launcher?.download_url) {
       setStatus("Mise a jour du launcher...");
       showProgress("MISE A JOUR DU LAUNCHER");
-      const launcherRes = await window.launcher.updateLauncher(info.remote.launcher.download_url);
+      const launcherRes = await window.launcher.updateLauncher(cachedUpdateInfo.remote.launcher.download_url);
       if (launcherRes && !launcherRes.success) {
         hideProgress();
         setStatus("Erreur mise a jour: " + (launcherRes.error || "echec"));
@@ -626,7 +640,8 @@ async function init() {
     const refreshResult = await window.launcher.refreshToken();
     if (refreshResult.success) {
       showMain(auth.username);
-      checkUpdatesAndPrepare();
+      // Re-use cached update info to avoid a second /api/v1/updates call
+      checkUpdatesAndPrepare(cachedUpdateInfo);
       return;
     }
   }

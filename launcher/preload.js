@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld("launcher", {
   onProgress: (cb) => ipcRenderer.on("progress", (_, data) => cb(data)),
   onStatus: (cb) => ipcRenderer.on("status", (_, msg) => cb(msg)),
   onGameExited: (cb) => ipcRenderer.on("game-exited", () => cb()),
+  onRecheckUpdates: (cb) => ipcRenderer.on("recheck-updates", () => cb()),
 
   // Window controls
   windowMinimize: () => ipcRenderer.send("window-minimize"),

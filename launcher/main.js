@@ -107,11 +107,27 @@ function createTray() {
   return updateTrayMenu;
 }
 
-app.whenReady().then(() => {
-  ensureDirs();
-  createWindow();
-  createTray();
-});
+// Single-instance lock — if the launcher is already running, focus the existing window
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+      // Notify renderer to re-check updates
+      mainWindow.webContents.send("status", "Verification des mises a jour...");
+      mainWindow.webContents.send("recheck-updates");
+    }
+  });
+
+  app.whenReady().then(() => {
+    ensureDirs();
+    createWindow();
+    createTray();
+  });
+}
 
 app.on("window-all-closed", () => {
   if (!isGameRunning) {
