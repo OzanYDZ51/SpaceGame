@@ -53,6 +53,7 @@ func _send_event(data: Dictionary) -> void:
 		return
 	var server_key := _get_server_key()
 	if server_key == "":
+		print("[EventReporter] No server key — skipping event")
 		return
 	var url: String = Constants.BACKEND_URL_PROD if Constants.GAME_VERSION != "dev" else Constants.BACKEND_URL_DEV
 	url += "/api/v1/server/event"
@@ -63,12 +64,17 @@ func _send_event(data: Dictionary) -> void:
 	])
 
 	var json_str := JSON.stringify(data)
+	print("[EventReporter] Sending %s to %s" % [data.get("type", "?"), url])
 	var http := HTTPRequest.new()
 	add_child(http)
 	http.request(url, headers, HTTPClient.METHOD_POST, json_str)
-	# Fire and forget — clean up after timeout
+	# Fire and forget — clean up after timeout, log errors
 	http.timeout = 10.0
-	http.request_completed.connect(func(_result, _code, _headers, _body): http.queue_free())
+	http.request_completed.connect(func(result, code, _hdrs, body):
+		if code != 200:
+			print("[EventReporter] HTTP %d (result=%d): %s" % [code, result, body.get_string_from_utf8()])
+		http.queue_free()
+	)
 
 
 func _get_server_key() -> String:

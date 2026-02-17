@@ -913,6 +913,46 @@ func _rpc_player_died(death_pos: Array) -> void:
 			continue
 		_rpc_receive_player_died.rpc_id(pid, sender_id, death_pos)
 
+	# Report PvP kill to Discord if a player attacker was recorded recently (< 15s)
+	_report_pvp_kill(sender_id, state)
+
+func _report_pvp_kill(victim_pid: int, victim_state) -> void:
+	if not _pvp_last_attacker.has(victim_pid):
+		return
+	var info: Dictionary = _pvp_last_attacker[victim_pid]
+	_pvp_last_attacker.erase(victim_pid)
+	# Only count if the last hit was within 15 seconds
+	var elapsed: float = Time.get_unix_time_from_system() - info["time"]
+	if elapsed > 15.0:
+		return
+	var attacker_pid: int = info["attacker_pid"]
+	var weapon_name: String = info["weapon"]
+
+	var reporter = GameManager.get_node_or_null("EventReporter")
+	if reporter == null:
+		return
+
+	var killer_name: String = "Pilote"
+	if peers.has(attacker_pid):
+		killer_name = peers[attacker_pid].player_name
+	var victim_name: String = "Pilote"
+	if victim_state:
+		victim_name = victim_state.player_name
+
+	var weapon_display: String = weapon_name
+	if weapon_name != "":
+		var w = WeaponRegistry.get_weapon(StringName(weapon_name))
+		if w:
+			weapon_display = String(w.weapon_name) if w.weapon_name != &"" else weapon_name
+
+	var system_name: String = "Unknown"
+	if GameManager._galaxy:
+		system_name = GameManager._galaxy.get_system_name(victim_state.system_id)
+
+	print("[PvP] Kill report: %s -> %s (%s) in %s" % [killer_name, victim_name, weapon_display, system_name])
+	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, victim_state.system_id)
+
+
 ## Server -> Client: A player has died (reliable notification).
 @rpc("authority", "reliable")
 func _rpc_receive_player_died(pid: int, death_pos: Array) -> void:
