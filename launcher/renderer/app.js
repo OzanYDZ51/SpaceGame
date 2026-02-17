@@ -524,10 +524,33 @@ async function checkUpdatesAndPrepare() {
   btnVerify.style.display = "block";
 }
 
-// Launch — minimize to tray instead of closing
+// Launch — verify auth token then launch game
 btnPlay.addEventListener("click", async () => {
   btnPlay.disabled = true;
   btnPlay.classList.remove("ready");
+  btnPlay.textContent = "VERIFICATION...";
+  setStatus("Verification de la session...");
+
+  // Pre-flight: verify we can reach the server and have valid auth
+  const authCheck = await window.launcher.verifyAuth();
+  if (!authCheck.success) {
+    setStatus("Session invalide — reconnectez-vous");
+    btnPlay.disabled = false;
+    btnPlay.textContent = "JOUER";
+    btnPlay.classList.add("ready");
+    // Force re-login
+    await window.launcher.logout();
+    isLoggedIn = false;
+    btnPlay.disabled = true;
+    btnPlay.classList.remove("ready");
+    btnUninstall.style.display = "none";
+    btnVerify.style.display = "none";
+    document.getElementById("auth-section").style.display = "block";
+    document.getElementById("main-section").style.display = "none";
+    logoArea.classList.remove("compact");
+    return;
+  }
+
   btnPlay.textContent = "EN COURS...";
   setStatus("Lancement...");
 

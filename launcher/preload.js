@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld("launcher", {
 
   // Verify
   verifyGame: () => ipcRenderer.invoke("verify-game"),
+  verifyAuth: () => ipcRenderer.invoke("verify-auth"),
 
   // Launch
   launchGame: () => ipcRenderer.invoke("launch-game"),

@@ -682,6 +682,31 @@ ipcMain.handle("verify-game", async () => {
 });
 
 // =========================================================================
+// IPC — VERIFY AUTH (pre-flight check before launch)
+// =========================================================================
+
+ipcMain.handle("verify-auth", async () => {
+  const auth = getSavedAuth();
+  if (!auth?.refresh_token) return { success: false, error: "no_refresh_token" };
+
+  try {
+    // Try to refresh — this validates the session is still alive
+    const res = await httpRequest("POST", `${BACKEND_URL}/api/v1/auth/refresh`, {
+      refresh_token: auth.refresh_token,
+    });
+    if (res.status === 200 && res.data?.access_token) {
+      auth.access_token = res.data.access_token;
+      if (res.data.refresh_token) auth.refresh_token = res.data.refresh_token;
+      saveAuth(auth);
+      return { success: true };
+    }
+    return { success: false, error: "refresh_failed_" + res.status };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// =========================================================================
 // IPC — LAUNCH (with tray mode + Discord RPC)
 // =========================================================================
 
