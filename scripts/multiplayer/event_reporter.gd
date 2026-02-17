@@ -55,7 +55,7 @@ func _send_event(data: Dictionary) -> void:
 	if server_key == "":
 		print("[EventReporter] No server key — skipping event")
 		return
-	var url: String = Constants.BACKEND_URL_PROD if Constants.GAME_VERSION != "dev" else Constants.BACKEND_URL_DEV
+	var url: String = Constants.BACKEND_URL
 	url += "/api/v1/server/event"
 
 	var headers := PackedStringArray([

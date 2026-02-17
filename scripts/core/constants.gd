@@ -103,10 +103,8 @@ const FTL_CHARGE_TIME: float = 10.0      # Seconds to spool FTL drive
 const JUMP_GATE_TRANSIT_TIME: float = 5.0 # Seconds for gate transition
 
 # --- Backend (Go + PostgreSQL) ---
-const BACKEND_URL_DEV: String = "http://localhost:3000"
-const BACKEND_URL_PROD: String = "https://backend-production-05a9.up.railway.app"
-const BACKEND_WS_DEV: String = "ws://localhost:3000/ws"
-const BACKEND_WS_PROD: String = "wss://backend-production-05a9.up.railway.app/ws"
+const BACKEND_URL: String = "https://backend-production-05a9.up.railway.app"
+const BACKEND_WS_URL: String = "wss://backend-production-05a9.up.railway.app/ws"
 
 # --- Network (MMORPG) ---
 const NET_DEFAULT_PORT: int = 7777
@@ -114,7 +112,6 @@ const NET_MAX_PLAYERS: int = 128          # Per system server instance
 const NET_TICK_RATE: float = 20.0         # Position updates per second
 const NET_INTERPOLATION_DELAY: float = 0.1  # 100ms buffer for smooth interpolation
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
-const NET_PUBLIC_IP: String = "92.184.140.5"  # Host's public IPv4 (dev, friend's machine)
 const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 
 # --- Discord Rich Presence ---

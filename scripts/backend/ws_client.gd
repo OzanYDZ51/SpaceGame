@@ -40,11 +40,7 @@ func connect_to_backend() -> void:
 	if not AuthManager.is_authenticated:
 		return
 
-	var ws_url: String
-	if Constants.BACKEND_WS_PROD != "":
-		ws_url = Constants.BACKEND_WS_PROD
-	else:
-		ws_url = Constants.BACKEND_WS_DEV
+	var ws_url: String = Constants.BACKEND_WS_URL
 
 	ws_url += "?token=" + AuthManager.get_access_token()
 

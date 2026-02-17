@@ -93,13 +93,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	if NetworkManager.is_server():
 		NetworkManager.start_dedicated_server(port)
 	else:
-		if Constants.NET_GAME_SERVER_URL != "":
-			NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
-		else:
-			if NetworkManager.is_local_server_running(port):
-				NetworkManager.connect_to_server("ws://127.0.0.1:%d" % port)
-			else:
-				NetworkManager.connect_to_server("ws://%s:%d" % [Constants.NET_PUBLIC_IP, port])
+		NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
 
 
 # =============================================================================

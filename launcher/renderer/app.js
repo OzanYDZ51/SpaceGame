@@ -474,8 +474,16 @@ async function checkUpdatesAndPrepare() {
     btnPlay.classList.remove("ready");
     setStatus("Mise a jour du launcher...");
     showProgress("MISE A JOUR DU LAUNCHER");
-    await window.launcher.updateLauncher(info.remote.launcher.download_url);
-    setStatus("Redemarrage...");
+    const launcherRes = await window.launcher.updateLauncher(info.remote.launcher.download_url);
+    if (launcherRes && !launcherRes.success) {
+      hideProgress();
+      setStatus("Erreur mise a jour: " + (launcherRes.error || "echec"));
+      isUpdating = false;
+      btnPlay.disabled = false;
+      btnPlay.classList.add("ready");
+    } else {
+      setStatus("Redemarrage...");
+    }
     return;
   }
 
@@ -598,9 +606,15 @@ async function init() {
     if (info.launcherNeedsUpdate && info.remote?.launcher?.download_url) {
       setStatus("Mise a jour du launcher...");
       showProgress("MISE A JOUR DU LAUNCHER");
-      await window.launcher.updateLauncher(info.remote.launcher.download_url);
-      setStatus("Redemarrage...");
-      return; // Launcher will restart
+      const launcherRes = await window.launcher.updateLauncher(info.remote.launcher.download_url);
+      if (launcherRes && !launcherRes.success) {
+        hideProgress();
+        setStatus("Erreur mise a jour: " + (launcherRes.error || "echec"));
+        // Continue to auth flow despite update failure
+      } else {
+        setStatus("Redemarrage...");
+        return; // Launcher will restart
+      }
     }
   } catch {
     // Server unreachable — continue with auth flow anyway

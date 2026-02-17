@@ -13,9 +13,7 @@ var _retry_delays := [2.0, 5.0, 10.0]
 
 
 func _get_base_url() -> String:
-	if Constants.BACKEND_URL_PROD != "":
-		return Constants.BACKEND_URL_PROD
-	return Constants.BACKEND_URL_DEV
+	return Constants.BACKEND_URL
 
 
 func _get_server_key() -> String:

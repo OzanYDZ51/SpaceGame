@@ -205,7 +205,7 @@ func _on_submit() -> void:
 		"screenshot_b64": screenshot_b64,
 	}
 
-	var url: String = Constants.BACKEND_URL_PROD if Constants.GAME_VERSION != "dev" else Constants.BACKEND_URL_DEV
+	var url: String = Constants.BACKEND_URL
 	url += "/api/v1/player/bug-report"
 
 	var http := HTTPRequest.new()

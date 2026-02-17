@@ -189,9 +189,7 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 
 
 ## Connect to the Railway server as a client.
-## address can be:
-##   - A full URL: "ws://127.0.0.1:7777" or "wss://imperion.up.railway.app"
-##   - An IP/hostname: "127.0.0.1" (port appended as ws://ip:port)
+## address: A full WebSocket URL (e.g., "wss://gameserver-production-49ba.up.railway.app")
 func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	if connection_state != ConnectionState.DISCONNECTED:
 		push_warning("NetworkManager: Already connected or connecting")
@@ -255,20 +253,6 @@ func get_peers_in_system(system_id: int) -> Array[int]:
 	return result
 
 
-## Get the machine's local LAN IP (for sharing with friends).
-func get_local_ip() -> String:
-	var addrs =IP.get_local_addresses()
-	for addr in addrs:
-		# Filter out loopback and IPv6, prefer 192.168.x.x or 10.x.x.x
-		if addr.begins_with("192.168.") or addr.begins_with("10.") or addr.begins_with("172."):
-			return addr
-	# Fallback
-	for addr in addrs:
-		if addr != "127.0.0.1" and ":" not in addr:
-			return addr
-	return "127.0.0.1"
-
-
 ## Get the UUID for a peer_id (server-side).
 func get_peer_uuid(peer_id: int) -> String:
 	return _peer_to_uuid.get(peer_id, "")
@@ -277,17 +261,6 @@ func get_peer_uuid(peer_id: int) -> String:
 ## Get the peer_id for a UUID (server-side). Returns -1 if offline.
 func get_uuid_peer(uuid: String) -> int:
 	return _uuid_to_peer.get(uuid, -1)
-
-
-## Check if a server is already running on localhost (same machine).
-## Tries to bind the same port — if it fails, the server is using it.
-func is_local_server_running(port: int = Constants.NET_DEFAULT_PORT) -> bool:
-	var test =TCPServer.new()
-	var err =test.listen(port)
-	if err != OK:
-		return true  # Port in use → local server running
-	test.stop()
-	return false
 
 
 # =========================================================================
@@ -376,10 +349,8 @@ func _attempt_reconnect() -> void:
 		return
 	if _server_url != "":
 		connect_to_server(_server_url)
-	elif Constants.NET_GAME_SERVER_URL != "":
-		connect_to_server(Constants.NET_GAME_SERVER_URL)
 	else:
-		connect_to_server("127.0.0.1", _server_port)
+		connect_to_server(Constants.NET_GAME_SERVER_URL)
 
 
 # =========================================================================

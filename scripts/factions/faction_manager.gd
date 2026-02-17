@@ -68,10 +68,6 @@ func get_all_factions() -> Array[FactionResource]:
 
 ## Load all faction .tres files from the factions data directory.
 func _load_factions() -> void:
-	if not DirAccess.dir_exists_absolute(FACTIONS_DIR):
-		push_warning("FactionManager: Factions directory not found: %s" % FACTIONS_DIR)
-		return
-
 	var dir: DirAccess = DirAccess.open(FACTIONS_DIR)
 	if dir == null:
 		push_warning("FactionManager: Cannot open factions directory: %s" % FACTIONS_DIR)
@@ -80,16 +76,20 @@ func _load_factions() -> void:
 	dir.list_dir_begin()
 	var file_name: String = dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var path: String = FACTIONS_DIR + file_name
-			if not ResourceLoader.exists(path):
-				file_name = dir.get_next()
-				continue
-			var res: Resource = ResourceLoader.load(path)
-			if res is FactionResource:
-				register_faction(res as FactionResource)
-			else:
-				push_warning("FactionManager: %s is not a FactionResource" % path)
+		if not dir.current_is_dir():
+			# Handle both editor (.tres) and exported (.tres.remap) builds
+			var load_path: String = ""
+			if file_name.ends_with(".tres"):
+				load_path = FACTIONS_DIR + file_name
+			elif file_name.ends_with(".tres.remap"):
+				load_path = FACTIONS_DIR + file_name.replace(".remap", "")
+
+			if load_path != "":
+				var res: Resource = ResourceLoader.load(load_path)
+				if res is FactionResource:
+					register_faction(res as FactionResource)
+				elif res != null:
+					push_warning("FactionManager: %s is not a FactionResource" % load_path)
 		file_name = dir.get_next()
 	dir.list_dir_end()
 

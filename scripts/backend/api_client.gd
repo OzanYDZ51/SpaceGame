@@ -17,9 +17,7 @@ var _pending: int = 0
 
 var base_url: String:
 	get:
-		if Constants.BACKEND_URL_PROD != "":
-			return Constants.BACKEND_URL_PROD
-		return Constants.BACKEND_URL_DEV
+		return Constants.BACKEND_URL
 
 
 func _ready() -> void:

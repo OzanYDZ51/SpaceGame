@@ -12,7 +12,6 @@ extends UIScreen
 var _player_list: UIScrollList = null
 var _status_text: String = ""
 var _status_color: Color = UITheme.ACCENT
-var _local_ip: String = "..."
 
 const CONTENT_TOP: float = 70.0
 const PANEL_WIDTH: float = 480.0
@@ -23,7 +22,6 @@ func _ready() -> void:
 	screen_mode = ScreenMode.FULLSCREEN
 	super._ready()
 
-	_local_ip = NetworkManager.get_local_ip()
 	_build_ui()
 
 	NetworkManager.connection_succeeded.connect(_on_connection_changed)
@@ -42,7 +40,6 @@ func _build_ui() -> void:
 
 
 func _on_opened() -> void:
-	_local_ip = NetworkManager.get_local_ip()
 	_update_status()
 	_refresh_player_list()
 
@@ -77,18 +74,14 @@ func _draw() -> void:
 	y += 20
 
 	# --- Mode & IP info ---
-	var mode_label ="PRODUCTION" if Constants.NET_GAME_SERVER_URL != "" else "DÉVELOPPEMENT"
 	if NetworkManager.is_connected_to_server():
 		var server_text ="CONNECTÉ À %s" % NetworkManager._server_url
 		draw_string(font, Vector2(0, y), server_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_HEADER, UITheme.ACCENT)
 		y += 18
-		var info_text ="MODE : %s  |  Peer ID : %d" % [mode_label, NetworkManager.local_peer_id]
+		var info_text ="Peer ID : %d" % NetworkManager.local_peer_id
 		draw_string(font, Vector2(0, y), info_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	else:
-		var target_url =Constants.NET_GAME_SERVER_URL if Constants.NET_GAME_SERVER_URL != "" else "ws://%s:%d" % [Constants.NET_PUBLIC_IP, Constants.NET_DEFAULT_PORT]
-		draw_string(font, Vector2(0, y), "Connexion à %s..." % target_url, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
-		y += 16
-		draw_string(font, Vector2(0, y), "MODE : %s" % mode_label, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(0, y), "Connexion à %s..." % Constants.NET_GAME_SERVER_URL, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 
 	# --- Player list header ---
 	var list_header_y: float = _player_list.position.y - 20

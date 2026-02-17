@@ -434,6 +434,21 @@ ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
       mainWindow.webContents.send("progress", { phase: "launcher", received, total });
   });
 
+  // Verify the downloaded file is a valid PE executable (starts with "MZ")
+  try {
+    const fd = fs.openSync(installerPath, "r");
+    const buf = Buffer.alloc(2);
+    fs.readSync(fd, buf, 0, 2, 0);
+    fs.closeSync(fd);
+    const fileSize = fs.statSync(installerPath).size;
+    if (buf.toString("ascii") !== "MZ" || fileSize < 100000) {
+      fs.unlinkSync(installerPath);
+      return { success: false, error: "Fichier telecharge corrompu — reessayez" };
+    }
+  } catch (err) {
+    return { success: false, error: "Verification echouee: " + err.message };
+  }
+
   // Show status before closing
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("status", "Installation en cours, le launcher va redemarrer...");
