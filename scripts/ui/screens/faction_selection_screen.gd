@@ -207,46 +207,7 @@ func _draw_faction_card(rect: Rect2, fac: FactionResource, is_selected: bool, is
 
 
 func _draw_faction_emblem(center: Vector2, radius: float, col: Color, faction_id: StringName) -> void:
-	match faction_id:
-		&"nova_terra":
-			# Shield / star shape — federation symbol
-			var pts: PackedVector2Array = []
-			for i in 6:
-				var angle: float = -PI * 0.5 + TAU * float(i) / 6.0
-				var r: float = radius if i % 2 == 0 else radius * 0.5
-				pts.append(center + Vector2(cos(angle) * r, sin(angle) * r))
-			draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.2))
-			pts.append(pts[0])
-			draw_polyline(pts, col, 2.0)
-			# Inner circle
-			_draw_circle_outline(center, radius * 0.35, col, 16)
-		&"kharsis":
-			# Angular / aggressive — dominion symbol
-			var pts: PackedVector2Array = [
-				center + Vector2(0, -radius),
-				center + Vector2(radius * 0.8, -radius * 0.3),
-				center + Vector2(radius * 0.5, radius * 0.8),
-				center + Vector2(0, radius * 0.4),
-				center + Vector2(-radius * 0.5, radius * 0.8),
-				center + Vector2(-radius * 0.8, -radius * 0.3),
-			]
-			draw_colored_polygon(pts, Color(col.r, col.g, col.b, 0.2))
-			pts.append(pts[0])
-			draw_polyline(pts, col, 2.0)
-			# Inner cross
-			draw_line(center + Vector2(0, -radius * 0.5), center + Vector2(0, radius * 0.3), col, 2.0)
-			draw_line(center + Vector2(-radius * 0.4, 0), center + Vector2(radius * 0.4, 0), col, 2.0)
-		_:
-			# Default circle
-			_draw_circle_outline(center, radius, col, 24)
-
-
-func _draw_circle_outline(center: Vector2, radius: float, col: Color, segments: int) -> void:
-	var pts: PackedVector2Array = []
-	for i in segments + 1:
-		var angle: float = TAU * float(i) / float(segments)
-		pts.append(center + Vector2(cos(angle) * radius, sin(angle) * radius))
-	draw_polyline(pts, col, 1.5)
+	HudFactionPanel._draw_faction_emblem(self, center, radius, col, faction_id, true)
 
 
 func _wrap_text(text: String, font: Font, fsize: int, max_width: float) -> PackedStringArray:

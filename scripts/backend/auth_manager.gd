@@ -80,16 +80,9 @@ func set_token_from_launcher(access_token: String, refresh_token: String = "") -
 	# Atomically update network display name so it's never stale
 	if username != "":
 		NetworkManager.local_player_name = username
-	# Refresh token: prefer CLI arg, fall back to saved file, then launcher's auth.json
+	# Refresh token from CLI
 	if refresh_token != "":
 		_refresh_token = refresh_token
-	else:
-		var config := ConfigFile.new()
-		if config.load(_token_file) == OK:
-			_refresh_token = config.get_value("auth", "refresh_token", "")
-		# Fall back to launcher's auth.json (same machine)
-		if _refresh_token == "":
-			_refresh_token = _read_launcher_refresh_token()
 	# Save refresh token to Godot's auth.cfg so future sessions can use it
 	if _refresh_token != "":
 		_save_tokens()
@@ -251,21 +244,6 @@ func _refresh_now() -> void:
 		push_warning("AuthManager: Immediate token refresh failed — using existing token")
 		_start_refresh_timer()
 
-
-## Try to read the refresh token from the launcher's auth.json file.
-func _read_launcher_refresh_token() -> String:
-	var launcher_auth := OS.get_environment("LOCALAPPDATA").path_join("ImperionOnline").path_join("auth.json")
-	if not FileAccess.file_exists(launcher_auth):
-		return ""
-	var f := FileAccess.open(launcher_auth, FileAccess.READ)
-	if f == null:
-		return ""
-	var text := f.get_as_text()
-	f.close()
-	var parsed := JSON.new()
-	if parsed.parse(text) == OK and parsed.data is Dictionary:
-		return str(parsed.data.get("refresh_token", ""))
-	return ""
 
 
 func _parse_jwt_claims(token: String) -> void:
