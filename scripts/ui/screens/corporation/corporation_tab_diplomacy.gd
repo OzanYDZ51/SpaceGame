@@ -72,6 +72,22 @@ func refresh(cm) -> void:
 	if _cm == null or not _cm.has_corporation():
 		return
 
+	# Fetch all corporations and merge with existing diplomacy data
+	var all_corps: Array = await _cm.fetch_all_corporations()
+	var own_id: String = _cm.corporation_data.corporation_id if _cm.corporation_data else ""
+	for c in all_corps:
+		var cid: String = str(c.get("id", ""))
+		if cid == "" or cid == own_id:
+			continue
+		# Add to diplomacy dict if not already present (default NEUTRE)
+		if not _cm.diplomacy.has(cid):
+			_cm.diplomacy[cid] = {
+				"name": str(c.get("name", cid)),
+				"tag": str(c.get("tag", "")),
+				"relation": "NEUTRE",
+				"since": 0,
+			}
+
 	_corporation_list.items.clear()
 	for corporation_id in _cm.diplomacy:
 		_corporation_ids.append(corporation_id)

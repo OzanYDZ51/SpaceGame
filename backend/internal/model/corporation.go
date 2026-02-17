@@ -29,14 +29,15 @@ type CorporationRank struct {
 }
 
 type CorporationMember struct {
-	PlayerID      string    `json:"player_id"`
-	Username      string    `json:"username"`
-	CorporationID string    `json:"corporation_id"`
-	RankPriority  int       `json:"rank_priority"`
-	RankName      string    `json:"rank_name,omitempty"`
-	Contribution  int64     `json:"contribution"`
-	JoinedAt      time.Time `json:"joined_at"`
-	IsOnline      bool      `json:"is_online,omitempty"`
+	PlayerID      string     `json:"player_id"`
+	Username      string     `json:"username"`
+	CorporationID string     `json:"corporation_id"`
+	RankPriority  int        `json:"rank_priority"`
+	RankName      string     `json:"rank_name,omitempty"`
+	Contribution  int64      `json:"contribution"`
+	JoinedAt      time.Time  `json:"joined_at"`
+	IsOnline      bool       `json:"is_online,omitempty"`
+	LastOnline    *time.Time `json:"last_online,omitempty"`
 }
 
 type CorporationActivity struct {

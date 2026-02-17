@@ -265,17 +265,24 @@ func withdraw_funds(amount: float) -> bool:
 func set_diplomacy_relation(target_corporation_id: String, relation: String) -> bool:
 	if not player_has_permission(CorporationRank.PERM_DIPLOMACY) or not AuthManager.is_authenticated:
 		return false
-	if not diplomacy.has(target_corporation_id):
-		return false
 
 	var result := await ApiClient.put_async("/api/v1/corporations/%s/diplomacy" % corporation_data.corporation_id, {"target_corporation_id": target_corporation_id, "relation": relation})
 	if result.get("_status_code", 0) != 200:
 		push_warning("CorporationManager: set_diplomacy failed — %s" % result.get("error", "unknown"))
 		return false
 
-	var old_rel: String = diplomacy[target_corporation_id].get("relation", "NEUTRE")
-	diplomacy[target_corporation_id]["relation"] = relation
-	diplomacy[target_corporation_id]["since"] = int(Time.get_unix_time_from_system())
+	var old_rel: String = "NEUTRE"
+	if diplomacy.has(target_corporation_id):
+		old_rel = diplomacy[target_corporation_id].get("relation", "NEUTRE")
+		diplomacy[target_corporation_id]["relation"] = relation
+		diplomacy[target_corporation_id]["since"] = int(Time.get_unix_time_from_system())
+	else:
+		diplomacy[target_corporation_id] = {
+			"name": target_corporation_id,
+			"tag": "",
+			"relation": relation,
+			"since": int(Time.get_unix_time_from_system()),
+		}
 	var cname: String = diplomacy[target_corporation_id].get("name", target_corporation_id)
 	_log_activity(CorporationActivity.EventType.DIPLOMACY, player_member.display_name if player_member else "?", cname, "%s: %s -> %s" % [cname, old_rel, relation])
 	diplomacy_changed.emit(target_corporation_id, relation)
@@ -404,6 +411,10 @@ func search_corporations(query: String) -> Array:
 	return corps
 
 
+func fetch_all_corporations() -> Array:
+	return await search_corporations("")
+
+
 func join_corporation(cid: String) -> bool:
 	if has_corporation() or not AuthManager.is_authenticated:
 		return false
@@ -527,7 +538,11 @@ func _load_corporation_from_api(cid: String) -> void:
 			var joined_str: String = str(md.get("joined_at", ""))
 			if joined_str != "":
 				m.join_timestamp = _parse_iso_timestamp(joined_str)
-			m.last_online_timestamp = m.join_timestamp
+			var last_online_str: String = str(md.get("last_online", ""))
+			if last_online_str != "" and last_online_str != "<null>" and last_online_str != "null":
+				m.last_online_timestamp = _parse_iso_timestamp(last_online_str)
+			else:
+				m.last_online_timestamp = m.join_timestamp
 			members.append(m)
 			if m.player_id == AuthManager.player_id:
 				player_member = m

@@ -153,7 +153,9 @@ func (r *CorporationRepository) RemoveMember(ctx context.Context, playerID strin
 func (r *CorporationRepository) GetMembers(ctx context.Context, corporationID string) ([]*model.CorporationMember, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT cm.player_id, p.username, cm.corporation_id, cm.rank_priority,
-		       COALESCE(cr.rank_name, 'Member'), cm.contribution, cm.joined_at
+		       COALESCE(cr.rank_name, 'Member'), cm.contribution, cm.joined_at,
+		       COALESCE(p.last_seen_at, p.last_login_at),
+		       (p.last_seen_at IS NOT NULL AND p.last_seen_at > NOW() - INTERVAL '2 minutes')
 		FROM corporation_members cm
 		JOIN players p ON cm.player_id = p.id
 		LEFT JOIN corporation_ranks cr ON cr.corporation_id = cm.corporation_id AND cr.priority = cm.rank_priority
@@ -168,7 +170,7 @@ func (r *CorporationRepository) GetMembers(ctx context.Context, corporationID st
 	var members []*model.CorporationMember
 	for rows.Next() {
 		m := &model.CorporationMember{}
-		if err := rows.Scan(&m.PlayerID, &m.Username, &m.CorporationID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt); err != nil {
+		if err := rows.Scan(&m.PlayerID, &m.Username, &m.CorporationID, &m.RankPriority, &m.RankName, &m.Contribution, &m.JoinedAt, &m.LastOnline, &m.IsOnline); err != nil {
 			return nil, err
 		}
 		members = append(members, m)

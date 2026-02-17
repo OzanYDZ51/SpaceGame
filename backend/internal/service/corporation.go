@@ -9,13 +9,14 @@ import (
 )
 
 var (
-	ErrCorporationNotFound     = errors.New("corporation not found")
-	ErrNotCorporationMember    = errors.New("not a corporation member")
-	ErrNotCorporationLeader    = errors.New("insufficient corporation permissions")
-	ErrAlreadyInCorporation    = errors.New("player is already in a corporation")
-	ErrCorporationFull         = errors.New("corporation is full")
-	ErrInvalidAmount           = errors.New("invalid amount")
-	ErrInsufficientFunds       = errors.New("insufficient funds")
+	ErrCorporationNotFound       = errors.New("corporation not found")
+	ErrNotCorporationMember      = errors.New("not a corporation member")
+	ErrNotCorporationLeader      = errors.New("insufficient corporation permissions")
+	ErrAlreadyInCorporation      = errors.New("player is already in a corporation")
+	ErrCorporationFull           = errors.New("corporation is full")
+	ErrCorporationNotRecruiting  = errors.New("corporation is not recruiting")
+	ErrInvalidAmount             = errors.New("invalid amount")
+	ErrInsufficientFunds         = errors.New("insufficient funds")
 )
 
 type CorporationService struct {
@@ -97,8 +98,20 @@ func (s *CorporationService) GetMembers(ctx context.Context, corporationID strin
 }
 
 func (s *CorporationService) AddMember(ctx context.Context, playerID, corporationID, targetPlayerID string) error {
-	if err := s.requireRank(ctx, playerID, corporationID, 2); err != nil {
-		return err
+	// Self-join: player joining themselves — only require corporation to be recruiting
+	if playerID == targetPlayerID {
+		corporation, err := s.corpRepo.GetByID(ctx, corporationID)
+		if err != nil {
+			return ErrCorporationNotFound
+		}
+		if !corporation.IsRecruiting {
+			return ErrCorporationNotRecruiting
+		}
+	} else {
+		// Officer inviting someone else — require rank 2 (Officier)
+		if err := s.requireRank(ctx, playerID, corporationID, 2); err != nil {
+			return err
+		}
 	}
 
 	// Check target not already in a corporation

@@ -2,18 +2,20 @@ package handler
 
 import (
 	"spacegame-backend/internal/model"
+	"spacegame-backend/internal/repository"
 	"spacegame-backend/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type ServerHandler struct {
-	authSvc   *service.AuthService
-	playerSvc *service.PlayerService
+	authSvc    *service.AuthService
+	playerSvc  *service.PlayerService
+	playerRepo *repository.PlayerRepository
 }
 
-func NewServerHandler(authSvc *service.AuthService, playerSvc *service.PlayerService) *ServerHandler {
-	return &ServerHandler{authSvc: authSvc, playerSvc: playerSvc}
+func NewServerHandler(authSvc *service.AuthService, playerSvc *service.PlayerService, playerRepo *repository.PlayerRepository) *ServerHandler {
+	return &ServerHandler{authSvc: authSvc, playerSvc: playerSvc, playerRepo: playerRepo}
 }
 
 // ValidateToken is called by the game server when a player connects via ENet
@@ -53,6 +55,28 @@ func (h *ServerHandler) SaveState(c *fiber.Ctx) error {
 
 	if err := h.playerSvc.SaveState(c.Context(), req.PlayerID, &req.State); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to save state"})
+	}
+
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+// Heartbeat is called periodically by the game server to update last_seen_at for connected players
+func (h *ServerHandler) Heartbeat(c *fiber.Ctx) error {
+	type request struct {
+		PlayerIDs []string `json:"player_ids"`
+	}
+
+	var req request
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	if len(req.PlayerIDs) == 0 {
+		return c.JSON(fiber.Map{"ok": true})
+	}
+
+	if err := h.playerRepo.UpdateLastSeen(c.Context(), req.PlayerIDs); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to update last seen"})
 	}
 
 	return c.JSON(fiber.Map{"ok": true})

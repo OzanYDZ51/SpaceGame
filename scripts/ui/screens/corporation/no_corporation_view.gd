@@ -84,6 +84,19 @@ func refresh(cm) -> void:
 	_status_text = ""
 	_btn_join.visible = false
 	queue_redraw()
+	# Auto-load all corporations so the list is populated on open
+	if _cm != null and AuthManager.is_authenticated:
+		_status_text = "Chargement..."
+		_status_color = UITheme.PRIMARY
+		queue_redraw()
+		_search_results = await _cm.fetch_all_corporations()
+		if _search_results.size() > 0:
+			_status_text = "%d corporation(s) trouvee(s)" % _search_results.size()
+			_status_color = UITheme.ACCENT
+		else:
+			_status_text = "Aucune corporation trouvee"
+			_status_color = UITheme.TEXT_DIM
+		queue_redraw()
 
 
 func _process(_delta: float) -> void:
@@ -205,9 +218,9 @@ func _draw() -> void:
 		var status_col: Color = UITheme.ACCENT if r.get("is_recruiting", false) else UITheme.DANGER
 		draw_string(font, Vector2(col_status_x, ry + 18), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, status_col)
 
-	if _search_results.is_empty():
+	if _search_results.is_empty() and _status_text != "Chargement...":
 		var empty_y: float = table_y + table_h * 0.4
-		draw_string(font, Vector2(rx + m, empty_y), "Cherchez une corporation par nom ou tag", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx + m, empty_y), "Aucune corporation disponible", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# ─── Status text ───────────────────────────────────────────────────
 	if _status_text != "":

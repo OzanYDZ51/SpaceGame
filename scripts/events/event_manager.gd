@@ -218,12 +218,47 @@ func _on_npc_removed(npc_id: StringName) -> void:
 
 func _check_event_timeouts() -> void:
 	var expired_ids: Array[String] = []
+	var completed_ids: Array[String] = []
+
 	for evt in _active_events.values():
-		if evt.is_active and evt.is_expired():
+		if not evt.is_active:
+			continue
+		if evt.is_expired():
 			expired_ids.append(evt.event_id)
+			continue
+		# Safety net: check if leader NPC still exists (handles edge cases)
+		if evt.leader_id != &"" and not _npc_exists(evt.leader_id):
+			evt.npc_ids.erase(evt.leader_id)
+			event_npc_killed.emit(evt.leader_id, evt)
+			completed_ids.append(evt.event_id)
+			continue
+		# Check for dead escorts too
+		var dead_ids: Array[StringName] = []
+		for npc_id in evt.npc_ids:
+			if not _npc_exists(npc_id):
+				dead_ids.append(npc_id)
+		for did in dead_ids:
+			evt.npc_ids.erase(did)
+			event_npc_killed.emit(did, evt)
+		if evt.npc_ids.is_empty():
+			completed_ids.append(evt.event_id)
 
 	for eid in expired_ids:
 		_cleanup_event(eid, false)
+	for eid in completed_ids:
+		_cleanup_event(eid, true)
+
+
+func _npc_exists(npc_id: StringName) -> bool:
+	# Check EntityRegistry (covers both node-based and LOD data-only NPCs)
+	var ent: Dictionary = EntityRegistry.get_entity(String(npc_id))
+	if not ent.is_empty():
+		return true
+	# Check LOD manager directly
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr and lod_mgr._ships.has(npc_id):
+		return true
+	return false
 
 
 func _cleanup_event(event_id: String, was_completed: bool) -> void:

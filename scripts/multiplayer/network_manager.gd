@@ -81,6 +81,9 @@ var _reconnect_attempts: int = 0
 const MAX_RECONNECT_ATTEMPTS: int = 5
 const RECONNECT_DELAY: float = 3.0
 
+# PvP kill attribution: target_pid -> { "attacker_pid": int, "weapon": String, "time": float }
+var _pvp_last_attacker: Dictionary = {}
+
 # Multi-galaxy: routing table (sent from server, used by client for wormhole handoff)
 # Each entry: { "seed": int, "name": String, "url": String }
 var galaxy_servers: Array[Dictionary] = []
@@ -99,6 +102,11 @@ var _chat_buffer: Array = []  # [{s, t, ts, ch, sys}] — server-side ring buffe
 var _chat_backend_client: ServerBackendClient = null
 var _chat_preload_done: bool = false
 
+# Heartbeat: periodically update last_seen_at for connected players (server-side)
+const HEARTBEAT_INTERVAL: float = 60.0
+var _heartbeat_timer: float = 0.0
+var _heartbeat_backend_client: ServerBackendClient = null
+
 
 func _ready() -> void:
 	_is_server = _check_dedicated_server()
@@ -116,6 +124,13 @@ func _process(delta: float) -> void:
 		_reconnect_timer -= delta
 		if _reconnect_timer <= 0.0:
 			_attempt_reconnect()
+
+	# Server-side heartbeat: update last_seen_at for all connected players
+	if _is_server and _heartbeat_backend_client != null:
+		_heartbeat_timer -= delta
+		if _heartbeat_timer <= 0.0:
+			_heartbeat_timer = HEARTBEAT_INTERVAL
+			_send_heartbeat()
 
 
 func _check_dedicated_server() -> bool:
@@ -166,6 +181,8 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 	print("  DEDICATED SERVER LISTENING ON PORT %d" % port)
 	print("========================================")
 	_ensure_chat_backend_client()
+	_ensure_heartbeat_backend_client()
+	_heartbeat_timer = HEARTBEAT_INTERVAL
 	_preload_and_emit_chat_history()
 	connection_succeeded.emit()
 	return OK
@@ -713,6 +730,30 @@ func _ensure_chat_backend_client() -> void:
 	add_child(_chat_backend_client)
 
 
+## Create the backend client for heartbeat (server-side only, idempotent).
+func _ensure_heartbeat_backend_client() -> void:
+	if _heartbeat_backend_client != null:
+		return
+	_heartbeat_backend_client = ServerBackendClient.new()
+	_heartbeat_backend_client.name = "HeartbeatBackendClient"
+	add_child(_heartbeat_backend_client)
+
+
+## Send heartbeat with all connected player UUIDs to the backend.
+func _send_heartbeat() -> void:
+	if _heartbeat_backend_client == null:
+		return
+	var uuids: Array = []
+	for pid in _peer_to_uuid:
+		if peers.has(pid):
+			var uuid: String = _peer_to_uuid[pid]
+			if uuid != "":
+				uuids.append(uuid)
+	if uuids.is_empty():
+		return
+	_heartbeat_backend_client.send_heartbeat(uuids)
+
+
 ## Find a peer ID by player name (server-side only).
 func _find_peer_by_name(player_name: String) -> int:
 	for pid in peers:
@@ -813,6 +854,8 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 		return
 	if damage_val > weapon.damage_per_hit * 1.5:
 		return
+	# Track last attacker for PvP kill attribution
+	_pvp_last_attacker[target_pid] = { "attacker_pid": sender_id, "weapon": weapon_name, "time": Time.get_unix_time_from_system() }
 	# Relay damage to target player
 	_rpc_receive_player_damage.rpc_id(target_pid, sender_id, weapon_name, damage_val, hit_dir)
 	# Broadcast hit effect to observers (exclude attacker + target — they handle it locally)

@@ -131,6 +131,20 @@ func report_fleet_death(player_uuid: String, fleet_index: int) -> bool:
 
 
 # =============================================================================
+# HEARTBEAT
+# =============================================================================
+
+## POST /api/v1/server/heartbeat → update last_seen_at for connected players.
+## Fire-and-forget, 1 retry.
+func send_heartbeat(player_uuids: Array) -> bool:
+	if player_uuids.is_empty():
+		return true
+	var url: String = _get_base_url() + "/api/v1/server/heartbeat"
+	var json_str := JSON.stringify({"player_ids": player_uuids})
+	return await _request_with_retry("POST heartbeat", url, HTTPClient.METHOD_POST, json_str, 1)
+
+
+# =============================================================================
 # CHAT PERSISTENCE
 # =============================================================================
 

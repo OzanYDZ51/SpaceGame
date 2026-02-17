@@ -98,6 +98,7 @@ func _wire_signals(refs: Dictionary) -> void:
 	# Random events
 	event_manager.event_completed.connect(_on_event_completed)
 	event_manager.event_started.connect(_on_event_started)
+	event_manager.event_npc_killed.connect(_on_event_npc_killed)
 
 
 # =============================================================================
@@ -254,6 +255,15 @@ func _apply_poi_rewards(rewards: Dictionary) -> void:
 # =============================================================================
 # EVENT HANDLERS
 # =============================================================================
+
+func _on_event_npc_killed(npc_id: StringName, evt: EventData) -> void:
+	# Count event NPC kills for missions + reputation (same as encounter kills)
+	var npc_faction: StringName = evt.faction
+	var ship_class := _resolve_npc_ship_class(npc_id)
+	var sys_id: int = GameManager.current_system_id_safe()
+	mission_manager.on_npc_killed(npc_faction, sys_id, ship_class)
+	_apply_kill_reputation(npc_faction)
+
 
 func _on_event_started(evt: EventData) -> void:
 	if _notif:

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cd7qaqmrau6bo"
-path.s3tc="res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_Cockpit_Normal.png-1ff37e40e98513852155169e0454f952.s3tc.ctex"
+path.bptc="res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_Cockpit_Normal.png-1ff37e40e98513852155169e0454f952.bptc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -15,7 +15,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/chasseur_lourd_cv_ChasseurLourdCV_Cockpit_Normal.png"
-dest_files=["res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_Cockpit_Normal.png-1ff37e40e98513852155169e0454f952.s3tc.ctex"]
+dest_files=["res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_Cockpit_Normal.png-1ff37e40e98513852155169e0454f952.bptc.ctex"]
 
 [params]
 

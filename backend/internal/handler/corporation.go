@@ -306,6 +306,8 @@ func corporationError(c *fiber.Ctx, err error) error {
 		return c.Status(409).JSON(fiber.Map{"error": "player is already in a corporation"})
 	case errors.Is(err, service.ErrCorporationFull):
 		return c.Status(409).JSON(fiber.Map{"error": "corporation is full"})
+	case errors.Is(err, service.ErrCorporationNotRecruiting):
+		return c.Status(403).JSON(fiber.Map{"error": "corporation is not recruiting"})
 	case errors.Is(err, service.ErrInvalidAmount):
 		return c.Status(400).JSON(fiber.Map{"error": "invalid amount"})
 	case errors.Is(err, service.ErrInsufficientFunds):

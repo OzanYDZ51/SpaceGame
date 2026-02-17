@@ -122,9 +122,10 @@ func main() {
 
 	// Server-to-server (game server key auth) — registered BEFORE protected group
 	server := v1.Group("/server", middleware.ServerKey(cfg.ServerKey))
-	serverH := handler.NewServerHandler(authSvc, playerSvc)
+	serverH := handler.NewServerHandler(authSvc, playerSvc, playerRepo)
 	server.Post("/validate-token", serverH.ValidateToken)
 	server.Post("/save-state", serverH.SaveState)
+	server.Post("/heartbeat", serverH.Heartbeat)
 	// Game server events
 	eventH := handler.NewEventHandler(eventSvc)
 	server.Post("/event", eventH.RecordEvent)

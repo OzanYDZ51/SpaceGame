@@ -338,5 +338,13 @@ func (r *PlayerRepository) GetCorporationID(ctx context.Context, playerID string
 	return corporationID, err
 }
 
+func (r *PlayerRepository) UpdateLastSeen(ctx context.Context, playerIDs []string) error {
+	if len(playerIDs) == 0 {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx, `UPDATE players SET last_seen_at = NOW() WHERE id = ANY($1)`, playerIDs)
+	return err
+}
+
 // Ensure rows interface is consumed even on error
 var _ pgx.Rows = (pgx.Rows)(nil)

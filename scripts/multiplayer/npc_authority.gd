@@ -494,6 +494,7 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: String, system_id: int) -> void:
 	var reporter = GameManager.get_node_or_null("EventReporter")
 	if reporter == null:
+		print("[NpcAuthority] _report_kill_event: EventReporter not found!")
 		return
 
 	# Killer name
@@ -518,6 +519,7 @@ func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: Strin
 	if GameManager._galaxy:
 		system_name = GameManager._galaxy.get_system_name(system_id)
 
+	print("[NpcAuthority] Reporting kill: %s -> %s (%s) in %s" % [killer_name, victim_name, weapon_display, system_name])
 	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, system_id)
 
 

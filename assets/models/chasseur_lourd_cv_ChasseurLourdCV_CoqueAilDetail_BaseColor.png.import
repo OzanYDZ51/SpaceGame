@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbqt321dgvxs7"
-path.s3tc="res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_CoqueAilDetail_BaseColor.png-c9708d4eee2153a5a7620c1f2899fbcc.s3tc.ctex"
+path.bptc="res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_CoqueAilDetail_BaseColor.png-c9708d4eee2153a5a7620c1f2899fbcc.bptc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -15,7 +15,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/chasseur_lourd_cv_ChasseurLourdCV_CoqueAilDetail_BaseColor.png"
-dest_files=["res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_CoqueAilDetail_BaseColor.png-c9708d4eee2153a5a7620c1f2899fbcc.s3tc.ctex"]
+dest_files=["res://.godot/imported/chasseur_lourd_cv_ChasseurLourdCV_CoqueAilDetail_BaseColor.png-c9708d4eee2153a5a7620c1f2899fbcc.bptc.ctex"]
 
 [params]
 
