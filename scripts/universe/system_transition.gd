@@ -123,6 +123,7 @@ func jump_to_system(target_id: int, _from_system_id: int = -1) -> void:
 
 
 func _execute_transition() -> void:
+	GameManager._crash_log("_execute_transition: start target=%d from=%d" % [_pending_target_id, current_system_id])
 	system_loading.emit(_pending_target_id)
 
 	# 1. Save current system state
@@ -137,12 +138,14 @@ func _execute_transition() -> void:
 		ship.reset_flight_state()
 
 	# 3. Cleanup current system
+	GameManager._crash_log("_execute_transition: cleanup current system...")
 	_cleanup_current_system()
 
 	# 4. Reset floating origin
 	FloatingOrigin.reset_origin()
 
 	# 5. Resolve system data: override .tres > procedural
+	GameManager._crash_log("_execute_transition: resolving system data...")
 	var galaxy_sys: Dictionary = galaxy.get_system(_pending_target_id)
 	var override_data =SystemDataRegistry.get_override(_pending_target_id)
 	if override_data:
@@ -157,21 +160,27 @@ func _execute_transition() -> void:
 	current_system_id = _pending_target_id
 
 	# 6. Populate scene
+	GameManager._crash_log("_execute_transition: populate system...")
 	_populate_system()
 
 	# 7. Position player
+	GameManager._crash_log("_execute_transition: position player...")
 	_position_player()
 
 	# 8. Configure environment
+	GameManager._crash_log("_execute_transition: configure environment...")
 	_configure_environment()
 
 	# 9. Register entities
+	GameManager._crash_log("_execute_transition: register entities...")
 	_register_system_entities()
 
 	# 10. Spawn encounters based on danger level
+	GameManager._crash_log("_execute_transition: spawn encounters...")
 	_spawn_encounters(galaxy_sys["danger_level"])
 
 	# 11. Notify
+	GameManager._crash_log("_execute_transition: DONE, emitting system_loaded")
 	system_loaded.emit(current_system_id)
 
 	# If we were in a fade transition, start fade in

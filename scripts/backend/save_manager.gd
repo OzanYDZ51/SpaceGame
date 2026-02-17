@@ -97,12 +97,12 @@ func apply_state(state: Dictionary) -> void:
 	if state.is_empty():
 		return
 
-	print("[SaveMgr] apply_state: starting...")
+	GameManager._crash_log("apply_state: starting...")
 
 	# Galaxy re-generation (must happen before PlayerData.apply_save_state)
 	var gal_seed: int = int(state.get("galaxy_seed", Constants.galaxy_seed))
 	if gal_seed != Constants.galaxy_seed:
-		print("[SaveMgr] apply_state: regenerating galaxy (seed %d -> %d)" % [Constants.galaxy_seed, gal_seed])
+		GameManager._crash_log("apply_state: regenerating galaxy (seed %d -> %d)" % [Constants.galaxy_seed, gal_seed])
 		Constants.galaxy_seed = gal_seed
 		GameManager._galaxy = GalaxyGenerator.generate(gal_seed)
 		if GameManager._system_transition:
@@ -110,7 +110,7 @@ func apply_state(state: Dictionary) -> void:
 
 	# Delegate bulk state to PlayerData
 	if GameManager.player_data:
-		print("[SaveMgr] apply_state: applying player data...")
+		GameManager._crash_log("apply_state: applying player data... sys=%s ship=%s" % [state.get("system_id", "?"), state.get("current_ship_id", "?")])
 		GameManager.player_data.apply_save_state(
 			state,
 			GameManager.player_ship,
@@ -120,19 +120,19 @@ func apply_state(state: Dictionary) -> void:
 			GameManager._commerce_manager,
 			GameManager._squadron_mgr,
 		)
-		print("[SaveMgr] apply_state: player data applied OK")
+		GameManager._crash_log("apply_state: player data applied OK")
 
 	# Gameplay integrator state (factions, missions, economy, POIs)
 	if GameManager._gameplay_integrator:
-		print("[SaveMgr] apply_state: applying gameplay integrator state...")
+		GameManager._crash_log("apply_state: applying gameplay integrator state...")
 		GameManager._gameplay_integrator.apply_save_state(state)
-		print("[SaveMgr] apply_state: gameplay integrator state applied OK")
+		GameManager._crash_log("apply_state: gameplay integrator applied OK")
 
 	# Ship change (must happen after fleet is restored by PlayerData)
 	# Uses rebuild_ship_for_respawn which bypasses the DOCKED state check —
 	# on reconnect the player is in PLAYING state, not DOCKED.
 	var ship_id: String = state.get("current_ship_id", String(Constants.DEFAULT_SHIP_ID))
-	print("[SaveMgr] apply_state: checking ship change (saved=%s)..." % ship_id)
+	GameManager._crash_log("apply_state: checking ship change (saved=%s)..." % ship_id)
 	var ship = GameManager.player_ship
 	if ship and ship_id != "":
 		var current_sid: String = str(ship.ship_data.ship_id if ship.ship_data else Constants.DEFAULT_SHIP_ID)
@@ -146,8 +146,9 @@ func apply_state(state: Dictionary) -> void:
 						target_idx = i
 						break
 			if GameManager._ship_change_mgr:
+				GameManager._crash_log("apply_state: rebuilding ship for idx=%d" % target_idx)
 				GameManager._ship_change_mgr.rebuild_ship_for_respawn(target_idx)
-	print("[SaveMgr] apply_state: DONE")
+	GameManager._crash_log("apply_state: DONE")
 
 
 # --- Collect current state ---

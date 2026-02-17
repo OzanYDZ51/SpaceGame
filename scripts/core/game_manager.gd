@@ -92,6 +92,18 @@ var station_equipments: Dictionary = {}  # "system_N_station_M" -> StationEquipm
 
 
 var _quitting: bool = false
+var _crash_log_path: String = ""
+
+
+## Write a line to the crash diagnostic log (file-based, not stdout).
+## Bypasses stdout buffering that can lose the last messages before a crash.
+func _crash_log(msg: String) -> void:
+	if _crash_log_path == "":
+		_crash_log_path = OS.get_user_data_dir() + "/crash_trace.log"
+	var f := FileAccess.open(_crash_log_path, FileAccess.WRITE_READ)
+	if f:
+		f.seek_end()
+		f.store_line("[%.3f] %s" % [Time.get_ticks_msec() / 1000.0, msg])
 
 
 func _ready() -> void:
@@ -101,6 +113,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	print("GameManager: _ready() started — auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
+	_crash_log("_ready started auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
 
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
 	# Authentication is REQUIRED — the launcher handles login/register.
@@ -111,20 +124,26 @@ func _ready() -> void:
 		await _dev_auto_login()
 
 	print("GameManager: Initializing game...")
+	_crash_log("Initializing game...")
 	_initialize_game()
 	print("GameManager: Game initialized OK")
+	_crash_log("Game initialized OK")
 
 	if AuthManager.is_authenticated:
 		# Show black overlay while loading backend state to avoid seeing
 		# the default spawn position before the saved position is restored.
 		_show_loading_overlay()
 		print("GameManager: Loading backend state...")
+		_crash_log("Loading backend state...")
 		await _load_backend_state()
 		print("GameManager: Backend state loaded OK")
+		_crash_log("Backend state loaded OK")
 		_hide_loading_overlay()
 		print("GameManager: Showing faction selection...")
+		_crash_log("Showing faction selection...")
 		await _show_faction_selection()
 		print("GameManager: Faction selection done")
+		_crash_log("Faction selection done")
 	else:
 		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 
@@ -911,13 +930,13 @@ func _show_faction_selection() -> void:
 func _load_backend_state() -> void:
 	if not AuthManager.is_authenticated:
 		return
-	print("[GM] _load_backend_state: fetching player state...")
+	_crash_log("_load_backend_state: fetching player state...")
 	var state: Dictionary = await SaveManager.load_player_state()
-	print("[GM] _load_backend_state: got state, keys=%d error=%s" % [state.size(), state.has("error")])
+	_crash_log("_load_backend_state: got state, keys=%d error=%s" % [state.size(), state.has("error")])
 	if not state.is_empty() and not state.has("error"):
-		print("[GM] _load_backend_state: applying state...")
+		_crash_log("_load_backend_state: applying state...")
 		SaveManager.apply_state(state)
-		print("[GM] _load_backend_state: state applied OK")
+		_crash_log("_load_backend_state: state applied OK")
 		_backend_state_loaded = true
 
 		# Update network ship ID to match restored ship
@@ -930,21 +949,15 @@ func _load_backend_state() -> void:
 			NetworkManager._rpc_register_player.rpc_id(1, NetworkManager.local_player_name, String(NetworkManager.local_ship_id), uuid)
 
 		# Fleet reference was replaced by deserialize — reconnect map panels
-		print("[GM] _load_backend_state: refreshing fleet maps...")
+		_crash_log("_load_backend_state: refreshing fleet maps...")
 		_refresh_fleet_on_maps()
-		# Redeploy fleet ships that were deployed in the current system.
-		# apply_state() restores fleet data (positions, commands, deployment_state)
-		# but the system already loaded before the backend responded, so
-		# _on_system_loaded().redeploy_saved_ships() ran with the default fleet.
 		if _fleet_deployment_mgr:
-			print("[GM] _load_backend_state: redeploying fleet ships...")
+			_crash_log("_load_backend_state: redeploying fleet ships...")
 			_fleet_deployment_mgr.redeploy_saved_ships()
 
-		# Restore docked state if the player was docked when they disconnected.
-		# apply_state only restores position/fleet — it doesn't re-enter the dock.
-		print("[GM] _load_backend_state: trying restore docked state...")
+		_crash_log("_load_backend_state: trying restore docked state...")
 		_try_restore_docked_state(state)
-	print("[GM] _load_backend_state: DONE")
+	_crash_log("_load_backend_state: DONE")
 
 
 ## Re-enter dock if the player was docked when they saved/disconnected.
