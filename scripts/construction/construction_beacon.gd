@@ -122,9 +122,7 @@ func _on_body_exited(body: Node3D) -> void:
 
 
 func _process(delta: float) -> void:
-	# Slow torus rotation
-	if _torus:
-		_torus.rotate_y(delta * 0.5)
+	# Torus rotation disabled
 
 	# Emission pulse
 	var t: float = Time.get_ticks_msec() / 1000.0

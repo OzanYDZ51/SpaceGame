@@ -1,8 +1,8 @@
-class_name ClanRank
+class_name CorporationRank
 extends Resource
 
 # =============================================================================
-# Clan Rank - Defines a rank with permission bitfield
+# Corporation Rank - Defines a rank with permission bitfield
 # =============================================================================
 
 const PERM_INVITE       := 1 << 0
