@@ -314,13 +314,18 @@ func _on_motd_save() -> void:
 
 
 func _on_leave_pressed() -> void:
-	if _leave_modal:
-		_leave_modal.show_modal()
+	if _cm == null or not _cm.has_clan():
+		return
+	if _cm.members.size() <= 1:
+		_leave_modal.body = "Vous etes le dernier membre.\nLe clan sera dissous definitivement."
+	else:
+		_leave_modal.body = "Voulez-vous vraiment quitter le clan ?"
+	_leave_modal.show_modal()
 
 
 func _on_leave_confirmed() -> void:
 	if _cm:
-		_cm.leave_clan()
+		await _cm.leave_clan()
 
 
 func _on_recruit_pressed() -> void:

@@ -330,6 +330,9 @@ func (r *PlayerRepository) SetClanID(ctx context.Context, playerID string, clanI
 func (r *PlayerRepository) GetClanID(ctx context.Context, playerID string) (*string, error) {
 	var clanID *string
 	err := r.pool.QueryRow(ctx, `SELECT clan_id FROM players WHERE id = $1`, playerID).Scan(&clanID)
+	if err == pgx.ErrNoRows {
+		return nil, nil // Player not found — treat as no clan
+	}
 	return clanID, err
 }
 

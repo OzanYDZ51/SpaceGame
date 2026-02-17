@@ -840,6 +840,48 @@ func _load_backend_state() -> void:
 		if _fleet_deployment_mgr:
 			_fleet_deployment_mgr.redeploy_saved_ships()
 
+		# Restore docked state if the player was docked when they disconnected.
+		# apply_state only restores position/fleet — it doesn't re-enter the dock.
+		_try_restore_docked_state(state)
+
+
+## Re-enter dock if the player was docked when they saved/disconnected.
+func _try_restore_docked_state(state: Dictionary) -> void:
+	if not state.get("is_docked", false):
+		return
+	if current_state == GameState.DOCKED:
+		return  # Already docked somehow
+
+	# Resolve the station name from active fleet ship's docked_station_id
+	var station_name: String = ""
+	if player_fleet:
+		var active_fs = player_fleet.get_active()
+		if active_fs and active_fs.docked_station_id != "":
+			var ent: Dictionary = EntityRegistry.get_entity(active_fs.docked_station_id)
+			station_name = ent.get("name", "")
+
+	# Fallback: find the nearest station
+	if station_name == "":
+		var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+		if not stations.is_empty():
+			var best_dist: float = INF
+			var ship_pos: Vector3 = player_ship.global_position if player_ship else Vector3.ZERO
+			for ent in stations:
+				var node = ent.get("node")
+				if node != null and is_instance_valid(node):
+					var dist: float = ship_pos.distance_to(node.global_position)
+					if dist < best_dist:
+						best_dist = dist
+						station_name = ent.get("name", "")
+
+	if station_name == "":
+		push_warning("[GameManager] Cannot restore docked state — no station found")
+		return
+
+	print("[GameManager] Restoring docked state at station: %s" % station_name)
+	if _docking_mgr:
+		_docking_mgr.handle_docked(station_name)
+
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -1165,8 +1207,10 @@ func start_galaxy_route_to(target_sys_id: int, dest_x: float, dest_z: float, des
 
 func _on_galaxy_route_from_preview(system_id: int, dest_x: float, dest_z: float, dest_name: String, map_screen: Control) -> void:
 	start_galaxy_route_to(system_id, dest_x, dest_z, dest_name)
-	if map_screen:
-		map_screen.close()
+	# Switch to galaxy view (keeps map open so user can see the route path
+	# and re-preview the destination to see the arrival route line)
+	if map_screen and map_screen.has_method("switch_to_view"):
+		map_screen.switch_to_view(1)  # ViewMode.GALAXY
 
 
 func _on_route_completed() -> void:

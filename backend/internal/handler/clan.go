@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"strconv"
+	"strings"
 
 	"spacegame-backend/internal/model"
 	"spacegame-backend/internal/service"
@@ -240,6 +242,18 @@ func clanError(c *fiber.Ctx, err error) error {
 	case errors.Is(err, service.ErrInsufficientFunds):
 		return c.Status(400).JSON(fiber.Map{"error": "insufficient funds"})
 	default:
+		errStr := err.Error()
+		// Handle PostgreSQL unique constraint violations
+		if strings.Contains(errStr, "duplicate key") || strings.Contains(errStr, "unique constraint") {
+			if strings.Contains(errStr, "clan_name") {
+				return c.Status(409).JSON(fiber.Map{"error": "clan name already taken"})
+			}
+			if strings.Contains(errStr, "clan_tag") {
+				return c.Status(409).JSON(fiber.Map{"error": "clan tag already taken"})
+			}
+			return c.Status(409).JSON(fiber.Map{"error": "duplicate entry"})
+		}
+		log.Printf("[CLAN ERROR] %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "internal server error"})
 	}
 }

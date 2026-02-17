@@ -895,8 +895,6 @@ func _draw_preview_route_line(entities: Dictionary) -> void:
 	var rm = GameManager._route_manager if GameManager else null
 	if rm == null or not rm.is_route_active() or rm.target_system_id != preview_system_id:
 		return
-	if not rm.has_final_dest:
-		return
 	if rm.route.size() < 2:
 		return
 
@@ -911,8 +909,33 @@ func _draw_preview_route_line(entities: Dictionary) -> void:
 	if arrival_gate_ent.is_empty():
 		return
 
+	# Determine destination point: explicit final_dest or nearest station fallback
+	var dest_x: float = 0.0
+	var dest_z: float = 0.0
+	var dest_name: String = ""
+	if rm.has_final_dest:
+		dest_x = rm.final_dest_x
+		dest_z = rm.final_dest_z
+		dest_name = rm.final_dest_name
+	else:
+		# Fallback: find nearest station to arrival gate
+		var best_dist_sq: float = INF
+		for ent in entities.values():
+			if ent["type"] != EntityRegistrySystem.EntityType.STATION:
+				continue
+			var dx: float = ent["pos_x"] - arrival_gate_ent["pos_x"]
+			var dz: float = ent["pos_z"] - arrival_gate_ent["pos_z"]
+			var dist_sq: float = dx * dx + dz * dz
+			if dist_sq < best_dist_sq:
+				best_dist_sq = dist_sq
+				dest_x = ent["pos_x"]
+				dest_z = ent["pos_z"]
+				dest_name = ent["name"]
+		if best_dist_sq == INF:
+			return  # No station found — arrival gate highlight alone is sufficient
+
 	var from_sp: Vector2 = camera.universe_to_screen(arrival_gate_ent["pos_x"], arrival_gate_ent["pos_z"])
-	var to_sp: Vector2 = camera.universe_to_screen(rm.final_dest_x, rm.final_dest_z)
+	var to_sp: Vector2 = camera.universe_to_screen(dest_x, dest_z)
 
 	# Dashed cyan line
 	var pulse: float = sin(_pulse_t * 2.0) * 0.15 + 0.85
@@ -920,12 +943,12 @@ func _draw_preview_route_line(entities: Dictionary) -> void:
 	_draw_dashed_line(from_sp, to_sp, col, 2.0, 10.0, 6.0)
 
 	# Destination label
-	if rm.final_dest_name != "":
+	if dest_name != "":
 		var font: Font = UITheme.get_font()
-		var dest_name: String = rm.final_dest_name
-		if dest_name.length() > 20:
-			dest_name = dest_name.substr(0, 18) + ".."
-		var label: String = "→ " + dest_name
+		var label_name: String = dest_name
+		if label_name.length() > 20:
+			label_name = label_name.substr(0, 18) + ".."
+		var label: String = "→ " + label_name
 		var tw: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 		var label_pos: Vector2 = to_sp + Vector2(-tw * 0.5, -22)
 		draw_string(font, label_pos, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.0, 0.9, 1.0, 0.6 * pulse))

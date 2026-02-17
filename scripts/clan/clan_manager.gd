@@ -116,18 +116,18 @@ func create_clan(cname: String, tag: String, color: Color, emblem: int) -> bool:
 	return true
 
 
-func leave_clan() -> void:
+func leave_clan() -> bool:
 	if not has_clan() or player_member == null:
-		return
+		return false
 
 	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.delete_async("/api/v1/clans/%s/members/%s" % [clan_data.clan_id, AuthManager.player_id])
+		var result := await ApiClient.delete_async(
+			"/api/v1/clans/%s/members/%s" % [clan_data.clan_id, AuthManager.player_id]
+		)
 		if result.get("_status_code", 0) != 200:
 			push_warning("ClanManager: leave_clan failed — %s" % result.get("error", "unknown"))
-			return
+			return false
 
-	var pname: String = player_member.display_name
-	members.erase(player_member)
 	player_member = null
 	clan_data = null
 	members.clear()
@@ -135,6 +135,7 @@ func leave_clan() -> void:
 	activity_log.clear()
 	transactions.clear()
 	clan_loaded.emit()
+	return true
 
 
 func invite_member(id: String, dname: String) -> bool:

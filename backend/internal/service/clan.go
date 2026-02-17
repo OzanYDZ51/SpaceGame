@@ -162,6 +162,13 @@ func (s *ClanService) RemoveMember(ctx context.Context, playerID, clanID, target
 		return err
 	}
 
+	// Auto-dissolve clan if no members remain
+	count, err := s.clanRepo.GetMemberCount(ctx, clanID)
+	if err == nil && count == 0 {
+		_ = s.clanRepo.Delete(ctx, clanID)
+		return nil
+	}
+
 	player, _ := s.playerRepo.GetByID(ctx, playerID)
 	target, _ := s.playerRepo.GetByID(ctx, targetPlayerID)
 	actorName, targetName := "", ""

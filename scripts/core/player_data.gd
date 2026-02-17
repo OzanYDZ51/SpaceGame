@@ -134,6 +134,9 @@ func collect_save_state(player_ship, system_transition) -> Dictionary:
 	if player_ship:
 		state["current_ship_id"] = str(player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID)
 
+	# Docked state
+	state["is_docked"] = GameManager.current_state == Constants.GameState.DOCKED
+
 	# Galaxy + system
 	state["galaxy_seed"] = Constants.galaxy_seed
 	if system_transition:

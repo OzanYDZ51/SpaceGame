@@ -141,14 +141,9 @@ const UNDOCK_RING_MIN_DIST: float = 1000.0   ## Minimum ring distance from stati
 
 func _get_ship_half_extent() -> float:
 	## Returns the player ship's half-extent from its visual AABB.
-	if player_ship == null:
-		return 50.0
 	var ship_model = player_ship.get_node_or_null("ShipModel")
-	if ship_model and ship_model.has_method("get_visual_aabb"):
-		var aabb: AABB = ship_model.get_visual_aabb()
-		if aabb.size.length() > 0.1:
-			return aabb.size.length() * 0.5
-	return 50.0
+	var aabb: AABB = ship_model.get_visual_aabb()
+	return aabb.size.length() * 0.5
 
 
 func _compute_exit_distance(ship_half: float) -> float:
@@ -163,47 +158,32 @@ func _compute_exit_position() -> Dictionary:
 	## Tries bay exit first, then a ring of positions around the station.
 	## Distance scales with ship size. Returns first unblocked candidate.
 	## Result: {valid, position, away_dir, ship_half_extent, use_bay}.
-	if player_ship == null:
-		return {"valid": false}
-
 	var ship_half: float = _get_ship_half_extent()
 	var exit_dist: float = _compute_exit_distance(ship_half)
 
-	# Resolve station node — prefer live node, fallback to EntityRegistry
+	# Resolve station node from DockingSystem or EntityRegistry
 	var station_node: Node3D = null
 	var station_pos: Vector3 = Vector3.ZERO
-	var found: bool = false
 
-	if docking_system and docking_system.nearest_station_node != null and is_instance_valid(docking_system.nearest_station_node):
+	if docking_system and is_instance_valid(docking_system.nearest_station_node):
 		station_node = docking_system.nearest_station_node
 		station_pos = station_node.global_position
-		found = true
 	else:
 		var stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
 		for ent in stations:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.get("station_index", -1) == docked_station_idx:
-				var node_ref = ent.get("node")
-				if node_ref != null and is_instance_valid(node_ref):
-					station_node = node_ref
-					station_pos = station_node.global_position
-				else:
-					station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-				found = true
+				station_node = ent.get("node")
+				station_pos = station_node.global_position if is_instance_valid(station_node) else FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				break
-
-	if not found:
-		return {"valid": false}
 
 	# Build candidate exit positions ordered by priority
 	var candidates: Array[Dictionary] = []
 
 	# Priority 1: Bay exit (straight out of the docking bay)
-	if station_node and station_node.has_method("get_bay_exit_global"):
+	if is_instance_valid(station_node) and station_node.has_method("get_bay_exit_global"):
 		var bay_exit: Vector3 = station_node.get_bay_exit_global()
 		var away_dir: Vector3 = (bay_exit - station_pos).normalized()
-		if away_dir.length_squared() < 0.01:
-			away_dir = Vector3.UP
 		candidates.append({
 			"valid": true,
 			"position": bay_exit + away_dir * exit_dist,
@@ -269,19 +249,9 @@ func _is_exit_clear(exit_info: Dictionary) -> bool:
 	return true
 
 
-func _reposition_at_station(exit_info: Dictionary = {}) -> void:
-	if player_ship == null:
-		return
-
-	if exit_info.get("valid", false):
-		player_ship.global_position = exit_info["position"]
-		player_ship.look_at(exit_info["position"] + exit_info["away_dir"], Vector3.UP)
-	else:
-		var fallback: Dictionary = _compute_exit_position()
-		if fallback.get("valid", false):
-			player_ship.global_position = fallback["position"]
-			player_ship.look_at(fallback["position"] + fallback["away_dir"], Vector3.UP)
-
+func _reposition_at_station(exit_info: Dictionary) -> void:
+	player_ship.global_position = exit_info["position"]
+	player_ship.look_at(exit_info["position"] + exit_info["away_dir"], Vector3.UP)
 	player_ship.linear_velocity = Vector3.ZERO
 	player_ship.angular_velocity = Vector3.ZERO
 

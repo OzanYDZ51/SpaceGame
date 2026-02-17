@@ -131,7 +131,7 @@ func _draw() -> void:
 	draw_panel_bg(left_rect)
 
 	# Title
-	var header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UN CLAN")
+	var _header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UN CLAN")
 
 	# Color selector (below tag input)
 	var color_y: float = 80.0 + 80.0

@@ -126,8 +126,11 @@ func _update_station_glow() -> void:
 	var best_node: Node3D = null
 	var best_dist: float = INF
 	for ent in stations:
-		var node: Node3D = ent.get("node") as Node3D
-		if node == null or not is_instance_valid(node):
+		var raw = ent.get("node")
+		if raw == null or not is_instance_valid(raw):
+			continue
+		var node: Node3D = raw as Node3D
+		if node == null:
 			continue
 		var dist: float = ship_pos.distance_to(node.global_position)
 		if dist < best_dist:
