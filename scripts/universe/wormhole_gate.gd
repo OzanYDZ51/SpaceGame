@@ -139,13 +139,7 @@ func setup(data: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
-	# Spin ring (opposite direction from JumpGate for visual distinction)
-	if _ring_mesh:
-		_ring_mesh.rotate_y(deg_to_rad(-spin_speed * delta))
-
-	# Inner glow slow counter-rotation
-	if _inner_glow:
-		_inner_glow.rotate_y(deg_to_rad(spin_speed * 0.3 * delta))
+	# Ring rotation disabled
 
 	# Pulsing emission
 	if _material:

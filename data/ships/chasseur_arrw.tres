@@ -4,13 +4,13 @@
 
 [resource]
 script = ExtResource("1")
-ship_id = &"interceptor_vex"
-ship_name = &"Interceptor Vex"
-ship_class = &"Interceptor"
-model_path = "res://assets/models/interceptor_vex.glb"
+ship_id = &"chasseur_arrw"
+ship_name = &"Chasseur Arrw"
+ship_class = &"Chasseur Leger"
+model_path = "res://assets/models/chasseur_arrw.glb"
 model_scale = 1.5
 exhaust_scale = 1.2
-ship_scene_path = "res://scenes/ships/interceptor_vex.tscn"
+ship_scene_path = "res://scenes/ships/chasseur_arrw.tscn"
 default_loadout = Array[StringName]([&"Laser Mk1", &"Laser Mk1", &"Turret Mk1"])
 hull_hp = 1500.0
 shield_hp = 800.0

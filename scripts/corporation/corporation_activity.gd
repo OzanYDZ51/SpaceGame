@@ -1,8 +1,8 @@
-class_name ClanActivity
+class_name CorporationActivity
 extends RefCounted
 
 # =============================================================================
-# Clan Activity - Log entry for clan events
+# Corporation Activity - Log entry for corporation events
 # =============================================================================
 
 enum EventType { JOIN, LEAVE, PROMOTE, DEMOTE, KICK, DEPOSIT, WITHDRAW, DIPLOMACY, MOTD_CHANGE, RANK_CHANGE, CREATED }

@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8h4dm8illefm"
-path.s3tc="res://.godot/imported/interceptor_vex_Vaisseau_Reacteur_BaseColor.png-fae1578179b2b4958aec6827b91f03cd.s3tc.ctex"
+uid="uid://0bgo762ymvng"
+path.s3tc="res://.godot/imported/chasseur_arrw_Vaisseau_CoqueAilDetail_BaseColor.png-4d20941b248a0c22207fae684953d096.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "74429d5b51c7597758964866b85075f3"
+"md5": "184768f57a4d5304a00b6d092ea70e12"
 }
 
 [deps]
 
-source_file="res://assets/models/interceptor_vex_Vaisseau_Reacteur_BaseColor.png"
-dest_files=["res://.godot/imported/interceptor_vex_Vaisseau_Reacteur_BaseColor.png-fae1578179b2b4958aec6827b91f03cd.s3tc.ctex"]
+source_file="res://assets/models/chasseur_arrw_Vaisseau_CoqueAilDetail_BaseColor.png"
+dest_files=["res://.godot/imported/chasseur_arrw_Vaisseau_CoqueAilDetail_BaseColor.png-4d20941b248a0c22207fae684953d096.s3tc.ctex"]
 
 [params]
 

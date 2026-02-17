@@ -729,6 +729,9 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	# Notify spawn for NPC state sync
 	notify_spawn_to_peers(npc_id, sys_id)
 
+	# Send confirmation to requesting client
+	NetworkManager._rpc_fleet_deploy_confirmed.rpc_id(sender_pid, fleet_index, String(npc_id))
+
 
 ## Server handles retrieve request from a client (or host).
 func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
@@ -759,6 +762,9 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 	unregister_npc(npc_id)
 	_unregister_fleet_npc(npc_id)
 	_broadcast_fleet_event_retrieve(sender_pid, fleet_index, npc_id, sys_id)
+
+	# Send confirmation to requesting client
+	NetworkManager._rpc_fleet_retrieve_confirmed.rpc_id(sender_pid, fleet_index)
 
 
 ## Server handles command change request from a client (or host).
@@ -800,6 +806,9 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 				existing_mining.queue_free()
 
 	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
+
+	# Send confirmation to requesting client
+	NetworkManager._rpc_fleet_command_confirmed.rpc_id(sender_pid, fleet_index, String(cmd), params)
 
 
 func _broadcast_fleet_event_deploy(owner_pid: int, fleet_idx: int, npc_id: StringName, spawn_data: Dictionary, system_id: int) -> void:

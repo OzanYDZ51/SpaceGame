@@ -107,11 +107,9 @@ func get_by_type(type: EntityType) -> Array[Dictionary]:
 
 ## Compute the deterministic orbital angle at the current moment.
 ## Uses Unix time so all clients get the same result regardless of when they loaded.
-static func compute_orbital_angle(base_angle: float, period: float) -> float:
-	if period <= 0.0:
-		return base_angle
-	var phase: float = fmod(Time.get_unix_time_from_system(), period) / period
-	return fmod(base_angle + phase * TAU, TAU)
+static func compute_orbital_angle(base_angle: float, _period: float) -> float:
+	# Orbital motion disabled — all objects stay at their initial angle
+	return base_angle
 
 
 func get_position(id: String) -> Array:
@@ -123,20 +121,9 @@ func get_position(id: String) -> Array:
 
 ## Returns the orbital velocity vector [vx, vy, vz] in meters/sec for an orbiting entity.
 ## Velocity is tangent to the circular orbit in the XZ plane.
-func get_orbital_velocity(id: String) -> Array:
-	var ent: Dictionary = _entities.get(id, {})
-	if ent.is_empty():
-		return [0.0, 0.0, 0.0]
-	var r: float = ent.get("orbital_radius", 0.0)
-	var period: float = ent.get("orbital_period", 0.0)
-	if r <= 0.0 or period <= 0.0:
-		return [0.0, 0.0, 0.0]
-	var omega: float = TAU / period  # angular velocity (rad/s)
-	var angle: float = ent.get("orbital_angle", 0.0)
-	# Position derivative: d/dt [r*cos(θ), 0, r*sin(θ)] = [-r*ω*sin(θ), 0, r*ω*cos(θ)]
-	var vx: float = -r * omega * sin(angle)
-	var vz: float = r * omega * cos(angle)
-	return [vx, 0.0, vz]
+func get_orbital_velocity(_id: String) -> Array:
+	# Orbital motion disabled — no velocity
+	return [0.0, 0.0, 0.0]
 
 
 func _process(delta: float) -> void:

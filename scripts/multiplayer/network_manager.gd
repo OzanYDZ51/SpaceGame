@@ -40,6 +40,11 @@ signal fleet_ship_deployed(owner_pid: int, fleet_index: int, npc_id: String, spa
 signal fleet_ship_retrieved(owner_pid: int, fleet_index: int, npc_id: String)
 signal fleet_command_changed(owner_pid: int, fleet_index: int, npc_id: String, cmd: String, params: Dictionary)
 
+# Fleet confirmation signals (server -> requesting client only)
+signal fleet_deploy_confirmed(fleet_index: int, npc_id: String)
+signal fleet_retrieve_confirmed(fleet_index: int)
+signal fleet_command_confirmed(fleet_index: int, cmd: String, params: Dictionary)
+
 # Combat sync signals
 signal remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array)
 signal player_damage_received(attacker_pid: int, weapon_name: String, damage_val: float, hit_dir: Array)
@@ -428,6 +433,13 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 
 	player_list_updated.emit()
 
+	# Emit peer_connected on the SERVER so NetworkSyncManager can create
+	# the RemotePlayerShip and send NPCs to the new client via _deferred_send_npcs_to_peer.
+	# (The _rpc_player_registered RPC returns early on the server because
+	# the peer was already added to peers dict above, so peer_connected
+	# would never fire on the server without this explicit emit.)
+	peer_connected.emit(sender_id, player_name)
+
 
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
@@ -537,6 +549,7 @@ func _rpc_receive_chat(sender_name: String, channel: int, text: String) -> void:
 ## Server -> Client: Chat history on connect.
 @rpc("authority", "reliable")
 func _rpc_chat_history(history: Array) -> void:
+	print("[Chat] Client received chat history: %d messages" % history.size())
 	chat_history_received.emit(history)
 
 
@@ -602,7 +615,9 @@ func _store_chat_message(channel: int, sender_name: String, text: String, overri
 
 ## Send chat history to a newly connected client (from in-memory buffer — instant, no HTTP).
 func _send_chat_history(peer_id: int, system_id: int) -> void:
+	print("[Chat] _send_chat_history: peer=%d sys=%d buffer=%d" % [peer_id, system_id, _chat_buffer.size()])
 	if _chat_buffer.is_empty():
+		print("[Chat] _send_chat_history: buffer empty, skipping")
 		return
 	# Filter: include all non-SYSTEM messages + SYSTEM messages matching this system_id
 	var history: Array = []
@@ -611,11 +626,13 @@ func _send_chat_history(peer_id: int, system_id: int) -> void:
 		if ch == 1 and entry.get("sys", -1) != system_id:
 			continue  # SYSTEM channel from a different system — skip
 		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch})
+	print("[Chat] _send_chat_history: after filter=%d (from %d)" % [history.size(), _chat_buffer.size()])
 	if history.is_empty():
 		return
 	# Limit to the last N messages to avoid huge RPC payloads
 	if history.size() > CHAT_HISTORY_LIMIT:
 		history = history.slice(-CHAT_HISTORY_LIMIT)
+	print("[Chat] _send_chat_history: sending %d messages to peer %d" % [history.size(), peer_id])
 	_rpc_chat_history.rpc_id(peer_id, history)
 
 
@@ -953,6 +970,24 @@ func _rpc_fleet_retrieved(owner_pid: int, fleet_idx: int, npc_id_str: String) ->
 @rpc("authority", "reliable")
 func _rpc_fleet_command_changed(owner_pid: int, fleet_idx: int, npc_id_str: String, cmd_str: String, params: Dictionary) -> void:
 	fleet_command_changed.emit(owner_pid, fleet_idx, npc_id_str, cmd_str, params)
+
+
+## Server -> Requesting client: Deploy confirmed with assigned NPC ID.
+@rpc("authority", "reliable")
+func _rpc_fleet_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
+	fleet_deploy_confirmed.emit(fleet_index, npc_id_str)
+
+
+## Server -> Requesting client: Retrieve confirmed.
+@rpc("authority", "reliable")
+func _rpc_fleet_retrieve_confirmed(fleet_index: int) -> void:
+	fleet_retrieve_confirmed.emit(fleet_index)
+
+
+## Server -> Requesting client: Command change confirmed.
+@rpc("authority", "reliable")
+func _rpc_fleet_command_confirmed(fleet_index: int, cmd_str: String, params: Dictionary) -> void:
+	fleet_command_confirmed.emit(fleet_index, cmd_str, params)
 
 
 # =========================================================================

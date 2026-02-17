@@ -126,6 +126,13 @@ func _draw() -> void:
 	var m: float = 16.0
 	var half_w: float = (size.x - GAP) * 0.5
 
+	# If not authenticated, show message
+	if not AuthManager.is_authenticated:
+		draw_panel_bg(Rect2(0, 0, size.x, size.y))
+		draw_string(font, Vector2(0, size.y * 0.4), "CONNEXION REQUISE", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(0, size.y * 0.4 + 28), "Connectez-vous pour creer ou rejoindre un clan", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+		return
+
 	# ─── LEFT PANEL: Create ────────────────────────────────────────────
 	var left_rect := Rect2(0, 0, half_w, size.y)
 	draw_panel_bg(left_rect)
@@ -280,7 +287,10 @@ func _gui_input(event: InputEvent) -> void:
 # =============================================================================
 
 func _on_create_pressed() -> void:
-	if _cm == null:
+	if _cm == null or not AuthManager.is_authenticated:
+		_status_text = "Connexion requise"
+		_status_color = UITheme.DANGER
+		queue_redraw()
 		return
 
 	var cname: String = _input_name.get_text().strip_edges()
@@ -317,7 +327,10 @@ func _on_search_submitted(_text: String) -> void:
 
 
 func _on_search_pressed() -> void:
-	if _cm == null:
+	if _cm == null or not AuthManager.is_authenticated:
+		_status_text = "Connexion requise"
+		_status_color = UITheme.DANGER
+		queue_redraw()
 		return
 
 	var query: String = _input_search.get_text().strip_edges()

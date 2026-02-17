@@ -664,17 +664,16 @@ func on_system_unloading(_system_id: int) -> void:
 ## Sends all NPCs to a peer after a short delay so the client has time to finish
 ## its system jump before receiving NPC data. Uses a SceneTreeTimer (1 second).
 func _deferred_send_npcs_to_peer(peer_id: int, _fallback_system_id: int) -> void:
-	# Capture expected system before the delay
-	var expected_sys: int = NetworkManager.peers[peer_id].system_id if NetworkManager.peers.has(peer_id) else -1
 	await get_tree().create_timer(1.0).timeout
 	if not is_inside_tree():
 		return
 	if not NetworkManager.peers.has(peer_id):
 		return  # Peer disconnected during the delay
-	# Use the peer's actual system (may differ from server's current system)
+	# Use the peer's CURRENT system (may differ from initial assignment because
+	# the client loads its actual system from the backend, overriding spawn_sys).
 	var peer_sys: int = NetworkManager.peers[peer_id].system_id
-	if peer_sys != expected_sys:
-		return  # Peer changed system during delay — abort to avoid sending wrong NPCs
+	if peer_sys < 0:
+		return  # Peer hasn't reported a valid system yet
 	if npc_authority:
 		# Ensure NPCs exist for the peer's system (spawns remote NPCs if needed)
 		npc_authority.ensure_system_npcs(peer_sys)

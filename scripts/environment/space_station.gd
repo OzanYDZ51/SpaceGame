@@ -64,10 +64,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	# Slow ring rotation
-	for ring in _ring_nodes:
-		if is_instance_valid(ring):
-			ring.rotate_y(RING_ROTATION_SPEED * delta)
+	# Ring rotation disabled
 
 	# Blinking red nav lights
 	_light_time += delta

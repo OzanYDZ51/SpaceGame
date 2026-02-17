@@ -127,8 +127,7 @@ func setup_from_data(data: JumpGateData) -> void:
 
 
 func _process(delta: float) -> void:
-	if _ring_mesh:
-		_ring_mesh.rotate_y(deg_to_rad(spin_speed * delta))
+	# Ring rotation disabled
 
 	if _material:
 		var pulse: float = (sin(Time.get_ticks_msec() * 0.002) + 1.0) * 0.5

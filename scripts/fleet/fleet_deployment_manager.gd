@@ -16,6 +16,12 @@ var _pos_sync_timer: float = 0.0
 const POS_SYNC_INTERVAL: float = 10.0
 
 
+func _ready() -> void:
+	NetworkManager.fleet_deploy_confirmed.connect(_on_deploy_confirmed)
+	NetworkManager.fleet_retrieve_confirmed.connect(_on_retrieve_confirmed)
+	NetworkManager.fleet_command_confirmed.connect(_on_command_confirmed)
+
+
 func initialize(fleet) -> void:
 	_fleet = fleet
 
@@ -418,6 +424,40 @@ func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 
 
 
+func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
+	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		return
+	var fs = _fleet.ships[fleet_index]
+	fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
+	fs.deployed_npc_id = StringName(npc_id_str)
+	# Resolve position from station (best effort for map)
+	if fs.docked_station_id != "":
+		var ent = EntityRegistry.get_entity(fs.docked_station_id)
+		if not ent.is_empty():
+			fs.last_known_pos = [ent["pos_x"], ent["pos_y"], ent["pos_z"]]
+	_fleet.fleet_changed.emit()
+
+
+func _on_retrieve_confirmed(fleet_index: int) -> void:
+	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		return
+	var fs = _fleet.ships[fleet_index]
+	fs.deployment_state = FleetShip.DeploymentState.DOCKED
+	fs.deployed_npc_id = &""
+	fs.deployed_command = &""
+	fs.deployed_command_params = {}
+	_fleet.fleet_changed.emit()
+
+
+func _on_command_confirmed(fleet_index: int, cmd_str: String, params: Dictionary) -> void:
+	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		return
+	var fs = _fleet.ships[fleet_index]
+	fs.deployed_command = StringName(cmd_str)
+	fs.deployed_command_params = params
+	_fleet.fleet_changed.emit()
+
+
 func update_entity_extra(fleet_index: int, key: String, value: Variant) -> void:
 	if _fleet == null or fleet_index < 0 or fleet_index >= _fleet.ships.size():
 		return
@@ -446,44 +486,42 @@ func get_deployed_npc(fleet_index: int):
 
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	if _is_multiplayer_client():
-		# Serialize ship data so the server can spawn the NPC
 		var ship_data: Dictionary = _serialize_ship_data(fleet_index)
 		if ship_data.is_empty():
 			return
-		# Optimistic local state update (NPC will appear via server LOD sync)
-		if _fleet and fleet_index >= 0 and fleet_index < _fleet.ships.size():
-			var fs = _fleet.ships[fleet_index]
-			fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
-			fs.deployed_command = cmd
-			fs.deployed_command_params = params
-			# Set last_known_pos from station position (for map route restoration)
-			if fs.docked_station_id != "":
-				var ent = EntityRegistry.get_entity(fs.docked_station_id)
-				if not ent.is_empty():
-					fs.last_known_pos = [ent["pos_x"], ent["pos_y"], ent["pos_z"]]
-			_fleet.fleet_changed.emit()
+		# NO local state change — wait for server confirmation via _on_deploy_confirmed
 		var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
 		var ship_data_json: String = JSON.stringify(ship_data)
 		NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json, ship_data_json)
 	else:
-		# Server: go through NpcAuthority for proper broadcasting
+		# Host/offline: deploy locally then register with NpcAuthority
+		if not deploy_ship(fleet_index, cmd, params):
+			return
 		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 		if npc_auth and npc_auth._active:
-			npc_auth.handle_fleet_deploy_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
-		else:
-			deploy_ship(fleet_index, cmd, params)
+			var fs = _fleet.ships[fleet_index]
+			if fs.deployed_npc_id != &"":
+				var sys_id: int = GameManager.current_system_id_safe()
+				npc_auth.register_fleet_npc(fs.deployed_npc_id, NetworkManager.local_peer_id, fleet_index)
+				npc_auth.register_npc(fs.deployed_npc_id, sys_id, fs.ship_id, FLEET_FACTION)
+				npc_auth.notify_spawn_to_peers(fs.deployed_npc_id, sys_id)
 
 
 func request_retrieve(fleet_index: int) -> void:
 	if _is_multiplayer_client():
 		NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
 	else:
-		# Server: go through NpcAuthority for proper broadcasting
+		var npc_id_before: StringName = &""
+		if _fleet and fleet_index >= 0 and fleet_index < _fleet.ships.size():
+			npc_id_before = _fleet.ships[fleet_index].deployed_npc_id
+		retrieve_ship(fleet_index)
 		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth and npc_auth._active:
-			npc_auth.handle_fleet_retrieve_request(NetworkManager.local_peer_id, fleet_index)
-		else:
-			retrieve_ship(fleet_index)
+		if npc_auth and npc_auth._active and npc_id_before != &"":
+			npc_auth.unregister_npc(npc_id_before)
+			npc_auth._unregister_fleet_npc(npc_id_before)
+			npc_auth._broadcast_fleet_event_retrieve(
+				NetworkManager.local_peer_id, fleet_index, npc_id_before,
+				GameManager.current_system_id_safe())
 
 
 func request_change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
@@ -491,12 +529,14 @@ func request_change_command(fleet_index: int, cmd: StringName, params: Dictionar
 		var params_json =JSON.stringify(params) if not params.is_empty() else ""
 		NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
 	else:
-		# Server: go through NpcAuthority for proper broadcasting
+		change_command(fleet_index, cmd, params)
 		var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-		if npc_auth and npc_auth._active:
-			npc_auth.handle_fleet_command_request(NetworkManager.local_peer_id, fleet_index, cmd, params)
-		else:
-			change_command(fleet_index, cmd, params)
+		if npc_auth and npc_auth._active and _fleet:
+			var npc_id: StringName = _fleet.ships[fleet_index].deployed_npc_id
+			if npc_id != &"":
+				npc_auth._broadcast_fleet_event_command(
+					NetworkManager.local_peer_id, fleet_index, npc_id, cmd, params,
+					GameManager.current_system_id_safe())
 
 
 func _is_multiplayer_client() -> bool:
@@ -504,71 +544,53 @@ func _is_multiplayer_client() -> bool:
 
 
 ## Client-side: apply fleet status from server on reconnect.
-## alive = [{ fleet_index, npc_id }], deaths = [{ fleet_index, npc_id, death_time }]
+## Server is the source of truth for deployment state.
+## alive = [{ fleet_index, npc_id, pos_x, pos_y, pos_z }], deaths = [{ fleet_index, npc_id, death_time }]
 func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 	if _fleet == null:
 		return
 
-	# Mark ships that died while we were offline
-	for death in deaths:
-		var fi: int = int(death.get("fleet_index", -1))
-		if fi >= 0 and fi < _fleet.ships.size():
-			var fs = _fleet.ships[fi]
-			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
-				fs.deployed_npc_id = &""
-				fs.deployed_command = &""
-				fs.deployed_command_params = {}
-				if GameManager._notif:
-					GameManager._notif.fleet.lost(fs.custom_name)
-
-	# Confirm alive ships — restore positions and NPC IDs from server
+	# Build lookup sets
+	var alive_map: Dictionary = {}  # fleet_index -> entry
 	for entry in alive:
-		var fi: int = int(entry.get("fleet_index", -1))
-		if fi >= 0 and fi < _fleet.ships.size():
+		alive_map[int(entry.get("fleet_index", -1))] = entry
+	var death_set: Dictionary = {}
+	for death in deaths:
+		death_set[int(death.get("fleet_index", -1))] = true
+
+	# Apply server state
+	for i in _fleet.ships.size():
+		var fs = _fleet.ships[i]
+		if alive_map.has(i):
+			# Server says this ship is alive and deployed
+			var entry: Dictionary = alive_map[i]
+			fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
+			var npc_id_str: String = entry.get("npc_id", "")
+			if npc_id_str != "":
+				fs.deployed_npc_id = StringName(npc_id_str)
 			var px: float = float(entry.get("pos_x", 0.0))
 			var py: float = float(entry.get("pos_y", 0.0))
 			var pz: float = float(entry.get("pos_z", 0.0))
 			if px != 0.0 or py != 0.0 or pz != 0.0:
-				_fleet.ships[fi].last_known_pos = [px, py, pz]
-			# Update NPC ID from server (may differ after server restart)
-			var npc_id_str: String = entry.get("npc_id", "")
-			if npc_id_str != "":
-				_fleet.ships[fi].deployed_npc_id = StringName(npc_id_str)
-
-	# Mark locally DEPLOYED ships as DESTROYED if missing from both alive and deaths.
-	# Safety: if the server sent NOTHING (both empty), it means the server has no
-	# fleet data at all (crash/restart race). Don't destroy ships in that case —
-	# the backend state load will reconcile.
-	if alive.is_empty() and deaths.is_empty():
-		# Count locally deployed ships — if we have some but server knows nothing,
-		# skip the destroy sweep to avoid false positives
-		var local_deployed: int = 0
-		for fs in _fleet.ships:
+				fs.last_known_pos = [px, py, pz]
+		elif death_set.has(i):
+			# Server says this ship died while we were offline
 			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-				local_deployed += 1
-		if local_deployed > 0:
-			print("FleetDeploy: Reconnect — server sent empty status but %d locally deployed, skipping destroy sweep" % local_deployed)
-			_fleet.fleet_changed.emit()
-			return
-
-	var alive_indices: Dictionary = {}
-	for entry in alive:
-		alive_indices[int(entry.get("fleet_index", -1))] = true
-	var death_indices: Dictionary = {}
-	for death in deaths:
-		death_indices[int(death.get("fleet_index", -1))] = true
-
-	for i in _fleet.ships.size():
-		var fs = _fleet.ships[i]
-		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-			if not alive_indices.has(i) and not death_indices.has(i):
 				fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 				fs.deployed_npc_id = &""
 				fs.deployed_command = &""
 				fs.deployed_command_params = {}
 				if GameManager._notif:
 					GameManager._notif.fleet.lost(fs.custom_name)
+		else:
+			# Server doesn't mention this ship
+			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
+				# Client thought it was deployed but server has no record
+				# → Reset to DOCKED (not DESTROYED — ship isn't lost, just not deployed)
+				fs.deployment_state = FleetShip.DeploymentState.DOCKED
+				fs.deployed_npc_id = &""
+				fs.deployed_command = &""
+				fs.deployed_command_params = {}
 
 	_fleet.fleet_changed.emit()
 	print("FleetDeploy: Reconnect status — %d alive, %d died offline" % [alive.size(), deaths.size()])

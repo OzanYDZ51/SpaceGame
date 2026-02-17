@@ -74,8 +74,7 @@ func can_be_looted_by(peer_id: int) -> bool:
 
 
 func _process(delta: float) -> void:
-	# Tumble
-	rotate(_spin_axis, _spin_speed * delta)
+	# Tumble disabled
 
 	# Drift
 	global_position += _drift * delta

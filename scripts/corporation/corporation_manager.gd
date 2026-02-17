@@ -3,8 +3,8 @@ extends Node
 
 # =============================================================================
 # Clan Manager - Runtime API for clan state, signals, and backend integration
-# All mutations go through methods that emit signals (UI unchanged).
-# If authenticated → real API calls; if offline → mock data fallback.
+# All mutations go through methods that emit signals.
+# Requires authentication — no fake/mock data.
 # =============================================================================
 
 signal clan_loaded
@@ -33,7 +33,9 @@ func _ready() -> void:
 	if AuthManager.is_authenticated:
 		_load_from_backend()
 	else:
-		_generate_mock_data()
+		# Not authenticated — no clan data
+		clan_data = null
+		clan_loaded.emit()
 
 
 # =============================================================================
@@ -73,47 +75,24 @@ func get_member_by_id(id: String) -> ClanMember:
 
 
 func create_clan(cname: String, tag: String, color: Color, emblem: int) -> bool:
-	if has_clan():
+	if has_clan() or not AuthManager.is_authenticated:
 		return false
 
-	if AuthManager.is_authenticated:
-		var body := {
-			"clan_name": cname,
-			"clan_tag": tag,
-			"clan_color": "%s,%s,%s,1.0" % [str(color.r), str(color.g), str(color.b)],
-			"emblem_id": emblem,
-		}
-		var result := await ApiClient.post_async("/api/v1/clans", body)
-		if result.get("_status_code", 0) != 201:
-			push_warning("ClanManager: create_clan failed — %s" % result.get("error", "unknown"))
-			return false
-		# Reload from API
-		var new_id: String = result.get("id", "")
-		if new_id != "":
-			await _load_clan_from_api(new_id)
-		return has_clan()
-
-	# Offline fallback
-	clan_data = ClanData.new()
-	clan_data.clan_id = "clan_" + str(randi())
-	clan_data.clan_name = cname
-	clan_data.clan_tag = tag
-	clan_data.clan_color = color
-	clan_data.emblem_id = emblem
-	clan_data.creation_timestamp = int(Time.get_unix_time_from_system())
-	var leader := ClanRank.new()
-	leader.rank_name = "Chef"
-	leader.priority = 0
-	leader.permissions = ClanRank.ALL_PERMISSIONS
-	clan_data.ranks.append(leader)
-	var recruit := ClanRank.new()
-	recruit.rank_name = "Recrue"
-	recruit.priority = 1
-	recruit.permissions = 0
-	clan_data.ranks.append(recruit)
-	_log_activity(ClanActivity.EventType.CREATED, "Systeme", "", "Clan cree: %s [%s]" % [cname, tag])
-	clan_loaded.emit()
-	return true
+	var body := {
+		"clan_name": cname,
+		"clan_tag": tag,
+		"clan_color": "%s,%s,%s,1.0" % [str(color.r), str(color.g), str(color.b)],
+		"emblem_id": emblem,
+	}
+	var result := await ApiClient.post_async("/api/v1/clans", body)
+	if result.get("_status_code", 0) != 201:
+		push_warning("ClanManager: create_clan failed — %s" % result.get("error", "unknown"))
+		return false
+	# Reload from API
+	var new_id: String = result.get("id", "")
+	if new_id != "":
+		await _load_clan_from_api(new_id)
+	return has_clan()
 
 
 func leave_clan() -> bool:
@@ -140,17 +119,16 @@ func leave_clan() -> bool:
 
 
 func invite_member(id: String, dname: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_INVITE):
+	if not player_has_permission(ClanRank.PERM_INVITE) or not AuthManager.is_authenticated:
 		return false
 	if members.size() >= clan_data.max_members:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var body := {"player_id": id}
-		var result := await ApiClient.post_async("/api/v1/clans/%s/members" % clan_data.clan_id, body)
-		if result.get("_status_code", 0) != 201:
-			push_warning("ClanManager: invite_member failed — %s" % result.get("error", "unknown"))
-			return false
+	var body := {"player_id": id}
+	var result := await ApiClient.post_async("/api/v1/clans/%s/members" % clan_data.clan_id, body)
+	if result.get("_status_code", 0) != 201:
+		push_warning("ClanManager: invite_member failed — %s" % result.get("error", "unknown"))
+		return false
 
 	var m := ClanMember.new()
 	m.player_id = id
@@ -166,7 +144,7 @@ func invite_member(id: String, dname: String) -> bool:
 
 
 func kick_member(id: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_KICK):
+	if not player_has_permission(ClanRank.PERM_KICK) or not AuthManager.is_authenticated:
 		return false
 	var m := get_member_by_id(id)
 	if m == null or m == player_member:
@@ -174,11 +152,10 @@ func kick_member(id: String) -> bool:
 	if player_member and m.rank_index <= player_member.rank_index:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.delete_async("/api/v1/clans/%s/members/%s" % [clan_data.clan_id, id])
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: kick_member failed — %s" % result.get("error", "unknown"))
-			return false
+	var result := await ApiClient.delete_async("/api/v1/clans/%s/members/%s" % [clan_data.clan_id, id])
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: kick_member failed — %s" % result.get("error", "unknown"))
+		return false
 
 	_log_activity(ClanActivity.EventType.KICK, player_member.display_name, m.display_name, "A expulse %s" % m.display_name)
 	members.erase(m)
@@ -187,7 +164,7 @@ func kick_member(id: String) -> bool:
 
 
 func promote_member(id: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_PROMOTE):
+	if not player_has_permission(ClanRank.PERM_PROMOTE) or not AuthManager.is_authenticated:
 		return false
 	var m := get_member_by_id(id)
 	if m == null or m.rank_index <= 0:
@@ -196,12 +173,11 @@ func promote_member(id: String) -> bool:
 		return false
 
 	var new_rank_idx: int = m.rank_index - 1
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var new_priority: int = clan_data.ranks[new_rank_idx].priority if new_rank_idx < clan_data.ranks.size() else 0
-		var result := await ApiClient.put_async("/api/v1/clans/%s/members/%s/rank" % [clan_data.clan_id, id], {"rank_priority": new_priority})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: promote_member failed — %s" % result.get("error", "unknown"))
-			return false
+	var new_priority: int = clan_data.ranks[new_rank_idx].priority if new_rank_idx < clan_data.ranks.size() else 0
+	var result := await ApiClient.put_async("/api/v1/clans/%s/members/%s/rank" % [clan_data.clan_id, id], {"rank_priority": new_priority})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: promote_member failed — %s" % result.get("error", "unknown"))
+		return false
 
 	var old_rank: String = clan_data.ranks[m.rank_index].rank_name if m.rank_index < clan_data.ranks.size() else "?"
 	m.rank_index = new_rank_idx
@@ -212,7 +188,7 @@ func promote_member(id: String) -> bool:
 
 
 func demote_member(id: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_DEMOTE):
+	if not player_has_permission(ClanRank.PERM_DEMOTE) or not AuthManager.is_authenticated:
 		return false
 	var m := get_member_by_id(id)
 	if m == null or m.rank_index >= clan_data.ranks.size() - 1:
@@ -221,12 +197,11 @@ func demote_member(id: String) -> bool:
 		return false
 
 	var new_rank_idx: int = m.rank_index + 1
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var new_priority: int = clan_data.ranks[new_rank_idx].priority if new_rank_idx < clan_data.ranks.size() else 0
-		var result := await ApiClient.put_async("/api/v1/clans/%s/members/%s/rank" % [clan_data.clan_id, id], {"rank_priority": new_priority})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: demote_member failed — %s" % result.get("error", "unknown"))
-			return false
+	var new_priority: int = clan_data.ranks[new_rank_idx].priority if new_rank_idx < clan_data.ranks.size() else 0
+	var result := await ApiClient.put_async("/api/v1/clans/%s/members/%s/rank" % [clan_data.clan_id, id], {"rank_priority": new_priority})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: demote_member failed — %s" % result.get("error", "unknown"))
+		return false
 
 	var old_rank: String = clan_data.ranks[m.rank_index].rank_name if m.rank_index < clan_data.ranks.size() else "?"
 	m.rank_index = new_rank_idx
@@ -237,14 +212,13 @@ func demote_member(id: String) -> bool:
 
 
 func set_motd(text: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_EDIT_MOTD):
+	if not player_has_permission(ClanRank.PERM_EDIT_MOTD) or not AuthManager.is_authenticated:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.put_async("/api/v1/clans/%s" % clan_data.clan_id, {"motd": text})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: set_motd failed — %s" % result.get("error", "unknown"))
-			return false
+	var result := await ApiClient.put_async("/api/v1/clans/%s" % clan_data.clan_id, {"motd": text})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: set_motd failed — %s" % result.get("error", "unknown"))
+		return false
 
 	clan_data.motd = text
 	_log_activity(ClanActivity.EventType.MOTD_CHANGE, player_member.display_name, "", "MOTD mis a jour")
@@ -253,17 +227,14 @@ func set_motd(text: String) -> bool:
 
 
 func deposit_funds(amount: float) -> bool:
-	if amount <= 0:
+	if amount <= 0 or not has_clan() or not AuthManager.is_authenticated:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.post_async("/api/v1/clans/%s/treasury/deposit" % clan_data.clan_id, {"amount": int(amount)})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: deposit_funds failed — %s" % result.get("error", "unknown"))
-			return false
-		clan_data.treasury_balance = float(result.get("treasury", clan_data.treasury_balance + amount))
-	else:
-		clan_data.treasury_balance += amount
+	var result := await ApiClient.post_async("/api/v1/clans/%s/treasury/deposit" % clan_data.clan_id, {"amount": int(amount)})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: deposit_funds failed — %s" % result.get("error", "unknown"))
+		return false
+	clan_data.treasury_balance = float(result.get("treasury", clan_data.treasury_balance + amount))
 
 	if player_member:
 		player_member.contribution_total += amount
@@ -275,19 +246,16 @@ func deposit_funds(amount: float) -> bool:
 
 
 func withdraw_funds(amount: float) -> bool:
-	if amount <= 0 or not player_has_permission(ClanRank.PERM_WITHDRAW):
+	if amount <= 0 or not player_has_permission(ClanRank.PERM_WITHDRAW) or not AuthManager.is_authenticated:
 		return false
 	if amount > clan_data.treasury_balance:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.post_async("/api/v1/clans/%s/treasury/withdraw" % clan_data.clan_id, {"amount": int(amount)})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: withdraw_funds failed — %s" % result.get("error", "unknown"))
-			return false
-		clan_data.treasury_balance = float(result.get("treasury", clan_data.treasury_balance - amount))
-	else:
-		clan_data.treasury_balance -= amount
+	var result := await ApiClient.post_async("/api/v1/clans/%s/treasury/withdraw" % clan_data.clan_id, {"amount": int(amount)})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: withdraw_funds failed — %s" % result.get("error", "unknown"))
+		return false
+	clan_data.treasury_balance = float(result.get("treasury", clan_data.treasury_balance - amount))
 
 	var t := { "timestamp": int(Time.get_unix_time_from_system()), "type": "Retrait", "amount": -amount, "actor": player_member.display_name if player_member else "?" }
 	transactions.append(t)
@@ -297,16 +265,15 @@ func withdraw_funds(amount: float) -> bool:
 
 
 func set_diplomacy_relation(target_clan_id: String, relation: String) -> bool:
-	if not player_has_permission(ClanRank.PERM_DIPLOMACY):
+	if not player_has_permission(ClanRank.PERM_DIPLOMACY) or not AuthManager.is_authenticated:
 		return false
 	if not diplomacy.has(target_clan_id):
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var result := await ApiClient.put_async("/api/v1/clans/%s/diplomacy" % clan_data.clan_id, {"target_clan_id": target_clan_id, "relation": relation})
-		if result.get("_status_code", 0) != 200:
-			push_warning("ClanManager: set_diplomacy failed — %s" % result.get("error", "unknown"))
-			return false
+	var result := await ApiClient.put_async("/api/v1/clans/%s/diplomacy" % clan_data.clan_id, {"target_clan_id": target_clan_id, "relation": relation})
+	if result.get("_status_code", 0) != 200:
+		push_warning("ClanManager: set_diplomacy failed — %s" % result.get("error", "unknown"))
+		return false
 
 	var old_rel: String = diplomacy[target_clan_id].get("relation", "NEUTRE")
 	diplomacy[target_clan_id]["relation"] = relation
@@ -327,12 +294,12 @@ func toggle_recruitment() -> void:
 
 
 func update_rank(index: int, rname: String, perms: int) -> bool:
-	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS):
+	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS) or not AuthManager.is_authenticated:
 		return false
 	if index < 0 or index >= clan_data.ranks.size() or index == 0:
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "" and clan_data.ranks[index].db_id >= 0:
+	if clan_data.ranks[index].db_id >= 0:
 		var body := {"rank_name": rname, "permissions": perms}
 		var result := await ApiClient.put_async(
 			"/api/v1/clans/%s/ranks/%d" % [clan_data.clan_id, clan_data.ranks[index].db_id], body)
@@ -348,19 +315,17 @@ func update_rank(index: int, rname: String, perms: int) -> bool:
 
 
 func add_rank(rname: String, perms: int) -> bool:
-	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS):
+	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS) or not AuthManager.is_authenticated:
 		return false
 
-	# New rank gets lowest priority (inserted at end of list = index 0 in backend priority)
+	# New rank gets lowest priority
 	var new_priority: int = 0
 	if not clan_data.ranks.is_empty():
-		# Find the lowest existing priority and go one below
 		var min_p: int = clan_data.ranks[0].priority
 		for r in clan_data.ranks:
 			if r.priority < min_p:
 				min_p = r.priority
 		new_priority = maxi(min_p - 1, 0)
-		# If min is already 0, shift all priorities up by 1 to make room
 		if min_p == 0:
 			new_priority = 0
 			for r in clan_data.ranks:
@@ -371,13 +336,12 @@ func add_rank(rname: String, perms: int) -> bool:
 	r.priority = new_priority
 	r.permissions = perms
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "":
-		var body := {"rank_name": rname, "priority": new_priority, "permissions": perms}
-		var result := await ApiClient.post_async("/api/v1/clans/%s/ranks" % clan_data.clan_id, body)
-		if result.get("_status_code", 0) != 201:
-			push_warning("ClanManager: add_rank failed — %s" % result.get("error", "unknown"))
-			return false
-		r.db_id = int(result.get("id", -1))
+	var body := {"rank_name": rname, "priority": new_priority, "permissions": perms}
+	var result := await ApiClient.post_async("/api/v1/clans/%s/ranks" % clan_data.clan_id, body)
+	if result.get("_status_code", 0) != 201:
+		push_warning("ClanManager: add_rank failed — %s" % result.get("error", "unknown"))
+		return false
+	r.db_id = int(result.get("id", -1))
 
 	clan_data.ranks.append(r)
 	_log_activity(ClanActivity.EventType.RANK_CHANGE, player_member.display_name if player_member else "?", "", "Nouveau rang: %s" % rname)
@@ -386,12 +350,12 @@ func add_rank(rname: String, perms: int) -> bool:
 
 
 func remove_rank(index: int) -> bool:
-	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS):
+	if not player_has_permission(ClanRank.PERM_MANAGE_RANKS) or not AuthManager.is_authenticated:
 		return false
 	if index <= 0 or index >= clan_data.ranks.size():
 		return false
 
-	if AuthManager.is_authenticated and clan_data.clan_id != "" and clan_data.ranks[index].db_id >= 0:
+	if clan_data.ranks[index].db_id >= 0:
 		var result := await ApiClient.delete_async(
 			"/api/v1/clans/%s/ranks/%d" % [clan_data.clan_id, clan_data.ranks[index].db_id])
 		var code: int = result.get("_status_code", 0)
@@ -418,14 +382,13 @@ func refresh_from_backend() -> void:
 	if has_clan():
 		await _load_clan_from_api(clan_data.clan_id)
 	else:
-		# Re-check if player now has a clan
 		await _load_from_backend()
 
 
 ## Search for clans by name/tag. Returns array of { id, name, tag, members, is_recruiting }.
 func search_clans(query: String) -> Array:
 	if not AuthManager.is_authenticated:
-		return _mock_search_results(query)
+		return []
 
 	var result := await ApiClient.get_async("/api/v1/clans/search?q=%s" % query.uri_encode())
 	if result.get("_status_code", 0) != 200:
@@ -448,35 +411,16 @@ func search_clans(query: String) -> Array:
 
 ## Join an existing clan by ID. Returns true on success.
 func join_clan(cid: String) -> bool:
-	if has_clan():
+	if has_clan() or not AuthManager.is_authenticated:
 		return false
 
-	if AuthManager.is_authenticated:
-		var body := {"player_id": AuthManager.player_id}
-		var result := await ApiClient.post_async("/api/v1/clans/%s/members" % cid, body)
-		if result.get("_status_code", 0) != 201:
-			push_warning("ClanManager: join_clan failed — %s" % result.get("error", "unknown"))
-			return false
-		await _load_clan_from_api(cid)
-		return has_clan()
-
-	return false
-
-
-func _mock_search_results(query: String) -> Array:
-	var results: Array = []
-	var mock_clans := [
-		{"id": "clan_iron_wolves", "name": "Iron Wolves", "tag": "IW", "members": 24, "is_recruiting": true},
-		{"id": "clan_star_merchants", "name": "Star Merchants Guild", "tag": "SM", "members": 42, "is_recruiting": true},
-		{"id": "clan_crimson_fleet", "name": "Crimson Fleet", "tag": "CF", "members": 18, "is_recruiting": false},
-		{"id": "clan_nova_guard", "name": "Nova Guard", "tag": "NG", "members": 31, "is_recruiting": true},
-		{"id": "clan_dark_nebula", "name": "Dark Nebula", "tag": "DN", "members": 12, "is_recruiting": true},
-	]
-	var q := query.to_lower()
-	for c in mock_clans:
-		if q == "" or q in c["name"].to_lower() or q in c["tag"].to_lower():
-			results.append(c)
-	return results
+	var body := {"player_id": AuthManager.player_id}
+	var result := await ApiClient.post_async("/api/v1/clans/%s/members" % cid, body)
+	if result.get("_status_code", 0) != 201:
+		push_warning("ClanManager: join_clan failed — %s" % result.get("error", "unknown"))
+		return false
+	await _load_clan_from_api(cid)
+	return has_clan()
 
 
 # =============================================================================
@@ -510,7 +454,8 @@ func _load_clan_from_api(cid: String) -> void:
 	var clan_result := await ApiClient.get_async("/api/v1/clans/%s" % cid)
 	if clan_result.get("_status_code", 0) != 200:
 		push_warning("ClanManager: Failed to load clan %s — %s" % [cid, clan_result.get("error", "?")])
-		_generate_mock_data()
+		clan_data = null
+		clan_loaded.emit()
 		return
 
 	clan_data = ClanData.new()
@@ -711,146 +656,3 @@ func _parse_iso_timestamp(iso: String) -> int:
 				}
 				return int(Time.get_unix_time_from_datetime_dict(dt))
 	return 0
-
-
-# =============================================================================
-# MOCK DATA (offline fallback)
-# =============================================================================
-
-func _generate_mock_data() -> void:
-	var now := int(Time.get_unix_time_from_system())
-
-	clan_data = ClanData.new()
-	clan_data.clan_id = "clan_void_reapers"
-	clan_data.clan_name = "Void Reapers"
-	clan_data.clan_tag = "VR"
-	clan_data.description = "Un clan de pilotes d'elite specialises dans les operations de frappe rapide et la reconnaissance en territoire hostile."
-	clan_data.motto = "Per aspera ad astra"
-	clan_data.motd = "Operation Tempete Noire ce soir 21h. Tous les pilotes de rang Veteran+ sont convoques au point de ralliement secteur BC-7."
-	clan_data.clan_color = Color(0.15, 0.85, 1.0)
-	clan_data.emblem_id = 7
-	clan_data.creation_timestamp = now - 86400 * 30
-	clan_data.treasury_balance = 125000.0
-	clan_data.reputation_score = 2450
-	clan_data.is_recruiting = true
-
-	# 5 ranks
-	var r_chef := ClanRank.new()
-	r_chef.rank_name = "Chef"
-	r_chef.priority = 0
-	r_chef.permissions = ClanRank.ALL_PERMISSIONS
-	clan_data.ranks.append(r_chef)
-
-	var r_admiral := ClanRank.new()
-	r_admiral.rank_name = "Admiral"
-	r_admiral.priority = 1
-	r_admiral.permissions = ClanRank.PERM_INVITE | ClanRank.PERM_KICK | ClanRank.PERM_PROMOTE | ClanRank.PERM_DEMOTE | ClanRank.PERM_EDIT_MOTD | ClanRank.PERM_DIPLOMACY
-	clan_data.ranks.append(r_admiral)
-
-	var r_officier := ClanRank.new()
-	r_officier.rank_name = "Officier"
-	r_officier.priority = 2
-	r_officier.permissions = ClanRank.PERM_INVITE | ClanRank.PERM_KICK | ClanRank.PERM_EDIT_MOTD
-	clan_data.ranks.append(r_officier)
-
-	var r_veteran := ClanRank.new()
-	r_veteran.rank_name = "Veteran"
-	r_veteran.priority = 3
-	r_veteran.permissions = ClanRank.PERM_INVITE
-	clan_data.ranks.append(r_veteran)
-
-	var r_recrue := ClanRank.new()
-	r_recrue.rank_name = "Recrue"
-	r_recrue.priority = 4
-	r_recrue.permissions = 0
-	clan_data.ranks.append(r_recrue)
-
-	# 15 members
-	var member_defs := [
-		["p_starpilot", "StarPilot_X", 0, true, 52000.0, 412, 98],
-		["p_voidcmdr", "VoidCmdr", 1, true, 45200.0, 324, 87],
-		["p_novahunter", "NovaHunter", 2, true, 32100.0, 287, 102],
-		["p_shadowfleet", "ShadowFleet", 2, true, 28500.0, 198, 76],
-		["p_ironviper", "IronViper", 2, true, 21300.0, 245, 89],
-		["p_cosmicdust", "CosmicDust", 3, true, 18700.0, 156, 64],
-		["p_astroknight", "AstroKnight", 3, true, 15800.0, 178, 71],
-		["p_nebulafox", "NebulaFox", 3, false, 12400.0, 134, 58],
-		["p_ghostrider", "GhostRider77", 3, false, 9800.0, 112, 45],
-		["p_zerograv", "ZeroGrav", 4, true, 6200.0, 67, 34],
-		["p_darkmatter", "DarkMatter99", 4, false, 4100.0, 45, 28],
-		["p_pulsarace", "PulsarAce", 4, true, 3500.0, 38, 22],
-		["p_orionblade", "OrionBlade", 4, false, 2800.0, 29, 19],
-		["p_warpdrive", "WarpDriveX", 4, false, 1900.0, 18, 15],
-		["p_quantumfist", "QuantumFist", 4, false, 800.0, 8, 6],
-	]
-
-	for def in member_defs:
-		var m := ClanMember.new()
-		m.player_id = def[0]
-		m.display_name = def[1]
-		m.rank_index = def[2]
-		m.is_online = def[3]
-		m.contribution_total = def[4]
-		m.kills = def[5]
-		m.deaths = def[6]
-		m.join_timestamp = now - randi_range(86400, 86400 * 28)
-		m.last_online_timestamp = now - (0 if m.is_online else randi_range(3600, 86400 * 3))
-		members.append(m)
-		if m.player_id == "p_voidcmdr":
-			player_member = m
-
-	# 4 diplomatic relations
-	diplomacy = {
-		"clan_iron_wolves": { "name": "Iron Wolves", "tag": "IW", "relation": "ALLIE", "since": now - 86400 * 3 },
-		"clan_blood_corsairs": { "name": "Blood Corsairs", "tag": "BC", "relation": "ENNEMI", "since": now - 86400 * 7 },
-		"clan_crimson_fleet": { "name": "Crimson Fleet", "tag": "CF", "relation": "ENNEMI", "since": now - 86400 * 5 },
-		"clan_star_merchants": { "name": "Star Merchants Guild", "tag": "SM", "relation": "NEUTRE", "since": now - 86400 * 14 },
-	}
-
-	# Mock activities
-	_generate_mock_activities(now)
-	_generate_mock_transactions(now)
-
-	clan_loaded.emit()
-
-
-func _generate_mock_activities(now: int) -> void:
-	var entries: Array[Dictionary] = [
-		{ "t": now - 1800, "type": ClanActivity.EventType.DEPOSIT, "actor": "VoidCmdr", "target": "", "detail": "Depot de 5 000 credits" },
-		{ "t": now - 3600, "type": ClanActivity.EventType.PROMOTE, "actor": "VoidCmdr", "target": "NovaHunter", "detail": "NovaHunter: Veteran -> Officier" },
-		{ "t": now - 5400, "type": ClanActivity.EventType.JOIN, "actor": "QuantumFist", "target": "", "detail": "A rejoint le clan" },
-		{ "t": now - 7200, "type": ClanActivity.EventType.KICK, "actor": "StarPilot_X", "target": "DarkMatter99", "detail": "A expulse VoidRunner (inactivite)" },
-		{ "t": now - 10800, "type": ClanActivity.EventType.DEPOSIT, "actor": "NovaHunter", "target": "", "detail": "Depot de 3 200 credits" },
-		{ "t": now - 14400, "type": ClanActivity.EventType.MOTD_CHANGE, "actor": "VoidCmdr", "target": "", "detail": "MOTD mis a jour" },
-		{ "t": now - 18000, "type": ClanActivity.EventType.DIPLOMACY, "actor": "VoidCmdr", "target": "Blood Corsairs", "detail": "Blood Corsairs: NEUTRE -> ENNEMI" },
-		{ "t": now - 21600, "type": ClanActivity.EventType.DEPOSIT, "actor": "ShadowFleet", "target": "", "detail": "Depot de 8 000 credits" },
-		{ "t": now - 28800, "type": ClanActivity.EventType.PROMOTE, "actor": "StarPilot_X", "target": "IronViper", "detail": "IronViper: Veteran -> Officier" },
-		{ "t": now - 36000, "type": ClanActivity.EventType.WITHDRAW, "actor": "StarPilot_X", "target": "", "detail": "Retrait de 2 000 credits" },
-		{ "t": now - 43200, "type": ClanActivity.EventType.JOIN, "actor": "WarpDriveX", "target": "", "detail": "A rejoint le clan" },
-		{ "t": now - 86400, "type": ClanActivity.EventType.DEPOSIT, "actor": "AstroKnight", "target": "", "detail": "Depot de 4 500 credits" },
-		{ "t": now - 86400, "type": ClanActivity.EventType.DEMOTE, "actor": "StarPilot_X", "target": "CosmicDust", "detail": "CosmicDust: Officier -> Veteran" },
-		{ "t": now - 90000, "type": ClanActivity.EventType.DEPOSIT, "actor": "CosmicDust", "target": "", "detail": "Depot de 2 000 credits" },
-		{ "t": now - 100800, "type": ClanActivity.EventType.JOIN, "actor": "OrionBlade", "target": "", "detail": "A rejoint le clan" },
-	]
-
-	for e in entries:
-		var a := ClanActivity.new()
-		a.timestamp = e["t"]
-		a.event_type = e["type"]
-		a.actor_name = e["actor"]
-		a.target_name = e["target"]
-		a.details = e["detail"]
-		activity_log.append(a)
-
-
-func _generate_mock_transactions(now: int) -> void:
-	transactions = [
-		{ "timestamp": now - 1800, "type": "Depot", "amount": 5000.0, "actor": "VoidCmdr" },
-		{ "timestamp": now - 10800, "type": "Depot", "amount": 3200.0, "actor": "NovaHunter" },
-		{ "timestamp": now - 21600, "type": "Depot", "amount": 8000.0, "actor": "ShadowFleet" },
-		{ "timestamp": now - 36000, "type": "Retrait", "amount": -2000.0, "actor": "StarPilot_X" },
-		{ "timestamp": now - 86400, "type": "Depot", "amount": 4500.0, "actor": "AstroKnight" },
-		{ "timestamp": now - 90000, "type": "Depot", "amount": 2000.0, "actor": "CosmicDust" },
-		{ "timestamp": now - 172800, "type": "Depot", "amount": 6000.0, "actor": "IronViper" },
-		{ "timestamp": now - 172800, "type": "Retrait", "amount": -1500.0, "actor": "VoidCmdr" },
-	]

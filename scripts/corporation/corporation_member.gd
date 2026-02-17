@@ -1,8 +1,8 @@
-class_name ClanMember
+class_name CorporationMember
 extends RefCounted
 
 # =============================================================================
-# Clan Member - Player data within a clan
+# Corporation Member - Player data within a corporation
 # =============================================================================
 
 var player_id: String = ""

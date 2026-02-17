@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://8ck18rafg4d1"
-path="res://.godot/imported/interceptor_vex.glb-136fb147fb74504bdaa98aa50aecc174.scn"
+uid="uid://dkh45tyogaayq"
+path="res://.godot/imported/chasseur_arrw.glb-3ce07515c409e87974034cad5816d6ac.scn"
 
 [deps]
 
-source_file="res://assets/models/interceptor_vex.glb"
-dest_files=["res://.godot/imported/interceptor_vex.glb-136fb147fb74504bdaa98aa50aecc174.scn"]
+source_file="res://assets/models/chasseur_arrw.glb"
+dest_files=["res://.godot/imported/chasseur_arrw.glb-3ce07515c409e87974034cad5816d6ac.scn"]
 
 [params]
 
@@ -21,7 +21,7 @@ nodes/root_scale=1.0
 nodes/import_as_skeleton_bones=false
 nodes/use_name_suffixes=true
 nodes/use_node_type_suffixes=true
-meshes/ensure_tangents=false
+meshes/ensure_tangents=true
 meshes/generate_lods=false
 meshes/create_shadow_meshes=true
 meshes/light_baking=0
@@ -33,7 +33,7 @@ animation/fps=30
 animation/trimming=false
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
-import_script/path="res://scripts/tools/ship_model_post_import.gd"
+import_script/path=""
 materials/extract=0
 materials/extract_format=0
 materials/extract_path=""

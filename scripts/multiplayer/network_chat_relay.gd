@@ -83,9 +83,11 @@ func _on_whisper_received(sender_name: String, text: String) -> void:
 
 ## Server sent chat history on connect → load into ChatPanel.
 func _on_chat_history_received(history: Array) -> void:
+	print("[Chat] Relay received history: %d messages, panel=%s" % [history.size(), str(_chat_panel != null)])
 	if _chat_panel == null:
 		_find_chat_panel()
 	if _chat_panel == null:
+		print("[Chat] Relay: ChatPanel NOT FOUND — history dropped!")
 		return
 	_chat_panel.load_history(history)
 
