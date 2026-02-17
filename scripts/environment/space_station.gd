@@ -11,6 +11,7 @@ signal ship_exited_bay(ship: Node3D)
 
 @export var station_name: String = "Alpha Station"
 @export var station_type: int = 0  # StationData.StationType value
+var faction: StringName = &"nova_terra"
 
 var structure_health = null
 var weapon_manager = null

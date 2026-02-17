@@ -239,7 +239,7 @@ func _draw_radar(ctrl: Control) -> void:
 	]), UITheme.PRIMARY)
 
 	# Header
-	ctrl.draw_string(font, Vector2(0, 14), "RADAR", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), UITheme.FONT_SIZE_LABEL, UITheme.HEADER)
+	ctrl.draw_string(font, Vector2(0, 14), Locale.t("hud.radar"), HORIZONTAL_ALIGNMENT_CENTER, int(s.x), UITheme.FONT_SIZE_LABEL, UITheme.HEADER)
 
 	# Belt status
 	if asteroid_mgr:

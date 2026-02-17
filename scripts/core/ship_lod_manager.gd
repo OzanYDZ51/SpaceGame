@@ -561,7 +561,11 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 	var brain = node.get_node_or_null("AIBrain")
 	if brain:
 		brain.weapons_enabled = true
-		brain.set_patrol_area(data.ai_patrol_center, data.ai_patrol_radius)
+		if not data.ai_route_waypoints.is_empty():
+			brain.set_route(data.ai_route_waypoints)
+			brain.route_priority = data.ai_route_priority
+		else:
+			brain.set_patrol_area(data.ai_patrol_center, data.ai_patrol_radius)
 		# Restore guard station reference from saved name
 		if data.guard_station_name != &"" and _universe_node:
 			var station_node = _universe_node.get_node_or_null(NodePath(String(data.guard_station_name)))
@@ -671,13 +675,19 @@ func _update_multimesh() -> void:
 func _tick_data_only_ai(delta: float) -> void:
 	for id: StringName in _lod2_ids:
 		var data = _ships[id]
-		if not data.is_remote_player and not data.is_server_npc:
+		if data.is_remote_player or data.is_server_npc:
+			# Dead reckoning: extrapolate position from velocity between server updates.
+			# Without this, server NPCs freeze between batch syncs (100-500ms gaps).
+			data.position += data.velocity * delta
+		else:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 		_sync_entity_registry_position(id, data)
 	for id: StringName in _lod3_ids:
 		var data = _ships[id]
-		if not data.is_remote_player and not data.is_server_npc:
+		if data.is_remote_player or data.is_server_npc:
+			data.position += data.velocity * delta
+		else:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
 		_sync_entity_registry_position(id, data)

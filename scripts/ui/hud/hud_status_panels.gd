@@ -124,13 +124,13 @@ func _draw_left_panel(ctrl: Control) -> void:
 	var w =ctrl.size.x - 24.0
 	var y =22.0
 
-	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, "SYSTÈMES")
+	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, Locale.t("hud.systems"))
 	y += 2
 
 	# Hull
 	var hull_r =health_system.get_hull_ratio() if health_system else 1.0
 	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), "COQUE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var hp ="%d%%" % int(hull_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
@@ -139,7 +139,7 @@ func _draw_left_panel(ctrl: Control) -> void:
 
 	# Shield
 	var shd_r =health_system.get_total_shield_ratio() if health_system else 0.85
-	ctrl.draw_string(font, Vector2(x, y), "BOUCLIER", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.shield_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var sp ="%d%%" % int(shd_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
 	y += 8
@@ -149,7 +149,7 @@ func _draw_left_panel(ctrl: Control) -> void:
 	# Energy
 	var nrg_r =energy_system.get_energy_ratio() if energy_system else 0.7
 	var nrg_c =Color(0.2, 0.6, 1.0, 0.9)
-	ctrl.draw_string(font, Vector2(x, y), "ÉNERGIE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.energy"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	var np ="%d%%" % int(nrg_r * 100)
 	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, nrg_c)
 	y += 8
@@ -406,7 +406,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 	# --- Resources (2-column grid, only qty > 0) ---
 	if active_resources.is_empty():
-		ctrl.draw_string(font, Vector2(x + 2, y + 10), "AUCUNE RESSOURCE", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x + 2, y + 10), Locale.t("hud.no_resource"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
 	else:
 		var col_w: float = (w - x * 2) / 2.0
 		for i in active_resources.size():

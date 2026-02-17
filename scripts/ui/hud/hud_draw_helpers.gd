@@ -65,9 +65,9 @@ static func format_nav_distance(dist_m: float) -> String:
 static func get_mode_text(ship) -> String:
 	if ship == null: return "---"
 	match ship.speed_mode:
-		Constants.SpeedMode.BOOST: return "TURBO"
-		Constants.SpeedMode.CRUISE: return "CROISIÈRE"
-	return "NORMAL"
+		Constants.SpeedMode.BOOST: return Locale.t("hud.mode_boost")
+		Constants.SpeedMode.CRUISE: return Locale.t("hud.mode_cruise")
+	return Locale.t("hud.mode_normal")
 
 
 static func get_mode_color(ship) -> Color:

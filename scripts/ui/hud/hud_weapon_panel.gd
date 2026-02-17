@@ -258,7 +258,7 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 
 	var hp_count =weapon_manager.get_hardpoint_count()
 	if hp_count == 0:
-		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), "AUCUNE ARME", HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(0, s.y * 0.5 + 5), Locale.t("hud.no_weapon"), HORIZONTAL_ALIGNMENT_CENTER, int(s.x), 13, UITheme.TEXT_DIM)
 		return
 
 	if ship != _holo_ship_ref:
@@ -269,8 +269,9 @@ func _draw_weapon_panel(ctrl: Control) -> void:
 		_rebuild_weapon_panel_cache(s)
 
 	# Header
-	ctrl.draw_string(font, Vector2(8, 13), "ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADER)
-	var hdr_w =font.get_string_size("ARMEMENT", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var _hdr_text: String = Locale.t("hud.weapons")
+	ctrl.draw_string(font, Vector2(8, 13), _hdr_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.HEADER)
+	var hdr_w =font.get_string_size(_hdr_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	ctrl.draw_line(Vector2(8 + hdr_w + 6, 7), Vector2(s.x - 8, 7), UITheme.PRIMARY_DIM, 1.0)
 	var class_str: String = ship.ship_data.ship_class
 	if class_str == "":
@@ -385,7 +386,7 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 		ctrl.draw_string(font, Vector2(x, ly + 10), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, num_col)
 
 		if not armed:
-			ctrl.draw_string(font, Vector2(x + 12, ly + 10), "Vide", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
+			ctrl.draw_string(font, Vector2(x + 12, ly + 10), Locale.t("hud.weapon_empty"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.3))
 			continue
 
 		var abbr =_get_weapon_type_abbr(wtype)

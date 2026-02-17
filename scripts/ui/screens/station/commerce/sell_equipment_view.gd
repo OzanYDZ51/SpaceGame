@@ -22,7 +22,8 @@ var _scroll_offset: float = 0.0
 var _total_content_h: float = 0.0
 var _grid_area: Rect2 = Rect2()
 
-const TAB_NAMES: Array[String] = ["ARMES", "BOUCLIERS", "MOTEURS", "MODULES"]
+static var TAB_NAMES: Array[String]:
+	get: return [Locale.t("equip.sell_weapons"), Locale.t("equip.shields"), Locale.t("equip.engines"), Locale.t("equip.modules")]
 const DETAIL_W: float = 240.0
 const CARD_W: float = 140.0
 const CARD_H: float = 110.0
@@ -43,7 +44,7 @@ func _ready() -> void:
 	add_child(_tab_bar)
 
 	_sell_btn = UIButton.new()
-	_sell_btn.text = "VENDRE"
+	_sell_btn.text = Locale.t("hud.sell")
 	_sell_btn.accent_color = UITheme.WARNING
 	_sell_btn.visible = false
 	_sell_btn.pressed.connect(_on_sell_pressed)

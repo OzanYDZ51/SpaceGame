@@ -702,6 +702,34 @@ static func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent
 		_collect_mesh_vertices(child, verts, xform)
 
 
+## Returns a ConvexPolygonShape3D for a given ship_id, suitable for remote ship collision.
+## Loads the .glb model, generates the convex hull at the correct scale, and caches it.
+## Returns null if the ship data or model is unavailable.
+static func get_convex_shape_for_ship(ship_id: StringName) -> ConvexPolygonShape3D:
+	var data = ShipRegistry.get_ship_data(ship_id)
+	if data == null:
+		return null
+	# Re-use existing convex cache from scene-based loading if available
+	if _convex_cache.has(data.ship_scene_path):
+		return _convex_cache[data.ship_scene_path]
+	# Generate from the .glb model (same path ShipModel uses for remote ships)
+	var model_path: String = data.model_path
+	if model_path == "" or not ResourceLoader.exists(model_path):
+		return null
+	var scene: PackedScene = load(model_path)
+	if scene == null:
+		return null
+	var instance: Node3D = scene.instantiate() as Node3D
+	if instance == null:
+		return null
+	var model_scale: float = get_scene_model_scale(ship_id)
+	var shape := _generate_convex_shape(instance, model_scale)
+	instance.queue_free()
+	# Cache under the scene path so it's shared
+	_convex_cache[data.ship_scene_path] = shape
+	return shape
+
+
 ## Recursively checks if a node tree contains an AnimationPlayer.
 static func _has_animation_player(node: Node) -> bool:
 	if node is AnimationPlayer:

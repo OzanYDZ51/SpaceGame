@@ -319,7 +319,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(stats_x + 10, y + 10), String(data.ship_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 22.0
-	draw_string(font, Vector2(stats_x + 10, y + 10), "Classe: " + String(data.ship_class),
+	draw_string(font, Vector2(stats_x + 10, y + 10), Locale.t("ship.class_label") + String(data.ship_class),
 		HORIZONTAL_ALIGNMENT_LEFT, STATS_W - 20, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_DIM)
 	y += 24.0
 
@@ -327,21 +327,21 @@ func _draw() -> void:
 
 	# Section: COQUE
 	if y < max_stats_y:
-		y = _draw_stat_section(font, stats_x, y, "COQUE", [
-			["PV", "%.0f" % data.hull_hp],
-			["Blindage", "%.0f" % data.armor_rating],
+		y = _draw_stat_section(font, stats_x, y, Locale.t("ship.hull_section"), [
+			["HP", "%.0f" % data.hull_hp],
+			[Locale.t("stat.armor"), "%.0f" % data.armor_rating],
 		])
 
-	# Section: BOUCLIER
+	# Section: SHIELD
 	if y < max_stats_y:
-		y = _draw_stat_section(font, stats_x, y, "BOUCLIER", [
-			["PV/face", "%.0f" % data.shield_hp],
+		y = _draw_stat_section(font, stats_x, y, Locale.t("ship.shield_section"), [
+			["HP/face", "%.0f" % data.shield_hp],
 			["Regen", "%.0f/s" % data.shield_regen_rate],
 		])
 
-	# Section: VOL
+	# Section: FLIGHT
 	if y < max_stats_y:
-		y = _draw_stat_section(font, stats_x, y, "VOL", [
+		y = _draw_stat_section(font, stats_x, y, Locale.t("ship.flight_section"), [
 			["Vitesse", "%.0f m/s" % data.max_speed_normal],
 			["Boost", "%.0f m/s" % data.max_speed_boost],
 			["Accel", "%.0f" % data.accel_forward],

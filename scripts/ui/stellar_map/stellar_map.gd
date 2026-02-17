@@ -1323,16 +1323,16 @@ func _build_group_context_orders(context: Dictionary) -> Array[Dictionary]:
 				# Leader can kick
 				var leader_pid: int = NetworkManager.local_group_data.get("leader", -1)
 				if leader_pid == NetworkManager.local_peer_id:
-					result.append({"id": StringName("group_kick_%d" % target_pid), "display_name": "EXPULSER"})
+					result.append({"id": StringName("group_kick_%d" % target_pid), "display_name": Locale.t("map.kick")})
 			else:
 				# Can invite (only if I'm leader or not in a group yet)
 				var can_invite: bool = my_group_id == 0 or NetworkManager.local_group_data.get("leader", -1) == NetworkManager.local_peer_id
 				if can_invite:
-					result.append({"id": StringName("group_invite_%d" % target_pid), "display_name": "INVITER AU GROUPE"})
+					result.append({"id": StringName("group_invite_%d" % target_pid), "display_name": Locale.t("map.invite_group")})
 
 	# If I'm in a group, always offer to leave
 	if my_group_id > 0:
-		result.append({"id": &"group_leave", "display_name": "QUITTER LE GROUPE"})
+		result.append({"id": &"group_leave", "display_name": Locale.t("map.leave_group")})
 
 	return result
 
@@ -1371,14 +1371,14 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		var target_fi: int = _entity_to_fleet_index(target_entity_id)
 		if target_fi >= 0 and target_fi != fleet_index:
 				var target_fs = fleet.ships[target_fi] if target_fi < fleet.ships.size() else null
-				var target_name = target_fs.custom_name if target_fs else "vaisseau"
-				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})
+				var target_name = target_fs.custom_name if target_fs else Locale.t("map.ship")
+				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": Locale.t("map.follow") % target_name})
 
 	# Single active ship: "CREER ESCADRON" if player has no squadron yet
 	if fleet_index == fleet.active_index and sq == null:
 		var player_sq = fleet.get_ship_squadron(-1)
 		if player_sq == null:
-			result.append({"id": &"sq_create_player", "display_name": "CREER ESCADRON"})
+			result.append({"id": &"sq_create_player", "display_name": Locale.t("map.create_squadron")})
 
 	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
 	var effective =_get_effective_fleet_indices()
@@ -1389,20 +1389,20 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 				any_in_sq = true
 				break
 		if not any_in_sq:
-			result.append({"id": &"sq_create", "display_name": "CREER ESCADRON"})
+			result.append({"id": &"sq_create", "display_name": Locale.t("map.create_squadron")})
 
 	if sq:
 		# Ship is in a squadron
 		if sq.is_leader(fleet_index) or (sq.leader_fleet_index == -1 and fleet_index == fleet.active_index):
 			# Leader options
-			result.append({"id": &"sq_disband", "display_name": "DISSOUDRE ESCADRON"})
+			result.append({"id": &"sq_disband", "display_name": Locale.t("map.disband_squadron")})
 		elif sq.is_member(fleet_index):
 			# Member options
-			result.append({"id": &"sq_leave", "display_name": "QUITTER ESCADRON"})
+			result.append({"id": &"sq_leave", "display_name": Locale.t("map.leave_squadron")})
 	else:
 		# Not in squadron — can join existing squadrons
 		for s in fleet.squadrons:
-			result.append({"id": StringName("sq_join_%d" % s.squadron_id), "display_name": "REJOINDRE: %s" % s.squadron_name})
+			result.append({"id": StringName("sq_join_%d" % s.squadron_id), "display_name": Locale.t("map.join_squadron") % s.squadron_name})
 
 	return result
 

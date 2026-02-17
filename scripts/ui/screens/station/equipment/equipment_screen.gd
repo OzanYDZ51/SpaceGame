@@ -337,13 +337,13 @@ func _draw() -> void:
 	draw_panel_bg(sb_rect)
 
 	# Arsenal header
-	var header_names =["ARSENAL", "MODULES DISPO.", "BOUCLIERS DISPO.", "MOTEURS DISPO."]
+	var header_names =[Locale.t("equip.arsenal"), Locale.t("equip.modules_avail"), Locale.t("equip.shields_avail"), Locale.t("equip.engines_avail")]
 	draw_section_header(sidebar_x + sidebar_pad + 4, arsenal_header_y, sidebar_w - sidebar_pad * 2 - 8, header_names[_current_tab])
 
 	# Stock count
 	if _actions:
 		var total =_actions.get_current_stock_count(_current_tab)
-		var inv_str ="%d en stock" % total
+		var inv_str =Locale.t("equip.in_stock") % total
 		draw_string(font, Vector2(sidebar_x + sidebar_w - sidebar_pad - 4, arsenal_header_y + 11),
 			inv_str, HORIZONTAL_ALIGNMENT_RIGHT, sidebar_w * 0.4, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
@@ -353,7 +353,7 @@ func _draw() -> void:
 		sidebar_w - sidebar_pad * 2 + 4, EC.COMPARE_H)
 	draw_panel_bg(compare_rect)
 	var cmp_header_y =draw_section_header(sidebar_x + sidebar_pad + 4, compare_y + 5,
-		sidebar_w - sidebar_pad * 2 - 8, "COMPARAISON")
+		sidebar_w - sidebar_pad * 2 - 8, Locale.t("equip.comparison"))
 	_sidebar.draw_comparison(self, font, sidebar_x + sidebar_pad, cmp_header_y, sidebar_w - sidebar_pad * 2,
 		_selected_weapon, _selected_shield, _selected_engine, _selected_module)
 

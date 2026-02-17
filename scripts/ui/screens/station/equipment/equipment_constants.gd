@@ -24,8 +24,10 @@ const SIZE_BADGE_W := 30.0
 const SIZE_BADGE_H := 22.0
 
 # --- Tab names ---
-const TAB_NAMES: Array[String] = ["ARMEMENT", "MODULES", "BOUCLIERS", "MOTEURS"]
-const TAB_NAMES_STATION: Array[String] = ["ARMEMENT", "MODULES", "BOUCLIERS"]
+static var TAB_NAMES: Array[String]:
+	get: return [Locale.t("equip.weapons"), Locale.t("equip.modules"), Locale.t("equip.shields"), Locale.t("equip.engines")]
+static var TAB_NAMES_STATION: Array[String]:
+	get: return [Locale.t("equip.weapons"), Locale.t("equip.modules"), Locale.t("equip.shields")]
 
 # --- Weapon type colors ---
 const TYPE_COLORS := {

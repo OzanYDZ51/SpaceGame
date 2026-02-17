@@ -130,6 +130,13 @@ func get_orbital_velocity(_id: String) -> Array:
 
 func _process(delta: float) -> void:
 	_accumulated_delta += delta
+
+	# --- EVERY FRAME: velocity extrapolation for node-less moving entities ---
+	# This provides smooth 60fps map updates instead of 10Hz jumps.
+	# ShipLODManager overwrites with authoritative position at its tick rate.
+	_extrapolate_velocities(delta)
+
+	# --- PERIODIC (10Hz): authoritative sync from scene nodes ---
 	_sync_timer -= delta
 	if _sync_timer > 0.0:
 		return
@@ -202,3 +209,30 @@ func _process(delta: float) -> void:
 			var angle: float = ent["orbital_angle"]
 			ent["pos_x"] = px + cos(angle) * r
 			ent["pos_z"] = pz + sin(angle) * r
+
+
+## Advance positions of node-less entities using their velocity, every frame.
+## This gives smooth 60fps map movement. Authoritative sources (ShipLODManager,
+## EventManager) overwrite at their own tick rate, preventing drift.
+func _extrapolate_velocities(delta: float) -> void:
+	for ent in _entities.values():
+		# Skip entities with scene nodes (their positions come from the node)
+		if ent.get("node") != null:
+			continue
+		# Skip static entities (stars, planets, stations, gates, POIs)
+		var etype: int = ent.get("type", -1)
+		if etype == EntityType.STAR or etype == EntityType.PLANET or etype == EntityType.STATION:
+			continue
+		if etype == EntityType.JUMP_GATE or etype == EntityType.ASTEROID_BELT:
+			continue
+		if etype == EntityType.POINT_OF_INTEREST or etype == EntityType.CONSTRUCTION_SITE:
+			continue
+		# Advance position by velocity (float64 math)
+		var vx: float = ent.get("vel_x", 0.0)
+		var vz: float = ent.get("vel_z", 0.0)
+		if absf(vx) > 0.1 or absf(vz) > 0.1:
+			ent["pos_x"] = ent["pos_x"] + vx * delta
+			ent["pos_z"] = ent["pos_z"] + vz * delta
+			var vy: float = ent.get("vel_y", 0.0)
+			if absf(vy) > 0.1:
+				ent["pos_y"] = ent["pos_y"] + vy * delta

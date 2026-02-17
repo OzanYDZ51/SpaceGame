@@ -365,29 +365,29 @@ func _draw_warnings(ctrl: Control) -> void:
 
 	if not ship.flight_assist:
 		var flash =absf(sin(warning_flash)) * 0.6 + 0.4
-		var wt ="ASSIST. VOL DÉSACTIVÉ"
+		var wt =Locale.t("hud.assist_off")
 		var tw =font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 15).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 20), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.DANGER * Color(1, 1, 1, flash))
 
 	if ship.combat_locked:
 		var flash =absf(sin(warning_flash * 1.5)) * 0.6 + 0.4
-		var wt ="CROISIÈRE BLOQUÉE — COMBAT"
+		var wt =Locale.t("hud.cruise_blocked")
 		var tw =font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 38), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.DANGER * Color(1, 1, 1, flash))
 	elif ship.speed_mode == Constants.SpeedMode.CRUISE and ship.current_speed > 2500:
-		var wt ="VITESSE ÉLEVÉE"
+		var wt =Locale.t("hud.high_speed")
 		var tw =font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 38), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.WARNING)
 
 	if health_system and health_system.get_total_shield_ratio() < 0.1:
 		var flash =absf(sin(warning_flash * 1.5)) * 0.7 + 0.3
-		var wt ="BOUCLIERS FAIBLES"
+		var wt =Locale.t("hud.low_shields")
 		var tw =font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 56), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.WARNING * Color(1, 1, 1, flash))
 
 	if health_system and health_system.get_hull_ratio() < 0.25:
 		var flash =absf(sin(warning_flash * 2.0)) * 0.8 + 0.2
-		var wt ="COQUE CRITIQUE"
+		var wt =Locale.t("hud.hull_critical")
 		var tw =font.get_string_size(wt, HORIZONTAL_ALIGNMENT_CENTER, -1, 15).x
 		ctrl.draw_string(font, Vector2(cx - tw / 2.0, 74), wt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.DANGER * Color(1, 1, 1, flash))
 
@@ -395,7 +395,7 @@ func _draw_warnings(ctrl: Control) -> void:
 	if ship and ship.autopilot_active:
 		var ap_col =NAV_COL_GATE
 		var pulse =0.7 + sin(warning_flash * 0.8) * 0.3
-		var ap_text ="AUTOPILOTE → " + ship.autopilot_target_name.to_upper()
+		var ap_text =Locale.t("hud.autopilot") + " → " + ship.autopilot_target_name.to_upper()
 		var ap_ent: Dictionary = EntityRegistry.get_entity(ship.autopilot_target_id)
 		if not ap_ent.is_empty():
 			var player_upos: Array = FloatingOrigin.to_universe_pos(ship.global_position)

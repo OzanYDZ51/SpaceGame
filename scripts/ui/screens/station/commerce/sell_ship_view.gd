@@ -358,7 +358,7 @@ func _draw_ship_card(font: Font, rect: Rect2, idx: int) -> void:
 	draw_stat_mini_bar(
 		Rect2(bar_x, y + 78, bar_w, bar_h),
 		weapon_ratio, Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, alpha),
-		"ARMES", "%d/%d" % [weapon_count, weapon_total])
+		Locale.t("ship.weapons_label"), "%d/%d" % [weapon_count, weapon_total])
 
 	# --- Sell price estimate (bottom) ---
 	if can_sell and _commerce_manager:

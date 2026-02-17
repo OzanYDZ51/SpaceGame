@@ -438,7 +438,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 			_peer_to_uuid[sender_id] = player_uuid
 		if name_changed:
 			# Notify all clients of the name/role update
-			_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role)
+			_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role, existing.system_id)
 			print("[Server] Identité mise à jour: peer %d → '%s' (role=%s)" % [sender_id, player_name, player_role])
 		return
 
@@ -495,7 +495,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 			npc_auth.on_player_reconnected(player_uuid, sender_id)
 
 	# Notify ALL clients (including new one) about this player
-	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role)
+	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role, spawn_sys)
 
 	# Broadcast system chat: player joined (include system ID for diagnostics)
 	print("[Server] Joueur '%s' (peer %d) enregistré dans systeme %d%s" % [player_name, sender_id, spawn_sys, " (reconnexion)" if is_reconnect else ""])
@@ -515,7 +515,7 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
-func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player_role: String = "player") -> void:
+func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player_role: String = "player", sys_id: int = 0) -> void:
 	# Never add ourselves to our own peers dict (causes ghost self-player)
 	if pid == local_peer_id:
 		return
@@ -524,12 +524,15 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player
 		var existing: NetworkState = peers[pid]
 		existing.player_name = pname
 		existing.role = player_role
+		if sys_id > 0:
+			existing.system_id = sys_id
 		return
 	var state =NetworkState.new()
 	state.peer_id = pid
 	state.player_name = pname
 	state.ship_id = StringName(ship_id_str)
 	state.role = player_role
+	state.system_id = sys_id
 	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
 	peers[pid] = state
@@ -594,17 +597,19 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 	if peers.has(pid):
 		# Reuse existing state object to avoid GC pressure (200+ allocs/sec at 10 players)
 		var state = peers[pid]
+		# Preserve client-side fields set by reliable RPCs (name, role, group, ship).
+		# Do NOT preserve system_id — the server is authoritative for remote peers'
+		# system, and preserving it caused "can't see other player" bugs when
+		# _rpc_player_registered didn't include system_id (defaulted to 0).
 		var saved_name: String = state.player_name
 		var saved_role: String = state.role
 		var saved_group_id: int = state.group_id
-		var saved_system_id: int = state.system_id
 		var saved_ship_id: StringName = state.ship_id
 		state.from_dict(state_dict)
 		state.peer_id = pid
 		state.player_name = saved_name
 		state.role = saved_role
 		state.group_id = saved_group_id
-		state.system_id = saved_system_id
 		state.ship_id = saved_ship_id
 		player_state_received.emit(pid, state)
 	else:
@@ -1152,6 +1157,10 @@ func _rpc_receive_player_left_system(pid: int) -> void:
 func _rpc_receive_player_entered_system(pid: int, ship_id_str: String) -> void:
 	if peers.has(pid):
 		peers[pid].ship_id = StringName(ship_id_str)
+		# Update system_id to match our local system — the server confirmed
+		# this peer entered our system, so keep the local state consistent.
+		var local_sys: int = GameManager.current_system_id_safe() if GameManager else 0
+		peers[pid].system_id = local_sys
 	player_entered_system_received.emit(pid, StringName(ship_id_str))
 
 

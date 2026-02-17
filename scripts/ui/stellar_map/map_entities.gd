@@ -120,12 +120,13 @@ func _draw() -> void:
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.08), true)
 		draw_rect(rect, Color(MapColors.PRIMARY.r, MapColors.PRIMARY.g, MapColors.PRIMARY.b, 0.6), false, 1.0)
 
-	# Construction markers
-	_draw_construction_markers()
+	# Construction markers — only in live view
+	if preview_system_id < 0:
+		_draw_construction_markers()
 
-	# Squadron formation lines (member → leader)
-	if not _squadron_list.is_empty() and _squadron_fleet:
-		MapSquadronLines.draw_squadron_lines(self, camera, entities, _squadron_list, _squadron_fleet, _player_id)
+		# Squadron formation lines (member → leader)
+		if not _squadron_list.is_empty() and _squadron_fleet:
+			MapSquadronLines.draw_squadron_lines(self, camera, entities, _squadron_list, _squadron_fleet, _player_id)
 
 	# Galaxy autopilot route line (player → next gate)
 	_draw_galaxy_route_line(entities)
@@ -136,14 +137,15 @@ func _draw() -> void:
 	# Post-arrival autopilot line (player → final destination, gold dashed)
 	_draw_autopilot_line(entities)
 
-	# Fleet route line (dashed) from ship to destination
-	_draw_route_line(entities)
+	# Fleet route line (dashed) from ship to destination — only in live view (not preview)
+	if preview_system_id < 0:
+		_draw_route_line(entities)
 
-	# Waypoint flash
-	_draw_waypoint_flash()
+		# Waypoint flash
+		_draw_waypoint_flash()
 
-	# Hint text
-	if show_hint:
+	# Hint text — only in live view
+	if show_hint and preview_system_id < 0:
 		_draw_hint_text(font)
 
 
@@ -1178,7 +1180,7 @@ func _draw_waypoint_flash() -> void:
 
 
 func _draw_hint_text(font: Font) -> void:
-	var hint ="Clic droit = Deplacer | Maintenir = Ordres/Construction"
+	var hint = Locale.t("map.hint_fleet")
 	var hint_y: float = size.y - 60.0
 	var hint_x: float = size.x * 0.5
 	var tw: float = font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x

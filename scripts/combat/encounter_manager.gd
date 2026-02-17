@@ -79,14 +79,32 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 						break
 			station_nodes.append(station_node)
 
+	# Collect gate positions for system-wide routes
+	var gate_positions: Array[Vector3] = []
+	if system_data and system_data.jump_gates.size() > 0:
+		for gd_gate in system_data.jump_gates:
+			var orbit_r: float = gd_gate.orbital_radius
+			var angle: float = EntityRegistrySystem.compute_orbital_angle(gd_gate.orbital_angle, gd_gate.orbital_period)
+			gate_positions.append(Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r))
+
+	# Build a list of all key points in the system (stations + gates)
+	var key_points: Array[Vector3] = []
+	key_points.append_array(station_positions)
+	key_points.append_array(gate_positions)
+
 	# Fallback if no stations
 	if station_positions.is_empty():
 		station_positions.append(Vector3(500, 0, -1500))
 		station_nodes.append(null)
+	if key_points.is_empty():
+		key_points.append(Vector3(500, 0, -1500))
 
 	# Get current system_id for encounter key generation
 	var sys_trans = GameManager._system_transition
 	var system_id: int = sys_trans.current_system_id if sys_trans else 0
+
+	# Spawn dedicated station guards (faction matches the station)
+	_spawn_station_guards(station_positions, station_nodes, system_id)
 
 	var configs := EncounterConfig.get_danger_config(danger_level)
 	if danger_level == 5 and configs.size() >= 2:
@@ -98,13 +116,40 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	else:
 		var cfg_idx: int = 0
 		for cfg in configs:
-			# Round-robin distribute groups across stations
+			# Alternate between route patrols and area patrols
 			var st_idx: int = cfg_idx % station_positions.size()
 			var st_pos: Vector3 = station_positions[st_idx]
-			var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-			var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
-			spawn_patrol(cfg["count"], cfg["ship"], base_pos, cfg["radius"], cfg["fac"], system_id, cfg_idx, station_nodes[st_idx])
+			# Even configs get system-wide route patrols (visible traffic)
+			# Odd configs get area patrols near stations
+			if cfg_idx % 2 == 0 and key_points.size() >= 2:
+				var route: Array[Vector3] = _build_system_route(st_pos, key_points)
+				spawn_route_patrol(cfg["count"], cfg["ship"], route, cfg["fac"], system_id, cfg_idx)
+			else:
+				var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+				var base_pos := st_pos + radial_dir * 3000.0 + Vector3(0, 100, 0)
+				spawn_patrol(cfg["count"], cfg["ship"], base_pos, maxf(cfg["radius"], 2000.0), cfg["fac"], system_id, cfg_idx, station_nodes[st_idx])
 			cfg_idx += 1
+
+
+func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Array, system_id: int) -> void:
+	var guard_ship: StringName = _get_guard_ship_id()
+	for st_idx in station_nodes.size():
+		var station_node = station_nodes[st_idx]
+		if station_node == null:
+			continue
+		var guard_faction: StringName = station_node.faction if "faction" in station_node else &"nova_terra"
+		var st_pos: Vector3 = station_positions[st_idx]
+		# Guards patrol close to the station (500m radius)
+		var guard_center: Vector3 = st_pos + Vector3(randf_range(-200, 200), 50, randf_range(-200, 200))
+		spawn_patrol(2, guard_ship, guard_center, 500.0, guard_faction, system_id, 100 + st_idx, station_node)
+
+
+func _get_guard_ship_id() -> StringName:
+	for sid in ShipRegistry.get_all_ship_ids():
+		var data = ShipRegistry.get_ship_data(sid)
+		if data and data.npc_tier == 0:
+			return sid
+	return Constants.DEFAULT_SHIP_ID
 
 
 func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1, station_node: Node3D = null) -> void:
@@ -153,7 +198,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 			if lod_data:
 				lod_data.ai_patrol_center = center
 				lod_data.ai_patrol_radius = patrol_radius
-				lod_data.velocity = Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
+				lod_data.velocity = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized() * randf_range(100.0, 200.0)
 				if station_node:
 					lod_data.guard_station_name = StringName(station_node.name)
 				lod_mgr.register_ship(lod_data.id, lod_data)
@@ -176,6 +221,106 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 	encounter_started.emit(eid)
 
 
+## Spawn NPCs that follow a system-wide route between key points (stations/gates).
+## Creates visible traffic on the system map.
+func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1) -> void:
+	_encounter_counter += 1
+	var eid = _encounter_counter
+
+	var parent = get_tree().current_scene.get_node_or_null("Universe")
+	if parent == null:
+		parent = get_tree().current_scene
+
+	var lod_mgr = _get_lod_manager()
+	var cam_pos = Vector3.ZERO
+	var cam = get_viewport().get_camera_3d()
+	if cam:
+		cam_pos = cam.global_position
+
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	var now: float = Time.get_unix_time_from_system()
+
+	for i in count:
+		if system_id >= 0 and cfg_idx >= 0 and npc_auth:
+			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
+			if npc_auth._destroyed_encounter_npcs.has(encounter_key):
+				if now < npc_auth._destroyed_encounter_npcs[encounter_key]:
+					continue
+				else:
+					npc_auth._destroyed_encounter_npcs.erase(encounter_key)
+
+		# Stagger start positions along the route
+		var start_idx: int = i % route.size()
+		var pos: Vector3 = route[start_idx] + Vector3(randf_range(-200, 200), randf_range(-50, 50), randf_range(-200, 200))
+
+		var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
+		if spawn_data_only:
+			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
+			if lod_data:
+				lod_data.ai_route_waypoints = route.duplicate()
+				lod_data.ai_patrol_center = route[0]
+				lod_data.ai_patrol_radius = 50000.0  # Large radius (system-wide)
+				lod_data.velocity = (route[(start_idx + 1) % route.size()] - pos).normalized() * randf_range(200.0, 400.0)
+				lod_mgr.register_ship(lod_data.id, lod_data)
+				_active_npc_ids.append(lod_data.id)
+				_register_npc_on_server(lod_data.id, ship_id, faction)
+				_store_encounter_key(lod_data.id, system_id, cfg_idx, i)
+		else:
+			var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
+			if ship:
+				var brain = ship.get_node_or_null("AIBrain")
+				if brain:
+					brain.set_patrol_area(route[0], 50000.0)
+					brain._waypoints = route.duplicate()
+					brain.route_priority = false  # Can break route for combat
+				_active_npc_ids.append(StringName(ship.name))
+				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
+				_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
+
+	encounter_started.emit(eid)
+
+
+## Build a system-wide route that passes through multiple key points (stations, gates).
+## Creates a looping path that NPCs will visibly traverse on the system map.
+func _build_system_route(start_pos: Vector3, key_points: Array[Vector3]) -> Array[Vector3]:
+	var route: Array[Vector3] = []
+	route.append(start_pos)
+
+	# Sort key points by distance from start (nearest-neighbor order)
+	var remaining: Array[Vector3] = key_points.duplicate()
+	# Remove the start point itself if it's in the list
+	for k in remaining.size():
+		if remaining[k].distance_to(start_pos) < 1000.0:
+			remaining.remove_at(k)
+			break
+
+	var current: Vector3 = start_pos
+	while not remaining.is_empty() and route.size() < 6:
+		var best_idx: int = 0
+		var best_dist: float = INF
+		for j in remaining.size():
+			var d: float = current.distance_to(remaining[j])
+			if d < best_dist:
+				best_dist = d
+				best_idx = j
+		# Add waypoint offset from the actual station/gate (patrol around it)
+		var target: Vector3 = remaining[best_idx]
+		var offset_dir: Vector3 = (target - current).normalized().cross(Vector3.UP)
+		route.append(target + offset_dir * randf_range(1000.0, 3000.0))
+		current = remaining[best_idx]
+		remaining.remove_at(best_idx)
+
+	# Add midway points between distant waypoints for smoother travel
+	if route.size() >= 2:
+		var last: Vector3 = route[-1]
+		var first: Vector3 = route[0]
+		var mid: Vector3 = (last + first) * 0.5 + Vector3(randf_range(-5000, 5000), 0, randf_range(-5000, 5000))
+		route.append(mid)
+
+	return route
+
+
 func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius: float) -> void:
 	_encounter_counter += 1
 	var eid =_encounter_counter
@@ -196,7 +341,7 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 			randf_range(-1.0, 1.0),
 			randf_range(-0.2, 0.2),
 			randf_range(-1.0, 1.0)
-		).normalized() * randf_range(30.0, 80.0)
+		).normalized() * randf_range(100.0, 200.0)
 
 		if lod_mgr:
 			# All spawn as data-only (LOD2) — LOD manager promotes nearby ones

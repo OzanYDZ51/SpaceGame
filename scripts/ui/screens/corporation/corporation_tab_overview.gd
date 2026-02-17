@@ -45,10 +45,10 @@ func _ready() -> void:
 
 	# Leave confirmation modal
 	_leave_modal = UIModal.new()
-	_leave_modal.title = "Quitter la corporation"
-	_leave_modal.body = "Voulez-vous vraiment quitter la corporation ?"
-	_leave_modal.confirm_text = "QUITTER"
-	_leave_modal.cancel_text = "ANNULER"
+	_leave_modal.title = Locale.t("corp.leave_title")
+	_leave_modal.body = Locale.t("corp.leave_body")
+	_leave_modal.confirm_text = Locale.t("corp.leave_btn")
+	_leave_modal.cancel_text = Locale.t("btn.cancel")
 	_leave_modal.confirmed.connect(_on_leave_confirmed)
 	add_child(_leave_modal)
 

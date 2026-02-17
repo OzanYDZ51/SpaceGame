@@ -40,6 +40,8 @@ var ai_state: int = 0  # Maps to AIBrain.State
 var ai_target_id: StringName = &""
 var ai_patrol_center: Vector3 = Vector3.ZERO
 var ai_patrol_radius: float = 300.0
+var ai_route_waypoints: Array[Vector3] = []  # Linear travel route (convoy)
+var ai_route_priority: bool = false           # Keep route during combat
 var guard_station_name: StringName = &""
 
 # --- Network ---
@@ -63,6 +65,13 @@ var fleet_index: int = -1  # -1 = not a fleet ship
 var is_promoting: bool = false
 
 
+var _route_wp_index: int = 0  # Current waypoint index for route travel
+
+## Cruise speeds for data-only simulation (visible at system-map scale)
+const ROUTE_CRUISE_SPEED: float = 350.0   # Route NPCs: 350 m/s (visible inter-station traffic)
+const PATROL_CRUISE_SPEED: float = 180.0  # Patrol NPCs: 180 m/s (visible area coverage)
+const MIN_DRIFT_SPEED: float = 100.0      # Minimum speed (no frozen dots)
+
 func tick_simple_ai(delta: float) -> void:
 	if is_dead or is_docked:
 		return
@@ -70,22 +79,36 @@ func tick_simple_ai(delta: float) -> void:
 	# Dead reckoning: advance position
 	position += velocity * delta
 
+	# Route-based travel: steer toward next waypoint in sequence
+	if not ai_route_waypoints.is_empty():
+		var wp: Vector3 = ai_route_waypoints[_route_wp_index]
+		var to_wp: Vector3 = wp - position
+		var dist_wp: float = to_wp.length()
+		if dist_wp < 2000.0:
+			_route_wp_index = (_route_wp_index + 1) % ai_route_waypoints.size()
+			wp = ai_route_waypoints[_route_wp_index]
+			to_wp = wp - position
+		# Steer toward waypoint at cruise speed
+		var desired_speed: float = maxf(velocity.length(), ROUTE_CRUISE_SPEED)
+		velocity = velocity.lerp(to_wp.normalized() * desired_speed, delta * 1.5)
+		return
+
 	# Ensure ships always move (prevents frozen LOD2 dots on radar)
-	if velocity.length_squared() < 400.0:
+	if velocity.length_squared() < MIN_DRIFT_SPEED * MIN_DRIFT_SPEED:
 		velocity = Vector3(
 			randf_range(-1.0, 1.0),
 			randf_range(-0.2, 0.2),
 			randf_range(-1.0, 1.0)
-		).normalized() * randf_range(40.0, 80.0)
+		).normalized() * randf_range(MIN_DRIFT_SPEED, PATROL_CRUISE_SPEED)
 
-	# Patrol: steer back hard toward center when drifting out
+	# Patrol: steer back toward center when drifting out
 	if ai_patrol_radius > 0.0:
-		var to_center =ai_patrol_center - position
-		var dist =to_center.length()
+		var to_center = ai_patrol_center - position
+		var dist = to_center.length()
 		if dist > ai_patrol_radius:
-			velocity = velocity.lerp(to_center.normalized() * 80.0, delta * 2.0)
-		elif dist > ai_patrol_radius * 0.8:
-			velocity = velocity.lerp(to_center.normalized() * 60.0, delta * 0.5)
+			velocity = velocity.lerp(to_center.normalized() * PATROL_CRUISE_SPEED, delta * 2.0)
+		elif dist > ai_patrol_radius * 0.7:
+			velocity = velocity.lerp(to_center.normalized() * PATROL_CRUISE_SPEED * 0.7, delta * 0.5)
 
 
 func capture_from_node(ship: Node3D) -> void:
@@ -107,6 +130,8 @@ func capture_from_node(ship: Node3D) -> void:
 		ai_state = brain.current_state
 		ai_patrol_center = brain._patrol_center
 		ai_patrol_radius = brain._patrol_radius
+		ai_route_waypoints = brain._waypoints.duplicate() if not brain._waypoints.is_empty() and brain.route_priority else []
+		ai_route_priority = brain.route_priority
 		if brain.target and is_instance_valid(brain.target):
 			ai_target_id = StringName(brain.target.name)
 		if brain.guard_station and is_instance_valid(brain.guard_station):

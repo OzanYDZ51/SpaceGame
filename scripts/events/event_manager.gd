@@ -4,6 +4,7 @@ extends Node
 # =============================================================================
 # Event Manager — Spawns and tracks random events (pirate convoys etc.)
 # Child of GameplayIntegrator. Server-only spawning logic.
+# Convoys travel long linear routes across the system at max speed.
 # =============================================================================
 
 signal event_started(event_data: EventData)
@@ -26,8 +27,15 @@ var _current_danger_level: int = 0
 const MIN_SPAWN_RADIUS: float = 20000.0
 const MAX_SPAWN_RADIUS: float = 60000.0
 const MIN_DIST_FROM_OBJECTS: float = 10000.0
-const WAYPOINT_RADIUS_MIN: float = 5000.0
-const WAYPOINT_RADIUS_MAX: float = 15000.0
+
+# Route travel: convoy flies from A to B across the system
+const ROUTE_LENGTH_MIN: float = 80000.0   # 80 km
+const ROUTE_LENGTH_MAX: float = 150000.0  # 150 km
+const ROUTE_WAYPOINT_COUNT: int = 5
+
+# Map entity position update
+var _position_update_timer: float = 0.0
+const POSITION_UPDATE_INTERVAL: float = 0.5
 
 
 func _process(delta: float) -> void:
@@ -43,6 +51,13 @@ func _process(delta: float) -> void:
 		if _respawn_timer >= RESPAWN_INTERVAL:
 			_respawn_timer = 0.0
 			_try_spawn_event()
+
+	# Update event marker positions on the map (follow the leader)
+	if not _active_events.is_empty():
+		_position_update_timer += delta
+		if _position_update_timer >= POSITION_UPDATE_INTERVAL:
+			_position_update_timer = 0.0
+			_update_event_positions()
 
 
 # =============================================================================
@@ -100,18 +115,21 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	_event_counter += 1
 	var event_id: String = "evt_%d_%d" % [system_id, _event_counter]
 
-	# Pick spawn position — polar random, far from origin
-	var center := _find_safe_spawn_position()
-	var center_universe: Array = FloatingOrigin.to_universe_pos(center)
+	# Pick spawn position far from origin and objects
+	var start_pos := _find_safe_spawn_position()
+	var start_universe: Array = FloatingOrigin.to_universe_pos(start_pos)
 
-	# Generate 2-3 waypoints around center
-	var wp_count: int = 2 + (tier - 1)  # tier1=2, tier2=3, tier3=3
-	wp_count = clampi(wp_count, 2, 3)
-	var waypoints: Array[Vector3] = []
-	for i in wp_count:
-		var angle: float = TAU * float(i) / float(wp_count) + randf() * 0.5
-		var dist: float = randf_range(WAYPOINT_RADIUS_MIN, WAYPOINT_RADIUS_MAX)
-		waypoints.append(center + Vector3(cos(angle) * dist, randf_range(-200, 200), sin(angle) * dist))
+	# Generate a long travel route: start → destination across the system
+	var route_dir: float = randf() * TAU
+	var route_length: float = randf_range(ROUTE_LENGTH_MIN, ROUTE_LENGTH_MAX)
+	var end_pos: Vector3 = start_pos + Vector3(cos(route_dir) * route_length, 0.0, sin(route_dir) * route_length)
+
+	var route_waypoints: Array[Vector3] = []
+	for i in ROUTE_WAYPOINT_COUNT:
+		var t: float = float(i) / float(ROUTE_WAYPOINT_COUNT - 1)
+		var wp: Vector3 = start_pos.lerp(end_pos, t)
+		wp.y += randf_range(-150.0, 150.0)
+		route_waypoints.append(wp)
 
 	# Create event data
 	var evt := EventData.new()
@@ -119,16 +137,16 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	evt.event_type = &"pirate_convoy"
 	evt.tier = tier
 	evt.system_id = system_id
-	evt.center_x = center_universe[0]
-	evt.center_z = center_universe[2]
-	evt.waypoints = waypoints
+	evt.center_x = start_universe[0]
+	evt.center_z = start_universe[2]
+	evt.waypoints = route_waypoints
 	evt.spawn_time = Time.get_unix_time_from_system()
 	evt.duration = EventDefinitions.get_event_duration(tier)
 	evt.faction = &"pirate"
 
 	# Spawn NPCs
 	var definition: Dictionary = EventDefinitions.get_convoy_definition(tier)
-	_spawn_convoy_npcs(evt, definition, center)
+	_spawn_convoy_npcs(evt, definition, start_pos, route_waypoints)
 
 	_active_events[event_id] = evt
 
@@ -136,8 +154,8 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	EntityRegistry.register(event_id, {
 		"name": evt.get_display_name(),
 		"type": EntityRegistrySystem.EntityType.EVENT,
-		"pos_x": center_universe[0],
-		"pos_z": center_universe[2],
+		"pos_x": start_universe[0],
+		"pos_z": start_universe[2],
 		"color": evt.get_color(),
 		"extra": {
 			"event_id": event_id,
@@ -147,10 +165,10 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	})
 
 	event_started.emit(evt)
-	print("[EventManager] Pirate convoy T%d spawned at %.0f, %.0f (%d NPCs)" % [tier, center.x, center.z, evt.npc_ids.size()])
+	print("[EventManager] Pirate convoy T%d spawned — route %.0fkm, %d NPCs" % [tier, route_length / 1000.0, evt.npc_ids.size()])
 
 
-func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, center: Vector3) -> void:
+func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vector3, route_waypoints: Array[Vector3]) -> void:
 	var parent: Node = get_tree().current_scene.get_node_or_null("Universe")
 	if parent == null:
 		parent = get_tree().current_scene
@@ -161,15 +179,15 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, center: Vector3)
 	if cam:
 		cam_pos = cam.global_position
 
-	# Spawn leader (freighter)
+	# Spawn leader (freighter) — route_priority: keeps route during combat
 	var leader_id_name: StringName = definition["leader"]
-	var leader_pos: Vector3 = center
-	var leader_npc_id := _spawn_single_npc(leader_id_name, leader_pos, evt.faction, center, evt.waypoints, parent, lod_mgr, cam_pos, true)
+	var leader_pos: Vector3 = start_pos
+	var leader_npc_id := _spawn_single_npc(leader_id_name, leader_pos, evt.faction, route_waypoints, parent, lod_mgr, cam_pos, true)
 	if leader_npc_id != &"":
 		evt.leader_id = leader_npc_id
 		evt.npc_ids.append(leader_npc_id)
 
-	# Spawn escorts
+	# Spawn escorts — normal combat behavior (they chase attackers)
 	var escort_idx: int = 0
 	for group in definition["escorts"]:
 		var ship_id: StringName = group["ship_id"]
@@ -179,25 +197,33 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, center: Vector3)
 			var angle: float = TAU * float(escort_idx) / 10.0
 			var dist: float = randf_range(200.0, 600.0)
 			var offset := Vector3(cos(angle) * dist, randf_range(-50, 50), sin(angle) * dist)
-			var pos: Vector3 = center + offset
+			var pos: Vector3 = start_pos + offset
 
-			var npc_id := _spawn_single_npc(ship_id, pos, evt.faction, center, evt.waypoints, parent, lod_mgr, cam_pos, false)
+			var npc_id := _spawn_single_npc(ship_id, pos, evt.faction, route_waypoints, parent, lod_mgr, cam_pos, false)
 			if npc_id != &"":
 				evt.npc_ids.append(npc_id)
 
 
-func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, patrol_center: Vector3, _waypoints: Array[Vector3], parent: Node, lod_mgr, cam_pos: Vector3, is_leader: bool) -> StringName:
-	var patrol_radius: float = WAYPOINT_RADIUS_MAX
-	var behavior: StringName = &"balanced" if is_leader else &"balanced"
+func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, route_waypoints: Array[Vector3], parent: Node, lod_mgr, cam_pos: Vector3, is_leader: bool) -> StringName:
+	var behavior: StringName = &"balanced"
 
 	# On dedicated server, always spawn full nodes
 	var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
 	if spawn_data_only:
 		var lod_data = ShipFactory.create_npc_data_only(ship_id, behavior, pos, faction)
 		if lod_data:
-			lod_data.ai_patrol_center = patrol_center
-			lod_data.ai_patrol_radius = patrol_radius
-			lod_data.velocity = Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
+			# Route-based travel: set waypoints + velocity toward first waypoint
+			lod_data.ai_route_waypoints = route_waypoints.duplicate()
+			lod_data.ai_route_priority = is_leader
+			if route_waypoints.size() >= 2:
+				var dir: Vector3 = (route_waypoints[1] - route_waypoints[0]).normalized()
+				var sd: ShipData = ShipRegistry.get_ship_data(ship_id)
+				var speed: float = sd.max_speed_normal if sd else 100.0
+				lod_data.velocity = dir * speed
+			# Set patrol center/radius as fallback for non-route systems
+			var mid: Vector3 = route_waypoints[0].lerp(route_waypoints[route_waypoints.size() - 1], 0.5) if route_waypoints.size() >= 2 else pos
+			lod_data.ai_patrol_center = mid
+			lod_data.ai_patrol_radius = mid.distance_to(route_waypoints[0]) + 5000.0 if route_waypoints.size() >= 2 else 15000.0
 			lod_mgr.register_ship(lod_data.id, lod_data)
 			_register_npc_on_server(lod_data.id, ship_id, faction)
 			return lod_data.id
@@ -206,12 +232,63 @@ func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, p
 		if ship:
 			var brain = ship.get_node_or_null("AIBrain")
 			if brain:
-				brain.set_patrol_area(patrol_center, patrol_radius)
+				brain.set_route(route_waypoints)
+				if is_leader:
+					brain.route_priority = true
 			var npc_id := StringName(ship.name)
 			ship.tree_exiting.connect(_on_npc_removed.bind(npc_id))
 			_register_npc_on_server(npc_id, ship_id, faction, ship)
 			return npc_id
 	return &""
+
+
+# =============================================================================
+# MAP POSITION UPDATE (convoy moves, map marker follows)
+# =============================================================================
+
+func _update_event_positions() -> void:
+	var lod_mgr = _get_lod_manager()
+	for evt in _active_events.values():
+		if not evt.is_active or evt.leader_id == &"":
+			continue
+		var leader_pos: Vector3 = _get_npc_position(evt.leader_id, lod_mgr)
+		if leader_pos == Vector3.ZERO:
+			continue
+		var leader_vel: Vector3 = _get_npc_velocity(evt.leader_id, lod_mgr)
+		var upos: Array = FloatingOrigin.to_universe_pos(leader_pos)
+		evt.center_x = upos[0]
+		evt.center_z = upos[2]
+		# Update EntityRegistry directly (dict is by reference)
+		var ent: Dictionary = EntityRegistry.get_entity(evt.event_id)
+		if not ent.is_empty():
+			ent["pos_x"] = upos[0]
+			ent["pos_z"] = upos[2]
+			# Store velocity for smooth extrapolation between updates
+			ent["vel_x"] = float(leader_vel.x)
+			ent["vel_y"] = float(leader_vel.y)
+			ent["vel_z"] = float(leader_vel.z)
+
+
+func _get_npc_position(npc_id: StringName, lod_mgr = null) -> Vector3:
+	if lod_mgr == null:
+		lod_mgr = _get_lod_manager()
+	if lod_mgr and lod_mgr._ships.has(npc_id):
+		var data = lod_mgr._ships[npc_id]
+		if data.node_ref and is_instance_valid(data.node_ref):
+			return data.node_ref.global_position
+		return data.position
+	return Vector3.ZERO
+
+
+func _get_npc_velocity(npc_id: StringName, lod_mgr = null) -> Vector3:
+	if lod_mgr == null:
+		lod_mgr = _get_lod_manager()
+	if lod_mgr and lod_mgr._ships.has(npc_id):
+		var data = lod_mgr._ships[npc_id]
+		if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref is RigidBody3D:
+			return (data.node_ref as RigidBody3D).linear_velocity
+		return data.velocity
+	return Vector3.ZERO
 
 
 # =============================================================================

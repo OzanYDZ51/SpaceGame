@@ -26,6 +26,7 @@ var formation_discipline: float = 0.8
 var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 var guard_station: Node3D = null  # Station this NPC is guarding (null = free roam)
+var route_priority: bool = false  # Convoy freighters: keep following route during combat
 
 # Detection — per-ship from ShipData, fallback to Constants
 var detection_range: float = Constants.AI_DETECTION_RANGE
@@ -125,7 +126,8 @@ func _process(delta: float) -> void:
 	# Turrets track + auto-fire every frame, return to rest when no target
 	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm:
-		if target and is_instance_valid(target) and weapons_enabled and current_state in [State.ATTACK, State.PURSUE, State.EVADE]:
+		var can_fire: bool = current_state in [State.ATTACK, State.PURSUE, State.EVADE] or (route_priority and current_state == State.PATROL)
+		if target and is_instance_valid(target) and weapons_enabled and can_fire:
 			wm.update_turrets(target)
 		else:
 			wm.update_turrets(null)
@@ -268,8 +270,16 @@ func _tick_idle() -> void:
 func _tick_patrol() -> void:
 	_detect_threats()
 	if target:
-		current_state = State.PURSUE
-		return
+		if route_priority:
+			# Convoy leader: stay on route, slow down, fire while moving
+			# Exit cruise so we fly at normal speed during combat
+			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+				_ship._exit_cruise()
+			if weapons_enabled:
+				_pilot.fire_at_target(target, accuracy * 0.7)
+		else:
+			current_state = State.PURSUE
+			return
 
 	# Loot pickup: if a crate is in range, go grab it (same system as player)
 	if _loot_pickup and _loot_pickup.can_pickup and _loot_pickup.nearest_crate:
@@ -491,14 +501,7 @@ func _detect_threats() -> void:
 			var data = _cached_lod_mgr.get_ship_data(entry["id"])
 			if data == null or data.is_dead:
 				continue
-			if data.faction == _ship.faction:
-				continue
-			# Never target fleet ships or player if we ARE fleet
-			if _ship.faction == &"player_fleet" and data.faction == &"player_fleet":
-				continue
-			if _ship.faction == &"player_fleet" and entry["id"] == &"player_ship":
-				continue
-			if data.faction == &"player_fleet" and _ship.faction != &"hostile":
+			if _is_faction_allied(data.faction, entry["id"]):
 				continue
 			# Only target ships with a scene node (can't fight LOD2)
 			if data.node_ref == null or not is_instance_valid(data.node_ref):
@@ -521,12 +524,8 @@ func _detect_threats() -> void:
 			continue
 		if node.get("ship_data") != null:
 			var other = node
-			if other.faction == _ship.faction:
-				continue
-			# Fleet ships and player don't target each other
-			if _ship.faction == &"player_fleet" and (other.faction == &"player_fleet" or other.faction == &"neutral"):
-				continue
-			if other.faction == &"player_fleet" and _ship.faction != &"hostile":
+			var other_faction: StringName = other.faction
+			if _is_faction_allied(other_faction, StringName(other.name)):
 				continue
 			var dist: float = _ship.global_position.distance_to(other.global_position)
 			if dist < fallback_dist:
@@ -554,6 +553,43 @@ func _is_target_valid() -> bool:
 	return true
 
 
+## Check if a target faction is allied (should NOT be attacked).
+## Uses FactionManager for real faction hostility when available.
+func _is_faction_allied(target_faction: StringName, target_id: StringName = &"") -> bool:
+	var my_fac: StringName = _ship.faction
+
+	# Same faction = always allied
+	if target_faction == my_fac:
+		return true
+
+	# Fleet <-> fleet and fleet <-> player are always allied
+	if my_fac == &"player_fleet":
+		return target_faction == &"player_fleet" or target_id == &"player_ship"
+	if target_faction == &"player_fleet" or target_id == &"player_ship":
+		# Check if we share the player's real faction
+		var gi = GameManager.get_node_or_null("GameplayIntegrator")
+		var fm = gi.get_node_or_null("FactionManager") if gi else null
+		if fm:
+			# Allied to player's fleet if our faction matches the player's
+			return my_fac == fm.player_faction
+		return false
+
+	# Generic 'hostile' and 'lawless' factions are hostile to everyone
+	if my_fac == &"hostile" or my_fac == &"lawless":
+		return false
+	if target_faction == &"hostile" or target_faction == &"lawless":
+		return false
+
+	# Use FactionManager: not enemies = allied (includes neutral)
+	var gi2 = GameManager.get_node_or_null("GameplayIntegrator")
+	var fm2 = gi2.get_node_or_null("FactionManager") if gi2 else null
+	if fm2:
+		return not fm2.are_enemies(my_fac, target_faction)
+
+	# Fallback: different faction = hostile
+	return false
+
+
 func _generate_patrol_waypoints() -> void:
 	_waypoints.clear()
 	for i in 4:
@@ -574,6 +610,19 @@ func set_patrol_area(center: Vector3, radius: float) -> void:
 	_current_waypoint = 0
 	_update_environment()
 	_generate_patrol_waypoints()
+
+
+## Set explicit linear route waypoints (convoy travel, no circular generation).
+func set_route(waypoints: Array[Vector3]) -> void:
+	_waypoints = waypoints
+	_current_waypoint = 0
+	if not waypoints.is_empty():
+		_patrol_center = waypoints[0]
+		# Large radius so guard-station recenter never triggers
+		var max_dist: float = 0.0
+		for wp in waypoints:
+			max_dist = maxf(max_dist, _patrol_center.distance_to(wp))
+		_patrol_radius = max_dist + 5000.0
 
 
 # =============================================================================

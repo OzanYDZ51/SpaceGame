@@ -57,7 +57,7 @@ func _ready() -> void:
 
 	# Accept/Decline buttons inside invite panel
 	var btn_accept := Button.new()
-	btn_accept.text = "ACCEPTER"
+	btn_accept.text = Locale.t("hud.accept")
 	btn_accept.position = Vector2(20, 42)
 	btn_accept.custom_minimum_size = Vector2(100, 24)
 	btn_accept.add_theme_font_size_override("font_size", 12)
@@ -65,7 +65,7 @@ func _ready() -> void:
 	_invite_panel.add_child(btn_accept)
 
 	var btn_decline := Button.new()
-	btn_decline.text = "REFUSER"
+	btn_decline.text = Locale.t("hud.decline")
 	btn_decline.position = Vector2(140, 42)
 	btn_decline.custom_minimum_size = Vector2(100, 24)
 	btn_decline.add_theme_font_size_override("font_size", 12)
@@ -150,7 +150,7 @@ func _draw_group_panel(ctrl: Control) -> void:
 	ctrl.draw_rect(Rect2(Vector2.ZERO, s), COL_BORDER, false, 1.0)
 
 	# Header
-	ctrl.draw_string(font, Vector2(PANEL_PADDING, 16), "GROUPE", HORIZONTAL_ALIGNMENT_LEFT, int(s.x - PANEL_PADDING * 2), UITheme.FONT_SIZE_LABEL, COL_GROUP_GREEN)
+	ctrl.draw_string(font, Vector2(PANEL_PADDING, 16), Locale.t("hud.group"), HORIZONTAL_ALIGNMENT_LEFT, int(s.x - PANEL_PADDING * 2), UITheme.FONT_SIZE_LABEL, COL_GROUP_GREEN)
 
 	# Separator
 	ctrl.draw_line(Vector2(PANEL_PADDING, PANEL_HEADER), Vector2(s.x - PANEL_PADDING, PANEL_HEADER), COL_BORDER, 1.0)
@@ -197,7 +197,7 @@ func _draw_invite_panel(ctrl: Control) -> void:
 	ctrl.draw_rect(Rect2(Vector2.ZERO, s), COL_GROUP_GREEN * Color(1, 1, 1, 0.6), false, 1.5)
 
 	# Text
-	var msg: String = "%s vous invite dans un groupe" % _invite_name
+	var msg: String = Locale.t("hud.group_invite") % _invite_name
 	ctrl.draw_string(font, Vector2(20, 20), msg, HORIZONTAL_ALIGNMENT_LEFT, int(s.x - 40), UITheme.FONT_SIZE_SMALL, COL_MEMBER)
 
 	# Timer

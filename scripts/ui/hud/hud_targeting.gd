@@ -228,11 +228,11 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 			var l_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.LEFT)
 			var d_r =t_health.get_shield_ratio(HealthSystem.ShieldFacing.RIGHT)
 			var col_x2 =cx + 10
-			ctrl.draw_string(font, Vector2(x, y), "AV: %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
-			ctrl.draw_string(font, Vector2(col_x2, y), "AR: %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
+			ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.shield_front") + ": %d%%" % int(f_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(f_r))
+			ctrl.draw_string(font, Vector2(col_x2, y), Locale.t("hud.shield_rear") + ": %d%%" % int(r_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(r_r))
 			y += 14
-			ctrl.draw_string(font, Vector2(x, y), "G: %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(l_r))
-			ctrl.draw_string(font, Vector2(col_x2, y), "D: %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(d_r))
+			ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.shield_left") + ": %d%%" % int(l_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(l_r))
+			ctrl.draw_string(font, Vector2(col_x2, y), Locale.t("hud.shield_right") + ": %d%%" % int(d_r * 100), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, _shield_ratio_color(d_r))
 			y += 20
 		else:
 			y += 34

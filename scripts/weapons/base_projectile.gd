@@ -104,14 +104,23 @@ func _on_body_hit(body: Node3D) -> void:
 			return
 
 		if not NetworkManager.is_server():
-			if body.is_in_group("ships"):
+			# Resolve the actual ship node: body may be the ship itself (local NPC)
+			# or a HitBody child of RemoteNPCShip. Check both.
+			var ship_node: Node3D = body
+			var ship_name: StringName = body.name
+			if not body.is_in_group("ships"):
+				var remote_npc = _get_remote_npc_parent(body)
+				if remote_npc:
+					ship_node = remote_npc
+					ship_name = remote_npc.npc_id
+			if ship_node.is_in_group("ships"):
 				var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 				if lod_mgr:
-					var lod_data: ShipLODData = lod_mgr.get_ship_data(StringName(body.name))
+					var lod_data: ShipLODData = lod_mgr.get_ship_data(ship_name)
 					if lod_data and lod_data.is_server_npc:
 						var hit_dir =(body.global_position - global_position).normalized()
 						NetworkManager._rpc_hit_claim.rpc_id(1,
-							body.name, String(weapon_name), damage,
+							String(ship_name), String(weapon_name), damage,
 							[hit_dir.x, hit_dir.y, hit_dir.z])
 						# Predict shield state from synced lod data
 						var predicted_info ={
@@ -119,7 +128,7 @@ func _on_body_hit(body: Node3D) -> void:
 							"shield_ratio": lod_data.shield_ratio,
 						}
 						_spawn_hit_effect(body, predicted_info)
-						_report_hit_to_owner(body, predicted_info)
+						_report_hit_to_owner(ship_node, predicted_info)
 						_return_to_pool()
 						return
 			# Structure hit claim (station) — clients only
@@ -201,8 +210,16 @@ func _report_hit_to_owner(body: Node3D, hit_info: Dictionary) -> void:
 
 ## Check if body is a child of a RemotePlayerShip (e.g. the HitBody StaticBody3D).
 func _get_remote_player_parent(body: Node3D):
-	var parent =body.get_parent()
-	if parent.get("peer_id") != null:
+	var parent = body.get_parent()
+	if parent and parent.get("peer_id") != null:
+		return parent
+	return null
+
+
+## Check if body is a child of a RemoteNPCShip (e.g. the HitBody StaticBody3D).
+func _get_remote_npc_parent(body: Node3D):
+	var parent = body.get_parent()
+	if parent and parent.get("npc_id") != null and parent.is_in_group("ships"):
 		return parent
 	return null
 
@@ -239,7 +256,12 @@ func _is_friendly(body: Node3D) -> bool:
 	var owner_faction: StringName = owner_ship.faction if "faction" in owner_ship else &""
 	if owner_faction == &"":
 		return false
+	# Body may be a HitBody child — check parent for faction too
 	var body_faction: StringName = body.faction if "faction" in body else &""
+	if body_faction == &"":
+		var parent = body.get_parent()
+		if parent:
+			body_faction = parent.faction if "faction" in parent else &""
 	if body_faction == &"":
 		return false
 	return TargetingSystem._is_allied(owner_faction, body_faction)

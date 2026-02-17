@@ -320,6 +320,10 @@ func _populate_system() -> void:
 	if universe == null:
 		return
 
+	# Determine station faction from galaxy system territory
+	var galaxy_sys_fac: StringName = galaxy.get_system(current_system_id).get("faction", &"neutral")
+	var station_faction: StringName = _map_system_faction(galaxy_sys_fac)
+
 	# Spawn stations
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
@@ -327,6 +331,7 @@ func _populate_system() -> void:
 		station.name = "Station_%d" % i
 		station.station_name = sd.station_name
 		station.station_type = sd.station_type  # Configures health preset
+		station.faction = station_faction
 
 		# Load or create station equipment (persistent across system changes)
 		var eq_key ="system_%d_station_%d" % [current_system_id, i]
@@ -521,6 +526,8 @@ func _register_system_entities() -> void:
 	# Stations
 	var universe =GameManager.universe_node
 	var struct_auth = GameManager.get_node_or_null("StructureAuthority")
+	var galaxy_sys_fac: StringName = galaxy.get_system(current_system_id).get("faction", &"neutral") if galaxy else &"neutral"
+	var station_faction: StringName = _map_system_faction(galaxy_sys_fac)
 	for i in current_system_data.stations.size():
 		var sd: StationData = current_system_data.stations[i]
 		var node: Node3D = universe.get_node_or_null("Station_%d" % i) if universe else null
@@ -541,6 +548,7 @@ func _register_system_entities() -> void:
 			"extra": {
 				"station_type": sd.get_type_string(),
 				"station_index": i,
+				"faction": String(station_faction),
 			},
 		})
 		# Register with StructureAuthority for multiplayer sync
@@ -683,3 +691,14 @@ func _generate_asteroid_field(belt: AsteroidBeltData, index: int) -> AsteroidFie
 	field.secondary_resource = belt.secondary_resource
 	field.rare_resource = belt.rare_resource
 	return field
+
+
+## Map galaxy territory label to a real faction ID for stations.
+static func _map_system_faction(sys_faction: StringName) -> StringName:
+	match sys_faction:
+		&"hostile":
+			return &"kharsis"
+		&"lawless":
+			return &"pirate"
+		_:
+			return &"nova_terra"

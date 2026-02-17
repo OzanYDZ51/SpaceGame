@@ -412,18 +412,18 @@ func _draw_engine_comparison(parent: Control, font: Font, px: float, start_y: fl
 	var cur: EngineResource = _adapter.get_equipped_engine() if _adapter else null
 
 	var stats: Array = [
-		["ACCELERATION", cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
-		["VITESSE", cur.speed_mult if cur else 1.0, new_engine.speed_mult, true],
-		["CRUISE", cur.cruise_mult if cur else 1.0, new_engine.cruise_mult, true],
-		["ROTATION", cur.rotation_mult if cur else 1.0, new_engine.rotation_mult, true],
-		["CONSO BOOST", cur.boost_drain_mult if cur else 1.0, new_engine.boost_drain_mult, false],
+		[Locale.t("stat.acceleration"), cur.accel_mult if cur else 1.0, new_engine.accel_mult, true],
+		[Locale.t("stat.speed"), cur.speed_mult if cur else 1.0, new_engine.speed_mult, true],
+		[Locale.t("stat.cruise"), cur.cruise_mult if cur else 1.0, new_engine.cruise_mult, true],
+		[Locale.t("stat.rotation"), cur.rotation_mult if cur else 1.0, new_engine.rotation_mult, true],
+		[Locale.t("stat.boost_drain"), cur.boost_drain_mult if cur else 1.0, new_engine.boost_drain_mult, false],
 	]
 	_draw_stat_rows(parent, font, px, start_y, pw, stats)
 
 
 func _draw_module_comparison(parent: Control, font: Font, px: float, start_y: float, pw: float, selected_module: StringName) -> void:
 	if _selected_module_slot < 0 or selected_module == &"":
-		_draw_no_selection_msg(parent, font, px, start_y, pw, "Selectionnez un slot et un module")
+		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.select_slot"))
 		return
 
 	var new_mod =ModuleRegistry.get_module(selected_module)
@@ -436,24 +436,24 @@ func _draw_module_comparison(parent: Control, font: Font, px: float, start_y: fl
 
 	var stats: Array = []
 	if new_mod.hull_bonus > 0 or (cur and cur.hull_bonus > 0):
-		stats.append(["COQUE", cur.hull_bonus if cur else 0.0, new_mod.hull_bonus, true])
+		stats.append([Locale.t("stat.hull"), cur.hull_bonus if cur else 0.0, new_mod.hull_bonus, true])
 	if new_mod.armor_bonus > 0 or (cur and cur.armor_bonus > 0):
-		stats.append(["BLINDAGE", cur.armor_bonus if cur else 0.0, new_mod.armor_bonus, true])
+		stats.append([Locale.t("stat.armor"), cur.armor_bonus if cur else 0.0, new_mod.armor_bonus, true])
 	if new_mod.energy_cap_bonus > 0 or (cur and cur.energy_cap_bonus > 0):
-		stats.append(["ENERGIE MAX", cur.energy_cap_bonus if cur else 0.0, new_mod.energy_cap_bonus, true])
+		stats.append([Locale.t("stat.energy_max"), cur.energy_cap_bonus if cur else 0.0, new_mod.energy_cap_bonus, true])
 	if new_mod.energy_regen_bonus > 0 or (cur and cur.energy_regen_bonus > 0):
-		stats.append(["REGEN ENERGIE", cur.energy_regen_bonus if cur else 0.0, new_mod.energy_regen_bonus, true])
+		stats.append([Locale.t("stat.energy_regen"), cur.energy_regen_bonus if cur else 0.0, new_mod.energy_regen_bonus, true])
 	if new_mod.shield_regen_mult != 1.0 or (cur and cur.shield_regen_mult != 1.0):
-		stats.append(["REGEN BOUCLIER", (cur.shield_regen_mult if cur else 1.0) * 100, new_mod.shield_regen_mult * 100, true])
+		stats.append([Locale.t("stat.shield_regen"), (cur.shield_regen_mult if cur else 1.0) * 100, new_mod.shield_regen_mult * 100, true])
 	if new_mod.shield_cap_mult != 1.0 or (cur and cur.shield_cap_mult != 1.0):
-		stats.append(["CAP BOUCLIER", (cur.shield_cap_mult if cur else 1.0) * 100, new_mod.shield_cap_mult * 100, true])
+		stats.append([Locale.t("stat.shield_cap"), (cur.shield_cap_mult if cur else 1.0) * 100, new_mod.shield_cap_mult * 100, true])
 	if new_mod.weapon_energy_mult != 1.0 or (cur and cur.weapon_energy_mult != 1.0):
-		stats.append(["CONSO ARMES", (cur.weapon_energy_mult if cur else 1.0) * 100, new_mod.weapon_energy_mult * 100, false])
+		stats.append([Locale.t("stat.weapon_drain"), (cur.weapon_energy_mult if cur else 1.0) * 100, new_mod.weapon_energy_mult * 100, false])
 	if new_mod.weapon_range_mult != 1.0 or (cur and cur.weapon_range_mult != 1.0):
-		stats.append(["PORTEE ARMES", (cur.weapon_range_mult if cur else 1.0) * 100, new_mod.weapon_range_mult * 100, true])
+		stats.append([Locale.t("stat.weapon_range"), (cur.weapon_range_mult if cur else 1.0) * 100, new_mod.weapon_range_mult * 100, true])
 
 	if stats.is_empty():
-		_draw_no_selection_msg(parent, font, px, start_y, pw, "Module sans bonus mesurable")
+		_draw_no_selection_msg(parent, font, px, start_y, pw, Locale.t("equip.no_bonus"))
 		return
 
 	_draw_stat_rows(parent, font, px, start_y, pw, stats)
