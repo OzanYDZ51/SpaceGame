@@ -17,6 +17,12 @@ var _slider_master: UISlider
 var _slider_music: UISlider
 var _slider_sfx: UISlider
 
+# --- Display ---
+var _toggle_fps: UIToggleButton
+
+# Static flag read by HUD (avoids autoload, simple and fast)
+static var show_fps: bool = false
+
 # --- Controls ---
 var _listening: bool = false
 var _listening_action: String = ""
@@ -99,6 +105,13 @@ func _ready() -> void:
 	_slider_sfx = _create_slider(Locale.t("slider.sfx"))
 	_slider_sfx.value_changed.connect(_on_sfx_changed)
 
+	# FPS toggle
+	_toggle_fps = UIToggleButton.new()
+	_toggle_fps.text = Locale.t("option.show_fps")
+	_toggle_fps.is_on = show_fps
+	_toggle_fps.toggled.connect(_on_fps_toggled)
+	add_child(_toggle_fps)
+
 
 func _create_slider(label: String) -> UISlider:
 	var s := UISlider.new()
@@ -147,7 +160,13 @@ func _on_language_changed(_lang: String) -> void:
 	_slider_master.label_text = Locale.t("slider.master")
 	_slider_music.label_text = Locale.t("slider.music")
 	_slider_sfx.label_text = Locale.t("slider.sfx")
+	_toggle_fps.text = Locale.t("option.show_fps")
 	queue_redraw()
+
+
+func _on_fps_toggled(is_on: bool) -> void:
+	show_fps = is_on
+	save_settings()
 
 
 func _update_visibility() -> void:
@@ -155,6 +174,7 @@ func _update_visibility() -> void:
 	_slider_master.visible = show_audio
 	_slider_music.visible = show_audio
 	_slider_sfx.visible = show_audio
+	_toggle_fps.visible = show_audio
 
 
 # =========================================================================
@@ -226,6 +246,11 @@ func _draw_audio_tab() -> void:
 	_slider_music.size = Vector2(_content_w, slider_h)
 	_slider_sfx.position = Vector2(_content_x, _content_y + (slider_h + gap) * 2)
 	_slider_sfx.size = Vector2(_content_w, slider_h)
+
+	# FPS toggle below sliders
+	var toggle_y: float = _content_y + (slider_h + gap) * 3 + 8
+	_toggle_fps.position = Vector2(_content_x, toggle_y)
+	_toggle_fps.size = Vector2(_content_w, 32)
 
 
 func _draw_controls_tab() -> void:
@@ -470,6 +495,8 @@ func save_settings() -> void:
 	cfg.set_value("audio", "master", _slider_master.value)
 	cfg.set_value("audio", "music", _slider_music.value)
 	cfg.set_value("audio", "sfx", _slider_sfx.value)
+	# Display
+	cfg.set_value("display", "show_fps", show_fps)
 	# Controls
 	for entry in REBINDABLE_ACTIONS:
 		var keycode: int = _get_action_keycode(entry[0])
@@ -495,6 +522,10 @@ func load_settings() -> void:
 		var sfx_val: float = cfg.get_value("audio", "sfx", 1.0)
 		_set_bus_volume("SFX", sfx_val)
 		_slider_sfx.value = sfx_val
+	# Display
+	if cfg.has_section("display"):
+		show_fps = cfg.get_value("display", "show_fps", false)
+		_toggle_fps.is_on = show_fps
 	# Controls
 	if cfg.has_section("controls"):
 		for entry in REBINDABLE_ACTIONS:

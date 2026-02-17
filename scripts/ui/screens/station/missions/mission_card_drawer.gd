@@ -140,16 +140,16 @@ static func _draw_action_button(canvas: CanvasItem, rect: Rect2, hovered: bool, 
 		var is_full: bool = mission_manager and mission_manager.get_active_count() >= MissionManager.MAX_ACTIVE
 		var already: bool = mission_manager and mission_manager.has_mission(mission.mission_id)
 		if already:
-			label = "ACCEPTEE"
+			label = Locale.t("mission.status_accepted")
 			accent = UITheme.TEXT_DIM
 		elif is_full:
-			label = "LIMITE"
+			label = Locale.t("mission.status_limit")
 			accent = UITheme.TEXT_DIM
 		else:
-			label = "ACCEPTER"
+			label = Locale.t("mission.btn_accept")
 			accent = UITheme.ACCENT
 	else:
-		label = "ABANDONNER"
+		label = Locale.t("mission.btn_abandon")
 		accent = UITheme.DANGER
 
 	# Background

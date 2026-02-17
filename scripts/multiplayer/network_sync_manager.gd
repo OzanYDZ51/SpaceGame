@@ -608,7 +608,7 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 		fire_dir[4] if fire_dir.size() > 4 else 0.0,
 		fire_dir[5] if fire_dir.size() > 5 else 0.0)
 
-	var spawn_pos =FloatingOrigin.to_local_pos(fire_pos)
+	var spawn_pos: Vector3 = FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
 	var look_target: Vector3 = spawn_pos + dir

@@ -50,6 +50,8 @@
 	"slider.music": "MÜZİK",
 	"slider.sfx": "SES EFEKTLERİ",
 
+	"option.show_fps": "FPS GOSTER",
+
 	"key.forward": "İLERİ",
 	"key.backward": "GERİ",
 	"key.left": "SOL",
@@ -802,6 +804,7 @@
 	"build.construct": "İNSA ET",
 	"build.close": "KAPAT",
 	"build.resources_complete": "%d / %d kaynak tamamlandi",
+	"build.stock": "(stok: %d)",
 
 	"bug.title": "HATA BİLDİRİMİ",
 	"bug.field_title": "BASLIK",
@@ -814,6 +817,11 @@
 	"bug.system_info": "Sistem: %s (#%d)",
 	"bug.position_info": "Konum: %.0f, %.0f, %.0f",
 	"bug.sending": "GONDERİLİYOR...",
+	"bug.version_prefix": "Surüm: ",
+	"bug.system_fallback": "Sistem #%d",
+	"bug.login_required": "Rapor gondermek icin giris gerekli",
+	"bug.title_required": "Baslik gerekli",
+	"bug.desc_required": "Aciklama gerekli",
 
 	"splash.init": "BASLATILIYOR",
 	"splash.tip_target": "En yakin gemiyi hedeflemek icin Tab'a basin",

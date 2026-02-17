@@ -330,25 +330,25 @@ func _draw_fleet_card(parent: Control, font: Font, cx: float, cy: float,
 		var badge_col =UITheme.ACCENT
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
-		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "ACTIF",
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), Locale.t("equip.status_active"),
 			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		var badge_col =Color(0.2, 0.6, 1.0)
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
-		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "DEPLOYE",
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), Locale.t("equip.status_deployed"),
 			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
 	elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
 		var badge_col =Color(1.0, 0.3, 0.2)
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
-		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "DETRUIT",
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), Locale.t("equip.status_destroyed"),
 			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
 	elif _current_station_id != "" and fs.docked_station_id != _current_station_id:
 		var badge_col =UITheme.TEXT_DIM
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), Color(badge_col.r, badge_col.g, badge_col.b, 0.1))
 		parent.draw_rect(Rect2(badge_x, badge_y, badge_w, badge_h), badge_col, false, 1.0)
-		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), "AILLEURS",
+		parent.draw_string(font, Vector2(badge_x + 2, badge_y + 10), Locale.t("equip.status_elsewhere"),
 			HORIZONTAL_ALIGNMENT_CENTER, badge_w - 4, UITheme.FONT_SIZE_TINY, badge_col)
 
 
@@ -438,7 +438,7 @@ func _draw_hardpoint_strip(parent: Control, font: Font, s: Vector2) -> void:
 			parent.draw_string(font, Vector2(card_x + 24, stats_y), "%s  %.0f DPS" % [type_name, dps],
 				HORIZONTAL_ALIGNMENT_LEFT, card_w - 32, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		else:
-			var empty_label ="TOURELLE" if is_turret else "VIDE"
+			var empty_label = Locale.t("equip.turret") if is_turret else Locale.t("equip.empty")
 			var empty_col =Color(EC.TYPE_COLORS[5].r, EC.TYPE_COLORS[5].g, EC.TYPE_COLORS[5].b, 0.4) if is_turret else UITheme.TEXT_DIM
 			parent.draw_string(font, Vector2(card_x, card_y + card_h * 0.5 + 6), empty_label,
 				HORIZONTAL_ALIGNMENT_CENTER, card_w - 4, UITheme.FONT_SIZE_BODY, empty_col)
@@ -518,7 +518,7 @@ func _draw_module_slot_strip(parent: Control, font: Font, s: Vector2) -> void:
 				parent.draw_string(font, Vector2(card_x + 8, card_y + 54), bonuses[0],
 					HORIZONTAL_ALIGNMENT_LEFT, card_w - 16, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		else:
-			parent.draw_string(font, Vector2(card_x, card_y + card_h * 0.5 + 6), "VIDE",
+			parent.draw_string(font, Vector2(card_x, card_y + card_h * 0.5 + 6), Locale.t("equip.empty"),
 				HORIZONTAL_ALIGNMENT_CENTER, card_w - 4, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
@@ -565,7 +565,7 @@ func _draw_shield_status_panel(parent: Control, font: Font, s: Vector2) -> void:
 		parent.draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
 			HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
 	else:
-		parent.draw_string(font, Vector2(32, y + 20), "Aucun bouclier equipe",
+		parent.draw_string(font, Vector2(32, y + 20), Locale.t("equip.no_shield"),
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 
@@ -612,7 +612,7 @@ func _draw_engine_status_panel(parent: Control, font: Font, s: Vector2) -> void:
 		parent.draw_string(font, Vector2(xb_x + 3, xb_y + 13), "X",
 			HORIZONTAL_ALIGNMENT_LEFT, 14, UITheme.FONT_SIZE_SMALL, xb_col)
 	else:
-		parent.draw_string(font, Vector2(32, y + 20), "Aucun moteur equipe",
+		parent.draw_string(font, Vector2(32, y + 20), Locale.t("equip.no_engine"),
 			HORIZONTAL_ALIGNMENT_LEFT, viewer_w - 60, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 

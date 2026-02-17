@@ -227,8 +227,15 @@ func _draw_top_bar(ctrl: Control) -> void:
 
 	# INCL pitch
 	var pitch: float = rad_to_deg(asin(clamp(fwd.y, -1.0, 1.0)))
-	ctrl.draw_string(font, Vector2(170, row2_y), "INCL", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(170, row2_y), Locale.t("hud.pitch"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, Vector2(204, row2_y), "%+.1f\u00B0" % pitch, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
+
+	# FPS counter (right of INCL, before POS)
+	if OptionsScreen.show_fps:
+		var fps_val: int = Engine.get_frames_per_second()
+		var fps_str: String = "%d FPS" % fps_val
+		var fps_col: Color = UITheme.ACCENT if fps_val >= 55 else (UITheme.WARNING if fps_val >= 30 else UITheme.DANGER)
+		ctrl.draw_string(font, Vector2(270, row2_y), fps_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, fps_col)
 
 	# POS (right-aligned)
 	var pos_str =FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"

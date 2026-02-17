@@ -26,24 +26,24 @@ const NAME_PREFIX ="Station "
 
 
 func _ready() -> void:
-	screen_title = "ADMINISTRATION"
+	screen_title = Locale.t("admin.screen_title")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
 	_name_input = UITextInput.new()
-	_name_input.placeholder = "Nouveau nom..."
+	_name_input.placeholder = Locale.t("admin.new_name_placeholder")
 	_name_input.visible = false
 	_name_input.text_submitted.connect(func(_t): _on_rename())
 	add_child(_name_input)
 
 	_rename_btn = UIButton.new()
-	_rename_btn.text = "VALIDER"
+	_rename_btn.text = Locale.t("admin.validate")
 	_rename_btn.visible = false
 	_rename_btn.pressed.connect(_on_rename)
 	add_child(_rename_btn)
 
 	_close_btn = UIButton.new()
-	_close_btn.text = "FERMER"
+	_close_btn.text = Locale.t("admin.close")
 	_close_btn.accent_color = UITheme.WARNING
 	_close_btn.visible = false
 	_close_btn.pressed.connect(close)
@@ -86,7 +86,7 @@ func _on_rename() -> void:
 
 	# Toast feedback
 	if GameManager._notif:
-		GameManager._notif.toast("Station renommee: " + new_name)
+		GameManager._notif.toast(Locale.t("admin.renamed_toast") + new_name)
 
 	queue_redraw()
 
@@ -149,7 +149,7 @@ func _draw() -> void:
 		return
 
 	# Title
-	var title_text ="ADMINISTRATION — %s" % _current_name.to_upper()
+	var title_text =Locale.t("admin.title_prefix") % _current_name.to_upper()
 	draw_string(font_bold, Vector2(0, 38), title_text,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 20, UITheme.PRIMARY)
 
@@ -172,9 +172,9 @@ func _draw() -> void:
 	# =========================================================================
 	var section_y =90.0
 	draw_rect(Rect2(panel_x, section_y, 2, 12), UITheme.PRIMARY)
-	draw_string(font, Vector2(panel_x + 8, section_y + 10), "RENOMMER LA STATION",
+	draw_string(font, Vector2(panel_x + 8, section_y + 10), Locale.t("admin.rename_header"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL, UITheme.TEXT_HEADER)
-	var header_w =font.get_string_size("RENOMMER LA STATION", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL).x
+	var header_w =font.get_string_size(Locale.t("admin.rename_header"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_LABEL).x
 	draw_line(
 		Vector2(panel_x + 12 + header_w, section_y + 5),
 		Vector2(panel_x + PANEL_W, section_y + 5),
@@ -187,18 +187,18 @@ func _draw() -> void:
 	draw_rect(sub_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12), false, 1.0)
 
 	# Current name label (context shown first, near top of subsection)
-	draw_string(font, Vector2(panel_x + 12, 136), "Nom actuel:",
+	draw_string(font, Vector2(panel_x + 12, 136), Locale.t("admin.current_name"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	draw_string(font, Vector2(panel_x + 90, 136), _current_name,
 		HORIZONTAL_ALIGNMENT_LEFT, int(PANEL_W - 100), UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
 
 	# "Nouveau nom:" small label (dimmed, above input)
-	draw_string(font, Vector2(panel_x + 12, 160), "Nouveau nom:",
+	draw_string(font, Vector2(panel_x + 12, 160), Locale.t("admin.new_name"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# "Station " prefix label (left of input)
 	var prefix_x =panel_x + 12
-	draw_string(font_bold, Vector2(prefix_x, 178), "Station",
+	draw_string(font_bold, Vector2(prefix_x, 178), Locale.t("admin.station_prefix"),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 	# =========================================================================

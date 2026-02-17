@@ -50,6 +50,8 @@
 	"slider.music": "MUSIQUE",
 	"slider.sfx": "EFFETS SONORES",
 
+	"option.show_fps": "AFFICHER LES FPS",
+
 	"key.forward": "AVANCER",
 	"key.backward": "RECULER",
 	"key.left": "GAUCHE",
@@ -802,6 +804,7 @@
 	"build.construct": "CONSTRUIRE",
 	"build.close": "FERMER",
 	"build.resources_complete": "%d / %d ressources completes",
+	"build.stock": "(stock: %d)",
 
 	"bug.title": "RAPPORT DE BUG",
 	"bug.field_title": "TITRE",
@@ -814,6 +817,11 @@
 	"bug.system_info": "Systeme: %s (#%d)",
 	"bug.position_info": "Position: %.0f, %.0f, %.0f",
 	"bug.sending": "ENVOI...",
+	"bug.version_prefix": "Version: ",
+	"bug.system_fallback": "Systeme #%d",
+	"bug.login_required": "Connexion requise pour envoyer un rapport",
+	"bug.title_required": "Le titre est requis",
+	"bug.desc_required": "La description est requise",
 
 	"splash.init": "INITIALISATION",
 	"splash.tip_target": "Utilisez Tab pour cibler le vaisseau le plus proche",

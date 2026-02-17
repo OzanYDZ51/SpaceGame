@@ -50,6 +50,8 @@
 	"slider.music": "MUSIC",
 	"slider.sfx": "SOUND EFFECTS",
 
+	"option.show_fps": "SHOW FPS",
+
 	"key.forward": "FORWARD",
 	"key.backward": "BACKWARD",
 	"key.left": "LEFT",
@@ -802,6 +804,7 @@
 	"build.construct": "BUILD",
 	"build.close": "CLOSE",
 	"build.resources_complete": "%d / %d resources complete",
+	"build.stock": "(stock: %d)",
 
 	"bug.title": "BUG REPORT",
 	"bug.field_title": "TITLE",
@@ -814,6 +817,11 @@
 	"bug.system_info": "System: %s (#%d)",
 	"bug.position_info": "Position: %.0f, %.0f, %.0f",
 	"bug.sending": "SENDING...",
+	"bug.version_prefix": "Version: ",
+	"bug.system_fallback": "System #%d",
+	"bug.login_required": "Login required to send a report",
+	"bug.title_required": "Title is required",
+	"bug.desc_required": "Description is required",
 
 	"splash.init": "INITIALIZING",
 	"splash.tip_target": "Use Tab to target the nearest ship",

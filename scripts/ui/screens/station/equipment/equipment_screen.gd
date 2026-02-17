@@ -52,7 +52,7 @@ var _back_btn: UIButton = null
 
 
 func _ready() -> void:
-	screen_title = "FLOTTE — EQUIPEMENT"
+	screen_title = Locale.t("equip.screen_fleet")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
@@ -85,21 +85,21 @@ func _ready() -> void:
 
 	# Action buttons
 	_equip_btn = UIButton.new()
-	_equip_btn.text = "EQUIPER"
+	_equip_btn.text = Locale.t("equip.btn_equip")
 	_equip_btn.enabled = false
 	_equip_btn.visible = false
 	_equip_btn.pressed.connect(_on_equip_pressed)
 	add_child(_equip_btn)
 
 	_remove_btn = UIButton.new()
-	_remove_btn.text = "RETIRER"
+	_remove_btn.text = Locale.t("equip.btn_remove")
 	_remove_btn.enabled = false
 	_remove_btn.visible = false
 	_remove_btn.pressed.connect(_on_remove_pressed)
 	add_child(_remove_btn)
 
 	_back_btn = UIButton.new()
-	_back_btn.text = "RETOUR"
+	_back_btn.text = Locale.t("equip.btn_back")
 	_back_btn.accent_color = UITheme.WARNING
 	_back_btn.visible = false
 	_back_btn.pressed.connect(_on_back_pressed)
@@ -143,12 +143,12 @@ func _on_opened() -> void:
 		_tab_bar.current_tab = 0
 
 	if _is_station_mode():
-		screen_title = "STATION — EQUIPEMENT"
+		screen_title = Locale.t("equip.screen_station")
 		var station_scale := 0.01
 		var station_center =StationHardpointConfig.get_station_center() * station_scale
 		setup_ship_viewer("res://assets/models/babbage_station.glb", station_scale, station_center, Vector3.ZERO, Basis.IDENTITY)
 	else:
-		screen_title = "FLOTTE — EQUIPEMENT"
+		screen_title = Locale.t("equip.screen_fleet")
 
 	if player_fleet and not _is_station_mode():
 		_selected_fleet_index = player_fleet.active_index
@@ -531,7 +531,7 @@ func _on_fleet_ship_selected(idx: int) -> void:
 		_adapter.loadout_changed.disconnect(_on_adapter_loadout_changed)
 
 	_create_adapter()
-	screen_title = "FLOTTE — EQUIPEMENT"
+	screen_title = Locale.t("equip.screen_fleet")
 
 	_reload_ship_viewer_for_fleet_ship()
 

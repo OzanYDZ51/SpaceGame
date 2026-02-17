@@ -32,14 +32,14 @@ const DEPOSIT_BTN_H =32.0
 
 
 func _ready() -> void:
-	screen_title = "CONSTRUCTION"
+	screen_title = Locale.t("build.screen_title")
 	screen_mode = ScreenMode.OVERLAY
 	super._ready()
 
 	# Create deposit buttons for each recipe resource
 	for res_id in STATION_RECIPE:
 		var btn =UIButton.new()
-		btn.text = "DEPOSER"
+		btn.text = Locale.t("build.deposit")
 		btn.visible = false
 		btn.pressed.connect(_on_deposit.bind(res_id))
 		add_child(btn)
@@ -47,7 +47,7 @@ func _ready() -> void:
 
 	# Construct button
 	_construct_btn = UIButton.new()
-	_construct_btn.text = "CONSTRUIRE"
+	_construct_btn.text = Locale.t("build.construct")
 	_construct_btn.visible = false
 	_construct_btn.enabled = false
 	_construct_btn.pressed.connect(_on_construct)
@@ -55,7 +55,7 @@ func _ready() -> void:
 
 	# Close button
 	_close_btn = UIButton.new()
-	_close_btn.text = "FERMER"
+	_close_btn.text = Locale.t("build.close")
 	_close_btn.accent_color = UITheme.WARNING
 	_close_btn.visible = false
 	_close_btn.pressed.connect(close)
@@ -184,7 +184,7 @@ func _draw() -> void:
 		return
 
 	# Title
-	draw_string(font_bold, Vector2(0, 38), "CONSTRUCTION — STATION SPATIALE",
+	draw_string(font_bold, Vector2(0, 38), Locale.t("build.title"),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 20, UITheme.PRIMARY)
 
 	# Close [X] top-right
@@ -212,7 +212,7 @@ func _draw() -> void:
 			complete_count += 1
 
 	# Subtitle
-	draw_string(font, Vector2(0, 70), "%d / %d ressources completes" % [complete_count, STATION_RECIPE.size()],
+	draw_string(font, Vector2(0, 70), Locale.t("build.resources_complete") % [complete_count, STATION_RECIPE.size()],
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, UITheme.TEXT_DIM)
 
 	# Panel background
@@ -261,7 +261,7 @@ func _draw() -> void:
 
 		# Player stock
 		var stock_col =UITheme.TEXT_DIM if stock == 0 else UITheme.TEXT
-		draw_string(font, Vector2(panel_x + 290, ry + 30), "(stock: %d)" % stock,
+		draw_string(font, Vector2(panel_x + 290, ry + 30), Locale.t("build.stock") % stock,
 			HORIZONTAL_ALIGNMENT_LEFT, 90, 13, stock_col)
 
 		# Separator line
