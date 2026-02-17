@@ -43,21 +43,21 @@ func _ready() -> void:
 	add_child(_corporation_list)
 
 	_btn_ally = UIButton.new()
-	_btn_ally.text = "Proposer une alliance"
+	_btn_ally.text = Locale.t("corp.diplo_propose_alliance")
 	_btn_ally.accent_color = UITheme.ACCENT
 	_btn_ally.pressed.connect(func(): _set_relation("ALLIE"))
 	_btn_ally.visible = false
 	add_child(_btn_ally)
 
 	_btn_war = UIButton.new()
-	_btn_war.text = "Declarer la guerre"
+	_btn_war.text = Locale.t("corp.diplo_declare_war")
 	_btn_war.accent_color = UITheme.DANGER
 	_btn_war.pressed.connect(func(): _set_relation("ENNEMI"))
 	_btn_war.visible = false
 	add_child(_btn_war)
 
 	_btn_neutral = UIButton.new()
-	_btn_neutral.text = "Definir comme neutre"
+	_btn_neutral.text = Locale.t("corp.diplo_set_neutral")
 	_btn_neutral.pressed.connect(func(): _set_relation("NEUTRE"))
 	_btn_neutral.visible = false
 	add_child(_btn_neutral)
@@ -204,7 +204,7 @@ func _draw() -> void:
 		var y: float = 50.0
 
 		# Big relation status
-		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), "Relation actuelle:", HORIZONTAL_ALIGNMENT_LEFT, rw * 0.5, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), Locale.t("corp.diplo_current_relation"), HORIZONTAL_ALIGNMENT_LEFT, rw * 0.5, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 		y += 24
 
 		# Big colored status bar
@@ -220,15 +220,15 @@ func _draw() -> void:
 		var since: int = info.get("since", 0)
 		var now =int(Time.get_unix_time_from_system())
 		var days =int((now - since) / 86400.0)
-		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), "Depuis:", HORIZONTAL_ALIGNMENT_LEFT, rw * 0.4, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
-		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), "%d jours" % days, HORIZONTAL_ALIGNMENT_RIGHT, rw - m * 2, UITheme.FONT_SIZE_BODY, UITheme.LABEL_VALUE)
+		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), Locale.t("corp.diplo_since"), HORIZONTAL_ALIGNMENT_LEFT, rw * 0.4, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx + m, y + UITheme.FONT_SIZE_BODY), Locale.t("corp.diplo_days") % days, HORIZONTAL_ALIGNMENT_RIGHT, rw - m * 2, UITheme.FONT_SIZE_BODY, UITheme.LABEL_VALUE)
 		y += 28
 
 		# Actions header
 		draw_line(Vector2(rx + m, y), Vector2(rx + rw - m, y), UITheme.BORDER, 1.0)
 		y += 8
 		draw_rect(Rect2(rx + m, y + 2, 3, UITheme.FONT_SIZE_HEADER + 2), UITheme.PRIMARY)
-		draw_string(font, Vector2(rx + m + 10, y + UITheme.FONT_SIZE_HEADER + 1), "ACTIONS DIPLOMATIQUES", HORIZONTAL_ALIGNMENT_LEFT, rw - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
+		draw_string(font, Vector2(rx + m + 10, y + UITheme.FONT_SIZE_HEADER + 1), Locale.t("corp.diplo_actions_header"), HORIZONTAL_ALIGNMENT_LEFT, rw - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 	else:
-		draw_string(font, Vector2(rx, size.y * 0.4), "Selectionnez une corporation", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
-		draw_string(font, Vector2(rx, size.y * 0.4 + 24), "pour gerer les relations diplomatiques", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx, size.y * 0.4), Locale.t("corp.diplo_select_corp"), HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx, size.y * 0.4 + 24), Locale.t("corp.diplo_select_hint"), HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)

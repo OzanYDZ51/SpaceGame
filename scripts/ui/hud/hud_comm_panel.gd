@@ -211,7 +211,7 @@ func _draw_panel(ctrl: Control) -> void:
 	var hy: float = 16.0
 	var dot_alpha: float = 0.5 + 0.5 * sin(pulse_t * 4.0)
 	ctrl.draw_circle(Vector2(hx + 4, hy - 4), 3.0, Color(_tier_color.r, _tier_color.g, _tier_color.b, dot_alpha))
-	ctrl.draw_string(font, Vector2(hx + 14, hy), "TRANSMISSION ENTRANTE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, _tier_color)
+	ctrl.draw_string(font, Vector2(hx + 14, hy), Locale.t("hud.transmission_incoming"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, _tier_color)
 	ctrl.draw_string(font_sm, Vector2(ctrl.size.x - 8, hy), _freq, HORIZONTAL_ALIGNMENT_RIGHT, 100, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	ctrl.draw_line(Vector2(4, 22), Vector2(ctrl.size.x - 4, 22), Color(_tier_color.r, _tier_color.g, _tier_color.b, 0.3), 1.0)
 

@@ -481,7 +481,7 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 		spawn_pos = FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
-	var look_target := spawn_pos + dir
+	var look_target: Vector3 = spawn_pos + dir
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
 		bolt.look_at(look_target, Vector3.UP)
 
@@ -611,7 +611,7 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 	var spawn_pos =FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
-	var look_target := spawn_pos + dir
+	var look_target: Vector3 = spawn_pos + dir
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
 		bolt.look_at(look_target, Vector3.UP)
 

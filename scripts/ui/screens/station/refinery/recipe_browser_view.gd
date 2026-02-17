@@ -104,12 +104,12 @@ func _on_launch() -> void:
 	var job = _manager.submit_job(_station_key, _selected_recipe.recipe_id, _quantity)
 	if job:
 		if GameManager._notif:
-			GameManager._notif.general.service_unlocked("Raffinage: %s x%d" % [_selected_recipe.display_name, _quantity])
+			GameManager._notif.general.service_unlocked(Locale.t("refinery.job_started") % [_selected_recipe.display_name, _quantity])
 		_quantity = 1
 		queue_redraw()
 	else:
 		if GameManager._notif:
-			GameManager._notif.general.insufficient_credits("Ressources insuffisantes")
+			GameManager._notif.general.insufficient_credits(Locale.t("refinery.insufficient"))
 
 
 func _populate_list() -> void:
@@ -251,7 +251,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, int(DETAIL_W - 24), UITheme.FONT_SIZE_HEADER, r.icon_color)
 
 	# Tier
-	var tier_text: String = "Tier %d" % r.tier
+	var tier_text: String = Locale.t("refinery.tier") % r.tier
 	draw_string(font, Vector2(dx + 12, 42), tier_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
@@ -289,13 +289,13 @@ func _draw() -> void:
 
 	# Duration
 	var total_time: float = r.duration * _quantity
-	var time_text: String = "Duree: %s" % _format_time(total_time)
+	var time_text: String = Locale.t("refinery.duration") % _format_time(total_time)
 	draw_string(font, Vector2(dx + 12, iy), time_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 	iy += 18
 
 	# Value
-	var val_text: String = "Valeur: %s CR" % PlayerEconomy.format_credits(r.value * _quantity)
+	var val_text: String = Locale.t("refinery.value") % PlayerEconomy.format_credits(r.value * _quantity)
 	draw_string(font, Vector2(dx + 12, iy), val_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.LABEL_VALUE)
 	iy += 22

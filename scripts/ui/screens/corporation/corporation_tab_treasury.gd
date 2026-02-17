@@ -18,21 +18,21 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_input_deposit = UITextInput.new()
-	_input_deposit.placeholder = "Montant a deposer..."
+	_input_deposit.placeholder = Locale.t("corp.treasury_deposit_placeholder")
 	add_child(_input_deposit)
 
 	_btn_deposit = UIButton.new()
-	_btn_deposit.text = "Deposer"
+	_btn_deposit.text = Locale.t("corp.prop_deposit")
 	_btn_deposit.accent_color = UITheme.ACCENT
 	_btn_deposit.pressed.connect(_on_deposit)
 	add_child(_btn_deposit)
 
 	_input_withdraw = UITextInput.new()
-	_input_withdraw.placeholder = "Montant a retirer..."
+	_input_withdraw.placeholder = Locale.t("corp.treasury_withdraw_placeholder")
 	add_child(_input_withdraw)
 
 	_btn_withdraw = UIButton.new()
-	_btn_withdraw.text = "Retirer"
+	_btn_withdraw.text = Locale.t("corp.prop_withdraw")
 	_btn_withdraw.accent_color = UITheme.WARNING
 	_btn_withdraw.pressed.connect(_on_withdraw)
 	add_child(_btn_withdraw)
@@ -40,10 +40,10 @@ func _ready() -> void:
 	_history_table = UIDataTable.new()
 	_history_table._row_height = 22.0
 	_history_table.columns = [
-		{ "label": "Date", "width_ratio": 0.25 },
-		{ "label": "Type", "width_ratio": 0.18 },
-		{ "label": "Montant", "width_ratio": 0.27 },
-		{ "label": "Membre", "width_ratio": 0.30 },
+		{ "label": Locale.t("corp.treasury_col_date"), "width_ratio": 0.25 },
+		{ "label": Locale.t("corp.treasury_col_type"), "width_ratio": 0.18 },
+		{ "label": Locale.t("corp.treasury_col_amount"), "width_ratio": 0.27 },
+		{ "label": Locale.t("corp.treasury_col_member"), "width_ratio": 0.30 },
 	]
 	add_child(_history_table)
 
@@ -130,11 +130,11 @@ func _draw() -> void:
 
 	# Title
 	draw_rect(Rect2(m, 6, 3, UITheme.FONT_SIZE_HEADER + 2), UITheme.PRIMARY)
-	draw_string(font, Vector2(m + 10, 6 + UITheme.FONT_SIZE_HEADER), "TRESORERIE DE LA CORPORATION", HORIZONTAL_ALIGNMENT_LEFT, size.x * 0.4, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(m + 10, 6 + UITheme.FONT_SIZE_HEADER), Locale.t("corp.treasury_header"), HORIZONTAL_ALIGNMENT_LEFT, size.x * 0.4, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 
 	# Big balance (centered, glowing)
 	var balance = _cm.corporation_data.treasury_balance
-	var bal_str ="%s CREDITS" % _format_num(balance)
+	var bal_str = Locale.t("corp.prop_credits") % _format_num(balance)
 	var bal_col =UITheme.ACCENT if balance > 0 else UITheme.DANGER
 	var glow_alpha: float = 0.8 + pulse * 0.2
 	var bal_draw_col =Color(bal_col.r, bal_col.g, bal_col.b, glow_alpha)
@@ -153,9 +153,9 @@ func _draw() -> void:
 	draw_line(Vector2(0, action_y + 44), Vector2(size.x, action_y + 44), UITheme.BORDER, 1.0)
 
 	# Labels above inputs
-	draw_string(font, Vector2(m, action_y - 14), "DEPOSER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.ACCENT)
+	draw_string(font, Vector2(m, action_y - 14), Locale.t("corp.prop_deposit_label"), HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.ACCENT)
 	var wx: float = m + 320
-	draw_string(font, Vector2(wx, action_y - 14), "RETIRER", HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
+	draw_string(font, Vector2(wx, action_y - 14), Locale.t("corp.prop_withdraw_label"), HORIZONTAL_ALIGNMENT_LEFT, 180, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
 
 	# ─── Right Side: Top Contributors ───────────────────────────────────
 	var table_y: float = action_y + 52
@@ -167,7 +167,7 @@ func _draw() -> void:
 	# Contributors header
 	draw_rect(Rect2(right_x - m * 0.5, table_y, right_w + m, 28), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
 	draw_rect(Rect2(right_x - m * 0.5, table_y, 3, 28), UITheme.ACCENT)
-	draw_string(font, Vector2(right_x + 4, table_y + 18), "TOP CONTRIBUTEURS", HORIZONTAL_ALIGNMENT_LEFT, right_w, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
+	draw_string(font, Vector2(right_x + 4, table_y + 18), Locale.t("corp.prop_top_contributors"), HORIZONTAL_ALIGNMENT_LEFT, right_w, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_HEADER)
 	draw_line(Vector2(right_x - m * 0.5, table_y + 28), Vector2(right_x + right_w + m * 0.5, table_y + 28), UITheme.BORDER, 1.0)
 
 	# Sort members by contribution

@@ -20,21 +20,21 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_input_deposit = UITextInput.new()
-	_input_deposit.placeholder = "Montant..."
+	_input_deposit.placeholder = Locale.t("corp.prop_amount_placeholder")
 	add_child(_input_deposit)
 
 	_btn_deposit = UIButton.new()
-	_btn_deposit.text = "Deposer"
+	_btn_deposit.text = Locale.t("corp.prop_deposit")
 	_btn_deposit.accent_color = UITheme.ACCENT
 	_btn_deposit.pressed.connect(_on_deposit)
 	add_child(_btn_deposit)
 
 	_input_withdraw = UITextInput.new()
-	_input_withdraw.placeholder = "Montant..."
+	_input_withdraw.placeholder = Locale.t("corp.prop_amount_placeholder")
 	add_child(_input_withdraw)
 
 	_btn_withdraw = UIButton.new()
-	_btn_withdraw.text = "Retirer"
+	_btn_withdraw.text = Locale.t("corp.prop_withdraw")
 	_btn_withdraw.accent_color = UITheme.WARNING
 	_btn_withdraw.pressed.connect(_on_withdraw)
 	add_child(_btn_withdraw)
@@ -102,11 +102,11 @@ func _draw() -> void:
 	draw_panel_bg(treasury_rect)
 
 	# Header
-	_draw_section_header(m, m, size.x - m * 2, "TRESORERIE")
+	_draw_section_header(m, m, size.x - m * 2, Locale.t("corp.prop_treasury_header"))
 
 	# Big balance
 	var balance: float = _cm.corporation_data.treasury_balance
-	var bal_str := "%s CREDITS" % _format_num(balance)
+	var bal_str := Locale.t("corp.prop_credits") % _format_num(balance)
 	var bal_col: Color = UITheme.ACCENT if balance > 0 else UITheme.TEXT_DIM
 	var glow_alpha: float = 0.8 + pulse * 0.2
 	draw_string(font, Vector2(0, 60), bal_str, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, Color(bal_col.r, bal_col.g, bal_col.b, glow_alpha))
@@ -119,8 +119,8 @@ func _draw() -> void:
 	draw_line(Vector2(bcx + bal_w * 0.5 + 6, 52), Vector2(bcx + bal_w * 0.5 + 40, 52), bl_col, 1.0)
 
 	# Deposit/Withdraw labels
-	draw_string(font, Vector2(m, 70), "DEPOSER", HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
-	draw_string(font, Vector2(m + 280, 70), "RETIRER", HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, UITheme.WARNING)
+	draw_string(font, Vector2(m, 70), Locale.t("corp.prop_deposit_label"), HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+	draw_string(font, Vector2(m + 280, 70), Locale.t("corp.prop_withdraw_label"), HORIZONTAL_ALIGNMENT_LEFT, 150, UITheme.FONT_SIZE_SMALL, UITheme.WARNING)
 
 	draw_line(Vector2(0, 126), Vector2(size.x, 126), UITheme.BORDER, 1.0)
 
@@ -131,14 +131,14 @@ func _draw() -> void:
 	var left_rect := Rect2(0, content_y, half_w, content_h)
 	draw_panel_bg(left_rect)
 
-	var _sy: float = _draw_section_header(m, content_y + m, half_w - m * 2, "STATIONS DE LA CORPORATION")
+	var _sy: float = _draw_section_header(m, content_y + m, half_w - m * 2, Locale.t("corp.prop_stations_header"))
 
 	# Station list or empty state
 	# TODO: When station ownership is implemented, show owned stations here
 	var empty_y: float = content_y + content_h * 0.35
-	draw_string(font, Vector2(m, empty_y), "Aucune station acquise", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
-	draw_string(font, Vector2(m, empty_y + 24), "Les stations capturees ou construites", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
-	draw_string(font, Vector2(m, empty_y + 42), "par la corporation apparaitront ici", HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+	draw_string(font, Vector2(m, empty_y), Locale.t("corp.prop_no_stations"), HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(m, empty_y + 24), Locale.t("corp.prop_stations_hint_1"), HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
+	draw_string(font, Vector2(m, empty_y + 42), Locale.t("corp.prop_stations_hint_2"), HORIZONTAL_ALIGNMENT_CENTER, half_w - m * 2, UITheme.FONT_SIZE_BODY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.6))
 
 	# Decorative station icon (simple geometric)
 	var icon_cx: float = half_w * 0.5
@@ -155,22 +155,22 @@ func _draw() -> void:
 	var right_rect := Rect2(right_x, content_y, half_w, content_h)
 	draw_panel_bg(right_rect)
 
-	var ty: float = _draw_section_header(right_x + m, content_y + m, half_w - m * 2, "TERRITOIRE")
+	var ty: float = _draw_section_header(right_x + m, content_y + m, half_w - m * 2, Locale.t("corp.prop_territory_header"))
 
 	# Territory stats from member data
 	var member_count: int = _cm.members.size()
 	var online_count: int = _cm.get_online_count()
 
-	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Membres actifs", "%d / %d" % [online_count, member_count], UITheme.ACCENT)
-	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Reputation", str(_cm.corporation_data.reputation_score), UITheme.PRIMARY)
-	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, "Recrutement", "OUVERT" if _cm.corporation_data.is_recruiting else "FERME", UITheme.ACCENT if _cm.corporation_data.is_recruiting else UITheme.DANGER)
+	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, Locale.t("corp.prop_active_members"), "%d / %d" % [online_count, member_count], UITheme.ACCENT)
+	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, Locale.t("corp.stat_reputation"), str(_cm.corporation_data.reputation_score), UITheme.PRIMARY)
+	ty = _draw_kv_row(right_x + m, ty, half_w - m * 2, Locale.t("corp.recruitment_status").split(":")[0], Locale.t("corp.recruitment_open") if _cm.corporation_data.is_recruiting else Locale.t("corp.recruitment_closed"), UITheme.ACCENT if _cm.corporation_data.is_recruiting else UITheme.DANGER)
 
 	ty += 8
 	draw_line(Vector2(right_x + m, ty), Vector2(right_x + half_w - m, ty), UITheme.BORDER, 1.0)
 	ty += 12
 
 	# Top contributors (moved from old treasury tab)
-	_draw_section_header(right_x + m, ty, half_w - m * 2, "TOP CONTRIBUTEURS")
+	_draw_section_header(right_x + m, ty, half_w - m * 2, Locale.t("corp.prop_top_contributors"))
 	ty += 30
 
 	var sorted_members: Array[CorporationMember] = []

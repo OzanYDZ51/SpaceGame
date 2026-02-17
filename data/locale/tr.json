@@ -634,6 +634,11 @@
 	"refinery.inputs": "GİRDİLER:",
 	"refinery.output": "ÇIKTI:",
 	"refinery.quantity": "Miktar: %d",
+	"refinery.duration": "Sure: %s",
+	"refinery.value": "Deger: %s CR",
+	"refinery.tier": "Seviye %d",
+	"refinery.job_started": "Rafineri: %s x%d",
+	"refinery.insufficient": "Yetersiz kaynak",
 
 	"corp.edit_motd": "MOTD Duzenle",
 	"corp.leave_corp": "Korporasyondan ayril",

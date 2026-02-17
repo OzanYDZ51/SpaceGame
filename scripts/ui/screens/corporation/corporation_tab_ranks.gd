@@ -42,24 +42,24 @@ func _ready() -> void:
 		_perm_toggles.append(toggle)
 
 	_name_input = UITextInput.new()
-	_name_input.placeholder = "Nom du rang..."
+	_name_input.placeholder = Locale.t("corp.rank_name_placeholder")
 	_name_input.visible = false
 	add_child(_name_input)
 
 	_btn_save = UIButton.new()
-	_btn_save.text = "Sauvegarder les modifications"
+	_btn_save.text = Locale.t("corp.rank_save")
 	_btn_save.accent_color = UITheme.ACCENT
 	_btn_save.pressed.connect(_on_save)
 	_btn_save.visible = false
 	add_child(_btn_save)
 
 	_btn_add = UIButton.new()
-	_btn_add.text = "+ Ajouter un rang"
+	_btn_add.text = Locale.t("corp.rank_add")
 	_btn_add.pressed.connect(_on_add_rank)
 	add_child(_btn_add)
 
 	_btn_remove = UIButton.new()
-	_btn_remove.text = "- Supprimer ce rang"
+	_btn_remove.text = Locale.t("corp.rank_remove")
 	_btn_remove.accent_color = UITheme.DANGER
 	_btn_remove.pressed.connect(_on_remove_rank)
 	_btn_remove.visible = false
@@ -159,7 +159,7 @@ func _on_save() -> void:
 	_btn_save.enabled = false
 	var ok: bool = await _cm.update_rank(_selected_rank_index, new_name, perms)
 	_btn_save.enabled = true
-	_show_toast("Rang sauvegarde" if ok else "Erreur lors de la sauvegarde du rang", ok)
+	_show_toast(Locale.t("corp.rank_saved") if ok else Locale.t("corp.rank_save_error"), ok)
 	refresh(_cm)
 
 
@@ -167,9 +167,9 @@ func _on_add_rank() -> void:
 	if _cm == null:
 		return
 	_btn_add.enabled = false
-	var ok: bool = await _cm.add_rank("Nouveau rang", 0)
+	var ok: bool = await _cm.add_rank(Locale.t("corp.rank_new"), 0)
 	_btn_add.enabled = true
-	_show_toast("Rang ajoute" if ok else "Erreur lors de l'ajout du rang", ok)
+	_show_toast(Locale.t("corp.rank_added") if ok else Locale.t("corp.rank_add_error"), ok)
 	refresh(_cm)
 
 
@@ -179,7 +179,7 @@ func _on_remove_rank() -> void:
 	_btn_remove.enabled = false
 	var ok: bool = await _cm.remove_rank(_selected_rank_index)
 	_btn_remove.enabled = true
-	_show_toast("Rang supprime" if ok else "Erreur lors de la suppression du rang", ok)
+	_show_toast(Locale.t("corp.rank_removed") if ok else Locale.t("corp.rank_remove_error"), ok)
 	refresh(_cm)
 
 
@@ -240,9 +240,9 @@ func _draw() -> void:
 		draw_panel_bg(Rect2(rx, 0, rw, size.y - 48))
 
 		var rank: CorporationRank = _cm.corporation_data.ranks[_selected_rank_index]
-		var header: String = "RANG: %s" % rank.rank_name.to_upper()
+		var header: String = Locale.t("corp.rank_header") % rank.rank_name.to_upper()
 		if _selected_rank_index == 0:
-			header += " (CHEF - NON MODIFIABLE)"
+			header += Locale.t("corp.rank_leader_suffix")
 
 		# Header bar
 		draw_rect(Rect2(rx, 0, rw, 28), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
@@ -252,20 +252,20 @@ func _draw() -> void:
 
 		# "NOM DU RANG" label above name input
 		if _name_input.visible:
-			draw_string(font, Vector2(rx + m + 4, _name_input.position.y - 16 + UITheme.FONT_SIZE_TINY), "NOM DU RANG", HORIZONTAL_ALIGNMENT_LEFT, rw - m * 2, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+			draw_string(font, Vector2(rx + m + 4, _name_input.position.y - 16 + UITheme.FONT_SIZE_TINY), Locale.t("corp.rank_name_label"), HORIZONTAL_ALIGNMENT_LEFT, rw - m * 2, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 		# Permission count
 		var perm_count =0
 		for toggle in _perm_toggles:
 			if toggle.is_on:
 				perm_count += 1
-		var perm_str ="%d / 8 permissions actives" % perm_count
+		var perm_str = Locale.t("corp.rank_perm_count") % perm_count
 		draw_string(font, Vector2(rx + rw - 200, 18), perm_str, HORIZONTAL_ALIGNMENT_RIGHT, 190, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 	else:
 		# Empty state
 		draw_panel_bg(Rect2(rx, 0, rw, size.y - 48))
-		draw_string(font, Vector2(rx, size.y * 0.4), "Selectionnez un rang", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
-		draw_string(font, Vector2(rx, size.y * 0.4 + 24), "pour modifier ses permissions", HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx, size.y * 0.4), Locale.t("corp.rank_select"), HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_HEADER, UITheme.TEXT_DIM)
+		draw_string(font, Vector2(rx, size.y * 0.4 + 24), Locale.t("corp.rank_select_hint"), HORIZONTAL_ALIGNMENT_CENTER, rw, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
 	# Bottom separator
 	draw_line(Vector2(0, size.y - 48), Vector2(size.x, size.y - 48), UITheme.BORDER, 1.0)

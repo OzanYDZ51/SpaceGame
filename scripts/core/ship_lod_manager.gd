@@ -235,6 +235,13 @@ func _ensure_entity_registered(id: StringName, data) -> void:
 	elif data.fleet_index >= 0:
 		ent_type = EntityRegistrySystem.EntityType.SHIP_FLEET
 	var upos: Array = FloatingOrigin.to_universe_pos(data.position)
+	var extra: Dictionary = {
+		"faction": String(data.faction),
+		"ship_class": String(data.ship_class),
+	}
+	if data.fleet_index >= 0:
+		extra["fleet_index"] = data.fleet_index
+		extra["owner_name"] = "Player"
 	EntityRegistry.register(sid, {
 		"name": data.display_name,
 		"type": ent_type,
@@ -247,10 +254,7 @@ func _ensure_entity_registered(id: StringName, data) -> void:
 		"vel_z": float(data.velocity.z),
 		"radius": 10.0,
 		"color": ShipFactory._get_faction_map_color(data.faction),
-		"extra": {
-			"faction": String(data.faction),
-			"ship_class": String(data.ship_class),
-		},
+		"extra": extra,
 	})
 
 

@@ -62,7 +62,7 @@ func _draw_mining_heat(ctrl: Control) -> void:
 	ctrl.draw_rect(bg_rect, Color(0.02, 0.02, 0.02, 0.6))
 	ctrl.draw_rect(bg_rect, Color(heat_col.r, heat_col.g, heat_col.b, 0.25 * pulse), false, 1.0)
 
-	var label: String = "SURCHAUFFE" if overheated else "CHALEUR"
+	var label: String = Locale.t("hud.mining_overheat") if overheated else Locale.t("hud.mining_heat")
 	ctrl.draw_string(font, Vector2(0, 11), label,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(heat_col.r, heat_col.g, heat_col.b, 0.9 * pulse))
 
@@ -100,7 +100,7 @@ func _draw_mining_progress(ctrl: Control) -> void:
 
 	var res =MiningRegistry.get_resource(target.primary_resource)
 	var res_name: String = res.display_name if res else "?"
-	ctrl.draw_string(font, Vector2(0, 13), ("EXTRACTION: %s" % res_name).to_upper(),
+	ctrl.draw_string(font, Vector2(0, 13), (Locale.t("hud.mining_extraction") % res_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(mine_col.r, mine_col.g, mine_col.b, pulse))
 
 	var bar_x: float = 20.0

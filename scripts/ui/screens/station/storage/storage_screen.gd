@@ -155,7 +155,7 @@ func _rebuild_fleet_dropdown() -> void:
 				continue
 		var label: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
 		if i == fleet.active_index:
-			label += " (ACTIF)"
+			label += " (%s)" % Locale.t("common.active")
 		if i == _selected_fleet_index:
 			dropdown_sel = _fleet_options.size()
 		_fleet_options.append(label)

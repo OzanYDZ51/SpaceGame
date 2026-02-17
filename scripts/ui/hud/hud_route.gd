@@ -55,12 +55,12 @@ func _draw_route_panel(ctrl: Control) -> void:
 	var dest_name: String = rm.target_system_name
 	if dest_name.length() > 20:
 		dest_name = dest_name.substr(0, 18) + ".."
-	ctrl.draw_string(font, Vector2(8, 15), "ROUTE: " + dest_name, HORIZONTAL_ALIGNMENT_LEFT, s.x - 16, 13, Color(0.0, 0.9, 1.0, pulse))
+	ctrl.draw_string(font, Vector2(8, 15), Locale.t("hud.route_prefix") + dest_name, HORIZONTAL_ALIGNMENT_LEFT, s.x - 16, 13, Color(0.0, 0.9, 1.0, pulse))
 
 	# Jump progress
 	var current_jump: int = rm.get_current_jump()
 	var total_jumps: int = rm.get_jumps_total()
-	var jump_text ="SAUT %d/%d" % [current_jump + 1, total_jumps]
+	var jump_text = Locale.t("hud.jump_progress") % [current_jump + 1, total_jumps]
 	ctrl.draw_string(font, Vector2(8, 30), jump_text, HORIZONTAL_ALIGNMENT_LEFT, 100, 13, Color(0.6, 0.8, 0.9, 0.8))
 
 	# Progress dots
@@ -81,8 +81,8 @@ func _draw_route_panel(ctrl: Control) -> void:
 	# State indicator
 	var state_text: String = ""
 	match rm.state:
-		RouteManager.State.FLYING_TO_GATE: state_text = "EN ROUTE"
-		RouteManager.State.WAITING_AT_GATE: state_text = "SAUT..."
-		RouteManager.State.JUMPING: state_text = "SAUT EN COURS"
+		RouteManager.State.FLYING_TO_GATE: state_text = Locale.t("hud.route_en_route")
+		RouteManager.State.WAITING_AT_GATE: state_text = Locale.t("hud.route_waiting")
+		RouteManager.State.JUMPING: state_text = Locale.t("hud.route_jumping")
 	if state_text != "":
 		ctrl.draw_string(font, Vector2(s.x - 8, 30), state_text, HORIZONTAL_ALIGNMENT_RIGHT, 100, 13, Color(1.0, 0.8, 0.0, pulse * 0.8))

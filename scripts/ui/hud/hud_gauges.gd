@@ -216,13 +216,13 @@ func _draw_top_bar(ctrl: Control) -> void:
 	var fa_on =ship.flight_assist
 	var fa_col =UITheme.ACCENT if fa_on else UITheme.DANGER
 	ctrl.draw_circle(Vector2(16, row2_y - 4), 3.0, fa_col)
-	ctrl.draw_string(font, Vector2(24, row2_y), "AV" if fa_on else "OFF", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, fa_col)
+	ctrl.draw_string(font, Vector2(24, row2_y), Locale.t("hud.flight_assist_label") if fa_on else Locale.t("hud.flight_assist_off_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, fa_col)
 
 	# CAP heading
 	var fwd =-ship.global_transform.basis.z
 	var heading: float = rad_to_deg(atan2(fwd.x, -fwd.z))
 	if heading < 0: heading += 360.0
-	ctrl.draw_string(font, Vector2(58, row2_y), "CAP", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(58, row2_y), Locale.t("hud.heading"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, Vector2(86, row2_y), "%06.2f\u00B0" % heading, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 
 	# INCL pitch

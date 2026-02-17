@@ -22,7 +22,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	_filter_dropdown = UIDropdown.new()
-	var opts: Array[String] = ["Tous les types"]
+	var opts: Array[String] = [Locale.t("corp.log_all_types")]
 	for key in CorporationActivity.EVENT_LABELS:
 		opts.append(CorporationActivity.EVENT_LABELS[key])
 	_filter_dropdown.options.assign(opts)
@@ -35,12 +35,12 @@ func _ready() -> void:
 	add_child(_btn_24h)
 
 	_btn_week = UIButton.new()
-	_btn_week.text = "7 Jours"
+	_btn_week.text = Locale.t("corp.log_7days")
 	_btn_week.pressed.connect(func(): _set_time_filter(1))
 	add_child(_btn_week)
 
 	_btn_all = UIButton.new()
-	_btn_all.text = "Tout"
+	_btn_all.text = Locale.t("corp.log_all")
 	_btn_all.pressed.connect(func(): _set_time_filter(2))
 	add_child(_btn_all)
 
@@ -144,7 +144,7 @@ func _format_timestamp(ts: int) -> String:
 	if day_diff == 0:
 		return "%02d:%02d" % [dt.get("hour", 0), dt.get("minute", 0)]
 	elif day_diff == 1:
-		return "Hier %02d:%02d" % [dt.get("hour", 0), dt.get("minute", 0)]
+		return Locale.t("corp.log_yesterday") % [dt.get("hour", 0), dt.get("minute", 0)]
 	return "%02d/%02d" % [dt.get("day", 0), dt.get("month", 0)]
 
 
@@ -182,4 +182,4 @@ func _draw() -> void:
 
 	# Filter label
 	var font: Font = UITheme.get_font()
-	draw_string(font, Vector2(size.x - 200, m + 20), "%d entrees" % _filtered_log.size(), HORIZONTAL_ALIGNMENT_RIGHT, 190, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(size.x - 200, m + 20), Locale.t("corp.log_entries") % _filtered_log.size(), HORIZONTAL_ALIGNMENT_RIGHT, 190, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)

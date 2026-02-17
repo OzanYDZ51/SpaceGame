@@ -23,13 +23,15 @@ const ZONE_COLORS: Dictionary = {
 	4: Color(0.8, 0.2, 0.2, 0.9),     # SURFACE — red
 }
 
-const ZONE_NAMES: Dictionary = {
-	0: "",
-	1: "APPROCHE",
-	2: "ZONE EXTERIEURE",
-	3: "ATMOSPHERE",
-	4: "SURFACE",
-}
+static var ZONE_NAMES: Dictionary:
+	get:
+		return {
+			0: "",
+			1: Locale.t("hud.zone_approach"),
+			2: Locale.t("hud.zone_exterior"),
+			3: Locale.t("hud.zone_atmosphere"),
+			4: Locale.t("hud.zone_surface"),
+		}
 
 
 func _ready() -> void:
@@ -109,5 +111,5 @@ func _draw_info(ctrl: Control) -> void:
 	if planet_approach_mgr:
 		var grav_pct =planet_approach_mgr.gravity_strength * 100.0
 		if grav_pct > 0.1:
-			var grav_text ="GRAV: %.0f%%" % grav_pct
+			var grav_text = Locale.t("hud.gravity") % grav_pct
 			ctrl.draw_string(font_reg, Vector2(10, 88), grav_text, HORIZONTAL_ALIGNMENT_LEFT, s.x - 20, 11, zone_color * 0.7)

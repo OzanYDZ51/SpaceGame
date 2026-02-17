@@ -634,6 +634,11 @@
 	"refinery.inputs": "INPUTS:",
 	"refinery.output": "OUTPUT:",
 	"refinery.quantity": "Quantite: %d",
+	"refinery.duration": "Duree: %s",
+	"refinery.value": "Valeur: %s CR",
+	"refinery.tier": "Tier %d",
+	"refinery.job_started": "Raffinage: %s x%d",
+	"refinery.insufficient": "Ressources insuffisantes",
 
 	"corp.edit_motd": "Modifier MOTD",
 	"corp.leave_corp": "Quitter la corporation",
