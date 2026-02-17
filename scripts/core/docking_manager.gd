@@ -97,6 +97,8 @@ func handle_undock() -> bool:
 	if state_val != Constants.GameState.DOCKED:
 		return false
 
+	print("[DockMgr] === UNDOCK START === connected=%s" % str(NetworkManager.is_connected_to_server()))
+
 	_disconnect_station_destruction()
 
 	# Automatically find a clear exit position (bay exit + ring around station)
@@ -139,6 +141,7 @@ func handle_undock() -> bool:
 			active_fs.docked_system_id = GameManager.current_system_id_safe()
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	print("[DockMgr] === UNDOCK EMIT === connected=%s" % str(NetworkManager.is_connected_to_server()))
 	undocked.emit()
 	return true
 

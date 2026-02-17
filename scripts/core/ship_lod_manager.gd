@@ -252,6 +252,13 @@ func _ensure_entity_registered(id: StringName, data) -> void:
 	})
 
 
+## Force an immediate LOD evaluation on the next frame.
+## Call after undock / system load to ensure NPCs are visible right away.
+func force_immediate_evaluation() -> void:
+	_lod_eval_timer = 0.0
+	_multimesh_tick_timer = 0.0
+
+
 # =============================================================================
 # PROCESS
 # =============================================================================

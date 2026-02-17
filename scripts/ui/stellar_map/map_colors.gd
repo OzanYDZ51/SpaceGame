@@ -44,6 +44,7 @@ const NPC_FRIENDLY := Color(0.3, 1.0, 0.45, 0.9)
 const NPC_NEUTRAL := Color(0.7, 0.55, 1.0, 0.8)
 const NPC_SHIP := Color(0.6, 0.6, 0.7, 0.7)  # fallback
 const FLEET_SHIP := Color(0.4, 0.65, 1.0, 0.95)  # Blue for player fleet
+const FLEET_SHIP_FOREIGN := Color(0.5, 0.4, 0.7, 0.7)  # Pale violet for other players' fleet
 
 # --- Squadron ---
 const SQUADRON_LINE := Color(0.5, 0.7, 1.0, 0.35)

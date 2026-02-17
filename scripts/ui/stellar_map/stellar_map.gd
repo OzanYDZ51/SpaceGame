@@ -829,21 +829,21 @@ func _select_entity(id: String) -> void:
 
 
 ## Updates fleet panel highlight when a fleet-related entity is selected on the map.
-## Resolve an entity ID to a fleet index.  Returns -1 if not a fleet ship.
-## Checks entity extra first, then falls back to matching deployed_npc_id.
+## Resolve an entity ID to a fleet index.  Returns -1 if not a fleet ship owned by this player.
+## Only matches against local fleet data (deployed_npc_id) to ensure ownership safety.
 func _entity_to_fleet_index(entity_id: String) -> int:
 	if _fleet_panel._fleet == null or entity_id == "":
 		return -1
 	if entity_id == _player_id:
 		return _fleet_panel._fleet.active_index
-	# Fast path: entity extra has fleet_index
-	var ent =EntityRegistry.get_entity(entity_id)
-	if not ent.is_empty():
-		var extra: Dictionary = ent.get("extra", {})
-		if extra.has("fleet_index"):
-			return extra["fleet_index"]
-	# Fallback: match against FleetShip.deployed_npc_id
-	var sn =StringName(entity_id)
+	# Virtual fleet entities (always local player, format "fleet_virtual_N")
+	if entity_id.begins_with("fleet_virtual_"):
+		var fi: int = int(entity_id.substr(14))
+		if fi >= 0 and fi < _fleet_panel._fleet.ships.size():
+			return fi
+		return -1
+	# Match against local fleet's deployed_npc_id (ownership-safe)
+	var sn := StringName(entity_id)
 	for i in _fleet_panel._fleet.ships.size():
 		if _fleet_panel._fleet.ships[i].deployed_npc_id == sn:
 			return i

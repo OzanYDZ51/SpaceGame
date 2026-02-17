@@ -21,6 +21,7 @@ func enter(ctx: Dictionary) -> void:
 		return
 	is_active = true
 	station_name = ctx.get("station_name", "Station")
+	print("[DockInstance] ENTER: station=%s connected=%s" % [station_name, str(NetworkManager.is_connected_to_server())])
 
 	var player_ship: RigidBody3D = ctx["player_ship"]
 	var universe_node: Node3D = ctx["universe_node"]
@@ -130,17 +131,29 @@ func leave(ctx: Dictionary) -> void:
 	var lod_manager: Node = ctx.get("lod_manager")
 	if lod_manager:
 		lod_manager.process_mode = Node.PROCESS_MODE_INHERIT
+	else:
+		push_warning("DockInstance.leave: lod_manager is NULL — LOD stays DISABLED!")
 	var encounter_manager: Node = ctx.get("encounter_manager")
 	if encounter_manager:
 		encounter_manager.process_mode = Node.PROCESS_MODE_INHERIT
-	# Restore network sync to normal mode + force immediate undocked state
+	# Restore network sync to normal mode.
+	# NOTE: Do NOT call force_send_now() here — current_state is still DOCKED at this point.
+	# The proper force_send_now (with is_docked=false) happens in the GM undock handler
+	# AFTER current_state = PLAYING.
 	var net_sync: Node = ctx.get("net_sync")
 	if not is_instance_valid(net_sync):
 		net_sync = player_ship.get_node_or_null("ShipNetworkSync")
 	if net_sync and is_instance_valid(net_sync):
 		net_sync.process_mode = Node.PROCESS_MODE_INHERIT
-		if net_sync.has_method("force_send_now"):
-			net_sync.force_send_now()
+	else:
+		push_warning("DockInstance.leave: net_sync is NULL — ShipNetworkSync NOT restored!")
+
+	print("[DockInstance] LEAVE: universe_pm=%d lod_pm=%d enc_pm=%d connected=%s" % [
+		universe_node.process_mode,
+		lod_manager.process_mode if lod_manager else -1,
+		encounter_manager.process_mode if encounter_manager else -1,
+		str(NetworkManager.is_connected_to_server()),
+	])
 
 	# --- 4. RESTORE PLAYER SHIP ---
 	var act_ctrl = player_ship.get_node_or_null("ShipActivationController")

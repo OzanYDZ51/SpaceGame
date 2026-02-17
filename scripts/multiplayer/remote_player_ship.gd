@@ -99,6 +99,11 @@ func change_ship_model(new_ship_id: StringName) -> void:
 
 ## Called when we receive a new state snapshot from the network.
 func receive_state(state) -> void:
+	# Update player name if it was missing at creation or changed
+	if state.player_name != "" and state.player_name != player_name:
+		player_name = state.player_name
+		_update_name_display()
+
 	# Detect corporation tag change
 	if state.corporation_tag != corporation_tag:
 		corporation_tag = state.corporation_tag

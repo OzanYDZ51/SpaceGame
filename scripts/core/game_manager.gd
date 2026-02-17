@@ -772,10 +772,23 @@ func _initialize_game() -> void:
 		# Safety: ensure fleet NPCs are visible after undock
 		if _fleet_deployment_mgr:
 			_fleet_deployment_mgr.ensure_deployed_visible()
-		# Force immediate network sync so remote peers see us move right away
+		# Force immediate network sync so remote peers see us undocked right away
 		if _net_sync_mgr and _net_sync_mgr.ship_net_sync:
 			_net_sync_mgr.ship_net_sync.force_send_now()
+		# Force LOD re-evaluation so NPCs/players appear without 0.2s delay
+		if _lod_manager:
+			_lod_manager.force_immediate_evaluation()
 		SaveManager.trigger_save("undocked")
+
+		# Diagnostic: verify all systems are running after undock
+		print("[GM-Undock] state=%d connected=%s universe_pm=%d lod_pm=%d remote_players=%d remote_npcs=%d" % [
+			current_state,
+			str(NetworkManager.is_connected_to_server()),
+			universe_node.process_mode if universe_node else -1,
+			_lod_manager.process_mode if _lod_manager else -1,
+			_net_sync_mgr.remote_players.size() if _net_sync_mgr else 0,
+			_net_sync_mgr.remote_npcs.size() if _net_sync_mgr else 0,
+		])
 	)
 
 	# Loot Manager
@@ -1085,6 +1098,12 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 	print("[FleetOrder] idx=%d order=%s state=%d sys=%d cur_sys=%d" % [fleet_index, order_id, fs.deployment_state, fs.docked_system_id, current_system_id_safe()])
 	var _route_x: float = params.get("target_x", params.get("center_x", 0.0))
 	var _route_z: float = params.get("target_z", params.get("center_z", 0.0))
+
+	# Guard: fleet operations require server connection
+	if not NetworkManager.is_connected_to_server():
+		_notif.fleet.deploy_failed("PAS DE CONNEXION AU SERVEUR")
+		push_warning("FleetOrder: NOT connected to server — cannot send fleet RPC!")
+		return
 
 	if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
 		if not _fleet_deployment_mgr.can_deploy(fleet_index):

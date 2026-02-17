@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const https = require("https");
 const http = require("http");
 const { spawn } = require("child_process");
@@ -19,6 +20,7 @@ const VERSION_FILE = path.join(INSTALL_DIR, "version.json");
 const AUTH_FILE = path.join(INSTALL_DIR, "auth.json");
 
 const SETTINGS_FILE = path.join(INSTALL_DIR, "settings.json");
+const MANIFEST_FILE = path.join(INSTALL_DIR, "manifest.json");
 
 let mainWindow;
 let tray = null;
@@ -39,7 +41,6 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
-  mainWindow.webContents.openDevTools({ mode: "detach" });
 
   // Prevent window close when game is running — minimize to tray instead
   mainWindow.on("close", (e) => {
@@ -280,6 +281,48 @@ function compareVersions(a, b) {
   return 0;
 }
 
+function getLocalManifest() {
+  try {
+    return JSON.parse(fs.readFileSync(MANIFEST_FILE, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalManifest(data) {
+  fs.writeFileSync(MANIFEST_FILE, JSON.stringify(data, null, 2), "utf-8");
+}
+
+function computeFileHash(filePath) {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(filePath)) return resolve(null);
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
+}
+
+function downloadToBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const doRequest = (requestUrl) => {
+      const mod = requestUrl.startsWith("https") ? https : http;
+      mod.get(requestUrl, { headers: { "User-Agent": "ImperionOnlineLauncher/1.0" } }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return doRequest(res.headers.location);
+        }
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+        res.on("error", reject);
+      }).on("error", reject);
+    };
+    doRequest(url);
+  });
+}
+
 // =========================================================================
 // IPC — AUTH
 // =========================================================================
@@ -410,9 +453,66 @@ ipcMain.handle("update-launcher", async (_event, downloadUrl) => {
   return { success: true };
 });
 
-ipcMain.handle("update-game", async (_event, downloadUrl, version) => {
+ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) => {
   ensureDirs();
+  fs.mkdirSync(GAME_DIR, { recursive: true });
+
+  let remoteManifest = null;
+  let filesToUpdate = null; // null = update all, array = selective
+  let filesToDelete = [];
+
+  // --- Delta check via manifest ---
+  if (manifestUrl) {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send("status", "Verification des fichiers...");
+
+      const raw = await downloadToBuffer(manifestUrl);
+      remoteManifest = JSON.parse(raw);
+      const localManifest = getLocalManifest();
+
+      if (remoteManifest && remoteManifest.files) {
+        filesToUpdate = [];
+
+        // Check each remote file against local
+        for (const [fileName, remoteHash] of Object.entries(remoteManifest.files)) {
+          const localPath = path.join(GAME_DIR, fileName);
+          const localHash = await computeFileHash(localPath);
+          if (localHash !== remoteHash) {
+            filesToUpdate.push(fileName);
+          }
+        }
+
+        // Check for local files that no longer exist in remote manifest
+        if (localManifest && localManifest.files) {
+          for (const fileName of Object.keys(localManifest.files)) {
+            if (!remoteManifest.files[fileName]) {
+              filesToDelete.push(fileName);
+            }
+          }
+        }
+
+        // Nothing to do — already up to date
+        if (filesToUpdate.length === 0 && filesToDelete.length === 0) {
+          saveLocalManifest(remoteManifest);
+          setGameVersion(version);
+          return { success: true, skipped: true, message: "Deja a jour" };
+        }
+      }
+    } catch {
+      // Manifest fetch/parse failed — fall back to full download
+      remoteManifest = null;
+      filesToUpdate = null;
+    }
+  }
+
+  // --- Download zip ---
   const zipPath = path.join(INSTALL_DIR, "ImperionOnline.zip");
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const count = filesToUpdate ? filesToUpdate.length : "tous les";
+    mainWindow.webContents.send("status", `Telechargement (${count} fichier(s))...`);
+  }
 
   await downloadFile(downloadUrl, zipPath, (received, total) => {
     if (mainWindow && !mainWindow.isDestroyed())
@@ -422,13 +522,50 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version) => {
   if (mainWindow && !mainWindow.isDestroyed())
     mainWindow.webContents.send("status", "Extraction en cours...");
 
-  fs.mkdirSync(GAME_DIR, { recursive: true });
-
+  // --- Extract (selective or full) ---
   const zip = new AdmZip(zipPath);
-  zip.extractAllTo(GAME_DIR, true); // overwrite existing files, keep the rest
+
+  if (filesToUpdate && filesToUpdate.length > 0) {
+    // Selective extraction — only changed files
+    for (const fileName of filesToUpdate) {
+      const entry = zip.getEntry(fileName);
+      if (entry) {
+        zip.extractEntryTo(entry, GAME_DIR, false, true);
+      }
+    }
+  } else {
+    // Full extraction
+    zip.extractAllTo(GAME_DIR, true);
+  }
+
   fs.unlinkSync(zipPath);
+
+  // --- Delete obsolete files ---
+  for (const fileName of filesToDelete) {
+    const filePath = path.join(GAME_DIR, fileName);
+    try { fs.unlinkSync(filePath); } catch {}
+  }
+
+  // --- Post-extraction verification ---
+  if (remoteManifest && remoteManifest.files) {
+    const verifyErrors = [];
+    for (const [fileName, expectedHash] of Object.entries(remoteManifest.files)) {
+      const localHash = await computeFileHash(path.join(GAME_DIR, fileName));
+      if (localHash !== expectedHash) {
+        verifyErrors.push(fileName);
+      }
+    }
+    if (verifyErrors.length > 0) {
+      return { success: false, error: "Verification echouee: " + verifyErrors.join(", ") };
+    }
+  }
+
+  // --- Save manifest + version ---
+  if (remoteManifest) {
+    saveLocalManifest(remoteManifest);
+  }
   setGameVersion(version);
-  return { success: true };
+  return { success: true, updated: filesToUpdate };
 });
 
 // =========================================================================
@@ -500,14 +637,38 @@ ipcMain.handle("save-settings", (_event, settings) => {
 // IPC — VERIFY GAME FILES
 // =========================================================================
 
-ipcMain.handle("verify-game", () => {
+ipcMain.handle("verify-game", async () => {
+  const manifest = getLocalManifest();
   const missing = [];
-  const exePath = path.join(GAME_DIR, "ImperionOnline.exe");
-  const pckPath = path.join(GAME_DIR, "ImperionOnline.pck");
-  if (!fs.existsSync(exePath)) missing.push("ImperionOnline.exe");
-  if (!fs.existsSync(pckPath)) missing.push("ImperionOnline.pck");
-  if (missing.length === 0) return { success: true, message: "Tous les fichiers sont intacts" };
-  return { success: false, message: "Fichiers manquants: " + missing.join(", ") };
+  const corrupted = [];
+
+  if (manifest && manifest.files) {
+    // Verify against manifest hashes
+    for (const [fileName, expectedHash] of Object.entries(manifest.files)) {
+      const filePath = path.join(GAME_DIR, fileName);
+      if (!fs.existsSync(filePath)) {
+        missing.push(fileName);
+        continue;
+      }
+      const localHash = await computeFileHash(filePath);
+      if (localHash !== expectedHash) {
+        corrupted.push(fileName);
+      }
+    }
+  } else {
+    // No manifest — basic existence check
+    if (!fs.existsSync(path.join(GAME_DIR, "ImperionOnline.exe"))) missing.push("ImperionOnline.exe");
+    if (!fs.existsSync(path.join(GAME_DIR, "ImperionOnline.pck"))) missing.push("ImperionOnline.pck");
+  }
+
+  if (missing.length === 0 && corrupted.length === 0) {
+    return { success: true, message: "Tous les fichiers sont intacts" };
+  }
+
+  const parts = [];
+  if (missing.length > 0) parts.push("Manquants: " + missing.join(", "));
+  if (corrupted.length > 0) parts.push("Corrompus: " + corrupted.join(", "));
+  return { success: false, message: parts.join(" | ") };
 });
 
 // =========================================================================
@@ -580,6 +741,7 @@ ipcMain.handle("launch-game", async () => {
 ipcMain.handle("uninstall", async () => {
   if (fs.existsSync(GAME_DIR)) fs.rmSync(GAME_DIR, { recursive: true, force: true });
   if (fs.existsSync(VERSION_FILE)) fs.unlinkSync(VERSION_FILE);
+  try { fs.unlinkSync(MANIFEST_FILE); } catch {}
   return { success: true };
 });
 

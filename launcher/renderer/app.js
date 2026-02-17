@@ -464,10 +464,24 @@ async function checkUpdatesAndPrepare() {
 
   // Auto-update game
   if (info.gameNeedsUpdate && info.remote.game.download_url) {
-    setStatus("Mise a jour du jeu...");
+    setStatus("Verification des fichiers...");
     showProgress("MISE A JOUR DU JEU");
     try {
-      await window.launcher.updateGame(info.remote.game.download_url, info.remote.game.version);
+      const result = await window.launcher.updateGame(
+        info.remote.game.download_url,
+        info.remote.game.version,
+        info.remote.game.manifest_url || null
+      );
+      if (!result.success) {
+        setStatus("Erreur: " + (result.error || "Mise a jour echouee"));
+        hideProgress();
+        return;
+      }
+      if (result.skipped) {
+        setStatus("Deja a jour");
+      } else if (result.updated && result.updated.length > 0) {
+        setStatus(`${result.updated.length} fichier(s) mis a jour`);
+      }
       gameVersionEl.textContent = "v" + info.remote.game.version;
       gameVersionEl.classList.remove("warning");
       gameVersionEl.classList.add("ok");

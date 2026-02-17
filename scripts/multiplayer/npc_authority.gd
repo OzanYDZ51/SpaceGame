@@ -716,6 +716,7 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 		"sid": String(ship_id),
 		"fac": "player_fleet",
 		"cmd": String(cmd),
+		"owner_pid": sender_pid,
 		"owner_name": _get_peer_name(sender_pid),
 	}
 	if lod_mgr:
@@ -994,6 +995,7 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 		"pos_x": upos[0], "pos_y": upos[1], "pos_z": upos[2],
 		"extra": {
 			"fleet_index": fleet_index,
+			"owner_pid": sender_pid,
 			"owner_name": _get_peer_name(sender_pid),
 			"command": String(cmd),
 			"arrived": false,

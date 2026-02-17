@@ -81,13 +81,31 @@ jobs:
           cd build
           zip -r ../ImperionOnline.zip ImperionOnline.exe ImperionOnline.pck
 
+      - name: Generate manifest
+        run: |
+          cd build
+          EXE_HASH=$(sha256sum ImperionOnline.exe | cut -d' ' -f1)
+          PCK_HASH=$(sha256sum ImperionOnline.pck | cut -d' ' -f1)
+          cat > manifest.json <<EOF
+          {
+            "version": "${{ steps.version.outputs.version }}",
+            "files": {
+              "ImperionOnline.exe": "$EXE_HASH",
+              "ImperionOnline.pck": "$PCK_HASH"
+            }
+          }
+          EOF
+          cat manifest.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Imperion Online ${{ steps.version.outputs.tag }}
           body: "Automated build from commit ${{ github.sha }}"
-          files: ImperionOnline.zip
+          files: |
+            ImperionOnline.zip
+            build/manifest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

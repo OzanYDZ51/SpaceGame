@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld("launcher", {
   // Updates
   checkUpdates: () => ipcRenderer.invoke("check-updates"),
   updateLauncher: (downloadUrl) => ipcRenderer.invoke("update-launcher", downloadUrl),
-  updateGame: (downloadUrl, version) => ipcRenderer.invoke("update-game", downloadUrl, version),
+  updateGame: (downloadUrl, version, manifestUrl) => ipcRenderer.invoke("update-game", downloadUrl, version, manifestUrl),
 
   // Changelog
   getChangelog: () => ipcRenderer.invoke("get-changelog"),

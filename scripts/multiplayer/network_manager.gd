@@ -491,8 +491,11 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 		if not peers.has(sender_id):
 			return
 		var state = peers[sender_id]
+		# Preserve server-authoritative fields that the client state sync doesn't send
+		var saved_name: String = state.player_name
 		state.from_dict(state_dict)
 		state.peer_id = sender_id
+		state.player_name = saved_name
 		# Track last known system for reconnect persistence
 		_player_last_system[sender_id] = state.system_id
 		# ServerAuthority handles broadcasting to other peers (system-filtered).
@@ -507,6 +510,8 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 	state.peer_id = pid
 
 	if peers.has(pid):
+		# Preserve player_name from registration (state sync doesn't include it)
+		state.player_name = peers[pid].player_name
 		peers[pid] = state
 
 	player_state_received.emit(pid, state)

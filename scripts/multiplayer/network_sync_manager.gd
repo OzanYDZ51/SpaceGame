@@ -298,6 +298,18 @@ func _on_npc_spawned(data: Dictionary) -> void:
 		lod_manager.register_ship(npc_id, lod_data)
 	remote_npcs[npc_id] = true
 
+	# Tag fleet NPCs in EntityRegistry so the map can distinguish own vs foreign
+	if fac == &"player_fleet":
+		var ent = EntityRegistry.get_entity(String(npc_id))
+		if not ent.is_empty():
+			ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
+			if not ent.has("extra"):
+				ent["extra"] = {}
+			ent["extra"]["owner_name"] = data.get("owner_name", "")
+			ent["extra"]["owner_pid"] = data.get("owner_pid", -1)
+			ent["extra"]["command"] = data.get("cmd", "")
+			ent["extra"]["faction"] = "player_fleet"
+
 
 func _on_npc_batch_received(batch: Array) -> void:
 	for state_dict in batch:

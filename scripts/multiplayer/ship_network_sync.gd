@@ -32,8 +32,11 @@ func _ready() -> void:
 ## Force an immediate state send (called after undock, respawn, etc.)
 func force_send_now() -> void:
 	if _ship and not NetworkManager.is_server() and NetworkManager.is_connected_to_server():
+		print("[NetSync] force_send_now: is_docked=%s pm=%d" % [str(GameManager.current_state == Constants.GameState.DOCKED), process_mode])
 		_send_state()
 		_send_timer = 1.0 / Constants.NET_TICK_RATE
+	elif not NetworkManager.is_connected_to_server():
+		push_warning("[NetSync] force_send_now: NOT CONNECTED to server!")
 
 
 func _physics_process(delta: float) -> void:

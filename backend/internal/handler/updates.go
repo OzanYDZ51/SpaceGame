@@ -35,6 +35,7 @@ type ReleaseInfo struct {
 	Version     string `json:"version"`
 	DownloadURL string `json:"download_url"`
 	Size        int64  `json:"size"`
+	ManifestURL string `json:"manifest_url,omitempty"`
 }
 
 func NewUpdatesHandler(owner, repo, githubToken string) *UpdatesHandler {
@@ -131,15 +132,20 @@ func (h *UpdatesHandler) fetchReleases() (*UpdatesResponse, error) {
 
 		// Game release: tag starts with "v" (not "launcher-v")
 		if result.Game == nil && strings.HasPrefix(tag, "v") && !strings.HasPrefix(tag, "launcher-v") {
+			info := &ReleaseInfo{
+				Version: strings.TrimPrefix(tag, "v"),
+			}
 			for _, asset := range rel.Assets {
 				if strings.HasSuffix(asset.Name, ".zip") {
-					result.Game = &ReleaseInfo{
-						Version:     strings.TrimPrefix(tag, "v"),
-						DownloadURL: asset.BrowserDownloadURL,
-						Size:        asset.Size,
-					}
-					break
+					info.DownloadURL = asset.BrowserDownloadURL
+					info.Size = asset.Size
 				}
+				if asset.Name == "manifest.json" {
+					info.ManifestURL = asset.BrowserDownloadURL
+				}
+			}
+			if info.DownloadURL != "" {
+				result.Game = info
 			}
 		}
 

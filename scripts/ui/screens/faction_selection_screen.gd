@@ -22,7 +22,6 @@ const BTN_W: float = 260.0
 const BTN_H: float = 44.0
 
 var _btn_confirm: UIButton = null
-var _hover_glow: float = 0.0
 
 
 func _init() -> void:

@@ -515,10 +515,27 @@ func _draw_npc_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font
 
 
 # =============================================================================
-# FLEET SHIP (blue diamond, distinct from NPC triangles)
+# FLEET SHIP (blue diamond for own, violet for foreign)
 # =============================================================================
+
+func _is_own_fleet_entity(ent: Dictionary) -> bool:
+	var ent_id: String = String(ent.get("id", ent.get("name", "")))
+	# Virtual entities (fleet_virtual_*) are always own
+	if ent_id.begins_with("fleet_virtual_"):
+		return true
+	# Match against local fleet's deployed_npc_id
+	var fleet = GameManager.player_fleet
+	if fleet == null:
+		return false
+	var sn := StringName(ent_id)
+	for i in fleet.ships.size():
+		if fleet.ships[i].deployed_npc_id == sn:
+			return true
+	return false
+
 func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) -> void:
-	var col: Color = MapColors.FLEET_SHIP
+	var is_own: bool = _is_own_fleet_entity(ent)
+	var col: Color = MapColors.FLEET_SHIP if is_own else MapColors.FLEET_SHIP_FOREIGN
 	var s: float = 6.0
 
 	# Pulsing glow
@@ -557,8 +574,10 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 	# Label
 	var show_label: bool = is_selected or camera.zoom > 0.003
 	if show_label:
-		var label_text: String = ent["name"]
 		var extra: Dictionary = ent.get("extra", {})
+		var label_text: String = ent["name"]
+		if not is_own:
+			label_text = extra.get("owner_name", "?") + " > " + label_text
 		var cmd_name: String = extra.get("command", "")
 		var status_tag: String = ""
 		match cmd_name:
@@ -831,7 +850,7 @@ func _draw_trails(entities: Dictionary) -> void:
 			if ent["type"] == EntityRegistrySystem.EntityType.SHIP_PLAYER:
 				trail_col = MapColors.PLAYER
 			elif ent["type"] == EntityRegistrySystem.EntityType.SHIP_FLEET:
-				trail_col = MapColors.FLEET_SHIP
+				trail_col = MapColors.FLEET_SHIP if _is_own_fleet_entity(ent) else MapColors.FLEET_SHIP_FOREIGN
 			else:
 				trail_col = ent.get("color", MapColors.NPC_SHIP)
 

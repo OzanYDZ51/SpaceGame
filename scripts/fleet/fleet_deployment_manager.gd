@@ -435,6 +435,7 @@ func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
 	var fs = _fleet.ships[fleet_index]
 	fs.deployment_state = FleetShip.DeploymentState.DEPLOYED
 	fs.deployed_npc_id = StringName(npc_id_str)
+	print("[FleetDeploy] deploy CONFIRMED idx=%d npc_id=%s" % [fleet_index, npc_id_str])
 	# Resolve position from station (best effort for map)
 	if fs.docked_station_id != "":
 		var ent = EntityRegistry.get_entity(fs.docked_station_id)
@@ -490,18 +491,29 @@ func get_deployed_npc(fleet_index: int):
 func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
 	var ship_data: Dictionary = _serialize_ship_data(fleet_index)
 	if ship_data.is_empty():
+		push_warning("FleetDeploy: request_deploy — serialize failed for index %d" % fleet_index)
+		return
+	if not NetworkManager.is_connected_to_server():
+		push_warning("FleetDeploy: request_deploy — NOT connected to server!")
 		return
 	# Send to server — NO local state change, wait for _on_deploy_confirmed
 	var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
 	var ship_data_json: String = JSON.stringify(ship_data)
+	print("[FleetDeploy] request_deploy idx=%d cmd=%s connected=%s" % [fleet_index, cmd, str(NetworkManager.is_connected_to_server())])
 	NetworkManager._rpc_request_fleet_deploy.rpc_id(1, fleet_index, String(cmd), params_json, ship_data_json)
 
 
 func request_retrieve(fleet_index: int) -> void:
+	if not NetworkManager.is_connected_to_server():
+		push_warning("FleetDeploy: request_retrieve — NOT connected to server!")
+		return
 	NetworkManager._rpc_request_fleet_retrieve.rpc_id(1, fleet_index)
 
 
 func request_change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) -> void:
+	if not NetworkManager.is_connected_to_server():
+		push_warning("FleetDeploy: request_change_command — NOT connected to server!")
+		return
 	var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
 	NetworkManager._rpc_request_fleet_command.rpc_id(1, fleet_index, String(cmd), params_json)
 
