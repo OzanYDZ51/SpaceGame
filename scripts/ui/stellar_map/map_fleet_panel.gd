@@ -772,7 +772,7 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 	_sq_add_btn_rects.clear()
 
 	var sq = _get_player_squadron()
-	var start_y: float = y
+	var _start_y: float = y
 
 	if sq == null:
 		# No player squadron — show create button

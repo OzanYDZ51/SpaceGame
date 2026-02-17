@@ -13,7 +13,7 @@ enum Channel { GLOBAL, SYSTEM, CORP, TRADE, PRIVATE }
 var _current_channel: int = Channel.GLOBAL
 
 # Colors per channel
-const CHANNEL_COLORS ={
+const CHANNEL_COLORS = {
 	Channel.GLOBAL: Color(0.7, 0.92, 1.0),
 	Channel.SYSTEM: Color(1.0, 0.85, 0.3),
 	Channel.CORP: Color(0.4, 1.0, 0.5),
@@ -21,7 +21,7 @@ const CHANNEL_COLORS ={
 	Channel.PRIVATE: Color(0.85, 0.5, 1.0),
 }
 
-const CHANNEL_NAMES ={
+var CHANNEL_NAMES: Dictionary = {
 	Channel.GLOBAL: "GÉNÉRAL",
 	Channel.SYSTEM: "SYSTÈME",
 	Channel.CORP: "CORP",
@@ -29,13 +29,17 @@ const CHANNEL_NAMES ={
 	Channel.PRIVATE: "MP",
 }
 
-const CHANNEL_PREFIXES ={
+const CHANNEL_PREFIXES = {
 	Channel.GLOBAL: "[G]",
 	Channel.SYSTEM: "[S]",
 	Channel.CORP: "[C]",
 	Channel.TRADE: "[T]",
 	Channel.PRIVATE: "[PM]",
 }
+
+# Dynamic tabs — hidden by default, shown when relevant
+var _corp_tab_visible: bool = false
+var _pm_tab_visible: bool = false
 
 # Theme colors
 const COL_BG =Color(0.0, 0.02, 0.05, 0.7)
@@ -87,6 +91,35 @@ func _ready() -> void:
 	# Stop mouse events from passing through to the game (e.g. firing weapons)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
+	# Deferred: check corporation status once GameManager is ready
+	_check_corporation.call_deferred()
+
+
+func _check_corporation() -> void:
+	var gm = GameManager
+	if gm == null:
+		return
+	var corp_mgr = gm.get_node_or_null("CorporationManager")
+	if corp_mgr == null:
+		# CorporationManager not ready yet — wait for it
+		await get_tree().create_timer(1.0).timeout
+		corp_mgr = gm.get_node_or_null("CorporationManager")
+	if corp_mgr == null:
+		return
+	# Connect to future changes
+	if corp_mgr.has_signal("corporation_loaded"):
+		corp_mgr.corporation_loaded.connect(_on_corporation_updated.bind(corp_mgr))
+	# Check current state
+	_on_corporation_updated(corp_mgr)
+
+
+func _on_corporation_updated(corp_mgr) -> void:
+	if corp_mgr.has_corporation():
+		var tag: String = corp_mgr.corporation_data.corporation_tag
+		set_corporation_tab(true, tag)
+	else:
+		set_corporation_tab(false)
+
 
 func _build_chat() -> void:
 	# === Main container positioned bottom-left ===
@@ -125,7 +158,7 @@ func _build_chat() -> void:
 	tab_bar.add_child(_tab_container)
 
 	for ch in Channel.values():
-		var btn =Button.new()
+		var btn = Button.new()
 		btn.text = CHANNEL_NAMES[ch]
 		btn.toggle_mode = true
 		btn.button_pressed = (ch == _current_channel)
@@ -133,8 +166,12 @@ func _build_chat() -> void:
 		btn.add_theme_font_size_override("font_size", 12)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
+		# CORP and PM tabs start hidden
+		if ch == Channel.CORP or ch == Channel.PRIVATE:
+			btn.visible = false
+
 		# Style the button
-		var normal_style =StyleBoxFlat.new()
+		var normal_style = StyleBoxFlat.new()
 		normal_style.bg_color = COL_TAB_BG
 		normal_style.border_color = COL_BORDER
 		normal_style.border_width_bottom = 1
@@ -298,13 +335,17 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 	elif key == KEY_TAB and _is_focused:
-		# Tab cycles channels forward, Shift+Tab cycles backward
+		# Tab cycles channels forward, Shift+Tab cycles backward (skip hidden tabs)
 		if event.echo:
 			get_viewport().set_input_as_handled()
 			return
 		var count: int = Channel.size()
 		var direction: int = -1 if event.shift_pressed else 1
-		var next_ch: int = (_current_channel + direction + count) % count
+		var next_ch: int = _current_channel
+		for _i in count:
+			next_ch = (next_ch + direction + count) % count
+			if next_ch < _tab_buttons.size() and _tab_buttons[next_ch].visible:
+				break
 		_on_tab_pressed(next_ch)
 		get_viewport().set_input_as_handled()
 
@@ -489,11 +530,37 @@ func add_system_message(text: String) -> void:
 	add_message(Channel.SYSTEM, "SYSTÈME", text, Color(1.0, 0.85, 0.3))
 
 
+## Show or hide the CORP tab. If a tag is provided, use it as label (e.g. "[NOVA]").
+func set_corporation_tab(has_corp: bool, tag: String = "") -> void:
+	if Channel.CORP >= _tab_buttons.size():
+		return
+	_corp_tab_visible = has_corp
+	_tab_buttons[Channel.CORP].visible = has_corp
+	if has_corp and tag != "":
+		CHANNEL_NAMES[Channel.CORP] = tag.to_upper()
+		_tab_buttons[Channel.CORP].text = tag.to_upper()
+	else:
+		CHANNEL_NAMES[Channel.CORP] = "CORP"
+	# If currently on CORP tab and it disappears, switch to GLOBAL
+	if not has_corp and _current_channel == Channel.CORP:
+		_on_tab_pressed(Channel.GLOBAL)
+
+
+## Show the PM tab with a player name. Called when receiving a whisper.
+func show_private_tab(player_name: String) -> void:
+	_private_target = player_name
+	_pm_tab_visible = true
+	if Channel.PRIVATE < _tab_buttons.size():
+		_tab_buttons[Channel.PRIVATE].visible = true
+		_tab_buttons[Channel.PRIVATE].text = player_name
+
+
 func set_private_target(player_name: String) -> void:
 	_private_target = player_name
+	show_private_tab(player_name)
 	_current_channel = Channel.PRIVATE
 	_on_tab_pressed(Channel.PRIVATE)
-	_input_field.placeholder_text = "MP à %s..." % player_name
+	_input_field.placeholder_text = "MP a %s..." % player_name
 
 
 func _handle_command(text: String) -> void:
@@ -533,6 +600,7 @@ func _handle_command(text: String) -> void:
 				return
 			var target_name: String = parts[1]
 			var msg_text: String = " ".join(parts.slice(2))
+			show_private_tab(target_name)
 			message_sent.emit("WHISPER:" + target_name, msg_text)
 			add_message(Channel.PRIVATE, "→ " + target_name, msg_text, Color(0.85, 0.5, 1.0))
 
@@ -544,6 +612,7 @@ func _handle_command(text: String) -> void:
 				add_system_message("Aucun MP reçu auquel répondre.")
 				return
 			var msg_text: String = " ".join(parts.slice(1))
+			show_private_tab(_private_target)
 			message_sent.emit("WHISPER:" + _private_target, msg_text)
 			add_message(Channel.PRIVATE, "→ " + _private_target, msg_text, Color(0.85, 0.5, 1.0))
 

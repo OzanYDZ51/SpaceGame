@@ -100,6 +100,8 @@ func _ready() -> void:
 
 	await get_tree().process_frame
 
+	print("GameManager: _ready() started — auth=%s editor=%s" % [AuthManager.is_authenticated, OS.has_feature("editor")])
+
 	# Auth token is passed by the launcher via CLI: --auth-token <jwt>
 	# Authentication is REQUIRED — the launcher handles login/register.
 	_read_auth_token_from_cli()
@@ -108,15 +110,21 @@ func _ready() -> void:
 	if not AuthManager.is_authenticated and OS.has_feature("editor"):
 		await _dev_auto_login()
 
+	print("GameManager: Initializing game...")
 	_initialize_game()
+	print("GameManager: Game initialized OK")
 
 	if AuthManager.is_authenticated:
 		# Show black overlay while loading backend state to avoid seeing
 		# the default spawn position before the saved position is restored.
 		_show_loading_overlay()
+		print("GameManager: Loading backend state...")
 		await _load_backend_state()
+		print("GameManager: Backend state loaded OK")
 		_hide_loading_overlay()
+		print("GameManager: Showing faction selection...")
 		await _show_faction_selection()
+		print("GameManager: Faction selection done")
 	else:
 		push_warning("GameManager: No auth token — backend features disabled. Use the launcher to play.")
 

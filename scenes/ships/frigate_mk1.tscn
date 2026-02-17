@@ -22,7 +22,7 @@ script = ExtResource("2_hpslot")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5031402, 3.3281837, -20.01847)
 script = ExtResource("2_hpslot")
 slot_id = 1
-preview_weapon_scene = "uid://bc351fksvydyb"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
 [node name="Hardpoint_2" type="Node3D" parent="." unique_id=1594141449]
 transform = Transform3D(-0.009619096, -0.16955154, 0.98547447, -0.017964937, 0.9853902, 0.16936168, -0.9997923, -0.01607488, -0.012524545, -3.7782495, 4.291245, -14.879001)
@@ -34,7 +34,7 @@ turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
 turret_pitch_min = -5.0
 turret_pitch_max = 60.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_3" type="Node3D" parent="." unique_id=1012248232]
 transform = Transform3D(-4.216866e-08, 0.18621537, -0.982509, 8.139734e-09, 0.982509, 0.18621537, 1, -1.4490897e-10, -4.2946834e-08, 3.7353275, 4.265689, -14.952037)
@@ -58,7 +58,7 @@ turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
 turret_pitch_min = -10.0
 turret_pitch_max = 50.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_5" type="Node3D" parent="." unique_id=2020738195]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.9503717, 3.995565, 1.0065722)
@@ -70,7 +70,7 @@ turret_arc_degrees = 220.0
 turret_speed_deg_s = 120.0
 turret_pitch_min = -10.0
 turret_pitch_max = 50.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_6" type="Node3D" parent="." unique_id=1084057416]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -4.482454, 5.61762, -8.055141)

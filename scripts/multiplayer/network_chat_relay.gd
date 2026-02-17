@@ -72,7 +72,7 @@ func _on_whisper_received(sender_name: String, text: String) -> void:
 	if _chat_panel == null:
 		return
 	_last_whisper_from = sender_name
-	_chat_panel._private_target = sender_name
+	_chat_panel.show_private_tab(sender_name)
 	_chat_panel.add_message(ChatPanel.Channel.PRIVATE, "← " + sender_name, text, Color(0.85, 0.5, 1.0))
 
 
@@ -91,7 +91,11 @@ func _channel_name_to_int(channel_name: String) -> int:
 	match channel_name:
 		"GÉNÉRAL": return ChatPanel.Channel.GLOBAL
 		"SYSTÈME": return ChatPanel.Channel.SYSTEM
-		"CORP": return ChatPanel.Channel.CORP
 		"COMMERCE": return ChatPanel.Channel.TRADE
-		"MP": return ChatPanel.Channel.PRIVATE
+	# CORP tab name is dynamic (shows the tag), check the current name
+	if _chat_panel and channel_name == _chat_panel.CHANNEL_NAMES[ChatPanel.Channel.CORP]:
+		return ChatPanel.Channel.CORP
+	# PM tab name is dynamic (shows the player name)
+	if _chat_panel and channel_name == _chat_panel.CHANNEL_NAMES.get(ChatPanel.Channel.PRIVATE, "MP"):
+		return ChatPanel.Channel.PRIVATE
 	return ChatPanel.Channel.GLOBAL

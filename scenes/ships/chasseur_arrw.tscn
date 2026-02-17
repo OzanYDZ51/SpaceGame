@@ -17,13 +17,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.667, -6.667)
 [node name="Hardpoint_0" type="Node3D" parent="." unique_id=795321742]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.4937, 3.2812, -2.8218)
 script = ExtResource("2_hpslot")
-preview_weapon_scene = "uid://bc351fksvydyb"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
 [node name="Hardpoint_1" type="Node3D" parent="." unique_id=742928641]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.2984, 3.3098, -2.5174)
 script = ExtResource("2_hpslot")
 slot_id = 1
-preview_weapon_scene = "uid://bc351fksvydyb"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
 [node name="Hardpoint_2" type="Node3D" parent="." unique_id=309051158]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0231, 5.4084, -4)
@@ -35,7 +35,7 @@ turret_arc_degrees = 240.0
 turret_speed_deg_s = 100.0
 turret_pitch_min = -10.0
 turret_pitch_max = 60.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=864940952]
 transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -2.6847, 1.5707, 13.3333)

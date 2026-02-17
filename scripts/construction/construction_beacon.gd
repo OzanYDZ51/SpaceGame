@@ -121,7 +121,7 @@ func _on_body_exited(body: Node3D) -> void:
 		player_left.emit()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# Torus rotation disabled
 
 	# Emission pulse

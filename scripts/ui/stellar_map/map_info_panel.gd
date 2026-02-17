@@ -63,6 +63,8 @@ func _draw() -> void:
 	if extra.has("zone"): row_count += 1
 	if extra.has("faction"): row_count += 1
 	if extra.has("ship_class"): row_count += 1
+	if extra.has("event_tier"): row_count += 1
+	if extra.has("event_id"): row_count += 1
 
 	var panel_h: float = 50.0 + row_count * 18.0
 
@@ -161,6 +163,23 @@ func _draw() -> void:
 	if extra.has("ship_class"):
 		_draw_row(font, x, value_x, y, "CLASSE", extra["ship_class"])
 		y += 18
+	if extra.has("event_tier"):
+		var tier_labels: Array = ["", "FACILE", "MOYEN", "DIFFICILE"]
+		var tier_val: int = clampi(int(extra["event_tier"]), 1, 3)
+		_draw_row(font, x, value_x, y, "DANGER", tier_labels[tier_val])
+		y += 18
+	if extra.has("event_id"):
+		var evt_mgr = GameManager.get_node_or_null("GameplayIntegrator")
+		if evt_mgr:
+			evt_mgr = evt_mgr.get_node_or_null("EventManager")
+		if evt_mgr and evt_mgr.has_method("get_event"):
+			var evt: EventData = evt_mgr.get_event(extra["event_id"])
+			if evt:
+				var remaining: float = evt.get_time_remaining()
+				var mins: int = int(remaining) / 60
+				var secs: int = int(remaining) % 60
+				_draw_row(font, x, value_x, y, "TEMPS", "%d:%02d" % [mins, secs])
+				y += 18
 
 	# Scanline decoration
 	var local_scan_y: float = fmod(_pulse_t * 40.0, panel_h)
@@ -186,6 +205,7 @@ func _type_to_string(type: int) -> String:
 		EntityRegistrySystem.EntityType.SHIP_NPC: return "VAISSEAU PNJ"
 		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "CEINTURE D'ASTÉROÏDES"
 		EntityRegistrySystem.EntityType.JUMP_GATE: return "PORTAIL HYPERSPATIAL"
+		EntityRegistrySystem.EntityType.EVENT: return "ÉVÉNEMENT"
 	return "INCONNU"
 
 

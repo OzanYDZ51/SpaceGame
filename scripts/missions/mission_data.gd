@@ -8,7 +8,7 @@ extends RefCounted
 
 # --- Identity ---
 var mission_id: String = ""
-var mission_type: StringName = &""  # &"kill", &"delivery", &"mining", &"patrol"
+var mission_type: StringName = &""  # &"kill", &"cargo_hunt"
 var title: String = ""
 var description: String = ""
 

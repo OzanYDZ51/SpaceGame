@@ -126,7 +126,7 @@ func setup_from_data(data: JumpGateData) -> void:
 	_check_initial_overlap.call_deferred()
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# Ring rotation disabled
 
 	if _material:

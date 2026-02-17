@@ -19,13 +19,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 15.379076, 0)
 [node name="Hardpoint_0" type="Node3D" parent="." unique_id=112966100]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1.2719746, 12.373792, 3.8310618)
 script = ExtResource("2_hpslot")
-preview_weapon_scene = "uid://bc351fksvydyb"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
 [node name="Hardpoint_1" type="Node3D" parent="." unique_id=86753981]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.3814666, 12.398228, 3.7640505)
 script = ExtResource("2_hpslot")
 slot_id = 1
-preview_weapon_scene = "uid://bc351fksvydyb"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
 [node name="VFX_Engine_C" type="Marker3D" parent="." unique_id=1887269768]
 transform = Transform3D(50, 0, 0, 0, 50, 0, 0, 0, 50, -0.17226934, 15.184415, -3)

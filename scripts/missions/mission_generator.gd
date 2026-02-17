@@ -30,6 +30,21 @@ static var KILL_DESCRIPTIONS: PackedStringArray = PackedStringArray([
 	"Un contrat de nettoyage est disponible. Recompense a la cle.",
 ])
 
+# --- Cargo Hunt Mission Templates (French) ---
+static var CARGO_HUNT_TITLES: PackedStringArray = PackedStringArray([
+	"Convoi pirate repere",
+	"Interception de cargo",
+	"Pillage de contrebandiers",
+	"Cargo ennemi en transit",
+])
+
+static var CARGO_HUNT_DESCRIPTIONS: PackedStringArray = PackedStringArray([
+	"Un vaisseau cargo pirate transporte des marchandises volees. Interceptez-le et recuperez le butin.",
+	"Les scanners ont detecte un convoi de contrebandiers. Detruisez le cargo et saisissez la cargaison.",
+	"Un freighter pirate est en route dans le secteur. Prime a la destruction.",
+	"Des pirates utilisent un cargo lourd pour approvisionner leurs bases. Eliminez-le.",
+])
+
 # Base reward per danger level (credits)
 const BASE_REWARD_CREDITS: int = 5000
 # Reputation reward multiplier
@@ -58,8 +73,13 @@ static func generate_missions(
 		# Reseed per mission for variety while staying deterministic
 		rng.seed = base_seed + i * 7919  # prime offset
 
-		var m := _generate_kill_mission(rng, system_id, clamped_danger, faction_id, i)
-		missions.append(m)
+		# Last slot = cargo hunt mission (if danger >= 2)
+		if i == count - 1 and clamped_danger >= 2:
+			var m := _generate_cargo_hunt_mission(rng, system_id, clamped_danger, faction_id, i)
+			missions.append(m)
+		else:
+			var m := _generate_kill_mission(rng, system_id, clamped_danger, faction_id, i)
+			missions.append(m)
 
 	return missions
 
@@ -114,6 +134,50 @@ static func _generate_kill_mission(
 	if danger_level >= 4 and rng.randf() < 0.4:
 		m.time_limit = 600.0  # 10 minutes
 		m.time_remaining = 600.0
+
+	return m
+
+
+## Generate a single cargo hunt mission (destroy a pirate freighter).
+static func _generate_cargo_hunt_mission(
+		rng: RandomNumberGenerator,
+		system_id: int,
+		danger_level: int,
+		faction_id: StringName,
+		index: int
+) -> MissionData:
+	var m := MissionData.new()
+
+	var day: int = _get_day_of_year()
+	m.mission_id = "mission_%d_%d_%d" % [system_id, day, index]
+	m.mission_type = &"cargo_hunt"
+	m.faction_id = faction_id
+	m.system_id = -1  # Any system — player must hunt the cargo
+	m.danger_level = danger_level
+
+	# Title + description from templates
+	var title_idx: int = rng.randi_range(0, CARGO_HUNT_TITLES.size() - 1)
+	var desc_idx: int = rng.randi_range(0, CARGO_HUNT_DESCRIPTIONS.size() - 1)
+	m.title = CARGO_HUNT_TITLES[title_idx]
+	m.description = CARGO_HUNT_DESCRIPTIONS[desc_idx]
+
+	# Always 1 freighter to destroy
+	m.objectives.append({
+		"type": "kill",
+		"target_faction": "pirate",
+		"target_ship_class": "Freighter",
+		"count": 1,
+		"current": 0,
+		"label": "Detruire 1 cargo pirate",
+	})
+
+	# Rewards x3 compared to kill missions (high-value target)
+	var base: int = BASE_REWARD_CREDITS * danger_level * 3
+	var randomized: float = float(base) * (0.8 + rng.randf() * 0.4)
+	m.reward_credits = int(randomized)
+	m.reward_reputation = BASE_REWARD_REP * float(danger_level) * 1.5
+
+	# No time limit — hunt/search mission
 
 	return m
 

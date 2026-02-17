@@ -13,6 +13,7 @@ var faction_manager: FactionManager
 var mission_manager: MissionManager
 var economy_sim: EconomySimulator
 var poi_manager: POIManager
+var event_manager: EventManager
 
 # Screens (created and registered here)
 var _help_screen: HelpScreen
@@ -55,6 +56,10 @@ func _create_subsystems() -> void:
 	poi_manager.name = "POIManager"
 	add_child(poi_manager)
 
+	event_manager = EventManager.new()
+	event_manager.name = "EventManager"
+	add_child(event_manager)
+
 
 func _register_screens() -> void:
 	if _screen_manager == null:
@@ -90,6 +95,10 @@ func _wire_signals(refs: Dictionary) -> void:
 	# Mission board close → return to station terminal
 	_mission_board_screen.mission_board_closed.connect(_on_mission_board_closed)
 
+	# Random events
+	event_manager.event_completed.connect(_on_event_completed)
+	event_manager.event_started.connect(_on_event_started)
+
 
 # =============================================================================
 # SYSTEM TRANSITION HOOKS (called by GameManager)
@@ -98,11 +107,15 @@ func _wire_signals(refs: Dictionary) -> void:
 func on_system_loaded(system_id: int, danger_level: int) -> void:
 	if poi_manager:
 		poi_manager.on_system_loaded(system_id, danger_level)
+	if event_manager:
+		event_manager.on_system_loaded(system_id, danger_level)
 
 
 func on_system_unloading() -> void:
 	if poi_manager:
 		poi_manager.on_system_unloading()
+	if event_manager:
+		event_manager.on_system_unloading()
 
 
 # =============================================================================
@@ -112,20 +125,21 @@ func on_system_unloading() -> void:
 func _on_npc_destroyed(ship_name: String) -> void:
 	var npc_id := StringName(ship_name)
 	var faction := _resolve_npc_faction(npc_id)
+	var ship_class := _resolve_npc_ship_class(npc_id)
 	var sys_id: int = GameManager.current_system_id_safe()
 
 	# Update mission progress
-	mission_manager.on_npc_killed(faction, sys_id)
+	mission_manager.on_npc_killed(faction, sys_id, ship_class)
 
 	# Update faction reputation
 	_apply_kill_reputation(faction)
 
 
 ## Called by NetworkSyncManager when we (the local player) killed an NPC in multiplayer.
-## Faction is pre-resolved by the caller before LOD cleanup erases the data.
-func on_npc_kill_credited(npc_id_str: String, faction: StringName) -> void:
+## Faction + ship_class are pre-resolved by the caller before LOD cleanup erases the data.
+func on_npc_kill_credited(_npc_id_str: String, faction: StringName, ship_class: StringName = &"") -> void:
 	var sys_id: int = GameManager.current_system_id_safe()
-	mission_manager.on_npc_killed(faction, sys_id)
+	mission_manager.on_npc_killed(faction, sys_id, ship_class)
 	_apply_kill_reputation(faction)
 
 
@@ -139,6 +153,13 @@ func _resolve_npc_faction(npc_id: StringName) -> StringName:
 	if npc_auth and npc_auth._npcs.has(npc_id):
 		return StringName(npc_auth._npcs[npc_id].get("faction", "hostile"))
 	return &"hostile"
+
+
+func _resolve_npc_ship_class(npc_id: StringName) -> StringName:
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr and lod_mgr._ships.has(npc_id):
+		return lod_mgr._ships[npc_id].ship_class
+	return &""
 
 
 func _apply_kill_reputation(killed_faction: StringName) -> void:
@@ -228,6 +249,31 @@ func _apply_poi_rewards(rewards: Dictionary) -> void:
 	if faction_manager:
 		for fac_id in reputation:
 			faction_manager.modify_reputation(StringName(fac_id), float(reputation[fac_id]))
+
+
+# =============================================================================
+# EVENT HANDLERS
+# =============================================================================
+
+func _on_event_started(evt: EventData) -> void:
+	if _notif:
+		_notif.toast("%s détecté dans le système!" % evt.get_display_name())
+
+
+func _on_event_completed(evt: EventData) -> void:
+	# Bonus credits for destroying the convoy leader
+	var bonus: int = EventDefinitions.get_leader_bonus_credits(evt.tier)
+	if _player_data and _player_data.economy:
+		_player_data.economy.add_credits(bonus)
+
+	# Pirate reputation penalty
+	if faction_manager:
+		faction_manager.modify_reputation(&"pirate", -3.0 * evt.tier)
+		faction_manager.modify_reputation(&"nova_terra", 1.0 * evt.tier)
+		faction_manager.modify_reputation(&"kharsis", 1.0 * evt.tier)
+
+	if _notif:
+		_notif.toast("%s éliminé! +%s CR" % [evt.get_display_name(), PlayerEconomy.format_credits(bonus)])
 
 
 # =============================================================================

@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/models/chasseur_lourd_cv.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
+
+[node name="ChasseurLourdCV" type="Node3D"]
+
+[node name="ModelPivot" type="Node3D" parent="."]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 0, 0, 0)
+
+[node name="CVModel" parent="ModelPivot" instance=ExtResource("1_model")]
+
+[node name="ShipCenter" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8.0, -8.0)
+
+[node name="Hardpoint_0" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.0, 4.0, -4.0)
+script = ExtResource("2_hpslot")
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="Hardpoint_1" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.0, 4.0, -4.0)
+script = ExtResource("2_hpslot")
+slot_id = 1
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="Hardpoint_2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 6.5, -2.0)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 240.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="Hardpoint_3" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 6.5, -2.0)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 240.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 60.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="VFX_Engine_L" type="Marker3D" parent="."]
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -4.0, 2.0, 16.0)
+script = ExtResource("3_vfx")
+nozzle_size = 2.5
+
+[node name="VFX_Engine_R" type="Marker3D" parent="."]
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, 4.0, 2.0, 16.0)
+script = ExtResource("3_vfx")
+nozzle_size = 2.5
+
+[node name="EquipmentCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.42262, 0.90631, 0, -0.90631, 0.42262, 0, 60.0, 28.0)
+fov = 45.0

@@ -30,6 +30,14 @@ static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 	var t1: StringName = tier1[0] if not tier1.is_empty() else t0
 	var t2: StringName = tier2[0] if not tier2.is_empty() else t1
 
+	# Find a freighter for pirate cargo encounters
+	var freighter: StringName = &""
+	for sid in ShipRegistry.get_all_ship_ids():
+		var data := ShipRegistry.get_ship_data(sid)
+		if data and data.ship_class == &"Freighter":
+			freighter = sid
+			break
+
 	var configs: Array[Dictionary] = []
 	match danger_level:
 		0:
@@ -43,14 +51,22 @@ static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 				{"count": 1, "ship": t1, "fac": &"hostile", "radius": 500.0},
 				{"count": 2, "ship": t0, "fac": &"hostile", "radius": 400.0},
 			]
+			if freighter != &"":
+				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
 		4:
 			configs = [
 				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 500.0},
 				{"count": 1, "ship": t0, "fac": &"hostile", "radius": 300.0},
 			]
+			if freighter != &"":
+				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
+				configs.append({"count": 2, "ship": t0, "fac": &"pirate", "radius": 500.0})
 		5:
 			configs = [
 				{"count": 1, "ship": t2, "fac": &"hostile", "radius": 500.0},
 				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 400.0},
 			]
+			if freighter != &"":
+				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
+				configs.append({"count": 2, "ship": t0, "fac": &"pirate", "radius": 500.0})
 	return configs

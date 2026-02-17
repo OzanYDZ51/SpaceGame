@@ -138,7 +138,7 @@ func setup(data: Dictionary) -> void:
 		_label.text = gate_name
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	# Ring rotation disabled
 
 	# Pulsing emission

@@ -23,7 +23,7 @@ turret_arc_degrees = 300.0
 turret_speed_deg_s = 80.0
 turret_pitch_min = -10.0
 turret_pitch_max = 80.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_2" type="Node3D" parent="." unique_id=1009033236]
 transform = Transform3D(-4.3711395e-08, 0, 1, 0, 1, 0, -1, 0, -4.3711395e-08, -7.8562374, 8.482445, -12.717239)
@@ -35,7 +35,7 @@ turret_arc_degrees = 240.0
 turret_speed_deg_s = 70.0
 turret_pitch_min = -15.0
 turret_pitch_max = 60.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_3" type="Node3D" parent="." unique_id=1523893087]
 transform = Transform3D(-4.3711395e-08, 0, -1, 0, 1, 0, 1, 0, -4.3711395e-08, 6.5923924, 8.835884, -12.78957)
@@ -47,7 +47,7 @@ turret_arc_degrees = 240.0
 turret_speed_deg_s = 70.0
 turret_pitch_min = -15.0
 turret_pitch_max = 60.0
-preview_weapon_scene = "uid://c31lr44ihge4w"
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
 
 [node name="Hardpoint_4" type="Node3D" parent="." unique_id=1932761202]
 transform = Transform3D(-4.3711395e-08, 0, 1, 0, 1, 0, -1, 0, -4.3711395e-08, -6.684858, 5.837674, 33.782032)

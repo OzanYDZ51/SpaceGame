@@ -67,15 +67,16 @@ func has_mission(mission_id: String) -> bool:
 # EVENT PROCESSING
 # =============================================================================
 
-## Called when an NPC is killed. Checks all active kill missions for matching
-## objectives and increments progress.
-func on_npc_killed(npc_faction: StringName, system_id: int) -> void:
+## Called when an NPC is killed. Checks all active kill/cargo_hunt missions for
+## matching objectives and increments progress.
+func on_npc_killed(npc_faction: StringName, system_id: int, ship_class: StringName = &"") -> void:
 	var faction_str: String = String(npc_faction)
+	var class_str: String = String(ship_class)
 
 	for m in _active_missions:
 		if m.is_completed or m.is_failed:
 			continue
-		if m.mission_type != &"kill":
+		if m.mission_type != &"kill" and m.mission_type != &"cargo_hunt":
 			continue
 		# Mission must be in the same system (or -1 = any system)
 		if m.system_id >= 0 and m.system_id != system_id:
@@ -88,6 +89,10 @@ func on_npc_killed(npc_faction: StringName, system_id: int) -> void:
 			# Check faction match
 			var target_fac: String = obj.get("target_faction", "")
 			if target_fac != "" and target_fac != faction_str:
+				continue
+			# Check ship class match (cargo_hunt requires specific class)
+			var target_class: String = obj.get("target_ship_class", "")
+			if target_class != "" and target_class != class_str:
 				continue
 			# Check if objective already done
 			var current: int = obj.get("current", 0)

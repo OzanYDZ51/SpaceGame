@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"chasseur_lourd_cv"
+ship_name = &"Chasseur Lourd CV"
+ship_class = &"Chasseur Lourd"
+model_path = "res://assets/models/chasseur_lourd_cv.glb"
+model_scale = 2.5
+exhaust_scale = 2.0
+ship_scene_path = "res://scenes/ships/chasseur_lourd_cv.tscn"
+default_loadout = Array[StringName]([&"Laser Mk1", &"Laser Mk1", &"Turret Mk1", &"Turret Mk1"])
+hull_hp = 2800.0
+shield_hp = 1400.0
+shield_regen_rate = 25.0
+shield_regen_delay = 5.5
+shield_damage_bleedthrough = 0.06
+armor_rating = 14.0
+mass = 160000.0
+accel_forward = 50.0
+accel_backward = 30.0
+accel_strafe = 22.0
+accel_vertical = 22.0
+max_speed_normal = 240.0
+max_speed_boost = 480.0
+max_speed_cruise = 650000.0
+rotation_pitch_speed = 18.0
+rotation_yaw_speed = 16.0
+rotation_roll_speed = 32.0
+max_speed_lateral = 80.0
+max_speed_vertical = 80.0
+rotation_damp_min_factor = 0.1
+energy_capacity = 180.0
+energy_regen_rate = 35.0
+boost_energy_drain = 25.0
+shield_slot_size = "M"
+engine_slot_size = "M"
+module_slots = Array[String](["S", "M", "M"])
+price = 160000
+cargo_capacity = 70
+sensor_range = 3800.0
+engagement_range = 1800.0
+disengage_range = 4800.0
+default_shield = &"Bouclier Basique Mk1"
+default_engine = &"Propulseur Standard Mk1"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Condensateur d'Energie", &"Amplificateur de Bouclier"])
+loot_credits_min = 400
+loot_credits_max = 900
+loot_mat_count_min = 2
+loot_mat_count_max = 4
+loot_weapon_part_chance = 0.15
+lod_combat_dps = 50.0
+npc_tier = 1
+sold_at_station_types = Array[StringName]([&"repair", &"military"])
+resource_cost = {
+&"iron": 140,
+&"copper": 60,
+&"titanium": 35,
+&"gold": 10
+}

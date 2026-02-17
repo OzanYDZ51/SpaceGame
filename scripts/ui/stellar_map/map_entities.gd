@@ -53,6 +53,7 @@ var _draw_order: Array = [
 	EntityRegistrySystem.EntityType.PLANET,
 	EntityRegistrySystem.EntityType.STATION,
 	EntityRegistrySystem.EntityType.JUMP_GATE,
+	EntityRegistrySystem.EntityType.EVENT,
 	EntityRegistrySystem.EntityType.SHIP_NPC,
 	EntityRegistrySystem.EntityType.SHIP_FLEET,
 	EntityRegistrySystem.EntityType.SHIP_PLAYER,
@@ -179,6 +180,8 @@ func _draw_entity(ent: Dictionary, font: Font) -> void:
 			_draw_npc_ship(screen_pos, ent, is_selected, font)
 		EntityRegistrySystem.EntityType.SHIP_FLEET:
 			_draw_fleet_ship(screen_pos, ent, is_selected, font)
+		EntityRegistrySystem.EntityType.EVENT:
+			_draw_event(screen_pos, ent, is_selected, font)
 
 	# Selection ring
 	if is_selected:
@@ -610,6 +613,57 @@ func _draw_fleet_ship(pos: Vector2, ent: Dictionary, is_selected: bool, font: Fo
 
 
 # =============================================================================
+# EVENT (pulsing hexagon with "!" center)
+# =============================================================================
+func _draw_event(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font) -> void:
+	var extra: Dictionary = ent.get("extra", {})
+	var tier: int = int(extra.get("event_tier", 1))
+	var col: Color = ent.get("color", Color(1.0, 0.9, 0.2))
+
+	# Pulsing scale
+	var pulse: float = sin(_pulse_t * 2.5) * 0.15 + 0.85
+	var s: float = 10.0 * pulse
+
+	# Outer alert ring (expanding)
+	var ring_phase: float = fmod(_pulse_t * 0.8, 1.0)
+	var ring_r: float = s + ring_phase * 20.0
+	var ring_a: float = (1.0 - ring_phase) * 0.3
+	draw_arc(pos, ring_r, 0, TAU, 24, Color(col.r, col.g, col.b, ring_a), 1.5, true)
+
+	# Hexagon body
+	var hex_points := PackedVector2Array()
+	for i in 6:
+		var angle: float = TAU * float(i) / 6.0 - PI / 6.0
+		hex_points.append(pos + Vector2(cos(angle), sin(angle)) * s)
+	draw_colored_polygon(hex_points, Color(col.r, col.g, col.b, 0.25 * pulse))
+
+	# Hexagon border
+	var border_points := PackedVector2Array()
+	for i in 7:
+		var angle: float = TAU * float(i % 6) / 6.0 - PI / 6.0
+		border_points.append(pos + Vector2(cos(angle), sin(angle)) * (s + 1.0))
+	draw_polyline(border_points, Color(col.r, col.g, col.b, 0.8 * pulse), 1.5)
+
+	# "!" center
+	var bang_col := Color(col.r, col.g, col.b, 0.9 * pulse)
+	var bang_size: float = s * 0.45
+	# Exclamation line
+	draw_line(pos + Vector2(0, -bang_size), pos + Vector2(0, bang_size * 0.2), bang_col, 2.0)
+	# Exclamation dot
+	draw_circle(pos + Vector2(0, bang_size * 0.55), 1.5, bang_col)
+
+	# Tier pips (small dots below hexagon)
+	for i in tier:
+		var pip_x: float = pos.x + float(i - (tier - 1) * 0.5) * 6.0 - 3.0
+		draw_circle(Vector2(pip_x, pos.y + s + 6.0), 2.0, Color(col.r, col.g, col.b, 0.7))
+
+	# Label
+	var name_text: String = ent["name"]
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string(font, pos + Vector2(-tw * 0.5, s + 20), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+
+# =============================================================================
 # SELECTION LINE (dashed line from player to selected entity)
 # =============================================================================
 func _draw_selection_line(entities: Dictionary, font: Font) -> void:
@@ -765,6 +819,7 @@ func _type_label(type: int) -> String:
 		EntityRegistrySystem.EntityType.ASTEROID_BELT: return "Ceinture"
 		EntityRegistrySystem.EntityType.JUMP_GATE: return "Portail"
 		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: return "Site de construction"
+		EntityRegistrySystem.EntityType.EVENT: return "Événement"
 	return "Inconnu"
 
 
