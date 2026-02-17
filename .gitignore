@@ -18,8 +18,7 @@ Thumbs.db
 # Local tooling
 .mcp.json
 
-# Secrets
-backend/discord.json
+# Secrets (bot_token is in Railway env vars, webhook URLs are safe to commit)
 
 # Editor
 *.swp

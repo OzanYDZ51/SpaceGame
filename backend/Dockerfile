@@ -14,5 +14,6 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /server /server
 COPY migrations /migrations
+COPY discord.json /discord.json
 EXPOSE 3000
 ENTRYPOINT ["/server"]

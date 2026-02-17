@@ -18,8 +18,13 @@ static func ensure_loaded() -> void:
 		return
 	_loaded = true
 
+	if not ResourceLoader.exists(GLB_PATH):
+		push_warning("AsteroidMeshLib: %s not found — asteroids will use placeholder meshes" % GLB_PATH)
+		return
 	var scene: PackedScene = load(GLB_PATH)
-	assert(scene != null, "AsteroidMeshLib: GLB introuvable — %s" % GLB_PATH)
+	if scene == null:
+		push_warning("AsteroidMeshLib: Failed to load %s — asteroids will use placeholder meshes" % GLB_PATH)
+		return
 
 	var root: Node3D = scene.instantiate()
 	var entries: Array = []

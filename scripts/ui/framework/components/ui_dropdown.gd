@@ -76,13 +76,7 @@ func _gui_input(event: InputEvent) -> void:
 		if not _expanded:
 			_expand()
 		else:
-			# Check if clicking on an option (below the button area)
-			var click_y: float = event.position.y
-			if click_y > _collapsed_height:
-				var idx: int = int((click_y - _collapsed_height) / _option_height)
-				if idx >= 0 and idx < options.size():
-					selected_index = idx
-					option_selected.emit(idx)
+			# Collapsed button area click → just close
 			_collapse()
 		accept_event()
 
@@ -101,11 +95,34 @@ func _gui_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if not _expanded or not is_visible_in_tree():
 		return
-	# Close dropdown when clicking anywhere outside
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var local_pos := get_local_mouse_position()
-		if not Rect2(Vector2.ZERO, size).has_point(local_pos):
+		var full_rect := Rect2(Vector2.ZERO, size)
+
+		if full_rect.has_point(local_pos):
+			# Click is inside the expanded dropdown — check if on an option
+			if local_pos.y > _collapsed_height:
+				var idx: int = int((local_pos.y - _collapsed_height) / _option_height)
+				if idx >= 0 and idx < options.size():
+					selected_index = idx
+					option_selected.emit(idx)
 			_collapse()
+			get_viewport().set_input_as_handled()
+		else:
+			# Click outside — close
+			_collapse()
+
+	elif event is InputEventMouseMotion and _expanded:
+		var local_pos := get_local_mouse_position()
+		if local_pos.y > _collapsed_height and local_pos.x >= 0 and local_pos.x <= size.x:
+			var idx: int = int((local_pos.y - _collapsed_height) / _option_height)
+			if idx >= 0 and idx < options.size() and idx != _hovered_option:
+				_hovered_option = idx
+				queue_redraw()
+		elif _hovered_option != -1:
+			_hovered_option = -1
+			queue_redraw()
 
 
 func _expand() -> void:

@@ -598,6 +598,8 @@ func _load_clan_from_api(cid: String) -> void:
 			var joined_str: String = str(md.get("joined_at", ""))
 			if joined_str != "":
 				m.join_timestamp = _parse_iso_timestamp(joined_str)
+			# Backend doesn't track last_online yet — use join_timestamp as fallback
+			m.last_online_timestamp = m.join_timestamp
 
 			members.append(m)
 			if m.player_id == AuthManager.player_id:

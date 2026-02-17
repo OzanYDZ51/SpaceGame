@@ -190,13 +190,19 @@ func _hide_actions() -> void:
 func _format_last_seen(m: ClanMember) -> String:
 	if m.is_online:
 		return "Maintenant"
-	var now =int(Time.get_unix_time_from_system())
-	var diff =now - m.last_online_timestamp
+	if m.last_online_timestamp <= 0:
+		return "Inconnu"
+	var now := int(Time.get_unix_time_from_system())
+	var diff := now - m.last_online_timestamp
+	if diff < 0:
+		return "Maintenant"
 	if diff < 3600:
 		return "Il y a %d min" % int(diff / 60.0)
 	if diff < 86400:
 		return "Il y a %d h" % int(diff / 3600.0)
-	return "Il y a %d j" % int(diff / 86400.0)
+	if diff < 86400 * 365:
+		return "Il y a %d j" % int(diff / 86400.0)
+	return "Il y a longtemps"
 
 
 func _format_num(val: float) -> String:

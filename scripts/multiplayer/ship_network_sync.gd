@@ -31,7 +31,7 @@ func _ready() -> void:
 
 ## Force an immediate state send (called after undock, respawn, etc.)
 func force_send_now() -> void:
-	if _ship and NetworkManager.is_connected_to_server():
+	if _ship and not NetworkManager.is_server() and NetworkManager.is_connected_to_server():
 		_send_state()
 		_send_timer = 1.0 / Constants.NET_TICK_RATE
 
