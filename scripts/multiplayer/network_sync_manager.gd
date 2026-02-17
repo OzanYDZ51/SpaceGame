@@ -348,7 +348,7 @@ func _on_npc_batch_received(batch: Array) -> void:
 				lod_data.hull_ratio = state_dict.get("hull", 1.0)
 				lod_data.shield_ratio = state_dict.get("shd", 1.0)
 				lod_data.ai_state = state_dict.get("ai", 0)
-				if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+				if is_instance_valid(lod_data.node_ref):
 					if lod_data.node_ref is RemoteNPCShip:
 						lod_data.node_ref.receive_state(state_dict)
 
@@ -374,7 +374,7 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
 		if lod_data:
 			var pos =lod_data.position
-			if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			if is_instance_valid(lod_data.node_ref):
 				pos = lod_data.node_ref.global_position
 				if lod_data.node_ref is RemoteNPCShip:
 					lod_data.node_ref.play_death()
@@ -411,7 +411,7 @@ func _on_remote_fleet_retrieved(_owner_pid: int, _fleet_idx: int, npc_id_str: St
 	var npc_id =StringName(npc_id_str)
 	if lod_manager:
 		var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
-		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+		if lod_data and is_instance_valid(lod_data.node_ref):
 			lod_data.node_ref.queue_free()
 		lod_manager.unregister_ship(npc_id)
 	remote_npcs.erase(npc_id)
@@ -530,13 +530,13 @@ func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed:
 	# Player target: "player_<pid>"
 	if target_id.begins_with("player_"):
 		var pid =target_id.trim_prefix("player_").to_int()
-		if remote_players.has(pid):
+		if remote_players.has(pid) and is_instance_valid(remote_players[pid]):
 			target_node = remote_players[pid]
 	else:
 		# NPC target
 		if lod_manager:
 			var lod_data: ShipLODData = lod_manager.get_ship_data(StringName(target_id))
-			if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+			if lod_data and is_instance_valid(lod_data.node_ref):
 				target_node = lod_data.node_ref
 
 	if target_node == null or not is_instance_valid(target_node):
@@ -676,7 +676,7 @@ func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:
 		ast.is_depleted = true
 		ast.health_current = 0.0
 		# Update visual if node exists
-		if ast.node_ref and is_instance_valid(ast.node_ref) and ast.node_ref.has_method("_on_depleted"):
+		if is_instance_valid(ast.node_ref) and ast.node_ref.has_method("_on_depleted"):
 			ast.node_ref._on_depleted()
 
 

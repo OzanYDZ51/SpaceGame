@@ -271,7 +271,7 @@ func _gather_targetable_ships() -> void:
 			if not is_player and _is_allied(own_faction, data.faction):
 				continue
 			# Only target ships with a visible scene node (LOD0/LOD1), never self
-			if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref != ship:
+			if is_instance_valid(data.node_ref) and data.node_ref != ship:
 				if data.node_ref is Node3D and (data.node_ref as Node3D).visible:
 					_targetable_ships.append(data.node_ref)
 	else:

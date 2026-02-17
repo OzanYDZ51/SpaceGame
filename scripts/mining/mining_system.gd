@@ -101,7 +101,7 @@ func try_fire(aim_point: Vector3) -> void:
 
 	# Hitting an asteroid — start/continue extraction
 	var target_pos: Vector3 = asteroid_hit.position
-	if asteroid_hit.node_ref and is_instance_valid(asteroid_hit.node_ref):
+	if is_instance_valid(asteroid_hit.node_ref):
 		target_pos = asteroid_hit.node_ref.global_position
 
 	# Check range
@@ -251,7 +251,7 @@ func _start_extraction(asteroid) -> void:
 		_asteroid_mgr.reveal_single_asteroid(asteroid)
 
 	# Show scan label if it has a resource
-	if asteroid.has_resource and asteroid.node_ref and is_instance_valid(asteroid.node_ref):
+	if asteroid.has_resource and is_instance_valid(asteroid.node_ref):
 		asteroid.node_ref.show_scan_info()
 
 	mining_started.emit(mining_target)
@@ -266,7 +266,7 @@ func _stop_extraction() -> void:
 		_send_mining_claims()
 
 	# Hide scan label
-	if mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
+	if mining_target and is_instance_valid(mining_target.node_ref):
 		mining_target.node_ref.hide_scan_info()
 
 	is_mining = false
@@ -295,7 +295,7 @@ func _do_mining_tick() -> void:
 			_pending_claims[aid] = { "dmg": damage, "hm": mining_target.health_max }
 
 	var yield_data: Dictionary
-	if mining_target.node_ref and is_instance_valid(mining_target.node_ref):
+	if is_instance_valid(mining_target.node_ref):
 		yield_data = mining_target.node_ref.take_mining_damage(damage)
 	else:
 		mining_target.health_current -= damage
@@ -317,7 +317,7 @@ func _do_mining_tick() -> void:
 			GameManager.player_data.add_active_ship_resource(resource_id, qty)
 			mining_progress.emit(mining_res.display_name, qty)
 
-	if not is_barren and mining_target and mining_target.node_ref and is_instance_valid(mining_target.node_ref):
+	if not is_barren and mining_target and is_instance_valid(mining_target.node_ref):
 		mining_target.node_ref._update_label_text()
 
 	if mining_target and mining_target.is_depleted:

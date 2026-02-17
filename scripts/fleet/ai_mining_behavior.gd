@@ -720,7 +720,7 @@ func _do_physical_mining_tick() -> void:
 	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
 
 	var yield_data: Dictionary
-	if _mining_target.node_ref and is_instance_valid(_mining_target.node_ref):
+	if is_instance_valid(_mining_target.node_ref):
 		var node = _mining_target.node_ref
 		yield_data = node.take_mining_damage(damage)
 	else:
@@ -912,7 +912,7 @@ func _generate_virtual_target() -> Dictionary:
 
 func _get_target_position() -> Vector3:
 	if _mining_target:
-		if _mining_target.node_ref and is_instance_valid(_mining_target.node_ref):
+		if is_instance_valid(_mining_target.node_ref):
 			return _mining_target.node_ref.global_position
 		return _mining_target.position
 	if not _virtual_target.is_empty():

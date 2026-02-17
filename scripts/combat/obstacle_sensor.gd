@@ -239,7 +239,7 @@ func _ship_avoidance() -> Vector3:
 			continue
 
 		var other_pos: Vector3
-		if data.node_ref and is_instance_valid(data.node_ref):
+		if is_instance_valid(data.node_ref):
 			other_pos = data.node_ref.global_position
 		else:
 			other_pos = _cached_lod_mgr.get_ship_position(entry["id"])

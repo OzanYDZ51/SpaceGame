@@ -840,5 +840,25 @@
 	"map.promote_leader": "LİDER YAP",
 	"map.fleet_orders_header": "FİLO EMİRLERİ",
 	"map.group_header": "GRUP",
-	"map.construction_header": "İNSA"
+	"map.construction_header": "İNŞA",
+
+	"chat.placeholder": "Mesaj yaz... (Göndermek için Enter)",
+	"chat.pm_placeholder": "%s kişisine ÖM...",
+	"chat.help_header": "--- Kullanılabilir komutlar ---",
+	"chat.cmd_w": "/w <oyuncu> <mesaj> — Özel mesaj",
+	"chat.cmd_r": "/r <mesaj> — Son ÖM'ye yanıt",
+	"chat.cmd_players": "/players — Sistemdeki oyuncuları listele",
+	"chat.cmd_clear": "/clear — Mevcut kanalı temizle",
+	"chat.cleared": "Kanal temizlendi.",
+	"chat.no_players": "Sektörde başka oyuncu yok.",
+	"chat.players_list": "Bağlı oyuncular (%d): %s",
+	"chat.usage_w": "Kullanım: /w <oyuncu> <mesaj>",
+	"chat.usage_r": "Kullanım: /r <mesaj>",
+	"chat.no_pm": "Yanıtlanacak ÖM yok.",
+	"chat.unknown_cmd": "Bilinmeyen komut: %s. /help yazın.",
+	"chat.desc_help": "Komutları göster",
+	"chat.desc_w": "<oyuncu> <msj> — Özel mesaj",
+	"chat.desc_r": "<msj> — Son ÖM'ye yanıt",
+	"chat.desc_players": "Sistemdeki oyuncuları listele",
+	"chat.desc_clear": "Mevcut kanalı temizle"
 }

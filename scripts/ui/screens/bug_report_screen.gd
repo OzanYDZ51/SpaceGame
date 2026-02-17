@@ -45,7 +45,7 @@ func _build_ui() -> void:
 
 	# Title bar
 	var title_label := Label.new()
-	title_label.text = "RAPPORT DE BUG"
+	title_label.text = Locale.t("bug.title")
 	title_label.add_theme_font_size_override("font_size", 18)
 	title_label.add_theme_color_override("font_color", Color(0, 0.78, 1.0))
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -54,13 +54,13 @@ func _build_ui() -> void:
 	# Title input
 	var title_row := HBoxContainer.new()
 	var title_lbl := Label.new()
-	title_lbl.text = "TITRE"
+	title_lbl.text = Locale.t("bug.field_title")
 	title_lbl.add_theme_font_size_override("font_size", 14)
 	title_lbl.add_theme_color_override("font_color", Color(0, 0.78, 1.0, 0.5))
 	title_lbl.custom_minimum_size.x = 70
 	title_row.add_child(title_lbl)
 	_title_input = UITextInput.new()
-	_title_input.placeholder = "Decrivez le bug en quelques mots..."
+	_title_input.placeholder = Locale.t("bug.title_placeholder")
 	_title_input.custom_minimum_size.y = 32
 	_title_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(_title_input)
@@ -68,13 +68,13 @@ func _build_ui() -> void:
 
 	# Description input (multiline)
 	var desc_lbl := Label.new()
-	desc_lbl.text = "DESCRIPTION"
+	desc_lbl.text = Locale.t("bug.field_description")
 	desc_lbl.add_theme_font_size_override("font_size", 14)
 	desc_lbl.add_theme_color_override("font_color", Color(0, 0.78, 1.0, 0.5))
 	vbox.add_child(desc_lbl)
 
 	_desc_input = UITextInput.new()
-	_desc_input.placeholder = "Etapes pour reproduire, ce qui etait attendu, ce qui s'est passe..."
+	_desc_input.placeholder = Locale.t("bug.desc_placeholder")
 	_desc_input.custom_minimum_size.y = 120
 	_desc_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(_desc_input)
@@ -96,7 +96,7 @@ func _build_ui() -> void:
 	info_vbox.add_child(_position_label)
 
 	var version_label := Label.new()
-	version_label.text = "Version: " + Constants.GAME_VERSION
+	version_label.text = Locale.t("bug.version_prefix") + Constants.GAME_VERSION
 	version_label.add_theme_font_size_override("font_size", 13)
 	version_label.add_theme_color_override("font_color", Color(0.69, 0.83, 0.91, 0.6))
 	info_vbox.add_child(version_label)
@@ -109,13 +109,13 @@ func _build_ui() -> void:
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	_submit_btn = UIButton.new()
-	_submit_btn.text = "ENVOYER"
+	_submit_btn.text = Locale.t("bug.submit")
 	_submit_btn.custom_minimum_size = Vector2(150, 36)
 	_submit_btn.pressed.connect(_on_submit)
 	btn_row.add_child(_submit_btn)
 
 	_close_btn = UIButton.new()
-	_close_btn.text = "FERMER"
+	_close_btn.text = Locale.t("bug.close")
 	_close_btn.custom_minimum_size = Vector2(150, 36)
 	_close_btn.pressed.connect(_on_close)
 	btn_row.add_child(_close_btn)
@@ -129,13 +129,13 @@ func _on_opened() -> void:
 	_title_input.set_text("")
 	_desc_input.set_text("")
 	_sending = false
-	_submit_btn.text = "ENVOYER"
+	_submit_btn.text = Locale.t("bug.submit")
 	_submit_btn.enabled = true
 	_update_context_info()
 
 
 func _update_context_info() -> void:
-	var system_name := "Inconnu"
+	var system_name := Locale.t("bug.unknown")
 	var system_id := 0
 	if GameManager._system_transition:
 		system_id = GameManager._system_transition.current_system_id
@@ -143,18 +143,18 @@ func _update_context_info() -> void:
 		if GameManager._galaxy:
 			var sys_data = GameManager._galaxy.get_system(system_id)
 			if sys_data:
-				system_name = sys_data.get("name", "Systeme #%d" % system_id)
+				system_name = sys_data.get("name", Locale.t("bug.system_fallback") % system_id)
 
-	_system_label.text = "Systeme: %s (#%d)" % [system_name, system_id]
+	_system_label.text = Locale.t("bug.system_info") % [system_name, system_id]
 
 	var pos := Vector3(FloatingOrigin.origin_offset_x, FloatingOrigin.origin_offset_y, FloatingOrigin.origin_offset_z)
-	_position_label.text = "Position: %.0f, %.0f, %.0f" % [pos.x, pos.y, pos.z]
+	_position_label.text = Locale.t("bug.position_info") % [pos.x, pos.y, pos.z]
 
 
 func _on_submit() -> void:
 	if not AuthManager.is_authenticated:
 		if GameManager._notif:
-			GameManager._notif.general.bug_report_validation("Connexion requise pour envoyer un rapport")
+			GameManager._notif.general.bug_report_validation(Locale.t("bug.login_required"))
 		return
 
 	var title_text: String = _title_input.get_text().strip_edges()
@@ -162,19 +162,19 @@ func _on_submit() -> void:
 
 	if title_text.is_empty():
 		if GameManager._notif:
-			GameManager._notif.general.bug_report_validation("Le titre est requis")
+			GameManager._notif.general.bug_report_validation(Locale.t("bug.title_required"))
 		return
 
 	if desc_text.is_empty():
 		if GameManager._notif:
-			GameManager._notif.general.bug_report_validation("La description est requise")
+			GameManager._notif.general.bug_report_validation(Locale.t("bug.desc_required"))
 		return
 
 	if _sending:
 		return
 
 	_sending = true
-	_submit_btn.text = "ENVOI..."
+	_submit_btn.text = Locale.t("bug.sending")
 	_submit_btn.enabled = false
 
 	# Gather context
@@ -220,7 +220,7 @@ func _on_submit() -> void:
 	http.request_completed.connect(func(_result: int, code: int, _headers: PackedStringArray, _body: PackedByteArray):
 		http.queue_free()
 		_sending = false
-		_submit_btn.text = "ENVOYER"
+		_submit_btn.text = Locale.t("bug.submit")
 		_submit_btn.enabled = true
 
 		if code >= 200 and code < 300:

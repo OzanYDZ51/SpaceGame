@@ -738,7 +738,7 @@ func reveal_single_asteroid(ast) -> void:
 
 func _update_asteroid_visual(ast, reveal: bool) -> void:
 	# FULL LOD — tween the color on the AsteroidNode
-	if ast.node_ref and is_instance_valid(ast.node_ref):
+	if is_instance_valid(ast.node_ref):
 		if reveal:
 			ast.node_ref.apply_scan_reveal(ast)
 		else:
@@ -756,7 +756,7 @@ func _update_asteroid_visual(ast, reveal: bool) -> void:
 
 
 func _flash_barren_asteroid(ast) -> void:
-	if ast.node_ref and is_instance_valid(ast.node_ref):
+	if is_instance_valid(ast.node_ref):
 		ast.node_ref.flash_barren()
 
 
@@ -804,11 +804,11 @@ func apply_server_health_batch(batch: Array) -> void:
 			ast.health_current = 0.0
 			ast.respawn_timer = Constants.ASTEROID_RESPAWN_TIME
 			on_asteroid_depleted(aid)
-			if ast.node_ref and is_instance_valid(ast.node_ref):
+			if is_instance_valid(ast.node_ref):
 				ast.node_ref._on_depleted()
 				ast.node_ref.depleted.emit(aid)
 		elif hp_ratio > 0.0 and not ast.is_depleted:
 			# Update visual (scale tween + label)
-			if ast.node_ref and is_instance_valid(ast.node_ref):
+			if is_instance_valid(ast.node_ref):
 				ast.node_ref.apply_health_visual_update(hp_ratio)
 				ast.node_ref._update_label_text()

@@ -230,12 +230,30 @@ func _draw_top_bar(ctrl: Control) -> void:
 	ctrl.draw_string(font, Vector2(170, row2_y), Locale.t("hud.pitch"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	ctrl.draw_string(font, Vector2(204, row2_y), "%+.1f\u00B0" % pitch, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT)
 
-	# FPS counter (right of INCL, before POS)
+	# FPS + MS + connection (right of INCL, before POS)
 	if OptionsScreen.show_fps:
 		var fps_val: int = Engine.get_frames_per_second()
-		var fps_str: String = "%d FPS" % fps_val
+		var ms_val: float = 1000.0 / maxf(fps_val, 1) if fps_val > 0 else 0.0
 		var fps_col: Color = UITheme.ACCENT if fps_val >= 55 else (UITheme.WARNING if fps_val >= 30 else UITheme.DANGER)
-		ctrl.draw_string(font, Vector2(270, row2_y), fps_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, fps_col)
+		var perf_str: String = "%d FPS  %.1f ms" % [fps_val, ms_val]
+		var px: float = 270.0
+		ctrl.draw_string(font, Vector2(px, row2_y), perf_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, fps_col)
+		# Connection status
+		var net_x: float = px + font.get_string_size(perf_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x + 12.0
+		var net_str: String
+		var net_col: Color
+		match NetworkManager.connection_state:
+			NetworkManager.ConnectionState.CONNECTED:
+				var peer_count: int = NetworkManager.peers.size()
+				net_str = "ONLINE (%d)" % peer_count
+				net_col = UITheme.ACCENT
+			NetworkManager.ConnectionState.CONNECTING:
+				net_str = "CONNECTING..."
+				net_col = UITheme.WARNING
+			_:
+				net_str = "OFFLINE"
+				net_col = UITheme.TEXT_DIM
+		ctrl.draw_string(font, Vector2(net_x, row2_y), net_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, net_col)
 
 	# POS (right-aligned)
 	var pos_str =FloatingOrigin.get_universe_pos_string() if FloatingOrigin else "0, 0, 0"

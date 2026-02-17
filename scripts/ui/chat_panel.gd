@@ -94,15 +94,16 @@ var _autocomplete_items: Array[Dictionary] = []  # Visible filtered commands
 var _autocomplete_selected: int = -1  # Currently highlighted index
 var _autocomplete_visible: bool = false
 
-const SLASH_COMMANDS: Array[Dictionary] = [
-	{"cmd": "/help", "desc": "Afficher les commandes"},
-	{"cmd": "/w", "desc": "<joueur> <msg> — Message privé"},
-	{"cmd": "/mp", "desc": "<joueur> <msg> — Message privé"},
-	{"cmd": "/r", "desc": "<msg> — Répondre au dernier MP"},
-	{"cmd": "/joueurs", "desc": "Lister les joueurs du système"},
-	{"cmd": "/players", "desc": "List players in the system"},
-	{"cmd": "/clear", "desc": "Vider le canal actuel"},
-]
+static var SLASH_COMMANDS: Array[Dictionary]:
+	get: return [
+		{"cmd": "/help", "desc": Locale.t("chat.desc_help")},
+		{"cmd": "/w", "desc": Locale.t("chat.desc_w")},
+		{"cmd": "/mp", "desc": Locale.t("chat.desc_w")},
+		{"cmd": "/r", "desc": Locale.t("chat.desc_r")},
+		{"cmd": "/joueurs", "desc": Locale.t("chat.desc_players")},
+		{"cmd": "/players", "desc": Locale.t("chat.desc_players")},
+		{"cmd": "/clear", "desc": Locale.t("chat.desc_clear")},
+	]
 
 
 func _ready() -> void:
@@ -283,7 +284,7 @@ func _build_chat() -> void:
 	_input_field.offset_bottom = -2
 	_input_field.offset_left = 4
 	_input_field.offset_right = -4
-	_input_field.placeholder_text = "Écrire un message... (Entrée pour envoyer)"
+	_input_field.placeholder_text = Locale.t("chat.placeholder")
 	_input_field.add_theme_font_size_override("font_size", 13)
 	_input_field.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0))
 	_input_field.add_theme_color_override("font_placeholder_color", COL_TEXT_DIM)
@@ -769,7 +770,7 @@ func set_private_target(player_name: String) -> void:
 	show_private_tab(player_name)
 	_current_channel = Channel.PRIVATE
 	_on_tab_pressed(Channel.PRIVATE)
-	_input_field.placeholder_text = "MP a %s..." % player_name
+	_input_field.placeholder_text = Locale.t("chat.pm_placeholder") % player_name
 
 
 func _handle_command(text: String) -> void:
@@ -780,18 +781,18 @@ func _handle_command(text: String) -> void:
 
 	match cmd:
 		"/help":
-			add_system_message("--- Commandes disponibles ---")
-			add_system_message("/w <joueur> <message> — Message privé")
-			add_system_message("/mp <joueur> <message> — Message privé")
-			add_system_message("/r <message> — Répondre au dernier MP")
-			add_system_message("/joueurs — Lister les joueurs du système")
-			add_system_message("/players — Lister les joueurs du système")
-			add_system_message("/clear — Vider le canal actuel")
+			add_system_message(Locale.t("chat.help_header"))
+			add_system_message(Locale.t("chat.cmd_w"))
+			add_system_message(Locale.t("chat.cmd_w"))
+			add_system_message(Locale.t("chat.cmd_r"))
+			add_system_message(Locale.t("chat.cmd_players"))
+			add_system_message(Locale.t("chat.cmd_players"))
+			add_system_message(Locale.t("chat.cmd_clear"))
 
 		"/clear":
 			_messages[_current_channel].clear()
 			_refresh_messages()
-			add_system_message("Canal vidé.")
+			add_system_message(Locale.t("chat.cleared"))
 
 		"/joueurs", "/players":
 			var names: PackedStringArray = []
@@ -799,13 +800,13 @@ func _handle_command(text: String) -> void:
 				var state = NetworkManager.peers[pid]
 				names.append(state.player_name)
 			if names.is_empty():
-				add_system_message("Aucun autre joueur dans le secteur.")
+				add_system_message(Locale.t("chat.no_players"))
 			else:
-				add_system_message("Joueurs connectés (%d) : %s" % [names.size(), ", ".join(names)])
+				add_system_message(Locale.t("chat.players_list") % [names.size(), ", ".join(names)])
 
 		"/w", "/mp":
 			if parts.size() < 3:
-				add_system_message("Usage : /w <joueur> <message>")
+				add_system_message(Locale.t("chat.usage_w"))
 				return
 			var target_name: String = parts[1]
 			var msg_text: String = " ".join(parts.slice(2))
@@ -815,10 +816,10 @@ func _handle_command(text: String) -> void:
 
 		"/r":
 			if parts.size() < 2:
-				add_system_message("Usage : /r <message>")
+				add_system_message(Locale.t("chat.usage_r"))
 				return
 			if _private_target.is_empty():
-				add_system_message("Aucun MP reçu auquel répondre.")
+				add_system_message(Locale.t("chat.no_pm"))
 				return
 			var msg_text: String = " ".join(parts.slice(1))
 			show_private_tab(_private_target)
@@ -826,7 +827,7 @@ func _handle_command(text: String) -> void:
 			add_message(Channel.PRIVATE, "→ " + _private_target, msg_text, Color(0.85, 0.5, 1.0))
 
 		_:
-			add_system_message("Commande inconnue : %s. Tapez /help." % cmd)
+			add_system_message(Locale.t("chat.unknown_cmd") % cmd)
 
 
 # =============================================================================

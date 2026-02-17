@@ -89,7 +89,7 @@ func _draw() -> void:
 		draw_rect(tout_rect, Color(cc.r, cc.g, cc.b, 0.15))
 	_draw_checkbox(Vector2(PADDING + CHECK_MARGIN, y + (HEADER_H - CHECK_SIZE) * 0.5), _all_checked, cc)
 	var tout_col: Color = cc if _hovered_index == -2 else UITheme.TEXT
-	draw_string(font, Vector2(PADDING + CHECK_MARGIN + CHECK_SIZE + 8, y + HEADER_H - 8), "TOUT", HORIZONTAL_ALIGNMENT_LEFT, MENU_W - PADDING * 2, UITheme.FONT_SIZE_BODY, tout_col)
+	draw_string(font, Vector2(PADDING + CHECK_MARGIN + CHECK_SIZE + 8, y + HEADER_H - 8), Locale.t("fleet.all"), HORIZONTAL_ALIGNMENT_LEFT, MENU_W - PADDING * 2, UITheme.FONT_SIZE_BODY, tout_col)
 	y += HEADER_H
 
 	# Separator
@@ -120,8 +120,9 @@ func _draw() -> void:
 	draw_rect(btn_rect, btn_bg)
 	draw_rect(btn_rect, Color(cc, 0.6), false, 1.0)
 	var btn_col: Color = cc if btn_hovered else UITheme.TEXT
-	var btn_text_x: float = btn_rect.position.x + (btn_rect.size.x - font.get_string_size("CONFIRMER", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY).x) * 0.5
-	draw_string(font, Vector2(btn_text_x, y + BUTTON_H - 12), "CONFIRMER", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, btn_col)
+	var _confirm_text: String = Locale.t("fleet.confirm")
+	var btn_text_x: float = btn_rect.position.x + (btn_rect.size.x - font.get_string_size(_confirm_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY).x) * 0.5
+	draw_string(font, Vector2(btn_text_x, y + BUTTON_H - 12), _confirm_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, btn_col)
 
 
 func _draw_checkbox(pos: Vector2, checked: bool, color: Color) -> void:

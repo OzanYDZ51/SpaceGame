@@ -16,7 +16,7 @@ var linear_velocity: Vector3 = Vector3.ZERO
 # Interpolation buffer
 var _snapshots: Array[Dictionary] = []
 const MAX_SNAPSHOTS: int = 30
-const EXTRAPOLATION_MAX: float = 0.5
+const EXTRAPOLATION_MAX: float = 1.0  # 1 second max extrapolation before freeze
 
 # Visual
 var _ship_model = null
@@ -171,7 +171,7 @@ func _process(_delta: float) -> void:
 	if _snapshots.is_empty():
 		return
 
-	var render_time: float = (Time.get_ticks_msec() / 1000.0) - Constants.NET_INTERPOLATION_DELAY
+	var render_time: float = (Time.get_ticks_msec() / 1000.0) - Constants.NPC_INTERPOLATION_DELAY
 
 	if _snapshots.size() < 2:
 		# Single snapshot — extrapolate with velocity
@@ -249,23 +249,23 @@ func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) 
 	_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
 
 
-## Smooth extrapolation with velocity decay to prevent infinite drift.
+## Smooth extrapolation with gentle velocity decay to prevent infinite drift.
 func _extrapolate_smooth(render_time: float) -> void:
 	var last: Dictionary = _snapshots.back()
 	var dt: float = clampf(render_time - last["time"], 0.0, EXTRAPOLATION_MAX)
 	var vel: Vector3 = last["vel"]
 
-	# Quadratic decay: full speed at t=0, zero at EXTRAPOLATION_MAX
-	var decay: float = 1.0 - (dt / EXTRAPOLATION_MAX)
-	decay = decay * decay
+	# Linear decay: full speed for first 50%, then gentle slowdown
+	# This avoids the jarring quadratic decay that made NPCs visibly decelerate
+	var decay: float = clampf(1.0 - maxf(dt - 0.5, 0.0) / (EXTRAPOLATION_MAX - 0.5), 0.0, 1.0)
 
+	# Constant velocity for first 500ms, then linear deceleration
+	var extrap_dt: float = minf(dt, 0.5) + maxf(dt - 0.5, 0.0) * decay
 	var pos_arr: Array = last["pos"]
-	var T: float = EXTRAPOLATION_MAX
-	var integrated_dt: float = dt - (dt * dt) / T + (dt * dt * dt) / (3.0 * T * T)
 	var extrap_pos: Array = [
-		pos_arr[0] + vel.x * integrated_dt,
-		pos_arr[1] + vel.y * integrated_dt,
-		pos_arr[2] + vel.z * integrated_dt,
+		pos_arr[0] + vel.x * extrap_dt,
+		pos_arr[1] + vel.y * extrap_dt,
+		pos_arr[2] + vel.z * extrap_dt,
 	]
 	global_position = FloatingOrigin.to_local_pos(extrap_pos)
 
@@ -285,7 +285,7 @@ func _extrapolate_smooth(render_time: float) -> void:
 		rotation_degrees = last["rot"]
 
 	linear_velocity = vel * decay
-	_update_engine_glow(last.get("thr", 0.0) * decay)
+	_update_engine_glow(last.get("thr", 0.0) * maxf(decay, 0.3))
 
 
 func _update_engine_glow(throttle_amount: float) -> void:

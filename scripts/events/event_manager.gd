@@ -274,7 +274,7 @@ func _get_npc_position(npc_id: StringName, lod_mgr = null) -> Vector3:
 		lod_mgr = _get_lod_manager()
 	if lod_mgr and lod_mgr._ships.has(npc_id):
 		var data = lod_mgr._ships[npc_id]
-		if data.node_ref and is_instance_valid(data.node_ref):
+		if is_instance_valid(data.node_ref):
 			return data.node_ref.global_position
 		return data.position
 	return Vector3.ZERO
@@ -285,7 +285,7 @@ func _get_npc_velocity(npc_id: StringName, lod_mgr = null) -> Vector3:
 		lod_mgr = _get_lod_manager()
 	if lod_mgr and lod_mgr._ships.has(npc_id):
 		var data = lod_mgr._ships[npc_id]
-		if data.node_ref and is_instance_valid(data.node_ref) and data.node_ref is RigidBody3D:
+		if is_instance_valid(data.node_ref) and data.node_ref is RigidBody3D:
 			return (data.node_ref as RigidBody3D).linear_velocity
 		return data.velocity
 	return Vector3.ZERO

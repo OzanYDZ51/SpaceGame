@@ -10,7 +10,7 @@ extends Node
 # - Broadcasts NPC deaths + loot
 # =============================================================================
 
-const BATCH_INTERVAL: float = 0.1  # 10Hz NPC state sync
+const BATCH_INTERVAL: float = 0.05  # 20Hz NPC state sync (matches NET_TICK_RATE)
 const SLOW_SYNC_INTERVAL: float = 0.5  # 2Hz for distant NPCs
 const FULL_SYNC_DISTANCE: float = 5000.0  # <5km = full sync
 const MAX_SYNC_DISTANCE: float = 15000.0  # 5-15km = slow sync
@@ -368,7 +368,7 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 				if lod_data == null or lod_data.is_dead:
 					continue
 				# Skip mining-docked NPCs (hidden, no position updates needed)
-				if lod_data.node_ref and is_instance_valid(lod_data.node_ref) and not lod_data.node_ref.visible:
+				if is_instance_valid(lod_data.node_ref) and not lod_data.node_ref.visible:
 					continue
 
 				var dist =peer_pos.distance_to(lod_data.position)
@@ -389,7 +389,7 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 	var rot_deg =Vector3(rad_to_deg(rot_rad.x), rad_to_deg(rot_rad.y), rad_to_deg(rot_rad.z))
 
 	# If the NPC has a node, use its rotation_degrees directly (more accurate)
-	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+	if is_instance_valid(lod_data.node_ref):
 		rot_deg = lod_data.node_ref.rotation_degrees
 
 	return {
@@ -484,7 +484,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	# For LOD0/1: apply_damage triggers ship_destroyed synchronously → ship_factory lambda
 	# would broadcast_npc_death with killer_pid=0. We set _player_killing flag so the lambda
 	# skips, letting _on_npc_killed handle death with the correct killer_pid.
-	if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+	if is_instance_valid(lod_data.node_ref):
 		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
 		if health:
 			_npcs[npc_id]["_player_killing"] = true
@@ -730,7 +730,7 @@ func _send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 						entry["pos_x"] = upos[0]
 						entry["pos_y"] = upos[1]
 						entry["pos_z"] = upos[2]
-						if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+						if is_instance_valid(lod_data.node_ref):
 							var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
 							if bridge:
 								entry["command"] = String(bridge.command)
@@ -834,7 +834,7 @@ func handle_fleet_retrieve_request(sender_pid: int, fleet_index: int) -> void:
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
 		var lod_data = lod_mgr.get_ship_data(npc_id)
-		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+		if lod_data and is_instance_valid(lod_data.node_ref):
 			EntityRegistry.unregister(String(npc_id))
 			lod_data.node_ref.queue_free()
 		lod_mgr.unregister_ship(npc_id)
@@ -863,7 +863,7 @@ func handle_fleet_npc_self_docked(npc_id: StringName, fleet_index: int) -> void:
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
 		var lod_data = lod_mgr.get_ship_data(npc_id)
-		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+		if lod_data and is_instance_valid(lod_data.node_ref):
 			EntityRegistry.unregister(String(npc_id))
 			lod_data.node_ref.queue_free()
 		lod_mgr.unregister_ship(npc_id)
@@ -897,7 +897,7 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
 		var lod_data = lod_mgr.get_ship_data(npc_id)
-		if lod_data and lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+		if lod_data and is_instance_valid(lod_data.node_ref):
 			var npc = lod_data.node_ref
 			var bridge = npc.get_node_or_null("FleetAIBridge")
 			if bridge:
@@ -1603,7 +1603,7 @@ func _sync_fleet_to_backend() -> void:
 		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 		# Get command from live bridge (preferred) or stored dict (fallback)
 		var cmd: String = fleet_info.get("command", "")
-		if lod_data.node_ref and is_instance_valid(lod_data.node_ref):
+		if is_instance_valid(lod_data.node_ref):
 			var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
 			if bridge:
 				cmd = String(bridge.command)

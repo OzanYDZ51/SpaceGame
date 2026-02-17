@@ -19,17 +19,19 @@ const BAR_W: float = 280.0
 const BAR_H: float = 3.0
 const BAR_TWEEN_DURATION: float = 0.35
 
-const TIPS: Array[String] = [
-	"Utilisez Tab pour cibler le vaisseau le plus proche",
-	"Maintenez Shift pour activer le mode cruise",
-	"Deployez vos vaisseaux depuis la carte systeme (M)",
-	"Visitez les stations pour reparer et reequiper",
-	"Les systemes a haut danger offrent de meilleures recompenses",
-	"Creez un escadron pour coordonner votre flotte",
-	"Appuyez sur F1 pour afficher l'aide en jeu",
-	"Les minerais raffines valent plus que les minerais bruts",
-	"Rejoignez une corporation pour jouer en equipe",
-]
+static var TIPS: Array[String]:
+	get:
+		return [
+			Locale.t("splash.tip_target"),
+			Locale.t("splash.tip_cruise"),
+			Locale.t("splash.tip_deploy"),
+			Locale.t("splash.tip_station"),
+			Locale.t("splash.tip_danger"),
+			Locale.t("splash.tip_squadron"),
+			Locale.t("splash.tip_help"),
+			Locale.t("splash.tip_refine"),
+			Locale.t("splash.tip_corp"),
+		]
 
 var _bg: ColorRect
 var _logo: TextureRect
@@ -175,7 +177,7 @@ func _ready() -> void:
 
 	# --- Step text (below bar) ---
 	_step_label = Label.new()
-	_step_label.text = "INITIALISATION"
+	_step_label.text = Locale.t("splash.init")
 	_step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if font_medium:
 		_step_label.add_theme_font_override("font", font_medium)

@@ -108,7 +108,7 @@ func unregister_ship(id: StringName) -> void:
 	if not _ships.has(id):
 		return
 	var data = _ships[id]
-	if data.node_ref and is_instance_valid(data.node_ref):
+	if is_instance_valid(data.node_ref):
 		if id != _player_id:
 			data.node_ref.queue_free()
 	_grid.remove(id)
@@ -148,7 +148,7 @@ func get_nearest_ships(center: Vector3, radius: float, count: int, exclude_id: S
 func get_ship_position(id: StringName) -> Vector3:
 	if _ships.has(id):
 		var data = _ships[id]
-		if data.node_ref and is_instance_valid(data.node_ref):
+		if is_instance_valid(data.node_ref):
 			return data.node_ref.global_position
 		return data.position
 	return Vector3.ZERO
@@ -182,7 +182,7 @@ func clear_all() -> void:
 		var data = _ships[id]
 		if id == _player_id:
 			continue
-		if data.node_ref and is_instance_valid(data.node_ref):
+		if is_instance_valid(data.node_ref):
 			data.node_ref.queue_free()
 	_ships.clear()
 	_grid.clear()
@@ -318,7 +318,7 @@ func _sync_node_positions() -> void:
 		var data = _ships[id]
 		if data.is_promoting:
 			continue
-		if data.node_ref and is_instance_valid(data.node_ref):
+		if is_instance_valid(data.node_ref):
 			data.position = data.node_ref.global_position
 			_grid.update_position(id, data.position)
 		else:

@@ -1074,7 +1074,7 @@ func _on_sidebar_context_menu(fleet_index: int, screen_pos: Vector2) -> void:
 	# Add promote leader for squadron members
 	var sq = _fleet_panel._fleet.get_ship_squadron(fleet_index)
 	if sq and sq.is_member(fleet_index):
-		orders.append({"id": &"sq_promote", "display_name": "PROMOUVOIR CHEF"})
+		orders.append({"id": &"sq_promote", "display_name": Locale.t("map.promote_leader")})
 
 	if orders.is_empty():
 		return
@@ -1208,19 +1208,19 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 		fleet_orders.append_array(sq_orders)
 
 		if not fleet_orders.is_empty():
-			all_orders.append({"id": &"_header_fleet", "display_name": "ORDRES FLOTTE", "is_header": true})
+			all_orders.append({"id": &"_header_fleet", "display_name": Locale.t("map.fleet_orders_header"), "is_header": true})
 			all_orders.append_array(fleet_orders)
 
 	# --- Group (party) orders ---
 	var group_orders := _build_group_context_orders(context)
 	if not group_orders.is_empty():
-		all_orders.append({"id": &"_header_group", "display_name": "GROUPE", "is_header": true})
+		all_orders.append({"id": &"_header_group", "display_name": Locale.t("map.group_header"), "is_header": true})
 		all_orders.append_array(group_orders)
 
 	# --- Construction orders (always available) ---
 	var build_orders =ConstructionOrderRegistry.get_available_orders()
 	if not build_orders.is_empty():
-		all_orders.append({"id": &"_header_construction", "display_name": "CONSTRUCTION", "is_header": true})
+		all_orders.append({"id": &"_header_construction", "display_name": Locale.t("map.construction_header"), "is_header": true})
 		all_orders.append_array(build_orders)
 
 	if all_orders.is_empty():

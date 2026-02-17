@@ -840,5 +840,25 @@
 	"map.promote_leader": "PROMOUVOIR CHEF",
 	"map.fleet_orders_header": "ORDRES FLOTTE",
 	"map.group_header": "GROUPE",
-	"map.construction_header": "CONSTRUCTION"
+	"map.construction_header": "CONSTRUCTION",
+
+	"chat.placeholder": "Écrire un message... (Entrée pour envoyer)",
+	"chat.pm_placeholder": "MP a %s...",
+	"chat.help_header": "--- Commandes disponibles ---",
+	"chat.cmd_w": "/w <joueur> <message> — Message privé",
+	"chat.cmd_r": "/r <message> — Répondre au dernier MP",
+	"chat.cmd_players": "/joueurs — Lister les joueurs du système",
+	"chat.cmd_clear": "/clear — Vider le canal actuel",
+	"chat.cleared": "Canal vidé.",
+	"chat.no_players": "Aucun autre joueur dans le secteur.",
+	"chat.players_list": "Joueurs connectés (%d) : %s",
+	"chat.usage_w": "Usage : /w <joueur> <message>",
+	"chat.usage_r": "Usage : /r <message>",
+	"chat.no_pm": "Aucun MP reçu auquel répondre.",
+	"chat.unknown_cmd": "Commande inconnue : %s. Tapez /help.",
+	"chat.desc_help": "Afficher les commandes",
+	"chat.desc_w": "<joueur> <msg> — Message privé",
+	"chat.desc_r": "<msg> — Répondre au dernier MP",
+	"chat.desc_players": "Lister les joueurs du système",
+	"chat.desc_clear": "Vider le canal actuel"
 }

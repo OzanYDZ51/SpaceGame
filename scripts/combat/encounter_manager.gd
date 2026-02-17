@@ -83,9 +83,7 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	var gate_positions: Array[Vector3] = []
 	if system_data and system_data.jump_gates.size() > 0:
 		for gd_gate in system_data.jump_gates:
-			var orbit_r: float = gd_gate.orbital_radius
-			var angle: float = EntityRegistrySystem.compute_orbital_angle(gd_gate.orbital_angle, gd_gate.orbital_period)
-			gate_positions.append(Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r))
+			gate_positions.append(Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z))
 
 	# Build a list of all key points in the system (stations + gates)
 	var key_points: Array[Vector3] = []

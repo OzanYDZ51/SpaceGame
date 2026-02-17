@@ -840,5 +840,25 @@
 	"map.promote_leader": "PROMOTE LEADER",
 	"map.fleet_orders_header": "FLEET ORDERS",
 	"map.group_header": "GROUP",
-	"map.construction_header": "CONSTRUCTION"
+	"map.construction_header": "CONSTRUCTION",
+
+	"chat.placeholder": "Type a message... (Enter to send)",
+	"chat.pm_placeholder": "PM to %s...",
+	"chat.help_header": "--- Available commands ---",
+	"chat.cmd_w": "/w <player> <message> — Private message",
+	"chat.cmd_r": "/r <message> — Reply to last PM",
+	"chat.cmd_players": "/players — List players in system",
+	"chat.cmd_clear": "/clear — Clear current channel",
+	"chat.cleared": "Channel cleared.",
+	"chat.no_players": "No other players in the sector.",
+	"chat.players_list": "Connected players (%d): %s",
+	"chat.usage_w": "Usage: /w <player> <message>",
+	"chat.usage_r": "Usage: /r <message>",
+	"chat.no_pm": "No PM received to reply to.",
+	"chat.unknown_cmd": "Unknown command: %s. Type /help.",
+	"chat.desc_help": "Show commands",
+	"chat.desc_w": "<player> <msg> — Private message",
+	"chat.desc_r": "<msg> — Reply to last PM",
+	"chat.desc_players": "List players in system",
+	"chat.desc_clear": "Clear current channel"
 }
