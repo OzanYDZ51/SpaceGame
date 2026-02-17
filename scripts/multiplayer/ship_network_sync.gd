@@ -37,6 +37,8 @@ func force_send_now() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if NetworkManager.is_server():
+		return
 	if not NetworkManager.is_connected_to_server():
 		return
 
@@ -114,7 +116,7 @@ func reconnect_weapon_signal() -> void:
 
 
 func _on_weapon_fired(hardpoint_id: int, weapon_name_str: StringName) -> void:
-	if not NetworkManager.is_connected_to_server():
+	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
 		return
 
 	var wm = _ship.get_node_or_null("WeaponManager")
@@ -170,7 +172,7 @@ func _send_mining_state() -> void:
 var _was_mining: bool = false
 
 func _process(_delta: float) -> void:
-	if _ship == null or not NetworkManager.is_connected_to_server():
+	if _ship == null or NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
 		return
 	# Detect mining stop → send deactivation once
 	var mining = _ship.get_node_or_null("MiningSystem")

@@ -21,6 +21,24 @@ type DiscordWebhookService struct {
 }
 
 func NewDiscordWebhookService(devlog, status, kills, events, bugs, clans string) *DiscordWebhookService {
+	configured := 0
+	for _, url := range []string{devlog, status, kills, events, bugs, clans} {
+		if url != "" {
+			configured++
+		}
+	}
+	if configured == 0 {
+		log.Println("[discord-webhook] WARNING: No webhook URLs configured — Discord notifications disabled")
+	} else {
+		names := []string{}
+		if devlog != "" { names = append(names, "devlog") }
+		if status != "" { names = append(names, "status") }
+		if kills != "" { names = append(names, "kills") }
+		if events != "" { names = append(names, "events") }
+		if bugs != "" { names = append(names, "bugs") }
+		if clans != "" { names = append(names, "clans") }
+		log.Printf("[discord-webhook] %d webhooks configured: %v", configured, names)
+	}
 	return &DiscordWebhookService{
 		webhookDevlog: devlog,
 		webhookStatus: status,
@@ -65,6 +83,7 @@ type discordWebhookPayload struct {
 
 func (s *DiscordWebhookService) send(webhookURL string, payload discordWebhookPayload) {
 	if webhookURL == "" {
+		log.Printf("[discord-webhook] Skipped (no URL configured) for: %s", payload.Username)
 		return
 	}
 	go func() {
@@ -78,9 +97,12 @@ func (s *DiscordWebhookService) send(webhookURL string, payload discordWebhookPa
 			log.Printf("[discord-webhook] send error: %v", err)
 			return
 		}
-		resp.Body.Close()
+		defer resp.Body.Close()
 		if resp.StatusCode >= 400 {
-			log.Printf("[discord-webhook] HTTP %d for webhook", resp.StatusCode)
+			// Read body for error details
+			var errBody [512]byte
+			n, _ := resp.Body.Read(errBody[:])
+			log.Printf("[discord-webhook] HTTP %d for %s: %s", resp.StatusCode, payload.Username, string(errBody[:n]))
 		}
 	}()
 }

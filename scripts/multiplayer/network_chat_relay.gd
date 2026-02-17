@@ -36,7 +36,7 @@ func _find_chat_panel() -> void:
 
 ## Local player typed a message → send to server.
 func _on_local_message_sent(channel_name: String, text: String) -> void:
-	if not NetworkManager.is_connected_to_server():
+	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
 		return
 
 	# Handle whisper commands from ChatPanel
@@ -66,7 +66,7 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String) 
 
 ## Send a whisper (private message) to a specific player.
 func _send_whisper(target_name: String, text: String) -> void:
-	if not NetworkManager.is_connected_to_server():
+	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
 		return
 	NetworkManager._rpc_whisper.rpc_id(1, target_name, text)
 

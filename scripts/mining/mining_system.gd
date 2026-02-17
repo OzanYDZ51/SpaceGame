@@ -328,7 +328,7 @@ func _do_mining_tick() -> void:
 
 
 func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
-	if not NetworkManager.is_connected_to_server():
+	if NetworkManager.is_server() or not NetworkManager.is_connected_to_server():
 		return
 	var id_str = String(asteroid_id)
 	NetworkManager._rpc_asteroid_depleted.rpc_id(1, id_str)
@@ -336,7 +336,7 @@ func _broadcast_asteroid_depleted(asteroid_id: StringName) -> void:
 
 ## Send accumulated mining damage claims to the server.
 func _send_mining_claims() -> void:
-	if _pending_claims.is_empty():
+	if NetworkManager.is_server() or _pending_claims.is_empty():
 		return
 
 	var claims: Array = []
