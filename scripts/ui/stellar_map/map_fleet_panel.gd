@@ -15,7 +15,6 @@ signal selection_changed(fleet_indices: Array)
 signal squadron_header_clicked(squadron_id: int)
 signal squadron_rename_requested(squadron_id: int, screen_pos: Vector2)
 signal ship_context_menu_requested(fleet_index: int, screen_pos: Vector2)
-signal squadron_create_player_requested()
 signal squadron_disband_requested(squadron_id: int)
 signal squadron_remove_member_requested(fleet_index: int)
 signal squadron_formation_requested(squadron_id: int, formation_type: StringName)
@@ -45,7 +44,6 @@ var _hover_fleet_index: int = -1
 
 # Squadron section
 var _squadron_mgr = null
-var _sq_create_btn_rect: Rect2 = Rect2()
 var _sq_disband_btn_rect: Rect2 = Rect2()
 var _sq_formation_btn_rects: Array[Dictionary] = []  # [{rect, formation_id}]
 var _sq_remove_btn_rects: Array[Dictionary] = []  # [{rect, fleet_index}]
@@ -191,10 +189,6 @@ func get_panel_rect() -> Rect2:
 
 
 func _check_squadron_section_click(pos: Vector2) -> bool:
-	# Create button
-	if _sq_create_btn_rect.size.x > 0.0 and _sq_create_btn_rect.has_point(pos):
-		squadron_create_player_requested.emit()
-		return true
 	# Disband button
 	if _sq_disband_btn_rect.size.x > 0.0 and _sq_disband_btn_rect.has_point(pos):
 		var sq = _get_player_squadron()
@@ -765,7 +759,6 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 	if _fleet == null:
 		return y
 	# Clear hit rects
-	_sq_create_btn_rect = Rect2()
 	_sq_disband_btn_rect = Rect2()
 	_sq_formation_btn_rects.clear()
 	_sq_remove_btn_rects.clear()
@@ -775,18 +768,7 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 	var _start_y: float = y
 
 	if sq == null:
-		# No player squadron — show create button
-		if _in_clip(y, SHIP_H + 4, clip):
-			var btn_rect := Rect2(MARGIN, y + 2, PANEL_W - MARGIN * 2, SHIP_H)
-			draw_rect(btn_rect, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.12))
-			draw_rect(btn_rect, Color(UITheme.PRIMARY, 0.5), false, 1.0)
-			draw_string(font, Vector2(MARGIN + 8, y + SHIP_H - 2), "+ CREER MON ESCADRON", HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 12, UITheme.FONT_SIZE_SMALL, UITheme.PRIMARY)
-			_sq_create_btn_rect = btn_rect
-		y += SHIP_H + 6
-		# Separator
-		if _in_clip(y, 2, clip):
-			draw_line(Vector2(MARGIN, y), Vector2(PANEL_W - MARGIN, y), Color(MapColors.PANEL_BORDER, 0.4), 1.0)
-		y += 4
+		# No player squadron — no create button here (use right-click on own ship)
 		return y
 
 	# Squadron exists — management section

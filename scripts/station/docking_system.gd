@@ -239,3 +239,4 @@ func clear_station_connections() -> void:
 	nearest_station_name = ""
 	can_dock = false
 	is_near_station = false
+	_check_timer = 0.0  # Force immediate rescan on next frame

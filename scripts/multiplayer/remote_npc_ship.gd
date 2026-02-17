@@ -20,10 +20,15 @@ const MAX_SNAPSHOTS: int = 20
 var _ship_model = null
 var _name_label: Label3D = null
 
+# Health proxy (synced from network state)
+var _health: HealthSystem = null
+
 
 func _ready() -> void:
 	_setup_model()
 	_setup_name_label()
+	_setup_collision()
+	_setup_health_proxy()
 	add_to_group("ships")
 	set_meta("faction", faction)
 
@@ -70,7 +75,10 @@ func _setup_name_label() -> void:
 	_name_label.pixel_size = 0.05
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_name_label.no_depth_test = true
-	_name_label.position = Vector3(0, 15, 0)
+	var label_height: float = 15.0
+	if data:
+		label_height = data.collision_size.y * 0.5 + 8.0
+	_name_label.position = Vector3(0, label_height, 0)
 
 	if faction == &"hostile":
 		_name_label.modulate = Color(1.0, 0.4, 0.3, 0.8)
@@ -82,6 +90,48 @@ func _setup_name_label() -> void:
 		_name_label.modulate = Color(0.7, 0.6, 1.0, 0.8)
 
 	add_child(_name_label)
+
+
+func _setup_collision() -> void:
+	var data = ShipRegistry.get_ship_data(ship_id)
+	var body := StaticBody3D.new()
+	body.name = "HitBody"
+	body.collision_layer = Constants.LAYER_SHIPS
+	body.collision_mask = 0  # Only gets hit, doesn't detect
+	add_child(body)
+	var shape := CollisionShape3D.new()
+	shape.name = "HitShape"
+	var box := BoxShape3D.new()
+	box.size = data.collision_size if data else Vector3(28, 12, 36)
+	shape.shape = box
+	body.add_child(shape)
+
+
+func _setup_health_proxy() -> void:
+	_health = HealthSystem.new()
+	_health.name = "HealthSystem"
+	# Initialize with ship data if available
+	var data = ShipRegistry.get_ship_data(ship_id)
+	if data:
+		_health.hull_max = data.hull_hp
+		_health.hull_current = data.hull_hp
+		var spf: float = data.shield_hp / 4.0
+		_health.shield_max_per_facing = spf
+		_health.shield_current = [spf, spf, spf, spf]
+	# Disable processing — we update manually from network state
+	_health.set_process(false)
+	_health.set_physics_process(false)
+	add_child(_health)
+
+
+## Update health proxy from network hull/shield ratios.
+func _sync_health(hull_ratio: float, shield_ratio: float) -> void:
+	if _health == null:
+		return
+	_health.hull_current = hull_ratio * _health.hull_max
+	var shd_per := shield_ratio * _health.shield_max_per_facing
+	for i in 4:
+		_health.shield_current[i] = shd_per
 
 
 ## Receive a state snapshot from the server (via NPCSyncState dict).
@@ -102,6 +152,9 @@ func receive_state(state_dict: Dictionary) -> void:
 	_snapshots.append(snapshot)
 	while _snapshots.size() > MAX_SNAPSHOTS:
 		_snapshots.pop_front()
+
+	# Sync health proxy from latest state
+	_sync_health(snapshot["hull"], snapshot["shd"])
 
 
 func _process(_delta: float) -> void:

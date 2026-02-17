@@ -20,6 +20,7 @@ var _mining: HudMining = null
 var _route: HudRoute = null
 var _planetary: HudPlanetary = null
 var _faction_panel: HudFactionPanel = null
+var _group_panel: HudGroupPanel = null
 
 # --- Shared animation state ---
 var _scan_line_y: float = 0.0
@@ -107,6 +108,11 @@ func _build_components() -> void:
 	_faction_panel = HudFactionPanel.new()
 	_faction_panel.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(_faction_panel)
+
+	# Group: ephemeral party members + invite notification
+	_group_panel = HudGroupPanel.new()
+	_group_panel.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(_group_panel)
 
 
 # =============================================================================
@@ -240,6 +246,8 @@ func _process(delta: float) -> void:
 	_route.pulse_t = _pulse_t
 	_faction_panel.pulse_t = _pulse_t
 	_faction_panel.scan_line_y = _scan_line_y
+	_group_panel.pulse_t = _pulse_t
+	_group_panel.scan_line_y = _scan_line_y
 
 	# Detect cockpit mode
 	var cam =get_viewport().get_camera_3d()
@@ -271,6 +279,7 @@ func _process(delta: float) -> void:
 		_status_panels.redraw_slow()
 		_weapon_panel.redraw_slow()
 		_faction_panel.redraw_slow()
+		_group_panel.redraw_slow()
 		_slow_dirty = false
 
 	# Prompts + mining + route (conditional visibility)

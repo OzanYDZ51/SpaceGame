@@ -143,7 +143,6 @@ func _build_children() -> void:
 	_fleet_panel.ship_context_menu_requested.connect(_on_sidebar_context_menu)
 	_fleet_panel.squadron_header_clicked.connect(_on_squadron_header_clicked)
 	_fleet_panel.squadron_rename_requested.connect(_on_squadron_rename_requested)
-	_fleet_panel.squadron_create_player_requested.connect(_on_fp_create_player_sq)
 	_fleet_panel.squadron_disband_requested.connect(_on_fp_disband_sq)
 	_fleet_panel.squadron_remove_member_requested.connect(_on_fp_remove_member)
 	_fleet_panel.squadron_formation_requested.connect(_on_fp_set_formation)
@@ -1101,10 +1100,6 @@ func _on_squadron_rename_requested(squadron_id: int, screen_pos: Vector2) -> voi
 	_start_squadron_rename(squadron_id, _fleet_panel.global_position + screen_pos)
 
 
-func _on_fp_create_player_sq() -> void:
-	squadron_action_requested.emit(&"create_player", {})
-
-
 func _on_fp_disband_sq(sq_id: int) -> void:
 	squadron_action_requested.emit(&"disband", {"squadron_id": sq_id})
 
@@ -1216,6 +1211,12 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 			all_orders.append({"id": &"_header_fleet", "display_name": "ORDRES FLOTTE", "is_header": true})
 			all_orders.append_array(fleet_orders)
 
+	# --- Group (party) orders ---
+	var group_orders := _build_group_context_orders(context)
+	if not group_orders.is_empty():
+		all_orders.append({"id": &"_header_group", "display_name": "GROUPE", "is_header": true})
+		all_orders.append_array(group_orders)
+
 	# --- Construction orders (always available) ---
 	var build_orders =ConstructionOrderRegistry.get_available_orders()
 	if not build_orders.is_empty():
@@ -1244,6 +1245,12 @@ func _on_context_menu_order(order_id: StringName, params: Dictionary) -> void:
 	# Construction actions (prefixed with build_)
 	if String(order_id).begins_with("build_"):
 		_handle_construction_order(order_id)
+		_close_context_menu()
+		return
+
+	# Group (party) actions (prefixed with group_)
+	if String(order_id).begins_with("group_"):
+		_handle_group_context_order(order_id, params)
 		_close_context_menu()
 		return
 
@@ -1297,6 +1304,57 @@ func _handle_construction_order(order_id: StringName) -> void:
 
 
 # =============================================================================
+# GROUP (PARTY) CONTEXT ORDERS
+# =============================================================================
+func _build_group_context_orders(context: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if not NetworkManager.is_connected_to_server():
+		return result
+
+	var target_entity_id: String = context.get("target_entity_id", "")
+	var my_group_id: int = NetworkManager.local_group_id
+
+	# If right-clicking on a SHIP_PLAYER entity (and not self)
+	if target_entity_id.begins_with("remote_player_"):
+		var target_pid: int = target_entity_id.trim_prefix("remote_player_").to_int()
+		if target_pid > 0:
+			# Check if target is in my group
+			if my_group_id > 0 and NetworkManager.is_peer_in_my_group(target_pid):
+				# Leader can kick
+				var leader_pid: int = NetworkManager.local_group_data.get("leader", -1)
+				if leader_pid == NetworkManager.local_peer_id:
+					result.append({"id": StringName("group_kick_%d" % target_pid), "display_name": "EXPULSER"})
+			else:
+				# Can invite (only if I'm leader or not in a group yet)
+				var can_invite: bool = my_group_id == 0 or NetworkManager.local_group_data.get("leader", -1) == NetworkManager.local_peer_id
+				if can_invite:
+					result.append({"id": StringName("group_invite_%d" % target_pid), "display_name": "INVITER AU GROUPE"})
+
+	# If I'm in a group, always offer to leave
+	if my_group_id > 0:
+		result.append({"id": &"group_leave", "display_name": "QUITTER LE GROUPE"})
+
+	return result
+
+
+func _handle_group_context_order(order_id: StringName, _params: Dictionary) -> void:
+	var order_str := String(order_id)
+
+	if order_str.begins_with("group_invite_"):
+		var target_pid: int = order_str.trim_prefix("group_invite_").to_int()
+		if target_pid > 0:
+			NetworkManager.request_group_invite(target_pid)
+
+	elif order_str.begins_with("group_kick_"):
+		var target_pid: int = order_str.trim_prefix("group_kick_").to_int()
+		if target_pid > 0:
+			NetworkManager.request_kick_from_group(target_pid)
+
+	elif order_id == &"group_leave":
+		NetworkManager.request_leave_group()
+
+
+# =============================================================================
 # SQUADRON CONTEXT ORDERS
 # =============================================================================
 func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) -> Array[Dictionary]:
@@ -1315,6 +1373,12 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 				var target_fs = fleet.ships[target_fi] if target_fi < fleet.ships.size() else null
 				var target_name = target_fs.custom_name if target_fs else "vaisseau"
 				result.append({"id": StringName("sq_follow_%d" % target_fi), "display_name": "SUIVRE: %s" % target_name})
+
+	# Single active ship: "CREER ESCADRON" if player has no squadron yet
+	if fleet_index == fleet.active_index and sq == null:
+		var player_sq = fleet.get_ship_squadron(-1)
+		if player_sq == null:
+			result.append({"id": &"sq_create_player", "display_name": "CREER ESCADRON"})
 
 	# Multi-select: "CREATE SQUADRON" if 2+ selected and none are in a squadron
 	var effective =_get_effective_fleet_indices()
@@ -1347,7 +1411,9 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 	var effective =_get_effective_fleet_indices()
 	var order_str =String(order_id)
 
-	if order_id == &"sq_create" and effective.size() >= 2:
+	if order_id == &"sq_create_player":
+		squadron_action_requested.emit(&"create_player", {})
+	elif order_id == &"sq_create" and effective.size() >= 2:
 		squadron_action_requested.emit(&"create", {
 			"leader": effective[0],
 			"members": effective.slice(1),

@@ -16,22 +16,33 @@ var _event_counter: int = 0
 var _check_timer: float = 0.0
 const CHECK_INTERVAL: float = 5.0
 
+# Periodic respawn: try to spawn a new event every RESPAWN_INTERVAL seconds if none active
+var _respawn_timer: float = 0.0
+const RESPAWN_INTERVAL: float = 120.0  # 2 minutes
+var _current_system_id: int = -1
+var _current_danger_level: int = 0
+
 # Spawn distance from origin
-const MIN_SPAWN_RADIUS: float = 80000.0
-const MAX_SPAWN_RADIUS: float = 200000.0
-const MIN_DIST_FROM_OBJECTS: float = 30000.0
-const WAYPOINT_RADIUS_MIN: float = 10000.0
-const WAYPOINT_RADIUS_MAX: float = 20000.0
+const MIN_SPAWN_RADIUS: float = 20000.0
+const MAX_SPAWN_RADIUS: float = 60000.0
+const MIN_DIST_FROM_OBJECTS: float = 10000.0
+const WAYPOINT_RADIUS_MIN: float = 5000.0
+const WAYPOINT_RADIUS_MAX: float = 15000.0
 
 
 func _process(delta: float) -> void:
-	if _active_events.is_empty():
-		return
 	_check_timer += delta
-	if _check_timer < CHECK_INTERVAL:
-		return
-	_check_timer = 0.0
-	_check_event_timeouts()
+	if _check_timer >= CHECK_INTERVAL:
+		_check_timer = 0.0
+		if not _active_events.is_empty():
+			_check_event_timeouts()
+
+	# Periodic respawn attempt when no events are active
+	if _current_system_id >= 0 and _active_events.is_empty():
+		_respawn_timer += delta
+		if _respawn_timer >= RESPAWN_INTERVAL:
+			_respawn_timer = 0.0
+			_try_spawn_event()
 
 
 # =============================================================================
@@ -39,21 +50,39 @@ func _process(delta: float) -> void:
 # =============================================================================
 
 func on_system_loaded(system_id: int, danger_level: int) -> void:
+	_current_system_id = system_id
+	_current_danger_level = danger_level
+	_respawn_timer = 0.0
+
 	# Only server spawns events
 	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
 		return
 
-	var chance: float = EventDefinitions.get_spawn_chance(danger_level)
+	_try_spawn_event()
+
+
+func _try_spawn_event() -> void:
+	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+		return
+	if not _active_events.is_empty():
+		return
+	if _current_system_id < 0:
+		return
+
+	var chance: float = EventDefinitions.get_spawn_chance(_current_danger_level)
 	if chance <= 0.0:
 		return
 	if randf() > chance:
 		return
 
-	var tier: int = EventDefinitions.roll_tier_for_danger(danger_level)
-	_spawn_pirate_convoy(system_id, tier)
+	var tier: int = EventDefinitions.roll_tier_for_danger(_current_danger_level)
+	_spawn_pirate_convoy(_current_system_id, tier)
 
 
 func on_system_unloading() -> void:
+	_current_system_id = -1
+	_current_danger_level = 0
+	_respawn_timer = 0.0
 	var ids := _active_events.keys().duplicate()
 	for eid in ids:
 		_cleanup_event(eid, false)

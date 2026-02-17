@@ -57,11 +57,13 @@ func _on_opened() -> void:
 	if not _corporation_manager.corporation_loaded.is_connected(_on_corporation_data_refreshed):
 		_corporation_manager.corporation_loaded.connect(_on_corporation_data_refreshed)
 
-	# Refresh from backend if authenticated
-	if AuthManager.is_authenticated:
-		_corporation_manager.refresh_from_backend()
-
+	# Show current state immediately, then refresh
 	_update_view()
+
+	# Refresh from backend if authenticated (awaited for correct view)
+	if AuthManager.is_authenticated:
+		await _corporation_manager.refresh_from_backend()
+		_update_view()
 
 
 func _on_closed() -> void:

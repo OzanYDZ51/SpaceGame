@@ -183,7 +183,12 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 
 	# Target name (prominent)
 	var display_name: String = target.name
-	if "station_name" in target and target.station_name != "":
+	if target.get("player_name") != null and target.player_name != "":
+		var pname: String = target.player_name
+		if target.get("corporation_tag") != null and target.corporation_tag != "":
+			pname = "[%s] %s" % [target.corporation_tag, pname]
+		display_name = pname
+	elif "station_name" in target and target.station_name != "":
 		display_name = target.station_name
 	var name_col =UITheme.DANGER if is_hostile else UITheme.TARGET
 	ctrl.draw_string(font, Vector2(x, y), display_name, HORIZONTAL_ALIGNMENT_LEFT, int(w), 16, name_col)
@@ -193,6 +198,8 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 	var class_text =""
 	if target.get("ship_data") != null and target.ship_data:
 		class_text = str(target.ship_data.ship_class)
+	elif target.get("ship_class") != null and str(target.ship_class) != "":
+		class_text = str(target.ship_class)
 	elif t_struct:
 		class_text = "STATION"
 	ctrl.draw_string(font, Vector2(x, y), class_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)

@@ -17,11 +17,16 @@ signal connection_succeeded
 signal connection_failed(reason: String)
 signal server_connection_lost(reason: String)  ## Emitted only when a LIVE connection drops (not initial failures)
 signal player_state_received(peer_id: int, state)
-signal chat_message_received(sender_name: String, channel: int, text: String)
+signal chat_message_received(sender_name: String, channel: int, text: String, corp_tag: String)
 signal whisper_received(sender_name: String, text: String)
 signal chat_history_received(history: Array)
 signal player_list_updated
 signal server_config_received(config: Dictionary)
+
+# Group (party) signals
+signal group_invite_received(inviter_name: String, group_id: int)
+signal group_updated(group_data: Dictionary)
+signal group_dissolved(reason: String)
 
 # Player death/respawn sync (reliable)
 signal player_died_received(peer_id: int, death_pos: Array)
@@ -95,6 +100,18 @@ var _player_last_system: Dictionary = {}  # peer_id -> system_id
 var _uuid_to_peer: Dictionary = {}  # player_uuid (String) -> peer_id (int)
 var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
 
+# Ephemeral group (party) system — server-side in-memory only
+var _groups: Dictionary = {}          # group_id (int) -> {leader: peer_id, members: [peer_ids]}
+var _player_group: Dictionary = {}    # peer_id -> group_id
+var _pending_invites: Dictionary = {} # target_peer_id -> {from: peer_id, group_id: int, time: float}
+var _next_group_id: int = 1
+const MAX_GROUP_SIZE: int = 5
+const INVITE_TIMEOUT: float = 30.0
+
+# Local client group state (synced from server)
+var local_group_id: int = 0
+var local_group_data: Dictionary = {}  # members list from last _receive_group_update
+
 # Chat persistence: in-memory buffer (primary) + backend DB (long-term)
 const CHAT_BUFFER_SIZE: int = 200
 const CHAT_HISTORY_LIMIT: int = 50  # Max messages sent to clients on connect
@@ -124,6 +141,16 @@ func _process(delta: float) -> void:
 		_reconnect_timer -= delta
 		if _reconnect_timer <= 0.0:
 			_attempt_reconnect()
+
+	# Server-side: expire stale group invites
+	if _is_server and not _pending_invites.is_empty():
+		var now: float = Time.get_unix_time_from_system()
+		var expired: Array = []
+		for target_pid in _pending_invites:
+			if now - _pending_invites[target_pid]["time"] > INVITE_TIMEOUT:
+				expired.append(target_pid)
+		for target_pid in expired:
+			_pending_invites.erase(target_pid)
 
 	# Server-side heartbeat: update last_seen_at for all connected players
 	if _is_server and _heartbeat_backend_client != null:
@@ -231,6 +258,11 @@ func disconnect_from_server() -> void:
 	_uuid_to_peer.clear()
 	_peer_to_uuid.clear()
 	_chat_buffer.clear()
+	_groups.clear()
+	_player_group.clear()
+	_pending_invites.clear()
+	local_group_id = 0
+	local_group_data = {}
 	player_list_updated.emit()
 
 
@@ -285,6 +317,9 @@ func _on_peer_disconnected(id: int) -> void:
 	# Keep _peer_to_uuid / _uuid_to_peer for fleet NPC reconnect (don't erase)
 
 	if is_server():
+		# Handle group disconnect before erasing peer data
+		_handle_group_disconnect(id)
+
 		_rpc_player_left.rpc(id)
 		# Broadcast system chat: player left
 		var leave_sys: int = _player_last_system.get(id, -1)
@@ -531,12 +566,14 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 		return
 	var sender_id =multiplayer.get_remote_sender_id()
 	var sender_name ="Unknown"
+	var sender_ctag: String = ""
 	if peers.has(sender_id):
 		sender_name = peers[sender_id].player_name
+		sender_ctag = peers[sender_id].corporation_tag
 	print("[Chat] sender_id=%d sender_name='%s' peers_count=%d" % [sender_id, sender_name, peers.size()])
 
 	if is_server():
-		_store_chat_message(channel, sender_name, text)
+		_store_chat_message(channel, sender_name, text, -1, sender_ctag)
 		# Channel-scoped routing — never relay back to sender (they already showed it locally)
 		match channel:
 			1:  # SYSTEM → only peers in same system
@@ -546,7 +583,16 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 				for pid in sys_peers:
 					if pid == sender_id:
 						continue
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
+					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
+				return
+			5:  # GROUP → only peers in same group
+				var gid: int = _player_group.get(sender_id, 0)
+				if gid > 0 and _groups.has(gid):
+					var members: Array = _groups[gid]["members"]
+					for pid in members:
+						if pid == sender_id:
+							continue
+						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
 				return
 			_:  # GLOBAL, TRADE, CORP, etc. → broadcast to all except sender
 				print("[Chat] GLOBAL relay: all peers=%s" % [str(peers.keys())])
@@ -554,13 +600,13 @@ func _rpc_chat_message(channel: int, text: String) -> void:
 					if pid == sender_id:
 						continue
 					print("[Chat] Relaying to peer %d" % pid)
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text)
+					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag)
 
 
 ## Server -> All/Some clients: Chat message broadcast.
 @rpc("authority", "reliable")
-func _rpc_receive_chat(sender_name: String, channel: int, text: String) -> void:
-	chat_message_received.emit(sender_name, channel, text)
+func _rpc_receive_chat(sender_name: String, channel: int, text: String, corp_tag: String = "") -> void:
+	chat_message_received.emit(sender_name, channel, text, corp_tag)
 
 
 ## Server -> Client: Chat history on connect.
@@ -596,7 +642,7 @@ func _rpc_receive_whisper(sender_name: String, text: String) -> void:
 
 
 ## Store a chat message: buffer in RAM first (always), then persist to backend (fire-and-forget).
-func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1) -> void:
+func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1, corp_tag: String = "") -> void:
 	if not is_server():
 		return
 	if channel == 4:  # PRIVATE — not stored
@@ -620,7 +666,7 @@ func _store_chat_message(channel: int, sender_name: String, text: String, overri
 	# 1) Always buffer in RAM (primary source for history on connect)
 	var now: Dictionary = Time.get_time_dict_from_system()
 	var ts: String = "%02d:%02d" % [now["hour"], now["minute"]]
-	var entry: Dictionary = {"s": sender_name, "t": text, "ts": ts, "ch": channel, "sys": sys_id}
+	var entry: Dictionary = {"s": sender_name, "t": text, "ts": ts, "ch": channel, "sys": sys_id, "ctag": corp_tag}
 	_chat_buffer.append(entry)
 	if _chat_buffer.size() > CHAT_BUFFER_SIZE:
 		_chat_buffer = _chat_buffer.slice(-CHAT_BUFFER_SIZE)
@@ -642,7 +688,7 @@ func _send_chat_history(peer_id: int, system_id: int) -> void:
 		var ch: int = entry.get("ch", 0)
 		if ch == 1 and entry.get("sys", -1) != system_id:
 			continue  # SYSTEM channel from a different system — skip
-		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch})
+		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch, "ctag": entry.get("ctag", "")})
 	print("[Chat] _send_chat_history: after filter=%d (from %d)" % [history.size(), _chat_buffer.size()])
 	if history.is_empty():
 		return
@@ -1169,3 +1215,299 @@ func _rpc_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, lo
 	if struct_auth:
 		struct_auth.apply_structure_destroyed(struct_id, killer_pid, pos, loot)
 	structure_destroyed_received.emit(struct_id, killer_pid, pos, loot)
+
+
+# =============================================================================
+# EPHEMERAL GROUP (PARTY) SYSTEM
+# =============================================================================
+
+## Public API — client requests to invite a player to their group.
+func request_group_invite(target_peer_id: int) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_group_invite.rpc_id(1, target_peer_id)
+
+
+## Public API — client responds to an incoming invite.
+func respond_group_invite(accepted: bool) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_respond_group_invite.rpc_id(1, accepted)
+
+
+## Public API — client requests to leave their group.
+func request_leave_group() -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_leave_group.rpc_id(1)
+
+
+## Public API — leader kicks a member.
+func request_kick_from_group(target_peer_id: int) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_kick_from_group.rpc_id(1, target_peer_id)
+
+
+## Client -> Server: Request to invite another player.
+@rpc("any_peer", "reliable")
+func _rpc_request_group_invite(target_pid: int) -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+
+	# Validate target exists and is not self
+	if not peers.has(target_pid) or target_pid == sender_id:
+		_rpc_receive_group_error.rpc_id(sender_id, "Joueur introuvable.")
+		return
+
+	# Target already in a group?
+	if _player_group.has(target_pid) and _player_group[target_pid] > 0:
+		_rpc_receive_group_error.rpc_id(sender_id, "Ce joueur est déjà dans un groupe.")
+		return
+
+	# Target already has a pending invite?
+	if _pending_invites.has(target_pid):
+		_rpc_receive_group_error.rpc_id(sender_id, "Ce joueur a déjà une invitation en attente.")
+		return
+
+	# Get or create group for sender
+	var gid: int = _player_group.get(sender_id, 0)
+	if gid == 0:
+		# Create new group with sender as leader
+		gid = _next_group_id
+		_next_group_id += 1
+		_groups[gid] = {"leader": sender_id, "members": [sender_id]}
+		_player_group[sender_id] = gid
+		# Update sender's NetworkState
+		if peers.has(sender_id):
+			peers[sender_id].group_id = gid
+
+	# Check if sender is leader
+	if _groups[gid]["leader"] != sender_id:
+		_rpc_receive_group_error.rpc_id(sender_id, "Seul le leader peut inviter.")
+		return
+
+	# Check max size
+	if _groups[gid]["members"].size() >= MAX_GROUP_SIZE:
+		_rpc_receive_group_error.rpc_id(sender_id, "Groupe plein (%d max)." % MAX_GROUP_SIZE)
+		return
+
+	# Store pending invite and notify target
+	_pending_invites[target_pid] = {"from": sender_id, "group_id": gid, "time": Time.get_unix_time_from_system()}
+	var inviter_name: String = peers[sender_id].player_name if peers.has(sender_id) else "Pilote"
+	_rpc_receive_group_invite.rpc_id(target_pid, inviter_name, gid)
+
+	# Notify inviter that the invite was sent
+	_broadcast_group_update(gid)
+
+
+## Client -> Server: Accept or decline an invite.
+@rpc("any_peer", "reliable")
+func _rpc_respond_group_invite(accepted: bool) -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+
+	if not _pending_invites.has(sender_id):
+		return  # No pending invite
+
+	var invite: Dictionary = _pending_invites[sender_id]
+	_pending_invites.erase(sender_id)
+	var gid: int = invite["group_id"]
+
+	if not accepted:
+		# Notify the inviter
+		var from_pid: int = invite["from"]
+		var decliner_name: String = peers[sender_id].player_name if peers.has(sender_id) else "Pilote"
+		if peers.has(from_pid):
+			_rpc_receive_group_error.rpc_id(from_pid, "%s a refusé l'invitation." % decliner_name)
+		return
+
+	# Validate group still exists
+	if not _groups.has(gid):
+		_rpc_receive_group_error.rpc_id(sender_id, "Le groupe n'existe plus.")
+		return
+
+	# Check max size
+	if _groups[gid]["members"].size() >= MAX_GROUP_SIZE:
+		_rpc_receive_group_error.rpc_id(sender_id, "Groupe plein.")
+		return
+
+	# Already in another group?
+	if _player_group.has(sender_id) and _player_group[sender_id] > 0:
+		_rpc_receive_group_error.rpc_id(sender_id, "Vous êtes déjà dans un groupe.")
+		return
+
+	# Add to group
+	_groups[gid]["members"].append(sender_id)
+	_player_group[sender_id] = gid
+	if peers.has(sender_id):
+		peers[sender_id].group_id = gid
+
+	_broadcast_group_update(gid)
+
+
+## Client -> Server: Leave group.
+@rpc("any_peer", "reliable")
+func _rpc_request_leave_group() -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var gid: int = _player_group.get(sender_id, 0)
+	if gid == 0 or not _groups.has(gid):
+		return
+
+	if _groups[gid]["leader"] == sender_id:
+		# Leader leaves → dissolve entire group
+		_dissolve_group(gid, "Le leader a quitté le groupe.")
+	else:
+		_remove_member_from_group(gid, sender_id)
+
+
+## Client -> Server: Leader kicks a member.
+@rpc("any_peer", "reliable")
+func _rpc_request_kick_from_group(target_pid: int) -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var gid: int = _player_group.get(sender_id, 0)
+	if gid == 0 or not _groups.has(gid):
+		return
+
+	# Only leader can kick
+	if _groups[gid]["leader"] != sender_id:
+		_rpc_receive_group_error.rpc_id(sender_id, "Seul le leader peut expulser.")
+		return
+
+	# Can't kick yourself
+	if target_pid == sender_id:
+		return
+
+	# Verify target is in this group
+	if _player_group.get(target_pid, 0) != gid:
+		return
+
+	_remove_member_from_group(gid, target_pid)
+	var kicked_name: String = peers[target_pid].player_name if peers.has(target_pid) else "Pilote"
+	_rpc_receive_group_dissolved.rpc_id(target_pid, "Vous avez été expulsé du groupe.")
+
+
+## Server -> Client: You've been invited to a group.
+@rpc("authority", "reliable")
+func _rpc_receive_group_invite(inviter_name: String, _gid: int) -> void:
+	group_invite_received.emit(inviter_name, _gid)
+
+
+## Server -> Client: Group state update (members list).
+@rpc("authority", "reliable")
+func _rpc_receive_group_update(gdata: Dictionary) -> void:
+	local_group_id = gdata.get("group_id", 0)
+	local_group_data = gdata
+	group_updated.emit(gdata)
+
+
+## Server -> Client: Your group has been dissolved.
+@rpc("authority", "reliable")
+func _rpc_receive_group_dissolved(reason: String) -> void:
+	local_group_id = 0
+	local_group_data = {}
+	group_dissolved.emit(reason)
+
+
+## Server -> Client: Error message.
+@rpc("authority", "reliable")
+func _rpc_receive_group_error(msg: String) -> void:
+	# Display as a toast or system chat message
+	group_dissolved.emit("")  # empty reason = just an error, not a dissolve
+	# Route to chat as system message
+	chat_message_received.emit("SYSTÈME", 1, msg, "")
+
+
+# --- Server-side group helpers ---
+
+func _broadcast_group_update(gid: int) -> void:
+	if not _groups.has(gid):
+		return
+	var group: Dictionary = _groups[gid]
+	var members_data: Array = []
+	for pid in group["members"]:
+		var entry: Dictionary = {"peer_id": pid, "name": "Pilote", "hull": 1.0, "system_id": 0, "is_leader": pid == group["leader"]}
+		if peers.has(pid):
+			entry["name"] = peers[pid].player_name
+			entry["hull"] = peers[pid].hull_ratio
+			entry["system_id"] = peers[pid].system_id
+		members_data.append(entry)
+
+	var gdata: Dictionary = {"group_id": gid, "leader": group["leader"], "members": members_data}
+	for pid in group["members"]:
+		_rpc_receive_group_update.rpc_id(pid, gdata)
+
+
+func _dissolve_group(gid: int, reason: String) -> void:
+	if not _groups.has(gid):
+		return
+	var members: Array = _groups[gid]["members"].duplicate()
+	for pid in members:
+		_player_group.erase(pid)
+		if peers.has(pid):
+			peers[pid].group_id = 0
+		_rpc_receive_group_dissolved.rpc_id(pid, reason)
+	# Clean pending invites for this group
+	var to_erase: Array = []
+	for target_pid in _pending_invites:
+		if _pending_invites[target_pid]["group_id"] == gid:
+			to_erase.append(target_pid)
+	for target_pid in to_erase:
+		_pending_invites.erase(target_pid)
+	_groups.erase(gid)
+
+
+func _remove_member_from_group(gid: int, pid: int) -> void:
+	if not _groups.has(gid):
+		return
+	var members: Array = _groups[gid]["members"]
+	members.erase(pid)
+	_player_group.erase(pid)
+	if peers.has(pid):
+		peers[pid].group_id = 0
+
+	# If only 1 member left, dissolve
+	if members.size() <= 1:
+		_dissolve_group(gid, "Le groupe a été dissous (pas assez de membres).")
+		return
+
+	_broadcast_group_update(gid)
+
+
+func _handle_group_disconnect(pid: int) -> void:
+	# Clean up pending invites targeting this peer
+	_pending_invites.erase(pid)
+	# Clean up pending invites FROM this peer
+	var to_erase: Array = []
+	for target_pid in _pending_invites:
+		if _pending_invites[target_pid]["from"] == pid:
+			to_erase.append(target_pid)
+	for target_pid in to_erase:
+		_pending_invites.erase(target_pid)
+
+	var gid: int = _player_group.get(pid, 0)
+	if gid == 0 or not _groups.has(gid):
+		return
+
+	if _groups[gid]["leader"] == pid:
+		# Leader disconnected → dissolve
+		_dissolve_group(gid, "Le leader s'est déconnecté.")
+	else:
+		# Member disconnected → remove
+		_remove_member_from_group(gid, pid)
+
+
+## Check if a peer is in the local player's group (client-side helper).
+func is_peer_in_my_group(peer_id: int) -> bool:
+	if local_group_id == 0:
+		return false
+	for m in local_group_data.get("members", []):
+		if m.get("peer_id", -1) == peer_id:
+			return true
+	return false

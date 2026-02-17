@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
 
 	"spacegame-backend/internal/model"
 	"spacegame-backend/internal/repository"
@@ -17,6 +19,8 @@ var (
 	ErrCorporationNotRecruiting  = errors.New("corporation is not recruiting")
 	ErrInvalidAmount             = errors.New("invalid amount")
 	ErrInsufficientFunds         = errors.New("insufficient funds")
+	ErrAlreadyApplied            = errors.New("already applied to this corporation")
+	ErrApplicationNotFound       = errors.New("application not found")
 )
 
 type CorporationService struct {
@@ -178,7 +182,11 @@ func (s *CorporationService) RemoveMember(ctx context.Context, playerID, corpora
 	// Auto-dissolve corporation if no members remain
 	count, err := s.corpRepo.GetMemberCount(ctx, corporationID)
 	if err == nil && count == 0 {
-		_ = s.corpRepo.Delete(ctx, corporationID)
+		if delErr := s.corpRepo.Delete(ctx, corporationID); delErr != nil {
+			log.Printf("[CORPORATION] Failed to auto-dissolve corporation %s: %v", corporationID, delErr)
+		} else {
+			log.Printf("[CORPORATION] Auto-dissolved corporation %s (0 members)", corporationID)
+		}
 		return nil
 	}
 
@@ -331,6 +339,132 @@ func (s *CorporationService) RemoveRank(ctx context.Context, playerID, corporati
 	}
 
 	return s.corpRepo.DeleteRank(ctx, rankID)
+}
+
+// --- Applications ---
+
+func (s *CorporationService) Apply(ctx context.Context, playerID, corporationID, note string) (*model.CorporationApplication, error) {
+	// Check player not already in a corporation
+	existingCorpID, err := s.playerRepo.GetCorporationID(ctx, playerID)
+	if err != nil {
+		return nil, err
+	}
+	if existingCorpID != nil {
+		return nil, ErrAlreadyInCorporation
+	}
+
+	// Check corporation exists
+	_, err = s.corpRepo.GetByID(ctx, corporationID)
+	if err != nil {
+		return nil, ErrCorporationNotFound
+	}
+
+	// Get player name
+	player, err := s.playerRepo.GetByID(ctx, playerID)
+	if err != nil {
+		return nil, err
+	}
+
+	app, err := s.corpRepo.CreateApplication(ctx, corporationID, playerID, player.Username, note)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "duplicate key") {
+			return nil, ErrAlreadyApplied
+		}
+		return nil, err
+	}
+	return app, nil
+}
+
+func (s *CorporationService) GetApplications(ctx context.Context, playerID, corporationID string) ([]*model.CorporationApplication, error) {
+	if err := s.requireRank(ctx, playerID, corporationID, 2); err != nil {
+		return nil, err
+	}
+	return s.corpRepo.GetApplications(ctx, corporationID)
+}
+
+func (s *CorporationService) GetMyApplications(ctx context.Context, playerID string) ([]*model.CorporationApplication, error) {
+	return s.corpRepo.GetPlayerApplications(ctx, playerID)
+}
+
+func (s *CorporationService) HandleApplication(ctx context.Context, playerID, corporationID string, applicationID int64, action string) error {
+	if err := s.requireRank(ctx, playerID, corporationID, 2); err != nil {
+		return err
+	}
+
+	app, err := s.corpRepo.GetApplication(ctx, applicationID)
+	if err != nil {
+		return ErrApplicationNotFound
+	}
+	if app.CorporationID != corporationID {
+		return ErrApplicationNotFound
+	}
+
+	if action == "accept" {
+		// Check capacity
+		count, err := s.corpRepo.GetMemberCount(ctx, corporationID)
+		if err != nil {
+			return err
+		}
+		corporation, err := s.corpRepo.GetByID(ctx, corporationID)
+		if err != nil {
+			return err
+		}
+		if count >= corporation.MaxMembers {
+			return ErrCorporationFull
+		}
+
+		// Check applicant not already in a corporation
+		existingCorpID, err := s.playerRepo.GetCorporationID(ctx, app.PlayerID)
+		if err != nil {
+			return err
+		}
+		if existingCorpID != nil {
+			// Player joined another corp in the meantime — just delete the application
+			_ = s.corpRepo.DeleteApplication(ctx, applicationID)
+			return ErrAlreadyInCorporation
+		}
+
+		// Add as member (rank 0 = recruit)
+		if err := s.corpRepo.AddMember(ctx, corporationID, app.PlayerID, 0); err != nil {
+			return err
+		}
+		if err := s.playerRepo.SetCorporationID(ctx, app.PlayerID, &corporationID); err != nil {
+			return err
+		}
+
+		// Clean up all of this player's applications
+		_ = s.corpRepo.DeletePlayerApplications(ctx, app.PlayerID)
+
+		// Log activity
+		officer, _ := s.playerRepo.GetByID(ctx, playerID)
+		officerName := ""
+		if officer != nil {
+			officerName = officer.Username
+		}
+		_ = s.corpRepo.AddActivity(ctx, corporationID, 1, officerName, app.PlayerName, "application accepted")
+	} else {
+		// Reject: delete the application
+		_ = s.corpRepo.DeleteApplication(ctx, applicationID)
+
+		officer, _ := s.playerRepo.GetByID(ctx, playerID)
+		officerName := ""
+		if officer != nil {
+			officerName = officer.Username
+		}
+		_ = s.corpRepo.AddActivity(ctx, corporationID, 2, officerName, app.PlayerName, "application rejected")
+	}
+	return nil
+}
+
+func (s *CorporationService) CancelApplication(ctx context.Context, playerID string, applicationID int64) error {
+	app, err := s.corpRepo.GetApplication(ctx, applicationID)
+	if err != nil {
+		return ErrApplicationNotFound
+	}
+	if app.PlayerID != playerID {
+		return ErrNotCorporationMember
+	}
+	return s.corpRepo.DeleteApplication(ctx, applicationID)
 }
 
 // requireRank checks that the player has at least the given rank priority in the corporation

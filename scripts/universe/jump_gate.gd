@@ -21,7 +21,6 @@ var target_system_name: String = ""
 var gate_name: String = ""
 
 var _ring_mesh: MeshInstance3D = null
-var _trigger_area: Area3D = null
 var _label: Label3D = null
 var _material: StandardMaterial3D = null
 var _player_inside: bool = false
@@ -69,21 +68,10 @@ func _build_ring() -> void:
 
 
 func _build_trigger() -> void:
-	_trigger_area = Area3D.new()
-	_trigger_area.name = "GateTrigger"
-	_trigger_area.collision_layer = 0
-	_trigger_area.collision_mask = Constants.LAYER_SHIPS
-
-	var trigger_shape := CollisionShape3D.new()
-	trigger_shape.name = "TriggerShape"
-	var sphere := SphereShape3D.new()
-	sphere.radius = trigger_radius
-	trigger_shape.shape = sphere
-	_trigger_area.add_child(trigger_shape)
-
-	_trigger_area.body_entered.connect(_on_body_entered)
-	_trigger_area.body_exited.connect(_on_body_exited)
-	add_child(_trigger_area)
+	# Distance-based detection is used instead of Area3D signals (see _physics_process).
+	# Area3D body_entered/body_exited is unreliable when floating origin shifts teleport
+	# both the player and the gate, causing spurious exit events.
+	pass
 
 
 func _build_label() -> void:
@@ -109,8 +97,6 @@ func setup(data: Dictionary) -> void:
 	if _label:
 		_label.text = gate_name
 
-	_check_initial_overlap.call_deferred()
-
 
 ## Setup from typed JumpGateData resource.
 func setup_from_data(data: JumpGateData) -> void:
@@ -122,40 +108,22 @@ func setup_from_data(data: JumpGateData) -> void:
 	if _label:
 		_label.text = gate_name
 
-	# Deferred overlap check: detect player already inside trigger after system transition
-	_check_initial_overlap.call_deferred()
-
 
 func _process(_delta: float) -> void:
-	# Ring rotation disabled
-
 	if _material:
 		var pulse: float = (sin(Time.get_ticks_msec() * 0.002) + 1.0) * 0.5
 		_material.emission_energy_multiplier = 1.5 + pulse * 2.0
 
 
-func _on_body_entered(body: Node3D) -> void:
-	if body == GameManager.player_ship:
+func _physics_process(_delta: float) -> void:
+	var ship = GameManager.player_ship
+	if ship == null:
+		return
+	var dist_sq: float = global_position.distance_squared_to(ship.global_position)
+	var inside: bool = dist_sq <= trigger_radius * trigger_radius
+	if inside and not _player_inside:
 		_player_inside = true
 		player_nearby.emit(target_system_id, target_system_name)
-
-
-func _on_body_exited(body: Node3D) -> void:
-	if body == GameManager.player_ship:
+	elif not inside and _player_inside:
 		_player_inside = false
 		player_left.emit()
-
-
-## Deferred check for player already inside trigger (e.g. after system transition).
-## body_entered may not fire if the body was already overlapping when the Area3D entered the tree.
-func _check_initial_overlap() -> void:
-	if _trigger_area == null or not is_inside_tree():
-		return
-	await get_tree().physics_frame
-	if not is_inside_tree() or _player_inside:
-		return
-	var bodies := _trigger_area.get_overlapping_bodies()
-	for body in bodies:
-		if body == GameManager.player_ship:
-			_on_body_entered(body)
-			break

@@ -798,10 +798,10 @@ func _resource_short(res_id: String) -> String:
 
 func _draw_galaxy_legend(s: Vector2, font: Font) -> void:
 	var vp_left: float = MapLayout.viewport_left()
-	var y: float = s.y - UITheme.MARGIN_SCREEN - 80
+	var y: float = s.y - UITheme.MARGIN_SCREEN - 100
 
 	draw_string(font, Vector2(vp_left, y), "Click = Selectionner | Double-clic = Voir systeme | Entrer = Autopilote | Scroll = Zoom | MMB = Deplacer", HORIZONTAL_ALIGNMENT_LEFT, 900, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
-	y += 14
+	y += 16
 
 	# Spectral class legend
 	var legend_x: float = vp_left
@@ -820,7 +820,7 @@ func _draw_current_label(s: Vector2, font: Font) -> void:
 	if sys.is_empty():
 		return
 	var label: String = "Systeme actuel: " + sys["name"] + " (" + sys["spectral_class"] + "-class)"
-	draw_string(font, Vector2(MapLayout.viewport_left(), s.y - UITheme.MARGIN_SCREEN - 50), label, HORIZONTAL_ALIGNMENT_LEFT, 500, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+	draw_string(font, Vector2(MapLayout.viewport_left(), s.y - UITheme.MARGIN_SCREEN - 48), label, HORIZONTAL_ALIGNMENT_LEFT, 500, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
 
 
 # =============================================================================

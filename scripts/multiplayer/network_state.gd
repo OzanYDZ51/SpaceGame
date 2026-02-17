@@ -31,6 +31,7 @@ var is_docked: bool = false
 var is_dead: bool = false
 var is_cruising: bool = false  ## True when cruise warp is active (phase 2 punch)
 var corporation_tag: String = ""
+var group_id: int = 0  ## Ephemeral party group (0 = none)
 
 # Timing
 var timestamp: float = 0.0
@@ -58,6 +59,7 @@ func to_dict() -> Dictionary:
 		"dead": is_dead,
 		"cr": is_cruising,
 		"ctag": corporation_tag,
+		"gid": group_id,
 		"t": timestamp,
 	}
 
@@ -82,6 +84,7 @@ func from_dict(d: Dictionary) -> void:
 	is_dead = d.get("dead", false)
 	is_cruising = d.get("cr", false)
 	corporation_tag = d.get("ctag", "")
+	group_id = d.get("gid", 0)
 	timestamp = d.get("t", 0.0)
 
 

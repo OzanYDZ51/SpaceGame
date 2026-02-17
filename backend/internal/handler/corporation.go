@@ -294,6 +294,87 @@ func (h *CorporationHandler) RemoveRank(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
+func (h *CorporationHandler) Apply(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	corporationID := c.Params("id")
+
+	var req model.ApplyRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	app, err := h.corpSvc.Apply(c.Context(), playerID, corporationID, req.Note)
+	if err != nil {
+		return corporationError(c, err)
+	}
+
+	return c.Status(201).JSON(app)
+}
+
+func (h *CorporationHandler) GetApplications(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	corporationID := c.Params("id")
+
+	apps, err := h.corpSvc.GetApplications(c.Context(), playerID, corporationID)
+	if err != nil {
+		return corporationError(c, err)
+	}
+	if apps == nil {
+		apps = []*model.CorporationApplication{}
+	}
+	return c.JSON(apps)
+}
+
+func (h *CorporationHandler) GetMyApplications(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+
+	apps, err := h.corpSvc.GetMyApplications(c.Context(), playerID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to get applications"})
+	}
+	if apps == nil {
+		apps = []*model.CorporationApplication{}
+	}
+	return c.JSON(apps)
+}
+
+func (h *CorporationHandler) HandleApplication(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	corporationID := c.Params("id")
+	appID, err := strconv.ParseInt(c.Params("aid"), 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid application id"})
+	}
+
+	var req model.ApplicationActionRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+	if req.Action != "accept" && req.Action != "reject" {
+		return c.Status(400).JSON(fiber.Map{"error": "action must be 'accept' or 'reject'"})
+	}
+
+	if err := h.corpSvc.HandleApplication(c.Context(), playerID, corporationID, appID, req.Action); err != nil {
+		return corporationError(c, err)
+	}
+
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+func (h *CorporationHandler) CancelApplication(c *fiber.Ctx) error {
+	playerID := c.Locals("player_id").(string)
+	appID, err := strconv.ParseInt(c.Params("aid"), 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid application id"})
+	}
+
+	if err := h.corpSvc.CancelApplication(c.Context(), playerID, appID); err != nil {
+		return corporationError(c, err)
+	}
+
+	return c.JSON(fiber.Map{"ok": true})
+}
+
 func corporationError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, service.ErrCorporationNotFound):
@@ -312,6 +393,10 @@ func corporationError(c *fiber.Ctx, err error) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid amount"})
 	case errors.Is(err, service.ErrInsufficientFunds):
 		return c.Status(400).JSON(fiber.Map{"error": "insufficient funds"})
+	case errors.Is(err, service.ErrAlreadyApplied):
+		return c.Status(409).JSON(fiber.Map{"error": "already applied to this corporation"})
+	case errors.Is(err, service.ErrApplicationNotFound):
+		return c.Status(404).JSON(fiber.Map{"error": "application not found"})
 	default:
 		errStr := err.Error()
 		// Handle PostgreSQL unique constraint violations

@@ -969,6 +969,22 @@ func _load_backend_state() -> void:
 			dump_file.store_string(JSON.stringify(state, "\t"))
 			dump_file = null
 		_crash_log("_load_backend_state: state dumped to %s" % dump_path)
+
+		# Skip applying state if the account never saved (all defaults = spawn at star)
+		var has_saved: bool = state.get("has_saved", false)
+		if not has_saved:
+			# Fallback heuristic: fleet empty + system_id 0 + pos (0,0,0) = never saved
+			var fleet_arr = state.get("fleet", [])
+			var fleet_empty: bool = not (fleet_arr is Array) or fleet_arr.is_empty()
+			if fleet_empty and int(state.get("system_id", 0)) == 0 and float(state.get("pos_x", 0.0)) == 0.0:
+				has_saved = false
+			else:
+				has_saved = true  # has real data even without has_saved flag
+		if not has_saved:
+			_crash_log("_load_backend_state: skipping default state (never saved)")
+			_crash_log("_load_backend_state: DONE")
+			return
+
 		_crash_log("_load_backend_state: applying state...")
 		SaveManager.apply_state(state)
 		_crash_log("_load_backend_state: state applied OK")

@@ -168,6 +168,8 @@ func main() {
 	corporations := protected.Group("/corporations")
 	corporations.Post("/", corpH.Create)
 	corporations.Get("/search", corpH.Search)
+	corporations.Get("/my-applications", corpH.GetMyApplications)
+	corporations.Delete("/my-applications/:aid", corpH.CancelApplication)
 	corporations.Get("/:id", corpH.Get)
 	corporations.Put("/:id", corpH.Update)
 	corporations.Delete("/:id", corpH.Delete)
@@ -184,6 +186,9 @@ func main() {
 	corporations.Delete("/:id/ranks/:rid", corpH.RemoveRank)
 	corporations.Get("/:id/diplomacy", corpH.GetDiplomacy)
 	corporations.Put("/:id/diplomacy", corpH.SetDiplomacy)
+	corporations.Get("/:id/applications", corpH.GetApplications)
+	corporations.Post("/:id/applications", corpH.Apply)
+	corporations.Put("/:id/applications/:aid", corpH.HandleApplication)
 
 	// WebSocket
 	wsH := handler.NewWSHandler(wsHub, cfg.JWTSecret)

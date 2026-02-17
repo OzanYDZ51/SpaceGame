@@ -2,8 +2,8 @@ class_name NoCorporationView
 extends UIComponent
 
 # =============================================================================
-# No Corporation View - Create or join a corporation when player has none
-# Two panels: Left = Create, Right = Search & Join
+# No Corporation View - Create or apply to a corporation when player has none
+# Two panels: Left = Create, Right = Search & Apply
 # =============================================================================
 
 signal corporation_action_completed
@@ -19,11 +19,15 @@ var _selected_color_idx: int = 0
 # Search panel
 var _input_search: UITextInput = null
 var _btn_search: UIButton = null
-var _btn_join: UIButton = null
+var _btn_apply: UIButton = null
+var _input_note: UITextInput = null
 var _search_results: Array = []
 var _selected_result_idx: int = -1
 var _scroll_offset: int = 0
 var _hovered_row: int = -1
+
+# Player's pending applications (corp_id -> app dict)
+var _my_applications: Dictionary = {}
 
 # Status
 var _status_text: String = ""
@@ -70,11 +74,16 @@ func _ready() -> void:
 	_btn_search.pressed.connect(_on_search_pressed)
 	add_child(_btn_search)
 
-	_btn_join = UIButton.new()
-	_btn_join.text = "Rejoindre"
-	_btn_join.visible = false
-	_btn_join.pressed.connect(_on_join_pressed)
-	add_child(_btn_join)
+	_input_note = UITextInput.new()
+	_input_note.placeholder = "Note de candidature (optionnel)..."
+	_input_note.visible = false
+	add_child(_input_note)
+
+	_btn_apply = UIButton.new()
+	_btn_apply.text = "Postuler"
+	_btn_apply.visible = false
+	_btn_apply.pressed.connect(_on_apply_pressed)
+	add_child(_btn_apply)
 
 
 func refresh(cm) -> void:
@@ -82,14 +91,22 @@ func refresh(cm) -> void:
 	_search_results.clear()
 	_selected_result_idx = -1
 	_status_text = ""
-	_btn_join.visible = false
+	_btn_apply.visible = false
+	_input_note.visible = false
+	_my_applications.clear()
 	queue_redraw()
-	# Auto-load all corporations so the list is populated on open
 	if _cm != null and AuthManager.is_authenticated:
 		_status_text = "Chargement..."
 		_status_color = UITheme.PRIMARY
 		queue_redraw()
+		# Fetch corps and player's pending applications in parallel
 		_search_results = await _cm.fetch_all_corporations()
+		var my_apps: Array = await _cm.fetch_my_applications()
+		for app in my_apps:
+			if app is Dictionary:
+				var cid: String = str(app.get("corporation_id", ""))
+				if cid != "":
+					_my_applications[cid] = app
 		if _search_results.size() > 0:
 			_status_text = "%d corporation(s) trouvee(s)" % _search_results.size()
 			_status_color = UITheme.ACCENT
@@ -115,12 +132,10 @@ func _process(_delta: float) -> void:
 	_input_tag.position = Vector2(lx + m, ly + 40)
 	_input_tag.size = Vector2(half_w * 0.4, 30)
 
-	# Color buttons are drawn, not Controls
-
 	_btn_create.position = Vector2(lx + m, ly + 160)
 	_btn_create.size = Vector2(half_w - m * 2, 34)
 
-	# Right panel: Search
+	# Right panel: Search + Apply
 	var rx: float = half_w + GAP
 	var ry: float = 80.0
 	var search_btn_w: float = 100.0
@@ -130,8 +145,12 @@ func _process(_delta: float) -> void:
 	_btn_search.position = Vector2(rx + half_w - m - search_btn_w, ry)
 	_btn_search.size = Vector2(search_btn_w, 30)
 
-	_btn_join.position = Vector2(rx + m, size.y - 50)
-	_btn_join.size = Vector2(half_w - m * 2, 34)
+	# Note input + Apply button at bottom
+	_input_note.position = Vector2(rx + m, size.y - 90)
+	_input_note.size = Vector2(half_w - m * 2, 30)
+
+	_btn_apply.position = Vector2(rx + m, size.y - 50)
+	_btn_apply.size = Vector2(half_w - m * 2, 34)
 
 
 func _draw() -> void:
@@ -139,7 +158,6 @@ func _draw() -> void:
 	var m: float = 16.0
 	var half_w: float = (size.x - GAP) * 0.5
 
-	# If not authenticated, show message
 	if not AuthManager.is_authenticated:
 		draw_panel_bg(Rect2(0, 0, size.x, size.y))
 		draw_string(font, Vector2(0, size.y * 0.4), "CONNEXION REQUISE", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_TITLE, UITheme.TEXT_DIM)
@@ -150,10 +168,9 @@ func _draw() -> void:
 	var left_rect := Rect2(0, 0, half_w, size.y)
 	draw_panel_bg(left_rect)
 
-	# Title
 	var _header_y := _draw_section_header(m, m, half_w - m * 2, "CREER UNE CORPORATION")
 
-	# Color selector (below tag input)
+	# Color selector
 	var color_y: float = 80.0 + 80.0
 	draw_string(font, Vector2(m, color_y + 14), "Couleur:", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 	var cx: float = m + 70
@@ -165,30 +182,30 @@ func _draw() -> void:
 		draw_rect(btn_rect, col)
 		draw_rect(btn_rect, Color(1, 1, 1, 0.15), false, 1.0)
 
-	# Color name
 	draw_string(font, Vector2(m, color_y + 44), "Selectionnee: %s" % COLOR_NAMES[_selected_color_idx], HORIZONTAL_ALIGNMENT_LEFT, half_w - m * 2, UITheme.FONT_SIZE_SMALL, COLOR_PRESETS[_selected_color_idx])
 
-	# ─── RIGHT PANEL: Search ───────────────────────────────────────────
+	# ─── RIGHT PANEL: Search & Apply ──────────────────────────────────
 	var rx: float = half_w + GAP
 	var right_rect := Rect2(rx, 0, half_w, size.y)
 	draw_panel_bg(right_rect)
 
-	_draw_section_header(rx + m, m, half_w - m * 2, "REJOINDRE UNE CORPORATION")
+	_draw_section_header(rx + m, m, half_w - m * 2, "CORPORATIONS")
 
 	# Results table
 	var table_y: float = 80.0 + 42.0
-	var table_h: float = size.y - table_y - 64.0
+	var table_h: float = size.y - table_y - 110.0  # Leave room for note + apply button
 	var row_h: float = 28.0
 
 	# Table header
 	draw_rect(Rect2(rx + m, table_y, half_w - m * 2, row_h), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.08))
 	var col_tag_x: float = rx + m + 4
 	var col_name_x: float = rx + m + 60
-	var col_members_x: float = rx + half_w - m - 100
-	var col_status_x: float = rx + half_w - m - 40
+	var col_members_x: float = rx + half_w - m - 120
+	var col_status_x: float = rx + half_w - m - 55
 	draw_string(font, Vector2(col_tag_x, table_y + 18), "TAG", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	draw_string(font, Vector2(col_name_x, table_y + 18), "NOM", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 	draw_string(font, Vector2(col_members_x, table_y + 18), "MEMBRES", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_status_x, table_y + 18), "STATUT", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 
 	# Rows
 	var visible_rows: int = int(table_h / row_h) - 1
@@ -198,6 +215,8 @@ func _draw() -> void:
 			break
 		var r: Dictionary = _search_results[idx]
 		var ry: float = table_y + row_h * (i + 1)
+		var corp_id: String = str(r.get("id", ""))
+		var has_applied: bool = _my_applications.has(corp_id)
 
 		# Selection highlight
 		if idx == _selected_result_idx:
@@ -213,9 +232,18 @@ func _draw() -> void:
 		draw_string(font, Vector2(col_name_x, ry + 18), str(r.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, col_members_x - col_name_x - 8, UITheme.FONT_SIZE_BODY, text_col)
 		draw_string(font, Vector2(col_members_x, ry + 18), str(r.get("members", 0)), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
 
-		# Recruiting status
-		var status_text: String = "OUVERT" if r.get("is_recruiting", false) else "FERME"
-		var status_col: Color = UITheme.ACCENT if r.get("is_recruiting", false) else UITheme.DANGER
+		# Status column: POSTULE / OUVERT / FERME
+		var status_text: String
+		var status_col: Color
+		if has_applied:
+			status_text = "POSTULE"
+			status_col = UITheme.WARNING
+		elif r.get("is_recruiting", false):
+			status_text = "OUVERT"
+			status_col = UITheme.ACCENT
+		else:
+			status_text = "FERME"
+			status_col = UITheme.DANGER
 		draw_string(font, Vector2(col_status_x, ry + 18), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, status_col)
 
 	if _search_results.is_empty() and _status_text != "Chargement...":
@@ -266,7 +294,7 @@ func _gui_input(event: InputEvent) -> void:
 			var row_idx: int = int((pos.y - table_y - row_h) / row_h) + _scroll_offset
 			if row_idx >= 0 and row_idx < _search_results.size():
 				_selected_result_idx = row_idx
-				_btn_join.visible = _search_results[row_idx].get("is_recruiting", false)
+				_update_apply_button()
 				queue_redraw()
 				accept_event()
 				return
@@ -293,6 +321,24 @@ func _gui_input(event: InputEvent) -> void:
 			_hovered_row = -1
 		if _hovered_row != old_hovered:
 			queue_redraw()
+
+
+func _update_apply_button() -> void:
+	if _selected_result_idx < 0 or _selected_result_idx >= _search_results.size():
+		_btn_apply.visible = false
+		_input_note.visible = false
+		return
+	var corp: Dictionary = _search_results[_selected_result_idx]
+	var corp_id: String = str(corp.get("id", ""))
+	var has_applied: bool = _my_applications.has(corp_id)
+	_btn_apply.visible = true
+	_input_note.visible = not has_applied
+	if has_applied:
+		_btn_apply.text = "Candidature en attente..."
+		_btn_apply.enabled = false
+	else:
+		_btn_apply.text = "Postuler"
+		_btn_apply.enabled = true
 
 
 # =============================================================================
@@ -350,7 +396,8 @@ func _on_search_pressed() -> void:
 	_status_text = "Recherche..."
 	_status_color = UITheme.PRIMARY
 	_selected_result_idx = -1
-	_btn_join.visible = false
+	_btn_apply.visible = false
+	_input_note.visible = false
 	queue_redraw()
 
 	_search_results = await _cm.search_corporations(query)
@@ -359,26 +406,33 @@ func _on_search_pressed() -> void:
 	queue_redraw()
 
 
-func _on_join_pressed() -> void:
+func _on_apply_pressed() -> void:
 	if _cm == null or _selected_result_idx < 0 or _selected_result_idx >= _search_results.size():
 		return
 
 	var corporation: Dictionary = _search_results[_selected_result_idx]
-	if not corporation.get("is_recruiting", false):
-		_status_text = "Cette corporation ne recrute pas"
+	var corp_id: String = str(corporation.get("id", ""))
+
+	if _my_applications.has(corp_id):
+		_status_text = "Vous avez deja postule a cette corporation"
 		_status_color = UITheme.WARNING
 		queue_redraw()
 		return
 
-	_status_text = "Rejoindre la corporation en cours..."
+	var note: String = _input_note.get_text().strip_edges() if _input_note else ""
+
+	_status_text = "Envoi de la candidature..."
 	_status_color = UITheme.PRIMARY
 	queue_redraw()
 
-	var success: bool = await _cm.join_corporation(str(corporation.get("id", "")))
+	var success: bool = await _cm.apply_to_corporation(corp_id, note)
 	if success:
-		_status_text = ""
-		corporation_action_completed.emit()
+		_status_text = "Candidature envoyee!"
+		_status_color = UITheme.ACCENT
+		_my_applications[corp_id] = {"corporation_id": corp_id}
+		_btn_apply.visible = false
+		_input_note.visible = false
 	else:
-		_status_text = "Erreur lors de la tentative de rejoindre la corporation"
+		_status_text = "Erreur lors de l'envoi de la candidature"
 		_status_color = UITheme.DANGER
-		queue_redraw()
+	queue_redraw()

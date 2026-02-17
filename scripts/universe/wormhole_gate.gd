@@ -23,7 +23,6 @@ signal player_left_wormhole()
 var gate_name: String = ""
 var _ring_mesh: MeshInstance3D = null
 var _inner_glow: MeshInstance3D = null
-var _trigger_area: Area3D = null
 var _label: Label3D = null
 var _material: StandardMaterial3D = null
 var _glow_material: StandardMaterial3D = null
@@ -96,21 +95,9 @@ func _build_inner_glow() -> void:
 
 
 func _build_trigger() -> void:
-	_trigger_area = Area3D.new()
-	_trigger_area.name = "WormholeTrigger"
-	_trigger_area.collision_layer = 0
-	_trigger_area.collision_mask = Constants.LAYER_SHIPS
-
-	var trigger_shape := CollisionShape3D.new()
-	trigger_shape.name = "TriggerShape"
-	var sphere := SphereShape3D.new()
-	sphere.radius = trigger_radius
-	trigger_shape.shape = sphere
-	_trigger_area.add_child(trigger_shape)
-
-	_trigger_area.body_entered.connect(_on_body_entered)
-	_trigger_area.body_exited.connect(_on_body_exited)
-	add_child(_trigger_area)
+	# Distance-based detection in _physics_process replaces Area3D signals.
+	# Area3D overlap is unreliable with floating origin shifts.
+	pass
 
 
 func _build_label() -> void:
@@ -151,13 +138,15 @@ func _process(_delta: float) -> void:
 		_glow_material.albedo_color.a = 0.15 + glow_pulse * 0.25
 
 
-func _on_body_entered(body: Node3D) -> void:
-	if body == GameManager.player_ship:
+func _physics_process(_delta: float) -> void:
+	var ship = GameManager.player_ship
+	if ship == null:
+		return
+	var dist_sq: float = global_position.distance_squared_to(ship.global_position)
+	var inside: bool = dist_sq <= trigger_radius * trigger_radius
+	if inside and not _player_inside:
 		_player_inside = true
 		player_nearby_wormhole.emit(target_galaxy_name)
-
-
-func _on_body_exited(body: Node3D) -> void:
-	if body == GameManager.player_ship:
+	elif not inside and _player_inside:
 		_player_inside = false
 		player_left_wormhole.emit()

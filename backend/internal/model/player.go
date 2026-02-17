@@ -24,6 +24,7 @@ type Player struct {
 	Deaths          int        `json:"deaths"`
 	FactionID       string     `json:"faction_id"`
 	CorporationID   *string    `json:"corporation_id,omitempty"`
+	Role            string     `json:"role"`
 	IsBanned        bool       `json:"is_banned"`
 	LastLoginAt     *time.Time `json:"last_login_at,omitempty"`
 	LastSaveAt      *time.Time `json:"last_save_at,omitempty"`
@@ -69,6 +70,7 @@ type PlayerEquipment struct {
 
 // PlayerState is the full save/load payload
 type PlayerState struct {
+	HasSaved      bool            `json:"has_saved"`
 	CurrentShipID string          `json:"current_ship_id"`
 	GalaxySeed    int64           `json:"galaxy_seed"`
 	SystemID      int             `json:"system_id"`

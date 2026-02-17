@@ -110,6 +110,10 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		remote.ship_id = NetworkManager.peers[peer_id].ship_id
 	remote.set_player_name(player_name)
 	remote.name = "RemotePlayer_%d" % peer_id
+	# Start hidden — made visible on first receive_state() with valid position.
+	# Without this, the puppet flashes at (0,0,0) (near station) until the first
+	# network state update arrives with the real position.
+	remote.visible = false
 	if universe_node:
 		universe_node.add_child(remote)
 	remote_players[peer_id] = remote

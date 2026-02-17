@@ -53,7 +53,7 @@ func _on_local_message_sent(channel_name: String, text: String) -> void:
 
 
 ## Server relayed a chat message → display in ChatPanel.
-func _on_network_chat_received(sender_name: String, channel: int, text: String) -> void:
+func _on_network_chat_received(sender_name: String, channel: int, text: String, corp_tag: String = "") -> void:
 	if _chat_panel == null:
 		return
 	# Don't duplicate our own messages (already shown locally)
@@ -64,7 +64,8 @@ func _on_network_chat_received(sender_name: String, channel: int, text: String) 
 	if channel == ChatPanel.Channel.SYSTEM:
 		color = Color(1.0, 0.85, 0.3)
 		sender_name = "SYSTÈME"
-	_chat_panel.add_message(channel, sender_name, text, color)
+		corp_tag = ""
+	_chat_panel.add_message(channel, sender_name, text, color, corp_tag)
 
 
 ## Received a whisper from another player.

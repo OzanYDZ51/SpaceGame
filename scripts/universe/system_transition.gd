@@ -237,23 +237,20 @@ func _cleanup_current_system() -> void:
 			player_lod.position = GameManager.player_ship.global_position
 			lod_mgr.register_ship(&"player_ship", player_lod)
 
-	# Disconnect gate/wormhole signals and disable physics triggers
-	# to prevent stale body_exited callbacks during queue_free
+	# Disconnect gate/wormhole signals to prevent stale callbacks during queue_free
 	for child in universe.get_children():
 		if child is JumpGate:
 			if child.player_nearby.is_connected(_on_gate_player_nearby):
 				child.player_nearby.disconnect(_on_gate_player_nearby)
 			if child.player_left.is_connected(_on_gate_player_left):
 				child.player_left.disconnect(_on_gate_player_left)
-			if child._trigger_area:
-				child._trigger_area.monitoring = false
+			child.set_physics_process(false)
 		elif child is WormholeGate:
 			for conn in child.player_nearby_wormhole.get_connections():
 				child.player_nearby_wormhole.disconnect(conn["callable"])
 			for conn in child.player_left_wormhole.get_connections():
 				child.player_left_wormhole.disconnect(conn["callable"])
-			if child._trigger_area:
-				child._trigger_area.monitoring = false
+			child.set_physics_process(false)
 
 	# Remove dynamically spawned children of Universe (stations, etc.)
 	for child in universe.get_children():

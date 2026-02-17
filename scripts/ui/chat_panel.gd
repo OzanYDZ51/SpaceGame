@@ -9,7 +9,7 @@ extends Control
 signal message_sent(channel: String, text: String)
 
 # Chat channels
-enum Channel { GLOBAL, SYSTEM, CORP, TRADE, PRIVATE }
+enum Channel { GLOBAL, SYSTEM, CORP, TRADE, PRIVATE, GROUP }
 var _current_channel: int = Channel.GLOBAL
 
 # Colors per channel
@@ -19,6 +19,7 @@ const CHANNEL_COLORS = {
 	Channel.CORP: Color(0.4, 1.0, 0.5),
 	Channel.TRADE: Color(1.0, 0.6, 0.2),
 	Channel.PRIVATE: Color(0.85, 0.5, 1.0),
+	Channel.GROUP: Color(0.3, 1.0, 0.6),
 }
 
 var CHANNEL_NAMES: Dictionary = {
@@ -27,19 +28,14 @@ var CHANNEL_NAMES: Dictionary = {
 	Channel.CORP: "CORP",
 	Channel.TRADE: "COMMERCE",
 	Channel.PRIVATE: "MP",
+	Channel.GROUP: "GROUPE",
 }
 
-const CHANNEL_PREFIXES = {
-	Channel.GLOBAL: "[G]",
-	Channel.SYSTEM: "[S]",
-	Channel.CORP: "[C]",
-	Channel.TRADE: "[T]",
-	Channel.PRIVATE: "[PM]",
-}
 
 # Dynamic tabs — hidden by default, shown when relevant
 var _corp_tab_visible: bool = false
 var _pm_tab_visible: bool = false
+var _group_tab_visible: bool = false
 
 # Theme colors
 const COL_BG =Color(0.0, 0.02, 0.05, 0.7)
@@ -77,6 +73,24 @@ var _max_messages_per_channel: int = 100
 var _bg_redraw_timer: float = 0.0
 var _private_target: String = ""  # Target player name for PRIVATE channel
 var _submit_frame: int = -10  # Frame when last message was submitted (anti key-repeat)
+var _scroll_pending: bool = false  # True when we need to auto-scroll after content resize
+
+# Slash command autocomplete
+var _autocomplete_popup: Control = null
+var _autocomplete_list: VBoxContainer = null
+var _autocomplete_items: Array[Dictionary] = []  # Visible filtered commands
+var _autocomplete_selected: int = -1  # Currently highlighted index
+var _autocomplete_visible: bool = false
+
+const SLASH_COMMANDS: Array[Dictionary] = [
+	{"cmd": "/help", "desc": "Afficher les commandes"},
+	{"cmd": "/w", "desc": "<joueur> <msg> — Message privé"},
+	{"cmd": "/mp", "desc": "<joueur> <msg> — Message privé"},
+	{"cmd": "/r", "desc": "<msg> — Répondre au dernier MP"},
+	{"cmd": "/joueurs", "desc": "Lister les joueurs du système"},
+	{"cmd": "/players", "desc": "List players in the system"},
+	{"cmd": "/clear", "desc": "Vider le canal actuel"},
+]
 
 
 func _ready() -> void:
@@ -166,8 +180,8 @@ func _build_chat() -> void:
 		btn.add_theme_font_size_override("font_size", 12)
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 
-		# CORP and PM tabs start hidden
-		if ch == Channel.CORP or ch == Channel.PRIVATE:
+		# CORP, PM, and GROUP tabs start hidden
+		if ch == Channel.CORP or ch == Channel.PRIVATE or ch == Channel.GROUP:
 			btn.visible = false
 
 		# Style the button
@@ -244,6 +258,9 @@ func _build_chat() -> void:
 	_message_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message_scroll.add_child(_message_list)
 
+	# Auto-scroll: react when scrollbar range changes (content resized), not on a fixed frame delay
+	_message_scroll.get_v_scroll_bar().changed.connect(_on_scrollbar_changed)
+
 	# === Input field ===
 	_input_field = LineEdit.new()
 	_input_field.anchor_right = 1.0
@@ -287,7 +304,35 @@ func _build_chat() -> void:
 	# the original text (captured before _input_field.clear()).
 	_input_field.focus_entered.connect(_on_input_focused)
 	_input_field.focus_exited.connect(_on_input_unfocused)
+	_input_field.text_changed.connect(_on_input_text_changed)
 	add_child(_input_field)
+
+	# === Autocomplete popup (above input field) ===
+	_autocomplete_popup = Control.new()
+	_autocomplete_popup.anchor_left = 0.0
+	_autocomplete_popup.anchor_right = 1.0
+	_autocomplete_popup.anchor_top = 1.0
+	_autocomplete_popup.anchor_bottom = 1.0
+	_autocomplete_popup.offset_left = 4
+	_autocomplete_popup.offset_right = -4
+	# Height will be adjusted dynamically; starts invisible
+	_autocomplete_popup.offset_top = -30
+	_autocomplete_popup.offset_bottom = -30
+	_autocomplete_popup.visible = false
+	_autocomplete_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	_autocomplete_popup.draw.connect(_draw_autocomplete_bg.bind(_autocomplete_popup))
+	add_child(_autocomplete_popup)
+
+	_autocomplete_list = VBoxContainer.new()
+	_autocomplete_list.anchor_right = 1.0
+	_autocomplete_list.anchor_bottom = 1.0
+	_autocomplete_list.offset_left = 2
+	_autocomplete_list.offset_right = -2
+	_autocomplete_list.offset_top = 2
+	_autocomplete_list.offset_bottom = -2
+	_autocomplete_list.add_theme_constant_override("separation", 0)
+	_autocomplete_list.mouse_filter = Control.MOUSE_FILTER_PASS
+	_autocomplete_popup.add_child(_autocomplete_list)
 
 
 func _process(delta: float) -> void:
@@ -307,6 +352,27 @@ func _input(event: InputEvent) -> void:
 		return
 
 	var key: int = event.physical_keycode
+
+	# --- Autocomplete navigation (intercept BEFORE normal handling) ---
+	if _is_focused and _autocomplete_visible and not event.echo:
+		if key == KEY_UP:
+			_autocomplete_navigate(-1)
+			get_viewport().set_input_as_handled()
+			return
+		elif key == KEY_DOWN:
+			_autocomplete_navigate(1)
+			get_viewport().set_input_as_handled()
+			return
+		elif key == KEY_TAB and not _autocomplete_items.is_empty():
+			_autocomplete_accept()
+			get_viewport().set_input_as_handled()
+			return
+		elif key == KEY_ENTER or key == KEY_KP_ENTER:
+			if _autocomplete_selected >= 0:
+				_autocomplete_accept()
+				get_viewport().set_input_as_handled()
+				return
+			# else: fall through to normal Enter handling (submit text)
 
 	if key == KEY_ENTER or key == KEY_KP_ENTER:
 		# Ignore key-repeat (echo) — only react to fresh presses
@@ -353,6 +419,10 @@ func _input(event: InputEvent) -> void:
 		if event.echo:
 			get_viewport().set_input_as_handled()
 			return
+		if _autocomplete_visible:
+			_hide_autocomplete()
+			get_viewport().set_input_as_handled()
+			return
 		_input_field.clear()
 		_input_field.release_focus()
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -367,6 +437,7 @@ func _on_input_focused() -> void:
 func _on_input_unfocused() -> void:
 	_is_focused = false
 	_target_alpha = 0.6
+	_hide_autocomplete()
 
 
 func _on_tab_pressed(channel: int) -> void:
@@ -392,6 +463,7 @@ func _on_message_submitted(text: String) -> void:
 	if text.strip_edges().is_empty():
 		return
 
+	_hide_autocomplete()
 	_submit_frame = Engine.get_process_frames()
 	_input_field.clear()
 
@@ -402,14 +474,18 @@ func _on_message_submitted(text: String) -> void:
 		return
 
 	var player_name: String = NetworkManager.local_player_name
+	var corp_tag: String = ""
+	var corp_mgr = GameManager.get_node_or_null("CorporationManager")
+	if corp_mgr and corp_mgr.has_corporation():
+		corp_tag = corp_mgr.corporation_data.corporation_tag
 
-	add_message(_current_channel, player_name, text, Color(0.3, 0.85, 1.0))
+	add_message(_current_channel, player_name, text, Color(0.3, 0.85, 1.0), corp_tag)
 	message_sent.emit(CHANNEL_NAMES[_current_channel], text)
 
 	_input_field.grab_focus()
 
 
-func add_message(channel: int, author: String, text: String, author_color: Color = Color.WHITE) -> void:
+func add_message(channel: int, author: String, text: String, author_color: Color = Color.WHITE, corp_tag: String = "") -> void:
 	var timestamp =Time.get_time_string_from_system().substr(0, 5)  # HH:MM
 	var msg ={
 		"author": author,
@@ -417,6 +493,7 @@ func add_message(channel: int, author: String, text: String, author_color: Color
 		"time": timestamp,
 		"channel": channel,
 		"color": author_color,
+		"corp_tag": corp_tag,
 	}
 	_messages[channel].append(msg)
 
@@ -457,12 +534,13 @@ func _refresh_messages() -> void:
 		var line =_create_message_label(msg)
 		_message_list.add_child(line)
 
-	# Scroll to bottom next frame (use a deferred call instead of await to avoid race conditions)
-	_scroll_to_bottom.call_deferred()
+	# Flag for auto-scroll — will fire when the scrollbar range actually updates
+	_scroll_pending = true
 
 
-func _scroll_to_bottom() -> void:
-	if _message_scroll:
+func _on_scrollbar_changed() -> void:
+	if _scroll_pending:
+		_scroll_pending = false
 		_message_scroll.scroll_vertical = int(_message_scroll.get_v_scroll_bar().max_value)
 
 
@@ -476,17 +554,24 @@ func _create_message_label(msg: Dictionary) -> RichTextLabel:
 	rtl.add_theme_font_size_override("normal_font_size", 13)
 
 	var time_hex =COL_TIMESTAMP.to_html(false)
-	var chan_col: Color = CHANNEL_COLORS.get(msg["channel"], Color.WHITE)
-	var chan_hex =chan_col.to_html(false)
 	var author_hex: String = msg["color"].to_html(false)
-	var prefix: String = CHANNEL_PREFIXES.get(msg["channel"], "")
+	var tag: String = msg.get("corp_tag", "")
 
-	var bbcode ="[color=#%s]%s[/color] [color=#%s]%s[/color] [color=#%s]%s:[/color] %s" % [
-		time_hex, msg["time"],
-		chan_hex, prefix,
-		author_hex, msg["author"],
-		msg["text"]
-	]
+	var bbcode: String
+	if tag != "":
+		var tag_hex: String = Color(0.4, 1.0, 0.5).to_html(false)
+		bbcode = "[color=#%s]%s[/color] [color=#%s][%s][/color] [color=#%s]%s:[/color] %s" % [
+			time_hex, msg["time"],
+			tag_hex, tag,
+			author_hex, msg["author"],
+			msg["text"]
+		]
+	else:
+		bbcode = "[color=#%s]%s[/color] [color=#%s]%s:[/color] %s" % [
+			time_hex, msg["time"],
+			author_hex, msg["author"],
+			msg["text"]
+		]
 	rtl.text = bbcode
 	return rtl
 
@@ -543,6 +628,17 @@ func set_corporation_tab(has_corp: bool, tag: String = "") -> void:
 		CHANNEL_NAMES[Channel.CORP] = "CORP"
 	# If currently on CORP tab and it disappears, switch to GLOBAL
 	if not has_corp and _current_channel == Channel.CORP:
+		_on_tab_pressed(Channel.GLOBAL)
+
+
+## Show or hide the GROUP tab. Called when joining or leaving a group.
+func set_group_tab_visible(is_visible: bool) -> void:
+	if Channel.GROUP >= _tab_buttons.size():
+		return
+	_group_tab_visible = is_visible
+	_tab_buttons[Channel.GROUP].visible = is_visible
+	# If currently on GROUP tab and it disappears, switch to GLOBAL
+	if not is_visible and _current_channel == Channel.GROUP:
 		_on_tab_pressed(Channel.GLOBAL)
 
 
@@ -620,6 +716,149 @@ func _handle_command(text: String) -> void:
 			add_system_message("Commande inconnue : %s. Tapez /help." % cmd)
 
 
+# =============================================================================
+# SLASH COMMAND AUTOCOMPLETE
+# =============================================================================
+func _on_input_text_changed(new_text: String) -> void:
+	if new_text.begins_with("/"):
+		var typed: String = new_text.split(" ", false)[0].to_lower() if not new_text.contains(" ") else ""
+		if typed != "":
+			_filter_autocomplete(typed)
+		else:
+			_hide_autocomplete()
+	else:
+		_hide_autocomplete()
+
+
+func _filter_autocomplete(typed: String) -> void:
+	_autocomplete_items.clear()
+	for entry in SLASH_COMMANDS:
+		var cmd: String = entry["cmd"]
+		if cmd.begins_with(typed) or typed == "/":
+			_autocomplete_items.append(entry)
+
+	if _autocomplete_items.is_empty():
+		_hide_autocomplete()
+		return
+
+	_autocomplete_selected = -1
+	_rebuild_autocomplete_ui()
+	_autocomplete_popup.visible = true
+	_autocomplete_visible = true
+
+
+func _rebuild_autocomplete_ui() -> void:
+	for child in _autocomplete_list.get_children():
+		_autocomplete_list.remove_child(child)
+		child.queue_free()
+
+	var row_height: float = 22.0
+	var total_h: float = _autocomplete_items.size() * row_height + 4  # +4 for padding
+	_autocomplete_popup.offset_top = -30 - total_h
+	_autocomplete_popup.offset_bottom = -30
+
+	for i in _autocomplete_items.size():
+		var entry: Dictionary = _autocomplete_items[i]
+		var row: Button = Button.new()
+		row.text = "%s  %s" % [entry["cmd"], entry["desc"]]
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.custom_minimum_size = Vector2(0, row_height)
+		row.add_theme_font_size_override("font_size", 12)
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+
+		var style_n: StyleBoxFlat = StyleBoxFlat.new()
+		style_n.bg_color = Color.TRANSPARENT
+		style_n.content_margin_left = 6
+		style_n.content_margin_right = 6
+		row.add_theme_stylebox_override("normal", style_n)
+
+		var style_h: StyleBoxFlat = StyleBoxFlat.new()
+		style_h.bg_color = Color(0.06, 0.3, 0.5, 0.5)
+		style_h.content_margin_left = 6
+		style_h.content_margin_right = 6
+		row.add_theme_stylebox_override("hover", style_h)
+
+		var style_p: StyleBoxFlat = style_h.duplicate()
+		row.add_theme_stylebox_override("pressed", style_p)
+		row.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+		row.add_theme_color_override("font_color", Color(0.55, 0.7, 0.8))
+		row.add_theme_color_override("font_hover_color", Color(0.8, 0.95, 1.0))
+
+		var idx: int = i
+		row.pressed.connect(_on_autocomplete_clicked.bind(idx))
+		_autocomplete_list.add_child(row)
+
+	_update_autocomplete_highlight()
+
+
+func _update_autocomplete_highlight() -> void:
+	var children: Array[Node] = _autocomplete_list.get_children()
+	for i in children.size():
+		var btn: Button = children[i] as Button
+		if btn == null:
+			continue
+		var entry: Dictionary = _autocomplete_items[i]
+		if i == _autocomplete_selected:
+			btn.text = "> %s  %s" % [entry["cmd"], entry["desc"]]
+			btn.add_theme_color_override("font_color", Color(0.2, 0.85, 1.0))
+			# Set highlighted bg
+			var style: StyleBoxFlat = StyleBoxFlat.new()
+			style.bg_color = Color(0.06, 0.3, 0.5, 0.5)
+			style.content_margin_left = 6
+			style.content_margin_right = 6
+			btn.add_theme_stylebox_override("normal", style)
+		else:
+			btn.text = "  %s  %s" % [entry["cmd"], entry["desc"]]
+			btn.add_theme_color_override("font_color", Color(0.55, 0.7, 0.8))
+			var style: StyleBoxFlat = StyleBoxFlat.new()
+			style.bg_color = Color.TRANSPARENT
+			style.content_margin_left = 6
+			style.content_margin_right = 6
+			btn.add_theme_stylebox_override("normal", style)
+
+
+func _autocomplete_navigate(direction: int) -> void:
+	if _autocomplete_items.is_empty():
+		return
+	_autocomplete_selected += direction
+	if _autocomplete_selected < 0:
+		_autocomplete_selected = _autocomplete_items.size() - 1
+	elif _autocomplete_selected >= _autocomplete_items.size():
+		_autocomplete_selected = 0
+	_update_autocomplete_highlight()
+
+
+func _autocomplete_accept() -> void:
+	var idx: int = _autocomplete_selected if _autocomplete_selected >= 0 else 0
+	if idx >= _autocomplete_items.size():
+		return
+	var cmd: String = _autocomplete_items[idx]["cmd"]
+	_input_field.text = cmd + " "
+	_input_field.caret_column = _input_field.text.length()
+	_hide_autocomplete()
+
+
+func _on_autocomplete_clicked(idx: int) -> void:
+	_autocomplete_selected = idx
+	_autocomplete_accept()
+	_input_field.grab_focus()
+
+
+func _hide_autocomplete() -> void:
+	_autocomplete_popup.visible = false
+	_autocomplete_visible = false
+	_autocomplete_selected = -1
+
+
+func _draw_autocomplete_bg(ctrl: Control) -> void:
+	var rect: Rect2 = Rect2(Vector2.ZERO, ctrl.size)
+	ctrl.draw_rect(rect, Color(0.0, 0.02, 0.06, 0.92))
+	ctrl.draw_rect(rect, Color(0.06, 0.3, 0.5, 0.5), false, 1.0)
+	# Top accent line
+	ctrl.draw_line(Vector2(0, 0), Vector2(ctrl.size.x, 0), Color(0.1, 0.6, 0.9, 0.4), 1.0)
+
+
 ## Load chat history received from the server on (re)connect.
 ## Clears existing messages and populates channels without triggering unread indicators.
 func load_history(history: Array) -> void:
@@ -651,6 +890,7 @@ func load_history(history: Array) -> void:
 			"time": entry.get("ts", "--:--"),
 			"channel": ch,
 			"color": color,
+			"corp_tag": entry.get("ctag", ""),
 		}
 		_messages[ch].append(msg)
 

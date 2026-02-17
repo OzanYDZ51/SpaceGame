@@ -18,6 +18,9 @@ signal diplomacy_changed(corporation_id: String, relation: String)
 signal activity_added(entry: CorporationActivity)
 signal rank_updated(index: int)
 signal recruitment_toggled(is_recruiting: bool)
+signal application_submitted
+signal application_handled
+signal applications_loaded
 
 var corporation_data: CorporationData = null
 var members: Array[CorporationMember] = []
@@ -25,6 +28,8 @@ var diplomacy: Dictionary = {}  # corporation_id -> { "name", "tag", "relation",
 var activity_log: Array[CorporationActivity] = []
 var transactions: Array[Dictionary] = []  # { "timestamp", "type", "amount", "actor" }
 var player_member: CorporationMember = null
+var pending_applications: Array = []  # Array[Dictionary] — pending applications for officer view
+var my_applications: Array = []  # Array[Dictionary] — player's own pending applications
 
 var _loading: bool = false
 
@@ -426,6 +431,81 @@ func join_corporation(cid: String) -> bool:
 		return false
 	await _load_corporation_from_api(cid)
 	return has_corporation()
+
+
+# =============================================================================
+# APPLICATIONS
+# =============================================================================
+
+func apply_to_corporation(corp_id: String, note: String) -> bool:
+	if has_corporation() or not AuthManager.is_authenticated:
+		return false
+	var body := {"note": note}
+	var result := await ApiClient.post_async("/api/v1/corporations/%s/applications" % corp_id, body)
+	var code: int = result.get("_status_code", 0)
+	if code != 201:
+		push_warning("CorporationManager: apply failed (HTTP %d) — %s" % [code, result.get("error", "unknown")])
+		return false
+	application_submitted.emit()
+	return true
+
+
+func fetch_my_applications() -> Array:
+	if not AuthManager.is_authenticated:
+		return []
+	var result := await ApiClient.get_async("/api/v1/corporations/my-applications")
+	if result.get("_status_code", 0) != 200:
+		return []
+	my_applications = _extract_array(result, "")
+	return my_applications
+
+
+func cancel_application(app_id: int) -> bool:
+	if not AuthManager.is_authenticated:
+		return false
+	var result := await ApiClient.delete_async("/api/v1/corporations/my-applications/%d" % app_id)
+	var code: int = result.get("_status_code", 0)
+	if code != 200 and code != 204:
+		push_warning("CorporationManager: cancel_application failed — %s" % result.get("error", "unknown"))
+		return false
+	return true
+
+
+func fetch_applications() -> Array:
+	if not has_corporation() or not AuthManager.is_authenticated:
+		return []
+	var result := await ApiClient.get_async("/api/v1/corporations/%s/applications" % corporation_data.corporation_id)
+	if result.get("_status_code", 0) != 200:
+		return []
+	pending_applications = _extract_array(result, "")
+	applications_loaded.emit()
+	return pending_applications
+
+
+func accept_application(app_id: int) -> bool:
+	if not player_has_permission(CorporationRank.PERM_INVITE) or not AuthManager.is_authenticated:
+		return false
+	var result := await ApiClient.put_async(
+		"/api/v1/corporations/%s/applications/%d" % [corporation_data.corporation_id, app_id],
+		{"action": "accept"})
+	if result.get("_status_code", 0) != 200:
+		push_warning("CorporationManager: accept_application failed — %s" % result.get("error", "unknown"))
+		return false
+	application_handled.emit()
+	return true
+
+
+func reject_application(app_id: int) -> bool:
+	if not player_has_permission(CorporationRank.PERM_INVITE) or not AuthManager.is_authenticated:
+		return false
+	var result := await ApiClient.put_async(
+		"/api/v1/corporations/%s/applications/%d" % [corporation_data.corporation_id, app_id],
+		{"action": "reject"})
+	if result.get("_status_code", 0) != 200:
+		push_warning("CorporationManager: reject_application failed — %s" % result.get("error", "unknown"))
+		return false
+	application_handled.emit()
+	return true
 
 
 # =============================================================================

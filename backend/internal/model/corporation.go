@@ -69,6 +69,16 @@ type CorporationTransaction struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+type CorporationApplication struct {
+	ID            int64     `json:"id"`
+	CorporationID string    `json:"corporation_id"`
+	PlayerID      string    `json:"player_id"`
+	PlayerName    string    `json:"player_name"`
+	Note          string    `json:"note"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 // Request types
 
 type CreateCorporationRequest struct {
@@ -115,4 +125,12 @@ type CreateRankRequest struct {
 type UpdateRankRequest struct {
 	RankName    string `json:"rank_name"`
 	Permissions int    `json:"permissions"`
+}
+
+type ApplyRequest struct {
+	Note string `json:"note"`
+}
+
+type ApplicationActionRequest struct {
+	Action string `json:"action"` // "accept" or "reject"
 }

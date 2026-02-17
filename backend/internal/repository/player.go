@@ -28,11 +28,11 @@ func (r *PlayerRepository) Create(ctx context.Context, username, email, password
 		ON CONFLICT DO NOTHING
 		RETURNING id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		          pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		          credits, kills, deaths, faction_id, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		          credits, kills, deaths, faction_id, corporation_id, role, is_banned, last_login_at, last_save_at, created_at, updated_at
 	`, username, email, passwordHash).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.Role, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -48,12 +48,12 @@ func (r *PlayerRepository) GetByID(ctx context.Context, id string) (*model.Playe
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, username, email, password_hash, current_ship_id, galaxy_seed, system_id,
 		       pos_x, pos_y, pos_z, rotation_x, rotation_y, rotation_z,
-		       credits, kills, deaths, faction_id, corporation_id, is_banned, last_login_at, last_save_at, created_at, updated_at
+		       credits, kills, deaths, faction_id, corporation_id, role, is_banned, last_login_at, last_save_at, created_at, updated_at
 		FROM players WHERE id = $1
 	`, id).Scan(
 		&p.ID, &p.Username, &p.Email, &p.PasswordHash, &p.CurrentShipID, &p.GalaxySeed, &p.SystemID,
 		&p.PosX, &p.PosY, &p.PosZ, &p.RotationX, &p.RotationY, &p.RotationZ,
-		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
+		&p.Credits, &p.Kills, &p.Deaths, &p.FactionID, &p.CorporationID, &p.Role, &p.IsBanned, &p.LastLoginAt, &p.LastSaveAt, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -128,6 +128,7 @@ func (r *PlayerRepository) GetFullState(ctx context.Context, playerID string) (*
 	}
 
 	state := &model.PlayerState{
+		HasSaved:      p.LastSaveAt != nil,
 		CurrentShipID: p.CurrentShipID,
 		GalaxySeed:    p.GalaxySeed,
 		SystemID:      p.SystemID,

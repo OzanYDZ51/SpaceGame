@@ -13,7 +13,7 @@ var _panel: Control = null
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Top-center panel
-	_panel = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -140, 8, 140, 50)
+	_panel = HudDrawHelpers.make_ctrl(0.5, 0.0, 0.5, 0.0, -140, 84, 140, 126)
 	_panel.draw.connect(_draw_route_panel.bind(_panel))
 	add_child(_panel)
 

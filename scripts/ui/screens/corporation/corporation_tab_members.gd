@@ -17,6 +17,13 @@ var _btn_kick: UIButton = null
 var _filtered_members: Array[CorporationMember] = []
 var _selected_member: CorporationMember = null
 
+# Applications section
+var _applications: Array = []
+var _app_scroll_offset: int = 0
+var _app_hovered_row: int = -1
+var _show_applications: bool = false
+var _processing_application: bool = false
+
 
 func _ready() -> void:
 	super._ready()
@@ -74,6 +81,8 @@ func refresh(cm) -> void:
 	_btn_promote.visible = false
 	_btn_demote.visible = false
 	_btn_kick.visible = false
+	_applications.clear()
+	_show_applications = false
 
 	if _cm == null or not _cm.has_corporation():
 		return
@@ -85,6 +94,11 @@ func refresh(cm) -> void:
 	_filter_dropdown.selected_index = 0
 	_filter_dropdown.queue_redraw()
 	_rebuild_table()
+
+	# Load applications if officer+ (has invite permission)
+	if _cm.player_has_permission(CorporationRank.PERM_INVITE):
+		_applications = await _cm.fetch_applications()
+		queue_redraw()
 
 
 func _rebuild_table() -> void:
@@ -218,22 +232,129 @@ func _format_num(val: float) -> String:
 	return result
 
 
+func _gui_input(event: InputEvent) -> void:
+	if not visible:
+		return
+
+	var m: float = 12.0
+
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var pos: Vector2 = event.position
+
+		# Click on applications badge → toggle view
+		if _applications.size() > 0 and _cm and _cm.player_has_permission(CorporationRank.PERM_INVITE):
+			var badge_rect := Rect2(size.x - 200, m + 4, 190, 24)
+			if badge_rect.has_point(pos):
+				_show_applications = not _show_applications
+				_table.visible = not _show_applications
+				_search.visible = not _show_applications
+				_filter_dropdown.visible = not _show_applications
+				_btn_promote.visible = false
+				_btn_demote.visible = false
+				_btn_kick.visible = false
+				queue_redraw()
+				accept_event()
+				return
+
+		# Click on accept/reject buttons in applications view
+		if _show_applications:
+			var panel_y: float = m + 42
+			var hdr_y: float = panel_y + 30
+			var start_y: float = hdr_y + 22
+			var row_h: float = 60.0
+			var col_actions_x: float = size.x - 140
+
+			for i in _applications.size():
+				var idx: int = i + _app_scroll_offset
+				if idx >= _applications.size():
+					break
+				var ry: float = start_y + i * row_h
+
+				# Accept button
+				var accept_rect := Rect2(col_actions_x, ry + 5, 50, 22)
+				if accept_rect.has_point(pos):
+					_handle_application(idx, "accept")
+					accept_event()
+					return
+
+				# Reject button
+				var reject_rect := Rect2(col_actions_x + 58, ry + 5, 50, 22)
+				if reject_rect.has_point(pos):
+					_handle_application(idx, "reject")
+					accept_event()
+					return
+
+	elif event is InputEventMouseMotion and _show_applications:
+		var pos: Vector2 = event.position
+		var panel_y: float = m + 42
+		var hdr_y: float = panel_y + 30
+		var start_y: float = hdr_y + 22
+		var row_h: float = 60.0
+		var old_hovered := _app_hovered_row
+		var row_idx: int = int((pos.y - start_y) / row_h) + _app_scroll_offset
+		if row_idx >= 0 and row_idx < _applications.size():
+			_app_hovered_row = row_idx
+		else:
+			_app_hovered_row = -1
+		if _app_hovered_row != old_hovered:
+			queue_redraw()
+
+
+func _handle_application(idx: int, action: String) -> void:
+	if _processing_application:
+		return
+	if idx < 0 or idx >= _applications.size() or _cm == null:
+		return
+	var app: Dictionary = _applications[idx]
+	var app_id: int = int(app.get("id", 0))
+	if app_id == 0:
+		return
+
+	_processing_application = true
+	var success: bool = false
+	if action == "accept":
+		success = await _cm.accept_application(app_id)
+	else:
+		success = await _cm.reject_application(app_id)
+	_processing_application = false
+
+	if success:
+		_applications.remove_at(idx)
+		if _applications.is_empty():
+			_show_applications = false
+			_table.visible = true
+			_search.visible = true
+			_filter_dropdown.visible = true
+		# Refresh members list if we accepted someone
+		if action == "accept" and _cm.has_corporation():
+			_cm.refresh_from_backend()
+		queue_redraw()
+
+
 func _process(_delta: float) -> void:
 	if not visible:
 		return
 
 	var m: float = 12.0
 
-	# Search & filter bar
+	# Search & filter bar (hidden in applications mode)
 	_search.position = Vector2(m, m)
 	_search.size = Vector2(size.x * 0.42, 30)
 	_filter_dropdown.position = Vector2(size.x * 0.42 + m * 2, m)
+	# Shrink filter dropdown when badge is visible to prevent overlap
+	var has_badge: bool = _applications.size() > 0 and _cm != null and _cm.player_has_permission(CorporationRank.PERM_INVITE)
+	var filter_w: float = size.x * 0.38
+	if has_badge:
+		var badge_start: float = size.x - 210
+		var filter_end: float = _filter_dropdown.position.x + filter_w
+		if filter_end > badge_start:
+			filter_w = maxf(badge_start - _filter_dropdown.position.x, 100.0)
 	if _filter_dropdown._expanded:
-		_filter_dropdown.size.x = size.x * 0.38
+		_filter_dropdown.size.x = filter_w
 	else:
-		_filter_dropdown.size = Vector2(size.x * 0.38, 30)
+		_filter_dropdown.size = Vector2(filter_w, 30)
 
-	# Table
+	# Table (hidden in applications mode)
 	_table.position = Vector2(0, m + 42)
 	_table.size = Vector2(size.x, size.y - 98)
 
@@ -249,19 +370,120 @@ func _process(_delta: float) -> void:
 
 func _draw() -> void:
 	var m: float = 12.0
+	var font: Font = UITheme.get_font()
 
 	# Search bar area background
 	draw_rect(Rect2(0, 0, size.x, m + 38), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.02))
 	draw_line(Vector2(0, m + 38), Vector2(size.x, m + 38), UITheme.BORDER, 1.0)
 
-	# Bottom action bar background
-	if _btn_promote.visible or _btn_demote.visible or _btn_kick.visible:
-		var bar_y: float = size.y - 44
-		draw_line(Vector2(0, bar_y), Vector2(size.x, bar_y), UITheme.BORDER, 1.0)
-		draw_rect(Rect2(0, bar_y, size.x, size.y - bar_y), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.02))
+	# Applications badge in the search bar area (right side)
+	if _applications.size() > 0 and _cm and _cm.player_has_permission(CorporationRank.PERM_INVITE):
+		var badge_x: float = size.x - 200
+		var badge_y: float = m + 4
+		var badge_text: String = "CANDIDATURES (%d)" % _applications.size() if not _show_applications else "MEMBRES"
+		var badge_col: Color = UITheme.WARNING if not _show_applications else UITheme.PRIMARY
+		var badge_rect := Rect2(badge_x, badge_y, 190, 24)
+		draw_rect(badge_rect, Color(badge_col.r, badge_col.g, badge_col.b, 0.15))
+		draw_rect(badge_rect, badge_col, false, 1.0)
+		draw_string(font, Vector2(badge_x + 6, badge_y + 17), badge_text, HORIZONTAL_ALIGNMENT_CENTER, 178, UITheme.FONT_SIZE_SMALL, badge_col)
 
-		# Selected member info
-		if _selected_member:
-			var font: Font = UITheme.get_font()
-			var info_str ="Selectionne: %s" % _selected_member.display_name
-			draw_string(font, Vector2(size.x - 260, size.y - 16), info_str, HORIZONTAL_ALIGNMENT_RIGHT, 250, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+	# Draw applications panel if showing
+	if _show_applications and _applications.size() > 0:
+		_draw_applications_panel(m, font)
+	else:
+		# Bottom action bar background (members mode)
+		if _btn_promote.visible or _btn_demote.visible or _btn_kick.visible:
+			var bar_y: float = size.y - 44
+			draw_line(Vector2(0, bar_y), Vector2(size.x, bar_y), UITheme.BORDER, 1.0)
+			draw_rect(Rect2(0, bar_y, size.x, size.y - bar_y), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.02))
+
+			if _selected_member:
+				var info_str: String = "Selectionne: %s" % _selected_member.display_name
+				draw_string(font, Vector2(size.x - 260, size.y - 16), info_str, HORIZONTAL_ALIGNMENT_RIGHT, 250, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+
+
+func _draw_applications_panel(m: float, font: Font) -> void:
+	var panel_y: float = m + 42
+	var panel_h: float = size.y - panel_y - 10
+	var row_h: float = 60.0
+
+	# Panel background
+	draw_rect(Rect2(0, panel_y, size.x, panel_h), Color(0, 0, 0, 0.2))
+
+	# Header
+	draw_rect(Rect2(m, panel_y, size.x - m * 2, 28), Color(UITheme.WARNING.r, UITheme.WARNING.g, UITheme.WARNING.b, 0.1))
+	draw_string(font, Vector2(m + 8, panel_y + 19), "CANDIDATURES EN ATTENTE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_BODY, UITheme.WARNING)
+
+	# Table headers
+	var hdr_y: float = panel_y + 30
+	var col_name_x: float = m + 8
+	var col_note_x: float = m + 180
+	var col_date_x: float = size.x - 260
+	var col_actions_x: float = size.x - 140
+	draw_string(font, Vector2(col_name_x, hdr_y + 14), "JOUEUR", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_note_x, hdr_y + 14), "NOTE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_date_x, hdr_y + 14), "DATE", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_string(font, Vector2(col_actions_x, hdr_y + 14), "ACTIONS", HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+	draw_line(Vector2(m, hdr_y + 20), Vector2(size.x - m, hdr_y + 20), UITheme.BORDER, 1.0)
+
+	# Rows
+	var start_y: float = hdr_y + 22
+	var visible_count: int = int((panel_h - 60) / row_h)
+	for i in mini(_applications.size(), visible_count):
+		var idx: int = i + _app_scroll_offset
+		if idx >= _applications.size():
+			break
+		var app: Dictionary = _applications[idx]
+		var ry: float = start_y + i * row_h
+
+		# Row hover highlight
+		if idx == _app_hovered_row:
+			draw_rect(Rect2(m, ry, size.x - m * 2, row_h), Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.06))
+
+		# Separator
+		if i > 0:
+			draw_line(Vector2(m, ry), Vector2(size.x - m, ry), Color(UITheme.BORDER.r, UITheme.BORDER.g, UITheme.BORDER.b, 0.3), 1.0)
+
+		# Player name
+		var pname: String = str(app.get("player_name", "???"))
+		draw_string(font, Vector2(col_name_x, ry + 20), pname, HORIZONTAL_ALIGNMENT_LEFT, 160, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+
+		# Note (truncated)
+		var note: String = str(app.get("note", ""))
+		if note.length() > 60:
+			note = note.substr(0, 57) + "..."
+		if note == "":
+			note = "(aucune note)"
+		var note_col: Color = UITheme.TEXT_DIM if app.get("note", "") == "" else UITheme.TEXT
+		draw_string(font, Vector2(col_note_x, ry + 20), note, HORIZONTAL_ALIGNMENT_LEFT, col_date_x - col_note_x - 10, UITheme.FONT_SIZE_SMALL, note_col)
+
+		# Date
+		var date_str: String = _format_app_date(app)
+		draw_string(font, Vector2(col_date_x, ry + 20), date_str, HORIZONTAL_ALIGNMENT_LEFT, 110, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+
+		# Accept button
+		var accept_rect := Rect2(col_actions_x, ry + 5, 50, 22)
+		draw_rect(accept_rect, Color(UITheme.ACCENT.r, UITheme.ACCENT.g, UITheme.ACCENT.b, 0.2))
+		draw_rect(accept_rect, UITheme.ACCENT, false, 1.0)
+		draw_string(font, Vector2(col_actions_x + 4, ry + 21), "OUI", HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+
+		# Reject button
+		var reject_rect := Rect2(col_actions_x + 58, ry + 5, 50, 22)
+		draw_rect(reject_rect, Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.2))
+		draw_rect(reject_rect, UITheme.DANGER, false, 1.0)
+		draw_string(font, Vector2(col_actions_x + 62, ry + 21), "NON", HORIZONTAL_ALIGNMENT_CENTER, 42, UITheme.FONT_SIZE_SMALL, UITheme.DANGER)
+
+	if _applications.is_empty():
+		draw_string(font, Vector2(0, panel_y + panel_h * 0.4), "Aucune candidature en attente", HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_BODY, UITheme.TEXT_DIM)
+
+
+func _format_app_date(app: Dictionary) -> String:
+	var created: String = str(app.get("created_at", ""))
+	if created == "" or created == "null":
+		return "?"
+	# Parse ISO date roughly
+	if "T" in created:
+		var parts := created.split("T")
+		if parts.size() >= 2:
+			return parts[0]
+	return created.substr(0, 10)

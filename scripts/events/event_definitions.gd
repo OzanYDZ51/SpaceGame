@@ -73,16 +73,16 @@ static func get_event_duration(tier: int) -> float:
 	return 600.0
 
 
-## Spawn chance (0.0 to 1.0) when entering a system.
+## Spawn chance (0.0 to 1.0) when entering a system or on periodic check.
 static func get_spawn_chance(danger_level: int) -> float:
 	match danger_level:
-		0: return 0.0
-		1: return 0.08
-		2: return 0.15
-		3: return 0.25
-		4: return 0.35
-		5: return 0.45
-	return 0.0
+		0: return 0.15
+		1: return 0.25
+		2: return 0.35
+		3: return 0.50
+		4: return 0.65
+		5: return 0.80
+	return 0.15
 
 
 ## Credit reward for destroying the convoy leader.

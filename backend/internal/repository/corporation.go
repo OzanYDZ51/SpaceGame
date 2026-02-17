@@ -126,6 +126,14 @@ func (r *CorporationRepository) Update(ctx context.Context, id string, req *mode
 }
 
 func (r *CorporationRepository) Delete(ctx context.Context, id string) error {
+	// Explicitly clean up child tables before deleting (belt-and-suspenders with CASCADE)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_applications WHERE corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_diplomacy WHERE corporation_id = $1 OR target_corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_transactions WHERE corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_activity WHERE corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_ranks WHERE corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM corporation_members WHERE corporation_id = $1`, id)
+	_, _ = r.pool.Exec(ctx, `DELETE FROM discord_corporation_mapping WHERE corporation_id = $1`, id)
 	_, err := r.pool.Exec(ctx, `DELETE FROM corporations WHERE id = $1`, id)
 	return err
 }
@@ -384,4 +392,85 @@ func (r *CorporationRepository) SetDiplomacy(ctx context.Context, corporationID,
 		ON CONFLICT (corporation_id, target_corporation_id) DO UPDATE SET relation = EXCLUDED.relation, since = EXCLUDED.since
 	`, corporationID, targetCorporationID, relation, now)
 	return err
+}
+
+// --- Applications ---
+
+func (r *CorporationRepository) CreateApplication(ctx context.Context, corporationID, playerID, playerName, note string) (*model.CorporationApplication, error) {
+	app := &model.CorporationApplication{}
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO corporation_applications (corporation_id, player_id, player_name, note)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, corporation_id, player_id, player_name, note, status, created_at
+	`, corporationID, playerID, playerName, note).Scan(
+		&app.ID, &app.CorporationID, &app.PlayerID, &app.PlayerName, &app.Note, &app.Status, &app.CreatedAt,
+	)
+	return app, err
+}
+
+func (r *CorporationRepository) GetApplications(ctx context.Context, corporationID string) ([]*model.CorporationApplication, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, corporation_id, player_id, player_name, note, status, created_at
+		FROM corporation_applications
+		WHERE corporation_id = $1 AND status = 'pending'
+		ORDER BY created_at ASC
+	`, corporationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apps []*model.CorporationApplication
+	for rows.Next() {
+		a := &model.CorporationApplication{}
+		if err := rows.Scan(&a.ID, &a.CorporationID, &a.PlayerID, &a.PlayerName, &a.Note, &a.Status, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		apps = append(apps, a)
+	}
+	return apps, nil
+}
+
+func (r *CorporationRepository) GetApplication(ctx context.Context, applicationID int64) (*model.CorporationApplication, error) {
+	app := &model.CorporationApplication{}
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, corporation_id, player_id, player_name, note, status, created_at
+		FROM corporation_applications WHERE id = $1
+	`, applicationID).Scan(
+		&app.ID, &app.CorporationID, &app.PlayerID, &app.PlayerName, &app.Note, &app.Status, &app.CreatedAt,
+	)
+	return app, err
+}
+
+func (r *CorporationRepository) DeleteApplication(ctx context.Context, applicationID int64) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM corporation_applications WHERE id = $1`, applicationID)
+	return err
+}
+
+func (r *CorporationRepository) DeletePlayerApplications(ctx context.Context, playerID string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM corporation_applications WHERE player_id = $1`, playerID)
+	return err
+}
+
+func (r *CorporationRepository) GetPlayerApplications(ctx context.Context, playerID string) ([]*model.CorporationApplication, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id, a.corporation_id, a.player_id, a.player_name, a.note, a.status, a.created_at
+		FROM corporation_applications a
+		WHERE a.player_id = $1 AND a.status = 'pending'
+		ORDER BY a.created_at DESC
+	`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apps []*model.CorporationApplication
+	for rows.Next() {
+		a := &model.CorporationApplication{}
+		if err := rows.Scan(&a.ID, &a.CorporationID, &a.PlayerID, &a.PlayerName, &a.Note, &a.Status, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		apps = append(apps, a)
+	}
+	return apps, nil
 }

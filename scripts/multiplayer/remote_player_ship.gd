@@ -23,16 +23,19 @@ const MAX_SNAPSHOTS: int = 20
 # Visual
 var _ship_model = null
 var _name_label: Label3D = null
+var _health_system: HealthSystem = null
 
 
 func _ready() -> void:
 	_setup_model()
 	_setup_name_label()
 	_setup_collision()
-	# Add to ships group for radar/targeting
-	add_to_group("ships")
+	_setup_health_proxy()
 	# Set faction for HUD color coding (remote players = friendly)
 	set_meta("faction", &"player")
+	# NOTE: starts hidden + NOT in "ships" group. The first receive_state()
+	# with valid position makes us visible and adds us to the group.
+	# This prevents the puppet flashing at (0,0,0) before real data arrives.
 
 
 func _setup_model() -> void:
@@ -62,23 +65,43 @@ func _setup_name_label() -> void:
 	_name_label.outline_modulate = Color(0.0, 0.1, 0.2, 0.9)
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_name_label.no_depth_test = true
-	_name_label.position = Vector3(0, 15, 0)
+	var data_lbl = ShipRegistry.get_ship_data(ship_id)
+	var label_height: float = 15.0
+	if data_lbl:
+		label_height = data_lbl.collision_size.y * 0.5 + 8.0
+	_name_label.position = Vector3(0, label_height, 0)
 	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.9)
 	add_child(_name_label)
 
 
 func _setup_collision() -> void:
+	var data = ShipRegistry.get_ship_data(ship_id)
 	var body =StaticBody3D.new()
 	body.name = "HitBody"
-	body.collision_layer = Constants.LAYER_SHIPS
+	body.collision_layer = 0  # Starts disabled — enabled by receive_state() when visible
 	body.collision_mask = 0  # Doesn't detect anything, only gets hit
 	add_child(body)
 	var shape =CollisionShape3D.new()
 	shape.name = "HitShape"
-	var sphere =SphereShape3D.new()
-	sphere.radius = 8.0  # Generous hitbox for ship
-	shape.shape = sphere
+	var box := BoxShape3D.new()
+	box.size = data.collision_size if data else Vector3(28, 12, 36)
+	shape.shape = box
 	body.add_child(shape)
+
+
+func _setup_health_proxy() -> void:
+	# Lightweight HealthSystem child so the targeting HUD can read health/shield ratios.
+	# We use max=1.0 so current value IS the ratio directly.
+	# Shield regen is disabled — the real values come from the network.
+	_health_system = HealthSystem.new()
+	_health_system.name = "HealthSystem"
+	_health_system.hull_max = 1.0
+	_health_system.hull_current = 1.0
+	_health_system.shield_max_per_facing = 1.0
+	for i in 4:
+		_health_system.shield_current[i] = 1.0
+	add_child(_health_system)
+	_health_system.set_process(false)  # No local shield regen
 
 
 ## Rebuild ship model when the remote player changes ship.
@@ -138,6 +161,19 @@ func receive_state(state) -> void:
 	elif not state.is_dead and _was_dead:
 		_was_dead = false
 		_snapshots.clear()
+
+	# Update health proxy from network state (even when hidden, so targeting is correct on reveal)
+	if _health_system:
+		var new_hull: float = state.hull_ratio
+		if new_hull != _health_system.hull_current:
+			_health_system.hull_current = new_hull
+			_health_system.hull_changed.emit(new_hull, 1.0)
+		for i in 4:
+			if i < state.shield_ratios.size():
+				var new_shd: float = state.shield_ratios[i]
+				if new_shd != _health_system.shield_current[i]:
+					_health_system.shield_current[i] = new_shd
+					_health_system.shield_changed.emit(i, new_shd, 1.0)
 
 	if should_hide:
 		return  # Don't update interpolation while hidden
