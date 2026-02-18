@@ -239,6 +239,7 @@ func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, r
 			var mid: Vector3 = route_waypoints[0].lerp(route_waypoints[route_waypoints.size() - 1], 0.5) if route_waypoints.size() >= 2 else pos
 			lod_data.ai_patrol_center = mid
 			lod_data.ai_patrol_radius = mid.distance_to(route_waypoints[0]) + 5000.0 if route_waypoints.size() >= 2 else 15000.0
+			lod_data.is_event_npc = true
 			lod_mgr.register_ship(lod_data.id, lod_data)
 			_register_npc_on_server(lod_data.id, ship_id, faction)
 			return lod_data.id
@@ -253,6 +254,9 @@ func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, r
 			var npc_id := StringName(ship.name)
 			ship.tree_exiting.connect(_on_npc_removed.bind(npc_id))
 			_register_npc_on_server(npc_id, ship_id, faction, ship)
+			# Mark in LOD manager so combat bridge won't target this NPC
+			if lod_mgr and lod_mgr._ships.has(npc_id):
+				lod_mgr._ships[npc_id].is_event_npc = true
 			return npc_id
 	return &""
 
@@ -375,11 +379,12 @@ func _check_event_timeouts() -> void:
 		if evt.is_expired():
 			expired_ids.append(evt.event_id)
 			continue
-		# Safety net: check if leader NPC still exists (handles edge cases)
+		# Safety net: if leader NPC vanished without a kill signal, treat as expired
+		# (no rewards). This prevents free credits from edge-case removals.
 		if evt.leader_id != &"" and not _npc_exists(evt.leader_id):
 			evt.npc_ids.erase(evt.leader_id)
-			event_npc_killed.emit(evt.leader_id, evt)
-			completed_ids.append(evt.event_id)
+			print("[EventManager] WARNING: Safety net — leader %s vanished without kill signal, expiring event %s" % [evt.leader_id, evt.event_id])
+			expired_ids.append(evt.event_id)
 			continue
 		# Check for dead escorts too
 		var dead_ids: Array[StringName] = []
@@ -390,7 +395,8 @@ func _check_event_timeouts() -> void:
 			evt.npc_ids.erase(did)
 			event_npc_killed.emit(did, evt)
 		if evt.npc_ids.is_empty():
-			completed_ids.append(evt.event_id)
+			print("[EventManager] WARNING: Safety net — all NPCs vanished without kill signal, expiring event %s" % evt.event_id)
+			expired_ids.append(evt.event_id)
 
 	for eid in expired_ids:
 		_cleanup_event(eid, false)

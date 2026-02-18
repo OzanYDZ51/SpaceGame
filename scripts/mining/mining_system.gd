@@ -220,8 +220,12 @@ func _raycast_for_asteroid() -> AsteroidData:
 		return null
 
 	var space_state =world.direct_space_state
+	# Raycast must reach MINING_RANGE from the SHIP, not the camera.
+	# Add camera-to-ship distance so 3rd-person offset doesn't shorten effective range.
+	var cam_to_ship: float = ray_origin.distance_to(_ship.global_position)
+	var ray_length: float = cam_to_ship + Constants.MINING_RANGE
 	var query =PhysicsRayQueryParameters3D.create(
-		ray_origin, ray_origin + ray_dir * Constants.MINING_RANGE * 2.0
+		ray_origin, ray_origin + ray_dir * ray_length
 	)
 	query.collision_mask = Constants.LAYER_ASTEROIDS
 	query.exclude = [_ship.get_rid()]

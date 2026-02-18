@@ -46,15 +46,15 @@ func to_start_dict() -> Dictionary:
 
 
 ## Build an event-end RPC dict (static — doesn't require a live EventData).
-static func make_end_dict(event_id: String, event_type: String, tier: int, was_completed: bool, killer_pid: int, bonus: int, system_id: int) -> Dictionary:
+static func make_end_dict(eid: String, etype: String, t: int, was_completed: bool, killer_pid: int, bonus: int, sys: int) -> Dictionary:
 	return {
-		"eid": event_id,
-		"type": event_type,
-		"tier": tier,
+		"eid": eid,
+		"type": etype,
+		"tier": t,
 		"done": was_completed,
 		"killer": killer_pid,
 		"bonus": bonus,
-		"sys": system_id,
+		"sys": sys,
 	}
 
 

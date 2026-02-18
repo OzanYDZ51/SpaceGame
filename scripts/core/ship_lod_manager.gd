@@ -744,6 +744,8 @@ func _tick_combat_bridge() -> void:
 			var other = _ships.get(other_id)
 			if other == null or other.is_dead:
 				continue
+			if other.is_event_npc:
+				continue
 			if other.faction == data.faction:
 				continue
 			var d_sq =data.position.distance_squared_to(other.position)
