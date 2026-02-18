@@ -18,6 +18,9 @@ var _deferred_spawn_pending: bool = false
 var _deferred_danger_level: int = 0
 var _deferred_system_data = null
 
+# Override system_id for _register_npc_on_server (set by spawn_for_remote_system).
+var _override_system_id: int = -1
+
 
 func clear_all_npcs() -> void:
 	var lod_mgr =_get_lod_manager()
@@ -129,13 +132,17 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 			cfg_idx += 1
 
 
-func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Array, system_id: int) -> void:
+func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Array, system_id: int, station_factions: Array[StringName] = []) -> void:
 	var guard_ship: StringName = _get_guard_ship_id()
-	for st_idx in station_nodes.size():
-		var station_node = station_nodes[st_idx]
-		if station_node == null:
+	for st_idx in station_positions.size():
+		var station_node = station_nodes[st_idx] if st_idx < station_nodes.size() else null
+		var guard_faction: StringName
+		if station_node != null:
+			guard_faction = station_node.faction if "faction" in station_node else &"nova_terra"
+		elif st_idx < station_factions.size():
+			guard_faction = station_factions[st_idx]
+		else:
 			continue
-		var guard_faction: StringName = station_node.faction if "faction" in station_node else &"nova_terra"
 		var st_pos: Vector3 = station_positions[st_idx]
 		# Guards patrol close to the station (500m radius)
 		var guard_center: Vector3 = st_pos + Vector3(randf_range(-200, 200), 50, randf_range(-200, 200))
@@ -437,6 +444,87 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 	encounter_started.emit(_encounter_counter)
 
 
+## Spawn real NPC nodes for a remote system (server-side, called by NpcAuthority).
+## Creates full ShipController nodes with AI, physics, and combat — same as local spawns.
+func spawn_for_remote_system(system_id: int) -> void:
+	var sys_trans = GameManager._system_transition
+	if sys_trans == null:
+		return
+	var galaxy = sys_trans.galaxy
+	if galaxy == null:
+		return
+	var galaxy_sys: Dictionary = galaxy.get_system(system_id)
+	if galaxy_sys.is_empty():
+		return
+
+	var danger_level: int = galaxy_sys.get("danger_level", 0)
+
+	# Resolve system data (override > procedural)
+	var system_data: StarSystemData = SystemDataRegistry.get_override(system_id)
+	if system_data == null:
+		var connections: Array[Dictionary] = sys_trans._build_connection_list(system_id)
+		system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
+
+	# Compute station positions (pure math, no scene nodes needed)
+	var station_positions: Array[Vector3] = []
+	var station_factions: Array[StringName] = []
+	var galaxy_sys_fac: StringName = StringName(galaxy_sys.get("faction", "neutral"))
+	var default_faction: StringName = SystemTransition._map_system_faction(galaxy_sys_fac)
+
+	if system_data and system_data.stations.size() > 0:
+		for st in system_data.stations:
+			var orbit_r: float = st.orbital_radius
+			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
+			station_positions.append(Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r))
+			station_factions.append(default_faction)
+
+	# Compute gate positions
+	var gate_positions: Array[Vector3] = []
+	if system_data and system_data.jump_gates.size() > 0:
+		for gd_gate in system_data.jump_gates:
+			gate_positions.append(Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z))
+
+	var key_points: Array[Vector3] = []
+	key_points.append_array(station_positions)
+	key_points.append_array(gate_positions)
+
+	if station_positions.is_empty():
+		station_positions.append(Vector3(500, 0, -1500))
+		station_factions.append(default_faction)
+	if key_points.is_empty():
+		key_points.append(Vector3(500, 0, -1500))
+
+	# Set override so _register_npc_on_server uses the correct system_id
+	_override_system_id = system_id
+
+	# Spawn station guards (no scene nodes, use computed factions)
+	_spawn_station_guards(station_positions, [], system_id, station_factions)
+
+	# Spawn encounters based on danger level
+	var configs := EncounterConfig.get_danger_config(danger_level)
+	if danger_level == 5 and configs.size() >= 2:
+		var st_pos: Vector3 = station_positions[0]
+		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+		var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"], null)
+	else:
+		var cfg_idx: int = 0
+		for cfg in configs:
+			var st_idx: int = cfg_idx % station_positions.size()
+			var st_pos: Vector3 = station_positions[st_idx]
+			if cfg_idx % 2 == 0 and key_points.size() >= 2:
+				var route: Array[Vector3] = _build_system_route(st_pos, key_points)
+				spawn_route_patrol(cfg["count"], cfg["ship"], route, cfg["fac"], system_id, cfg_idx)
+			else:
+				var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+				var base_pos := st_pos + radial_dir * 3000.0 + Vector3(0, 100, 0)
+				spawn_patrol(cfg["count"], cfg["ship"], base_pos, maxf(cfg["radius"], 2000.0), cfg["fac"], system_id, cfg_idx, null)
+			cfg_idx += 1
+
+	_override_system_id = -1
+	print("EncounterManager: Spawned real NPCs for remote system %d (danger %d)" % [system_id, danger_level])
+
+
 func get_active_npc_count() -> int:
 	return _active_npc_ids.size()
 
@@ -471,8 +559,12 @@ func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringNam
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 	if npc_auth == null:
 		return
-	var sys_trans = GameManager._system_transition
-	var system_id: int = sys_trans.current_system_id if sys_trans else 0
+	var system_id: int
+	if _override_system_id >= 0:
+		system_id = _override_system_id
+	else:
+		var sys_trans = GameManager._system_transition
+		system_id = sys_trans.current_system_id if sys_trans else 0
 	npc_auth.register_npc(npc_id, system_id, sid, fac)
 	npc_auth.notify_spawn_to_peers(npc_id, system_id)
 	# Connect weapon fire relay for remote clients to see NPC shots

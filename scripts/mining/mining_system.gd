@@ -11,6 +11,7 @@ signal mining_started(asteroid)
 signal mining_progress(resource_name: String, quantity: int)
 signal mining_stopped
 signal heat_changed(heat_ratio: float, is_overheated: bool)
+signal cargo_full
 
 var _asteroid_mgr = null
 var _ship: RigidBody3D = null
@@ -310,12 +311,26 @@ func _do_mining_tick() -> void:
 
 	# Only give resources if the asteroid has them
 	if not is_barren and not yield_data.is_empty() and yield_data.get("quantity", 0) > 0:
+		# Check cargo space before adding
+		if GameManager.player_data and GameManager.player_data.fleet:
+			var active_ship = GameManager.player_data.fleet.get_active()
+			if active_ship and active_ship.is_cargo_full():
+				cargo_full.emit()
+				_stop_extraction()
+				return
+
 		var resource_id: StringName = yield_data["resource_id"]
 		var qty: int = yield_data["quantity"]
 		var mining_res =MiningRegistry.get_resource(resource_id)
 		if mining_res and GameManager.player_data:
-			GameManager.player_data.add_active_ship_resource(resource_id, qty)
-			mining_progress.emit(mining_res.display_name, qty)
+			var added: int = GameManager.player_data.add_active_ship_resource(resource_id, qty)
+			if added > 0:
+				mining_progress.emit(mining_res.display_name, added)
+			if added < qty:
+				# Cargo became full during this tick
+				cargo_full.emit()
+				_stop_extraction()
+				return
 
 	if not is_barren and mining_target and is_instance_valid(mining_target.node_ref):
 		mining_target.node_ref._update_label_text()

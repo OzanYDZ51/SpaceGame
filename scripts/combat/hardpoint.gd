@@ -288,6 +288,10 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 	bolt.velocity = fire_dir * mounted_weapon.projectile_speed + ship_velocity
 	bolt.global_transform = Transform3D(Basis.looking_at(fire_dir, up_hint), spawn_pos)
 
+	# Apply weapon-specific bolt color
+	if bolt.has_method("apply_visual_config"):
+		bolt.apply_visual_config(mounted_weapon.bolt_color)
+
 	# For missiles, set tracking target and reset arm timer (needed for pool reuse)
 	if bolt is MissileProjectile and mounted_weapon.weapon_type in [WeaponResource.WeaponType.MISSILE, WeaponResource.WeaponType.TURRET]:
 		bolt._arm_timer = 0.3

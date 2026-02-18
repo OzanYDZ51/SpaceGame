@@ -758,6 +758,8 @@
 	"hud.mining_overheat": "ASIRI ISINMA",
 	"hud.mining_heat": "ISI",
 	"hud.mining_extraction": "CIKARIM: %s",
+	"hud.mining_cargo_full": "KARGO DOLU",
+	"hud.mining_cargo": "KARGO",
 	"hud.zone_approach": "YAKLAŞMA",
 	"hud.zone_exterior": "DIS BOLGE",
 	"hud.zone_atmosphere": "ATMOSFER",

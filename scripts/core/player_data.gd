@@ -41,15 +41,15 @@ func initialize(galaxy) -> void:
 	# Fleet (starts with one ship — cargo lives on the ship)
 	fleet = PlayerFleet.new()
 	var starting_ship =FleetShip.from_ship_data(ShipRegistry.get_ship_data(Constants.DEFAULT_SHIP_ID))
-	# Starting resources on the ship (x10 for testing)
-	starting_ship.add_resource(&"ice", 500)
-	starting_ship.add_resource(&"iron", 1000)
-	starting_ship.add_resource(&"copper", 1000)
-	starting_ship.add_resource(&"titanium", 1000)
-	starting_ship.add_resource(&"gold", 500)
-	starting_ship.add_resource(&"crystal", 500)
-	starting_ship.add_resource(&"uranium", 500)
-	starting_ship.add_resource(&"platinum", 500)
+	# Starting resources on the ship (testing — set directly, bypassing cargo clamp)
+	starting_ship.ship_resources[&"ice"] = 500
+	starting_ship.ship_resources[&"iron"] = 1000
+	starting_ship.ship_resources[&"copper"] = 1000
+	starting_ship.ship_resources[&"titanium"] = 1000
+	starting_ship.ship_resources[&"gold"] = 500
+	starting_ship.ship_resources[&"crystal"] = 500
+	starting_ship.ship_resources[&"uranium"] = 500
+	starting_ship.ship_resources[&"platinum"] = 500
 	fleet.add_ship(starting_ship)
 	fleet.active_ship_changed.connect(_on_active_ship_changed)
 
@@ -69,18 +69,20 @@ func initialize(galaxy) -> void:
 # Per-ship resource helpers (operate on active fleet ship)
 # =========================================================================
 
-func add_active_ship_resource(resource_id: StringName, amount: int) -> void:
+## Adds resource to active ship (clamped to cargo space). Returns quantity actually added.
+func add_active_ship_resource(resource_id: StringName, amount: int) -> int:
 	if fleet:
 		var active = fleet.get_active()
 		if active:
-			active.add_resource(resource_id, amount)
+			var added: int = active.add_resource(resource_id, amount)
 			# Mirror to economy for HUD display
-			if economy:
-				economy.add_resource(resource_id, amount)
-			return
+			if economy and added > 0:
+				economy.add_resource(resource_id, added)
+			return added
 	# Fallback: economy only
 	if economy:
 		economy.add_resource(resource_id, amount)
+	return amount
 
 
 func spend_active_ship_resource(resource_id: StringName, amount: int) -> bool:
@@ -402,7 +404,10 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 						var res_id =StringName(str(res.get("resource_id", "")))
 						var qty: int = int(res.get("quantity", 0))
 						if res_id != &"" and qty > 0:
-							active_fs.add_resource(res_id, qty)
+							# Migration: set directly, bypassing cargo clamp
+							if res_id not in active_fs.ship_resources:
+								active_fs.ship_resources[res_id] = 0
+							active_fs.ship_resources[res_id] += qty
 
 	GameManager._crash_log("apply_save_state: migration done")
 	# Sync economy mirror from active ship resources

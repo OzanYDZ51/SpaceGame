@@ -180,7 +180,7 @@ func set_system_transition(st) -> void:
 
 
 func set_mining_system(ms) -> void:
-	_mining.mining_system = ms
+	_mining.connect_mining_system(ms)
 	_prompts.mining_system = ms
 
 

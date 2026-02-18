@@ -85,10 +85,37 @@ func _init_cargo(cap: int) -> void:
 		ship_resources[res_id] = 0
 
 
-func add_resource(resource_id: StringName, amount: int) -> void:
+func get_cargo_capacity() -> int:
+	var data = ShipRegistry.get_ship_data(ship_id)
+	return data.cargo_capacity if data else 50
+
+
+func get_total_stored() -> int:
+	var total: int = 0
+	for res_id in ship_resources:
+		total += ship_resources[res_id]
+	if cargo:
+		total += cargo.get_total_count()
+	return total
+
+
+func get_remaining_cargo_space() -> int:
+	return maxi(get_cargo_capacity() - get_total_stored(), 0)
+
+
+func is_cargo_full() -> bool:
+	return get_remaining_cargo_space() <= 0
+
+
+## Adds resource clamped to remaining cargo space. Returns quantity actually added.
+func add_resource(resource_id: StringName, amount: int) -> int:
 	if resource_id not in ship_resources:
 		ship_resources[resource_id] = 0
-	ship_resources[resource_id] += amount
+	var space: int = get_remaining_cargo_space()
+	var actual: int = mini(amount, space)
+	if actual > 0:
+		ship_resources[resource_id] += actual
+	return actual
 
 
 func spend_resource(resource_id: StringName, amount: int) -> bool:

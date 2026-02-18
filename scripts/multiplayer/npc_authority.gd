@@ -10,6 +10,8 @@ extends Node
 # - Broadcasts NPC deaths + loot
 # =============================================================================
 
+signal npc_killed(npc_id: StringName, killer_pid: int)
+
 const BATCH_INTERVAL: float = 0.05  # 20Hz NPC state sync (matches NET_TICK_RATE)
 const SLOW_SYNC_INTERVAL: float = 0.5  # 2Hz for distant NPCs
 const FULL_SYNC_DISTANCE: float = 5000.0  # <5km = full sync
@@ -42,9 +44,6 @@ var _npcs: Dictionary = {}
 # system_id -> Array[StringName] npc_ids
 var _npcs_by_system: Dictionary = {}
 
-# Remote system NPCs: NPCs in systems the server isn't physically in.
-# system_id -> Array of npc state dicts (positions stored as system-local coords).
-var _remote_npcs: Dictionary = {}
 # Peer system tracking: peer_id -> last known system_id (detect system changes).
 var _peer_systems: Dictionary = {}
 
@@ -52,7 +51,6 @@ var _peer_systems: Dictionary = {}
 var _destroyed_encounter_npcs: Dictionary = {}
 const ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 minutes
 var _respawn_cleanup_timer: float = 60.0
-var _dead_remote_cleanup_timer: float = 10.0
 
 # Fleet NPC tracking: npc_id -> { owner_uuid, owner_pid, fleet_index }
 var _fleet_npcs: Dictionary = {}
@@ -144,9 +142,6 @@ func _physics_process(delta: float) -> void:
 	_slow_batch_timer -= delta
 	_fleet_sync_timer -= delta
 
-	# Update remote system NPC positions (simple velocity drift)
-	_update_remote_npcs(delta)
-
 	var do_full =_batch_timer <= 0.0
 	var do_slow =_slow_batch_timer <= 0.0
 
@@ -158,7 +153,6 @@ func _physics_process(delta: float) -> void:
 
 	if do_full or do_slow:
 		_broadcast_npc_states(do_full, do_slow)
-		_broadcast_remote_npc_states(do_slow)
 
 	# Asteroid health batch broadcast (2Hz)
 	_asteroid_health_timer -= delta
@@ -220,7 +214,6 @@ func clear_system_npcs(system_id: int) -> void:
 		for npc_id in ids:
 			_npcs.erase(npc_id)
 		_npcs_by_system.erase(system_id)
-	_remote_npcs.erase(system_id)
 	clear_system_asteroid_health(system_id)
 
 
@@ -324,11 +317,6 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 				spawn_dict["shd"] = lod_data.shield_ratio
 
 			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
-
-	# Send remote system NPCs (data-only, not in LOD manager)
-	if _remote_npcs.has(system_id):
-		for npc_data in _remote_npcs[system_id]:
-			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, npc_data)
 
 
 # =========================================================================
@@ -448,11 +436,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
 
-	# If NPC is not in the LOD manager, it's a remote system NPC
-	if lod_data == null:
-		validate_remote_npc_hit(sender_pid, target_npc, claimed_damage, hit_dir)
-		return
-	if lod_data.is_dead:
+	if lod_data == null or lod_data.is_dead:
 		return
 
 	# 2. Distance check: peer must be within range
@@ -531,11 +515,6 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			death_pos = FloatingOrigin.to_universe_pos(lod_data.position)
-	if death_pos == [0.0, 0.0, 0.0] and _remote_npcs.has(system_id):
-		for rnpc in _remote_npcs[system_id]:
-			if rnpc.get("nid", "") == String(npc_id):
-				death_pos = [rnpc.get("px", 0.0), rnpc.get("py", 0.0), rnpc.get("pz", 0.0)]
-				break
 
 	# Roll loot from ship class
 	var ship_data =ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
@@ -553,6 +532,9 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 
 	# Broadcast death to all peers in the system
 	broadcast_npc_death(npc_id, killer_pid, death_pos, loot, system_id)
+
+	# Notify local systems (EventManager etc.) before unregistering
+	npc_killed.emit(npc_id, killer_pid)
 
 	# Unregister from NPC authority
 	unregister_npc(npc_id)
@@ -1087,245 +1069,22 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 
 
 # =========================================================================
-# REMOTE SYSTEM NPC MANAGEMENT
-# Server spawns data-only NPCs for systems it's not physically in,
-# so clients in those systems still see NPCs.
+# REMOTE SYSTEM NPC SPAWNING
+# When a peer enters a system the server isn't in, spawn real NPC nodes
+# via EncounterManager so they get full AI, physics, and combat.
 # =========================================================================
 
-## Ensure NPCs exist for a system. Spawns them server-side if needed.
+## Ensure NPCs exist for a system. Spawns real nodes via EncounterManager if needed.
 func ensure_system_npcs(system_id: int) -> void:
 	if not _active:
 		return
-	# Already has local NPCs (server is in this system)
+	# Already has NPCs for this system
 	if _npcs_by_system.has(system_id) and not _npcs_by_system[system_id].is_empty():
 		return
-	# Already has remote NPCs
-	if _remote_npcs.has(system_id):
-		return
-	_spawn_remote_system_npcs(system_id)
-
-
-func _spawn_remote_system_npcs(system_id: int) -> void:
-	var sys_trans = GameManager._system_transition
-	if sys_trans == null:
-		return
-	var galaxy = sys_trans.galaxy
-	if galaxy == null:
-		return
-	var galaxy_sys: Dictionary = galaxy.get_system(system_id)
-	if galaxy_sys.is_empty():
-		return
-
-	var danger_level: int = galaxy_sys.get("danger_level", 0)
-
-	# Resolve system data (override > procedural)
-	var system_data: StarSystemData = SystemDataRegistry.get_override(system_id)
-	if system_data == null:
-		var connections = sys_trans._build_connection_list(system_id)
-		system_data = SystemGenerator.generate(galaxy_sys["seed"], connections)
-
-	# Base position near first station
-	var base_pos =Vector3(500, 0, -1500)
-	if system_data.stations.size() > 0:
-		var st: StationData = system_data.stations[0]
-		var st_angle =EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-		var station_pos =Vector3(
-			cos(st_angle) * st.orbital_radius, 0.0,
-			sin(st_angle) * st.orbital_radius)
-		var radial_dir =station_pos.normalized() if station_pos.length_squared() > 1.0 else Vector3.FORWARD
-		base_pos = station_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
-
-	# Spawn config from danger level (shared with EncounterManager)
-	var configs =EncounterConfig.get_danger_config(danger_level)
-
-	var npcs: Array = []
-	var cfg_idx: int = 0
-	var now: float = Time.get_unix_time_from_system()
-	for config in configs:
-		var count: int = config["count"]
-		var ship_id: StringName = config["ship"]
-		var faction: StringName = config["fac"]
-		var radius: float = config["radius"]
-		for i in count:
-			# Deterministic encounter key for respawn tracking
-			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
-
-			# Skip NPCs still on respawn cooldown
-			if _destroyed_encounter_npcs.has(encounter_key):
-				if now < _destroyed_encounter_npcs[encounter_key]:
-					continue
-				else:
-					_destroyed_encounter_npcs.erase(encounter_key)
-
-			var angle: float = (float(i) / float(count)) * TAU
-			var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
-			var pos =base_pos + offset
-			var vel =Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
-			var npc_id =StringName("NPC_%s_%d" % [ship_id, randi() % 100000])
-
-			npcs.append({
-				"nid": String(npc_id),
-				"sid": String(ship_id),
-				"fac": String(faction),
-				"px": pos.x, "py": pos.y, "pz": pos.z,
-				"vx": vel.x, "vy": vel.y, "vz": vel.z,
-				"rx": 0.0, "ry": randf() * 360.0, "rz": 0.0,
-				"hull": 1.0, "shd": 1.0,
-				"thr": 0.5, "ai": RemoteNpcAI.State.PATROL, "tid": "",
-				"t": Time.get_ticks_msec() / 1000.0,
-			})
-			register_npc(npc_id, system_id, ship_id, faction)
-			# Store encounter key on the NPC registration for death tracking
-			_npcs[npc_id]["encounter_key"] = encounter_key
-		cfg_idx += 1
-
-	_remote_npcs[system_id] = npcs
-	print("NpcAuthority: Spawned %d remote NPCs for system %d" % [npcs.size(), system_id])
-
-
-## AI-driven update for remote system NPCs.
-## NPCs in systems with players get full AI; empty systems get simple drift.
-func _update_remote_npcs(delta: float) -> void:
-	# Build peers-by-system lookup once
-	var peers_by_sys: Dictionary = {}
-	for pid in NetworkManager.peers:
-		var pstate = NetworkManager.peers[pid]
-		if pstate.is_dead:
-			continue
-		if not peers_by_sys.has(pstate.system_id):
-			peers_by_sys[pstate.system_id] = {}
-		peers_by_sys[pstate.system_id][pid] = pstate
-
-	for system_id in _remote_npcs:
-		var npcs: Array = _remote_npcs[system_id]
-		var peers = peers_by_sys.get(system_id, {})
-
-		if peers.is_empty():
-			# No players — simple drift only
-			for npc in npcs:
-				if npc.get("is_dead", false):
-					continue
-				npc["px"] += npc.get("vx", 0.0) * delta
-				npc["py"] += npc.get("vy", 0.0) * delta
-				npc["pz"] += npc.get("vz", 0.0) * delta
-				npc["t"] = Time.get_ticks_msec() / 1000.0
-		else:
-			# Players present — full AI simulation
-			for npc in npcs:
-				if npc.get("is_dead", false):
-					continue
-				RemoteNpcAI.tick(npc, peers, npcs, delta)
-				# Handle fire events
-				var fire = npc.get("_pending_fire")
-				if fire:
-					_relay_remote_npc_fire(fire, system_id, peers)
-					npc.erase("_pending_fire")
-
-	# Periodic cleanup of dead remote NPCs to prevent memory leak
-	_dead_remote_cleanup_timer -= delta
-	if _dead_remote_cleanup_timer <= 0.0:
-		_dead_remote_cleanup_timer = 10.0
-		for sys_id in _remote_npcs:
-			_remote_npcs[sys_id] = _remote_npcs[sys_id].filter(
-				func(n): return not n.get("is_dead", false))
-
-
-## Relay a remote NPC fire event: send visual fire to peers + apply damage to target.
-func _relay_remote_npc_fire(fire: Dictionary, system_id: int, peers: Dictionary) -> void:
-	var npc_id: String = fire.get("npc_id", "")
-	var target_pid: int = fire.get("target_pid", -1)
-	var fire_pos: Array = fire.get("pos", [0.0, 0.0, 0.0])
-	var fire_dir: Array = fire.get("dir", [0.0, 0.0, -1.0])
-	var damage: float = fire.get("damage", 10.0)
-	var dist: float = fire.get("dist", 999.0)
-
-	# Cap damage based on ship's lod_combat_dps and resolve weapon name
-	var npc_ship_id: String = ""
-	for rnpc in _remote_npcs.get(system_id, []):
-		if rnpc.get("nid", "") == npc_id:
-			npc_ship_id = rnpc.get("sid", "")
-			break
-	var weapon_id: String = ""
-	if npc_ship_id != "":
-		var sd = ShipRegistry.get_ship_data(StringName(npc_ship_id))
-		if sd:
-			damage = minf(damage, sd.lod_combat_dps)
-			if sd.default_loadout.size() > 0:
-				weapon_id = sd.default_loadout[0]
-	if weapon_id == "":
-		weapon_id = "Laser Mk1 S"
-
-	# Send fire visual to all peers in this system
-	for pid in peers:
-		NetworkManager._rpc_npc_fire.rpc_id(pid, npc_id, weapon_id, fire_pos, fire_dir)
-
-	# Apply damage to target player (server-authoritative)
-	if target_pid < 0 or not NetworkManager.peers.has(target_pid):
-		return
-	var target_state = NetworkManager.peers[target_pid]
-	if target_state.is_docked or target_state.is_dead:
-		return
-
-	# Hit probability based on distance (100% at close range, 30% at max engagement)
-	var hit_chance: float = clampf(1.0 - (dist / RemoteNpcAI.ENGAGEMENT_RANGE) * 0.7, 0.3, 1.0)
-	if randf() > hit_chance:
-		return
-
-	# Calculate hit direction relative to target
-	var hit_dir: Array = [-fire_dir[0], -fire_dir[1], -fire_dir[2]]
-
-	# Send damage to target
-	NetworkManager._rpc_receive_player_damage.rpc_id(target_pid, -1, weapon_id, damage, hit_dir)
-
-	# Send hit effect to other peers
-	var target_label: String = "player_%d" % target_pid
-	for pid in peers:
-		if pid == target_pid:
-			continue
-		NetworkManager._rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
-
-
-## Handle remote NPC getting hit by a player (validates and applies damage to dict).
-func validate_remote_npc_hit(sender_pid: int, target_npc_id: String, damage: float, hit_dir: Array) -> void:
-	# Find the NPC in remote systems
-	var npc_id := StringName(target_npc_id)
-	if not _npcs.has(npc_id):
-		return
-	var info: Dictionary = _npcs[npc_id]
-	var system_id: int = info.get("system_id", -1)
-	if not _remote_npcs.has(system_id):
-		return
-
-	var npcs: Array = _remote_npcs[system_id]
-	for npc in npcs:
-		if npc.get("nid", "") != target_npc_id:
-			continue
-		if npc.get("is_dead", false):
-			return
-
-		# Apply damage using effective HP (same as equipped ship, best gear)
-		var shield_absorbed: bool = npc.get("shd", 0.0) > 0.0
-		var rnpc_ship_id: StringName = StringName(npc.get("sid", ""))
-		var eff_hp: Dictionary = _get_effective_hp(rnpc_ship_id)
-		if npc.get("shd", 0.0) > 0.0:
-			var s_ratio: float = damage / eff_hp["shield_total"]
-			npc["shd"] = maxf(npc.get("shd", 1.0) - s_ratio, 0.0)
-		else:
-			var h_ratio: float = damage / eff_hp["hull_total"]
-			npc["hull"] = maxf(npc.get("hull", 1.0) - h_ratio, 0.0)
-
-		if npc.get("hull", 0.0) <= 0.0:
-			npc["is_dead"] = true
-			_on_npc_killed(npc_id, sender_pid)
-
-		# Broadcast hit effect
-		broadcast_hit_effect(target_npc_id, sender_pid, hit_dir, shield_absorbed, system_id)
-
-		# Trigger evasion on hit
-		if npc.get("ai", 0) == RemoteNpcAI.State.ATTACK and randf() < 0.3:
-			npc["ai"] = RemoteNpcAI.State.EVADE
-			npc["_evade_timer"] = RemoteNpcAI.EVADE_DURATION
-		return
+	# Spawn real NPC nodes via EncounterManager
+	var encounter_mgr = GameManager.get_node_or_null("EncounterManager")
+	if encounter_mgr:
+		encounter_mgr.spawn_for_remote_system(system_id)
 
 
 ## Remove expired entries from the encounter respawn tracker.
@@ -1337,35 +1096,6 @@ func _cleanup_expired_respawns() -> void:
 			expired.append(key)
 	for key in expired:
 		_destroyed_encounter_npcs.erase(key)
-
-
-## Broadcast state of NPCs in remote systems (not managed by LOD manager).
-func _broadcast_remote_npc_states(slow_sync: bool) -> void:
-	if not slow_sync:
-		return  # Remote NPCs only need slow sync (2Hz)
-
-	var peers_by_sys: Dictionary = {}
-	for pid in NetworkManager.peers:
-		var pstate = NetworkManager.peers[pid]
-		if not peers_by_sys.has(pstate.system_id):
-			peers_by_sys[pstate.system_id] = []
-		peers_by_sys[pstate.system_id].append(pid)
-
-	for system_id in _remote_npcs:
-		if not peers_by_sys.has(system_id):
-			continue
-		var peer_ids: Array = peers_by_sys[system_id]
-		var npcs: Array = _remote_npcs[system_id]
-		if npcs.is_empty():
-			continue
-
-		# Filter out dead NPCs from broadcast
-		var alive_npcs: Array = npcs.filter(func(n): return not n.get("is_dead", false))
-		if alive_npcs.is_empty():
-			continue
-
-		for pid in peer_ids:
-			NetworkManager._rpc_npc_batch.rpc_id(pid, alive_npcs)
 
 
 ## Detect when peers change systems and spawn NPCs for the new system.
@@ -1650,6 +1380,14 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		_process_pending_reconnects()
 		return
 
+	var universe: Node3D = GameManager.universe_node
+	if universe == null:
+		push_warning("NpcAuthority: No Universe node — cannot restore fleet ships")
+		_fleet_backend_loaded = true
+		_process_pending_reconnects()
+		return
+
+	var restored: int = 0
 	print("NpcAuthority: Restoring %d deployed fleet ships from backend..." % ships.size())
 	for ship_data in ships:
 		var player_id: String = ship_data.get("player_id", "")
@@ -1664,32 +1402,47 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		var command: String = ship_data.get("command", "")
 		var faction: StringName = &"player_fleet"
 
-		# Register as data-only NPC (will get a real node when a player enters the system)
-		var npc_id =StringName("FleetNPC_%s_%d" % [player_id.left(8), fleet_index])
+		# Spawn real ShipController node
+		var spawn_pos := Vector3(pos_x, pos_y, pos_z)
+		var npc = ShipFactory.spawn_npc_ship(StringName(ship_id), &"balanced", spawn_pos, universe, faction)
+		if npc == null:
+			push_error("NpcAuthority: Fleet ship restore FAILED for %s" % ship_id)
+			continue
 
-		# Register in NPC authority
+		var npc_id := StringName(npc.name)
+
+		# Register with NPC authority
 		register_npc(npc_id, system_id, StringName(ship_id), faction)
+
+		# Fleet tracking
 		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index, "command": command }
 		if not _fleet_npcs_by_owner.has(player_id):
 			_fleet_npcs_by_owner[player_id] = []
 		_fleet_npcs_by_owner[player_id].append(npc_id)
 
-		# Store as remote NPC data for state broadcasting
-		if not _remote_npcs.has(system_id):
-			_remote_npcs[system_id] = []
-		_remote_npcs[system_id].append({
-			"nid": String(npc_id),
-			"sid": ship_id,
-			"fac": String(faction),
-			"px": pos_x, "py": pos_y, "pz": pos_z,
-			"vx": 0.0, "vy": 0.0, "vz": 0.0,
-			"rx": 0.0, "ry": 0.0, "rz": 0.0,
-			"hull": hull, "shd": shield,
-			"thr": 0.5, "ai": RemoteNpcAI.State.PATROL, "tid": "",
-			"t": Time.get_ticks_msec() / 1000.0,
-		})
+		# Set health ratios on LOD data
+		var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+		if lod_mgr:
+			var lod_data = lod_mgr.get_ship_data(npc_id)
+			if lod_data:
+				lod_data.hull_ratio = hull
+				lod_data.shield_ratio = shield
+				lod_data.fleet_index = fleet_index
 
-	print("NpcAuthority: Restored %d fleet NPCs from backend" % ships.size())
+		# Connect fire relay for remote clients
+		connect_npc_fire_relay(npc_id, npc)
+
+		# Attach FleetAIBridge if command is set
+		if command != "":
+			var bridge = FleetAIBridge.new()
+			bridge.name = "FleetAIBridge"
+			bridge.fleet_index = fleet_index
+			bridge.command = StringName(command)
+			npc.add_child(bridge)
+
+		restored += 1
+
+	print("NpcAuthority: Restored %d fleet NPCs as real nodes from backend" % restored)
 	_fleet_backend_loaded = true
 	_process_pending_reconnects()
 

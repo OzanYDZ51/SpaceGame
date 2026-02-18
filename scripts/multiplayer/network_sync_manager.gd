@@ -83,8 +83,8 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
 
-	# Auto-connect
-	var args =OS.get_cmdline_args()
+	# Parse CLI args
+	var args = OS.get_cmdline_args()
 	var port: int = Constants.NET_DEFAULT_PORT
 	for i in args.size():
 		if args[i] == "--port" and i + 1 < args.size():
@@ -92,10 +92,19 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 		elif args[i] == "--name" and i + 1 < args.size():
 			NetworkManager.local_player_name = args[i + 1]
 
+	# Server auto-starts immediately; clients connect later via connect_client()
+	# after all player data (corporation, backend state) has loaded.
 	if NetworkManager.is_server():
 		NetworkManager.start_dedicated_server(port)
-	else:
-		NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
+
+
+## Connect to the game server as a client. Called by GameManager after all
+## player data (corporation, backend state) is loaded, so the first network
+## sync already includes the corporation tag.
+func connect_client() -> void:
+	if NetworkManager.is_server():
+		return
+	NetworkManager.connect_to_server(Constants.NET_GAME_SERVER_URL)
 
 
 # =============================================================================

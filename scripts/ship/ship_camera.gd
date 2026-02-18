@@ -148,6 +148,10 @@ func _find_combat_systems() -> void:
 	_weapon_manager = _ship.get_node_or_null("WeaponManager")
 	if _weapon_manager and not _weapon_manager.weapon_fired.is_connected(_on_weapon_fired):
 		_weapon_manager.weapon_fired.connect(_on_weapon_fired)
+	# Camera shake when taking damage
+	var health = _ship.get_node_or_null("HealthSystem")
+	if health and not health.damage_taken.is_connected(_on_damage_taken):
+		health.damage_taken.connect(_on_damage_taken)
 	# Cruise VFX signals (may not exist on server-side ships)
 	if _ship.has_signal("cruise_punch_triggered") and not _ship.cruise_punch_triggered.is_connected(_on_cruise_punch):
 		_ship.cruise_punch_triggered.connect(_on_cruise_punch)
@@ -187,6 +191,12 @@ func _on_ship_rebuilt(_ship_ref) -> void:
 
 func _on_weapon_fired(_hardpoint_id: int, _weapon_name: StringName) -> void:
 	_shake_layers.append({"intensity": cam_shake_fire, "decay": 15.0, "frequency": 2.0, "time": 0.0})
+
+
+func _on_damage_taken(_attacker: Node3D, amount: float) -> void:
+	# Proportional shake: small hits = subtle, big hits = heavy punch
+	var intensity: float = clampf(amount / 80.0, 0.06, 0.5)
+	_shake_layers.append({"intensity": intensity, "decay": 6.0, "frequency": 1.2, "time": 0.0})
 
 
 func _on_cruise_punch() -> void:

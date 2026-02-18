@@ -73,6 +73,7 @@ var _fleet_deployment_mgr = null
 var _squadron_mgr = null
 var _player_autopilot_wp: String = ""
 var _backend_state_loaded: bool = false
+var _initial_connect_done: bool = false
 var _bug_report_screen = null
 var _notif = null
 var _structure_auth = null
@@ -153,12 +154,31 @@ func _ready() -> void:
 		pass  # Server doesn't load player state
 	else:
 		if _splash:
-			_splash.set_step("CONNEXION AU SERVEUR...", 0.65)
+			_splash.set_step("SYNCHRONISATION DU JOUEUR...", 0.60)
 		print("GameManager: Loading backend state...")
 		_crash_log("Loading backend state...")
 		await _load_backend_state()
 		print("GameManager: Backend state loaded OK")
 		_crash_log("Backend state loaded OK")
+
+		# Wait for corporation data before connecting — ensures the first
+		# network sync and chat messages already include the clan tag.
+		if _splash:
+			_splash.set_step("CHARGEMENT DU CLAN...", 0.75)
+		if _corporation_manager and not _corporation_manager.has_corporation() and _corporation_manager._loading:
+			print("GameManager: Waiting for corporation data...")
+			_crash_log("Waiting for corporation data...")
+			await _corporation_manager.corporation_loaded
+		print("GameManager: Corporation data ready (has_corp=%s)" % [_corporation_manager.has_corporation() if _corporation_manager else false])
+		_crash_log("Corporation data ready")
+
+		# NOW connect to multiplayer server — all player data is loaded
+		if _splash:
+			_splash.set_step("CONNEXION AU SERVEUR...", 0.85)
+		if _net_sync_mgr:
+			_net_sync_mgr.connect_client()
+		_crash_log("Client connection initiated")
+
 		if _splash:
 			_splash.set_step("PRET !", 1.0)
 		# Dismiss splash (fades out after minimum display time + progress reaches 1.0)
@@ -909,10 +929,11 @@ func _initialize_game() -> void:
 
 
 ## Called on every successful connection (initial + reconnects).
-## Skips the first connect (handled by _ready → _load_backend_state).
+## Skips the first connect (handled by _ready → _load_backend_state → connect_client).
 func _on_network_reconnected() -> void:
-	if not _backend_state_loaded:
-		return  # First connect — _ready handles this
+	if not _initial_connect_done:
+		_initial_connect_done = true
+		return  # First connect — _ready already loaded backend state + corporation
 	print("[GameManager] Network reconnected — reloading backend state")
 	_load_backend_state()
 

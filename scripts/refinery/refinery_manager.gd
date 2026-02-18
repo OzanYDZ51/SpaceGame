@@ -76,6 +76,14 @@ func transfer_to_storage(station_key: String, item_id: StringName, qty: int, pla
 func transfer_to_ship(station_key: String, item_id: StringName, qty: int, player_data) -> int:
 	if player_data == null:
 		return 0
+	# Clamp to remaining cargo space on active ship
+	if player_data.fleet:
+		var active = player_data.fleet.get_active()
+		if active:
+			var space: int = active.get_remaining_cargo_space()
+			qty = mini(qty, space)
+	if qty <= 0:
+		return 0
 	var storage =get_storage(station_key)
 	var available: int = storage.get_amount(item_id)
 	var actual: int = mini(qty, available)
@@ -113,6 +121,11 @@ func transfer_to_ship_from_storage(station_key: String, item_id: StringName, qty
 	var storage =get_storage(station_key)
 	var available: int = storage.get_amount(item_id)
 	var actual: int = mini(qty, available)
+	if actual <= 0:
+		return 0
+	# Clamp to remaining cargo space on ship
+	var space: int = fleet_ship.get_remaining_cargo_space()
+	actual = mini(actual, space)
 	if actual <= 0:
 		return 0
 	var removed: int = storage.remove(item_id, actual)

@@ -94,14 +94,15 @@ func _build_model() -> void:
 
 			var sm: StandardMaterial3D = mat as StandardMaterial3D
 
-			# Surface 0 "ScdGate": portal disc — very high emission (15.3)
-			if sm.emission_enabled and sm.emission_energy_multiplier > 10.0:
+			# Detect portal disc "ScdGate": blue baseColor (B > 0.5), non-metallic, no texture
+			if sm.albedo_color.b > 0.5 and sm.metallic < 0.1 and sm.albedo_texture == null:
 				_setup_portal_surface(mesh_inst, surf_idx, sm)
-			# Surface 1 "Material": gate body — has textures, metallic
-			elif sm.metallic > 0.5:
+			# Detect gate body "Material": has textures, highly metallic
+			elif sm.metallic > 0.5 and sm.albedo_texture != null:
 				_setup_body_surface(mesh_inst, surf_idx, sm)
-			# Surface 2 "Materiau.003": light panels — emissive texture
-			# Keep as-is, no override needed
+			# Detect accent lights "Materiau.003": has emission, no texture
+			elif sm.emission_enabled:
+				_setup_accent_surface(mesh_inst, surf_idx, sm)
 
 
 func _collect_mesh_instances(node: Node, result: Array[MeshInstance3D]) -> void:
@@ -113,7 +114,9 @@ func _collect_mesh_instances(node: Node, result: Array[MeshInstance3D]) -> void:
 
 func _setup_portal_surface(mesh_inst: MeshInstance3D, surf_idx: int, mat: StandardMaterial3D) -> void:
 	_portal_material = mat.duplicate() as StandardMaterial3D
-	# Start at dim base emission — portal always slightly glows
+	# Keep the blue albedo from Blender, add emission glow on top
+	_portal_material.emission_enabled = true
+	_portal_material.emission = Color(mat.albedo_color.r, mat.albedo_color.g, mat.albedo_color.b)
 	_portal_material.emission_energy_multiplier = VORTEX_BASE_EMISSION
 	mesh_inst.set_surface_override_material(surf_idx, _portal_material)
 
@@ -124,6 +127,14 @@ func _setup_body_surface(mesh_inst: MeshInstance3D, surf_idx: int, mat: Standard
 	sm.emission_enabled = true
 	sm.emission = Color(emission_color.r * 0.1, emission_color.g * 0.1, emission_color.b * 0.1)
 	sm.emission_energy_multiplier = 0.3
+	mesh_inst.set_surface_override_material(surf_idx, sm)
+
+
+func _setup_accent_surface(mesh_inst: MeshInstance3D, surf_idx: int, mat: StandardMaterial3D) -> void:
+	# Accent lights — tint emission blue to match gate theme
+	var sm: StandardMaterial3D = mat.duplicate() as StandardMaterial3D
+	sm.emission = Color(emission_color.r * 0.5, emission_color.g * 0.5, emission_color.b * 0.5)
+	sm.emission_energy_multiplier = maxf(mat.emission_energy_multiplier, 1.5)
 	mesh_inst.set_surface_override_material(surf_idx, sm)
 
 

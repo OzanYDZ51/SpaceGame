@@ -295,6 +295,13 @@ func _get_npc_velocity(npc_id: StringName, lod_mgr = null) -> Vector3:
 # NPC DEATH / REMOVAL TRACKING
 # =============================================================================
 
+## Called by NpcAuthority.npc_killed signal — works for ALL NPCs (data-only + full node).
+## For full-node NPCs, _on_npc_removed (via tree_exiting) may fire later in the same
+## frame. The is_active guard and npc_ids.has() check prevent double processing.
+func _on_server_npc_killed(npc_id: StringName, _killer_pid: int) -> void:
+	_on_npc_removed(npc_id)
+
+
 func _on_npc_removed(npc_id: StringName) -> void:
 	for evt in _active_events.values():
 		if not evt.is_active:
@@ -381,9 +388,22 @@ func _cleanup_event(event_id: String, was_completed: bool) -> void:
 
 	evt.is_active = false
 
-	# Despawn remaining NPCs
+	# Despawn remaining NPCs — must notify clients + unregister from NpcAuthority
 	var lod_mgr = _get_lod_manager()
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	var is_server: bool = NetworkManager.is_server()
+
 	for npc_id in evt.npc_ids:
+		# Broadcast despawn to clients so they remove their puppet (prevents ghost NPCs)
+		if is_server and npc_auth and npc_auth._npcs.has(npc_id):
+			var death_pos: Array = [0.0, 0.0, 0.0]
+			if lod_mgr:
+				var ld: ShipLODData = lod_mgr.get_ship_data(npc_id)
+				if ld:
+					death_pos = FloatingOrigin.to_universe_pos(ld.position)
+			npc_auth.broadcast_npc_death(npc_id, 0, death_pos, [], evt.system_id)
+			npc_auth.unregister_npc(npc_id)
+
 		if lod_mgr:
 			lod_mgr.unregister_ship(npc_id)
 		else:
@@ -444,12 +464,21 @@ func _get_lod_manager():
 	return null
 
 
+var _npc_auth_connected: bool = false
+
 func _register_npc_on_server(npc_id: StringName, sid: StringName, fac: StringName, ship_node: Node3D = null) -> void:
 	if not NetworkManager.is_server():
 		return
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 	if npc_auth == null:
 		return
+
+	# Connect to NpcAuthority death signal once — catches data-only NPC kills
+	# that don't emit tree_exiting (no node to free).
+	if not _npc_auth_connected:
+		npc_auth.npc_killed.connect(_on_server_npc_killed)
+		_npc_auth_connected = true
+
 	var sys_trans = GameManager._system_transition
 	var system_id: int = sys_trans.current_system_id if sys_trans else 0
 	npc_auth.register_npc(npc_id, system_id, sid, fac)

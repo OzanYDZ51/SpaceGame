@@ -758,6 +758,8 @@
 	"hud.mining_overheat": "OVERHEAT",
 	"hud.mining_heat": "HEAT",
 	"hud.mining_extraction": "EXTRACTION: %s",
+	"hud.mining_cargo_full": "CARGO FULL",
+	"hud.mining_cargo": "CARGO",
 	"hud.zone_approach": "APPROACH",
 	"hud.zone_exterior": "OUTER ZONE",
 	"hud.zone_atmosphere": "ATMOSPHERE",

@@ -30,6 +30,7 @@ var _gforce: GForceEffects = null
 var _motion_blur: MotionBlur = null
 var _space_dust: SpaceDust = null
 var _film_grain: FilmGrain = null
+var _damage_screen: DamageScreenEffect = null
 
 
 func initialize(ship, camera, universe: Node3D, main_scene: Node3D) -> void:
@@ -72,6 +73,12 @@ func initialize(ship, camera, universe: Node3D, main_scene: Node3D) -> void:
 	main_scene.add_child(_gforce)
 	_gforce.set_ship(ship)
 
+	# --- Damage screen overlay (red vignette + directional hit indicator) ---
+	_damage_screen = DamageScreenEffect.new()
+	_damage_screen.name = "DamageScreenEffect"
+	main_scene.add_child(_damage_screen)
+	_damage_screen.set_ship(ship)
+
 	# --- Motion Blur (child of Camera) ---
 	_create_motion_blur()
 
@@ -97,6 +104,8 @@ func on_ship_rebuilt(new_ship) -> void:
 		_speed_effects.set_ship(new_ship)
 	if _gforce:
 		_gforce.set_ship(new_ship)
+	if _damage_screen:
+		_damage_screen.set_ship(new_ship)
 	if _space_dust and is_instance_valid(_space_dust):
 		_space_dust.set_ship(new_ship)
 		if new_camera:
@@ -167,6 +176,8 @@ func set_all_enabled(enabled: bool) -> void:
 		_speed_effects.visible = enabled
 	if _gforce:
 		_gforce.visible = enabled
+	if _damage_screen:
+		_damage_screen.visible = enabled
 	if _space_dust and is_instance_valid(_space_dust):
 		_space_dust.visible = enabled
 	if _film_grain and is_instance_valid(_film_grain):
