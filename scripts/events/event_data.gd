@@ -28,6 +28,36 @@ func is_expired() -> bool:
 	return Time.get_unix_time_from_system() > spawn_time + duration
 
 
+## Serialize for RPC: event start notification.
+func to_start_dict() -> Dictionary:
+	return {
+		"eid": event_id,
+		"type": String(event_type),
+		"tier": tier,
+		"name": get_display_name(),
+		"color": get_color().to_html(),
+		"cx": center_x,
+		"cz": center_z,
+		"dur": duration,
+		"t0": spawn_time,
+		"lid": String(leader_id),
+		"sys": system_id,
+	}
+
+
+## Build an event-end RPC dict (static — doesn't require a live EventData).
+static func make_end_dict(event_id: String, event_type: String, tier: int, was_completed: bool, killer_pid: int, bonus: int, system_id: int) -> Dictionary:
+	return {
+		"eid": event_id,
+		"type": event_type,
+		"tier": tier,
+		"done": was_completed,
+		"killer": killer_pid,
+		"bonus": bonus,
+		"sys": system_id,
+	}
+
+
 func get_display_name() -> String:
 	match event_type:
 		&"pirate_convoy":

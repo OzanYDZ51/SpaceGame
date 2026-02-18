@@ -23,6 +23,9 @@ const RESPAWN_INTERVAL: float = 120.0  # 2 minutes
 var _current_system_id: int = -1
 var _current_danger_level: int = 0
 
+# Client-side event tracking (received via RPC from server)
+var _client_events: Dictionary = {}  # event_id -> dict (from server)
+
 # Spawn distance from origin
 const MIN_SPAWN_RADIUS: float = 20000.0
 const MAX_SPAWN_RADIUS: float = 60000.0
@@ -53,7 +56,7 @@ func _process(delta: float) -> void:
 			_try_spawn_event()
 
 	# Update event marker positions on the map (follow the leader)
-	if not _active_events.is_empty():
+	if not _active_events.is_empty() or not _client_events.is_empty():
 		_position_update_timer += delta
 		if _position_update_timer >= POSITION_UPDATE_INTERVAL:
 			_position_update_timer = 0.0
@@ -101,6 +104,11 @@ func on_system_unloading() -> void:
 	var ids := _active_events.keys().duplicate()
 	for eid in ids:
 		_cleanup_event(eid, false)
+
+	# Clean up client-side event markers
+	for eid in _client_events.keys():
+		EntityRegistry.unregister(eid)
+	_client_events.clear()
 
 
 func get_event(event_id: String) -> EventData:
@@ -165,6 +173,13 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	})
 
 	event_started.emit(evt)
+
+	# Broadcast to all clients in this system
+	if NetworkManager.is_server():
+		var start_dict: Dictionary = evt.to_start_dict()
+		for pid in NetworkManager.get_peers_in_system(system_id):
+			NetworkManager._rpc_event_started.rpc_id(pid, start_dict)
+
 	print("[EventManager] Pirate convoy T%d spawned — route %.0fkm, %d NPCs" % [tier, route_length / 1000.0, evt.npc_ids.size()])
 
 
@@ -248,6 +263,8 @@ func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, r
 
 func _update_event_positions() -> void:
 	var lod_mgr = _get_lod_manager()
+
+	# Server/offline: update from authoritative EventData
 	for evt in _active_events.values():
 		if not evt.is_active or evt.leader_id == &"":
 			continue
@@ -264,6 +281,25 @@ func _update_event_positions() -> void:
 			ent["pos_x"] = upos[0]
 			ent["pos_z"] = upos[2]
 			# Store velocity for smooth extrapolation between updates
+			ent["vel_x"] = float(leader_vel.x)
+			ent["vel_y"] = float(leader_vel.y)
+			ent["vel_z"] = float(leader_vel.z)
+
+	# Client: update marker position from leader NPC (synced via NpcAuthority)
+	for eid in _client_events:
+		var cevt: Dictionary = _client_events[eid]
+		var lid: StringName = StringName(cevt.get("lid", ""))
+		if lid == &"":
+			continue
+		var leader_pos: Vector3 = _get_npc_position(lid, lod_mgr)
+		if leader_pos == Vector3.ZERO:
+			continue
+		var leader_vel: Vector3 = _get_npc_velocity(lid, lod_mgr)
+		var upos: Array = FloatingOrigin.to_universe_pos(leader_pos)
+		var ent: Dictionary = EntityRegistry.get_entity(eid)
+		if not ent.is_empty():
+			ent["pos_x"] = upos[0]
+			ent["pos_z"] = upos[2]
 			ent["vel_x"] = float(leader_vel.x)
 			ent["vel_y"] = float(leader_vel.y)
 			ent["vel_z"] = float(leader_vel.z)
@@ -298,11 +334,11 @@ func _get_npc_velocity(npc_id: StringName, lod_mgr = null) -> Vector3:
 ## Called by NpcAuthority.npc_killed signal — works for ALL NPCs (data-only + full node).
 ## For full-node NPCs, _on_npc_removed (via tree_exiting) may fire later in the same
 ## frame. The is_active guard and npc_ids.has() check prevent double processing.
-func _on_server_npc_killed(npc_id: StringName, _killer_pid: int) -> void:
-	_on_npc_removed(npc_id)
+func _on_server_npc_killed(npc_id: StringName, killer_pid: int) -> void:
+	_on_npc_removed(npc_id, killer_pid)
 
 
-func _on_npc_removed(npc_id: StringName) -> void:
+func _on_npc_removed(npc_id: StringName, killer_pid: int = 0) -> void:
 	for evt in _active_events.values():
 		if not evt.is_active:
 			continue
@@ -315,13 +351,13 @@ func _on_npc_removed(npc_id: StringName) -> void:
 		# Check if it's the leader
 		if npc_id == evt.leader_id:
 			evt.is_active = false
-			_cleanup_event(evt.event_id, true)
+			_cleanup_event(evt.event_id, true, killer_pid)
 			return
 
 		# If all escorts are dead, event is also done
 		if evt.npc_ids.is_empty():
 			evt.is_active = false
-			_cleanup_event(evt.event_id, true)
+			_cleanup_event(evt.event_id, true, killer_pid)
 			return
 
 
@@ -381,7 +417,7 @@ func _npc_exists(npc_id: StringName) -> bool:
 	return not ent.is_empty()
 
 
-func _cleanup_event(event_id: String, was_completed: bool) -> void:
+func _cleanup_event(event_id: String, was_completed: bool, killer_pid: int = 0) -> void:
 	var evt: EventData = _active_events.get(event_id)
 	if evt == null:
 		return
@@ -414,9 +450,19 @@ func _cleanup_event(event_id: String, was_completed: bool) -> void:
 	# Unregister map entity
 	EntityRegistry.unregister(event_id)
 
+	# Broadcast event end to all clients in this system
+	if is_server:
+		var bonus: int = EventDefinitions.get_leader_bonus_credits(evt.tier) if was_completed else 0
+		var end_dict: Dictionary = EventData.make_end_dict(
+			event_id, String(evt.event_type), evt.tier,
+			was_completed, killer_pid, bonus, evt.system_id
+		)
+		for pid in NetworkManager.get_peers_in_system(evt.system_id):
+			NetworkManager._rpc_event_ended.rpc_id(pid, end_dict)
+
 	if was_completed:
 		event_completed.emit(evt)
-		print("[EventManager] Event %s COMPLETED (leader destroyed)" % event_id)
+		print("[EventManager] Event %s COMPLETED (leader destroyed, killer_pid=%d)" % [event_id, killer_pid])
 	else:
 		event_expired.emit(evt)
 		print("[EventManager] Event %s expired/cleaned up" % event_id)
@@ -462,6 +508,52 @@ func _get_lod_manager():
 	if mgr and mgr.has_method("register_ship"):
 		return mgr
 	return null
+
+
+# =============================================================================
+# CLIENT-SIDE EVENT TRACKING (received via RPC)
+# =============================================================================
+
+## Called when the server broadcasts an event start to this client.
+func on_client_event_started(event_dict: Dictionary) -> void:
+	var eid: String = event_dict.get("eid", "")
+	if eid == "":
+		return
+	_client_events[eid] = event_dict
+
+	# Register map marker
+	EntityRegistry.register(eid, {
+		"name": event_dict.get("name", "ÉVÉNEMENT"),
+		"type": EntityRegistrySystem.EntityType.EVENT,
+		"pos_x": event_dict.get("cx", 0.0),
+		"pos_z": event_dict.get("cz", 0.0),
+		"color": Color.from_string(event_dict.get("color", "ffff00"), Color.YELLOW),
+		"extra": {
+			"event_id": eid,
+			"event_type": event_dict.get("type", "pirate_convoy"),
+			"event_tier": event_dict.get("tier", 1),
+		},
+	})
+	print("[EventManager] Client received event start: %s" % eid)
+
+
+## Called when the server broadcasts an event end to this client.
+func on_client_event_ended(event_dict: Dictionary) -> void:
+	var eid: String = event_dict.get("eid", "")
+	if eid == "":
+		return
+	_client_events.erase(eid)
+	EntityRegistry.unregister(eid)
+	print("[EventManager] Client received event end: %s (done=%s)" % [eid, str(event_dict.get("done", false))])
+
+
+## Server-side: send all active events to a peer that just joined (mid-event join).
+func send_active_events_to_peer(peer_id: int) -> void:
+	for evt in _active_events.values():
+		if not evt.is_active:
+			continue
+		var start_dict: Dictionary = evt.to_start_dict()
+		NetworkManager._rpc_event_started.rpc_id(peer_id, start_dict)
 
 
 var _npc_auth_connected: bool = false

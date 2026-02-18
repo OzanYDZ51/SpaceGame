@@ -69,6 +69,10 @@ signal asteroid_health_batch_received(batch: Array)
 signal structure_hit_claimed(sender_pid: int, target_id: String, weapon: String, damage: float, hit_dir: Array)
 signal structure_destroyed_received(struct_id: String, killer_pid: int, pos: Array, loot: Array)
 
+# Event sync signals (pirate convoys etc.)
+signal event_started_received(event_dict: Dictionary)
+signal event_ended_received(event_dict: Dictionary)
+
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
@@ -1349,6 +1353,22 @@ func _rpc_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, lo
 	if struct_auth:
 		struct_auth.apply_structure_destroyed(struct_id, killer_pid, pos, loot)
 	structure_destroyed_received.emit(struct_id, killer_pid, pos, loot)
+
+
+# =============================================================================
+# EVENT SYNC (pirate convoys etc.)
+# =============================================================================
+
+## Server -> Client: An event started in your system.
+@rpc("authority", "reliable")
+func _rpc_event_started(event_dict: Dictionary) -> void:
+	event_started_received.emit(event_dict)
+
+
+## Server -> Client: An event ended in your system.
+@rpc("authority", "reliable")
+func _rpc_event_ended(event_dict: Dictionary) -> void:
+	event_ended_received.emit(event_dict)
 
 
 # =============================================================================

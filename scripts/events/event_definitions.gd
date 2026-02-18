@@ -85,6 +85,17 @@ static func get_spawn_chance(danger_level: int) -> float:
 	return 0.15
 
 
+## Display name for an event type + tier (used by client when no EventData is available).
+static func get_display_name_for_type(event_type: String, tier: int) -> String:
+	match event_type:
+		"pirate_convoy":
+			match tier:
+				1: return "CONVOI PIRATE"
+				2: return "CONVOI PIRATE LOURD"
+				3: return "ARMADA PIRATE"
+	return "ÉVÉNEMENT"
+
+
 ## Credit reward for destroying the convoy leader.
 static func get_leader_bonus_credits(tier: int) -> int:
 	match tier:

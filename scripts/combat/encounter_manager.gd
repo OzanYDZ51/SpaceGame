@@ -144,9 +144,12 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		else:
 			continue
 		var st_pos: Vector3 = station_positions[st_idx]
-		# Guards patrol close to the station (500m radius)
-		var guard_center: Vector3 = st_pos + Vector3(randf_range(-200, 200), 50, randf_range(-200, 200))
-		spawn_patrol(2, guard_ship, guard_center, 500.0, guard_faction, system_id, 100 + st_idx, station_node)
+		# Guards patrol around the station — offset 800m+ to avoid spawning inside
+		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+		if offset_dir.length_squared() < 0.01:
+			offset_dir = Vector3.FORWARD
+		var guard_center: Vector3 = st_pos + offset_dir * randf_range(800.0, 1200.0) + Vector3(0, randf_range(-50, 50), 0)
+		spawn_patrol(2, guard_ship, guard_center, 1000.0, guard_faction, system_id, 100 + st_idx, station_node)
 
 
 func _get_guard_ship_id() -> StringName:
@@ -493,6 +496,39 @@ func spawn_for_remote_system(system_id: int) -> void:
 		station_factions.append(default_faction)
 	if key_points.is_empty():
 		key_points.append(Vector3(500, 0, -1500))
+
+	# Register virtual stations in EntityRegistry so AIBrain environment awareness works.
+	# Without these, _update_environment() can't find stations → no push-away, no avoidance.
+	var virtual_station_ids: Array[String] = []
+	for st_idx in station_positions.size():
+		var st_pos: Vector3 = station_positions[st_idx]
+		var vst_id: String = "vstation_%d_%d" % [system_id, st_idx]
+		var fac_name: StringName = station_factions[st_idx] if st_idx < station_factions.size() else default_faction
+		# Use universe coordinates (origin_offset + scene pos). On dedicated server
+		# origin_offset ≈ 0, so these match scene positions closely.
+		var ux: float = FloatingOrigin.origin_offset_x + float(st_pos.x)
+		var uy: float = FloatingOrigin.origin_offset_y + float(st_pos.y)
+		var uz: float = FloatingOrigin.origin_offset_z + float(st_pos.z)
+		EntityRegistry.register(vst_id, {
+			"name": "VirtualStation_%d_%d" % [system_id, st_idx],
+			"type": EntityRegistry.EntityType.STATION,
+			"pos_x": ux,
+			"pos_y": uy,
+			"pos_z": uz,
+			"node": null,
+			"radius": 300.0,
+			"color": Color.GRAY,
+			"extra": {"faction": String(fac_name), "virtual": true},
+		})
+		virtual_station_ids.append(vst_id)
+
+	# Store virtual station IDs on NpcAuthority for cleanup
+	var npc_auth_ref = GameManager.get_node_or_null("NpcAuthority")
+	if npc_auth_ref:
+		if not npc_auth_ref.has_meta("virtual_stations"):
+			npc_auth_ref.set_meta("virtual_stations", {})
+		var vs_dict: Dictionary = npc_auth_ref.get_meta("virtual_stations")
+		vs_dict[system_id] = virtual_station_ids
 
 	# Set override so _register_npc_on_server uses the correct system_id
 	_override_system_id = system_id

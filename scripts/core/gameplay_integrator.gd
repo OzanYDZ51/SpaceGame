@@ -100,6 +100,10 @@ func _wire_signals(refs: Dictionary) -> void:
 	event_manager.event_started.connect(_on_event_started)
 	event_manager.event_npc_killed.connect(_on_event_npc_killed)
 
+	# Network event sync (client receives from server)
+	NetworkManager.event_started_received.connect(_on_network_event_started)
+	NetworkManager.event_ended_received.connect(_on_network_event_ended)
+
 
 # =============================================================================
 # SYSTEM TRANSITION HOOKS (called by GameManager)
@@ -272,6 +276,11 @@ func _on_event_started(evt: EventData) -> void:
 
 
 func _on_event_completed(evt: EventData) -> void:
+	# In multiplayer, rewards are handled via _on_network_event_ended (server RPC).
+	# Only give rewards locally in offline mode.
+	if NetworkManager.is_connected_to_server():
+		return
+
 	# Comm panel completion message (before rewards toast)
 	var hud = _get_flight_hud()
 	if hud:
@@ -290,6 +299,55 @@ func _on_event_completed(evt: EventData) -> void:
 
 	if _notif:
 		_notif.toast("%s éliminé! +%s CR" % [evt.get_display_name(), PlayerEconomy.format_credits(bonus)])
+
+
+# =============================================================================
+# NETWORK EVENT SYNC (client receives from server)
+# =============================================================================
+
+func _on_network_event_started(event_dict: Dictionary) -> void:
+	if event_manager:
+		event_manager.on_client_event_started(event_dict)
+
+	# Show HUD comm transmission
+	var hud = _get_flight_hud()
+	if hud:
+		var tier: int = int(event_dict.get("tier", 1))
+		var color := Color.from_string(event_dict.get("color", "ffff00"), Color.YELLOW)
+		hud.show_comm_transmission(tier, color)
+
+
+func _on_network_event_ended(event_dict: Dictionary) -> void:
+	if event_manager:
+		event_manager.on_client_event_ended(event_dict)
+
+	var was_completed: bool = event_dict.get("done", false)
+	var tier: int = int(event_dict.get("tier", 1))
+	var killer_pid: int = int(event_dict.get("killer", 0))
+	var bonus: int = int(event_dict.get("bonus", 0))
+	var event_name: String = EventDefinitions.get_display_name_for_type(event_dict.get("type", "pirate_convoy"), tier)
+
+	if was_completed:
+		var hud = _get_flight_hud()
+		if hud:
+			hud.show_comm_completion(tier)
+
+		# Only the killer gets credits + reputation
+		if killer_pid == NetworkManager.local_peer_id:
+			if _player_data and _player_data.economy and bonus > 0:
+				_player_data.economy.add_credits(bonus)
+			if faction_manager:
+				faction_manager.modify_reputation(&"pirate", -3.0 * tier)
+				faction_manager.modify_reputation(&"nova_terra", 1.0 * tier)
+				faction_manager.modify_reputation(&"kharsis", 1.0 * tier)
+			if _notif:
+				_notif.toast("%s éliminé! +%s CR" % [event_name, PlayerEconomy.format_credits(bonus)])
+		else:
+			if _notif:
+				_notif.toast("%s éliminé!" % event_name)
+	else:
+		if _notif:
+			_notif.toast("%s terminé" % event_name)
 
 
 # =============================================================================

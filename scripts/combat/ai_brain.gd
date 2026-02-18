@@ -215,6 +215,14 @@ func _update_environment() -> void:
 			if dist < 800.0:
 				_near_station = true
 
+	# If currently inside a station exclusion zone during patrol, regenerate waypoints
+	# to push them out. This handles NPCs that spawn too close or drift in.
+	if current_state == State.PATROL and not _station_scene_positions.is_empty():
+		for st_pos in _station_scene_positions:
+			if ship_pos.distance_to(st_pos) < STATION_EXCLUSION_RADIUS:
+				_generate_patrol_waypoints()
+				break
+
 
 func _push_away_from_stations(pos: Vector3) -> Vector3:
 	## Pushes a waypoint outside station exclusion zones. Returns adjusted position.
@@ -229,6 +237,40 @@ func _push_away_from_stations(pos: Vector3) -> Vector3:
 				to_wp = to_wp.normalized()
 			pos = st_pos + to_wp * (STATION_EXCLUSION_RADIUS + 50.0)
 	return pos
+
+
+func _deflect_from_stations(target_pos: Vector3) -> Vector3:
+	## Real-time flight path deflection: if flying toward a station, steer around it.
+	## Unlike _push_away_from_stations (which adjusts waypoints once at generation),
+	## this runs every AI tick during patrol flight for active obstacle avoidance.
+	if _ship == null or _station_scene_positions.is_empty():
+		return target_pos
+	var ship_pos: Vector3 = _ship.global_position
+	var to_target: Vector3 = target_pos - ship_pos
+	var flight_dist: float = to_target.length()
+	if flight_dist < 1.0:
+		return target_pos
+	var flight_dir: Vector3 = to_target / flight_dist
+	for st_pos in _station_scene_positions:
+		var to_station: Vector3 = st_pos - ship_pos
+		var station_dist: float = to_station.length()
+		# Only care about stations between us and the waypoint
+		var proj: float = to_station.dot(flight_dir)
+		if proj < 0.0 or proj > flight_dist:
+			continue
+		# Perpendicular distance from flight line to station center
+		var closest_on_line: Vector3 = ship_pos + flight_dir * proj
+		var perp_dist: float = (st_pos - closest_on_line).length()
+		if perp_dist < STATION_EXCLUSION_RADIUS:
+			# We'd fly through the station — deflect perpendicular to flight path
+			var deflect_dir: Vector3 = (closest_on_line - st_pos).normalized()
+			if deflect_dir.length_squared() < 0.01:
+				deflect_dir = flight_dir.cross(Vector3.UP).normalized()
+			# Strength: closer to station = stronger deflection
+			var urgency: float = 1.0 - clampf(perp_dist / STATION_EXCLUSION_RADIUS, 0.0, 1.0)
+			var deflect_amount: float = (STATION_EXCLUSION_RADIUS + 200.0) * urgency
+			target_pos = target_pos + deflect_dir * deflect_amount
+	return target_pos
 
 
 func _compute_safe_flee_direction(desired_dir: Vector3) -> Vector3:
@@ -302,9 +344,13 @@ func _tick_patrol() -> void:
 		arrival = maxf(_patrol_radius * 0.6, 15.0)
 
 	var wp: Vector3 = _waypoints[_current_waypoint]
+
+	# Real-time station avoidance: if our flight path crosses a station, deflect
+	wp = _deflect_from_stations(wp)
+
 	_pilot.fly_toward(wp, arrival)
 
-	if _pilot.get_distance_to(wp) < arrival:
+	if _pilot.get_distance_to(_waypoints[_current_waypoint]) < arrival:
 		_current_waypoint = (_current_waypoint + 1) % _waypoints.size()
 
 

@@ -215,6 +215,13 @@ func clear_system_npcs(system_id: int) -> void:
 			_npcs.erase(npc_id)
 		_npcs_by_system.erase(system_id)
 	clear_system_asteroid_health(system_id)
+	# Clean up virtual stations registered by EncounterManager.spawn_for_remote_system()
+	if has_meta("virtual_stations"):
+		var vs_dict: Dictionary = get_meta("virtual_stations")
+		if vs_dict.has(system_id):
+			for vst_id in vs_dict[system_id]:
+				EntityRegistry.unregister(vst_id)
+			vs_dict.erase(system_id)
 
 
 ## Connect NPC weapon_fired signal to relay fire events to remote clients.
@@ -317,6 +324,11 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 				spawn_dict["shd"] = lod_data.shield_ratio
 
 			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
+
+	# Send active events to late-joining peer (map markers + HUD)
+	var gi = GameManager.get_node_or_null("GameplayIntegrator")
+	if gi and gi.event_manager:
+		gi.event_manager.send_active_events_to_peer(peer_id)
 
 
 # =========================================================================
