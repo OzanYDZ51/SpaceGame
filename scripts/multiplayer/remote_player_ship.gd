@@ -30,15 +30,17 @@ var _health_system: HealthSystem = null
 
 
 func _ready() -> void:
+	# Start hidden — receive_state() makes us visible once a valid position arrives.
+	# This also ensures the visibility transition fires, which enables collision_layer
+	# on HitBody and adds us to the "ships" group (required for projectile hit detection).
+	# Without this, nodes created by LOD re-promotion would have zero collision.
+	visible = false
 	_setup_model()
 	_setup_name_label()
 	_setup_collision()
 	_setup_health_proxy()
 	# Set faction for HUD color coding (remote players = friendly)
 	set_meta("faction", &"player")
-	# NOTE: starts hidden + NOT in "ships" group. The first receive_state()
-	# with valid position makes us visible and adds us to the group.
-	# This prevents the puppet flashing at (0,0,0) before real data arrives.
 
 
 func _setup_model() -> void:

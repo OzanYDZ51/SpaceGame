@@ -60,6 +60,7 @@ var behavior_name: StringName = &"balanced"
 
 # --- Fleet ship data (for re-equipping after LOD re-promotion) ---
 var fleet_index: int = -1  # -1 = not a fleet ship
+var owner_pid: int = 0     # 0 = not a fleet ship, >0 = owning player's peer_id
 
 # --- Internal flag to prevent duplicate registration during LOD promotion ---
 # Used by ShipLODManager to prevent duplicate registration during async promote.

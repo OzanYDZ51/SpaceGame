@@ -952,6 +952,10 @@ func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: flo
 	# Reject hits on docked or dead players
 	if target_state.is_docked or target_state.is_dead:
 		return
+	# Reject hits on group members (friendly fire protection)
+	var sender_gid: int = _player_group.get(sender_id, 0)
+	if sender_gid > 0 and _player_group.get(target_pid, 0) == sender_gid:
+		return
 	# Distance validation (use float64 arithmetic — Vector3 is float32, loses precision at >10km)
 	var dx: float = sender_state.pos_x - target_state.pos_x
 	var dy: float = sender_state.pos_y - target_state.pos_y

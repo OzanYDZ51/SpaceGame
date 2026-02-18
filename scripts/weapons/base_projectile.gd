@@ -83,6 +83,9 @@ func _on_body_hit(body: Node3D) -> void:
 			# Don't hit ourselves
 			if remote_player == owner_ship:
 				return
+			# Don't hit group members (friendly fire protection)
+			if NetworkManager.local_group_id > 0 and NetworkManager.is_peer_in_my_group(remote_player.peer_id):
+				return
 			var hit_dir =(body.global_position - global_position).normalized()
 			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():

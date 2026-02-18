@@ -65,7 +65,7 @@ func cycle_target_forward() -> void:
 
 
 func target_nearest_hostile() -> void:
-	# T key — target nearest hostile only (skip allies)
+	# T key — target nearest hostile only (skip allies + group members)
 	var ship =get_parent() as Node3D
 	if ship == null:
 		return
@@ -73,6 +73,8 @@ func target_nearest_hostile() -> void:
 	var hostiles: Array[Node3D] = []
 	for t in _targetable_ships:
 		if not is_instance_valid(t) or not t.is_inside_tree():
+			continue
+		if _is_group_member_ship(t):
 			continue
 		var t_faction: StringName = t.faction if "faction" in t else &"unknown"
 		if not _is_allied(own_faction, t_faction):
@@ -260,8 +262,12 @@ func _gather_targetable_ships() -> void:
 
 	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	var own_owner_pid: int = 0
 	if lod_mgr:
 		var self_id =StringName(ship.name)
+		var own_lod = lod_mgr.get_ship_data(self_id)
+		if own_lod:
+			own_owner_pid = own_lod.owner_pid
 		var results = lod_mgr.get_nearest_ships(ship.global_position, target_lock_range, 50, self_id)
 		for entry in results:
 			var data = lod_mgr.get_ship_data(entry["id"])
@@ -269,7 +275,9 @@ func _gather_targetable_ships() -> void:
 				continue
 			# NPC ships skip allied targets (friendly fire prevention)
 			if not is_player and _is_allied(own_faction, data.faction):
-				continue
+				# Exception: fleet ships of different owners (not grouped) CAN fight
+				if not _is_fleet_pvp_enemy(own_faction, own_owner_pid, data):
+					continue
 			# Only target ships with a visible scene node (LOD0/LOD1), never self
 			if is_instance_valid(data.node_ref) and data.node_ref != ship:
 				if data.node_ref is Node3D and (data.node_ref as Node3D).visible:
@@ -307,6 +315,28 @@ func _gather_targetable_ships() -> void:
 	# If current target no longer in list, clear
 	if current_target and current_target not in _targetable_ships:
 		clear_target()
+
+
+## Returns true if the node is a remote player in our group.
+static func _is_group_member_ship(node: Node3D) -> bool:
+	if NetworkManager.local_group_id == 0:
+		return false
+	var pid = node.peer_id if "peer_id" in node else -1
+	if pid is int and pid > 0:
+		return NetworkManager.is_peer_in_my_group(pid)
+	return false
+
+
+## Returns true if a fleet ship should treat the target as a PvP enemy.
+## Both must be player_fleet, from different owners, and not in the same group.
+static func _is_fleet_pvp_enemy(own_faction: StringName, own_owner_pid: int, target: ShipLODData) -> bool:
+	if own_faction != &"player_fleet" or target.faction != &"player_fleet":
+		return false
+	if own_owner_pid <= 0 or target.owner_pid <= 0:
+		return false
+	if own_owner_pid == target.owner_pid:
+		return false
+	return not NetworkManager.is_peer_in_my_group(target.owner_pid)
 
 
 ## Returns true if two factions are allied (should not attack each other).

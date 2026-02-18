@@ -681,7 +681,7 @@ func _input(event: InputEvent) -> void:
 
 					var target_id = _entity_layer.get_entity_at(event.position)
 					var target_ent =EntityRegistry.get_entity(target_id) if target_id != "" else {}
-					if not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC:
+					if not target_ent.is_empty() and _is_attackable_entity(target_id, target_ent):
 						# Attack enemy NPC
 						var params ={
 							"target_entity_id": target_id,
@@ -825,6 +825,31 @@ func _select_entity(id: String) -> void:
 		_entity_layer.selected_ids.clear()
 	_info_panel.set_selected(id)
 	_dirty = true
+
+
+## Check if an entity is a valid attack target for fleet ships.
+## NPCs are always attackable. Players and enemy fleet ships are attackable unless grouped.
+func _is_attackable_entity(entity_id: String, ent: Dictionary) -> bool:
+	var etype: int = ent.get("type", -1)
+	if etype == EntityRegistrySystem.EntityType.SHIP_NPC:
+		return true
+	if etype == EntityRegistrySystem.EntityType.SHIP_PLAYER:
+		if entity_id.begins_with("RemotePlayer_"):
+			var peer_id: int = int(entity_id.substr(13))
+			if NetworkManager.is_peer_in_my_group(peer_id):
+				return false
+		return true
+	if etype == EntityRegistrySystem.EntityType.SHIP_FLEET:
+		var extra: Dictionary = ent.get("extra", {})
+		var owner_pid: int = int(extra.get("owner_pid", 0))
+		# Own fleet ships are not attackable
+		if owner_pid == 0 or owner_pid == NetworkManager.local_peer_id:
+			return false
+		# Group members' fleet ships are not attackable
+		if NetworkManager.is_peer_in_my_group(owner_pid):
+			return false
+		return true
+	return false
 
 
 ## Updates fleet panel highlight when a fleet-related entity is selected on the map.

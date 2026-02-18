@@ -24,6 +24,7 @@ var _arrived: bool = false
 var _attack_target_id: String = ""
 
 const MOVE_ARRIVE_DIST: float = 200.0
+const STATION_SAFE_MARGIN: float = 500.0  # Keep move targets outside station zones
 
 # --- Dock approach ---
 const DOCK_APPROACH_DIST: float = 1200.0   # Switch from patrol to direct flight
@@ -181,6 +182,8 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
 			var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			# Push target outside station exclusion zones
+			target_pos = _push_target_outside_stations(target_pos)
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
 				_brain.set_patrol_area(target_pos, 50.0)
@@ -211,6 +214,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
 			var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+			target_pos = _push_target_outside_stations(target_pos)
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
 				_brain.set_patrol_area(target_pos, 50.0)
@@ -306,6 +310,7 @@ func _process(_delta: float) -> void:
 		var target_x: float = command_params.get("target_x", 0.0)
 		var target_z: float = command_params.get("target_z", 0.0)
 		var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		target_pos = _push_target_outside_stations(target_pos)
 		var dist: float = _ship.global_position.distance_to(target_pos)
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
@@ -325,6 +330,7 @@ func _process(_delta: float) -> void:
 		var target_x: float = command_params.get("target_x", 0.0)
 		var target_z: float = command_params.get("target_z", 0.0)
 		var target_pos =FloatingOrigin.to_local_pos([target_x, 0.0, target_z])
+		target_pos = _push_target_outside_stations(target_pos)
 		var dist: float = _ship.global_position.distance_to(target_pos)
 		if dist < MOVE_ARRIVE_DIST:
 			_mark_arrived(target_pos)
@@ -357,6 +363,24 @@ func _mark_arrived(target_pos: Vector3) -> void:
 	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
+
+
+## Push target_pos outside any station exclusion zone so the ship doesn't
+## endlessly orbit trying to reach an unreachable point inside a station.
+func _push_target_outside_stations(target_pos: Vector3) -> Vector3:
+	# Use EntityRegistry as authoritative source (always available)
+	var stations: Array = EntityRegistry.get_by_type(EntityRegistry.EntityType.STATION)
+	for st in stations:
+		var st_pos: Vector3 = FloatingOrigin.to_local_pos([st["pos_x"], st["pos_y"], st["pos_z"]])
+		var to_target: Vector3 = target_pos - st_pos
+		var dist: float = to_target.length()
+		if dist < STATION_SAFE_MARGIN:
+			if dist < 1.0:
+				to_target = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+			else:
+				to_target = to_target.normalized()
+			return st_pos + to_target * STATION_SAFE_MARGIN
+	return target_pos
 
 
 func _find_nearest_station_id() -> String:

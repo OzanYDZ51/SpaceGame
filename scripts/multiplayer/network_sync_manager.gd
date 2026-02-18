@@ -349,6 +349,10 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if sdata:
 		lod_data.model_scale = sdata.model_scale
 
+	# Set fleet owner on LOD data for PvP targeting
+	if fac == &"player_fleet":
+		lod_data.owner_pid = int(data.get("owner_pid", 0))
+
 	if lod_manager:
 		lod_manager.register_ship(npc_id, lod_data)
 	remote_npcs[npc_id] = true

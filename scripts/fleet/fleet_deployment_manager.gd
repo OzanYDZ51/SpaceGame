@@ -202,6 +202,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 			"extra": {
 				"fleet_index": fleet_index,
 				"owner_name": "Player",
+				"owner_pid": NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0,
 				"command": String(cmd),
 				"arrived": false,
 				"faction": "player_fleet",
@@ -231,6 +232,7 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 		var lod_data = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			lod_data.fleet_index = fleet_index
+			lod_data.owner_pid = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
 
 	_deployed_ships[fleet_index] = npc
 	_fleet.fleet_changed.emit()

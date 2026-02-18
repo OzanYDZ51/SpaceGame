@@ -51,8 +51,21 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 			var target_id: String = context.get("target_entity_id", "")
 			if target_id == "":
 				return false
-			var ent =EntityRegistry.get_entity(target_id)
-			return ent.get("type", -1) == EntityRegistrySystem.EntityType.SHIP_NPC
+			var ent = EntityRegistry.get_entity(target_id)
+			var etype: int = ent.get("type", -1)
+			if etype == EntityRegistrySystem.EntityType.SHIP_NPC:
+				return true
+			if etype == EntityRegistrySystem.EntityType.SHIP_PLAYER:
+				if target_id.begins_with("RemotePlayer_"):
+					var peer_id: int = int(target_id.substr(13))
+					return not NetworkManager.is_peer_in_my_group(peer_id)
+			if etype == EntityRegistrySystem.EntityType.SHIP_FLEET:
+				var extra: Dictionary = ent.get("extra", {})
+				var opid: int = int(extra.get("owner_pid", 0))
+				if opid == 0 or opid == NetworkManager.local_peer_id:
+					return false
+				return not NetworkManager.is_peer_in_my_group(opid)
+			return false
 		&"return_to_station":
 			return is_deployed
 		&"construction":
