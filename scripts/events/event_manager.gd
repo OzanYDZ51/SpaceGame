@@ -47,6 +47,9 @@ func _process(delta: float) -> void:
 		_check_timer = 0.0
 		if not _active_events.is_empty():
 			_check_event_timeouts()
+		# Client safety: expire stale events even if server RPC was missed
+		if not _client_events.is_empty():
+			_check_client_event_timeouts()
 
 	# Periodic respawn attempt when no events are active
 	if _current_system_id >= 0 and _active_events.is_empty():
@@ -551,6 +554,23 @@ func on_client_event_ended(event_dict: Dictionary) -> void:
 	_client_events.erase(eid)
 	EntityRegistry.unregister(eid)
 	print("[EventManager] Client received event end: %s (done=%s)" % [eid, str(event_dict.get("done", false))])
+
+
+## Client safety net: expire stale events if the server's _rpc_event_ended was missed.
+func _check_client_event_timeouts() -> void:
+	var now: float = Time.get_unix_time_from_system()
+	var expired: Array[String] = []
+	for eid: String in _client_events:
+		var cevt: Dictionary = _client_events[eid]
+		var t0: float = cevt.get("t0", 0.0)
+		var dur: float = cevt.get("dur", 600.0)
+		# 60s grace period beyond official duration for network delays
+		if t0 > 0.0 and now > t0 + dur + 60.0:
+			expired.append(eid)
+	for eid in expired:
+		_client_events.erase(eid)
+		EntityRegistry.unregister(eid)
+		print("[EventManager] Client safety: expired stale event %s" % eid)
 
 
 ## Server-side: send all active events to a peer that just joined (mid-event join).

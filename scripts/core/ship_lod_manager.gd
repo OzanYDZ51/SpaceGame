@@ -320,6 +320,11 @@ func _sync_node_positions() -> void:
 			continue
 		if is_instance_valid(data.node_ref):
 			data.position = data.node_ref.global_position
+			data.rotation_basis = data.node_ref.global_transform.basis
+			if data.node_ref is RigidBody3D:
+				data.velocity = (data.node_ref as RigidBody3D).linear_velocity
+			elif "linear_velocity" in data.node_ref:
+				data.velocity = data.node_ref.linear_velocity
 			_grid.update_position(id, data.position)
 		else:
 			# Node was freed (NPC killed in combat) — mark for cleanup
@@ -858,9 +863,13 @@ func _on_origin_shifted(shift: Vector3) -> void:
 		var data = _ships[id]
 		data.position -= shift
 		data.ai_patrol_center -= shift
+		for i in data.ai_route_waypoints.size():
+			data.ai_route_waypoints[i] -= shift
 	for id: StringName in _lod3_ids:
 		var data = _ships[id]
 		data.position -= shift
 		data.ai_patrol_center -= shift
+		for i in data.ai_route_waypoints.size():
+			data.ai_route_waypoints[i] -= shift
 
 	_grid.apply_origin_shift(shift)

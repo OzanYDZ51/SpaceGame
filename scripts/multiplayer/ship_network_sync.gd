@@ -58,6 +58,13 @@ func _physics_process(delta: float) -> void:
 
 
 func _send_state() -> void:
+	# Suppress position updates during system transition to avoid race condition:
+	# The reliable _rpc_player_system_changed may arrive AFTER unreliable position updates,
+	# causing the server to broadcast new-system coords tagged with the old system_id.
+	var sys_trans = GameManager._system_transition
+	if sys_trans and sys_trans._is_transitioning:
+		return
+
 	var universe_pos =FloatingOrigin.to_universe_pos(_ship.global_position)
 
 	var state =NetworkState.new()
@@ -72,7 +79,6 @@ func _send_state() -> void:
 	state.ship_id = _ship.ship_data.ship_id if _ship.ship_data else Constants.DEFAULT_SHIP_ID
 
 	# System ID from SystemTransition
-	var sys_trans = GameManager._system_transition
 	if sys_trans:
 		state.system_id = sys_trans.current_system_id
 

@@ -388,9 +388,25 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 	var rot_rad =lod_data.rotation_basis.get_euler()
 	var rot_deg =Vector3(rad_to_deg(rot_rad.x), rad_to_deg(rot_rad.y), rad_to_deg(rot_rad.z))
 
-	# If the NPC has a node, use its rotation_degrees directly (more accurate)
+	var hull: float = lod_data.hull_ratio
+	var shd: float = lod_data.shield_ratio
+	var ai: int = lod_data.ai_state
+	var tid: StringName = lod_data.ai_target_id
+
+	# If the NPC has a live node, read accurate values directly
 	if is_instance_valid(lod_data.node_ref):
 		rot_deg = lod_data.node_ref.rotation_degrees
+		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
+		if health:
+			hull = health.get_hull_ratio()
+			shd = health.get_total_shield_ratio()
+		var brain = lod_data.node_ref.get_node_or_null("AIBrain")
+		if brain:
+			ai = brain.current_state
+			if brain.target and is_instance_valid(brain.target):
+				tid = StringName(brain.target.name)
+			else:
+				tid = &""
 
 	return {
 		"nid": String(npc_id),
@@ -405,11 +421,11 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 		"rx": rot_deg.x,
 		"ry": rot_deg.y,
 		"rz": rot_deg.z,
-		"hull": lod_data.hull_ratio,
-		"shd": lod_data.shield_ratio,
+		"hull": hull,
+		"shd": shd,
 		"thr": 0.5,
-		"ai": lod_data.ai_state,
-		"tid": String(lod_data.ai_target_id),
+		"ai": ai,
+		"tid": String(tid),
 		"t": Time.get_ticks_msec() / 1000.0,
 	}
 

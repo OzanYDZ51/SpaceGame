@@ -26,6 +26,10 @@ var fleet_deployment_mgr = null
 
 var remote_players: Dictionary = {}  # peer_id -> RemotePlayerShip
 var remote_npcs: Dictionary = {}     # npc_id (StringName) -> true
+var _recently_dead_npcs: Dictionary = {}  # npc_id -> death_ticks_ms (prevents ghost re-creation from delayed batch)
+var _system_mismatch_grace: Dictionary = {}  # peer_id -> first_mismatch_ticks_ms
+const SYSTEM_MISMATCH_GRACE_MS: int = 3000  # 3s grace before removing remote player
+const DEAD_NPC_GUARD_MS: int = 10000  # 10s guard against batch re-creation
 
 
 func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
@@ -195,12 +199,21 @@ func _on_state_received(peer_id: int, state) -> void:
 		return
 	var local_sys_id: int = system_transition.current_system_id if system_transition else -1
 	if state.system_id != local_sys_id:
-		# Log once per peer to help diagnose "can't see each other" issues
-		if remote_players.has(peer_id):
-			var pname: String = NetworkManager.peers[peer_id].player_name if NetworkManager.peers.has(peer_id) else "?"
-			print("[Net] Joueur '%s' (peer %d) dans systeme %d, nous dans %d — masqué" % [pname, peer_id, state.system_id, local_sys_id])
-		remove_remote_player(peer_id)
+		# Grace period: during simultaneous jumps, the server may briefly tag
+		# new-system positions with the old system_id (race between reliable
+		# system change RPC and unreliable position updates). Wait 3s before removing.
+		var now_ms: int = Time.get_ticks_msec()
+		if not _system_mismatch_grace.has(peer_id):
+			_system_mismatch_grace[peer_id] = now_ms
+		elif now_ms - _system_mismatch_grace[peer_id] > SYSTEM_MISMATCH_GRACE_MS:
+			if remote_players.has(peer_id):
+				var pname: String = NetworkManager.peers[peer_id].player_name if NetworkManager.peers.has(peer_id) else "?"
+				print("[Net] Joueur '%s' (peer %d) dans systeme %d, nous dans %d — masqué" % [pname, peer_id, state.system_id, local_sys_id])
+			_system_mismatch_grace.erase(peer_id)
+			remove_remote_player(peer_id)
 		return
+	# System matches — clear any pending grace timer
+	_system_mismatch_grace.erase(peer_id)
 
 	if not remote_players.has(peer_id):
 		if NetworkManager.peers.has(peer_id):
@@ -341,9 +354,24 @@ func _on_npc_spawned(data: Dictionary) -> void:
 
 
 func _on_npc_batch_received(batch: Array) -> void:
+	# Periodic cleanup of stale dead-NPC guard entries
+	var now_ms: int = Time.get_ticks_msec()
+	if not _recently_dead_npcs.is_empty() and (now_ms % 5000) < 50:
+		var stale: Array[StringName] = []
+		for did: StringName in _recently_dead_npcs:
+			if now_ms - _recently_dead_npcs[did] > DEAD_NPC_GUARD_MS:
+				stale.append(did)
+		for did in stale:
+			_recently_dead_npcs.erase(did)
+
 	for state_dict in batch:
 		var npc_id =StringName(state_dict.get("nid", ""))
 		if npc_id == &"":
+			continue
+
+		# Prevent ghost re-creation: delayed batch packets can arrive AFTER
+		# the reliable _rpc_npc_died, causing a dead NPC to be re-spawned.
+		if _recently_dead_npcs.has(npc_id):
 			continue
 
 		if not remote_npcs.has(npc_id):
@@ -366,6 +394,9 @@ func _on_npc_batch_received(batch: Array) -> void:
 
 func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
 	var npc_id =StringName(npc_id_str)
+
+	# Guard: prevent delayed batch packets from re-creating this NPC as a ghost
+	_recently_dead_npcs[npc_id] = Time.get_ticks_msec()
 
 	# Credit kill to mission/reputation system BEFORE LOD cleanup
 	# Only for multiplayer CLIENTS — host already gets credit via EncounterManager signal
