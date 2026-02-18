@@ -230,16 +230,29 @@ func _on_state_received(peer_id: int, state) -> void:
 			rdata.is_docked = state.is_docked
 			rdata.is_dead = state.is_dead
 
-	# Update map entity velocity + visibility
+	# Update map entity position + velocity + visibility
 	var map_ent_id ="RemotePlayer_%d" % peer_id
 	var map_ent =EntityRegistry.get_entity(map_ent_id)
 	if not map_ent.is_empty():
+		map_ent["pos_x"] = state.pos_x
+		map_ent["pos_y"] = state.pos_y
+		map_ent["pos_z"] = state.pos_z
 		map_ent["vel_x"] = state.velocity.x
+		map_ent["vel_y"] = state.velocity.y
 		map_ent["vel_z"] = state.velocity.z
 		map_ent["extra"]["hidden"] = state.is_docked or state.is_dead
 
 	if remote_players.has(peer_id):
 		var remote = remote_players[peer_id]
+		# After LOD demotion (LOD1→LOD2), the old node was freed. When re-promoted
+		# (LOD2→LOD1), a new node is created but remote_players keeps the stale ref.
+		# Re-fetch from LOD data so the new node receives state updates.
+		if not is_instance_valid(remote) and lod_manager:
+			var rid = StringName("RemotePlayer_%d" % peer_id)
+			var rdata = lod_manager.get_ship_data(rid)
+			if rdata and is_instance_valid(rdata.node_ref):
+				remote = rdata.node_ref
+				remote_players[peer_id] = remote
 		if is_instance_valid(remote):
 			remote.receive_state(state)
 

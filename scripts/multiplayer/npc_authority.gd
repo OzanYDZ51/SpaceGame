@@ -374,7 +374,9 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 				var dist =peer_pos.distance_to(lod_data.position)
 				if dist <= FULL_SYNC_DISTANCE and full_sync:
 					batch.append(_build_npc_state_dict(npc_id, lod_data))
-				elif dist <= MAX_SYNC_DISTANCE and slow_sync:
+				elif slow_sync:
+					# No distance cap — with few NPCs per system (1-8), all get
+					# at least 2Hz sync so distant clients see them move on the map.
 					batch.append(_build_npc_state_dict(npc_id, lod_data))
 
 			if batch.is_empty():
