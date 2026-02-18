@@ -141,7 +141,9 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		lod_manager.register_ship(StringName(remote.name), rdata)
 
 	# Register on system map (hidden until first state arrives with real position)
-	EntityRegistry.register("remote_player_%d" % peer_id, {
+	# ID MUST match remote.name ("RemotePlayer_%d") so ShipLODManager._ensure_entity_registered()
+	# sees the existing entry and doesn't create a duplicate.
+	EntityRegistry.register("RemotePlayer_%d" % peer_id, {
 		"name": player_name,
 		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
 		"node": remote,
@@ -182,7 +184,7 @@ func remove_remote_player(peer_id: int) -> void:
 		var remote = remote_players[peer_id]
 		if lod_manager:
 			lod_manager.unregister_ship(StringName("RemotePlayer_%d" % peer_id))
-		EntityRegistry.unregister("remote_player_%d" % peer_id)
+		EntityRegistry.unregister("RemotePlayer_%d" % peer_id)
 		if is_instance_valid(remote):
 			remote.queue_free()
 		remote_players.erase(peer_id)
@@ -216,7 +218,7 @@ func _on_state_received(peer_id: int, state) -> void:
 			rdata.is_dead = state.is_dead
 
 	# Update map entity velocity + visibility
-	var map_ent_id ="remote_player_%d" % peer_id
+	var map_ent_id ="RemotePlayer_%d" % peer_id
 	var map_ent =EntityRegistry.get_entity(map_ent_id)
 	if not map_ent.is_empty():
 		map_ent["vel_x"] = state.velocity.x

@@ -1315,8 +1315,8 @@ func _build_group_context_orders(context: Dictionary) -> Array[Dictionary]:
 	var my_group_id: int = NetworkManager.local_group_id
 
 	# If right-clicking on a SHIP_PLAYER entity (and not self)
-	if target_entity_id.begins_with("remote_player_"):
-		var target_pid: int = target_entity_id.trim_prefix("remote_player_").to_int()
+	if target_entity_id.begins_with("RemotePlayer_"):
+		var target_pid: int = target_entity_id.trim_prefix("RemotePlayer_").to_int()
 		if target_pid > 0:
 			# Check if target is in my group
 			if my_group_id > 0 and NetworkManager.is_peer_in_my_group(target_pid):
