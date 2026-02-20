@@ -82,11 +82,17 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 						break
 			station_nodes.append(station_node)
 
-	# Collect gate positions for system-wide routes
+	# Collect gate positions for system-wide routes.
+	# Gates are at system scale (millions of units) — clamp to playable patrol distance.
+	const MAX_GATE_ROUTE_DIST: float = 25000.0
 	var gate_positions: Array[Vector3] = []
 	if system_data and system_data.jump_gates.size() > 0:
 		for gd_gate in system_data.jump_gates:
-			gate_positions.append(Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z))
+			var raw_gate := Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z)
+			var gate_dist: float = raw_gate.length()
+			if gate_dist > MAX_GATE_ROUTE_DIST:
+				raw_gate = raw_gate.normalized() * MAX_GATE_ROUTE_DIST
+			gate_positions.append(raw_gate)
 
 	# Build a list of all key points in the system (stations + gates)
 	var key_points: Array[Vector3] = []
@@ -536,11 +542,15 @@ func spawn_for_remote_system(system_id: int) -> void:
 			station_positions.append(Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r))
 			station_factions.append(default_faction)
 
-	# Compute gate positions
+	# Compute gate positions (clamped to playable patrol distance — gates are at system scale).
 	var gate_positions: Array[Vector3] = []
 	if system_data and system_data.jump_gates.size() > 0:
 		for gd_gate in system_data.jump_gates:
-			gate_positions.append(Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z))
+			var raw_gate := Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z)
+			var gate_dist: float = raw_gate.length()
+			if gate_dist > 25000.0:
+				raw_gate = raw_gate.normalized() * 25000.0
+			gate_positions.append(raw_gate)
 
 	var key_points: Array[Vector3] = []
 	key_points.append_array(station_positions)

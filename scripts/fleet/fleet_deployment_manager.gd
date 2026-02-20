@@ -587,6 +587,14 @@ func _serialize_ship_data(fleet_index: int) -> Dictionary:
 	var modules_arr: Array = []
 	for m in fs.modules:
 		modules_arr.append(String(m))
+	var cargo_items: Array = []
+	if fs.cargo:
+		cargo_items = fs.cargo.serialize()
+	var res_out: Dictionary = {}
+	for res_id in fs.ship_resources:
+		var qty: int = fs.ship_resources.get(res_id, 0)
+		if qty > 0:
+			res_out[String(res_id)] = qty
 	return {
 		"ship_id": String(fs.ship_id),
 		"weapons": weapons_arr,
@@ -595,4 +603,6 @@ func _serialize_ship_data(fleet_index: int) -> Dictionary:
 		"modules": modules_arr,
 		"docked_station_id": fs.docked_station_id,
 		"custom_name": fs.custom_name,
+		"cargo": cargo_items,
+		"ship_resources": res_out,
 	}

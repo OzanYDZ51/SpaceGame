@@ -189,7 +189,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			target_pos = _push_target_outside_stations(target_pos)
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
-				_brain.set_patrol_area(target_pos, 50.0)
+				_brain.set_patrol_area(target_pos, 0.0)
 				_brain.current_state = AIBrain.State.PATROL
 			else:
 				_mark_arrived(target_pos)
@@ -221,7 +221,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			target_pos = _push_target_outside_stations(target_pos)
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
-				_brain.set_patrol_area(target_pos, 50.0)
+				_brain.set_patrol_area(target_pos, 0.0)
 				_brain.current_state = AIBrain.State.PATROL
 			else:
 				_mark_arrived(target_pos)
@@ -231,7 +231,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			var target_pos =FloatingOrigin.to_local_pos([center_x, 0.0, center_z])
 			var dist: float = _ship.global_position.distance_to(target_pos)
 			if dist > MOVE_ARRIVE_DIST:
-				_brain.set_patrol_area(target_pos, 50.0)
+				_brain.set_patrol_area(target_pos, 0.0)
 				_brain.current_state = AIBrain.State.PATROL
 			else:
 				_brain.current_state = AIBrain.State.MINING
@@ -359,6 +359,12 @@ func _process(_delta: float) -> void:
 				if _brain.current_state == AIBrain.State.PATROL:
 					_brain.current_state = AIBrain.State.PURSUE
 
+	# Auto-resume: after combat (idle_after_combat=true), brain returns to IDLE;
+	# re-apply the pending mission command so the ship continues its objective.
+	if not _arrived and not _returning and _brain.current_state == AIBrain.State.IDLE:
+		if command in [&"move_to", &"patrol", &"construction", &"mine"]:
+			apply_command(command, command_params)
+
 
 func _mark_arrived(target_pos: Vector3) -> void:
 	_arrived = true
@@ -419,11 +425,11 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 		&"move_to", &"construction":
 			var tx: float = command_params.get("target_x", 0.0)
 			var tz: float = command_params.get("target_z", 0.0)
-			_brain.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 50.0)
+			_brain.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 0.0)
 		&"mine":
 			var cx: float = command_params.get("center_x", 0.0)
 			var cz: float = command_params.get("center_z", 0.0)
-			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), 50.0)
+			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), 0.0)
 		&"patrol":
 			var cx: float = command_params.get("center_x", 0.0)
 			var cz: float = command_params.get("center_z", 0.0)

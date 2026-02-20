@@ -577,6 +577,30 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 	if ship_data:
 		loot = LootTable.roll_drops_for_ship(ship_data)
 
+	# Add fleet ship cargo to loot (commercial goods + mining ores)
+	if _fleet_npcs.has(npc_id):
+		var fleet_info: Dictionary = _fleet_npcs[npc_id]
+		for item in fleet_info.get("cargo", []):
+			var item_type: String = str(item.get("item_type", ""))
+			var qty: int = int(item.get("quantity", 1))
+			if qty > 0:
+				loot.append({
+					"name": str(item.get("item_name", item_type)),
+					"type": item_type,
+					"quantity": qty,
+					"icon_color": LootTable.TYPE_COLORS.get(item_type, Color.WHITE),
+				})
+		for res_id in fleet_info.get("ship_resources", {}):
+			var qty: int = int(fleet_info["ship_resources"][res_id])
+			if qty > 0:
+				var res_str: String = String(res_id)
+				loot.append({
+					"name": res_str.replace("_", " ").capitalize(),
+					"type": res_str,
+					"quantity": qty,
+					"icon_color": LootTable.TYPE_COLORS.get(res_str, Color.WHITE),
+				})
+
 	# Report kill to Discord via EventReporter
 	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
 
@@ -819,6 +843,13 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 	# Register as fleet NPC for tracking (include command for persistence)
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
 	_fleet_npcs[npc_id]["command"] = String(cmd)
+	# Store fleet cargo so it drops as loot on death
+	var deploy_cargo: Array = ship_data.get("cargo", [])
+	var deploy_res: Dictionary = ship_data.get("ship_resources", {})
+	if not deploy_cargo.is_empty():
+		_fleet_npcs[npc_id]["cargo"] = deploy_cargo
+	if not deploy_res.is_empty():
+		_fleet_npcs[npc_id]["ship_resources"] = deploy_res
 
 	# Build spawn data for broadcast
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")

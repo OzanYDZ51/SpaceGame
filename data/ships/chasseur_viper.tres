@@ -52,7 +52,7 @@ loot_mat_count_min = 1
 loot_mat_count_max = 2
 loot_weapon_part_chance = 0.05
 lod_combat_dps = 30.0
-npc_tier = 1
+npc_tier = 0
 sold_at_station_types = Array[StringName]([&"repair", &"military"])
 resource_cost = {
 &"iron": 60,

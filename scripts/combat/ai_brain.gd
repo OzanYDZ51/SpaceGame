@@ -385,11 +385,15 @@ func _tick_patrol() -> void:
 	if _waypoints.is_empty():
 		return
 
-	# Wider arrival distance in asteroid belt to avoid getting stuck
-	# Cap to patrol radius so waypoints don't overlap in small patrol areas
-	var arrival =150.0 if _in_asteroid_belt else 80.0
-	if _patrol_radius < arrival:
-		arrival = maxf(_patrol_radius * 0.6, 15.0)
+	# Direct move (radius=0): use fixed arrival so ship stops cleanly
+	# Patrol: cap arrival to patrol radius so waypoints don't overlap in small areas
+	var arrival: float
+	if _patrol_radius <= 0.0:
+		arrival = 80.0
+	elif _in_asteroid_belt:
+		arrival = 150.0 if _patrol_radius >= 150.0 else maxf(_patrol_radius * 0.6, 15.0)
+	else:
+		arrival = 80.0 if _patrol_radius >= 80.0 else maxf(_patrol_radius * 0.6, 15.0)
 
 	var wp: Vector3 = _waypoints[_current_waypoint]
 
@@ -698,6 +702,10 @@ func _is_faction_allied(target_faction: StringName, target_id: StringName = &"")
 
 func _generate_patrol_waypoints() -> void:
 	_waypoints.clear()
+	if _patrol_radius <= 0.0:
+		# Direct move: single waypoint at destination, no orbit
+		_waypoints.append(_patrol_center)
+		return
 	for i in 4:
 		var angle: float = (float(i) / 4.0) * TAU
 		var wp =_patrol_center + Vector3(
@@ -735,7 +743,7 @@ func set_route(waypoints: Array[Vector3]) -> void:
 # THREAT TABLE
 # =============================================================================
 func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
-	if current_state == State.DEAD or ignore_threats or not weapons_enabled:
+	if current_state == State.DEAD or not weapons_enabled:
 		return
 	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
 		return
