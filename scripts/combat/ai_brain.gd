@@ -3,12 +3,12 @@ extends Node
 
 # =============================================================================
 # AI Brain - High-level behavior state machine for NPC ships
-# States: IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, LOOT_PICKUP, DEAD
+# States: IDLE, PATROL, PURSUE, ATTACK, FORMATION, MINING, LOOT_PICKUP, DEAD
 # Ticks at 10Hz for performance.
 # Environment-aware: adapts to asteroid belts, stations, nearby obstacles.
 # =============================================================================
 
-enum State { IDLE, PATROL, PURSUE, ATTACK, EVADE, FLEE, FORMATION, MINING, LOOT_PICKUP, DEAD }
+enum State { IDLE, PATROL, PURSUE, ATTACK, FORMATION, MINING, LOOT_PICKUP, DEAD }
 
 var current_state: State = State.PATROL
 var target: Node3D = null
@@ -17,13 +17,10 @@ var formation_offset: Vector3 = Vector3.ZERO
 
 # Behavior profile
 var aggression: float = 0.5
-var preferred_range: float = 500.0
-var evasion_frequency: float = 2.0
-var evasion_amplitude: float = 30.0
-var flee_threshold: float = 0.2
+var preferred_range: float = 500.0  # Combat orbit distance — set from ShipData.engagement_range in _ready()
 var accuracy: float = 0.7
 var formation_discipline: float = 0.8
-var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
+var weapons_enabled: bool = true  # LOD1 ships: move but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 var guard_station: Node3D = null  # Station this NPC is guarding (null = free roam)
 var route_priority: bool = false  # Convoy freighters: keep following route during combat
@@ -31,7 +28,6 @@ var idle_after_combat: bool = false  # Fleet ships: return to IDLE after losing 
 
 # Detection — per-ship from ShipData, fallback to Constants
 var detection_range: float = Constants.AI_DETECTION_RANGE
-var engagement_range: float = Constants.AI_ENGAGEMENT_RANGE
 var disengage_range: float = Constants.AI_DISENGAGE_RANGE
 
 # Patrol
@@ -60,7 +56,6 @@ var _ship = null
 var _pilot = null
 var _health = null
 var _loot_pickup = null  # LootPickupSystem (same component as player)
-var _evade_timer: float = 0.0
 var _debug_timer: float = 0.0
 var _cached_lod_mgr = null
 var _cached_target_health = null
@@ -75,16 +70,15 @@ const THREAT_CLEANUP_TIME: float = 10.0  # remove entries older than 10s
 
 
 func setup(behavior_name: StringName) -> void:
+	# preferred_range comes from ShipData.engagement_range (set in _ready).
+	# Only aggression/accuracy differ per behavior — the ship stats drive the rest.
 	match behavior_name:
 		&"aggressive":
-			aggression = 0.8; preferred_range = 300.0; evasion_frequency = 1.5
-			evasion_amplitude = 25.0; flee_threshold = 0.1; accuracy = 0.8
+			aggression = 0.8; accuracy = 0.8
 		&"defensive":
-			aggression = 0.3; preferred_range = 800.0; evasion_frequency = 3.0
-			evasion_amplitude = 40.0; flee_threshold = 0.3; accuracy = 0.6
+			aggression = 0.3; accuracy = 0.6
 		&"balanced", &"hostile":
-			aggression = 0.5; preferred_range = 500.0; evasion_frequency = 2.0
-			evasion_amplitude = 30.0; flee_threshold = 0.2; accuracy = 0.7
+			aggression = 0.5; accuracy = 0.7
 		_:
 			pass  # Use defaults
 
@@ -97,10 +91,10 @@ func _ready() -> void:
 	_health = _ship.get_node_or_null("HealthSystem") if _ship else null
 	_loot_pickup = _ship.get_node_or_null("LootPickupSystem") if _ship else null
 
-	# Read per-ship AI ranges from ShipData (same data for player & NPC)
+	# Read per-ship AI ranges from ShipData (same data for player, fleet & NPC)
 	if _ship and _ship.ship_data:
 		detection_range = _ship.ship_data.sensor_range
-		engagement_range = _ship.ship_data.engagement_range
+		preferred_range = _ship.ship_data.engagement_range
 		disengage_range = _ship.ship_data.disengage_range
 
 	# React to damage: if patrolling/idle and get shot, immediately pursue the attacker
@@ -111,9 +105,13 @@ func _ready() -> void:
 	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	_cached_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 
-	# Generate initial patrol waypoints
+	# Generate initial patrol waypoints.
+	# Guard: if FleetAIBridge._do_init() already set _patrol_center via call_deferred
+	# (runs at end of Frame N), don't overwrite it — this await resumes at Frame N+1,
+	# AFTER call_deferred fired.  Only fall back to ship position if unset (== ZERO).
 	if _ship:
-		_patrol_center = _ship.global_position
+		if _patrol_center == Vector3.ZERO:
+			_patrol_center = _ship.global_position
 		_update_environment()
 		_generate_patrol_waypoints()
 
@@ -127,7 +125,7 @@ func _process(delta: float) -> void:
 	# Turrets track + auto-fire every frame, return to rest when no target
 	var wm = _ship.get_node_or_null("WeaponManager")
 	if wm:
-		var can_fire: bool = current_state in [State.ATTACK, State.PURSUE, State.EVADE] or (route_priority and current_state == State.PATROL)
+		var can_fire: bool = current_state in [State.ATTACK, State.PURSUE] or (route_priority and current_state == State.PATROL)
 		if target and is_instance_valid(target) and weapons_enabled and can_fire:
 			wm.update_turrets(target)
 		else:
@@ -173,10 +171,6 @@ func _process(delta: float) -> void:
 			_tick_pursue()
 		State.ATTACK:
 			_tick_attack(delta)
-		State.EVADE:
-			_tick_evade(delta)
-		State.FLEE:
-			_tick_flee()
 		State.FORMATION:
 			_tick_formation()
 		State.MINING:
@@ -314,33 +308,6 @@ func _check_obstacle_emergency() -> bool:
 	return false
 
 
-func _compute_safe_flee_direction(desired_dir: Vector3) -> Vector3:
-	## Adjusts flee direction to avoid obstacles and incorporate sensor avoidance.
-	var result: Vector3 = desired_dir
-
-	for zone in _obstacle_zones:
-		var to_obs: Vector3 = zone["pos"] - _ship.global_position
-		var obs_dist: float = to_obs.length()
-		var excl_r: float = zone["radius"]
-		if obs_dist > excl_r * 2.0:
-			continue
-		var obs_dir: Vector3 = to_obs.normalized()
-		var dot: float = desired_dir.dot(obs_dir)
-		if dot > 0.5 and obs_dist < excl_r * 1.2:
-			# Fleeing toward obstacle — deflect perpendicular
-			var perp: Vector3 = desired_dir.cross(Vector3.UP).normalized()
-			if perp.length_squared() < 0.5:
-				perp = desired_dir.cross(Vector3.RIGHT).normalized()
-			result = (result + perp * 0.8).normalized()
-
-	# Blend in obstacle sensor avoidance if available
-	var sensor = _ship.get_node_or_null("ObstacleSensor")
-	if sensor and sensor.avoidance_vector.length_squared() > 100.0:
-		result = (result + sensor.avoidance_vector.normalized() * 0.5).normalized()
-
-	return result
-
-
 # =============================================================================
 # STATE TICKS
 # =============================================================================
@@ -441,7 +408,7 @@ func _tick_pursue() -> void:
 	_pilot.fly_intercept(target, preferred_range)
 
 	# Start shooting while pursuing if close enough
-	if dist < engagement_range and weapons_enabled:
+	if dist < preferred_range and weapons_enabled:
 		_pilot.fire_at_target(target, accuracy * 0.6)
 
 
@@ -464,17 +431,6 @@ func _tick_attack(_delta: float) -> void:
 	if dist < MIN_SAFE_DIST:
 		var away =(_ship.global_position - target.global_position).normalized()
 		_pilot.fly_toward(_ship.global_position + away * 300.0, 10.0)
-		return
-
-	# Check flee condition
-	if _health and _health.get_hull_ratio() < flee_threshold:
-		current_state = State.FLEE
-		return
-
-	# Check evade condition (shields down + hull taking damage)
-	if _health and _health.get_total_shield_ratio() < 0.15 and randf() < aggression * 0.3:
-		current_state = State.EVADE
-		_evade_timer = randf_range(1.5, 3.0)
 		return
 
 	# Disengage if too far
@@ -506,42 +462,6 @@ func _tick_attack(_delta: float) -> void:
 	# Fire when in attack state (LOD1 ships move but don't fire)
 	if weapons_enabled:
 		_pilot.fire_at_target(target, accuracy)
-
-
-func _tick_evade(_delta: float) -> void:
-	_evade_timer -= TICK_INTERVAL
-	if _evade_timer <= 0.0:
-		current_state = State.ATTACK if _is_target_valid() else State.PATROL
-		return
-
-	# Obstacle avoidance: if inside an exclusion zone, break off and steer out
-	if _check_obstacle_emergency():
-		return
-
-	_pilot.evade_random(TICK_INTERVAL, evasion_amplitude, evasion_frequency)
-
-	# Still try to face target while evading
-	if _is_target_valid():
-		_pilot.face_target(target.global_position)
-
-
-func _tick_flee() -> void:
-	if not _is_target_valid():
-		current_state = State.IDLE if idle_after_combat else State.PATROL
-		target = null
-		return
-
-	# Compute safe flee direction (avoids stations)
-	var away_dir: Vector3 = (_ship.global_position - target.global_position).normalized()
-	away_dir = _compute_safe_flee_direction(away_dir)
-	var flee_pos: Vector3 = _ship.global_position + away_dir * 2000.0
-	_pilot.fly_toward(flee_pos, 100.0)
-
-	# If we get far enough, re-engage or patrol
-	var dist: float = _pilot.get_distance_to(target.global_position)
-	if dist > disengage_range:
-		current_state = State.IDLE if idle_after_combat else State.PATROL
-		target = null
 
 
 func _tick_formation() -> void:
@@ -745,6 +665,12 @@ func set_route(waypoints: Array[Vector3]) -> void:
 func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 	if current_state == State.DEAD or not weapons_enabled:
 		return
+	# Fleet mission ships (ignore_threats=true) don't abandon their route when hit.
+	# Normal threat scanning in _detect_threats() already respects this flag;
+	# _on_damage_taken must too — otherwise any hit near a station (guard NPC,
+	# physics collision) knocks the ship into PURSUE and freezes the move order.
+	if ignore_threats:
+		return
 	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
 		return
 
@@ -771,7 +697,7 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		return
 
 	# If already in combat, check if we should switch to a higher-threat attacker
-	if current_state in [State.PURSUE, State.ATTACK, State.EVADE]:
+	if current_state in [State.PURSUE, State.ATTACK]:
 		_maybe_switch_target()
 
 
@@ -816,8 +742,6 @@ func _maybe_switch_target() -> void:
 
 	if best_node and best_node != target and best_threat > current_threat * THREAT_SWITCH_RATIO:
 		target = best_node
-		if current_state == State.EVADE:
-			current_state = State.PURSUE
 
 
 func _get_highest_threat() -> Node3D:
