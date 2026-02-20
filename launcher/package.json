@@ -1,6 +1,6 @@
 {
   "name": "imperion-online-launcher",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Imperion Online Launcher - Login, auto-update, and game launch",
   "main": "main.js",
   "scripts": {
