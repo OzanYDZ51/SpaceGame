@@ -159,6 +159,9 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	var definition: Dictionary = EventDefinitions.get_convoy_definition(tier)
 	_spawn_convoy_npcs(evt, definition, start_pos, route_waypoints)
 
+	# Save immutable copy of all spawned NPC IDs for reliable cleanup
+	evt.all_spawned_ids = evt.npc_ids.duplicate()
+
 	_active_events[event_id] = evt
 
 	# Register event entity on the map
@@ -385,7 +388,6 @@ func _check_event_timeouts() -> void:
 		# Safety net: if leader NPC vanished without a kill signal, treat as expired
 		# (no rewards). This prevents free credits from edge-case removals.
 		if evt.leader_id != &"" and not _npc_exists(evt.leader_id):
-			evt.npc_ids.erase(evt.leader_id)
 			print("[EventManager] WARNING: Safety net — leader %s vanished without kill signal, expiring event %s" % [evt.leader_id, evt.event_id])
 			expired_ids.append(evt.event_id)
 			continue
@@ -433,12 +435,15 @@ func _cleanup_event(event_id: String, was_completed: bool, killer_pid: int = 0) 
 
 	evt.is_active = false
 
-	# Despawn remaining NPCs — must notify clients + unregister from NpcAuthority
+	# Despawn ALL NPCs that were ever spawned for this event — use all_spawned_ids
+	# (npc_ids gets mutated by _on_npc_removed when individual NPCs die, so killed
+	# NPCs would be missing from it, leaving ghost markers on the map).
 	var lod_mgr = _get_lod_manager()
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 	var is_server: bool = NetworkManager.is_server()
 
-	for npc_id in evt.npc_ids:
+	var ids_to_clean: Array[StringName] = evt.all_spawned_ids if not evt.all_spawned_ids.is_empty() else evt.npc_ids
+	for npc_id in ids_to_clean:
 		# Broadcast despawn to clients so they remove their puppet (prevents ghost NPCs)
 		if is_server and npc_auth and npc_auth._npcs.has(npc_id):
 			var death_pos: Array = [0.0, 0.0, 0.0]
@@ -455,6 +460,10 @@ func _cleanup_event(event_id: String, was_completed: bool, killer_pid: int = 0) 
 			var node = get_tree().current_scene.get_node_or_null(NodePath(String(npc_id)))
 			if node and is_instance_valid(node):
 				node.queue_free()
+
+		# Safety: always ensure EntityRegistry entry is gone (even if LOD manager
+		# already cleaned it — unregister is a no-op for missing IDs)
+		EntityRegistry.unregister(String(npc_id))
 
 	# Unregister map entity
 	EntityRegistry.unregister(event_id)
@@ -564,8 +573,8 @@ func _check_client_event_timeouts() -> void:
 		var cevt: Dictionary = _client_events[eid]
 		var t0: float = cevt.get("t0", 0.0)
 		var dur: float = cevt.get("dur", 600.0)
-		# 60s grace period beyond official duration for network delays
-		if t0 > 0.0 and now > t0 + dur + 60.0:
+		# 15s grace period beyond official duration for network delays
+		if t0 > 0.0 and now > t0 + dur + 15.0:
 			expired.append(eid)
 	for eid in expired:
 		_client_events.erase(eid)

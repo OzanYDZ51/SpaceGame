@@ -53,8 +53,13 @@ func _ready() -> void:
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
 
-	await _load_model()
+	# Build bay area SYNCHRONOUSLY before async model loading.
+	# The BayArea uses fixed constants and doesn't depend on the model.
+	# Creating it before _load_model() ensures the Area3D is registered with
+	# the physics server BEFORE any potential universe freeze (respawn auto-dock).
 	_build_bay_area()
+
+	await _load_model()
 	_build_lights()
 	_build_name_label()
 	_find_ring_nodes()

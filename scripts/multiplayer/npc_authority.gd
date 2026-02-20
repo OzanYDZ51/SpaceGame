@@ -16,6 +16,7 @@ const BATCH_INTERVAL: float = 0.05  # 20Hz NPC state sync (matches NET_TICK_RATE
 const SLOW_SYNC_INTERVAL: float = 0.5  # 2Hz for distant NPCs
 const FULL_SYNC_DISTANCE: float = 5000.0  # <5km = full sync
 const MAX_SYNC_DISTANCE: float = 15000.0  # 5-15km = slow sync
+const MAX_NPCS_PER_BATCH: int = 15  # Cap per RPC to avoid WebSocket buffer overflow
 const HIT_VALIDATION_RANGE: float = 5000.0
 const HIT_DAMAGE_TOLERANCE: float = 0.5  # ±50% damage variance allowed
 
@@ -382,7 +383,13 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 			if batch.is_empty():
 				continue
 
-			NetworkManager._rpc_npc_batch.rpc_id(pid, batch)
+			# Send in chunks to avoid WebSocket outbound buffer overflow
+			if batch.size() <= MAX_NPCS_PER_BATCH:
+				NetworkManager._rpc_npc_batch.rpc_id(pid, batch)
+			else:
+				for chunk_start in range(0, batch.size(), MAX_NPCS_PER_BATCH):
+					var chunk: Array = batch.slice(chunk_start, chunk_start + MAX_NPCS_PER_BATCH)
+					NetworkManager._rpc_npc_batch.rpc_id(pid, chunk)
 
 
 func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Dictionary:

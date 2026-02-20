@@ -225,6 +225,7 @@ func request_undock() -> void:
 	can_dock = false
 	_in_bay = false
 	_bay_station = null
+	_connected_stations.clear()  # Force bay signal reconnection on next scan
 	_check_timer = 0.0  # Scan immediately so bay signals are reconnected
 	undocked.emit()
 

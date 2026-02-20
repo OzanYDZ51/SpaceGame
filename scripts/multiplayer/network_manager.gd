@@ -203,6 +203,8 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 			push_warning("NetworkManager: Invalid PORT env '%s', using default %d" % [env_port, port])
 	_server_port = port
 	_peer = WebSocketMultiplayerPeer.new()
+	_peer.outbound_buffer_size = 1048576  # 1 MB — prevents ERR_OUT_OF_MEMORY on NPC batch broadcasts
+	_peer.inbound_buffer_size = 262144    # 256 KB
 	var err =_peer.create_server(port)
 	if err != OK:
 		push_error("NetworkManager: Failed to start dedicated server on port %d: %s" % [port, error_string(err)])
@@ -241,6 +243,8 @@ func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) 
 	_server_url = url
 	_server_port = port
 	_peer = WebSocketMultiplayerPeer.new()
+	_peer.outbound_buffer_size = 262144   # 256 KB
+	_peer.inbound_buffer_size = 1048576   # 1 MB — receives large NPC batches from server
 	var err =_peer.create_client(url)
 	if err != OK:
 		push_error("NetworkManager: Failed to connect to %s: %s" % [url, error_string(err)])
