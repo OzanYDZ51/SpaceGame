@@ -535,7 +535,10 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
         // re-download the exe if the engine version changed or the file is missing.
         const remoteGodotVersion = remoteManifest.godot_version || null;
         const localGodotVersion = localManifest?.godot_version || null;
-        const sameGodotVersion = remoteGodotVersion && localGodotVersion && remoteGodotVersion === localGodotVersion;
+        // godotUpgraded is true ONLY when both versions are known AND they differ.
+        // If localGodotVersion is null (first delta install), godotUpgraded = false,
+        // meaning we still skip the exe if it exists on disk.
+        const godotUpgraded = !!(remoteGodotVersion && localGodotVersion && remoteGodotVersion !== localGodotVersion);
 
         // Check each remote file against local hash
         // Manifest format: { "files": { "name": {"hash":"...", "size":N} } }
@@ -543,9 +546,11 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
         for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
           const localPath = path.join(GAME_DIR, fileName);
 
-          // Engine binary: skip hash check if Godot version unchanged and file exists.
-          // This avoids re-downloading ~60MB on every patch when only the .pck changed.
-          if (sameGodotVersion && fileName.endsWith(".exe") && fs.existsSync(localPath)) {
+          // Engine binary: skip hash check if Godot hasn't been upgraded and file exists.
+          // The exe hash is non-deterministic across builds (PE timestamps, icon embedding).
+          // Re-download the exe ONLY when Godot itself upgrades (version string changes)
+          // or on a brand-new install where the file doesn't exist yet.
+          if (!godotUpgraded && fileName.endsWith(".exe") && fs.existsSync(localPath)) {
             continue;
           }
 
@@ -656,11 +661,12 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
   if (remoteManifest && remoteManifest.files) {
     const verifyRemoteGodot = remoteManifest.godot_version || null;
     const verifyLocalGodot = getLocalManifest()?.godot_version || null;
-    const verifySameGodot = verifyRemoteGodot && verifyLocalGodot && verifyRemoteGodot === verifyLocalGodot;
+    // Same logic as delta check: skip exe unless Godot actually upgraded.
+    const verifyGodotUpgraded = !!(verifyRemoteGodot && verifyLocalGodot && verifyRemoteGodot !== verifyLocalGodot);
     const verifyErrors = [];
     for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
-      // Skip exe verification when Godot version unchanged (hash is non-deterministic)
-      if (verifySameGodot && fileName.endsWith(".exe") && canDoDelta) continue;
+      // Skip exe verification when Godot hasn't upgraded (hash is non-deterministic)
+      if (!verifyGodotUpgraded && fileName.endsWith(".exe") && canDoDelta) continue;
       const expectedHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
       const localHash = await computeFileHash(path.join(GAME_DIR, fileName));
       if (localHash !== expectedHash) {
