@@ -37,14 +37,15 @@ type FleetShipDB struct {
 
 // FleetSyncUpdate is the payload for batch position/health sync from the game server.
 type FleetSyncUpdate struct {
-	PlayerID   string  `json:"player_id"`
-	FleetIndex int     `json:"fleet_index"`
-	PosX       float64 `json:"pos_x"`
-	PosY       float64 `json:"pos_y"`
-	PosZ       float64 `json:"pos_z"`
-	HullRatio  float32 `json:"hull_ratio"`
-	ShieldRatio float32 `json:"shield_ratio"`
-	Command    string  `json:"command,omitempty"`
+	PlayerID      string          `json:"player_id"`
+	FleetIndex    int             `json:"fleet_index"`
+	PosX          float64         `json:"pos_x"`
+	PosY          float64         `json:"pos_y"`
+	PosZ          float64         `json:"pos_z"`
+	HullRatio     float32         `json:"hull_ratio"`
+	ShieldRatio   float32         `json:"shield_ratio"`
+	Command       string          `json:"command,omitempty"`
+	CommandParams json.RawMessage `json:"command_params,omitempty"`
 }
 
 // FleetDeathReport is the payload when a fleet ship is destroyed.

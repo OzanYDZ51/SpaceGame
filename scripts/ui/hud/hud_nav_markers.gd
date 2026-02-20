@@ -19,6 +19,7 @@ const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
 const NAV_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
 const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
 const NAV_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
+const NAV_COL_TARGET: Color = Color(1.0, 0.72, 0.08, 1.0)  # Gold — selected map nav target
 
 var _nav_markers: Control = null
 
@@ -137,6 +138,93 @@ func _draw_nav_markers(ctrl: Control) -> void:
 					continue
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos,
 					_get_npc_name(ship_node), dist, _get_npc_nav_color(ship_node))
+
+	# Nav target: entity selected on system map — always shown regardless of range
+	var nav_id: String = GameManager.nav_target_id
+	if nav_id != "":
+		var nav_ent: Dictionary = EntityRegistry.get_entity(nav_id)
+		if not nav_ent.is_empty():
+			var nav_world_pos: Vector3
+			var nav_node = nav_ent.get("node")
+			if nav_node != null and is_instance_valid(nav_node):
+				nav_world_pos = (nav_node as Node3D).global_position
+			else:
+				nav_world_pos = FloatingOrigin.to_local_pos([nav_ent["pos_x"], nav_ent["pos_y"], nav_ent["pos_z"]])
+			var nav_dx: float = nav_ent["pos_x"] - ship_upos[0]
+			var nav_dz: float = nav_ent["pos_z"] - ship_upos[2]
+			var nav_dist: float = sqrt(nav_dx * nav_dx + nav_dz * nav_dz)
+			_draw_nav_target_marker(ctrl, font, cam, cam_fwd, cam_pos, screen_size,
+				nav_world_pos, nav_ent.get("name", "?"), nav_dist)
+
+
+func _draw_nav_target_marker(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3, cam_pos: Vector3, screen_size: Vector2, world_pos: Vector3, ent_name: String, dist: float) -> void:
+	var dist_str: String = HudDrawHelpers.format_nav_distance(dist)
+	var to_ent: Vector3 = world_pos - cam_pos
+	if to_ent.length() < 0.1:
+		return
+	var dot: float = cam_fwd.dot(to_ent.normalized())
+	if dot > 0.1:
+		var sp: Vector2 = cam.unproject_position(world_pos)
+		if sp.x >= 0 and sp.x <= screen_size.x and sp.y >= 0 and sp.y <= screen_size.y:
+			_draw_nav_target_onscreen(ctrl, font, sp, ent_name, dist_str)
+			return
+	_draw_nav_target_offscreen(ctrl, font, screen_size, cam, cam_pos, world_pos, ent_name, dist_str)
+
+
+func _draw_nav_target_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name: String, dist_str: String) -> void:
+	var col: Color = NAV_COL_TARGET
+	# Corner brackets around the entity
+	var bsz: float = 12.0
+	var gap: float = 7.0
+	var blen: float = bsz * 0.5
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			var corner: Vector2 = sp + Vector2(sx * (bsz + gap), sy * (bsz + gap))
+			ctrl.draw_line(corner, corner + Vector2(-sx * blen * 2.0, 0.0), col, 2.0)
+			ctrl.draw_line(corner, corner + Vector2(0.0, -sy * blen * 2.0), col, 2.0)
+	HudDrawHelpers.draw_diamond(ctrl, sp, 6.0, col)
+	var name_w: float = font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	ctrl.draw_rect(Rect2(sp.x - name_w * 0.5 - 4, sp.y - 30, name_w + 8, 14), Color(0.0, 0.02, 0.04, 0.55))
+	ctrl.draw_string(font, Vector2(sp.x - name_w * 0.5, sp.y - 28), ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	var dist_w: float = font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	ctrl.draw_rect(Rect2(sp.x - dist_w * 0.5 - 4, sp.y + 24, dist_w + 8, 15), Color(0.0, 0.02, 0.04, 0.55))
+	ctrl.draw_string(font, Vector2(sp.x - dist_w * 0.5, sp.y + 26), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+
+
+func _draw_nav_target_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: Camera3D, cam_pos: Vector3, world_pos: Vector3, ent_name: String, dist_str: String) -> void:
+	var col: Color = NAV_COL_TARGET
+	var to_ent: Vector3 = (world_pos - cam_pos).normalized()
+	var right: Vector3 = cam.global_transform.basis.x
+	var up: Vector3 = cam.global_transform.basis.y
+	var screen_dir: Vector2 = Vector2(to_ent.dot(right), -to_ent.dot(up))
+	if screen_dir.length() < 0.001:
+		screen_dir = Vector2(0.0, -1.0)
+	screen_dir = screen_dir.normalized()
+
+	var center: Vector2 = screen_size * 0.5
+	var half: Vector2 = center - Vector2(NAV_EDGE_MARGIN, NAV_EDGE_MARGIN)
+	var edge_pos: Vector2 = center
+	if abs(screen_dir.x) > 0.001:
+		var tx: float = half.x / abs(screen_dir.x)
+		var ty: float = half.y / abs(screen_dir.y) if abs(screen_dir.y) > 0.001 else 1e6
+		edge_pos = center + screen_dir * minf(tx, ty)
+	elif abs(screen_dir.y) > 0.001:
+		edge_pos = center + screen_dir * (half.y / abs(screen_dir.y))
+
+	# Larger, brighter arrow than regular nav markers
+	var arrow_sz: float = 13.0
+	var perp: Vector2 = Vector2(-screen_dir.y, screen_dir.x)
+	var tip: Vector2 = edge_pos + screen_dir * 6.0
+	ctrl.draw_line(tip, tip - screen_dir * arrow_sz + perp * arrow_sz * 0.6, col, 2.5)
+	ctrl.draw_line(tip, tip - screen_dir * arrow_sz - perp * arrow_sz * 0.6, col, 2.5)
+	ctrl.draw_line(edge_pos - screen_dir * arrow_sz, tip, Color(col.r, col.g, col.b, 0.4), 1.5)
+
+	var text_offset: Vector2 = -screen_dir * 30.0 + perp * 14.0
+	var text_pos: Vector2 = edge_pos + text_offset
+	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 160.0)
+	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
+	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	ctrl.draw_string(font, text_pos + Vector2(0.0, 14.0), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
 
 
 func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3, cam_pos: Vector3, screen_size: Vector2, world_pos: Vector3, ent_name: String, dist: float, col: Color) -> void:

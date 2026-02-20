@@ -998,9 +998,10 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 			elif existing_mining:
 				existing_mining.queue_free()
 
-	# Track command in fleet NPC dict for backend persistence
+	# Track command + params in fleet NPC dict for backend persistence
 	if _fleet_npcs.has(npc_id):
 		_fleet_npcs[npc_id]["command"] = String(cmd)
+		_fleet_npcs[npc_id]["command_params"] = params
 
 	_broadcast_fleet_event_command(sender_pid, fleet_index, npc_id, cmd, params, sys_id)
 
@@ -1447,11 +1448,14 @@ func _sync_fleet_to_backend() -> void:
 		var upos =FloatingOrigin.to_universe_pos(lod_data.position)
 		# Get command from live bridge (preferred) or stored dict (fallback)
 		var cmd: String = fleet_info.get("command", "")
+		var cmd_params: Dictionary = fleet_info.get("command_params", {})
 		if is_instance_valid(lod_data.node_ref):
 			var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
 			if bridge:
 				cmd = String(bridge.command)
 				fleet_info["command"] = cmd  # Keep dict in sync
+				cmd_params = bridge.command_params
+				fleet_info["command_params"] = cmd_params
 		updates.append({
 			"player_id": uuid,
 			"fleet_index": fleet_info.get("fleet_index", -1),
@@ -1461,6 +1465,7 @@ func _sync_fleet_to_backend() -> void:
 			"hull_ratio": lod_data.hull_ratio,
 			"shield_ratio": lod_data.shield_ratio,
 			"command": cmd,
+			"command_params": cmd_params,
 		})
 
 	if updates.is_empty():
@@ -1535,7 +1540,7 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		register_npc(npc_id, system_id, effective_ship_id, faction)
 
 		# Fleet tracking
-		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index, "command": command }
+		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index, "command": command, "command_params": {} }
 		if not _fleet_npcs_by_owner.has(player_id):
 			_fleet_npcs_by_owner[player_id] = []
 		_fleet_npcs_by_owner[player_id].append(npc_id)
@@ -1554,11 +1559,29 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 
 		# Attach FleetAIBridge if command is set
 		if command != "":
+			# Restore command_params from backend (JSONB → Dictionary, default {})
+			var raw_params = ship_data.get("command_params", {})
+			var cmd_params: Dictionary = raw_params if raw_params is Dictionary else {}
+			# Mining fallback: if no belt center was saved (params empty), use last known position
+			# so the ship mines near where it was instead of flying to the star at (0,0)
+			if command == "mine" and cmd_params.get("center_x", 0.0) == 0.0 and cmd_params.get("center_z", 0.0) == 0.0:
+				cmd_params = {"center_x": pos_x, "center_z": pos_z, "resource_filter": []}
+
 			var bridge = FleetAIBridge.new()
 			bridge.name = "FleetAIBridge"
 			bridge.fleet_index = fleet_index
 			bridge.command = StringName(command)
+			bridge.command_params = cmd_params  # Must be set before add_child so _do_init uses correct params
 			npc.add_child(bridge)
+
+			# Attach AIMiningBehavior for mine orders (fleet_ship is null server-side — nav works, sell loop won't until owner reconnects)
+			if command == "mine":
+				var mining_behavior = AIMiningBehavior.new()
+				mining_behavior.name = "AIMiningBehavior"
+				mining_behavior.fleet_index = fleet_index
+				npc.add_child(mining_behavior)
+
+			_fleet_npcs[npc_id]["command_params"] = cmd_params
 
 		restored += 1
 

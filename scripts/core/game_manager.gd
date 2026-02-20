@@ -72,6 +72,7 @@ var _route_manager = null
 var _fleet_deployment_mgr = null
 var _squadron_mgr = null
 var _player_autopilot_wp: String = ""
+var nav_target_id: String = ""  # Entity ID selected on system map — shown as nav indicator in flight HUD
 var _backend_state_loaded: bool = false
 var _initial_connect_done: bool = false
 var _bug_report_screen = null

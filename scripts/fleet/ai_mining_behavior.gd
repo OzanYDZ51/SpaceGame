@@ -157,7 +157,7 @@ func _ready() -> void:
 				_belt_center_x = lkp_x
 				_belt_center_z = lkp_z
 		elif _ship:
-			var upos =FloatingOrigin.local_to_universe(_ship.global_position)
+			var upos =FloatingOrigin.to_universe_pos(_ship.global_position)
 			if absf(upos[0]) > 1.0 or absf(upos[2]) > 1.0:
 				_belt_center_x = upos[0]
 				_belt_center_z = upos[2]

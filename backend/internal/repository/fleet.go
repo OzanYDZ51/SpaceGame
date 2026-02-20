@@ -182,14 +182,19 @@ func (r *FleetRepository) BatchUpdatePositions(ctx context.Context, updates []mo
 
 	now := time.Now()
 	for _, u := range updates {
+		cmdParams := u.CommandParams
+		if len(cmdParams) == 0 {
+			cmdParams = json.RawMessage(`{}`)
+		}
 		_, err := tx.Exec(ctx, `
 			UPDATE fleet_ships SET
 				pos_x = $3, pos_y = $4, pos_z = $5,
 				hull_ratio = $6, shield_ratio = $7,
 				command = CASE WHEN $8 != '' THEN $8 ELSE command END,
+				command_params = CASE WHEN $10::jsonb != '{}'::jsonb THEN $10 ELSE command_params END,
 				updated_at = $9
 			WHERE player_id = $1 AND fleet_index = $2 AND deployment_state = 1
-		`, u.PlayerID, u.FleetIndex, u.PosX, u.PosY, u.PosZ, u.HullRatio, u.ShieldRatio, u.Command, now)
+		`, u.PlayerID, u.FleetIndex, u.PosX, u.PosY, u.PosZ, u.HullRatio, u.ShieldRatio, u.Command, now, cmdParams)
 		if err != nil {
 			return err
 		}

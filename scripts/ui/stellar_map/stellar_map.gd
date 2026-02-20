@@ -843,6 +843,18 @@ func _select_entity(id: String) -> void:
 		_entity_layer.selected_ids.clear()
 	_info_panel.set_selected(id)
 	_dirty = true
+	# Persist as flight HUD nav target so direction/distance stay visible in-flight
+	var ent: Dictionary = EntityRegistry.get_entity(id) if id != "" else {}
+	var etype: int = ent.get("type", -1)
+	var navigable: bool = etype in [
+		EntityRegistrySystem.EntityType.STATION,
+		EntityRegistrySystem.EntityType.JUMP_GATE,
+		EntityRegistrySystem.EntityType.PLANET,
+		EntityRegistrySystem.EntityType.STAR,
+		EntityRegistrySystem.EntityType.ASTEROID_BELT,
+		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE,
+	]
+	GameManager.nav_target_id = id if navigable else ""
 
 
 ## Check if an entity is a valid attack target for fleet ships.
@@ -1229,8 +1241,11 @@ func _on_toolbar_follow_toggled() -> void:
 # FLEET CONTEXT MENU
 # =============================================================================
 func _open_fleet_context_menu(screen_pos: Vector2) -> void:
-	var universe_x: float = _camera.screen_to_universe_x(screen_pos.x)
-	var universe_z: float = _camera.screen_to_universe_z(screen_pos.y)
+	# Use pre-captured universe coords (snapshotted at press time) to avoid errors
+	# from zoom interpolation during the 0.8s hold. Recalculating from screen_pos
+	# with the current (changed) zoom gives wildly wrong universe coords.
+	var universe_x: float = _right_hold_universe_x
+	var universe_z: float = _right_hold_universe_z
 	var all_orders: Array[Dictionary] = []
 
 	# --- Fleet orders (only if a ship is selected) ---

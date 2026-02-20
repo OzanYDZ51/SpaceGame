@@ -230,6 +230,44 @@ func _draw_radar(ctrl: Control) -> void:
 				var col =Color(scan_col.r, scan_col.g, scan_col.b, ring_alpha)
 				ctrl.draw_arc(radar_center, minf(radar_pulse_r, radar_r), 0.0, TAU, 64, col, 1.5, true)
 
+	# Nav target: bearing line + pulsing diamond (always visible, even outside radar range)
+	var nav_id: String = GameManager.nav_target_id
+	if nav_id != "":
+		var nav_ent: Dictionary = EntityRegistry.get_entity(nav_id)
+		if not nav_ent.is_empty():
+			var nav_node = nav_ent.get("node")
+			var nav_world_pos: Vector3
+			if nav_node != null and is_instance_valid(nav_node):
+				nav_world_pos = (nav_node as Node3D).global_position
+			else:
+				nav_world_pos = FloatingOrigin.to_local_pos([nav_ent["pos_x"], nav_ent["pos_y"], nav_ent["pos_z"]])
+			var nav_rel: Vector3 = nav_world_pos - ship.global_position
+			var nav_lx: float = nav_rel.dot(ship_basis.x)
+			var nav_lz: float = nav_rel.dot(ship_basis.z)
+			var nav_dir2: Vector2 = Vector2(nav_lx, nav_lz)
+			if nav_dir2.length() > 0.01:
+				var nav_dir: Vector2 = nav_dir2.normalized()
+				var NAV_COL: Color = Color(1.0, 0.72, 0.08, 1.0)
+				# Dashed bearing line from center to edge
+				var seg_n: int = 10
+				for i in seg_n:
+					if i % 2 == 0:
+						ctrl.draw_line(
+							center + nav_dir * (float(i) / float(seg_n)) * (radar_r - 14.0),
+							center + nav_dir * (float(i + 1) / float(seg_n)) * (radar_r - 14.0),
+							Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, 0.45), 1.0)
+				# Pulsing diamond at edge
+				var pulse_a: float = 0.65 + 0.35 * sin(pulse_t * 3.5)
+				HudDrawHelpers.draw_diamond(ctrl, center + nav_dir * (radar_r - 10.0), 5.0,
+					Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, pulse_a))
+				# Distance label below the header (above range label)
+				var nav_dx: float = nav_ent["pos_x"] - float(ship.global_position.x + FloatingOrigin.origin_offset_x)
+				var nav_dz: float = nav_ent["pos_z"] - float(ship.global_position.z + FloatingOrigin.origin_offset_z)
+				var nav_dist: float = sqrt(nav_dx * nav_dx + nav_dz * nav_dz)
+				ctrl.draw_string(font, Vector2(0, s.y - 30),
+					nav_ent.get("name", "?") + "  " + HudDrawHelpers.format_nav_distance(nav_dist),
+					HORIZONTAL_ALIGNMENT_CENTER, int(s.x), UITheme.FONT_SIZE_SMALL, NAV_COL)
+
 	# Player icon
 	var tri_sz =5.0
 	ctrl.draw_colored_polygon(PackedVector2Array([
