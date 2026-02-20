@@ -76,7 +76,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 		if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			var orbit_r: float = ent.get("orbital_radius", 0.0)
-			var player_dist_from_center: float = sqrt(player_upos[0] * player_upos[0] + player_upos[2] * player_upos[2])
+			var player_dist_from_center: float = sqrt(ship_upos[0] * ship_upos[0] + ship_upos[2] * ship_upos[2])
 			dist = absf(player_dist_from_center - orbit_r)
 		var marker_col: Color
 		match etype:
