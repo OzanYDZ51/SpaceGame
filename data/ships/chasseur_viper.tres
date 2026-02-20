@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"chasseur_viper"
+ship_name = &"Chasseur Viper"
+ship_class = &"Intercepteur"
+model_path = "res://assets/models/chasseur_viper.glb"
+model_scale = 2.0
+exhaust_scale = 1.4
+ship_scene_path = "res://scenes/ships/chasseur_viper.tscn"
+default_loadout = Array[StringName]([&"Laser Mk1 S", &"Laser Mk1 S", &"Laser Mk1 S"])
+hull_hp = 1200.0
+shield_hp = 600.0
+shield_regen_rate = 18.0
+shield_regen_delay = 4.5
+shield_damage_bleedthrough = 0.1
+armor_rating = 6.0
+mass = 60000.0
+accel_forward = 90.0
+accel_backward = 55.0
+accel_strafe = 45.0
+accel_vertical = 45.0
+max_speed_normal = 380.0
+max_speed_boost = 760.0
+max_speed_cruise = 900000.0
+rotation_pitch_speed = 32.0
+rotation_yaw_speed = 28.0
+rotation_roll_speed = 55.0
+max_speed_lateral = 140.0
+max_speed_vertical = 140.0
+rotation_damp_min_factor = 0.1
+energy_capacity = 120.0
+energy_regen_rate = 25.0
+boost_energy_drain = 18.0
+shield_slot_size = "S"
+engine_slot_size = "S"
+module_slots = Array[String](["S", "S", "S"])
+price = 55000
+cargo_capacity = 25
+sensor_range = 3500.0
+engagement_range = 1700.0
+disengage_range = 4500.0
+default_shield = &"Bouclier Basique Mk1"
+default_engine = &"Propulseur Standard Mk1"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Condensateur d'Energie", &"Condensateur d'Energie"])
+loot_credits_min = 200
+loot_credits_max = 500
+loot_mat_count_min = 1
+loot_mat_count_max = 2
+loot_weapon_part_chance = 0.05
+lod_combat_dps = 30.0
+npc_tier = 1
+sold_at_station_types = Array[StringName]([&"repair", &"military"])
+resource_cost = {
+&"iron": 60,
+&"copper": 30,
+&"titanium": 15
+}
