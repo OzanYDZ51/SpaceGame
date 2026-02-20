@@ -335,7 +335,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			lod_data.ship_id = data.ship_id
 			lod_data.ship_class = data.ship_class
 			lod_data.faction = faction_name
-			# Extract unique number from node name (NPC_fighter_mk1_1234 → 234)
+			# Extract unique number from node name (NPC_chasseur_viper_1234 → 234)
 			var name_parts =ship.name.split("_")
 			var name_suffix =name_parts[-1].right(3) if name_parts.size() > 0 else str(randi() % 1000)
 			lod_data.display_name = "%s #%s" % [data.ship_name, name_suffix]

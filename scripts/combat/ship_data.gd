@@ -3,7 +3,7 @@ extends Resource
 
 # =============================================================================
 # Ship Data - Defines all stats for a specific ship variant.
-# ship_id is the unique key (e.g. "fighter_mk1", "frigate_mk1").
+# ship_id is the unique key (e.g. "chasseur_viper", "frigate_mk1").
 # ship_class is the role/category (e.g. "Fighter", "Frigate") — used for loot, display.
 # =============================================================================
 
