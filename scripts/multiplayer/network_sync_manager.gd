@@ -457,9 +457,9 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 				typed_loot.append(item)
 		crate.contents = typed_loot
 		crate.owner_peer_id = killer_pid
-		crate.global_position = local_pos
 		if universe_node:
 			universe_node.add_child(crate)
+			crate.global_position = local_pos
 
 
 func _on_remote_fleet_deployed(_owner_pid: int, _fleet_idx: int, _npc_id_str: String, spawn_data: Dictionary) -> void:

@@ -259,7 +259,7 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 # =============================================================================
 # PLANET - Type-specific visuals with atmosphere glow
 # =============================================================================
-func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) -> void:
+func _draw_planet(pos: Vector2, ent: Dictionary, _is_selected: bool, font: Font) -> void:
 	var col: Color = ent["color"]
 	# Log-normalized icon size: small rocky (1.5Mm) → 4px, huge gas giant (55Mm) → 16px
 	var log_r: float = log(maxf(ent["radius"], 1000000.0))
