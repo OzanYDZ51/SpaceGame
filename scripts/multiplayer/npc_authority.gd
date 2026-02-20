@@ -63,6 +63,10 @@ var _fleet_deaths_while_offline: Dictionary = {}
 # Effective HP cache: ship_id -> { "shield_total": float, "hull_total": float }
 var _effective_hp_cache: Dictionary = {}
 
+# Last player to deal damage: npc_id -> { "pid": int, "time": float (ticks_sec) }
+# Used to attribute kill credit when AI delivers the killing blow, not the player.
+var _last_player_hit: Dictionary = {}
+
 
 func _ready() -> void:
 	NetworkManager.connection_succeeded.connect(_check_activation)
@@ -531,6 +535,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			shield_absorbed = hit_result.get("shield_absorbed", false)
 			lod_data.hull_ratio = health.get_hull_ratio()
 			lod_data.shield_ratio = health.get_total_shield_ratio()
+			_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
 			if health.is_dead():
 				lod_data.is_dead = true
 				_on_npc_killed(npc_id, sender_pid, weapon_name)
@@ -548,6 +553,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		else:
 			var hull_dmg_ratio: float = claimed_damage / eff_hp["hull_total"]
 			lod_data.hull_ratio = maxf(lod_data.hull_ratio - hull_dmg_ratio, 0.0)
+		_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
 		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
 			_on_npc_killed(npc_id, sender_pid, weapon_name)
@@ -671,9 +677,18 @@ func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, 
 	if system_id < 0 and _npcs.has(npc_id):
 		system_id = _npcs[npc_id].get("system_id", -1)
 
-	var peers_in_sys =NetworkManager.get_peers_in_system(system_id)
+	# If killed by AI (killer_pid=0), attribute kill to last player who dealt damage (30s window).
+	# Fixes: player weakens NPC, AI delivers killing blow → player still gets the crate.
+	var effective_killer_pid: int = killer_pid
+	if effective_killer_pid == 0 and _last_player_hit.has(npc_id):
+		var last_hit: Dictionary = _last_player_hit[npc_id]
+		if Time.get_ticks_msec() / 1000.0 - last_hit.get("time", 0.0) < 30.0:
+			effective_killer_pid = last_hit.get("pid", 0)
+	_last_player_hit.erase(npc_id)
+
+	var peers_in_sys = NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
-		NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), killer_pid, death_pos, loot)
+		NetworkManager._rpc_npc_died.rpc_id(pid, String(npc_id), effective_killer_pid, death_pos, loot)
 
 	# Track death for offline owners + report to backend + clean up fleet tracking
 	if _fleet_npcs.has(npc_id):
@@ -1177,7 +1192,7 @@ func ensure_system_npcs(system_id: int) -> void:
 		encounter_mgr.spawn_for_remote_system(system_id)
 
 
-## Remove expired entries from the encounter respawn tracker.
+## Remove expired entries from the encounter respawn tracker and last-hit cache.
 func _cleanup_expired_respawns() -> void:
 	var now: float = Time.get_unix_time_from_system()
 	var expired: Array = []
@@ -1186,6 +1201,15 @@ func _cleanup_expired_respawns() -> void:
 			expired.append(key)
 	for key in expired:
 		_destroyed_encounter_npcs.erase(key)
+
+	# Clean up stale last-hit entries older than 60 seconds
+	var now_ticks: float = Time.get_ticks_msec() / 1000.0
+	var stale_hits: Array = []
+	for npc_id in _last_player_hit:
+		if now_ticks - _last_player_hit[npc_id].get("time", 0.0) > 60.0:
+			stale_hits.append(npc_id)
+	for npc_id in stale_hits:
+		_last_player_hit.erase(npc_id)
 
 
 ## Detect when peers change systems and spawn NPCs for the new system.

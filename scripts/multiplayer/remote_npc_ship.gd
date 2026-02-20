@@ -11,6 +11,7 @@ extends Node3D
 var npc_id: StringName = &""
 var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var faction: StringName = &"hostile"
+var owner_name: String = ""  # Non-empty for player_fleet NPCs: identifies the owner
 var linear_velocity: Vector3 = Vector3.ZERO
 
 # Interpolation buffer
@@ -67,9 +68,13 @@ func _setup_model() -> void:
 
 func _setup_name_label() -> void:
 	var data = ShipRegistry.get_ship_data(ship_id)
-	var display_name: String = String(data.ship_name) if data else String(ship_id)
+	var ship_name: String = String(data.ship_name) if data else String(ship_id)
+	var display_name: String = ship_name
 	if faction == &"player_fleet":
-		display_name += " [FLOTTE]"
+		if owner_name != "":
+			display_name = "[%s] %s" % [owner_name, ship_name]
+		else:
+			display_name = ship_name + " [Flotte]"
 
 	_name_label = Label3D.new()
 	_name_label.name = "NameLabel"

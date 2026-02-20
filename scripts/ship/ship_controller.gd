@@ -401,7 +401,7 @@ func _get_crosshair_aim_point() -> Vector3:
 	# Physics raycast to check if we hit something
 	var world =get_world_3d()
 	if world == null:
-		return ray_origin + ray_dir * WEAPON_CONVERGENCE_DISTANCE
+		return global_position + (-global_transform.basis.z) * WEAPON_CONVERGENCE_DISTANCE
 	var space_state =world.direct_space_state
 	var query =PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 5000.0)
 	query.collision_mask = Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_SHIPS | Constants.LAYER_TERRAIN
@@ -411,9 +411,9 @@ func _get_crosshair_aim_point() -> Vector3:
 	if result.size() > 0:
 		return result["position"]
 
-	# Nothing hit: converge at fixed distance ahead of ship along camera aim ray
-	var cam_to_ship =maxf((global_position - ray_origin).dot(ray_dir), 0.0)
-	return ray_origin + ray_dir * (cam_to_ship + WEAPON_CONVERGENCE_DISTANCE)
+	# Nothing hit: converge ahead of the SHIP (not the camera).
+	# In cruise mode the camera can free-look — weapons must always fire ship-forward.
+	return global_position + (-global_transform.basis.z) * WEAPON_CONVERGENCE_DISTANCE
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:

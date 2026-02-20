@@ -349,9 +349,10 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if sdata:
 		lod_data.model_scale = sdata.model_scale
 
-	# Set fleet owner on LOD data for PvP targeting
+	# Set fleet owner on LOD data for PvP targeting and visual identification
 	if fac == &"player_fleet":
 		lod_data.owner_pid = int(data.get("owner_pid", 0))
+		lod_data.owner_name = data.get("owner_name", "")
 
 	if lod_manager:
 		lod_manager.register_ship(npc_id, lod_data)

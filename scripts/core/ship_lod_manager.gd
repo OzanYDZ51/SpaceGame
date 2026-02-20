@@ -241,7 +241,7 @@ func _ensure_entity_registered(id: StringName, data) -> void:
 	}
 	if data.fleet_index >= 0:
 		extra["fleet_index"] = data.fleet_index
-		extra["owner_name"] = "Player"
+		extra["owner_name"] = data.owner_name if data.owner_name != "" else "Joueur"
 	EntityRegistry.register(sid, {
 		"name": data.display_name,
 		"type": ent_type,
@@ -510,6 +510,7 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 		remote_npc.npc_id = id
 		remote_npc.ship_id = data.ship_id
 		remote_npc.faction = data.faction
+		remote_npc.owner_name = data.owner_name
 		remote_npc.name = String(id)
 		node = remote_npc
 	else:
@@ -684,12 +685,16 @@ func _update_multimesh() -> void:
 # =============================================================================
 
 func _tick_data_only_ai(delta: float) -> void:
+	# Only dead-reckon server NPCs when connected — if the server is gone we have
+	# no authoritative velocity and the ships would drift forever on the map.
+	var server_connected: bool = NetworkManager.is_connected_to_server()
 	for id: StringName in _lod2_ids:
 		var data = _ships[id]
 		if data.is_remote_player or data.is_server_npc:
 			# Dead reckoning: extrapolate position from velocity between server updates.
 			# Without this, server NPCs freeze between batch syncs (100-500ms gaps).
-			data.position += data.velocity * delta
+			if server_connected:
+				data.position += data.velocity * delta
 		else:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)
@@ -697,7 +702,8 @@ func _tick_data_only_ai(delta: float) -> void:
 	for id: StringName in _lod3_ids:
 		var data = _ships[id]
 		if data.is_remote_player or data.is_server_npc:
-			data.position += data.velocity * delta
+			if server_connected:
+				data.position += data.velocity * delta
 		else:
 			data.tick_simple_ai(delta)
 		_grid.update_position(id, data.position)

@@ -191,6 +191,15 @@ func _draw_target_info_panel(ctrl: Control) -> void:
 		display_name = pname
 	elif "station_name" in target and target.station_name != "":
 		display_name = target.station_name
+	elif target.get("owner_name") != null and target.owner_name != "":
+		# Fleet NPC belonging to another player — show "[Owner] ShipName"
+		var sd = ShipRegistry.get_ship_data(target.ship_id) if target.get("ship_id") != null else null
+		var sname: String = String(sd.ship_name) if sd else String(target.ship_id)
+		display_name = "[%s] %s" % [target.owner_name, sname]
+	elif target.get("ship_id") != null and target.get("faction") == &"player_fleet":
+		# Fleet NPC without owner name yet — show ship name at minimum
+		var sd = ShipRegistry.get_ship_data(target.ship_id)
+		display_name = String(sd.ship_name) if sd else String(target.ship_id)
 	var name_col =UITheme.DANGER if is_hostile else UITheme.TARGET
 	ctrl.draw_string(font, Vector2(x, y), display_name, HORIZONTAL_ALIGNMENT_LEFT, int(w), 16, name_col)
 	y += 20
