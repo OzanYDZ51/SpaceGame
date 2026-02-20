@@ -369,6 +369,14 @@ func collect_save_state(state: Dictionary) -> void:
 func apply_save_state(state: Dictionary) -> void:
 	if faction_manager and state.get("factions") is Dictionary:
 		faction_manager.deserialize(state["factions"])
+		# Sync player node + LOD faction after loading save
+		if faction_manager.player_faction != &"":
+			var fac: StringName = faction_manager.player_faction
+			if GameManager.player_ship:
+				GameManager.player_ship.faction = fac
+			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+			if lod_mgr and lod_mgr._ships.has(&"player_ship"):
+				lod_mgr._ships[&"player_ship"].faction = fac
 	if mission_manager and state.get("missions") is Dictionary:
 		mission_manager.deserialize(state["missions"])
 	if economy_sim and state.get("economy_sim") is Dictionary:

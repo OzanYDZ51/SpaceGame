@@ -578,6 +578,7 @@ func _initialize_game() -> void:
 	player_lod.faction = &"nova_terra"
 	player_lod.display_name = NetworkManager.local_player_name
 	player_lod.node_ref = player_ship
+	player_ship.faction = &"nova_terra"  # Sync node faction for projectile friendly-fire checks
 	player_lod.current_lod = ShipLODData.LODLevel.LOD0
 	player_lod.position = player_ship.global_position
 	_lod_manager.register_ship(&"player_ship", player_lod)
@@ -963,9 +964,11 @@ func _show_faction_selection() -> void:
 	var selected: StringName = await faction_screen.faction_selected
 	fm.set_player_faction(selected)
 
-	# Update player LOD faction
+	# Update player LOD faction and ShipController node faction
 	if _lod_manager and _lod_manager._ships.has(&"player_ship"):
 		_lod_manager._ships[&"player_ship"].faction = selected
+	if player_ship:
+		player_ship.faction = selected
 
 	SaveManager.trigger_save("faction_selected")
 

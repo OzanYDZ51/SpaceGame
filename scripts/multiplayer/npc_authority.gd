@@ -459,6 +459,21 @@ func relay_fire_event(sender_pid: int, weapon_name: String, fire_pos: Array, fir
 		NetworkManager._rpc_remote_fire.rpc_id(pid, sender_pid, weapon_name, fire_pos, fire_dir)
 
 
+## Resolve a peer_id to a scene Node3D (RemotePlayerShip or local player ship).
+func _resolve_player_node(peer_id: int) -> Node3D:
+	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
+	if sync_mgr and sync_mgr.remote_players.has(peer_id):
+		var node = sync_mgr.remote_players[peer_id]
+		if is_instance_valid(node):
+			return node
+	# Host/listen server: check if this is the local player
+	if peer_id == NetworkManager.local_peer_id:
+		var player = GameManager.player_ship
+		if player and is_instance_valid(player):
+			return player
+	return null
+
+
 ## Server validates a hit claim from a client.
 func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String, claimed_damage: float, hit_dir: Array) -> void:
 	if not _active:
@@ -499,6 +514,9 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		hit_dir[1] if hit_dir.size() > 1 else 0.0,
 		hit_dir[2] if hit_dir.size() > 2 else 0.0)
 
+	# Resolve the attacking player's RemotePlayerShip node so the NPC's AIBrain reacts
+	var attacker_node: Node3D = _resolve_player_node(sender_pid)
+
 	var shield_absorbed: bool = false
 
 	# If the NPC has a node (LOD0/1), apply via HealthSystem
@@ -509,7 +527,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
 		if health:
 			_npcs[npc_id]["_player_killing"] = true
-			var hit_result =health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, null)
+			var hit_result =health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, attacker_node)
 			shield_absorbed = hit_result.get("shield_absorbed", false)
 			lod_data.hull_ratio = health.get_hull_ratio()
 			lod_data.shield_ratio = health.get_total_shield_ratio()
