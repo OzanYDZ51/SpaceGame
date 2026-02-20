@@ -69,17 +69,69 @@ var is_promoting: bool = false
 
 var _route_wp_index: int = 0  # Current waypoint index for route travel
 
+# Obstacle avoidance cache for data-only ships
+var _cached_obstacles: Array = []  # Array of { "pos": Vector3, "radius": float }
+var _obstacle_refresh_timer: float = 0.0
+const OBSTACLE_REFRESH_INTERVAL: float = 5.0  # Refresh obstacle cache every 5s
+
 ## Cruise speeds for data-only simulation (visible at system-map scale)
 const ROUTE_CRUISE_SPEED: float = 350.0   # Route NPCs: 350 m/s (visible inter-station traffic)
 const PATROL_CRUISE_SPEED: float = 180.0  # Patrol NPCs: 180 m/s (visible area coverage)
 const MIN_DRIFT_SPEED: float = 100.0      # Minimum speed (no frozen dots)
 
+const STATION_MODEL_RADIUS: float = 3000.0  # Station model ~2500m + margin
+
+
+func _refresh_obstacle_cache() -> void:
+	_cached_obstacles.clear()
+	# Stations
+	var stations: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for st in stations:
+		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([st["pos_x"], st["pos_y"], st["pos_z"]])
+		_cached_obstacles.append({"pos": scene_pos, "radius": STATION_MODEL_RADIUS})
+	# Planets
+	var planets: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET)
+	for pl in planets:
+		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([pl["pos_x"], pl["pos_y"], pl["pos_z"]])
+		var planet_r: float = pl.get("radius", 5000.0)
+		_cached_obstacles.append({"pos": scene_pos, "radius": maxf(planet_r * 1.2 + 500.0, 5000.0)})
+	# Stars
+	var stars: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR)
+	for star in stars:
+		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([star["pos_x"], star["pos_y"], star["pos_z"]])
+		var star_r: float = star.get("radius", 50000.0)
+		_cached_obstacles.append({"pos": scene_pos, "radius": maxf(star_r * 1.5, 50000.0)})
+
+
+func _steer_away_from_obstacles(delta: float) -> void:
+	## Push velocity away from nearby obstacle zones (stations, planets, stars).
+	for zone in _cached_obstacles:
+		var to_ship: Vector3 = position - zone["pos"]
+		var dist: float = to_ship.length()
+		var excl_r: float = zone["radius"]
+		if dist < excl_r * 1.2 and dist > 1.0:
+			# Inside or near exclusion zone — steer outward
+			var escape_dir: Vector3 = to_ship.normalized()
+			var urgency: float = clampf(1.0 - dist / excl_r, 0.0, 1.0)
+			var desired_vel: Vector3 = escape_dir * maxf(velocity.length(), PATROL_CRUISE_SPEED)
+			velocity = velocity.lerp(desired_vel, delta * (2.0 + urgency * 4.0))
+
+
 func tick_simple_ai(delta: float) -> void:
 	if is_dead or is_docked:
 		return
 
+	# Periodic obstacle cache refresh
+	_obstacle_refresh_timer -= delta
+	if _obstacle_refresh_timer <= 0.0:
+		_obstacle_refresh_timer = OBSTACLE_REFRESH_INTERVAL
+		_refresh_obstacle_cache()
+
 	# Dead reckoning: advance position
 	position += velocity * delta
+
+	# Obstacle avoidance: steer away from stations, planets, stars
+	_steer_away_from_obstacles(delta)
 
 	# Route-based travel: steer toward next waypoint in sequence
 	if not ai_route_waypoints.is_empty():

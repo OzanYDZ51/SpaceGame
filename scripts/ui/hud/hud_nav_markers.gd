@@ -44,6 +44,10 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	var cam_pos: Vector3 = cam.global_position
 	var font =UITheme.get_font_medium()
 
+	# Use ship position (not camera) for distance calculations
+	var ship_pos: Vector3 = ship.global_position if ship else cam_pos
+	var ship_upos: Array = FloatingOrigin.to_universe_pos(ship_pos)
+
 	# Stations + Star + Jump Gates + Asteroid Belts
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
@@ -58,8 +62,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 				var orbit_r: float = ent.get("orbital_radius", 0.0)
 				if orbit_r <= 0.0:
 					continue
-				var player_upos_b: Array = FloatingOrigin.to_universe_pos(cam_pos)
-				var angle_to_player: float = atan2(player_upos_b[2], player_upos_b[0])
+				var angle_to_player: float = atan2(ship_upos[2], ship_upos[0])
 				world_pos = FloatingOrigin.to_local_pos([
 					cos(angle_to_player) * orbit_r,
 					0.0,
@@ -67,10 +70,9 @@ func _draw_nav_markers(ctrl: Control) -> void:
 				])
 			else:
 				world_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-		var player_upos: Array = FloatingOrigin.to_universe_pos(cam_pos)
-		var dx: float = ent["pos_x"] - player_upos[0]
-		var dy: float = ent["pos_y"] - player_upos[1]
-		var dz: float = ent["pos_z"] - player_upos[2]
+		var dx: float = ent["pos_x"] - ship_upos[0]
+		var dy: float = ent["pos_y"] - ship_upos[1]
+		var dz: float = ent["pos_z"] - ship_upos[2]
 		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 		if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			var orbit_r: float = ent.get("orbital_radius", 0.0)
@@ -105,7 +107,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 				if data == null or data.is_dead:
 					continue
 				var world_pos: Vector3 = data.position
-				var dist: float = cam_pos.distance_to(world_pos)
+				var dist: float = ship_pos.distance_to(world_pos)
 				var to_ent =world_pos - cam_pos
 				if to_ent.length() > 0.1:
 					var dot_fwd: float = cam_fwd.dot(to_ent.normalized())
@@ -130,7 +132,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 				if ship_node == ship or not is_instance_valid(ship_node) or not ship_node is Node3D:
 					continue
 				var world_pos: Vector3 = (ship_node as Node3D).global_position
-				var dist: float = cam_pos.distance_to(world_pos)
+				var dist: float = ship_pos.distance_to(world_pos)
 				if dist > NAV_NPC_RANGE:
 					continue
 				_draw_nav_entity(ctrl, font, cam, cam_fwd, cam_pos, screen_size, world_pos,

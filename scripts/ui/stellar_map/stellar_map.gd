@@ -115,6 +115,7 @@ func _build_children() -> void:
 	_renderer.filters = _filters
 	_renderer.filter_toggled.connect(_on_toolbar_filter_toggled)
 	_renderer.follow_toggled.connect(_on_toolbar_follow_toggled)
+	_renderer.fit_requested.connect(fit_all)
 	add_child(_renderer)
 
 	# Entity layer (icons, labels, selection)
@@ -235,26 +236,19 @@ func open() -> void:
 	_update_system_radius()
 
 	if not _preview_entities.is_empty():
-		# Preview mode: fit-all centered on star
-		var fit_zoom: float = (size.x * 0.4) / _camera.system_radius
-		fit_zoom = clampf(fit_zoom, MapCamera.ZOOM_MIN, MapCamera.PRESET_REGIONAL)
-		_camera.center_x = 0.0
-		_camera.center_z = 0.0
-		_camera.follow_enabled = false
-		_camera.zoom = fit_zoom
-		_camera.target_zoom = fit_zoom
+		# Preview mode: fit all entities
+		_camera.fit_entities(_preview_entities, false)
 	else:
-		# Normal mode: center on player, comfortable zoom (~1920km visible)
-		var player_ent: Dictionary = EntityRegistry.get_entity(_player_id)
-		if not player_ent.is_empty():
-			_camera.center_x = player_ent["pos_x"]
-			_camera.center_z = player_ent["pos_z"]
+		# Normal mode: fit all entities in the system (shows the full layout instantly)
+		var all_ents: Dictionary = EntityRegistry.get_all()
+		if not all_ents.is_empty():
+			_camera.fit_entities(all_ents, false)
 		else:
 			_camera.center_x = 0.0
 			_camera.center_z = 0.0
+			_camera.zoom = 0.001
+			_camera.target_zoom = 0.001
 		_camera.follow_enabled = false
-		_camera.zoom = 0.001
-		_camera.target_zoom = 0.001
 
 		# Reset filters so all entity types are visible on fresh open
 		_filters.clear()
@@ -495,6 +489,12 @@ func _input(event: InputEvent) -> void:
 		if event.physical_keycode == KEY_T:
 			_toggle_filter(EntityRegistrySystem.EntityType.STATION)
 			_sync_filters()
+			get_viewport().set_input_as_handled()
+			return
+
+		# Home = fit all entities in view
+		if event.physical_keycode == KEY_HOME:
+			fit_all()
 			get_viewport().set_input_as_handled()
 			return
 
@@ -1186,6 +1186,13 @@ func _cancel_rename() -> void:
 
 func _on_search_entity_selected(id: String) -> void:
 	_center_on_entity(id)
+
+
+func fit_all() -> void:
+	var entities: Dictionary = _preview_entities if not _preview_entities.is_empty() else EntityRegistry.get_all()
+	if not entities.is_empty():
+		_camera.fit_entities(entities, true)
+	_dirty = true
 
 
 func _on_toolbar_filter_toggled(key: int) -> void:

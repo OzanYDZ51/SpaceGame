@@ -596,6 +596,7 @@
 	"map.filter.planets": "Planets",
 	"map.filter.stations": "Stations",
 	"map.filter.npcs": "NPCs",
+	"map.filter.fit": "Fit all",
 	"map.filter.follow": "Follow",
 
 	"map.system_unknown": "UNKNOWN SYSTEM",

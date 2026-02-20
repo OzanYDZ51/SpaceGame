@@ -9,8 +9,8 @@ extends RefCounted
 # Zoom is in "pixels per meter" (logarithmic scale)
 const ZOOM_MIN: float = 5e-6     # Full system view (~384M meters visible)
 const ZOOM_MAX: float = 2.0       # Tactical view (~960m visible)
-const ZOOM_STEP: float = 1.12     # Multiplier per scroll notch
-const ZOOM_SMOOTH_SPEED: float = 8.0
+const ZOOM_STEP: float = 1.35     # Multiplier per scroll notch (~42 notches full range)
+const ZOOM_SMOOTH_SPEED: float = 14.0
 
 # Zoom presets (pixels per meter)
 const PRESET_TACTICAL: float = 1.0
@@ -134,6 +134,48 @@ func clamp_center() -> void:
 	var limit: float = system_radius * 2.0
 	center_x = clampf(center_x, -limit, limit)
 	center_z = clampf(center_z, -limit, limit)
+
+
+func fit_entities(entities: Dictionary, animate: bool = true) -> void:
+	# Compute bounding box of all entities to determine ideal zoom
+	var min_x: float = INF
+	var max_x: float = -INF
+	var min_z: float = INF
+	var max_z: float = -INF
+	var count: int = 0
+	for ent in entities.values():
+		var etype: int = ent["type"]
+		# Skip asteroid belts for fit (they're background)
+		if etype == EntityRegistrySystem.EntityType.ASTEROID_BELT:
+			continue
+		var px: float = ent["pos_x"]
+		var pz: float = ent["pos_z"]
+		min_x = minf(min_x, px)
+		max_x = maxf(max_x, px)
+		min_z = minf(min_z, pz)
+		max_z = maxf(max_z, pz)
+		count += 1
+	if count == 0:
+		return
+	# Add 15% padding
+	var range_x: float = maxf(max_x - min_x, 1000.0)
+	var range_z: float = maxf(max_z - min_z, 1000.0)
+	range_x *= 1.3
+	range_z *= 1.3
+	# Choose zoom so the larger dimension fits on screen
+	var zoom_x: float = screen_size.x * 0.6 / range_x  # 0.6 = usable viewport fraction
+	var zoom_z: float = screen_size.y * 0.85 / range_z
+	var fit_zoom: float = minf(zoom_x, zoom_z)
+	fit_zoom = clampf(fit_zoom, ZOOM_MIN, ZOOM_MAX)
+	# Center on bounding box center
+	center_x = (min_x + max_x) * 0.5
+	center_z = (min_z + max_z) * 0.5
+	follow_enabled = false
+	if animate:
+		target_zoom = fit_zoom
+	else:
+		zoom = fit_zoom
+		target_zoom = fit_zoom
 
 
 func format_distance(meters: float) -> String:

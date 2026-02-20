@@ -232,7 +232,7 @@ func _draw_top_bar(ctrl: Control) -> void:
 
 	# FPS + MS + connection (right of INCL, before POS)
 	if OptionsScreen.show_fps:
-		var fps_val: int = Engine.get_frames_per_second()
+		var fps_val: int = int(Engine.get_frames_per_second())
 		var ms_val: float = 1000.0 / maxf(fps_val, 1) if fps_val > 0 else 0.0
 		var fps_col: Color = UITheme.ACCENT if fps_val >= 55 else (UITheme.WARNING if fps_val >= 30 else UITheme.DANGER)
 		var perf_str: String = "%d FPS  %.1f ms" % [fps_val, ms_val]

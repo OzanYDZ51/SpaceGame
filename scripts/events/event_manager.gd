@@ -29,7 +29,16 @@ var _client_events: Dictionary = {}  # event_id -> dict (from server)
 # Spawn distance from origin
 const MIN_SPAWN_RADIUS: float = 20000.0
 const MAX_SPAWN_RADIUS: float = 60000.0
-const MIN_DIST_FROM_OBJECTS: float = 10000.0
+const MIN_CLEARANCE: float = 5000.0  # Extra margin beyond entity radius
+
+# Entity types to avoid when spawning
+const _OBSTACLE_TYPES: Array = [
+	EntityRegistrySystem.EntityType.STAR,
+	EntityRegistrySystem.EntityType.PLANET,
+	EntityRegistrySystem.EntityType.STATION,
+	EntityRegistrySystem.EntityType.JUMP_GATE,
+	EntityRegistrySystem.EntityType.ASTEROID_BELT,
+]
 
 # Route travel: convoy flies from A to B across the system
 const ROUTE_LENGTH_MIN: float = 80000.0   # 80 km
@@ -131,9 +140,14 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	var start_universe: Array = FloatingOrigin.to_universe_pos(start_pos)
 
 	# Generate a long travel route: start → destination across the system
-	var route_dir: float = randf() * TAU
-	var route_length: float = randf_range(ROUTE_LENGTH_MIN, ROUTE_LENGTH_MAX)
-	var end_pos: Vector3 = start_pos + Vector3(cos(route_dir) * route_length, 0.0, sin(route_dir) * route_length)
+	var obstacles := _gather_obstacles()
+	var end_pos := Vector3.ZERO
+	for _dir_attempt in 10:
+		var route_dir: float = randf() * TAU
+		var route_length: float = randf_range(ROUTE_LENGTH_MIN, ROUTE_LENGTH_MAX)
+		end_pos = start_pos + Vector3(cos(route_dir) * route_length, 0.0, sin(route_dir) * route_length)
+		if _is_clear_of_obstacles(end_pos, obstacles):
+			break
 
 	var route_waypoints: Array[Vector3] = []
 	for i in ROUTE_WAYPOINT_COUNT:
@@ -186,7 +200,7 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 		for pid in NetworkManager.get_peers_in_system(system_id):
 			NetworkManager._rpc_event_started.rpc_id(pid, start_dict)
 
-	print("[EventManager] Pirate convoy T%d spawned — route %.0fkm, %d NPCs" % [tier, route_length / 1000.0, evt.npc_ids.size()])
+	print("[EventManager] Pirate convoy T%d spawned — route %.0fkm, %d NPCs" % [tier, start_pos.distance_to(end_pos) / 1000.0, evt.npc_ids.size()])
 
 
 func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vector3, route_waypoints: Array[Vector3]) -> void:
@@ -493,31 +507,44 @@ func _cleanup_event(event_id: String, was_completed: bool, killer_pid: int = 0) 
 # =============================================================================
 
 func _find_safe_spawn_position() -> Vector3:
+	var obstacles := _gather_obstacles()
+
+	# Adapt spawn radius if player is too close to a large obstacle
+	var min_dist: float = MIN_SPAWN_RADIUS
+	var max_dist: float = MAX_SPAWN_RADIUS
+	for obs in obstacles:
+		var player_dist: float = obs[0].length()  # distance from player to obstacle center
+		var exclusion: float = obs[1]              # radius + clearance
+		if player_dist < exclusion:
+			var needed: float = exclusion - player_dist + MIN_CLEARANCE
+			min_dist = maxf(min_dist, needed)
+			max_dist = maxf(max_dist, needed + 40000.0)
+
 	var candidate := Vector3.ZERO
-	for _attempt in 10:
+	for _attempt in 20:
 		var angle: float = randf() * TAU
-		var dist: float = randf_range(MIN_SPAWN_RADIUS, MAX_SPAWN_RADIUS)
+		var dist: float = randf_range(min_dist, max_dist)
 		candidate = Vector3(cos(angle) * dist, 0.0, sin(angle) * dist)
-		if _is_far_from_objects(candidate):
+		if _is_clear_of_obstacles(candidate, obstacles):
 			return candidate
 	return candidate
 
 
-func _is_far_from_objects(pos: Vector3) -> bool:
-	# Check distance to stations
-	var stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-	for ent in stations:
-		var sp := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-		if sp.distance_to(pos) < MIN_DIST_FROM_OBJECTS:
-			return false
+## Build a list of [local_pos: Vector3, exclusion_radius: float] for all spatial entities.
+func _gather_obstacles() -> Array:
+	var result: Array = []
+	for etype in _OBSTACLE_TYPES:
+		for ent in EntityRegistry.get_by_type(etype):
+			var lp := FloatingOrigin.to_local_pos([ent["pos_x"], ent.get("pos_y", 0.0), ent["pos_z"]])
+			var radius: float = ent.get("radius", 0.0)
+			result.append([lp, radius + MIN_CLEARANCE])
+	return result
 
-	# Check distance to planets
-	var planets := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET)
-	for ent in planets:
-		var pp := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-		if pp.distance_to(pos) < MIN_DIST_FROM_OBJECTS:
-			return false
 
+func _is_clear_of_obstacles(pos: Vector3, obstacles: Array) -> bool:
+	for obs in obstacles:
+		if pos.distance_to(obs[0]) < obs[1]:
+			return false
 	return true
 
 

@@ -596,6 +596,7 @@
 	"map.filter.planets": "Gezegenler",
 	"map.filter.stations": "İstasyonlar",
 	"map.filter.npcs": "NPC'ler",
+	"map.filter.fit": "Tumu goster",
 	"map.filter.follow": "Takip",
 
 	"map.system_unknown": "BİLİNMEYEN SİSTEM",

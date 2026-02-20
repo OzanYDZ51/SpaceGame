@@ -529,8 +529,11 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
       if (remoteManifest && remoteManifest.files) {
         filesToUpdate = [];
 
-        // Check each remote file against local
-        for (const [fileName, remoteHash] of Object.entries(remoteManifest.files)) {
+        // Check each remote file against local hash
+        // Manifest format: { "files": { "name": {"hash":"...", "size":N} } }
+        // Legacy format:   { "files": { "name": "hashstring" } }
+        for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
+          const remoteHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
           const localPath = path.join(GAME_DIR, fileName);
           const localHash = await computeFileHash(localPath);
           if (localHash !== remoteHash) {
@@ -554,46 +557,79 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
           return { success: true, skipped: true, message: "Deja a jour" };
         }
       }
-    } catch {
+    } catch (err) {
       // Manifest fetch/parse failed — fall back to full download
+      console.error("[update-game] Manifest delta check failed:", err.message);
       remoteManifest = null;
       filesToUpdate = null;
     }
   }
 
-  // --- Download zip ---
-  const zipPath = path.join(INSTALL_DIR, "ImperionOnline.zip");
+  // --- Determine if we can do per-file downloads (delta) or need full zip ---
+  // Per-file download: derive individual asset URLs from the zip URL
+  // e.g. ".../releases/download/v0.1.185/ImperionOnline.zip"
+  //   → ".../releases/download/v0.1.185/ImperionOnline.pck"
+  const baseUrl = downloadUrl.replace(/\/[^/]+$/, "/");
+  const canDoDelta = filesToUpdate !== null && filesToUpdate.length > 0;
 
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    const count = filesToUpdate ? filesToUpdate.length : "tous les";
-    mainWindow.webContents.send("status", `Telechargement (${count} fichier(s))...`);
-  }
+  if (canDoDelta) {
+    // --- DELTA UPDATE: download only changed files individually ---
+    const totalSize = filesToUpdate.reduce((sum, f) => {
+      const info = remoteManifest.files[f];
+      return sum + (typeof info === "object" && info.size ? info.size : 0);
+    }, 0);
 
-  await downloadFile(downloadUrl, zipPath, (received, total) => {
     if (mainWindow && !mainWindow.isDestroyed())
-      mainWindow.webContents.send("progress", { phase: "game", received, total });
-  });
+      mainWindow.webContents.send("status", `Mise a jour: ${filesToUpdate.length} fichier(s)...`);
 
-  if (mainWindow && !mainWindow.isDestroyed())
-    mainWindow.webContents.send("status", "Extraction en cours...");
-
-  // --- Extract (selective or full) ---
-  const zip = new AdmZip(zipPath);
-
-  if (filesToUpdate && filesToUpdate.length > 0) {
-    // Selective extraction — only changed files
+    let downloadedSoFar = 0;
     for (const fileName of filesToUpdate) {
-      const entry = zip.getEntry(fileName);
-      if (entry) {
-        zip.extractEntryTo(entry, GAME_DIR, false, true);
+      const fileUrl = baseUrl + fileName;
+      const destPath = path.join(GAME_DIR, fileName);
+
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send("status", `Telechargement: ${fileName}...`);
+
+      try {
+        const fileSizeBefore = downloadedSoFar;
+        await downloadFile(fileUrl, destPath, (received, total) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            // Report overall progress across all files
+            const overallReceived = totalSize > 0 ? fileSizeBefore + received : received;
+            const overallTotal = totalSize > 0 ? totalSize : total;
+            mainWindow.webContents.send("progress", { phase: "game", received: overallReceived, total: overallTotal });
+          }
+        });
+        const info = remoteManifest.files[fileName];
+        downloadedSoFar += (typeof info === "object" && info.size ? info.size : 0);
+      } catch (err) {
+        console.error(`[update-game] Per-file download failed for ${fileName}: ${err.message}, falling back to full zip`);
+        // Fall back to full zip download
+        filesToUpdate = null;
+        break;
       }
     }
-  } else {
-    // Full extraction
-    zip.extractAllTo(GAME_DIR, true);
   }
 
-  fs.unlinkSync(zipPath);
+  // --- FULL DOWNLOAD via zip (first install or delta failed) ---
+  if (!canDoDelta || filesToUpdate === null) {
+    const zipPath = path.join(INSTALL_DIR, "ImperionOnline.zip");
+
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send("status", "Telechargement du jeu complet...");
+
+    await downloadFile(downloadUrl, zipPath, (received, total) => {
+      if (mainWindow && !mainWindow.isDestroyed())
+        mainWindow.webContents.send("progress", { phase: "game", received, total });
+    });
+
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send("status", "Extraction en cours...");
+
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(GAME_DIR, true);
+    fs.unlinkSync(zipPath);
+  }
 
   // --- Delete obsolete files ---
   for (const fileName of filesToDelete) {
@@ -601,10 +637,11 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
     try { fs.unlinkSync(filePath); } catch {}
   }
 
-  // --- Post-extraction verification ---
+  // --- Post-download verification ---
   if (remoteManifest && remoteManifest.files) {
     const verifyErrors = [];
-    for (const [fileName, expectedHash] of Object.entries(remoteManifest.files)) {
+    for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
+      const expectedHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
       const localHash = await computeFileHash(path.join(GAME_DIR, fileName));
       if (localHash !== expectedHash) {
         verifyErrors.push(fileName);
@@ -620,7 +657,7 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
     saveLocalManifest(remoteManifest);
   }
   setGameVersion(version);
-  return { success: true, updated: filesToUpdate };
+  return { success: true, updated: canDoDelta ? filesToUpdate : null };
 });
 
 // =========================================================================
@@ -699,7 +736,9 @@ ipcMain.handle("verify-game", async () => {
 
   if (manifest && manifest.files) {
     // Verify against manifest hashes
-    for (const [fileName, expectedHash] of Object.entries(manifest.files)) {
+    // Supports both formats: {"file": "hash"} and {"file": {"hash":"...", "size":N}}
+    for (const [fileName, fileInfo] of Object.entries(manifest.files)) {
+      const expectedHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
       const filePath = path.join(GAME_DIR, fileName);
       if (!fs.existsSync(filePath)) {
         missing.push(fileName);

@@ -224,7 +224,7 @@ func get_target_distance() -> float:
 	var ship =get_parent() as Node3D
 	if ship == null:
 		return -1.0
-	return ship.global_position.distance_to(_get_target_center())
+	return get_ship_center(ship).distance_to(_get_target_center())
 
 
 ## Returns the visual center of the current target (using ShipCenter offset if available)
@@ -236,8 +236,8 @@ func _get_target_center() -> Vector3:
 static func get_ship_center(node: Node3D) -> Vector3:
 	# Only ShipController uses center_offset: its model is scene-based (skip_centering)
 	# so the visual center differs from the node origin.
-	# Remote ships (RemotePlayerShip, RemoteNPCShip) load from .glb and auto-center
-	# the AABB at origin, so their visual center is already at global_position.
+	# Remote ships (RemotePlayerShip, RemoteNPCShip) use skip_centering = true,
+	# so their visual center may not match global_position exactly.
 	if node.get("center_offset") != null:
 		var offset: Vector3 = node.center_offset
 		if offset != Vector3.ZERO:

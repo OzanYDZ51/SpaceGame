@@ -144,11 +144,11 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		else:
 			continue
 		var st_pos: Vector3 = station_positions[st_idx]
-		# Guards patrol around the station — offset 800m+ to avoid spawning inside
+		# Guards patrol OUTSIDE the station model (~2500m radius + margin)
 		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
 		if offset_dir.length_squared() < 0.01:
 			offset_dir = Vector3.FORWARD
-		var guard_center: Vector3 = st_pos + offset_dir * randf_range(800.0, 1200.0) + Vector3(0, randf_range(-50, 50), 0)
+		var guard_center: Vector3 = st_pos + offset_dir * randf_range(3500.0, 4500.0) + Vector3(0, randf_range(-50, 50), 0)
 		spawn_patrol(2, guard_ship, guard_center, 1000.0, guard_faction, system_id, 100 + st_idx, station_node)
 
 
@@ -158,6 +158,58 @@ func _get_guard_ship_id() -> StringName:
 		if data and data.npc_tier == 0:
 			return sid
 	return Constants.DEFAULT_SHIP_ID
+
+
+const STATION_SAFE_RADIUS: float = 3500.0  ## Min spawn distance from station centers
+
+
+## Push a position outside all large entity exclusion zones (stations, planets, stars).
+func _push_spawn_from_obstacles(pos: Vector3) -> Vector3:
+	# Stations
+	var stations: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	for ent in stations:
+		var ent_pos: Vector3 = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+		var excl_r: float = STATION_SAFE_RADIUS
+		var to_pos: Vector3 = pos - ent_pos
+		var dist: float = to_pos.length()
+		if dist < excl_r:
+			if dist < 1.0:
+				to_pos = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
+			else:
+				to_pos = to_pos.normalized()
+			pos = ent_pos + to_pos * (excl_r + 200.0)
+
+	# Planets
+	var planets: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET)
+	for ent in planets:
+		var ent_pos: Vector3 = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+		var planet_r: float = ent.get("radius", 5000.0)
+		var excl_r: float = maxf(planet_r * 1.2 + 500.0, 5000.0)
+		var to_pos: Vector3 = pos - ent_pos
+		var dist: float = to_pos.length()
+		if dist < excl_r:
+			if dist < 1.0:
+				to_pos = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
+			else:
+				to_pos = to_pos.normalized()
+			pos = ent_pos + to_pos * (excl_r + 200.0)
+
+	# Stars
+	var stars: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR)
+	for ent in stars:
+		var ent_pos: Vector3 = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+		var star_r: float = ent.get("radius", 50000.0)
+		var excl_r: float = maxf(star_r * 1.5, 50000.0)
+		var to_pos: Vector3 = pos - ent_pos
+		var dist: float = to_pos.length()
+		if dist < excl_r:
+			if dist < 1.0:
+				to_pos = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
+			else:
+				to_pos = to_pos.normalized()
+			pos = ent_pos + to_pos * (excl_r + 200.0)
+
+	return pos
 
 
 func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1, station_node: Node3D = null) -> void:
@@ -173,6 +225,9 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 	var cam =get_viewport().get_camera_3d()
 	if cam:
 		cam_pos = cam.global_position
+
+	# Push patrol center away from large obstacles (stations, planets, stars)
+	center = _push_spawn_from_obstacles(center)
 
 	# Get NpcAuthority for respawn checking
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")

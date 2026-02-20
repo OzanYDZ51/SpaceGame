@@ -9,6 +9,7 @@ extends Control
 
 signal filter_toggled(key: int)
 signal follow_toggled
+signal fit_requested
 
 var camera = null
 var filters: Dictionary = {}  # EntityType -> bool (true = hidden)
@@ -38,6 +39,7 @@ func _ready() -> void:
 		{"label_key": "map.filter.stations", "key": EntityRegistrySystem.EntityType.STATION},
 		{"label_key": "map.filter.npcs", "key": EntityRegistrySystem.EntityType.SHIP_NPC},
 		{"label_key": "map.filter.follow", "key": -99},
+		{"label_key": "map.filter.fit", "key": -98},
 	]
 
 
@@ -87,6 +89,8 @@ func handle_toolbar_click(pos: Vector2) -> bool:
 			var key: int = TOOLBAR_BUTTONS[i]["key"]
 			if key == -99:
 				follow_toggled.emit()
+			elif key == -98:
+				fit_requested.emit()
 			else:
 				filter_toggled.emit(key)
 			return true
@@ -116,6 +120,8 @@ func _draw_toolbar() -> void:
 		var is_active: bool
 		if key == -99:
 			is_active = follow_enabled
+		elif key == -98:
+			is_active = true  # FIT is an action button, always looks active
 		else:
 			is_active = not filters.get(key, false)
 

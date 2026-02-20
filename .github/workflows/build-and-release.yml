@@ -87,12 +87,14 @@ jobs:
           cd build
           EXE_HASH=$(sha256sum ImperionOnline.exe | cut -d' ' -f1)
           PCK_HASH=$(sha256sum ImperionOnline.pck | cut -d' ' -f1)
+          EXE_SIZE=$(stat --format=%s ImperionOnline.exe)
+          PCK_SIZE=$(stat --format=%s ImperionOnline.pck)
           cat > manifest.json <<EOF
           {
             "version": "${{ steps.version.outputs.version }}",
             "files": {
-              "ImperionOnline.exe": "$EXE_HASH",
-              "ImperionOnline.pck": "$PCK_HASH"
+              "ImperionOnline.exe": {"hash": "$EXE_HASH", "size": $EXE_SIZE},
+              "ImperionOnline.pck": {"hash": "$PCK_HASH", "size": $PCK_SIZE}
             }
           }
           EOF
@@ -107,6 +109,8 @@ jobs:
           files: |
             ImperionOnline.zip
             build/manifest.json
+            build/ImperionOnline.exe
+            build/ImperionOnline.pck
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

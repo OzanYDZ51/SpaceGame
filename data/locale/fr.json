@@ -596,6 +596,7 @@
 	"map.filter.planets": "Planetes",
 	"map.filter.stations": "Stations",
 	"map.filter.npcs": "PNJ",
+	"map.filter.fit": "Vue globale",
 	"map.filter.follow": "Suivre",
 
 	"map.system_unknown": "SYSTÈME INCONNU",

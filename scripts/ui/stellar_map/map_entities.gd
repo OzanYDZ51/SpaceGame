@@ -201,7 +201,10 @@ func _draw_entity(ent: Dictionary, font: Font) -> void:
 # =============================================================================
 func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 	var col: Color = ent["color"]
-	var base_radius: float = clampf(ent["radius"] * camera.zoom, 6.0, 40.0)
+	# Log-normalized icon size: M-dwarf (300km) → 10px, O-giant (10Mm) → 28px
+	var log_r: float = log(maxf(ent["radius"], 100000.0))
+	var normalized: float = clampf((log_r - 11.5) / 5.0, 0.0, 1.0)
+	var base_radius: float = lerpf(10.0, 28.0, normalized)
 
 	# Outer corona layers (large diffuse glow)
 	var corona_pulse: float = 1.0 + sin(_pulse_t * 0.8) * 0.06
@@ -258,7 +261,10 @@ func _draw_star(pos: Vector2, ent: Dictionary, _is_selected: bool) -> void:
 # =============================================================================
 func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) -> void:
 	var col: Color = ent["color"]
-	var base_radius: float = clampf(ent["radius"] * camera.zoom, 3.5, 24.0)
+	# Log-normalized icon size: small rocky (1.5Mm) → 4px, huge gas giant (55Mm) → 16px
+	var log_r: float = log(maxf(ent["radius"], 1000000.0))
+	var normalized: float = clampf((log_r - 14.0) / 4.0, 0.0, 1.0)
+	var base_radius: float = lerpf(4.0, 16.0, normalized)
 	var planet_type: String = ent["extra"].get("planet_type", "rocky")
 
 	# Atmosphere glow derived from planet's actual color (coherent with 3D)
@@ -325,16 +331,14 @@ func _draw_planet(pos: Vector2, ent: Dictionary, is_selected: bool, font: Font) 
 		draw_arc(pos, base_radius * 1.9, -0.3, PI + 0.3, 32, ring_col2, 1.0, true)
 		draw_arc(pos, base_radius * 2.15, -0.25, PI + 0.25, 24, Color(ring_col2.r, ring_col2.g, ring_col2.b, 0.08), 1.0, true)
 
-	# Label (show if zoom is close enough or selected)
-	var show_label: bool = is_selected or camera.zoom > 1e-5 or base_radius > 6.0
-	if show_label:
-		var name_text: String = ent["name"]
-		var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		var label_y: float = base_radius + 14.0
-		if ent["extra"].get("has_rings", false):
-			label_y = base_radius * 2.2 + 8.0
-		var label_col =Color(col.r, col.g, col.b, 0.7)
-		draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
+	# Label
+	var name_text: String = ent["name"]
+	var tw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var label_y: float = base_radius + 14.0
+	if ent["extra"].get("has_rings", false):
+		label_y = base_radius * 2.2 + 8.0
+	var label_col =Color(col.r, col.g, col.b, 0.7)
+	draw_string(font, pos + Vector2(-tw * 0.5, label_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, label_col)
 
 
 # =============================================================================
