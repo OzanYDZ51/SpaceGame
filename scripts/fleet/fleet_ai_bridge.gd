@@ -177,9 +177,6 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	# Attack and idle: react normally to threats
 	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction", &"mine"])
 	_brain.target = null
-	# Restore brain combat settings to ship defaults (attack will override below)
-	_brain.disengage_range = 4500.0
-	_brain.flee_threshold = 0.2
 	# Default to IDLE — each command overrides explicitly
 	_brain.current_state = AIBrain.State.IDLE
 
@@ -206,13 +203,20 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		&"attack":
 			_attack_target_id = params.get("target_entity_id", "")
 			if _attack_target_id != "":
-				# Override: fleet attack ships chase across the system and never retreat
-				_brain.disengage_range = 100000.0
-				_brain.flee_threshold = 0.0
-				var target_node = _find_target_node(_attack_target_id)
-				if target_node:
-					_brain.target = target_node
-				_brain.current_state = AIBrain.State.PURSUE
+				var ent = EntityRegistry.get_entity(_attack_target_id)
+				if not ent.is_empty():
+					var target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+					var dist: float = _ship.global_position.distance_to(target_pos)
+					var target_node = _find_target_node(_attack_target_id)
+					if dist <= _brain.detection_range and target_node:
+						# Already in range — engage directly, same as any encounter NPC
+						_brain.target = target_node
+						_brain.current_state = AIBrain.State.PURSUE
+					else:
+						# Too far — fly toward target (radius=0 direct move)
+						# Brain picks up the target naturally via _detect_threats() on arrival
+						_brain.set_patrol_area(target_pos, 0.0)
+						_brain.current_state = AIBrain.State.PATROL
 		&"construction":
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
@@ -340,34 +344,38 @@ func _process(_delta: float) -> void:
 
 	# Monitor attack target
 	if command == &"attack" and _attack_target_id != "":
-		var ent =EntityRegistry.get_entity(_attack_target_id)
+		var ent = EntityRegistry.get_entity(_attack_target_id)
 		if ent.is_empty():
 			# Target destroyed — stand by, wait for next order
 			_attack_target_id = ""
 			_brain.current_state = AIBrain.State.IDLE
 		else:
-			# Re-acquire target node if brain lost it, and ensure PURSUE is active.
-			# No set_patrol_area — attack uses PURSUE only, never patrol waypoints.
-			if _brain.target == null or not is_instance_valid(_brain.target):
-				var target_node = _find_target_node(_attack_target_id)
-				if target_node:
-					_brain.target = target_node
-				# Force back to PURSUE from any idle/patrol state
-				if _brain.current_state in [AIBrain.State.PATROL, AIBrain.State.IDLE]:
-					_brain.current_state = AIBrain.State.PURSUE
+			var target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+			var dist: float = _ship.global_position.distance_to(target_pos)
+			match _brain.current_state:
+				AIBrain.State.PATROL:
+					# Approach phase: keep patrol center tracking the moving target
+					_brain.set_patrol_area(target_pos, 0.0)
+					# Switch to direct combat when target enters sensor range
+					if dist <= _brain.detection_range:
+						var target_node = _find_target_node(_attack_target_id)
+						if target_node:
+							_brain.target = target_node
+							_brain.current_state = AIBrain.State.PURSUE
+				AIBrain.State.IDLE:
+					# Post-combat or lost target — re-engage or re-approach
+					var target_node = _find_target_node(_attack_target_id)
+					if dist <= _brain.detection_range and target_node:
+						_brain.target = target_node
+						_brain.current_state = AIBrain.State.PURSUE
+					else:
+						_brain.set_patrol_area(target_pos, 0.0)
+						_brain.current_state = AIBrain.State.PATROL
 
 	# Auto-resume: after combat (idle_after_combat=true), brain returns to IDLE;
 	# re-apply the pending mission command so the ship continues its objective.
 	if not _arrived and not _returning and _brain.current_state == AIBrain.State.IDLE:
-		if command == &"attack" and _attack_target_id != "":
-			# Re-pursue after temporarily losing target (disengage, evade, etc.)
-			var ent = EntityRegistry.get_entity(_attack_target_id)
-			if not ent.is_empty():
-				var target_node = _find_target_node(_attack_target_id)
-				if target_node:
-					_brain.target = target_node
-				_brain.current_state = AIBrain.State.PURSUE
-		elif command in [&"move_to", &"patrol", &"construction", &"mine"]:
+		if command in [&"move_to", &"patrol", &"construction", &"mine"]:
 			apply_command(command, command_params)
 
 	# Safety net: if ignore_threats is set but the brain somehow slipped into a combat
@@ -452,7 +460,11 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 			var radius: float = command_params.get("radius", 500.0)
 			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
 		&"attack":
-			pass  # PURSUE uses live target.global_position — no patrol waypoints to refresh
+			# During approach (PATROL phase), keep the patrol center on the moving target
+			if _attack_target_id != "" and _brain.current_state == AIBrain.State.PATROL:
+				var ent = EntityRegistry.get_entity(_attack_target_id)
+				if not ent.is_empty():
+					_brain.set_patrol_area(FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), 0.0)
 		&"return_to_station":
 			# Refresh dock target positions after origin shift
 			if _station_id != "" and _bay_target_valid:
