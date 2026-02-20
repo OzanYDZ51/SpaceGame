@@ -192,8 +192,8 @@ static func deserialize(data: Dictionary):
 		fs.ship_id = Constants.DEFAULT_SHIP_ID
 		ship_data = ShipRegistry.get_ship_data(fs.ship_id)
 		push_warning("FleetShip.deserialize: ship '%s' retired, replaced with '%s'" % [old_id, fs.ship_id])
-		if fs.custom_name == "" or fs.custom_name == String(old_id):
-			fs.custom_name = String(ship_data.ship_name) if ship_data else "Ship"
+		# Always reset: custom_name is auto-set from ship_name, never user-typed
+		fs.custom_name = String(ship_data.ship_name) if ship_data else "Ship"
 		# Reset loadout to defaults since slots likely differ
 		fs.weapons.clear()
 		fs.shield_name = &""

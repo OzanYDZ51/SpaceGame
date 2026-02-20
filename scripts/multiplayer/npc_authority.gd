@@ -1049,6 +1049,10 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 		push_warning("NpcAuthority: Remote fleet deploy — empty ship_id")
 		return {}
 	var ship_id := StringName(ship_id_str)
+	# Validate — fall back to default if ship was retired/removed
+	if ShipRegistry.get_ship_data(ship_id) == null:
+		push_warning("NpcAuthority: Fleet deploy — ship '%s' is retired, using default '%s'" % [ship_id_str, Constants.DEFAULT_SHIP_ID])
+		ship_id = Constants.DEFAULT_SHIP_ID
 
 	# Resolve spawn position near docked station
 	var spawn_pos := Vector3.ZERO
@@ -1488,17 +1492,23 @@ func _load_deployed_fleet_ships_from_backend() -> void:
 		var command: String = ship_data.get("command", "")
 		var faction: StringName = &"player_fleet"
 
+		# Validate ship_id — fall back to default if it was retired/removed
+		var effective_ship_id := StringName(ship_id)
+		if ShipRegistry.get_ship_data(effective_ship_id) == null:
+			push_warning("NpcAuthority: Fleet restore — ship '%s' is retired, using default '%s'" % [ship_id, Constants.DEFAULT_SHIP_ID])
+			effective_ship_id = Constants.DEFAULT_SHIP_ID
+
 		# Spawn real ShipController node
 		var spawn_pos := Vector3(pos_x, pos_y, pos_z)
-		var npc = ShipFactory.spawn_npc_ship(StringName(ship_id), &"balanced", spawn_pos, universe, faction)
+		var npc = ShipFactory.spawn_npc_ship(effective_ship_id, &"balanced", spawn_pos, universe, faction)
 		if npc == null:
-			push_error("NpcAuthority: Fleet ship restore FAILED for %s" % ship_id)
+			push_error("NpcAuthority: Fleet ship restore FAILED for %s" % effective_ship_id)
 			continue
 
 		var npc_id := StringName(npc.name)
 
 		# Register with NPC authority
-		register_npc(npc_id, system_id, StringName(ship_id), faction)
+		register_npc(npc_id, system_id, effective_ship_id, faction)
 
 		# Fleet tracking
 		_fleet_npcs[npc_id] = { "owner_uuid": player_id, "owner_pid": -1, "fleet_index": fleet_index, "command": command }
