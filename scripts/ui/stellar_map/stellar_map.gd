@@ -61,6 +61,10 @@ var _fleet_virtual_timer: float = 0.0
 var _right_hold_start: float = 0.0
 var _right_hold_pos: Vector2 = Vector2.ZERO
 var _right_hold_triggered: bool = false
+# Universe coordinates captured at press time — avoids zoom-interpolation errors at release time.
+# Camera state (zoom, center_x/z) can change between press and release, so we must snapshot NOW.
+var _right_hold_universe_x: float = 0.0
+var _right_hold_universe_z: float = 0.0
 const RIGHT_HOLD_DURATION: float = 0.8
 const RIGHT_HOLD_MAX_MOVE: float = 20.0
 
@@ -632,6 +636,12 @@ func _input(event: InputEvent) -> void:
 				# Start right-hold detection (always — defaults to active ship)
 				_right_hold_start = Time.get_ticks_msec() / 1000.0
 				_right_hold_pos = event.position
+				# Snapshot universe coords NOW at press time.
+				# zoom and center_x/z can change during interpolation between press and release,
+				# making the same screen position map to a completely different universe location.
+				# This error is amplified by 1/zoom — catastrophic at system-scale zoom levels.
+				_right_hold_universe_x = _camera.screen_to_universe_x(event.position.x)
+				_right_hold_universe_z = _camera.screen_to_universe_z(event.position.y)
 				_right_hold_triggered = false
 			else:
 				# Right click released — quick release = move_to or attack
@@ -648,8 +658,9 @@ func _input(event: InputEvent) -> void:
 						dest_z = ent["pos_z"]
 						dest_name = ent.get("name", "")
 					else:
-						dest_x = _camera.screen_to_universe_x(_right_hold_pos.x)
-						dest_z = _camera.screen_to_universe_z(_right_hold_pos.y)
+						# Use the universe coords captured at press time (not recalculated now).
+						dest_x = _right_hold_universe_x
+						dest_z = _right_hold_universe_z
 					galaxy_route_requested.emit(_preview_system_id, dest_x, dest_z, dest_name)
 					_right_hold_start = 0.0
 					get_viewport().set_input_as_handled()
@@ -757,9 +768,11 @@ func _input(event: InputEvent) -> void:
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
 						_follow_effective_fleet_ship(effective_indices)
 					else:
-						# Move to empty space — use press position for accurate target
-						var universe_x: float = _camera.screen_to_universe_x(click_pos.x)
-						var universe_z: float = _camera.screen_to_universe_z(click_pos.y)
+						# Use the universe coords captured at press time (not recalculated now).
+						# Camera zoom/center can change between press and release (zoom interpolation),
+						# causing massive errors at low zoom levels (error = pixel_offset / zoom).
+						var universe_x: float = _right_hold_universe_x
+						var universe_z: float = _right_hold_universe_z
 						var params ={"target_x": universe_x, "target_z": universe_z}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)

@@ -21,7 +21,10 @@ var _remote_beam = null
 # Interpolation buffer (ring buffer of snapshots)
 var _snapshots: Array[Dictionary] = []
 const MAX_SNAPSHOTS: int = 30
-const EXTRAPOLATION_MAX: float = 1.0  # Max extrapolation time (seconds)
+const EXTRAPOLATION_MAX: float = 1.0  # Max extrapolation time (seconds, normal speed)
+# At high speeds (cruise), Hermite tangents dominate and cause path deviations.
+# Switch to linear interpolation above this velocity and cap extrapolation tightly.
+const HIGH_SPEED_THRESHOLD: float = 5000.0  # m/s
 
 # Visual
 var _ship_model = null
@@ -211,6 +214,7 @@ func receive_state(state) -> void:
 		"rot": state.rotation_deg,
 		"thr": state.throttle,
 		"time": Time.get_ticks_msec() / 1000.0,
+		"cruise": state.is_cruising,  # Per-snapshot cruise state for accurate engine glow
 	}
 
 	_snapshots.append(snapshot)
@@ -227,8 +231,10 @@ func _process(_delta: float) -> void:
 	if _snapshots.size() < 2:
 		# Single snapshot — place at snapshot position, extrapolate with velocity
 		var snap: Dictionary = _snapshots[0]
-		var dt: float = clampf(render_time - snap["time"], 0.0, EXTRAPOLATION_MAX)
 		var vel: Vector3 = snap["vel"]
+		# At cruise speeds, cap extrapolation tightly to prevent massive positional drift on any lag
+		var extrap_limit: float = 0.1 if vel.length() > HIGH_SPEED_THRESHOLD else EXTRAPOLATION_MAX
+		var dt: float = clampf(render_time - snap["time"], 0.0, extrap_limit)
 		var pos_arr: Array = snap["pos"]
 		var extrap_pos: Array = [
 			pos_arr[0] + vel.x * dt,
@@ -238,7 +244,10 @@ func _process(_delta: float) -> void:
 		global_position = FloatingOrigin.to_local_pos(extrap_pos)
 		rotation_degrees = snap["rot"]
 		linear_velocity = vel
-		_update_engine_glow(snap.get("thr", 0.0))
+		if snap.get("cruise", false):
+			_update_engine_glow(1.0)
+		else:
+			_update_engine_glow(snap.get("thr", 0.0))
 		return
 
 	# Find two snapshots to interpolate between (search from end — most recent first)
@@ -259,35 +268,52 @@ func _process(_delta: float) -> void:
 		global_position = FloatingOrigin.to_local_pos(snap["pos"])
 		rotation_degrees = snap["rot"]
 		linear_velocity = snap["vel"]
-		_update_engine_glow(snap.get("thr", 0.0))
+		if snap.get("cruise", false):
+			_update_engine_glow(1.0)
+		else:
+			_update_engine_glow(snap.get("thr", 0.0))
 
 
 ## Hermite interpolation using position + velocity at both endpoints.
-## Produces smooth curves that respect velocity direction and magnitude.
+## Falls back to linear interpolation at high speeds (cruise) — at 1,000,000 m/s the Hermite
+## tangent terms (h10 * dt * vel) dwarf the position terms, causing path deviations whenever
+## velocity changes between snapshots.
 func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) -> void:
 	var dt: float = to["time"] - from["time"]
 	var t: float = clampf((render_time - from["time"]) / dt, 0.0, 1.0) if dt > 0.001 else 1.0
-
-	# Hermite basis functions
-	var t2: float = t * t
-	var t3: float = t2 * t
-	var h00: float = 2.0 * t3 - 3.0 * t2 + 1.0  # Position at start
-	var h10: float = t3 - 2.0 * t2 + t            # Tangent at start
-	var h01: float = -2.0 * t3 + 3.0 * t2         # Position at end
-	var h11: float = t3 - t2                       # Tangent at end
 
 	var pos_from: Array = from["pos"]
 	var pos_to: Array = to["pos"]
 	var vel_from: Vector3 = from["vel"]
 	var vel_to: Vector3 = to["vel"]
 
-	# Hermite position: H(t) = h00*P0 + h10*dt*V0 + h01*P1 + h11*dt*V1
-	var interp_pos: Array = [
-		h00 * pos_from[0] + h10 * dt * vel_from.x + h01 * pos_to[0] + h11 * dt * vel_to.x,
-		h00 * pos_from[1] + h10 * dt * vel_from.y + h01 * pos_to[1] + h11 * dt * vel_to.y,
-		h00 * pos_from[2] + h10 * dt * vel_from.z + h01 * pos_to[2] + h11 * dt * vel_to.z,
-	]
-	global_position = FloatingOrigin.to_local_pos(interp_pos)
+	# At high speeds, the Hermite tangent contribution (h10 * dt * V) is enormous relative
+	# to the position difference (P1 - P0), so any velocity mismatch between snapshots causes
+	# the interpolated path to deviate wildly. Use linear interpolation instead.
+	var max_vel: float = maxf(vel_from.length(), vel_to.length())
+	if max_vel > HIGH_SPEED_THRESHOLD:
+		var linear_pos: Array = [
+			lerpf(pos_from[0], pos_to[0], t),
+			lerpf(pos_from[1], pos_to[1], t),
+			lerpf(pos_from[2], pos_to[2], t),
+		]
+		global_position = FloatingOrigin.to_local_pos(linear_pos)
+	else:
+		# Hermite basis functions
+		var t2: float = t * t
+		var t3: float = t2 * t
+		var h00: float = 2.0 * t3 - 3.0 * t2 + 1.0  # Position at start
+		var h10: float = t3 - 2.0 * t2 + t            # Tangent at start
+		var h01: float = -2.0 * t3 + 3.0 * t2         # Position at end
+		var h11: float = t3 - t2                       # Tangent at end
+
+		# Hermite position: H(t) = h00*P0 + h10*dt*V0 + h01*P1 + h11*dt*V1
+		var interp_pos: Array = [
+			h00 * pos_from[0] + h10 * dt * vel_from.x + h01 * pos_to[0] + h11 * dt * vel_to.x,
+			h00 * pos_from[1] + h10 * dt * vel_from.y + h01 * pos_to[1] + h11 * dt * vel_to.y,
+			h00 * pos_from[2] + h10 * dt * vel_from.z + h01 * pos_to[2] + h11 * dt * vel_to.z,
+		]
+		global_position = FloatingOrigin.to_local_pos(interp_pos)
 
 	# Smooth rotation via lerp_angle (handles wrapping correctly)
 	var rot_from: Vector3 = from["rot"]
@@ -302,8 +328,9 @@ func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) 
 	# through position/dt division — causes lead indicator jitter on targeting HUD)
 	linear_velocity = vel_from.lerp(vel_to, t)
 
-	# Engine glow: use cruise state for max glow, otherwise interpolate throttle
-	if _is_cruising:
+	# Engine glow: use per-snapshot cruise flag so glow is correct on entry/exit transitions
+	var cruise_active: bool = from.get("cruise", false) or to.get("cruise", false)
+	if cruise_active:
 		_update_engine_glow(1.0)
 	else:
 		_update_engine_glow(lerpf(from.get("thr", 0.0), to.get("thr", 0.0), t))
@@ -312,16 +339,35 @@ func _hermite_interpolate(from: Dictionary, to: Dictionary, render_time: float) 
 ## Smooth extrapolation with gentle velocity decay to prevent infinite drift.
 func _extrapolate_smooth(render_time: float) -> void:
 	var last: Dictionary = _snapshots.back()
-	var dt: float = clampf(render_time - last["time"], 0.0, EXTRAPOLATION_MAX)
 	var vel: Vector3 = last["vel"]
 
-	# Linear decay: full speed for first 50%, then gentle slowdown
+	# At cruise speeds, cap extrapolation to ~3 snapshot periods (100ms = ~100km at max cruise).
+	# Without this cap, any 500ms packet loss would extrapolate 500km off position and snap
+	# dramatically when packets resume. Normal speed: keep 1s cap for smooth coast-to-stop.
+	var extrap_limit: float = 0.1 if vel.length() > HIGH_SPEED_THRESHOLD else EXTRAPOLATION_MAX
+	var dt: float = clampf(render_time - last["time"], 0.0, extrap_limit)
+
+	var pos_arr: Array = last["pos"]
+
+	# High-speed path: simple linear extrapolation, no decay needed (capped very tightly)
+	if vel.length() > HIGH_SPEED_THRESHOLD:
+		var extrap_pos: Array = [
+			pos_arr[0] + vel.x * dt,
+			pos_arr[1] + vel.y * dt,
+			pos_arr[2] + vel.z * dt,
+		]
+		global_position = FloatingOrigin.to_local_pos(extrap_pos)
+		rotation_degrees = last["rot"]
+		linear_velocity = vel
+		_update_engine_glow(1.0)
+		return
+
+	# Normal-speed path: linear decay after 50% of max extrapolation
 	# This avoids the jarring quadratic decay that made players visibly decelerate
 	var decay: float = clampf(1.0 - maxf(dt - 0.5, 0.0) / (EXTRAPOLATION_MAX - 0.5), 0.0, 1.0)
 
 	# Constant velocity for first 500ms, then linear deceleration
 	var extrap_dt: float = minf(dt, 0.5) + maxf(dt - 0.5, 0.0) * decay
-	var pos_arr: Array = last["pos"]
 	var extrap_pos: Array = [
 		pos_arr[0] + vel.x * extrap_dt,
 		pos_arr[1] + vel.y * extrap_dt,
@@ -346,7 +392,7 @@ func _extrapolate_smooth(render_time: float) -> void:
 		rotation_degrees = last["rot"]
 
 	linear_velocity = vel * decay
-	if _is_cruising:
+	if last.get("cruise", false):
 		_update_engine_glow(1.0)
 	else:
 		_update_engine_glow(last.get("thr", 0.0) * maxf(decay, 0.3))

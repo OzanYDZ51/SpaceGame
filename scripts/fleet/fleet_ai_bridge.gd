@@ -379,18 +379,17 @@ func _process(_delta: float) -> void:
 			apply_command(command, command_params)
 
 	# Safety net: if ignore_threats is set but the brain somehow slipped into a combat
-	# state (PURSUE/ATTACK/EVADE/FLEE), force it back to IDLE so the auto-resume above
+	# state (PURSUE/ATTACK), force it back to IDLE so the auto-resume above
 	# picks it up next frame.  Covers edge cases where _on_damage_taken fired before
 	# ignore_threats was set (e.g. command received mid-combat frame).
 	if not _arrived and not _returning and _brain.ignore_threats:
 		if command in [&"move_to", &"patrol", &"construction", &"mine"]:
-			if _brain.current_state in [AIBrain.State.PURSUE, AIBrain.State.ATTACK,
-					AIBrain.State.EVADE, AIBrain.State.FLEE]:
+			if _brain.current_state in [AIBrain.State.PURSUE, AIBrain.State.ATTACK]:
 				_brain.target = null
 				_brain.current_state = AIBrain.State.IDLE
 
 
-func _mark_arrived(target_pos: Vector3) -> void:
+func _mark_arrived(_target_pos: Vector3) -> void:
 	_arrived = true
 	if _ship:
 		_ship.ai_navigation_active = false

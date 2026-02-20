@@ -85,6 +85,7 @@ jobs:
       - name: Generate manifest
         run: |
           cd build
+          GODOT_VERSION="4.6-stable"
           EXE_HASH=$(sha256sum ImperionOnline.exe | cut -d' ' -f1)
           PCK_HASH=$(sha256sum ImperionOnline.pck | cut -d' ' -f1)
           EXE_SIZE=$(stat --format=%s ImperionOnline.exe)
@@ -92,6 +93,7 @@ jobs:
           cat > manifest.json <<EOF
           {
             "version": "${{ steps.version.outputs.version }}",
+            "godot_version": "$GODOT_VERSION",
             "files": {
               "ImperionOnline.exe": {"hash": "$EXE_HASH", "size": $EXE_SIZE},
               "ImperionOnline.pck": {"hash": "$PCK_HASH", "size": $PCK_SIZE}

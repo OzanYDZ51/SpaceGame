@@ -9,7 +9,7 @@ extends RefCounted
 # Convoy composition per tier:
 # Tier 1: freighter_arion + 2x chasseur_viper
 # Tier 2: freighter_arion + 3x chasseur_arrw + 2x chasseur_viper
-# Tier 3: freighter_arion + 2x frigate_mk1 + 3x chasseur_arrw + 5x chasseur_viper
+# Tier 3: croiseur_bodhammer (flagship) + 2x frigate_mk1 + 3x chasseur_arrw + 5x chasseur_viper
 
 static func get_convoy_definition(tier: int) -> Dictionary:
 	match tier:
@@ -30,7 +30,7 @@ static func get_convoy_definition(tier: int) -> Dictionary:
 			}
 		3:
 			return {
-				"leader": &"freighter_arion",
+				"leader": &"croiseur_bodhammer",
 				"escorts": [
 					{"ship_id": &"frigate_mk1", "count": 2},
 					{"ship_id": &"chasseur_arrw", "count": 3},

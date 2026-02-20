@@ -52,7 +52,11 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_send_frame += 1
-	if _send_frame >= SEND_EVERY_N_FRAMES:
+	# During cruise warp, send every physics frame (60Hz) instead of every 2 frames (30Hz).
+	# At 1,000,000 m/s, 30Hz means 33km per snapshot — 60Hz halves that to 16km,
+	# giving observers smoother interpolation during high-speed flight.
+	var send_interval: int = 1 if (_ship != null and _ship.cruise_warp_active) else SEND_EVERY_N_FRAMES
+	if _send_frame >= send_interval:
 		_send_frame = 0
 		_send_state()
 

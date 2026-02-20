@@ -529,12 +529,27 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
       if (remoteManifest && remoteManifest.files) {
         filesToUpdate = [];
 
+        // Godot's Windows export is non-deterministic: the .exe hash changes every
+        // build even with identical sources (PE metadata, timestamps, icon embedding).
+        // Skip the exe hash check when the Godot version hasn't changed — only
+        // re-download the exe if the engine version changed or the file is missing.
+        const remoteGodotVersion = remoteManifest.godot_version || null;
+        const localGodotVersion = localManifest?.godot_version || null;
+        const sameGodotVersion = remoteGodotVersion && localGodotVersion && remoteGodotVersion === localGodotVersion;
+
         // Check each remote file against local hash
         // Manifest format: { "files": { "name": {"hash":"...", "size":N} } }
         // Legacy format:   { "files": { "name": "hashstring" } }
         for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
-          const remoteHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
           const localPath = path.join(GAME_DIR, fileName);
+
+          // Engine binary: skip hash check if Godot version unchanged and file exists.
+          // This avoids re-downloading ~60MB on every patch when only the .pck changed.
+          if (sameGodotVersion && fileName.endsWith(".exe") && fs.existsSync(localPath)) {
+            continue;
+          }
+
+          const remoteHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
           const localHash = await computeFileHash(localPath);
           if (localHash !== remoteHash) {
             filesToUpdate.push(fileName);
@@ -639,8 +654,13 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
 
   // --- Post-download verification ---
   if (remoteManifest && remoteManifest.files) {
+    const verifyRemoteGodot = remoteManifest.godot_version || null;
+    const verifyLocalGodot = getLocalManifest()?.godot_version || null;
+    const verifySameGodot = verifyRemoteGodot && verifyLocalGodot && verifyRemoteGodot === verifyLocalGodot;
     const verifyErrors = [];
     for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
+      // Skip exe verification when Godot version unchanged (hash is non-deterministic)
+      if (verifySameGodot && fileName.endsWith(".exe") && canDoDelta) continue;
       const expectedHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
       const localHash = await computeFileHash(path.join(GAME_DIR, fileName));
       if (localHash !== expectedHash) {

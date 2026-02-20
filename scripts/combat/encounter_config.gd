@@ -55,7 +55,8 @@ static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
 		4:
 			configs = [
-				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 500.0},
+				{"count": 1, "ship": t2, "fac": &"hostile", "radius": 600.0},
+				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 400.0},
 				{"count": 1, "ship": t0, "fac": &"hostile", "radius": 300.0},
 			]
 			if freighter != &"":
