@@ -408,6 +408,17 @@ func _on_npc_batch_received(batch: Array) -> void:
 					if lod_data.node_ref is RemoteNPCShip:
 						lod_data.node_ref.receive_state(state_dict)
 
+		# Update EntityRegistry so stellar map stays current even while docked.
+		# lod_manager._process() is disabled when docked, so positions won't update otherwise.
+		var ent: Dictionary = EntityRegistry.get_entity(String(npc_id))
+		if not ent.is_empty():
+			ent["pos_x"] = state_dict.get("px", 0.0)
+			ent["pos_y"] = state_dict.get("py", 0.0)
+			ent["pos_z"] = state_dict.get("pz", 0.0)
+			ent["vel_x"] = state_dict.get("vx", 0.0)
+			ent["vel_y"] = state_dict.get("vy", 0.0)
+			ent["vel_z"] = state_dict.get("vz", 0.0)
+
 
 func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: Array) -> void:
 	var npc_id =StringName(npc_id_str)
