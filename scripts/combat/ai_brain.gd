@@ -216,22 +216,22 @@ func _update_environment() -> void:
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			_obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
 
-	# Planets (physical radius from registry + margin)
+	# Planets (use render_radius which is the actual visual size in scene, NOT physical radius)
 	var planets = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET)
 	for pl in planets:
 		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([pl["pos_x"], pl["pos_y"], pl["pos_z"]])
-		var planet_r: float = pl.get("radius", 5000.0)
-		var excl_r: float = maxf(planet_r * 1.2 + 500.0, 5000.0)
+		var render_r: float = pl.get("extra", {}).get("render_radius", 100000.0)
+		var excl_r: float = render_r * 1.3 + 500.0
 		var dist: float = ship_pos.distance_to(scene_pos)
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			_obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
 
-	# Stars (very large exclusion)
+	# Stars (use visual impostor size — star_radius is already in game meters ~300-700km)
 	var stars = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR)
 	for star in stars:
 		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([star["pos_x"], star["pos_y"], star["pos_z"]])
-		var star_r: float = star.get("radius", 50000.0)
-		var excl_r: float = maxf(star_r * 1.5, 50000.0)
+		var star_r: float = star.get("radius", 696340.0)
+		var excl_r: float = star_r * 1.5
 		var dist: float = ship_pos.distance_to(scene_pos)
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			_obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
