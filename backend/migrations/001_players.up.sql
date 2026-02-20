@@ -5,7 +5,7 @@ CREATE TABLE players (
     username        VARCHAR(32) NOT NULL UNIQUE,
     email           VARCHAR(255) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
-    current_ship_id VARCHAR(32) NOT NULL DEFAULT 'fighter_mk1',
+    current_ship_id VARCHAR(32) NOT NULL DEFAULT 'chasseur_viper',
     galaxy_seed     BIGINT NOT NULL DEFAULT 12345,
     system_id       INTEGER NOT NULL DEFAULT 0,
     pos_x           DOUBLE PRECISION NOT NULL DEFAULT 0,

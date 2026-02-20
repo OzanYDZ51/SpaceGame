@@ -2,12 +2,17 @@ class_name ShipNetworkSync
 extends Node
 
 # =============================================================================
-# Ship Network Sync - Sends local player's ship state to the server at 20Hz.
+# Ship Network Sync - Sends local player's ship state to the server at 30Hz.
+# Uses a frame counter (not delta timer) to avoid drift — at 60Hz physics,
+# sending every 2 frames = exactly 30Hz with zero jitter.
 # Attached as a child of the local player's ShipController.
 # =============================================================================
 
 var _ship = null
-var _send_timer: float = 0.0
+# Frame-based send counter — immune to delta drift unlike a float timer.
+# At 60Hz physics: every 2 frames = 30Hz exactly.
+const SEND_EVERY_N_FRAMES: int = 2
+var _send_frame: int = 0
 var _was_dead: bool = false
 var _last_system_id: int = -1
 var _mining_send_timer: float = 0.0
@@ -35,7 +40,7 @@ func force_send_now() -> void:
 	if _ship and not NetworkManager.is_server() and NetworkManager.is_connected_to_server():
 		print("[NetSync] force_send_now: is_docked=%s pm=%d" % [str(GameManager.current_state == Constants.GameState.DOCKED), process_mode])
 		_send_state()
-		_send_timer = 1.0 / Constants.NET_TICK_RATE
+		_send_frame = 0
 	elif not NetworkManager.is_connected_to_server():
 		push_warning("[NetSync] force_send_now: NOT CONNECTED to server!")
 
@@ -46,9 +51,9 @@ func _physics_process(delta: float) -> void:
 	if not NetworkManager.is_connected_to_server():
 		return
 
-	_send_timer -= delta
-	if _send_timer <= 0.0:
-		_send_timer = 1.0 / Constants.NET_TICK_RATE
+	_send_frame += 1
+	if _send_frame >= SEND_EVERY_N_FRAMES:
+		_send_frame = 0
 		_send_state()
 
 	_mining_send_timer -= delta

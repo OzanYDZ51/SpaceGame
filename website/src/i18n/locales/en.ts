@@ -145,11 +145,11 @@ const en: Translations = {
     },
     defaultShips: [
       {
-        name: "Fighter Mk1",
-        class: "Fighter",
+        name: "Chasseur Viper",
+        class: "Interceptor",
         description:
-          "Agile and fast, the Fighter Mk1 is the backbone of any fleet. Ideal for interception and patrols.",
-        statsClass: "Light fighter",
+          "Fast and deadly, the Chasseur Viper is the interceptor of choice for elite pilots. Three cannons and unmatched agility — for veterans only.",
+        statsClass: "Light interceptor",
       },
       {
         name: "Frigate Mk1",

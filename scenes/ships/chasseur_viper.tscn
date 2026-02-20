@@ -1,73 +1,75 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://023i37arf05n"]
 
-[ext_resource type="PackedScene" path="res://assets/models/chasseur_viper.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://bsmu3k384ry1a" path="res://assets/models/chasseur_viper.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
 [ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
 
-[node name="ChasseurViper" type="Node3D"]
+[node name="ChasseurViper" type="Node3D" unique_id=1358779631]
 
-[node name="ModelPivot" type="Node3D" parent="."]
+[node name="ModelPivot" type="Node3D" parent="." unique_id=2096871545]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
-[node name="ViperModel" parent="ModelPivot" instance=ExtResource("1_model")]
+[node name="ViperModel" parent="ModelPivot" unique_id=1728960570 instance=ExtResource("1_model")]
 
-[node name="ShipCenter" type="Marker3D" parent="."]
+[node name="ShipCenter" type="Marker3D" parent="." unique_id=473947111]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -5)
 
-[node name="Hardpoint_0" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.5, -6)
+[node name="Hardpoint_0" type="Node3D" parent="." unique_id=1795057926]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.073438644, 3.2231677, -50.31353)
 script = ExtResource("2_hpslot")
 preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
-[node name="Hardpoint_1" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2.5, -6)
+[node name="Hardpoint_1" type="Node3D" parent="." unique_id=1847178179]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.635952, 3.0364695, 5.4402227)
 script = ExtResource("2_hpslot")
 slot_id = 1
+slot_size = "M"
 preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
-[node name="Hardpoint_2" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -10)
+[node name="Hardpoint_2" type="Node3D" parent="." unique_id=1607765175]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34.60944, 3, 5.453718)
 script = ExtResource("2_hpslot")
 slot_id = 2
+slot_size = "M"
 preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
 
-[node name="VFX_Engine_L" type="Marker3D" parent="."]
-transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -2.5, 1.5, 12)
+[node name="VFX_Engine_L" type="Marker3D" parent="." unique_id=845041279]
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, -17.112003, 7.826461, 27.271229)
 script = ExtResource("3_vfx")
 nozzle_size = 1.8
 
-[node name="VFX_Engine_R" type="Marker3D" parent="."]
-transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, 2.5, 1.5, 12)
+[node name="VFX_Engine_R" type="Marker3D" parent="." unique_id=901874112]
+transform = Transform3D(-20, 0, -1.7484556e-06, 0, 20, 0, 1.7484556e-06, 0, -20, 17.40126, 8.103281, 26.7676)
 script = ExtResource("3_vfx")
 nozzle_size = 1.8
 
-[node name="HullLight_Dorsal" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -5)
+[node name="HullLight_Dorsal" type="Marker3D" parent="." unique_id=1746408593]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0326998, -33.24382)
 script = ExtResource("4_hlight")
 light_color = Color(1, 0.95, 0.85, 1)
 light_energy = 0.6
 light_range = 18.0
 
-[node name="HullLight_Ventral" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2)
+[node name="HullLight_Ventral" type="Marker3D" parent="." unique_id=2055496515]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.13812, 4.1016483, -3.1599758)
 script = ExtResource("4_hlight")
 light_color = Color(0.85, 0.9, 1, 1)
 light_energy = 0.4
 light_range = 14.0
 
-[node name="HullLight_Port" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.5, 0)
+[node name="HullLight_Port" type="Marker3D" parent="." unique_id=1748754505]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -37.69663, 4.0757303, -3.13432)
 script = ExtResource("4_hlight")
 light_energy = 0.3
 light_range = 12.0
 
-[node name="HullLight_Starboard" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2.5, 0)
+[node name="HullLight_Starboard" type="Marker3D" parent="." unique_id=905148446]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.030733109, 1.9181008, 0)
 script = ExtResource("4_hlight")
 light_energy = 0.3
 light_range = 12.0
 
-[node name="EquipmentCamera" type="Camera3D" parent="."]
+[node name="EquipmentCamera" type="Camera3D" parent="." unique_id=424396772]
 transform = Transform3D(1, 0, 0, 0, 0.42262, 0.90631, 0, -0.90631, 0.42262, 0, 45, 20)
 fov = 45.0

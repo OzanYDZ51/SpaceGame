@@ -1,0 +1,153 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/models/croiseur_bodhammer.glb" id="1_model"]
+[ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
+[ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
+[ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
+
+[node name="CroiseurBodhammer" type="Node3D"]
+
+[node name="ModelPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -39.34, 0)
+
+[node name="BodhammerModel" parent="ModelPivot" instance=ExtResource("1_model")]
+
+[node name="ShipCenter" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 13, -5)
+
+[node name="Hardpoint_0" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 10, -100)
+script = ExtResource("2_hpslot")
+slot_size = "L"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="Hardpoint_1" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 10, -100)
+script = ExtResource("2_hpslot")
+slot_id = 1
+slot_size = "L"
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="Hardpoint_2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -65, 18, -35)
+script = ExtResource("2_hpslot")
+slot_id = 2
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 55.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="Hardpoint_3" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 65, 18, -35)
+script = ExtResource("2_hpslot")
+slot_id = 3
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 55.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="Hardpoint_4" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60, 16, 35)
+script = ExtResource("2_hpslot")
+slot_id = 4
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 55.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="Hardpoint_5" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 16, 35)
+script = ExtResource("2_hpslot")
+slot_id = 5
+slot_size = "M"
+is_turret = true
+turret_arc_degrees = 220.0
+turret_speed_deg_s = 100.0
+turret_pitch_min = -10.0
+turret_pitch_max = 55.0
+preview_weapon_scene = "res://scenes/weapons/models/turret_mk1.tscn"
+
+[node name="Hardpoint_6" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 9, -118)
+script = ExtResource("2_hpslot")
+slot_id = 6
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="Hardpoint_7" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 9, -118)
+script = ExtResource("2_hpslot")
+slot_id = 7
+preview_weapon_scene = "res://scenes/weapons/models/laser_mk1.tscn"
+
+[node name="VFX_Engine_L" type="Marker3D" parent="."]
+transform = Transform3D(-10, 0, 0, 0, 10, 0, 0, 0, -10, -25, 13, 115)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
+
+[node name="VFX_Engine_R" type="Marker3D" parent="."]
+transform = Transform3D(-10, 0, 0, 0, 10, 0, 0, 0, -10, 25, 13, 115)
+script = ExtResource("3_vfx")
+nozzle_size = 5.0
+
+[node name="VFX_Engine_LL" type="Marker3D" parent="."]
+transform = Transform3D(-10, 0, 0, 0, 10, 0, 0, 0, -10, -52, 10, 108)
+script = ExtResource("3_vfx")
+nozzle_size = 3.5
+
+[node name="VFX_Engine_RR" type="Marker3D" parent="."]
+transform = Transform3D(-10, 0, 0, 0, 10, 0, 0, 0, -10, 52, 10, 108)
+script = ExtResource("3_vfx")
+nozzle_size = 3.5
+
+[node name="HullLight_Dorsal" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 28, -30)
+script = ExtResource("4_hlight")
+light_color = Color(1, 0.95, 0.85, 1)
+light_energy = 0.7
+light_range = 40.0
+attenuation = 1.6
+
+[node name="HullLight_Ventral" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, -40)
+script = ExtResource("4_hlight")
+light_color = Color(0.85, 0.9, 1, 1)
+light_energy = 0.4
+light_range = 30.0
+attenuation = 1.8
+
+[node name="HullLight_Port" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -75, 15, -20)
+script = ExtResource("4_hlight")
+light_color = Color(1, 0.2, 0.2, 1)
+light_energy = 0.5
+light_range = 25.0
+attenuation = 1.8
+
+[node name="HullLight_Starboard" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75, 15, -20)
+script = ExtResource("4_hlight")
+light_color = Color(0.2, 0.8, 1, 1)
+light_energy = 0.5
+light_range = 25.0
+attenuation = 1.8
+
+[node name="HullLight_Engine" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 13, 115)
+script = ExtResource("4_hlight")
+light_color = Color(0.4, 0.7, 1, 1)
+light_energy = 1.0
+light_range = 50.0
+attenuation = 1.4
+
+[node name="EquipmentCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9604, 0.2785, 0, 0.2785, -0.9604, 0, 100, -300)
+fov = 45.0

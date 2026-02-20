@@ -145,11 +145,11 @@ const fr: Translations = {
     },
     defaultShips: [
       {
-        name: "Fighter Mk1",
-        class: "Chasseur",
+        name: "Chasseur Viper",
+        class: "Intercepteur",
         description:
-          "Agile et rapide, le Fighter Mk1 est l'épine dorsale de toute flotte. Idéal pour l'interception et les patrouilles.",
-        statsClass: "Chasseur léger",
+          "Rapide et redoutable, le Chasseur Viper est l'intercepteur des pilotes d'élite. Trois canons et une agilité incomparable — réservé aux vétérans.",
+        statsClass: "Intercepteur léger",
       },
       {
         name: "Frigate Mk1",

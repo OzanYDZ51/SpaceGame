@@ -10,7 +10,7 @@ extends Node
 const GAME_VERSION: String = "0.1.193"
 
 # --- Default Ship ---
-const DEFAULT_SHIP_ID: StringName = &"fighter_mk1"
+const DEFAULT_SHIP_ID: StringName = &"chasseur_viper"
 
 # --- Game State (shared enum, avoids circular deps with GameManager) ---
 enum GameState { LOADING, PLAYING, PAUSED, MENU, DEAD, DOCKED }
@@ -109,9 +109,9 @@ const BACKEND_WS_URL: String = "wss://backend-production-05a9.up.railway.app/ws"
 # --- Network (MMORPG) ---
 const NET_DEFAULT_PORT: int = 7777
 const NET_MAX_PLAYERS: int = 128          # Per system server instance
-const NET_TICK_RATE: float = 20.0         # Position updates per second
-const NET_INTERPOLATION_DELAY: float = 0.1  # 100ms buffer for smooth interpolation (players @ 20Hz)
-const NPC_INTERPOLATION_DELAY: float = 0.15  # 150ms for NPCs — ensures 2+ snapshots in buffer at 20Hz
+const NET_TICK_RATE: float = 30.0         # Position updates per second (every 2 physics frames @ 60Hz)
+const NET_INTERPOLATION_DELAY: float = 0.066  # 66ms = 2 snapshots buffer @ 30Hz
+const NPC_INTERPOLATION_DELAY: float = 0.1   # 100ms = 3 snapshots buffer @ 30Hz
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
 const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 

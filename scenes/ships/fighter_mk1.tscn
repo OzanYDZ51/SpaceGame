@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://dwixth8psaw7v"]
+[gd_scene format=3 uid="uid://ddakppv0kbvtm"]
 
 [ext_resource type="PackedScene" uid="uid://b5nq6u7koa1ia" path="res://assets/models/tie.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]

@@ -12,7 +12,7 @@ extends Node
 
 signal npc_killed(npc_id: StringName, killer_pid: int)
 
-const BATCH_INTERVAL: float = 0.05  # 20Hz NPC state sync (matches NET_TICK_RATE)
+const BATCH_INTERVAL: float = 0.033  # 30Hz NPC state sync (matches NET_TICK_RATE)
 const SLOW_SYNC_INTERVAL: float = 0.5  # 2Hz for distant NPCs
 const FULL_SYNC_DISTANCE: float = 5000.0  # <5km = full sync
 const MAX_SYNC_DISTANCE: float = 15000.0  # 5-15km = slow sync

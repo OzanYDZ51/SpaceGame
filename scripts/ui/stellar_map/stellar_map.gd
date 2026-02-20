@@ -637,7 +637,8 @@ func _input(event: InputEvent) -> void:
 				# Right click released — quick release = move_to or attack
 				# Preview mode: emit galaxy route instead of fleet orders
 				if _preview_system_id >= 0 and _right_hold_start > 0.0 and not _right_hold_triggered:
-					var target_id = _entity_layer.get_entity_at(event.position)
+					# Use press position for accurate targeting (release position drifts)
+					var target_id = _entity_layer.get_entity_at(_right_hold_pos)
 					var dest_x: float = 0.0
 					var dest_z: float = 0.0
 					var dest_name: String = ""
@@ -647,8 +648,8 @@ func _input(event: InputEvent) -> void:
 						dest_z = ent["pos_z"]
 						dest_name = ent.get("name", "")
 					else:
-						dest_x = _camera.screen_to_universe_x(event.position.x)
-						dest_z = _camera.screen_to_universe_z(event.position.y)
+						dest_x = _camera.screen_to_universe_x(_right_hold_pos.x)
+						dest_z = _camera.screen_to_universe_z(_right_hold_pos.y)
 					galaxy_route_requested.emit(_preview_system_id, dest_x, dest_z, dest_name)
 					_right_hold_start = 0.0
 					get_viewport().set_input_as_handled()
@@ -657,8 +658,12 @@ func _input(event: InputEvent) -> void:
 				if effective_indices.is_empty() and not _fleet_selected_indices.is_empty():
 					push_warning("StellarMap: fleet_selected_indices=%s but effective is empty!" % str(_fleet_selected_indices))
 				if not effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
+					# Use the PRESS position (not release) for all coordinate conversions.
+					# Mouse can drift slightly between press and release; at low zoom this
+					# translates to thousands of meters of error.
+					var click_pos: Vector2 = _right_hold_pos
 					# Check construction marker first
-					var cm = _entity_layer.get_construction_marker_at(event.position)
+					var cm = _entity_layer.get_construction_marker_at(click_pos)
 					if not cm.is_empty():
 						var params ={
 							"target_x": cm["pos_x"],
@@ -669,11 +674,12 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"construction", params)
 						_show_waypoint(cm["pos_x"], cm["pos_z"])
 						_set_route_lines(effective_indices, cm["pos_x"], cm["pos_z"])
+						_follow_effective_fleet_ship(effective_indices)
 						_right_hold_start = 0.0
 						get_viewport().set_input_as_handled()
 						return
 
-					var target_id = _entity_layer.get_entity_at(event.position)
+					var target_id = _entity_layer.get_entity_at(click_pos)
 					var target_ent =EntityRegistry.get_entity(target_id) if target_id != "" else {}
 					if not target_ent.is_empty() and _is_attackable_entity(target_id, target_ent):
 						# Attack enemy NPC
@@ -686,6 +692,7 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"attack", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+						_follow_effective_fleet_ship(effective_indices)
 						_entity_layer.route_target_entity_id = target_id
 					elif not target_ent.is_empty() and _fleet_panel._fleet:
 						# Right-click on fleet ship → follow (join/create squadron or re-follow)
@@ -722,14 +729,15 @@ func _input(event: InputEvent) -> void:
 							if all_following.size() > 0:
 								_set_follow_route(all_following, target_id)
 						else:
-							# No fleet_index on target — move to position
-							var universe_x: float = _camera.screen_to_universe_x(event.position.x)
-							var universe_z: float = _camera.screen_to_universe_z(event.position.y)
-							var params ={"target_x": universe_x, "target_z": universe_z}
+							# Non-fleet entity: navigate to its exact registered position using entity_id
+							# Same system as enemy lock — entity_id lets autopilot use live node position
+							_select_entity(target_id)
+							var params = {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
 							for idx in effective_indices:
 								fleet_order_requested.emit(idx, &"move_to", params)
-							_show_waypoint(universe_x, universe_z)
-							_set_route_lines(effective_indices, universe_x, universe_z)
+							_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
+							_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+							_follow_effective_fleet_ship(effective_indices)
 					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.STATION:
 						# Right-click on a station → dock at that station
 						_select_entity(target_id)
@@ -738,6 +746,7 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"return_to_station", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+						_follow_effective_fleet_ship(effective_indices)
 					elif not target_ent.is_empty():
 						# Right-click on a known entity (gate, planet...) → move to it
 						_select_entity(target_id)
@@ -746,18 +755,20 @@ func _input(event: InputEvent) -> void:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
 						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+						_follow_effective_fleet_ship(effective_indices)
 					else:
-						# Move to empty space
-						var universe_x: float = _camera.screen_to_universe_x(event.position.x)
-						var universe_z: float = _camera.screen_to_universe_z(event.position.y)
+						# Move to empty space — use press position for accurate target
+						var universe_x: float = _camera.screen_to_universe_x(click_pos.x)
+						var universe_z: float = _camera.screen_to_universe_z(click_pos.y)
 						var params ={"target_x": universe_x, "target_z": universe_z}
 						for idx in effective_indices:
 							fleet_order_requested.emit(idx, &"move_to", params)
 						_show_waypoint(universe_x, universe_z)
 						_set_route_lines(effective_indices, universe_x, universe_z)
+						_follow_effective_fleet_ship(effective_indices)
 				elif effective_indices.is_empty() and _right_hold_start > 0.0 and not _right_hold_triggered:
 					# No fleet ship selected — right-click selects/locks the entity
-					var target_id = _entity_layer.get_entity_at(event.position)
+					var target_id = _entity_layer.get_entity_at(_right_hold_pos)
 					if target_id != "":
 						_select_entity(target_id)
 				elif _right_hold_start <= 0.0 and not effective_indices.is_empty():
@@ -1561,6 +1572,23 @@ func _clear_route_line() -> void:
 	_entity_layer.route_is_follow = false
 	_entity_layer.route_virtual_positions.clear()
 	_dirty = true
+
+
+func _follow_effective_fleet_ship(fleet_indices: Array[int]) -> void:
+	if _fleet_panel._fleet == null:
+		return
+	for idx in fleet_indices:
+		if idx < 0 or idx >= _fleet_panel._fleet.ships.size():
+			continue
+		if idx == _fleet_panel._fleet.active_index:
+			continue
+		var fs = _fleet_panel._fleet.ships[idx]
+		if fs.deployed_npc_id != &"":
+			var ent_id: String = String(fs.deployed_npc_id)
+			if not EntityRegistry.get_entity(ent_id).is_empty():
+				_camera.follow_entity_id = ent_id
+				_camera.follow_enabled = true
+				return
 
 
 ## Restores route lines from fleet ship command data (e.g. after map reopen).

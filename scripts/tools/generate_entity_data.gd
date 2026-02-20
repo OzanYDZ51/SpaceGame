@@ -31,45 +31,45 @@ func _ensure_dirs() -> void:
 # =========================================================================
 
 func _generate_ships() -> void:
-	_save_ship(_build_fighter_mk1())
+	_save_ship(_build_chasseur_viper())
 	_save_ship(_build_frigate_mk1())
 	print("  Ships: 2 generated")
 
 
-func _build_fighter_mk1() -> ShipData:
+func _build_chasseur_viper() -> ShipData:
 	var d := ShipData.new()
-	d.ship_id = &"fighter_mk1"
-	d.ship_name = &"Fighter Mk I"
-	d.ship_class = &"Fighter"
-	d.model_path = "res://assets/models/tie.glb"
+	d.ship_id = &"chasseur_viper"
+	d.ship_name = &"Chasseur Viper"
+	d.ship_class = &"Intercepteur"
+	d.model_path = "res://assets/models/chasseur_viper.glb"
 	d.model_scale = 2.0
-	d.exhaust_scale = 0.8
-	d.default_loadout = [&"Laser Mk1 S", &"Laser Mk1 S"]
-	d.hull_hp = 1000.0; d.shield_hp = 500.0; d.shield_regen_rate = 15.0; d.shield_regen_delay = 4.0
-	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 5.0
-	d.mass = 50000.0
-	d.accel_forward = 80.0; d.accel_backward = 50.0; d.accel_strafe = 40.0; d.accel_vertical = 40.0
-	d.max_speed_normal = 300.0; d.max_speed_boost = 600.0; d.max_speed_cruise = 850_000.0
-	d.rotation_pitch_speed = 30.0; d.rotation_yaw_speed = 25.0; d.rotation_roll_speed = 50.0
-	d.max_speed_lateral = 150.0; d.max_speed_vertical = 150.0
-	d.rotation_damp_min_factor = 0.15
-	d.energy_capacity = 100.0; d.energy_regen_rate = 22.0; d.boost_energy_drain = 15.0
-	d.ship_scene_path = "res://scenes/ships/fighter_mk1.tscn"
+	d.exhaust_scale = 1.4
+	d.default_loadout = [&"Laser Mk1 S", &"Laser Mk1 S", &"Laser Mk1 S"]
+	d.hull_hp = 1200.0; d.shield_hp = 600.0; d.shield_regen_rate = 18.0; d.shield_regen_delay = 4.5
+	d.shield_damage_bleedthrough = 0.1; d.armor_rating = 6.0
+	d.mass = 60000.0
+	d.accel_forward = 90.0; d.accel_backward = 55.0; d.accel_strafe = 45.0; d.accel_vertical = 45.0
+	d.max_speed_normal = 380.0; d.max_speed_boost = 760.0; d.max_speed_cruise = 900_000.0
+	d.rotation_pitch_speed = 32.0; d.rotation_yaw_speed = 28.0; d.rotation_roll_speed = 55.0
+	d.max_speed_lateral = 140.0; d.max_speed_vertical = 140.0
+	d.rotation_damp_min_factor = 0.1
+	d.energy_capacity = 120.0; d.energy_regen_rate = 25.0; d.boost_energy_drain = 18.0
+	d.ship_scene_path = "res://scenes/ships/chasseur_viper.tscn"
 	d.shield_slot_size = "S"; d.engine_slot_size = "S"
-	d.module_slots = ["S", "S"] as Array[String]
-	d.sensor_range = 3000.0; d.engagement_range = 1500.0; d.disengage_range = 4000.0
-	d.price = 30000
-	d.cargo_capacity = 30
+	d.module_slots = ["S", "S", "S"] as Array[String]
+	d.sensor_range = 3500.0; d.engagement_range = 1700.0; d.disengage_range = 4500.0
+	d.price = 55000
+	d.cargo_capacity = 25
 	# Data-driven fields
 	d.default_shield = &"Bouclier Basique Mk1"
 	d.default_engine = &"Propulseur Standard Mk1"
-	d.default_modules = [&"Blindage Renforce", &"Condensateur d'Energie"]
-	d.loot_credits_min = 150; d.loot_credits_max = 400
+	d.default_modules = [&"Blindage Renforce", &"Condensateur d'Energie", &"Condensateur d'Energie"]
+	d.loot_credits_min = 200; d.loot_credits_max = 500
 	d.loot_mat_count_min = 1; d.loot_mat_count_max = 2
-	d.loot_weapon_part_chance = 0.0
-	d.lod_combat_dps = 18.0
-	d.npc_tier = 0
-	d.sold_at_station_types = [&"repair", &"military", &"mining"]
+	d.loot_weapon_part_chance = 0.05
+	d.lod_combat_dps = 30.0
+	d.npc_tier = 1
+	d.sold_at_station_types = [&"repair", &"military"]
 	return d
 
 

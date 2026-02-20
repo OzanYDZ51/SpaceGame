@@ -977,6 +977,10 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 		var player_sq_check = _get_player_squadron()
 		if player_sq_check and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
 			cls_right -= 14.0  # Make room for "+" button
+		# Current order label (deployed ships only), drawn left of the class
+		var order_label: String = _get_order_label(fs)
+		if order_label != "":
+			draw_string(font, Vector2(cls_right - 38, y + SHIP_H - 4), order_label, HORIZONTAL_ALIGNMENT_RIGHT, 34, UITheme.FONT_SIZE_TINY, Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.55))
 		draw_string(font, Vector2(cls_right, y + SHIP_H - 4), cls_text, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_TINY, MapColors.TEXT_DIM)
 
 	# Cargo fill micro-bar (thin line at bottom of row)
@@ -1006,6 +1010,17 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 		var plus_rect := Rect2(PANEL_W - MARGIN - 2, y + 2, 12, SHIP_H - 4)
 		draw_string(font, Vector2(PANEL_W - MARGIN - 1, y + SHIP_H - 4), "+", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY, 0.7))
 		_sq_add_btn_rects.append({"rect": plus_rect, "fleet_index": fleet_index})
+
+
+static func _get_order_label(fs) -> String:
+	match fs.deployed_command:
+		&"mine":               return "MINE"
+		&"move_to":            return "NAV"
+		&"patrol":             return "PTRL"
+		&"attack":             return "ATK"
+		&"return_to_station":  return "DOCK"
+		&"construction":       return "CNST"
+	return ""
 
 
 func _in_clip(y: float, h: float, clip: Rect2) -> bool:

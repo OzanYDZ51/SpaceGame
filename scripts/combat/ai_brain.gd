@@ -27,6 +27,7 @@ var weapons_enabled: bool = true  # LOD1 ships: move + evade but don't fire
 var ignore_threats: bool = false  # Fleet mission ships: don't react to enemies at all
 var guard_station: Node3D = null  # Station this NPC is guarding (null = free roam)
 var route_priority: bool = false  # Convoy freighters: keep following route during combat
+var idle_after_combat: bool = false  # Fleet ships: return to IDLE after losing target (vs PATROL for encounter NPCs)
 
 # Detection — per-ship from ShipData, fallback to Constants
 var detection_range: float = Constants.AI_DETECTION_RANGE
@@ -41,7 +42,7 @@ var _patrol_radius: float = 300.0
 
 # Environment awareness
 const MIN_SAFE_DIST: float = 50.0            # Emergency breakaway distance
-const STATION_MODEL_RADIUS: float = 3000.0   # Station model ~2500m + margin
+const STATION_MODEL_RADIUS: float = 2000.0   # Station model ~2500m — 2km exclusion
 const OBSTACLE_CACHE_RANGE: float = 10000.0  # Cache obstacles within 10km (+ their own radius)
 const ENV_UPDATE_INTERVAL: float = 2.0       # Refresh environment every 2s
 
@@ -221,7 +222,7 @@ func _update_environment() -> void:
 	for pl in planets:
 		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([pl["pos_x"], pl["pos_y"], pl["pos_z"]])
 		var render_r: float = pl.get("extra", {}).get("render_radius", 100000.0)
-		var excl_r: float = render_r * 1.3 + 500.0
+		var excl_r: float = render_r + 2000.0
 		var dist: float = ship_pos.distance_to(scene_pos)
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			_obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
@@ -405,7 +406,7 @@ func _tick_pursue() -> void:
 	if not _is_target_valid():
 		target = _get_highest_threat()
 		if target == null:
-			current_state = State.PATROL
+			current_state = State.IDLE if idle_after_combat else State.PATROL
 		return
 
 	# Obstacle avoidance: if inside an exclusion zone, break off and steer out
@@ -424,7 +425,7 @@ func _tick_pursue() -> void:
 	if dist > disengage_range:
 		target = _get_highest_threat()
 		if target == null:
-			current_state = State.PATROL
+			current_state = State.IDLE if idle_after_combat else State.PATROL
 		return
 
 	# Engage when in range (wider threshold in belt)
@@ -444,7 +445,7 @@ func _tick_attack(_delta: float) -> void:
 	if not _is_target_valid():
 		target = _get_highest_threat()
 		if target == null:
-			current_state = State.PATROL
+			current_state = State.IDLE if idle_after_combat else State.PATROL
 		else:
 			current_state = State.PURSUE
 		return
@@ -476,7 +477,7 @@ func _tick_attack(_delta: float) -> void:
 	if dist > disengage_range:
 		target = _get_highest_threat()
 		if target == null:
-			current_state = State.PATROL
+			current_state = State.IDLE if idle_after_combat else State.PATROL
 		else:
 			current_state = State.PURSUE
 		return
@@ -522,7 +523,7 @@ func _tick_evade(_delta: float) -> void:
 
 func _tick_flee() -> void:
 	if not _is_target_valid():
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 		target = null
 		return
 
@@ -535,13 +536,13 @@ func _tick_flee() -> void:
 	# If we get far enough, re-engage or patrol
 	var dist: float = _pilot.get_distance_to(target.global_position)
 	if dist > disengage_range:
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 		target = null
 
 
 func _tick_formation() -> void:
 	if formation_leader == null or not is_instance_valid(formation_leader):
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 		return
 
 	# Calculate formation position in leader's local space
@@ -572,12 +573,12 @@ func _tick_loot_pickup() -> void:
 
 	# Crate gone or out of range? Back to patrol
 	if _loot_pickup == null or not _loot_pickup.can_pickup:
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 		return
 
 	var crate: CargoCrate = _loot_pickup.nearest_crate
 	if crate == null or not is_instance_valid(crate):
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 		return
 
 	var crate_pos: Vector3 = crate.global_position
@@ -586,7 +587,7 @@ func _tick_loot_pickup() -> void:
 	# Collect when close — uses pickup_range fraction, no hardcoded distance
 	if _pilot.get_distance_to(crate_pos) < _loot_pickup.pickup_range * 0.15:
 		crate.collect()
-		current_state = State.PATROL
+		current_state = State.IDLE if idle_after_combat else State.PATROL
 
 
 # =============================================================================

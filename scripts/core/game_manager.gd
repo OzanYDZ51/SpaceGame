@@ -1338,7 +1338,10 @@ func _autopilot_player_to(params: Dictionary) -> void:
 	if _route_manager and _route_manager.is_route_active():
 		_route_manager.cancel_route()
 	# If targeting a known entity (planet, station, gate), autopilot to it directly
-	var entity_id: String = params.get("entity_id", "")
+	# Try all possible entity-id keys across all order types (move_to, attack, return_to_station, etc.)
+	var entity_id: String = params.get("entity_id",
+		params.get("station_id",
+			params.get("target_entity_id", "")))
 	if entity_id != "":
 		var ent: Dictionary = EntityRegistry.get_entity(entity_id)
 		if not ent.is_empty():
@@ -1349,12 +1352,15 @@ func _autopilot_player_to(params: Dictionary) -> void:
 	# Fallback: register a temporary waypoint entity for autopilot
 	var target_x: float = params.get("target_x", 0.0)
 	var target_z: float = params.get("target_z", 0.0)
+	# Use ship's current universe Y so the autopilot target is coplanar with the ship.
+	# pos_y = 0 would cause a 3D Y-offset that skews the approach vector.
+	var ship_upos: Array = FloatingOrigin.to_universe_pos(ship.global_position)
 	_player_autopilot_wp = "player_wp_%d" % Time.get_ticks_msec()
 	EntityRegistry.register(_player_autopilot_wp, {
 		"name": "Destination",
 		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
 		"pos_x": target_x,
-		"pos_y": 0.0,
+		"pos_y": ship_upos[1],
 		"pos_z": target_z,
 		"node": null,
 		"radius": 0.0,

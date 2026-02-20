@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ship_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+ship_id = &"croiseur_bodhammer"
+ship_name = &"Croiseur Bodhammer"
+ship_class = &"Croiseur"
+model_path = "res://assets/models/croiseur_bodhammer.glb"
+model_scale = 1.0
+exhaust_scale = 3.5
+ship_scene_path = "res://scenes/ships/croiseur_bodhammer.tscn"
+default_loadout = Array[StringName]([&"Laser Mk1 L", &"Laser Mk1 L", &"Turret Mk1 M", &"Turret Mk1 M", &"Turret Mk1 M", &"Turret Mk1 M", &"Laser Mk1 S", &"Laser Mk1 S"])
+hull_hp = 12000.0
+shield_hp = 6000.0
+shield_regen_rate = 40.0
+shield_regen_delay = 8.0
+shield_damage_bleedthrough = 0.04
+armor_rating = 35.0
+mass = 800000.0
+accel_forward = 20.0
+accel_backward = 10.0
+accel_strafe = 8.0
+accel_vertical = 8.0
+max_speed_normal = 100.0
+max_speed_boost = 200.0
+max_speed_cruise = 400000.0
+rotation_pitch_speed = 5.0
+rotation_yaw_speed = 4.0
+rotation_roll_speed = 8.0
+max_speed_lateral = 30.0
+max_speed_vertical = 30.0
+rotation_damp_min_factor = 0.05
+energy_capacity = 300.0
+energy_regen_rate = 60.0
+boost_energy_drain = 40.0
+shield_slot_size = "L"
+engine_slot_size = "L"
+module_slots = Array[String](["M", "M", "L", "L", "L"])
+price = 850000
+cargo_capacity = 250
+sensor_range = 5000.0
+engagement_range = 2500.0
+disengage_range = 6000.0
+default_shield = &"Bouclier Lourd"
+default_engine = &"Propulseur Militaire"
+default_modules = Array[StringName]([&"Blindage Renforce", &"Blindage Renforce", &"Generateur Auxiliaire", &"Amplificateur de Bouclier", &"Systeme de Ciblage"])
+loot_credits_min = 1000
+loot_credits_max = 3000
+loot_mat_count_min = 5
+loot_mat_count_max = 8
+loot_weapon_part_chance = 0.4
+lod_combat_dps = 120.0
+npc_tier = 2
+sold_at_station_types = Array[StringName]([&"military"])
+resource_cost = {
+&"iron": 400,
+&"copper": 150,
+&"titanium": 100,
+&"gold": 40,
+&"crystal": 20
+}

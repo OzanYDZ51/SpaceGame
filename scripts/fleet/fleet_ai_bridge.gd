@@ -67,8 +67,8 @@ func _do_init() -> void:
 	_pilot = _ship.get_node_or_null("AIPilot") if _ship else null
 
 	if _brain:
-		# Fleet ships on mission don't react to enemies (no wasted time fighting)
-		_brain.ignore_threats = true
+		# Fleet ships: return to IDLE after combat (not patrol like encounter NPCs)
+		_brain.idle_after_combat = true
 		# Check if ship has combat weapons — disable if unarmed
 		var wm = _ship.get_node_or_null("WeaponManager") if _ship else null
 		var has_weapons: bool = wm != null and wm.has_combat_weapons_in_group(0)
@@ -173,9 +173,12 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		# Not yet initialized — command stored, will be applied in _do_init()
 		return
 
-	# All mission commands: ignore threats, focus on destination
+	# Mission commands: ignore threats, focus on destination
+	# Attack and idle: react normally to threats
 	_brain.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction", &"mine"])
 	_brain.target = null
+	# Default to IDLE — each command overrides explicitly
+	_brain.current_state = AIBrain.State.IDLE
 
 	match cmd:
 		&"move_to":
@@ -204,12 +207,13 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 				if not ent.is_empty():
 					var target_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					_brain.set_patrol_area(target_pos, 50.0)
-					var target_node = ent.get("node", null) if ent.get("node") else null
-					if target_node and is_instance_valid(target_node):
-						_brain.target = target_node
-						_brain.current_state = AIBrain.State.PURSUE
-					else:
-						_brain.current_state = AIBrain.State.PATROL
+					# Acquire the live scene node (EntityRegistry fast path, then ships group).
+				# Even without a node (LOD2 target), always use PURSUE so the ship navigates
+				# to the target position and fires once in range -- never fall back to PATROL.
+				var target_node = _find_target_node(_attack_target_id)
+				if target_node:
+					_brain.target = target_node
+				_brain.current_state = AIBrain.State.PURSUE
 		&"construction":
 			var target_x: float = params.get("target_x", 0.0)
 			var target_z: float = params.get("target_z", 0.0)
@@ -339,17 +343,21 @@ func _process(_delta: float) -> void:
 	if command == &"attack" and _attack_target_id != "":
 		var ent =EntityRegistry.get_entity(_attack_target_id)
 		if ent.is_empty():
-			# Target destroyed — stay in patrol zone, keep fighting nearby enemies
+			# Target destroyed — stand by, wait for next order
 			_attack_target_id = ""
+			_brain.current_state = AIBrain.State.IDLE
 		else:
-			# Update patrol area to track moving target
+				# Update patrol area to track moving target
 			var target_pos =FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 			_brain.set_patrol_area(target_pos, 50.0)
-			# If target has a node and brain lost its target, re-acquire
-			var target_node = ent.get("node", null) if ent.get("node") else null
-			if target_node and is_instance_valid(target_node) and _brain.target == null:
-				_brain.target = target_node
-				_brain.current_state = AIBrain.State.PURSUE
+			# Re-acquire target node if lost (search EntityRegistry + ships group).
+			# Force PURSUE if brain drifted to PATROL — attack orders never idle in PATROL.
+			if _brain.target == null or not is_instance_valid(_brain.target):
+				var target_node = _find_target_node(_attack_target_id)
+				if target_node:
+					_brain.target = target_node
+				if _brain.current_state == AIBrain.State.PATROL:
+					_brain.current_state = AIBrain.State.PURSUE
 
 
 func _mark_arrived(target_pos: Vector3) -> void:
@@ -359,7 +367,7 @@ func _mark_arrived(target_pos: Vector3) -> void:
 		_ship.set_throttle(Vector3.ZERO)
 		# Speed cap handled by _update_navigation_boost (keeps low cap until settled)
 	if _brain:
-		_brain.set_patrol_area(target_pos, 30.0)  # Tight holding pattern
+		_brain.current_state = AIBrain.State.IDLE  # Hold position, wait for next order
 	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
@@ -432,6 +440,28 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 				_resolve_station_dock_targets()
 				if _brain.current_state == AIBrain.State.PATROL:
 					_brain.set_patrol_area(_bay_approach_pos, 50.0)
+
+
+## Find the live Node3D for a given entity_id.
+## Checks EntityRegistry first (fast path — works for remote players registered as RemotePlayer_X).
+## Falls back to searching the "ships" group by node name or npc_id (works for RemoteNPCShip,
+## local ShipController NPCs, and LOD-promoted nodes not yet in EntityRegistry).
+func _find_target_node(entity_id: String) -> Node3D:
+	var ent = EntityRegistry.get_entity(entity_id)
+	if not ent.is_empty():
+		var n = ent.get("node")
+		if n and is_instance_valid(n):
+			return n
+	var tree = get_tree()
+	if tree == null:
+		return null
+	var eid_sn := StringName(entity_id)
+	for ship in tree.get_nodes_in_group("ships"):
+		if ship.name == eid_sn:
+			return ship
+		if ship.get(&"npc_id") == eid_sn:
+			return ship
+	return null
 
 
 const NAV_BOOST_MIN_DIST: float = 500.0    # Keep 3 km/s boost until this close
