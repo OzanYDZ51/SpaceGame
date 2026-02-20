@@ -239,16 +239,10 @@ func open() -> void:
 		# Preview mode: fit all entities
 		_camera.fit_entities(_preview_entities, false)
 	else:
-		# Normal mode: fit all entities in the system (shows the full layout instantly)
-		var all_ents: Dictionary = EntityRegistry.get_all()
-		if not all_ents.is_empty():
-			_camera.fit_entities(all_ents, false)
-		else:
-			_camera.center_x = 0.0
-			_camera.center_z = 0.0
-			_camera.zoom = 0.001
-			_camera.target_zoom = 0.001
-		_camera.follow_enabled = false
+		# Normal mode: center on player ship, zoomed in at local level
+		_camera.follow_enabled = true
+		_camera.zoom = MapCamera.PRESET_LOCAL
+		_camera.target_zoom = MapCamera.PRESET_LOCAL
 
 		# Reset filters so all entity types are visible on fresh open
 		_filters.clear()
