@@ -936,7 +936,10 @@ func _on_network_reconnected() -> void:
 	if not _initial_connect_done:
 		_initial_connect_done = true
 		return  # First connect — _ready already loaded backend state + corporation
-	print("[GameManager] Network reconnected — reloading backend state")
+	print("[GameManager] Network reconnected — saving current state then reloading backend state")
+	# Save current in-memory state FIRST so credits/progress aren't overwritten
+	# by a stale auto-save from before the disconnect.
+	await SaveManager.save_player_state(true)
 	_load_backend_state()
 
 

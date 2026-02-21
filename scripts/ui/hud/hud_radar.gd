@@ -255,10 +255,10 @@ func _draw_radar(ctrl: Control) -> void:
 						ctrl.draw_line(
 							center + nav_dir * (float(i) / float(seg_n)) * (radar_r - 14.0),
 							center + nav_dir * (float(i + 1) / float(seg_n)) * (radar_r - 14.0),
-							Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, 0.45), 1.0)
+							Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, 0.7), 1.5)
 				# Pulsing diamond at edge
-				var pulse_a: float = 0.65 + 0.35 * sin(pulse_t * 3.5)
-				HudDrawHelpers.draw_diamond(ctrl, center + nav_dir * (radar_r - 10.0), 5.0,
+				var pulse_a: float = 0.75 + 0.25 * sin(pulse_t * 3.5)
+				HudDrawHelpers.draw_diamond(ctrl, center + nav_dir * (radar_r - 10.0), 7.0,
 					Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, pulse_a))
 				# Distance label below the header (above range label)
 				var nav_dx: float = nav_ent["pos_x"] - float(ship.global_position.x + FloatingOrigin.origin_offset_x)

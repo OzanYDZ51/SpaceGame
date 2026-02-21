@@ -11,7 +11,7 @@ signal save_failed(error: String)
 signal load_completed(state: Dictionary)
 signal load_failed(error: String)
 
-const AUTO_SAVE_INTERVAL: float = 60.0
+const AUTO_SAVE_INTERVAL: float = 30.0  # Reduced from 60s to limit credit revert window
 const MIN_SAVE_INTERVAL: float = 5.0
 
 var _is_dirty: bool = false
@@ -21,6 +21,9 @@ var _saving: bool = false
 
 
 func _ready() -> void:
+	# Intercept window close so we can save before quitting
+	get_tree().set_auto_accept_quit(false)
+
 	_auto_save_timer = Timer.new()
 	_auto_save_timer.name = "AutoSaveTimer"
 	_auto_save_timer.wait_time = AUTO_SAVE_INTERVAL
@@ -29,6 +32,26 @@ func _ready() -> void:
 
 	# Save immediately on REAL network disconnect (not initial connection failures)
 	NetworkManager.server_connection_lost.connect(_on_network_disconnected)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_on_quit_requested()
+
+
+## Save current state then quit. Called when the player closes the window.
+func _on_quit_requested() -> void:
+	if AuthManager.is_authenticated:
+		print("[SaveManager] Game closing — saving state before quit...")
+		# Wait for any in-progress save to finish (up to 3s)
+		var deadline := Time.get_ticks_msec() + 3000
+		while _saving and Time.get_ticks_msec() < deadline:
+			await get_tree().process_frame
+		# Now do our own save
+		if not _saving:
+			await save_player_state(true)
+		print("[SaveManager] Save done, quitting")
+	get_tree().quit()
 
 
 func start_auto_save() -> void:

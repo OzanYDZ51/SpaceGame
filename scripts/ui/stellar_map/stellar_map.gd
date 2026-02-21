@@ -843,18 +843,26 @@ func _select_entity(id: String) -> void:
 		_entity_layer.selected_ids.clear()
 	_info_panel.set_selected(id)
 	_dirty = true
-	# Persist as flight HUD nav target so direction/distance stay visible in-flight
-	var ent: Dictionary = EntityRegistry.get_entity(id) if id != "" else {}
-	var etype: int = ent.get("type", -1)
-	var navigable: bool = etype in [
-		EntityRegistrySystem.EntityType.STATION,
-		EntityRegistrySystem.EntityType.JUMP_GATE,
-		EntityRegistrySystem.EntityType.PLANET,
-		EntityRegistrySystem.EntityType.STAR,
-		EntityRegistrySystem.EntityType.ASTEROID_BELT,
-		EntityRegistrySystem.EntityType.CONSTRUCTION_SITE,
-	]
-	GameManager.nav_target_id = id if navigable else ""
+	# Persist as flight HUD nav target so direction/distance stay visible in-flight.
+	# Rules:
+	#   id == ""         → user clicked empty space → clear nav target
+	#   navigable entity → set as nav target
+	#   non-navigable    → keep existing nav target (auto-select on open, NPC click, etc.)
+	if id == "":
+		GameManager.nav_target_id = ""
+	else:
+		var ent: Dictionary = EntityRegistry.get_entity(id)
+		var etype: int = ent.get("type", -1)
+		var navigable: bool = etype in [
+			EntityRegistrySystem.EntityType.STATION,
+			EntityRegistrySystem.EntityType.JUMP_GATE,
+			EntityRegistrySystem.EntityType.PLANET,
+			EntityRegistrySystem.EntityType.STAR,
+			EntityRegistrySystem.EntityType.ASTEROID_BELT,
+			EntityRegistrySystem.EntityType.CONSTRUCTION_SITE,
+		]
+		if navigable:
+			GameManager.nav_target_id = id
 
 
 ## Check if an entity is a valid attack target for fleet ships.

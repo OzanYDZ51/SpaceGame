@@ -373,10 +373,34 @@ func _process(_delta: float) -> void:
 						_brain.current_state = AIBrain.State.PATROL
 
 	# Auto-resume: after combat (idle_after_combat=true), brain returns to IDLE;
-	# re-apply the pending mission command so the ship continues its objective.
+	# restore mission state WITHOUT calling apply_command() — that resets
+	# _current_waypoint=0 and regenerates waypoints, causing ships to abruptly
+	# change direction (teleporting appearance) on every combat recovery.
 	if not _arrived and not _returning and _brain.current_state == AIBrain.State.IDLE:
-		if command in [&"move_to", &"patrol", &"construction", &"mine"]:
-			apply_command(command, command_params)
+		match command:
+			&"patrol":
+				# Just re-enter PATROL — patrol area and waypoints are unchanged.
+				_brain.current_state = AIBrain.State.PATROL
+			&"move_to", &"construction":
+				var tx: float = command_params.get("target_x", 0.0)
+				var tz: float = command_params.get("target_z", 0.0)
+				var target_pos: Vector3 = FloatingOrigin.to_local_pos([tx, 0.0, tz])
+				target_pos = _push_target_outside_stations(target_pos)
+				if _ship.global_position.distance_to(target_pos) < MOVE_ARRIVE_DIST:
+					_mark_arrived(target_pos)
+				else:
+					_brain.set_patrol_area(target_pos, 0.0)
+					_brain.current_state = AIBrain.State.PATROL
+			&"mine":
+				var cx: float = command_params.get("center_x", 0.0)
+				var cz: float = command_params.get("center_z", 0.0)
+				var target_pos: Vector3 = FloatingOrigin.to_local_pos([cx, 0.0, cz])
+				if _ship.global_position.distance_to(target_pos) < MOVE_ARRIVE_DIST:
+					_arrived = true
+					_brain.current_state = AIBrain.State.MINING
+				else:
+					_brain.set_patrol_area(target_pos, 0.0)
+					_brain.current_state = AIBrain.State.PATROL
 
 	# Safety net: if ignore_threats is set but the brain somehow slipped into a combat
 	# state (PURSUE/ATTACK), force it back to IDLE so the auto-resume above
@@ -457,7 +481,8 @@ func _on_origin_shifted(_delta: Vector3) -> void:
 			var cx: float = command_params.get("center_x", 0.0)
 			var cz: float = command_params.get("center_z", 0.0)
 			var radius: float = command_params.get("radius", 500.0)
-			_brain.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
+			# Translate instead of regenerating — preserves patrol pattern on each origin shift.
+			_brain.shift_patrol_waypoints(FloatingOrigin.to_local_pos([cx, 0.0, cz]), radius)
 		&"attack":
 			# During approach (PATROL phase), keep the patrol center on the moving target
 			if _attack_target_id != "" and _brain.current_state == AIBrain.State.PATROL:

@@ -646,6 +646,17 @@ func set_patrol_area(center: Vector3, radius: float) -> void:
 	_generate_patrol_waypoints()
 
 
+## Translate existing patrol waypoints after a floating origin shift.
+## Preserves the patrol pattern (waypoint relative offsets) without regenerating
+## random Y-jitter, so ships don't abruptly change direction on every origin shift.
+func shift_patrol_waypoints(new_center: Vector3, new_radius: float) -> void:
+	var shift: Vector3 = new_center - _patrol_center
+	_patrol_center = new_center
+	_patrol_radius = new_radius
+	for i in range(_waypoints.size()):
+		_waypoints[i] += shift
+
+
 ## Set explicit linear route waypoints (convoy travel, no circular generation).
 func set_route(waypoints: Array[Vector3]) -> void:
 	_waypoints = waypoints
