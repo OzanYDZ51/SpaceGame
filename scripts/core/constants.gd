@@ -7,7 +7,7 @@ extends Node
 # =============================================================================
 
 # --- Version ---
-const GAME_VERSION: String = "0.1.205"
+const GAME_VERSION: String = "0.1.206"
 
 # --- Default Ship ---
 const DEFAULT_SHIP_ID: StringName = &"chasseur_viper"
