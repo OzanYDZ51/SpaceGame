@@ -132,10 +132,12 @@ func _on_opened() -> void:
 	_listening = false
 	_scroll_offset = 0.0
 	_update_visibility()
-	# Read live audio bus volumes
+	# Sync widgets with live state (may have been updated by backend load)
 	_slider_master.value = _get_bus_linear("Master")
 	_slider_music.value = _get_bus_linear("Music")
 	_slider_sfx.value = _get_bus_linear("SFX")
+	_toggle_fps.is_on = show_fps
+	_dropdown_lang.selected_index = Locale.get_language_index()
 
 
 func _on_closed() -> void:
@@ -546,7 +548,7 @@ func _process(_delta: float) -> void:
 # Static helpers for backend settings sync
 # =========================================================================
 
-## Collects current audio + control settings into a Dictionary for backend save.
+## Collects current audio + display + control settings into a Dictionary for backend save.
 static func collect_settings_dict() -> Dictionary:
 	var data: Dictionary = {}
 	# Audio — read from buses directly (works even if screen is closed)
@@ -560,6 +562,11 @@ static func collect_settings_dict() -> Dictionary:
 		else:
 			audio[pair[0]] = db_to_linear(AudioServer.get_bus_volume_db(idx))
 	data["audio"] = audio
+	# Display — FPS toggle + language
+	data["display"] = {
+		"show_fps": show_fps,
+		"language": Locale.get_language(),
+	}
 	# Controls — read from InputMap
 	var controls: Dictionary = {}
 	for entry in REBINDABLE_ACTIONS:
@@ -575,8 +582,8 @@ static func collect_settings_dict() -> Dictionary:
 	return data
 
 
-## Applies audio + control settings from a backend Dictionary.
-## Also writes to local settings.cfg for offline cache.
+## Applies audio + display + control settings from a backend Dictionary.
+## Merges into local settings.cfg (non-destructive) for offline cache.
 static func apply_settings_dict(data: Dictionary) -> void:
 	if data.is_empty():
 		return
@@ -598,6 +605,14 @@ static func apply_settings_dict(data: Dictionary) -> void:
 			else:
 				AudioServer.set_bus_mute(idx, false)
 				AudioServer.set_bus_volume_db(idx, linear_to_db(linear))
+	# Display
+	var display: Dictionary = data.get("display", {}) if data.get("display") is Dictionary else {}
+	if display.has("show_fps"):
+		show_fps = bool(display["show_fps"])
+	if display.has("language"):
+		var lang: String = String(display["language"])
+		if lang != "" and Locale.get_language() != lang:
+			Locale.set_language(lang)
 	# Controls
 	var controls: Dictionary = data.get("controls", {}) if data.get("controls") is Dictionary else {}
 	if not controls.is_empty():
@@ -613,11 +628,16 @@ static func apply_settings_dict(data: Dictionary) -> void:
 			var new_event := InputEventKey.new()
 			new_event.physical_keycode = keycode as Key
 			InputMap.action_add_event(action, new_event)
-	# Write to local cache for offline fallback
+	# Merge into local cache (load first to preserve keys not in this dict)
 	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)  # OK if file doesn't exist yet
 	for key in ["master", "music", "sfx"]:
 		if audio.has(key):
 			cfg.set_value("audio", key, float(audio[key]))
+	if display.has("show_fps"):
+		cfg.set_value("display", "show_fps", bool(display["show_fps"]))
+	if display.has("language"):
+		cfg.set_value("general", "language", String(display["language"]))
 	for action in controls:
 		cfg.set_value("controls", action, int(controls[action]))
 	cfg.save(SETTINGS_PATH)
