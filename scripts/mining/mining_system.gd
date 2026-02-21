@@ -66,6 +66,9 @@ func set_weapon_manager(mgr) -> void:
 
 ## Called every frame while fire_primary is held and a mining laser is equipped.
 func try_fire(aim_point: Vector3) -> void:
+	# Lazy-fetch weapon manager if it wasn't wired yet (can happen on first frame)
+	if _weapon_mgr == null and _ship != null:
+		_weapon_mgr = _ship.get_node_or_null("WeaponManager")
 	if _ship == null or _asteroid_mgr == null or _weapon_mgr == null:
 		return
 	if is_overheated:

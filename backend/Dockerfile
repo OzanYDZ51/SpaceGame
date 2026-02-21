@@ -3,7 +3,7 @@ WORKDIR /app
 
 # Cache Go modules (only re-downloaded if go.mod/go.sum change)
 COPY go.mod go.sum* ./
-RUN go mod download
+RUN go mod download || true
 
 # Build
 COPY . .

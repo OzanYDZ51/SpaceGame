@@ -165,27 +165,33 @@ func _find_respawn_ship(fleet) -> int:
 	return -1
 
 
-## Grant a free starter ship when all ships are destroyed.
+## All ships are destroyed — revive the first destroyed one (no duplicate).
+## Only creates a new Viper if the fleet is completely empty (first login / corrupted save).
 func _grant_starter_ship(fleet) -> int:
-	var starter_fs =FleetShip.create_bare(Constants.DEFAULT_SHIP_ID)
-	if starter_fs == null:
-		push_error("DeathRespawnManager: Failed to create starter ship!")
-		return 0
-	starter_fs.custom_name = "Vaisseau de secours"
-	starter_fs.deployment_state = FleetShip.DeploymentState.DOCKED
 	var sys_id: int = system_transition.current_system_id if system_transition else 0
+	var stations: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+	var station_id: String = stations[0].get("id", "") if not stations.is_empty() else ""
+
+	# Revive any destroyed ship (including the active one) — no new ship created
+	for i in fleet.ships.size():
+		var fs = fleet.ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+			fs.deployment_state = FleetShip.DeploymentState.DOCKED
+			fs.docked_system_id = sys_id
+			if station_id != "":
+				fs.docked_station_id = station_id
+			return i
+
+	# Fleet completely empty (first login or corrupted save) — add a starter Viper
+	var starter_fs = FleetShip.create_bare(Constants.DEFAULT_SHIP_ID)
+	if starter_fs == null:
+		push_error("DeathRespawnManager: Fleet empty and failed to create starter Viper!")
+		return 0
+	starter_fs.deployment_state = FleetShip.DeploymentState.DOCKED
 	starter_fs.docked_system_id = sys_id
-	# Set docked_station_id to nearest station (prevents deploying at origin/star)
-	var stations = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-	if not stations.is_empty():
-		starter_fs.docked_station_id = stations[0].get("id", "")
-	var idx =fleet.add_ship(starter_fs)
-
-	# Toast notification
-	if GameManager._notif:
-		GameManager._notif.toast("VAISSEAU DE SECOURS ATTRIBUÉ")
-
-	return idx
+	if station_id != "":
+		starter_fs.docked_station_id = station_id
+	return fleet.add_ship(starter_fs)
 
 
 func _auto_dock_at_station() -> void:

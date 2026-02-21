@@ -72,7 +72,10 @@ var _route_manager = null
 var _fleet_deployment_mgr = null
 var _squadron_mgr = null
 var _player_autopilot_wp: String = ""
-var nav_target_id: String = ""  # Entity ID selected on system map — shown as nav indicator in flight HUD
+var nav_target_id: String = ""    # Entity ID selected on system map — shown as nav indicator in flight HUD
+var nav_target_name: String = ""  # Cached name for HUD display (no EntityRegistry lookup needed)
+var nav_target_ux: float = 0.0    # Cached universe X coordinate
+var nav_target_uz: float = 0.0    # Cached universe Z coordinate
 var _backend_state_loaded: bool = false
 var _initial_connect_done: bool = false
 var _bug_report_screen = null
@@ -391,6 +394,11 @@ func _setup_ui_managers() -> void:
 		if overlay:
 			ui_layer.add_child(overlay)
 
+	# Connection lost overlay — layer 100, visible above all UI (not a child of ui_layer)
+	var conn_overlay = ConnectionLostOverlay.new()
+	conn_overlay.name = "ConnectionLostOverlay"
+	main_scene.add_child(conn_overlay)
+
 
 ## Re-set fleet reference on map panels (after backend replaces the fleet via deserialize).
 func _refresh_fleet_on_maps() -> void:
@@ -577,7 +585,7 @@ func _initialize_game() -> void:
 	player_lod.ship_id = player_ship.ship_data.ship_id if player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 	player_lod.ship_class = player_ship.ship_data.ship_class if player_ship.ship_data else &"Fighter"
 	player_lod.faction = &"nova_terra"
-	player_lod.display_name = NetworkManager.local_player_name
+	player_lod.display_name = AuthManager.username
 	player_lod.node_ref = player_ship
 	player_ship.faction = &"nova_terra"  # Sync node faction for projectile friendly-fire checks
 	player_lod.current_lod = ShipLODData.LODLevel.LOD0

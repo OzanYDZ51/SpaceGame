@@ -36,6 +36,7 @@ const SETTINGS_PATH: String = "user://settings.cfg"
 # Rebindable actions: [action_name, locale_key, default_keycode]
 const REBINDABLE_ACTIONS: Array = [
 	["move_forward", "key.forward", KEY_W],
+	["toggle_freelook", "key.freelook", KEY_W],
 	["move_backward", "key.backward", KEY_S],
 	["strafe_left", "key.left", KEY_A],
 	["strafe_right", "key.right", KEY_D],

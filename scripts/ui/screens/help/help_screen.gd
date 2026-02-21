@@ -194,11 +194,11 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 		["W / S", Locale.t("help.flight.forward_back")], ["A / D", Locale.t("help.flight.strafe")],
 		["Space / Ctrl", Locale.t("help.flight.up_down")], ["Q / E", Locale.t("help.flight.roll")],
 		["Mouse", Locale.t("help.flight.orientation")], ["Shift", Locale.t("help.flight.boost")],
-		["C", Locale.t("help.flight.cruise")]], font, font_bold, vt, vb)
+		["C", Locale.t("help.flight.cruise")], ["W", Locale.t("help.flight.freelook")]], font, font_bold, vt, vb)
 	y = _draw_kb(x, y + 10, col_w, Locale.t("help.nav.title"), [
 		["M", Locale.t("help.nav.system_map")], ["G", Locale.t("help.nav.galaxy_map")],
 		["F", Locale.t("help.nav.dock")],
-		["W", Locale.t("help.nav.wormhole")]], font, font_bold, vt, vb)
+		["Entrée", Locale.t("help.nav.wormhole")]], font, font_bold, vt, vb)
 
 	# Right column: COMBAT + MISC
 	var rx: float = x + col_w + 20

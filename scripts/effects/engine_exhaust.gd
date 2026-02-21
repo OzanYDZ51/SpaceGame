@@ -83,7 +83,11 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 
 	for nozzle in _nozzles:
 		_update_cone(nozzle, t, idle)
+		_update_volume_fill(nozzle, t, idle)
 		_update_afterburner(nozzle, t)
+		_update_inner_flame(nozzle, t, idle)
+		_update_outer_flame(nozzle, t, idle)
+		_update_sparks(nozzle, t)
 		_update_light(nozzle, t, idle)
 
 
@@ -104,7 +108,11 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 
 	nozzle["es"] = _exhaust_scale
 	nozzle["cone"] = _create_core_cone(nozzle_root)
+	nozzle["volume"] = _create_volume_fill(nozzle_root)
 	nozzle["afterburner"] = _create_afterburner_disc(nozzle_root)
+	nozzle["inner"] = _create_inner_flame(nozzle_root)
+	nozzle["outer"] = _create_outer_flame(nozzle_root)
+	nozzle["sparks"] = _create_sparks(nozzle_root)
 	nozzle["light"] = _create_dynamic_light(nozzle_root)
 	nozzle["root"] = nozzle_root
 	_nozzles.append(nozzle)
@@ -208,6 +216,7 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	p.lifetime = 0.9
 	p.local_coords = false
 	p.emitting = true
+	p.visibility_aabb = AABB(Vector3(-5.0 * es, -5.0 * es, -2.0 * es), Vector3(10.0 * es, 10.0 * es, 40.0 * es))
 
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(1.2, 1.2) * es
@@ -290,6 +299,7 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	p.lifetime = 0.4
 	p.local_coords = true
 	p.emitting = true
+	p.visibility_aabb = AABB(Vector3(-3.0 * es, -3.0 * es, -2.0 * es), Vector3(6.0 * es, 6.0 * es, 30.0 * es))
 
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(0.4, 0.4) * es
@@ -337,6 +347,7 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	p.lifetime = 1.1
 	p.local_coords = false
 	p.emitting = true
+	p.visibility_aabb = AABB(Vector3(-8.0 * es, -8.0 * es, -2.0 * es), Vector3(16.0 * es, 16.0 * es, 55.0 * es))
 
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(1.0, 1.0) * es
@@ -386,6 +397,7 @@ func _create_sparks(parent: Node3D) -> GPUParticles3D:
 	p.local_coords = false
 	p.emitting = false
 	p.amount_ratio = 0.0
+	p.visibility_aabb = AABB(Vector3(-10.0 * ms, -10.0 * ms, -2.0 * ms), Vector3(20.0 * ms, 20.0 * ms, 50.0 * ms))
 
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(0.08, 0.08) * ms

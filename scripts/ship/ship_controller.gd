@@ -84,8 +84,8 @@ var _current_roll_rate: float = 0.0
 
 # --- Mouse ---
 var _mouse_delta: Vector2 = Vector2.ZERO
-var cruise_look_delta: Vector2 = Vector2.ZERO  ## Mouse delta redirected to camera during cruise free look
-var free_look_active: bool = false              ## True while in cruise or Alt held — camera should NOT snap back
+var cruise_look_delta: Vector2 = Vector2.ZERO  ## Mouse delta redirected to camera during free look
+var free_look_active: bool = false              ## True while free look is toggled (W key) — camera should NOT snap back
 
 # --- Cached refs ---
 var _cached_energy_sys = null
@@ -232,8 +232,8 @@ func _read_input() -> void:
 			autopilot_disengaged_by_player.emit()
 		else:
 			_run_autopilot()
-			# In cruise or Alt held, redirect mouse to free look camera before clearing
-			free_look_active = speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT)
+			# Free look: redirect mouse to camera si W est maintenu
+			free_look_active = Input.is_action_pressed("toggle_freelook")
 			if free_look_active:
 				cruise_look_delta = _mouse_delta
 			else:
@@ -270,8 +270,12 @@ func _read_input() -> void:
 		thrust = thrust.normalized()
 	throttle_input = thrust
 
-	# === ROTATION from mouse (cruise or Alt held → free look) ===
-	free_look_active = speed_mode == Constants.SpeedMode.CRUISE or Input.is_physical_key_pressed(KEY_ALT)
+	# === FREELOOK (W maintenu) ===
+	# W est aussi move_forward : maintenir W = vue libre + poussée simultanément.
+	# Relâcher W = retour caméra derrière le vaisseau.
+	free_look_active = Input.is_action_pressed("toggle_freelook")
+
+	# === ROTATION from mouse (W toggle → free look) ===
 	if free_look_active:
 		# Free look: redirect mouse delta to camera, ship flies straight
 		cruise_look_delta = _mouse_delta
@@ -298,7 +302,7 @@ func _read_input() -> void:
 	if Input.is_action_just_pressed("toggle_cruise"):
 		if speed_mode == Constants.SpeedMode.CRUISE:
 			_exit_cruise()
-		elif not combat_locked and not _near_planet_surface and not planet_avoidance_active:
+		elif not combat_locked and not _near_planet_surface:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0
 			_cruise_punched = false
@@ -905,7 +909,7 @@ func _run_autopilot() -> void:
 		_gate_approach_speed_cap = 0.0
 
 	# Engage cruise once well aligned and outside decel zone
-	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked and not planet_avoidance_active:
+	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0

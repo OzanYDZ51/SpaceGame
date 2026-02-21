@@ -96,15 +96,22 @@ func _draw() -> void:
 	if selected_id != "" and _player_id != "" and selected_id != _player_id and route_ship_ids.is_empty():
 		_draw_selection_line(entities, font)
 
+	# Group entities by type once (O(N)) instead of iterating all entities per draw type (O(N×8))
+	var by_type: Dictionary = {}
+	for ent in entities.values():
+		var t: int = ent["type"]
+		if not by_type.has(t):
+			by_type[t] = []
+		by_type[t].append(ent)
+
 	# Draw entities in type order (player always on top)
 	for draw_type in _draw_order:
 		if draw_type == EntityRegistrySystem.EntityType.ASTEROID_BELT:
 			continue  # drawn by renderer
 		if filters.get(draw_type, false):
 			continue  # filtered out
-		for ent in entities.values():
-			if ent["type"] == draw_type:
-				_draw_entity(ent, font)
+		for ent in by_type.get(draw_type, []):
+			_draw_entity(ent, font)
 
 	# Off-screen indicator for selected entity
 	if selected_id != "":
@@ -917,26 +924,18 @@ func _draw_trails(entities: Dictionary) -> void:
 			else:
 				trail_col = ent.get("color", MapColors.NPC_SHIP)
 
+		# Build polyline in one pass — single draw_polyline_colors call instead of N draw_line calls
 		var point_count: int = int(arr.size() / 3.0)
-		for i in range(point_count - 1):
-			var x1: float = arr[i * 3]
-			var z1: float = arr[i * 3 + 1]
-			var t1: float = arr[i * 3 + 2]
-			var x2: float = arr[(i + 1) * 3]
-			var z2: float = arr[(i + 1) * 3 + 1]
-
-			var p1: Vector2 = camera.universe_to_screen(x1, z1)
-			var p2: Vector2 = camera.universe_to_screen(x2, z2)
-
-			# Skip if both points off screen
-			if (p1.x < -50 and p2.x < -50) or (p1.x > size.x + 50 and p2.x > size.x + 50):
-				continue
-			if (p1.y < -50 and p2.y < -50) or (p1.y > size.y + 50 and p2.y > size.y + 50):
-				continue
-
-			var age: float = now - t1
+		var pts := PackedVector2Array()
+		var cols := PackedColorArray()
+		pts.resize(point_count)
+		cols.resize(point_count)
+		for i in point_count:
+			var age: float = now - arr[i * 3 + 2]
 			var alpha: float = clampf(1.0 - age / MapTrails.MAX_TRAIL_TIME, 0.05, 0.45)
-			draw_line(p1, p2, Color(trail_col.r, trail_col.g, trail_col.b, alpha), 1.0)
+			pts[i] = camera.universe_to_screen(arr[i * 3], arr[i * 3 + 1])
+			cols[i] = Color(trail_col.r, trail_col.g, trail_col.b, alpha)
+		draw_polyline_colors(pts, cols, 1.0)
 
 
 # =============================================================================

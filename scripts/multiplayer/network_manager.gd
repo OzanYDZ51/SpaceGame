@@ -9,6 +9,18 @@ extends Node
 # Architecture: Single dedicated server on Railway (headless).
 # All clients connect via wss://xxx.up.railway.app.
 # Server is authoritative (validates, relays).
+#
+# Refactored into sub-managers under scripts/multiplayer/net/:
+#   NetConnection      — WebSocket lifecycle & reconnect
+#   NetPeerRegistry    — Peer/player tracking & UUID maps
+#   NetChatServer      — Chat buffer, history, routing, backend
+#   NetGroupManager    — Ephemeral party system
+#   NetPlayerEvents    — Death, respawn, ship change, system change
+#   NetCombatServer    — PvP hit validation
+#
+# CRITICAL: ALL @rpc methods MUST STAY in this file.
+# Godot assigns RPC IDs per-node-path in declaration order.
+# Moving @rpc decorators out of this file would break all inter-client RPC.
 # =============================================================================
 
 signal peer_connected(peer_id: int, player_name: String)
@@ -73,70 +85,77 @@ signal structure_destroyed_received(struct_id: String, killer_pid: int, pos: Arr
 signal event_started_received(event_dict: Dictionary)
 signal event_ended_received(event_dict: Dictionary)
 
+# NPC fire relay signal
+signal npc_fire_received(npc_id: String, weapon_name: String, fire_pos: Array, fire_dir: Array)
+
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
 var connection_state: ConnectionState = ConnectionState.DISCONNECTED
-var local_player_name: String = "Pilote"
+var local_player_name: String = ""  # Set from AuthManager.username on auth — never a local default
 var local_ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var local_peer_id: int = -1
 
 ## True when this instance is the server (Railway dedicated).
 var _is_server: bool = false
 
-# peer_id -> NetworkState (all remote players)
-var peers: Dictionary = {}
-
-# Server config
-var _server_url: String = ""  # Full ws:// or wss:// URL for reconnect
-var _server_port: int = Constants.NET_DEFAULT_PORT
-var _peer: WebSocketMultiplayerPeer = null
-var _reconnect_timer: float = 0.0
-var _reconnect_attempts: int = 0
-const MAX_RECONNECT_ATTEMPTS: int = 5
-const RECONNECT_DELAY: float = 3.0
-
-# PvP kill attribution: target_pid -> { "attacker_pid": int, "weapon": String, "time": float }
-var _pvp_last_attacker: Dictionary = {}
-
 # Multi-galaxy: routing table (sent from server, used by client for wormhole handoff)
-# Each entry: { "seed": int, "name": String, "url": String }
 var galaxy_servers: Array[Dictionary] = []
 
-# Server-side: track each player's last known system (in-memory persistence)
-var _player_last_system: Dictionary = {}  # peer_id -> system_id
+# Sub-managers (RefCounted — NOT Node children)
+var _connection: NetConnection = null
+var _peer_registry: NetPeerRegistry = null
+var _chat_server: NetChatServer = null
+var _group_mgr: NetGroupManager = null
+var _player_events: NetPlayerEvents = null
+var _combat_server: NetCombatServer = null
 
-# UUID ↔ peer_id mapping (server-side, persists across reconnects)
-var _uuid_to_peer: Dictionary = {}  # player_uuid (String) -> peer_id (int)
-var _peer_to_uuid: Dictionary = {}  # peer_id (int) -> player_uuid (String)
 
-# Ephemeral group (party) system — server-side in-memory only
-var _groups: Dictionary = {}          # group_id (int) -> {leader: peer_id, members: [peer_ids]}
-var _player_group: Dictionary = {}    # peer_id -> group_id
-var _pending_invites: Dictionary = {} # target_peer_id -> {from: peer_id, group_id: int, time: float}
-var _next_group_id: int = 1
-const MAX_GROUP_SIZE: int = 5
-const INVITE_TIMEOUT: float = 30.0
+# -------------------------------------------------------------------------
+# Property getters — preserve the public API surface
+# -------------------------------------------------------------------------
 
-# Local client group state (synced from server)
-var local_group_id: int = 0
-var local_group_data: Dictionary = {}  # members list from last _receive_group_update
+## peer_id -> NetworkState dictionary (all remote players).
+var peers: Dictionary:
+	get:
+		return _peer_registry.peers
 
-# Chat persistence: in-memory buffer (primary) + backend DB (long-term)
-const CHAT_BUFFER_SIZE: int = 200
-const CHAT_HISTORY_LIMIT: int = 50  # Max messages sent to clients on connect
-var _chat_buffer: Array = []  # [{s, t, ts, ch, sys}] — server-side ring buffer
-var _chat_backend_client: ServerBackendClient = null
-var _chat_preload_done: bool = false
 
-# Heartbeat: periodically update last_seen_at for connected players (server-side)
-const HEARTBEAT_INTERVAL: float = 60.0
-var _heartbeat_timer: float = 0.0
-var _heartbeat_backend_client: ServerBackendClient = null
+## Full ws/wss URL for reconnect display.
+var _server_url: String:
+	get:
+		return _connection.get_server_url()
 
+
+## Local client group id (mirrors server-sent value).
+var local_group_id: int:
+	get:
+		return _group_mgr.local_group_id
+	set(v):
+		_group_mgr.local_group_id = v
+
+
+## Local client group data (mirrors server-sent value).
+var local_group_data: Dictionary:
+	get:
+		return _group_mgr.local_group_data
+	set(v):
+		_group_mgr.local_group_data = v
+
+
+# =========================================================================
+# LIFECYCLE
+# =========================================================================
 
 func _ready() -> void:
 	_is_server = _check_dedicated_server()
 	_parse_galaxy_seed_arg()
+
+	_connection = NetConnection.new(self)
+	_peer_registry = NetPeerRegistry.new(self)
+	_chat_server = NetChatServer.new(self)
+	_group_mgr = NetGroupManager.new(self)
+	_player_events = NetPlayerEvents.new(self)
+	_combat_server = NetCombatServer.new(self)
 
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -146,31 +165,16 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if connection_state == ConnectionState.DISCONNECTED and _reconnect_attempts > 0:
-		_reconnect_timer -= delta
-		if _reconnect_timer <= 0.0:
-			_attempt_reconnect()
+	_connection.tick(delta)
 
-	# Server-side: expire stale group invites
-	if _is_server and not _pending_invites.is_empty():
-		var now: float = Time.get_unix_time_from_system()
-		var expired: Array = []
-		for target_pid in _pending_invites:
-			if now - _pending_invites[target_pid]["time"] > INVITE_TIMEOUT:
-				expired.append(target_pid)
-		for target_pid in expired:
-			_pending_invites.erase(target_pid)
-
-	# Server-side heartbeat: update last_seen_at for all connected players
-	if _is_server and _heartbeat_backend_client != null:
-		_heartbeat_timer -= delta
-		if _heartbeat_timer <= 0.0:
-			_heartbeat_timer = HEARTBEAT_INTERVAL
-			_send_heartbeat()
+	if _is_server:
+		if not _group_mgr._pending_invites.is_empty():
+			_group_mgr.tick(Time.get_unix_time_from_system())
+		_chat_server.tick(delta)
 
 
 func _check_dedicated_server() -> bool:
-	var args =OS.get_cmdline_args()
+	var args: Array = OS.get_cmdline_args()
 	for arg in args:
 		if arg == "--server" or arg == "--headless":
 			return true
@@ -178,7 +182,7 @@ func _check_dedicated_server() -> bool:
 
 
 func _parse_galaxy_seed_arg() -> void:
-	var args =OS.get_cmdline_args()
+	var args: Array = OS.get_cmdline_args()
 	for i in args.size():
 		if args[i] == "--galaxy-seed" and i + 1 < args.size():
 			var seed_val: int = args[i + 1].to_int()
@@ -190,92 +194,31 @@ func _parse_galaxy_seed_arg() -> void:
 # PUBLIC API
 # =========================================================================
 
-## Start the dedicated server (headless, no local player).
-## Used for production Railway deployment.
+## Start the dedicated server (headless, Railway deployment).
 func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
-	# Railway sets PORT env var dynamically
-	var env_port: String = OS.get_environment("PORT")
-	if env_port != "":
-		var parsed_port =env_port.to_int()
-		if parsed_port > 0 and parsed_port <= 65535:
-			port = parsed_port
-		else:
-			push_warning("NetworkManager: Invalid PORT env '%s', using default %d" % [env_port, port])
-	_server_port = port
-	_peer = WebSocketMultiplayerPeer.new()
-	_peer.outbound_buffer_size = 1048576  # 1 MB — prevents ERR_OUT_OF_MEMORY on NPC batch broadcasts
-	_peer.inbound_buffer_size = 262144    # 256 KB
-	var err =_peer.create_server(port)
+	var err: Error = _connection.start_server(port)
 	if err != OK:
-		push_error("NetworkManager: Failed to start dedicated server on port %d: %s" % [port, error_string(err)])
-		connection_failed.emit("Failed to start server: " + error_string(err))
 		return err
-
-	multiplayer.multiplayer_peer = _peer
-	connection_state = ConnectionState.CONNECTED
-	local_peer_id = 1
 	_is_server = true
-	print("========================================")
-	print("  DEDICATED SERVER LISTENING ON PORT %d" % port)
-	print("========================================")
-	_ensure_chat_backend_client()
-	_ensure_heartbeat_backend_client()
-	_heartbeat_timer = HEARTBEAT_INTERVAL
-	_preload_and_emit_chat_history()
-	connection_succeeded.emit()
+	_chat_server.ensure_chat_backend_client()
+	_chat_server.ensure_heartbeat_backend_client()
+	_chat_server.preload_and_emit_chat_history()
 	return OK
 
 
 ## Connect to the Railway server as a client.
-## address: A full WebSocket URL (e.g., "wss://gameserver-production-49ba.up.railway.app")
 func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
-	if connection_state != ConnectionState.DISCONNECTED:
-		push_warning("NetworkManager: Already connected or connecting")
-		return ERR_ALREADY_IN_USE
-
-	# Build WebSocket URL
-	var url: String
-	if address.begins_with("ws://") or address.begins_with("wss://"):
-		url = address
-	else:
-		url = "ws://%s:%d" % [address, port]
-
-	_server_url = url
-	_server_port = port
-	_peer = WebSocketMultiplayerPeer.new()
-	_peer.outbound_buffer_size = 262144   # 256 KB
-	_peer.inbound_buffer_size = 1048576   # 1 MB — receives large NPC batches from server
-	var err =_peer.create_client(url)
-	if err != OK:
-		push_error("NetworkManager: Failed to connect to %s: %s" % [url, error_string(err)])
-		connection_failed.emit("Connexion échouée: " + error_string(err))
-		return err
-
-	multiplayer.multiplayer_peer = _peer
-	connection_state = ConnectionState.CONNECTING
-	_reconnect_attempts = 0
-	return OK
+	return _connection.connect_to_server(address, port)
 
 
 ## Disconnect and clean up everything.
 func disconnect_from_server() -> void:
-	if _peer:
-		_peer.close()
-		_peer = null
-	multiplayer.multiplayer_peer = null
+	_connection.close()
 	connection_state = ConnectionState.DISCONNECTED
-	_reconnect_attempts = 0
 	local_peer_id = -1
 	_is_server = false
-	peers.clear()
-	_uuid_to_peer.clear()
-	_peer_to_uuid.clear()
-	_chat_buffer.clear()
-	_groups.clear()
-	_player_group.clear()
-	_pending_invites.clear()
-	local_group_id = 0
-	local_group_data = {}
+	_peer_registry.clear()
+	_group_mgr.clear_all()
 	player_list_updated.emit()
 
 
@@ -290,22 +233,17 @@ func is_connected_to_server() -> bool:
 
 ## Get all peer IDs in a given star system (interest management).
 func get_peers_in_system(system_id: int) -> Array[int]:
-	var result: Array[int] = []
-	for pid in peers:
-		var state = peers[pid]
-		if state.system_id == system_id:
-			result.append(pid)
-	return result
+	return _peer_registry.get_peers_in_system(system_id)
 
 
 ## Get the UUID for a peer_id (server-side).
 func get_peer_uuid(peer_id: int) -> String:
-	return _peer_to_uuid.get(peer_id, "")
+	return _peer_registry.get_peer_uuid(peer_id)
 
 
 ## Get the peer_id for a UUID (server-side). Returns -1 if offline.
 func get_uuid_peer(uuid: String) -> int:
-	return _uuid_to_peer.get(uuid, -1)
+	return _peer_registry.get_uuid_peer(uuid)
 
 
 # =========================================================================
@@ -314,38 +252,31 @@ func get_uuid_peer(uuid: String) -> int:
 
 func _on_peer_connected(id: int) -> void:
 	if is_server():
-		# Send full peer list to the new peer
 		var peer_data: Array = []
-		for pid in peers:
-			peer_data.append(peers[pid].to_dict())
+		for pid in _peer_registry.peers:
+			peer_data.append(_peer_registry.peers[pid].to_dict())
 		_rpc_full_peer_list.rpc_id(id, peer_data)
 
 
 func _on_peer_disconnected(id: int) -> void:
-	var left_name ="Pilote #%d" % id
-	if peers.has(id):
-		left_name = peers[id].player_name
+	var left_name: String = "Pilote #%d" % id
+	if _peer_registry.peers.has(id):
+		left_name = _peer_registry.peers[id].player_name
 
-	# Handle group disconnect BEFORE erasing peer data (needs peer names for updates)
 	if is_server():
-		_handle_group_disconnect(id)
+		_group_mgr.handle_peer_disconnect(id)
 
-	if peers.has(id):
-		peers.erase(id)
-	# Keep _player_last_system[id] for reconnect persistence (don't erase)
-	# Keep _peer_to_uuid / _uuid_to_peer for fleet NPC reconnect (don't erase)
+	_peer_registry.remove_peer(id)
 
 	if is_server():
 		_rpc_player_left.rpc(id)
-		# Broadcast system chat: player left
-		var leave_sys: int = _player_last_system.get(id, -1)
+		var leave_sys: int = _peer_registry.get_last_system(id, -1)
 		_rpc_receive_chat.rpc(left_name, 1, "%s a quitté." % left_name)
-		_store_chat_message(1, left_name, "%s a quitté." % left_name, leave_sys)
+		_chat_server.store_message(1, left_name, "%s a quitté." % left_name, leave_sys)
 
-		# Notify NpcAuthority about disconnect (fleet NPCs persist)
-		var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+		var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 		if npc_auth:
-			var uuid: String = _peer_to_uuid.get(id, "")
+			var uuid: String = _peer_registry.get_peer_uuid(id)
 			if uuid != "":
 				npc_auth.on_player_disconnected(uuid, id)
 
@@ -356,11 +287,9 @@ func _on_peer_disconnected(id: int) -> void:
 func _on_connected_to_server() -> void:
 	connection_state = ConnectionState.CONNECTED
 	local_peer_id = multiplayer.get_unique_id()
-	_reconnect_attempts = 0
-	# Use AuthManager username as source of truth (local_player_name may be stale)
+	_connection._reconnect_attempts = 0
 	if AuthManager.is_authenticated and AuthManager.username != "":
 		local_player_name = AuthManager.username
-	# Register with the server (include UUID for fleet persistence)
 	var uuid: String = AuthManager.player_id if AuthManager.is_authenticated else ""
 	var player_role: String = AuthManager.role if AuthManager.is_authenticated else "player"
 	_rpc_register_player.rpc_id(1, local_player_name, String(local_ship_id), uuid, player_role)
@@ -368,8 +297,6 @@ func _on_connected_to_server() -> void:
 
 
 ## Re-send player identity to the server (called by AuthManager after auth completes).
-## Fixes race condition: multiplayer may connect before auth session is restored,
-## so the initial registration has stale name/role ("Pilote"/"player").
 func re_register_identity() -> void:
 	if not is_connected_to_server() or is_server():
 		return
@@ -384,158 +311,151 @@ func re_register_identity() -> void:
 
 func _on_connection_failed() -> void:
 	connection_state = ConnectionState.DISCONNECTED
-	if _reconnect_attempts < MAX_RECONNECT_ATTEMPTS:
-		_reconnect_attempts += 1
-		_reconnect_timer = RECONNECT_DELAY
-		connection_failed.emit("Connexion échouée. Tentative %d/%d..." % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
-	else:
-		connection_failed.emit("Connexion impossible après %d tentatives." % MAX_RECONNECT_ATTEMPTS)
+	_connection.on_connection_failed()
 
 
 func _on_server_disconnected() -> void:
 	connection_state = ConnectionState.DISCONNECTED
 	local_peer_id = -1
 	_is_server = false
-	# Clear local group state
-	local_group_id = 0
-	local_group_data = {}
-	# Emit peer_disconnected for each peer so NetworkSyncManager can clean up puppets
-	var peer_ids = peers.keys()
-	peers.clear()
+	_group_mgr.clear_local_group()
+	var peer_ids: Array = _peer_registry.peers.keys()
+	_peer_registry.peers.clear()
 	for pid in peer_ids:
 		peer_disconnected.emit(pid)
 	player_list_updated.emit()
-	# Reset counter for a fresh reconnect sequence (don't accumulate across disconnects)
-	_reconnect_attempts = 1
-	_reconnect_timer = RECONNECT_DELAY
-	var reason := "Serveur déconnecté. Reconnexion..."
+	_connection.on_server_disconnected()
+	var reason: String = "Serveur déconnecté. Reconnexion..."
 	connection_failed.emit(reason)
 	server_connection_lost.emit(reason)
 
 
-func _attempt_reconnect() -> void:
-	if _reconnect_attempts > MAX_RECONNECT_ATTEMPTS:
-		connection_failed.emit("Reconnexion échouée.")
-		_reconnect_attempts = 0
+# =========================================================================
+# PUBLIC API — Chat & Group (thin wrappers calling RPCs)
+# =========================================================================
+
+## Send a chat message to the server.
+func send_chat_message(channel: int, text: String) -> void:
+	if is_server() or not is_connected_to_server():
 		return
-	if _server_url != "":
-		connect_to_server(_server_url)
-	else:
-		connect_to_server(Constants.NET_GAME_SERVER_URL)
+	print("[Chat] send_chat_message: ch=%d text='%s' peer=%d" % [channel, text, local_peer_id])
+	_rpc_chat_message.rpc_id(1, channel, text)
+
+
+## Send a whisper to the server.
+func send_whisper(target_name: String, text: String) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_whisper.rpc_id(1, target_name, text)
+
+
+## Request to invite a player to your group.
+func request_group_invite(target_peer_id: int) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_group_invite.rpc_id(1, target_peer_id)
+
+
+## Respond to an incoming group invite.
+func respond_group_invite(accepted: bool) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_respond_group_invite.rpc_id(1, accepted)
+
+
+## Request to leave your current group.
+func request_leave_group() -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_leave_group.rpc_id(1)
+
+
+## Leader kicks a member from their group.
+func request_kick_from_group(target_peer_id: int) -> void:
+	if is_server() or not is_connected_to_server():
+		return
+	_rpc_request_kick_from_group.rpc_id(1, target_peer_id)
+
+
+## Check if a peer is in the local player's group (client-side).
+func is_peer_in_my_group(peer_id: int) -> bool:
+	return _group_mgr.is_peer_in_my_group(peer_id)
+
+
+## Send an admin command to the server.
+func send_admin_command(cmd: String) -> void:
+	if not is_connected_to_server() or is_server():
+		return
+	_rpc_admin_command.rpc_id(1, cmd)
 
 
 # =========================================================================
-# RPCs
+# RPCs — ALL @rpc methods MUST stay in this file (order is frozen)
 # =========================================================================
 
-## Client -> Server: Register as a new player (or update identity after auth completes).
+## Client -> Server: Register as a new player (or update identity after auth).
 @rpc("any_peer", "reliable")
 func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid: String = "", player_role: String = "player") -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
+	var sender_id: int = multiplayer.get_remote_sender_id()
 
-	# --- Identity update: peer already registered, just update name/role ---
-	if peers.has(sender_id):
-		var existing: NetworkState = peers[sender_id]
-		var name_changed: bool = existing.player_name != player_name
-		existing.player_name = player_name
-		existing.role = player_role
-		if player_uuid != "":
-			_uuid_to_peer[player_uuid] = sender_id
-			_peer_to_uuid[sender_id] = player_uuid
-		if name_changed:
-			# Notify all clients of the name/role update
+	var result: Dictionary = _peer_registry.register_or_update(sender_id, player_name, ship_id_str, player_uuid, player_role)
+
+	if result["is_update"]:
+		var existing: NetworkState = result["existing"]
+		if result["name_changed"]:
 			_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role, existing.system_id)
 			print("[Server] Identité mise à jour: peer %d → '%s' (role=%s)" % [sender_id, player_name, player_role])
 		return
 
-	# --- First registration: new peer ---
-	var state =NetworkState.new()
-	state.peer_id = sender_id
-	state.player_name = player_name
-	state.ship_id = StringName(ship_id_str)
-	state.role = player_role
-	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
-	state.ship_class = sdata.ship_class if sdata else &"Fighter"
+	# First registration
+	var state: NetworkState = result["state"]
+	var spawn_sys: int = result["spawn_sys"]
+	var is_reconnect: bool = result["is_reconnect"]
+	var old_pid: int = result["old_pid"]
 
-	# Track UUID ↔ peer mapping
-	var is_reconnect: bool = false
-	if player_uuid != "":
-		# Clean up old peer mapping for this UUID (reconnect case)
-		if _uuid_to_peer.has(player_uuid):
-			var old_pid: int = _uuid_to_peer[player_uuid]
-			if old_pid != sender_id:
-				# Transfer last known system to new peer_id
-				if _player_last_system.has(old_pid):
-					_player_last_system[sender_id] = _player_last_system[old_pid]
-					_player_last_system.erase(old_pid)
-				_peer_to_uuid.erase(old_pid)
-				peers.erase(old_pid)  # Safety: remove stale peer entry
-				# Notify all clients to remove the ghost of the old peer_id
-				_rpc_player_left.rpc(old_pid)
-				is_reconnect = true
-		_uuid_to_peer[player_uuid] = sender_id
-		_peer_to_uuid[sender_id] = player_uuid
+	# Reconnect: broadcast removal of the ghost old peer_id to all clients
+	if is_reconnect and old_pid > 0:
+		_rpc_player_left.rpc(old_pid)
 
-	# Send server config to the new client (galaxy seed, spawn system, routing)
-	# For new players, default to the host's current system (not -1)
-	var default_sys: int = GameManager.current_system_id_safe() if GameManager else 0
-	var spawn_sys: int = _player_last_system.get(sender_id, default_sys)
-	# Set the client's system_id NOW so NPC batch filtering includes them immediately
-	state.system_id = spawn_sys
-	peers[sender_id] = state
-
-	var config ={
+	var config: Dictionary = {
 		"galaxy_seed": Constants.galaxy_seed,
 		"spawn_system_id": spawn_sys,
 		"galaxies": galaxy_servers,
 	}
 	_rpc_server_config.rpc_id(sender_id, config)
+	_chat_server.send_history_to_peer(sender_id, spawn_sys)
 
-	# Send chat history to the new client
-	_send_chat_history(sender_id, spawn_sys)
-
-	# Handle reconnect: re-associate fleet NPCs with the new peer_id
 	if is_reconnect and player_uuid != "":
-		var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+		var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 		if npc_auth:
 			npc_auth.on_player_reconnected(player_uuid, sender_id)
 
-	# Notify ALL clients (including new one) about this player
 	_rpc_player_registered.rpc(sender_id, player_name, ship_id_str, player_role, spawn_sys)
 
-	# Broadcast system chat: player joined (include system ID for diagnostics)
 	print("[Server] Joueur '%s' (peer %d) enregistré dans systeme %d%s" % [player_name, sender_id, spawn_sys, " (reconnexion)" if is_reconnect else ""])
-	var join_msg := "%s a rejoint le secteur (sys %d)." % [player_name, spawn_sys]
+	var join_msg: String = "%s a rejoint le secteur (sys %d)." % [player_name, spawn_sys]
 	_rpc_receive_chat.rpc(player_name, 1, join_msg)
-	_store_chat_message(1, player_name, join_msg, spawn_sys)
+	_chat_server.store_message(1, player_name, join_msg, spawn_sys)
 
 	player_list_updated.emit()
-
-	# Emit peer_connected on the SERVER so NetworkSyncManager can create
-	# the RemotePlayerShip and send NPCs to the new client via _deferred_send_npcs_to_peer.
-	# (The _rpc_player_registered RPC returns early on the server because
-	# the peer was already added to peers dict above, so peer_connected
-	# would never fire on the server without this explicit emit.)
 	peer_connected.emit(sender_id, player_name)
 
 
 ## Server -> All clients: A new player has joined.
 @rpc("authority", "reliable")
 func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player_role: String = "player", sys_id: int = 0) -> void:
-	# Never add ourselves to our own peers dict (causes ghost self-player)
 	if pid == local_peer_id:
 		return
-	# Update existing peer's name/role (identity update after auth)
-	if peers.has(pid):
-		var existing: NetworkState = peers[pid]
+	if _peer_registry.peers.has(pid):
+		var existing: NetworkState = _peer_registry.peers[pid]
 		existing.player_name = pname
 		existing.role = player_role
 		if sys_id > 0:
 			existing.system_id = sys_id
 		return
-	var state =NetworkState.new()
+	var state: NetworkState = NetworkState.new()
 	state.peer_id = pid
 	state.player_name = pname
 	state.ship_id = StringName(ship_id_str)
@@ -543,8 +463,7 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player
 	state.system_id = sys_id
 	var sdata: ShipData = ShipRegistry.get_ship_data(state.ship_id)
 	state.ship_class = sdata.ship_class if sdata else &"Fighter"
-	peers[pid] = state
-
+	_peer_registry.peers[pid] = state
 	peer_connected.emit(pid, pname)
 	player_list_updated.emit()
 
@@ -552,8 +471,8 @@ func _rpc_player_registered(pid: int, pname: String, ship_id_str: String, player
 ## Server -> All clients: A player has left.
 @rpc("authority", "reliable")
 func _rpc_player_left(pid: int) -> void:
-	if peers.has(pid):
-		peers.erase(pid)
+	if _peer_registry.peers.has(pid):
+		_peer_registry.peers.erase(pid)
 	peer_disconnected.emit(pid)
 	player_list_updated.emit()
 
@@ -562,10 +481,10 @@ func _rpc_player_left(pid: int) -> void:
 @rpc("authority", "reliable")
 func _rpc_full_peer_list(peer_data: Array) -> void:
 	for d in peer_data:
-		var state =NetworkState.new()
+		var state: NetworkState = NetworkState.new()
 		state.from_dict(d)
 		if state.peer_id != local_peer_id:
-			peers[state.peer_id] = state
+			_peer_registry.peers[state.peer_id] = state
 			peer_connected.emit(state.peer_id, state.player_name)
 	player_list_updated.emit()
 
@@ -573,14 +492,11 @@ func _rpc_full_peer_list(peer_data: Array) -> void:
 ## Client -> Server: Position/state update (20Hz).
 @rpc("any_peer", "unreliable_ordered")
 func _rpc_sync_state(state_dict: Dictionary) -> void:
-	var sender_id =multiplayer.get_remote_sender_id()
-
+	var sender_id: int = multiplayer.get_remote_sender_id()
 	if is_server():
-		if not peers.has(sender_id):
+		if not _peer_registry.peers.has(sender_id):
 			return
-		var state = peers[sender_id]
-		# Preserve ALL server-authoritative fields that from_dict() would overwrite.
-		# These are set by dedicated reliable RPCs and must not be raced by unreliable sync.
+		var state: NetworkState = _peer_registry.peers[sender_id]
 		var saved_name: String = state.player_name
 		var saved_role: String = state.role
 		var saved_group_id: int = state.group_id
@@ -593,22 +509,14 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 		state.group_id = saved_group_id
 		state.system_id = saved_system_id
 		state.ship_id = saved_ship_id
-		# Track last known system for reconnect persistence
-		_player_last_system[sender_id] = state.system_id
-		# ServerAuthority handles broadcasting to other peers (system-filtered).
-		# Do NOT relay here — it would duplicate bandwidth and cause cross-system ghosts.
+		_peer_registry.update_last_system(sender_id, state.system_id)
 
 
 ## Server -> Client: Another player's state update.
 @rpc("authority", "unreliable_ordered")
 func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
-	if peers.has(pid):
-		# Reuse existing state object to avoid GC pressure (200+ allocs/sec at 10 players)
-		var state = peers[pid]
-		# Preserve client-side fields set by reliable RPCs (name, role, group, ship).
-		# Do NOT preserve system_id — the server is authoritative for remote peers'
-		# system, and preserving it caused "can't see other player" bugs when
-		# _rpc_player_registered didn't include system_id (defaulted to 0).
+	if _peer_registry.peers.has(pid):
+		var state: NetworkState = _peer_registry.peers[pid]
 		var saved_name: String = state.player_name
 		var saved_role: String = state.role
 		var saved_group_id: int = state.group_id
@@ -621,82 +529,20 @@ func _rpc_receive_remote_state(pid: int, state_dict: Dictionary) -> void:
 		state.ship_id = saved_ship_id
 		player_state_received.emit(pid, state)
 	else:
-		var state = NetworkState.new()
+		var state: NetworkState = NetworkState.new()
 		state.from_dict(state_dict)
 		state.peer_id = pid
 		player_state_received.emit(pid, state)
-
-
-## Public API: send a chat message to the server. Called by NetworkChatRelay.
-func send_chat_message(channel: int, text: String) -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	print("[Chat] send_chat_message: ch=%d text='%s' peer=%d" % [channel, text, local_peer_id])
-	_rpc_chat_message.rpc_id(1, channel, text)
-
-
-## Public API: send a whisper to the server.
-func send_whisper(target_name: String, text: String) -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	_rpc_whisper.rpc_id(1, target_name, text)
 
 
 ## Client -> Server: Chat message (scoped by channel).
 @rpc("any_peer", "reliable")
 func _rpc_chat_message(channel: int, text: String) -> void:
 	print("[Chat] _rpc_chat_message received: ch=%d text='%s' is_server=%s" % [channel, text, is_server()])
-	if text.strip_edges().is_empty():
+	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var sender_name ="Unknown"
-	var sender_ctag: String = ""
-	var sender_role: String = "player"
-	if peers.has(sender_id):
-		sender_name = peers[sender_id].player_name
-		sender_ctag = peers[sender_id].corporation_tag
-		sender_role = peers[sender_id].role
-	print("[Chat] sender_id=%d sender_name='%s' peers_count=%d" % [sender_id, sender_name, peers.size()])
-
-	if is_server():
-		_store_chat_message(channel, sender_name, text, -1, sender_ctag, sender_role)
-		# Channel-scoped routing — never relay back to sender (they already showed it locally)
-		match channel:
-			1:  # SYSTEM → only peers in same system
-				var sender_sys: int = peers[sender_id].system_id if peers.has(sender_id) else -1
-				var sys_peers = get_peers_in_system(sender_sys)
-				print("[Chat] SYSTEM relay: sender_sys=%d peers_in_sys=%s" % [sender_sys, str(sys_peers)])
-				for pid in sys_peers:
-					if pid == sender_id:
-						continue
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
-				return
-			5:  # GROUP → only peers in same group
-				var gid: int = _player_group.get(sender_id, 0)
-				if gid > 0 and _groups.has(gid):
-					var members: Array = _groups[gid]["members"]
-					for pid in members:
-						if pid == sender_id:
-							continue
-						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
-				return
-			2:  # CORP → only peers with same corporation_tag
-				var sender_tag: String = peers[sender_id].corporation_tag if peers.has(sender_id) else ""
-				if sender_tag == "":
-					return  # Not in a corp, ignore
-				for pid in peers:
-					if pid == sender_id:
-						continue
-					if peers[pid].corporation_tag == sender_tag:
-						_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
-				return
-			_:  # GLOBAL, TRADE, etc. → broadcast to all except sender
-				print("[Chat] GLOBAL relay: all peers=%s" % [str(peers.keys())])
-				for pid in peers:
-					if pid == sender_id:
-						continue
-					print("[Chat] Relaying to peer %d" % pid)
-					_rpc_receive_chat.rpc_id(pid, sender_name, channel, text, sender_ctag, sender_role)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_chat_server.route_chat(sender_id, channel, text)
 
 
 ## Server -> All/Some clients: Chat message broadcast.
@@ -717,163 +563,14 @@ func _rpc_chat_history(history: Array) -> void:
 func _rpc_whisper(target_name: String, text: String) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var sender_name ="Unknown"
-	if peers.has(sender_id):
-		sender_name = peers[sender_id].player_name
-
-	# Find target peer by name
-	var target_pid: int = _find_peer_by_name(target_name)
-	if target_pid == -1:
-		_rpc_receive_whisper.rpc_id(sender_id, "SYSTÈME", "Joueur '%s' introuvable." % target_name)
-		return
-
-	_rpc_receive_whisper.rpc_id(target_pid, sender_name, text)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_chat_server.handle_whisper(sender_id, target_name, text)
 
 
 ## Server -> Client: Whisper received.
 @rpc("authority", "reliable")
 func _rpc_receive_whisper(sender_name: String, text: String) -> void:
 	whisper_received.emit(sender_name, text)
-
-
-## Store a chat message: buffer in RAM first (always), then persist to backend (fire-and-forget).
-func _store_chat_message(channel: int, sender_name: String, text: String, override_system_id: int = -1, corp_tag: String = "", sender_role: String = "player") -> void:
-	if not is_server():
-		return
-	if channel == 4:  # PRIVATE — not stored
-		return
-	if sender_name.is_empty() or text.is_empty():
-		return
-
-	# Resolve system_id for SYSTEM channel
-	var sys_id: int = 0
-	if channel == 1:
-		sys_id = override_system_id
-		if sys_id < 0:
-			var sender_id = multiplayer.get_remote_sender_id()
-			if sender_id > 0 and peers.has(sender_id):
-				sys_id = peers[sender_id].system_id
-			elif peers.has(1):
-				sys_id = peers[1].system_id
-		if sys_id < 0:
-			sys_id = 0
-
-	# 1) Always buffer in RAM (primary source for history on connect)
-	var now: Dictionary = Time.get_time_dict_from_system()
-	var ts: String = "%02d:%02d" % [now["hour"], now["minute"]]
-	var entry: Dictionary = {"s": sender_name, "t": text, "ts": ts, "ch": channel, "sys": sys_id, "ctag": corp_tag, "rl": sender_role}
-	_chat_buffer.append(entry)
-	if _chat_buffer.size() > CHAT_BUFFER_SIZE:
-		_chat_buffer = _chat_buffer.slice(-CHAT_BUFFER_SIZE)
-
-	# 2) Persist to backend DB (fire-and-forget, optional)
-	if _chat_backend_client:
-		_chat_backend_client.post_chat_message(channel, sys_id, sender_name, text)
-
-
-## Send chat history to a newly connected client (from in-memory buffer — instant, no HTTP).
-func _send_chat_history(peer_id: int, system_id: int) -> void:
-	print("[Chat] _send_chat_history: peer=%d sys=%d buffer=%d" % [peer_id, system_id, _chat_buffer.size()])
-	if _chat_buffer.is_empty():
-		print("[Chat] _send_chat_history: buffer empty, skipping")
-		return
-	# Filter: include all non-SYSTEM messages + SYSTEM messages matching this system_id
-	var history: Array = []
-	for entry in _chat_buffer:
-		var ch: int = entry.get("ch", 0)
-		if ch == 1 and entry.get("sys", -1) != system_id:
-			continue  # SYSTEM channel from a different system — skip
-		history.append({"s": entry.get("s", ""), "t": entry.get("t", ""), "ts": entry.get("ts", ""), "ch": ch, "ctag": entry.get("ctag", ""), "rl": entry.get("rl", "player")})
-	print("[Chat] _send_chat_history: after filter=%d (from %d)" % [history.size(), _chat_buffer.size()])
-	if history.is_empty():
-		return
-	# Limit to the last N messages to avoid huge RPC payloads
-	if history.size() > CHAT_HISTORY_LIMIT:
-		history = history.slice(-CHAT_HISTORY_LIMIT)
-	print("[Chat] _send_chat_history: sending %d messages to peer %d" % [history.size(), peer_id])
-	_rpc_chat_history.rpc_id(peer_id, history)
-
-
-## Async helper: preload from backend DB, then send history to any clients that connected while loading.
-## Called from start_dedicated_server() — runs in the background.
-func _preload_and_emit_chat_history() -> void:
-	print("[Chat] Starting async preload from backend...")
-	await _preload_chat_from_backend()
-	print("[Chat] Preload done (buffer=%d, preload_ok=%s)" % [_chat_buffer.size(), str(_chat_preload_done)])
-
-	# Send history to any clients that connected while preloading
-	for pid in peers:
-		if pid == 1:
-			continue  # peer 1 is the server itself
-		var sys_id: int = peers[pid].system_id if peers.has(pid) else 0
-		_send_chat_history(pid, sys_id)
-
-
-## Preload chat history from backend DB into the in-memory buffer (server startup).
-## If backend is unavailable, buffer stays empty — new messages accumulate normally.
-func _preload_chat_from_backend() -> void:
-	if not _chat_backend_client:
-		print("[Chat] No backend client — skipping preload")
-		return
-	# Use system_id=-1 as sentinel: backend loads ALL SYSTEM messages without filtering
-	var backend_msgs: Array = await _chat_backend_client.get_chat_history([0, 1, 2, 3], -1, CHAT_BUFFER_SIZE)
-	if backend_msgs.is_empty():
-		print("[Chat] Backend returned 0 messages (empty or unreachable)")
-		return
-	_chat_buffer.clear()
-	for msg in backend_msgs:
-		var ts: String = ""
-		var created: String = msg.get("created_at", "")
-		if created.length() >= 16:
-			ts = created.substr(11, 5)  # Extract HH:MM from ISO timestamp
-		var ch: int = msg.get("channel", 0)
-		var sys: int = msg.get("system_id", 0)
-		_chat_buffer.append({"s": msg.get("sender_name", ""), "t": msg.get("text", ""), "ts": ts, "ch": ch, "sys": sys})
-	_chat_preload_done = true
-	print("[Chat] Preloaded %d messages from backend DB" % _chat_buffer.size())
-
-
-## Create the backend client for chat persistence (server-side only, idempotent).
-func _ensure_chat_backend_client() -> void:
-	if _chat_backend_client != null:
-		return
-	_chat_backend_client = ServerBackendClient.new()
-	_chat_backend_client.name = "ChatBackendClient"
-	add_child(_chat_backend_client)
-
-
-## Create the backend client for heartbeat (server-side only, idempotent).
-func _ensure_heartbeat_backend_client() -> void:
-	if _heartbeat_backend_client != null:
-		return
-	_heartbeat_backend_client = ServerBackendClient.new()
-	_heartbeat_backend_client.name = "HeartbeatBackendClient"
-	add_child(_heartbeat_backend_client)
-
-
-## Send heartbeat with all connected player UUIDs to the backend.
-func _send_heartbeat() -> void:
-	if _heartbeat_backend_client == null:
-		return
-	var uuids: Array = []
-	for pid in _peer_to_uuid:
-		if peers.has(pid):
-			var uuid: String = _peer_to_uuid[pid]
-			if uuid != "":
-				uuids.append(uuid)
-	if uuids.is_empty():
-		return
-	_heartbeat_backend_client.send_heartbeat(uuids)
-
-
-## Find a peer ID by player name (server-side only).
-func _find_peer_by_name(player_name: String) -> int:
-	for pid in peers:
-		var state = peers[pid]
-		if state.player_name.to_lower() == player_name.to_lower():
-			return pid
-	return -1
 
 
 ## Server -> Single client: Server configuration (galaxy seed, spawn system, routing table).
@@ -887,13 +584,13 @@ func _rpc_server_config(config: Dictionary) -> void:
 # NPC SYNC RPCs
 # =========================================================================
 
-## Server -> Client: Batch of NPC state updates (10Hz close, 2Hz far).
+## Server -> Client: Batch of NPC state updates.
 @rpc("authority", "unreliable_ordered")
 func _rpc_npc_batch(batch: Array) -> void:
 	npc_batch_received.emit(batch)
 
 
-## Server -> Client: A new NPC has spawned (reliable, single event).
+## Server -> Client: A new NPC has spawned.
 @rpc("authority", "reliable")
 func _rpc_npc_spawned(npc_dict: Dictionary) -> void:
 	npc_spawned.emit(npc_dict)
@@ -914,8 +611,8 @@ func _rpc_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: 
 func _rpc_fire_event(weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.relay_fire_event(sender_id, weapon_name, fire_pos, fire_dir)
 
@@ -931,8 +628,8 @@ func _rpc_remote_fire(peer_id: int, weapon_name: String, fire_pos: Array, fire_d
 func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.validate_hit_claim(sender_id, target_npc, weapon_name, damage_val, hit_dir)
 
@@ -942,49 +639,8 @@ func _rpc_hit_claim(target_npc: String, weapon_name: String, damage_val: float, 
 func _rpc_player_hit_claim(target_pid: int, weapon_name: String, damage_val: float, hit_dir: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	# Validate basic bounds
-	if damage_val < 0.0 or damage_val > 500.0:
-		return
-	if not peers.has(target_pid) or not peers.has(sender_id):
-		return
-	# Check same system
-	var sender_state = peers[sender_id]
-	var target_state = peers[target_pid]
-	if sender_state.system_id != target_state.system_id:
-		return
-	# Reject hits on docked or dead players
-	if target_state.is_docked or target_state.is_dead:
-		return
-	# Reject hits on group members (friendly fire protection)
-	var sender_gid: int = _player_group.get(sender_id, 0)
-	if sender_gid > 0 and _player_group.get(target_pid, 0) == sender_gid:
-		return
-	# Distance validation (use float64 arithmetic — Vector3 is float32, loses precision at >10km)
-	var dx: float = sender_state.pos_x - target_state.pos_x
-	var dy: float = sender_state.pos_y - target_state.pos_y
-	var dz: float = sender_state.pos_z - target_state.pos_z
-	if dx * dx + dy * dy + dz * dz > 3000.0 * 3000.0:
-		return
-	# Weapon damage bounds — reject unknown weapons entirely
-	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
-	if weapon == null:
-		return
-	if damage_val > weapon.damage_per_hit * 1.5:
-		return
-	# Track last attacker for PvP kill attribution
-	_pvp_last_attacker[target_pid] = { "attacker_pid": sender_id, "weapon": weapon_name, "time": Time.get_unix_time_from_system() }
-	# Relay damage to target player
-	_rpc_receive_player_damage.rpc_id(target_pid, sender_id, weapon_name, damage_val, hit_dir)
-	# Broadcast hit effect to observers (exclude attacker + target — they handle it locally)
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
-	if npc_auth:
-		var target_label ="player_%d" % target_pid
-		var peers_in_sys =get_peers_in_system(sender_state.system_id)
-		for pid in peers_in_sys:
-			if pid == sender_id or pid == target_pid:
-				continue
-			_rpc_hit_effect.rpc_id(pid, target_label, hit_dir, false)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_combat_server.validate_hit(sender_id, target_pid, weapon_name, damage_val, hit_dir)
 
 
 ## Server -> Target client: You've been hit by another player.
@@ -1003,8 +659,6 @@ func _rpc_hit_effect(target_id: String, hit_dir: Array, shield_absorbed: bool) -
 # NPC FIRE RELAY RPCs
 # =========================================================================
 
-signal npc_fire_received(npc_id: String, weapon_name: String, fire_pos: Array, fire_dir: Array)
-
 ## Server -> Client: An NPC fired a weapon (visual only).
 @rpc("authority", "unreliable_ordered")
 func _rpc_npc_fire(npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
@@ -1020,55 +674,8 @@ func _rpc_npc_fire(npc_id_str: String, weapon_name: String, fire_pos: Array, fir
 func _rpc_player_died(death_pos: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	# Relay to all peers in the same system
-	var state = peers.get(sender_id)
-	if state == null:
-		return
-	state.is_dead = true
-	for pid in get_peers_in_system(state.system_id):
-		if pid == sender_id:
-			continue
-		_rpc_receive_player_died.rpc_id(pid, sender_id, death_pos)
-
-	# Report PvP kill to Discord if a player attacker was recorded recently (< 15s)
-	_report_pvp_kill(sender_id, state)
-
-func _report_pvp_kill(victim_pid: int, victim_state) -> void:
-	if not _pvp_last_attacker.has(victim_pid):
-		return
-	var info: Dictionary = _pvp_last_attacker[victim_pid]
-	_pvp_last_attacker.erase(victim_pid)
-	# Only count if the last hit was within 15 seconds
-	var elapsed: float = Time.get_unix_time_from_system() - info["time"]
-	if elapsed > 15.0:
-		return
-	var attacker_pid: int = info["attacker_pid"]
-	var weapon_name: String = info["weapon"]
-
-	var reporter = GameManager.get_node_or_null("EventReporter")
-	if reporter == null:
-		return
-
-	var killer_name: String = "Pilote"
-	if peers.has(attacker_pid):
-		killer_name = peers[attacker_pid].player_name
-	var victim_name: String = "Pilote"
-	if victim_state:
-		victim_name = victim_state.player_name
-
-	var weapon_display: String = weapon_name
-	if weapon_name != "":
-		var w = WeaponRegistry.get_weapon(StringName(weapon_name))
-		if w:
-			weapon_display = String(w.weapon_name) if w.weapon_name != &"" else weapon_name
-
-	var system_name: String = "Unknown"
-	if GameManager._galaxy:
-		system_name = GameManager._galaxy.get_system_name(victim_state.system_id)
-
-	print("[PvP] Kill report: %s -> %s (%s) in %s" % [killer_name, victim_name, weapon_display, system_name])
-	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, victim_state.system_id)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_player_events.handle_death(sender_id, death_pos)
 
 
 ## Server -> Client: A player has died (reliable notification).
@@ -1076,21 +683,15 @@ func _report_pvp_kill(victim_pid: int, victim_state) -> void:
 func _rpc_receive_player_died(pid: int, death_pos: Array) -> void:
 	player_died_received.emit(pid, death_pos)
 
+
 ## Client -> Server: I just respawned.
 @rpc("any_peer", "reliable")
 func _rpc_player_respawned(system_id: int) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var state = peers.get(sender_id)
-	if state:
-		state.is_dead = false
-		state.system_id = system_id
-	# Relay to all peers in the target system
-	for pid in get_peers_in_system(system_id):
-		if pid == sender_id:
-			continue
-		_rpc_receive_player_respawned.rpc_id(pid, sender_id, system_id)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_player_events.handle_respawn(sender_id, system_id)
+
 
 ## Server -> Client: A player has respawned (reliable notification).
 @rpc("authority", "reliable")
@@ -1107,27 +708,18 @@ func _rpc_receive_player_respawned(pid: int, system_id: int) -> void:
 func _rpc_player_ship_changed(new_ship_id_str: String) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var new_sid =StringName(new_ship_id_str)
-	var state = peers.get(sender_id)
-	if state:
-		state.ship_id = new_sid
-		var sdata: ShipData = ShipRegistry.get_ship_data(new_sid)
-		state.ship_class = sdata.ship_class if sdata else &"Fighter"
-	# Relay to all connected peers
-	for pid in peers:
-		if pid == sender_id:
-			continue
-		_rpc_receive_player_ship_changed.rpc_id(pid, sender_id, new_ship_id_str)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_player_events.handle_ship_change(sender_id, new_ship_id_str)
+
 
 ## Server -> Client: A player changed their ship (reliable notification).
 @rpc("authority", "reliable")
 func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void:
-	var new_sid =StringName(new_ship_id_str)
-	if peers.has(pid):
-		peers[pid].ship_id = new_sid
+	var new_sid: StringName = StringName(new_ship_id_str)
+	if _peer_registry.peers.has(pid):
+		_peer_registry.peers[pid].ship_id = new_sid
 		var sdata: ShipData = ShipRegistry.get_ship_data(new_sid)
-		peers[pid].ship_class = sdata.ship_class if sdata else &"Fighter"
+		_peer_registry.peers[pid].ship_class = sdata.ship_class if sdata else &"Fighter"
 	player_ship_changed_received.emit(pid, new_sid)
 
 
@@ -1140,39 +732,23 @@ func _rpc_receive_player_ship_changed(pid: int, new_ship_id_str: String) -> void
 func _rpc_player_system_changed(old_system_id: int, new_system_id: int) -> void:
 	if not is_server():
 		return
-	var sender_id = multiplayer.get_remote_sender_id()
-	var state = peers.get(sender_id)
-	if state == null:
-		return
-	# Update system_id immediately
-	state.system_id = new_system_id
-	_player_last_system[sender_id] = new_system_id
-	# Notify peers in the OLD system: remove puppet
-	for pid in get_peers_in_system(old_system_id):
-		if pid == sender_id:
-			continue
-		_rpc_receive_player_left_system.rpc_id(pid, sender_id)
-	# Notify peers in the NEW system: create puppet
-	var ship_id_str: String = String(state.ship_id)
-	for pid in get_peers_in_system(new_system_id):
-		if pid == sender_id:
-			continue
-		_rpc_receive_player_entered_system.rpc_id(pid, sender_id, ship_id_str)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_player_events.handle_system_change(sender_id, old_system_id, new_system_id)
+
 
 ## Server -> Client: A player left your system (remove puppet immediately).
 @rpc("authority", "reliable")
 func _rpc_receive_player_left_system(pid: int) -> void:
 	player_left_system_received.emit(pid)
 
+
 ## Server -> Client: A player entered your system (create puppet).
 @rpc("authority", "reliable")
 func _rpc_receive_player_entered_system(pid: int, ship_id_str: String) -> void:
-	if peers.has(pid):
-		peers[pid].ship_id = StringName(ship_id_str)
-		# Update system_id to match our local system — the server confirmed
-		# this peer entered our system, so keep the local state consistent.
+	if _peer_registry.peers.has(pid):
+		_peer_registry.peers[pid].ship_id = StringName(ship_id_str)
 		var local_sys: int = GameManager.current_system_id_safe() if GameManager else 0
-		peers[pid].system_id = local_sys
+		_peer_registry.peers[pid].system_id = local_sys
 	player_entered_system_received.emit(pid, StringName(ship_id_str))
 
 
@@ -1181,13 +757,12 @@ func _rpc_receive_player_entered_system(pid: int, ship_id_str: String) -> void:
 # =========================================================================
 
 ## Client -> Server: Request to deploy a fleet ship.
-## ship_data_json contains the client's ship loadout for server-side NPC spawning.
 @rpc("any_peer", "reliable")
 func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: String, ship_data_json: String = "") -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	var npc_auth = GameManager.get_node_or_null("NpcAuthority") as Node
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var params: Dictionary = {}
 		if params_json != "":
@@ -1207,8 +782,8 @@ func _rpc_request_fleet_deploy(fleet_index: int, cmd_str: String, params_json: S
 func _rpc_request_fleet_retrieve(fleet_index: int) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.handle_fleet_retrieve_request(sender_id, fleet_index)
 
@@ -1218,8 +793,8 @@ func _rpc_request_fleet_retrieve(fleet_index: int) -> void:
 func _rpc_request_fleet_command(fleet_index: int, cmd_str: String, params_json: String) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		var params: Dictionary = {}
 		if params_json != "":
@@ -1274,8 +849,8 @@ func _rpc_fleet_command_confirmed(fleet_index: int, cmd_str: String, params: Dic
 func _rpc_mining_beam(is_active: bool, source_pos: Array, target_pos: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
 		npc_auth.relay_mining_beam(sender_id, is_active, source_pos, target_pos)
 
@@ -1291,10 +866,10 @@ func _rpc_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, t
 func _rpc_asteroid_depleted(asteroid_id_str: String) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	var npc_auth =GameManager.get_node_or_null("NpcAuthority") as Node
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 	if npc_auth:
-		var sender_state = peers.get(sender_id)
+		var sender_state = _peer_registry.peers.get(sender_id)
 		if sender_state:
 			npc_auth.broadcast_asteroid_depleted(asteroid_id_str, sender_state.system_id, sender_id)
 
@@ -1306,19 +881,17 @@ func _rpc_receive_asteroid_depleted(asteroid_id_str: String) -> void:
 
 
 ## Client -> Server: batch of mining damage claims (0.5s interval).
-## claims: [{ "aid": asteroid_id, "dmg": damage, "hm": health_max }]
 @rpc("any_peer", "reliable")
 func _rpc_mining_damage_claim(claims: Array) -> void:
 	if not is_server():
 		return
-	var sender_id = multiplayer.get_remote_sender_id()
+	var sender_id: int = multiplayer.get_remote_sender_id()
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 	if npc_auth:
 		npc_auth.handle_mining_damage_claims(sender_id, claims)
 
 
 ## Server -> Client: batch of asteroid health ratios (2Hz).
-## batch: [{ "aid": asteroid_id, "hp": health_ratio 0.0-1.0 }]
 @rpc("authority", "unreliable_ordered")
 func _rpc_asteroid_health_batch(batch: Array) -> void:
 	asteroid_health_batch_received.emit(batch)
@@ -1333,23 +906,14 @@ func _rpc_asteroid_health_batch(batch: Array) -> void:
 func _rpc_structure_hit_claim(target_id: String, weapon: String, damage: float, hit_dir: Array) -> void:
 	if not is_server():
 		return
-	var sender_id =multiplayer.get_remote_sender_id()
-	# Basic validation: sender must exist and damage must be in bounds
-	if not peers.has(sender_id):
-		return
-	if damage < 0.0 or damage > 500.0:
-		return
-	# Reject unknown weapons
-	var weapon_check = WeaponRegistry.get_weapon(StringName(weapon))
-	if weapon_check == null:
-		return
-	structure_hit_claimed.emit(sender_id, target_id, weapon, damage, hit_dir)
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	_combat_server.validate_structure_hit(sender_id, target_id, weapon, damage, hit_dir)
 
 
 ## Server -> Client: Batch sync of structure health ratios.
 @rpc("authority", "unreliable_ordered")
 func _rpc_structure_batch(batch: Array) -> void:
-	var struct_auth =GameManager.get_node_or_null("StructureAuthority") as Node
+	var struct_auth: Node = GameManager.get_node_or_null("StructureAuthority") as Node
 	if struct_auth:
 		struct_auth.apply_batch(batch)
 
@@ -1357,7 +921,7 @@ func _rpc_structure_batch(batch: Array) -> void:
 ## Server -> Client: A structure was destroyed.
 @rpc("authority", "reliable")
 func _rpc_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, loot: Array) -> void:
-	var struct_auth =GameManager.get_node_or_null("StructureAuthority") as Node
+	var struct_auth: Node = GameManager.get_node_or_null("StructureAuthority") as Node
 	if struct_auth:
 		struct_auth.apply_structure_destroyed(struct_id, killer_pid, pos, loot)
 	structure_destroyed_received.emit(struct_id, killer_pid, pos, loot)
@@ -1380,36 +944,8 @@ func _rpc_event_ended(event_dict: Dictionary) -> void:
 
 
 # =============================================================================
-# EPHEMERAL GROUP (PARTY) SYSTEM
+# EPHEMERAL GROUP (PARTY) SYSTEM RPCs
 # =============================================================================
-
-## Public API — client requests to invite a player to their group.
-func request_group_invite(target_peer_id: int) -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	_rpc_request_group_invite.rpc_id(1, target_peer_id)
-
-
-## Public API — client responds to an incoming invite.
-func respond_group_invite(accepted: bool) -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	_rpc_respond_group_invite.rpc_id(1, accepted)
-
-
-## Public API — client requests to leave their group.
-func request_leave_group() -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	_rpc_request_leave_group.rpc_id(1)
-
-
-## Public API — leader kicks a member.
-func request_kick_from_group(target_peer_id: int) -> void:
-	if is_server() or not is_connected_to_server():
-		return
-	_rpc_request_kick_from_group.rpc_id(1, target_peer_id)
-
 
 ## Client -> Server: Request to invite another player.
 @rpc("any_peer", "reliable")
@@ -1417,51 +953,7 @@ func _rpc_request_group_invite(target_pid: int) -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-
-	# Validate target exists and is not self
-	if not peers.has(target_pid) or target_pid == sender_id:
-		_rpc_receive_group_error.rpc_id(sender_id, "Joueur introuvable.")
-		return
-
-	# Target already in a group?
-	if _player_group.has(target_pid) and _player_group[target_pid] > 0:
-		_rpc_receive_group_error.rpc_id(sender_id, "Ce joueur est déjà dans un groupe.")
-		return
-
-	# Target already has a pending invite?
-	if _pending_invites.has(target_pid):
-		_rpc_receive_group_error.rpc_id(sender_id, "Ce joueur a déjà une invitation en attente.")
-		return
-
-	# Get or create group for sender
-	var gid: int = _player_group.get(sender_id, 0)
-	if gid == 0:
-		# Create new group with sender as leader
-		gid = _next_group_id
-		_next_group_id += 1
-		_groups[gid] = {"leader": sender_id, "members": [sender_id]}
-		_player_group[sender_id] = gid
-		# Update sender's NetworkState
-		if peers.has(sender_id):
-			peers[sender_id].group_id = gid
-
-	# Check if sender is leader
-	if _groups[gid]["leader"] != sender_id:
-		_rpc_receive_group_error.rpc_id(sender_id, "Seul le leader peut inviter.")
-		return
-
-	# Check max size
-	if _groups[gid]["members"].size() >= MAX_GROUP_SIZE:
-		_rpc_receive_group_error.rpc_id(sender_id, "Groupe plein (%d max)." % MAX_GROUP_SIZE)
-		return
-
-	# Store pending invite and notify target
-	_pending_invites[target_pid] = {"from": sender_id, "group_id": gid, "time": Time.get_unix_time_from_system()}
-	var inviter_name: String = peers[sender_id].player_name if peers.has(sender_id) else "Pilote"
-	_rpc_receive_group_invite.rpc_id(target_pid, inviter_name, gid)
-
-	# Notify inviter that the invite was sent
-	_broadcast_group_update(gid)
+	_group_mgr.handle_invite(sender_id, target_pid)
 
 
 ## Client -> Server: Accept or decline an invite.
@@ -1470,44 +962,7 @@ func _rpc_respond_group_invite(accepted: bool) -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-
-	if not _pending_invites.has(sender_id):
-		return  # No pending invite
-
-	var invite: Dictionary = _pending_invites[sender_id]
-	_pending_invites.erase(sender_id)
-	var gid: int = invite["group_id"]
-
-	if not accepted:
-		# Notify the inviter
-		var from_pid: int = invite["from"]
-		var decliner_name: String = peers[sender_id].player_name if peers.has(sender_id) else "Pilote"
-		if peers.has(from_pid):
-			_rpc_receive_group_error.rpc_id(from_pid, "%s a refusé l'invitation." % decliner_name)
-		return
-
-	# Validate group still exists
-	if not _groups.has(gid):
-		_rpc_receive_group_error.rpc_id(sender_id, "Le groupe n'existe plus.")
-		return
-
-	# Check max size
-	if _groups[gid]["members"].size() >= MAX_GROUP_SIZE:
-		_rpc_receive_group_error.rpc_id(sender_id, "Groupe plein.")
-		return
-
-	# Already in another group?
-	if _player_group.has(sender_id) and _player_group[sender_id] > 0:
-		_rpc_receive_group_error.rpc_id(sender_id, "Vous êtes déjà dans un groupe.")
-		return
-
-	# Add to group
-	_groups[gid]["members"].append(sender_id)
-	_player_group[sender_id] = gid
-	if peers.has(sender_id):
-		peers[sender_id].group_id = gid
-
-	_broadcast_group_update(gid)
+	_group_mgr.handle_response(sender_id, accepted)
 
 
 ## Client -> Server: Leave group.
@@ -1516,15 +971,7 @@ func _rpc_request_leave_group() -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	var gid: int = _player_group.get(sender_id, 0)
-	if gid == 0 or not _groups.has(gid):
-		return
-
-	if _groups[gid]["leader"] == sender_id:
-		# Leader leaves → dissolve entire group
-		_dissolve_group(gid, "Le leader a quitté le groupe.")
-	else:
-		_remove_member_from_group(gid, sender_id)
+	_group_mgr.handle_leave(sender_id)
 
 
 ## Client -> Server: Leader kicks a member.
@@ -1533,26 +980,7 @@ func _rpc_request_kick_from_group(target_pid: int) -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	var gid: int = _player_group.get(sender_id, 0)
-	if gid == 0 or not _groups.has(gid):
-		return
-
-	# Only leader can kick
-	if _groups[gid]["leader"] != sender_id:
-		_rpc_receive_group_error.rpc_id(sender_id, "Seul le leader peut expulser.")
-		return
-
-	# Can't kick yourself
-	if target_pid == sender_id:
-		return
-
-	# Verify target is in this group
-	if _player_group.get(target_pid, 0) != gid:
-		return
-
-	_remove_member_from_group(gid, target_pid)
-	var _kicked_name: String = peers[target_pid].player_name if peers.has(target_pid) else "Pilote"
-	_rpc_receive_group_dissolved.rpc_id(target_pid, "Vous avez été expulsé du groupe.")
+	_group_mgr.handle_kick(sender_id, target_pid)
 
 
 ## Server -> Client: You've been invited to a group.
@@ -1564,16 +992,14 @@ func _rpc_receive_group_invite(inviter_name: String, _gid: int) -> void:
 ## Server -> Client: Group state update (members list).
 @rpc("authority", "reliable")
 func _rpc_receive_group_update(gdata: Dictionary) -> void:
-	local_group_id = gdata.get("group_id", 0)
-	local_group_data = gdata
+	_group_mgr.apply_group_update(gdata)
 	group_updated.emit(gdata)
 
 
 ## Server -> Client: Your group has been dissolved.
 @rpc("authority", "reliable")
 func _rpc_receive_group_dissolved(reason: String) -> void:
-	local_group_id = 0
-	local_group_data = {}
+	_group_mgr.clear_local_group()
 	group_dissolved.emit(reason)
 
 
@@ -1581,94 +1007,34 @@ func _rpc_receive_group_dissolved(reason: String) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_group_error(msg: String) -> void:
 	group_error.emit(msg)
-	# Route to chat as system message
 	chat_message_received.emit("SYSTÈME", 1, msg, "", "player")
 
 
-# --- Server-side group helpers ---
+# =============================================================================
+# ADMIN COMMANDS — kept at END of file so @rpc IDs don't shift existing methods
+# =============================================================================
 
-func _broadcast_group_update(gid: int) -> void:
-	if not _groups.has(gid):
+## Client -> Server: Admin command (role verified server-side).
+@rpc("any_peer", "reliable")
+func _rpc_admin_command(cmd: String) -> void:
+	if not is_server():
 		return
-	var group: Dictionary = _groups[gid]
-	var members_data: Array = []
-	for pid in group["members"]:
-		var entry: Dictionary = {"peer_id": pid, "name": "Pilote", "hull": 1.0, "system_id": 0, "is_leader": pid == group["leader"]}
-		if peers.has(pid):
-			entry["name"] = peers[pid].player_name
-			entry["hull"] = peers[pid].hull_ratio
-			entry["system_id"] = peers[pid].system_id
-		members_data.append(entry)
-
-	var gdata: Dictionary = {"group_id": gid, "leader": group["leader"], "members": members_data}
-	for pid in group["members"]:
-		_rpc_receive_group_update.rpc_id(pid, gdata)
-
-
-func _dissolve_group(gid: int, reason: String) -> void:
-	if not _groups.has(gid):
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var sender_state = _peer_registry.peers.get(sender_id)
+	if sender_state == null or sender_state.role != "admin":
+		push_warning("[NetworkManager] Admin command '%s' from non-admin peer %d — rejected" % [cmd, sender_id])
 		return
-	var members: Array = _groups[gid]["members"].duplicate()
-	for pid in members:
-		_player_group.erase(pid)
-		if peers.has(pid):
-			peers[pid].group_id = 0
-		_rpc_receive_group_dissolved.rpc_id(pid, reason)
-	# Clean pending invites for this group
-	var to_erase: Array = []
-	for target_pid in _pending_invites:
-		if _pending_invites[target_pid]["group_id"] == gid:
-			to_erase.append(target_pid)
-	for target_pid in to_erase:
-		_pending_invites.erase(target_pid)
-	_groups.erase(gid)
+	match cmd:
+		"reset_npcs":
+			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+			if npc_auth:
+				npc_auth.admin_reset_all_npcs()
+			_rpc_receive_chat.rpc("♛ ADMIN", 0, "Réinitialisation des PNJ effectuée.", "", "admin")
 
 
-func _remove_member_from_group(gid: int, pid: int) -> void:
-	if not _groups.has(gid):
-		return
-	var members: Array = _groups[gid]["members"]
-	members.erase(pid)
-	_player_group.erase(pid)
-	if peers.has(pid):
-		peers[pid].group_id = 0
-
-	# If only 1 member left, dissolve
-	if members.size() <= 1:
-		_dissolve_group(gid, "Le groupe a été dissous (pas assez de membres).")
-		return
-
-	_broadcast_group_update(gid)
-
-
-func _handle_group_disconnect(pid: int) -> void:
-	# Clean up pending invites targeting this peer
-	_pending_invites.erase(pid)
-	# Clean up pending invites FROM this peer
-	var to_erase: Array = []
-	for target_pid in _pending_invites:
-		if _pending_invites[target_pid]["from"] == pid:
-			to_erase.append(target_pid)
-	for target_pid in to_erase:
-		_pending_invites.erase(target_pid)
-
-	var gid: int = _player_group.get(pid, 0)
-	if gid == 0 or not _groups.has(gid):
-		return
-
-	if _groups[gid]["leader"] == pid:
-		# Leader disconnected → dissolve
-		_dissolve_group(gid, "Le leader s'est déconnecté.")
-	else:
-		# Member disconnected → remove
-		_remove_member_from_group(gid, pid)
-
-
-## Check if a peer is in the local player's group (client-side helper).
-func is_peer_in_my_group(peer_id: int) -> bool:
-	if local_group_id == 0:
-		return false
-	for m in local_group_data.get("members", []):
-		if m.get("peer_id", -1) == peer_id:
-			return true
-	return false
+## Server -> Clients: All NPCs have been reset by admin. Clear remote NPC nodes.
+@rpc("authority", "reliable")
+func _rpc_admin_npcs_reset() -> void:
+	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
+	if sync_mgr and sync_mgr.has_method("clear_all_remote_npcs"):
+		sync_mgr.clear_all_remote_npcs()

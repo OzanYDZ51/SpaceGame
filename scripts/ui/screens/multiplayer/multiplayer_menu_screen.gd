@@ -133,7 +133,7 @@ func _refresh_player_list() -> void:
 		var local_sys: int = -1
 		if GameManager._system_transition:
 			local_sys = GameManager._system_transition.current_system_id
-		items.append({"name": NetworkManager.local_player_name, "pid": NetworkManager.local_peer_id, "sys": local_sys})
+		items.append({"name": AuthManager.username, "pid": NetworkManager.local_peer_id, "sys": local_sys})
 		# Add all remote peers
 		for pid in NetworkManager.peers:
 			var state = NetworkManager.peers[pid]

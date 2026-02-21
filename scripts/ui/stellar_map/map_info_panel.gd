@@ -220,9 +220,10 @@ func _planet_type_to_label(ptype: String) -> String:
 
 
 func _faction_to_label(f: String) -> String:
-	match f:
-		"hostile": return Locale.t("map.faction.hostile")
-		"friendly": return Locale.t("map.faction.friendly")
+	var key: String = "map.faction." + f
+	var result: String = Locale.t(key)
+	if result != key:
+		return result
 	return Locale.t("map.faction.neutral")
 
 

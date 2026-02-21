@@ -3,19 +3,18 @@ extends Node3D
 
 # =============================================================================
 # Mining Laser Beam - Multi-layer energy beam visual
-# Core beam (shader) + outer glow + impact sparks/light + source glow
+# Uses StandardMaterial3D (BLEND_MODE_ADD + unshaded) — same as laser_bolt.tscn
+# which is confirmed to render correctly.
 # =============================================================================
-
-const _BeamShader = preload("res://shaders/mining_beam.gdshader")
 
 const BEAM_COLOR := Color(0.3, 1.0, 0.6)
 const BEAM_COLOR_HOT := Color(0.6, 1.0, 0.8)
-const CORE_RADIUS: float = 0.12
-const GLOW_RADIUS: float = 0.5
+const CORE_RADIUS: float = 0.3     # Wider than before for better visibility
+const GLOW_RADIUS: float = 1.2     # Wider glow
 
 var _core_mesh: MeshInstance3D = null
 var _glow_mesh: MeshInstance3D = null
-var _core_mat: ShaderMaterial = null
+var _core_mat: StandardMaterial3D = null
 var _glow_mat: StandardMaterial3D = null
 
 var _impact_light: OmniLight3D = null
@@ -25,10 +24,11 @@ var _source_particles: GPUParticles3D = null
 
 var _active: bool = false
 var _pulse_t: float = 0.0
-var _warmup: float = 0.0  # 0→1 over 0.4s for smooth activation
+var _warmup: float = 0.0  # 0→1 for smooth activation
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_core_beam()
 	_build_glow_beam()
 	_build_impact_effects()
@@ -46,17 +46,16 @@ func _build_core_beam() -> void:
 	_core_mesh.mesh = cyl
 	_core_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	_core_mat = ShaderMaterial.new()
-	_core_mat.shader = _BeamShader
-	_core_mat.set_shader_parameter("core_color", BEAM_COLOR)
-	_core_mat.set_shader_parameter("edge_color", Color(0.1, 0.5, 0.3, 0.4))
-	_core_mat.set_shader_parameter("scroll_speed", 3.0)
-	_core_mat.set_shader_parameter("pulse_frequency", 12.0)
-	_core_mat.set_shader_parameter("pulse_intensity", 0.6)
-	_core_mat.set_shader_parameter("core_width", 0.3)
-	_core_mat.set_shader_parameter("flicker_speed", 8.0)
-	_core_mat.set_shader_parameter("energy_density", 6.0)
-	_core_mat.set_shader_parameter("beam_intensity", 3.0)
+	# StandardMaterial3D — same approach as laser_bolt.tscn which works
+	_core_mat = StandardMaterial3D.new()
+	_core_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_core_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_core_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_core_mat.no_depth_test = true
+	_core_mat.albedo_color = Color(BEAM_COLOR.r, BEAM_COLOR.g, BEAM_COLOR.b, 0.0)
+	_core_mat.emission_enabled = true
+	_core_mat.emission = BEAM_COLOR
+	_core_mat.emission_energy_multiplier = 4.0
 	_core_mesh.material_override = _core_mat
 	_core_mesh.visible = false
 	add_child(_core_mesh)
@@ -77,7 +76,7 @@ func _build_glow_beam() -> void:
 	_glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_glow_mat.albedo_color = Color(BEAM_COLOR.r, BEAM_COLOR.g, BEAM_COLOR.b, 0.08)
+	_glow_mat.albedo_color = Color(BEAM_COLOR.r, BEAM_COLOR.g, BEAM_COLOR.b, 0.0)
 	_glow_mat.no_depth_test = true
 	_glow_mesh.material_override = _glow_mat
 	_glow_mesh.visible = false
@@ -94,22 +93,19 @@ func _build_impact_effects() -> void:
 	_impact_light.visible = false
 	add_child(_impact_light)
 
-	# Impact sparks — debris flying off asteroid surface
+	# Impact sparks
 	_impact_particles = GPUParticles3D.new()
 	var mat := ParticleProcessMaterial.new()
 	mat.direction = Vector3(0, 1, 0)
 	mat.spread = 50.0
 	mat.initial_velocity_min = 3.0
 	mat.initial_velocity_max = 12.0
-	mat.angular_velocity_min = -180.0
-	mat.angular_velocity_max = 180.0
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 2.0
 	mat.damping_max = 5.0
 	mat.scale_min = 0.3
 	mat.scale_max = 1.2
 	mat.color = BEAM_COLOR_HOT
-	# Color ramp: bright at spawn → dim at death
 	var color_ramp := GradientTexture1D.new()
 	var grad := Gradient.new()
 	grad.set_color(0, BEAM_COLOR_HOT)
@@ -122,8 +118,6 @@ func _build_impact_effects() -> void:
 	_impact_particles.lifetime = 0.6
 	_impact_particles.explosiveness = 0.1
 	_impact_particles.emitting = false
-
-	# Particle mesh: small rock-like chunks
 	var pmesh := BoxMesh.new()
 	pmesh.size = Vector3(0.25, 0.15, 0.2)
 	var pmesh_mat := StandardMaterial3D.new()
@@ -140,16 +134,14 @@ func _build_impact_effects() -> void:
 
 
 func _build_source_effects() -> void:
-	# Source glow light (at the hardpoint)
 	_source_light = OmniLight3D.new()
 	_source_light.light_color = BEAM_COLOR
-	_source_light.light_energy = 1.5
-	_source_light.omni_range = 8.0
+	_source_light.light_energy = 2.0
+	_source_light.omni_range = 15.0
 	_source_light.omni_attenuation = 2.0
 	_source_light.visible = false
 	add_child(_source_light)
 
-	# Source sparks — small energy discharge at emission point
 	_source_particles = GPUParticles3D.new()
 	var mat := ParticleProcessMaterial.new()
 	mat.direction = Vector3(0, 0, -1)
@@ -172,7 +164,6 @@ func _build_source_effects() -> void:
 	_source_particles.amount = 8
 	_source_particles.lifetime = 0.3
 	_source_particles.emitting = false
-
 	var pmesh := SphereMesh.new()
 	pmesh.radius = 0.12
 	pmesh.height = 0.24
@@ -194,7 +185,7 @@ func _build_source_effects() -> void:
 
 func activate(source_pos: Vector3, target_pos: Vector3) -> void:
 	_active = true
-	_warmup = 0.0
+	_warmup = 0.5  # Start at 50% — beam is visible immediately
 	update_beam(source_pos, target_pos)
 	_core_mesh.visible = true
 	_glow_mesh.visible = true
@@ -230,14 +221,11 @@ func update_beam(source_pos: Vector3, target_pos: Vector3) -> void:
 
 	var midpoint: Vector3 = (source_pos + target_pos) * 0.5
 
-	# Orient and scale both beam meshes
 	_orient_beam(_core_mesh, midpoint, source_pos, target_pos, distance)
 	_orient_beam(_glow_mesh, midpoint, source_pos, target_pos, distance)
 
-	# Impact effects at target
 	_impact_light.global_position = target_pos
 	_impact_particles.global_position = target_pos
-	# Orient particles away from beam direction
 	var hit_dir: Vector3 = direction.normalized()
 	if hit_dir.length_squared() > 0.01:
 		_impact_particles.global_transform = Transform3D(
@@ -245,7 +233,6 @@ func update_beam(source_pos: Vector3, target_pos: Vector3) -> void:
 			target_pos
 		)
 
-	# Source effects at hardpoint
 	_source_light.global_position = source_pos
 	_source_particles.global_position = source_pos
 
@@ -269,20 +256,19 @@ func _process(delta: float) -> void:
 		return
 	_pulse_t += delta
 
-	# Warmup ramp (0→1 over 0.4s) for smooth beam appear
+	# Warmup ramp
 	_warmup = minf(_warmup + delta / 0.4, 1.0)
 	var warmup_ease: float = _warmup * _warmup * (3.0 - 2.0 * _warmup)  # smoothstep
 
-	# Beam intensity modulation
-	var intensity: float = warmup_ease * (2.5 + sin(_pulse_t * 6.0) * 0.8)
-	_core_mat.set_shader_parameter("beam_intensity", intensity)
+	# Core beam alpha — modulate StandardMaterial albedo alpha
+	var core_alpha: float = warmup_ease * (0.7 + sin(_pulse_t * 6.0) * 0.15)
+	_core_mat.albedo_color = Color(BEAM_COLOR.r, BEAM_COLOR.g, BEAM_COLOR.b, clampf(core_alpha, 0.0, 1.0))
+	_core_mat.emission_energy_multiplier = warmup_ease * 4.0
 
-	# Glow pulse
-	var glow_alpha: float = warmup_ease * (0.06 + sin(_pulse_t * 4.0) * 0.03)
-	_glow_mat.albedo_color.a = glow_alpha
+	# Glow beam alpha
+	var glow_alpha: float = warmup_ease * (0.15 + sin(_pulse_t * 4.0) * 0.06)
+	_glow_mat.albedo_color = Color(BEAM_COLOR.r, BEAM_COLOR.g, BEAM_COLOR.b, clampf(glow_alpha, 0.0, 1.0))
 
-	# Impact light flicker
-	_impact_light.light_energy = warmup_ease * (2.5 + sin(_pulse_t * 8.0) * 1.2 + sin(_pulse_t * 13.0) * 0.5)
-
-	# Source light softer pulse
-	_source_light.light_energy = warmup_ease * (1.2 + sin(_pulse_t * 5.0) * 0.4)
+	# Light flicker
+	_impact_light.light_energy = warmup_ease * (2.5 + sin(_pulse_t * 8.0) * 1.2)
+	_source_light.light_energy = warmup_ease * (1.8 + sin(_pulse_t * 5.0) * 0.5)

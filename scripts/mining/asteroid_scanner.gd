@@ -57,6 +57,21 @@ func trigger_scan() -> void:
 
 	_cooldown = SCAN_COOLDOWN
 
+	# === DEBUG: BLEND_MODE_ADD box — tests if ADD blend works at runtime in Universe ===
+	var dbg := MeshInstance3D.new()
+	dbg.mesh = BoxMesh.new()
+	dbg.position = _ship.global_position + Vector3(0, 80, 0)
+	dbg.scale = Vector3(30, 30, 30)
+	var dbg_mat := StandardMaterial3D.new()
+	dbg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dbg_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	dbg_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dbg_mat.albedo_color = Color(1, 1, 0, 1.0)  # Bright yellow additive
+	dbg.material_override = dbg_mat
+	_universe_node.add_child(dbg)
+	print("=== SCANNER DEBUG: ADDITIVE yellow cube at ", dbg.position)
+	# ==============================================================================
+
 	# Spawn pulse effect at ship position (in Universe node so it shifts with origin)
 	var pulse =ScannerPulseEffect.new()
 	pulse.name = "ScannerPulse_%d" % Time.get_ticks_msec()

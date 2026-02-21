@@ -10,7 +10,6 @@ var pulse_t: float = 0.0
 
 var _mining_heat: Control = null
 var _mining_progress: Control = null
-var _cargo_bar: Control = null
 var _cargo_full_msg: Control = null
 
 # Cargo full flash timer
@@ -30,12 +29,6 @@ func _ready() -> void:
 	_mining_progress.draw.connect(_draw_mining_progress.bind(_mining_progress))
 	_mining_progress.visible = false
 	add_child(_mining_progress)
-
-	# Cargo fill bar — below heat bar
-	_cargo_bar = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -100, 252, 100, 278)
-	_cargo_bar.draw.connect(_draw_cargo_bar.bind(_cargo_bar))
-	_cargo_bar.visible = false
-	add_child(_cargo_bar)
 
 	# Cargo full message — centered above heat bar
 	_cargo_full_msg = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -110, 195, 110, 215)
@@ -70,12 +63,6 @@ func update_visibility() -> void:
 		_mining_progress.visible = show_prog
 		if show_prog:
 			_mining_progress.queue_redraw()
-
-	# Cargo bar — visible whenever mining laser is equipped
-	if _cargo_bar:
-		_cargo_bar.visible = has_laser
-		if has_laser:
-			_cargo_bar.queue_redraw()
 
 	# Cargo full message — visible while timer active
 	if _cargo_full_msg:
@@ -169,50 +156,6 @@ func _draw_mining_progress(ctrl: Control) -> void:
 	var hp_text = "%d%%" % int(hp_ratio * 100.0)
 	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 2), hp_text,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)
-
-
-func _draw_cargo_bar(ctrl: Control) -> void:
-	if GameManager.player_data == null or GameManager.player_data.fleet == null:
-		return
-	var active = GameManager.player_data.fleet.get_active()
-	if active == null:
-		return
-
-	var s = ctrl.size
-	var font = UITheme.get_font_medium()
-	var capacity: int = active.get_cargo_capacity()
-	var stored: int = active.get_total_stored()
-	var ratio: float = float(stored) / float(capacity) if capacity > 0 else 0.0
-	ratio = clampf(ratio, 0.0, 1.0)
-
-	# Color: green → yellow → red
-	var cargo_col: Color
-	if ratio < 0.5:
-		cargo_col = Color(0.2, 0.8, 0.5).lerp(Color(1.0, 0.9, 0.2), ratio * 2.0)
-	elif ratio < 0.85:
-		cargo_col = Color(1.0, 0.9, 0.2).lerp(Color(1.0, 0.5, 0.1), (ratio - 0.5) / 0.35)
-	else:
-		cargo_col = Color(1.0, 0.5, 0.1).lerp(Color(1.0, 0.2, 0.1), (ratio - 0.85) / 0.15)
-
-	var bg_rect = Rect2(Vector2(6, 0), Vector2(s.x - 12, s.y))
-	ctrl.draw_rect(bg_rect, Color(0.02, 0.02, 0.02, 0.5))
-	ctrl.draw_rect(bg_rect, Color(cargo_col.r, cargo_col.g, cargo_col.b, 0.2), false, 1.0)
-
-	# Label: "CARGO: 42/100"
-	var label: String = "%s: %d/%d" % [Locale.t("hud.mining_cargo"), stored, capacity]
-	ctrl.draw_string(font, Vector2(0, 10), label,
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 11, Color(cargo_col.r, cargo_col.g, cargo_col.b, 0.85))
-
-	# Mini fill bar
-	var bar_x: float = 12.0
-	var bar_y: float = 14.0
-	var bar_w: float = s.x - 24.0
-	var bar_h: float = 6.0
-
-	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.08, 0.08, 0.08, 0.7))
-	var fill_w: float = (bar_w - 2) * ratio
-	ctrl.draw_rect(Rect2(bar_x + 1, bar_y + 1, fill_w, bar_h - 2), Color(cargo_col.r, cargo_col.g, cargo_col.b, 0.8))
-	ctrl.draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(cargo_col.r, cargo_col.g, cargo_col.b, 0.3), false, 1.0)
 
 
 func _draw_cargo_full_msg(ctrl: Control) -> void:

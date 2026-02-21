@@ -75,6 +75,10 @@ var _squadron_mgr = null
 # Construction
 var _construction_mgr = null
 
+# Redraw throttle — map doesn't need 60 FPS redraws
+var _redraw_timer: float = 0.0
+const REDRAW_INTERVAL: float = 1.0 / 30.0  # 30 FPS max for entity/bg layers
+
 # Inline rename
 var _rename_edit: LineEdit = null
 var _rename_sq_id: int = -1
@@ -252,10 +256,17 @@ func open() -> void:
 		_filters.clear()
 		_sync_filters()
 
-	# Auto-select player's active ship so right-click move works immediately
+	# Restore or auto-select: keep previous selection if one exists, otherwise default to player ship
 	if _player_id != "" and _preview_entities.is_empty():
-		_select_entity(_player_id)
-		_sync_fleet_selection_from_entity(_player_id)
+		if _entity_layer.selected_id == "":
+			# Nothing selected — auto-select player ship so right-click works immediately
+			_select_entity(_player_id)
+			_sync_fleet_selection_from_entity(_player_id)
+		else:
+			# Previous selection still valid — restore info panel and fleet sidebar highlight
+			_info_panel.set_selected(_entity_layer.selected_id)
+			_sync_fleet_selection_from_entity(_entity_layer.selected_id)
+			_dirty = true
 
 	# Build virtual fleet entities for deployed ships without EntityRegistry entries
 	_update_fleet_virtual_entities()
@@ -395,10 +406,16 @@ func _process(delta: float) -> void:
 		_fleet_virtual_timer = 0.0
 		_update_fleet_virtual_entities()
 
-	# Always redraw while open so entity positions update in real-time
-	_renderer.queue_redraw()
-	_entity_layer.queue_redraw()
-	_fleet_panel.queue_redraw()
+	# Throttle redraws: always on camera animation, otherwise cap at 30 FPS
+	var camera_animating: bool = absf(log(_camera.zoom) - log(_camera.target_zoom)) > 0.005 \
+		or _pan_velocity.length_squared() > 100.0
+	_redraw_timer += delta
+	if camera_animating or _redraw_timer >= REDRAW_INTERVAL:
+		if not camera_animating:
+			_redraw_timer = 0.0
+		_renderer.queue_redraw()
+		_entity_layer.queue_redraw()
+		_fleet_panel.queue_redraw()
 	# Redraw self for marquee only
 	if _marquee.active:
 		queue_redraw()
@@ -597,11 +614,11 @@ func _input(event: InputEvent) -> void:
 					if _marquee.is_drag():
 						var rect =_marquee.get_rect()
 						var ids = _entity_layer.get_entities_in_rect(rect)
-						_entity_layer.selected_ids.assign(ids)
 						if ids.size() > 0:
-							_entity_layer.selected_id = ids[0]
-							_info_panel.set_selected(ids[0])
-							_dirty = true
+							# Route through _select_entity for the primary entity so nav_target is set
+							_select_entity(ids[0])
+							# Then restore multi-selection (marquee may have captured several entities)
+							_entity_layer.selected_ids.assign(ids)
 							# Extract fleet indices from marquee-selected entities
 							var fleet_ids: Array[int] = []
 							for eid in ids:
@@ -850,6 +867,9 @@ func _select_entity(id: String) -> void:
 	#   non-navigable    → keep existing nav target (auto-select on open, NPC click, etc.)
 	if id == "":
 		GameManager.nav_target_id = ""
+		GameManager.nav_target_name = ""
+		GameManager.nav_target_ux = 0.0
+		GameManager.nav_target_uz = 0.0
 	else:
 		var ent: Dictionary = EntityRegistry.get_entity(id)
 		var etype: int = ent.get("type", -1)
@@ -863,6 +883,9 @@ func _select_entity(id: String) -> void:
 		]
 		if navigable:
 			GameManager.nav_target_id = id
+			GameManager.nav_target_name = ent.get("name", id)
+			GameManager.nav_target_ux = ent.get("pos_x", 0.0)
+			GameManager.nav_target_uz = ent.get("pos_z", 0.0)
 
 
 ## Check if an entity is a valid attack target for fleet ships.

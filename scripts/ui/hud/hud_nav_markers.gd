@@ -154,7 +154,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 			var nav_dz: float = nav_ent["pos_z"] - ship_upos[2]
 			var nav_dist: float = sqrt(nav_dx * nav_dx + nav_dz * nav_dz)
 			_draw_nav_target_marker(ctrl, font, cam, cam_fwd, cam_pos, screen_size,
-				nav_world_pos, nav_ent.get("name", "?"), nav_dist)
+				nav_world_pos, GameManager.nav_target_name, nav_dist)
 
 
 func _draw_nav_target_marker(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3, cam_pos: Vector3, screen_size: Vector2, world_pos: Vector3, ent_name: String, dist: float) -> void:
@@ -183,12 +183,12 @@ func _draw_nav_target_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name:
 			ctrl.draw_line(corner, corner + Vector2(-sx * blen * 2.0, 0.0), col, 2.0)
 			ctrl.draw_line(corner, corner + Vector2(0.0, -sy * blen * 2.0), col, 2.0)
 	HudDrawHelpers.draw_diamond(ctrl, sp, 6.0, col)
-	var name_w: float = font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	ctrl.draw_rect(Rect2(sp.x - name_w * 0.5 - 4, sp.y - 30, name_w + 8, 14), Color(0.0, 0.02, 0.04, 0.55))
-	ctrl.draw_string(font, Vector2(sp.x - name_w * 0.5, sp.y - 28), ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
-	var dist_w: float = font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	ctrl.draw_rect(Rect2(sp.x - dist_w * 0.5 - 4, sp.y + 24, dist_w + 8, 15), Color(0.0, 0.02, 0.04, 0.55))
-	ctrl.draw_string(font, Vector2(sp.x - dist_w * 0.5, sp.y + 26), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	var name_w: float = font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+	ctrl.draw_rect(Rect2(sp.x - name_w * 0.5 - 4, sp.y - 30, name_w + 8, 16), Color(0.0, 0.02, 0.04, 0.55))
+	ctrl.draw_string(font, Vector2(sp.x - name_w * 0.5, sp.y - 28), ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
+	var dist_w: float = font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
+	ctrl.draw_rect(Rect2(sp.x - dist_w * 0.5 - 4, sp.y + 24, dist_w + 8, 16), Color(0.0, 0.02, 0.04, 0.55))
+	ctrl.draw_string(font, Vector2(sp.x - dist_w * 0.5, sp.y + 26), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
 
 
 func _draw_nav_target_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: Camera3D, cam_pos: Vector3, world_pos: Vector3, ent_name: String, dist_str: String) -> void:
@@ -223,8 +223,8 @@ func _draw_nav_target_offscreen(ctrl: Control, font: Font, screen_size: Vector2,
 	var text_pos: Vector2 = edge_pos + text_offset
 	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 160.0)
 	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
-	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
-	ctrl.draw_string(font, text_pos + Vector2(0.0, 14.0), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
+	ctrl.draw_string(font, text_pos + Vector2(0.0, 15.0), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
 
 
 func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3, cam_pos: Vector3, screen_size: Vector2, world_pos: Vector3, ent_name: String, dist: float, col: Color) -> void:
@@ -244,15 +244,15 @@ func _draw_nav_entity(ctrl: Control, font: Font, cam: Camera3D, cam_fwd: Vector3
 func _draw_nav_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name: String, dist_str: String, col: Color) -> void:
 	HudDrawHelpers.draw_diamond(ctrl, sp, 5.0, col)
 
-	var name_w =font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var name_w =font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
 	var name_pos =Vector2(sp.x - name_w * 0.5, sp.y - 18)
-	ctrl.draw_rect(Rect2(name_pos.x - 4, name_pos.y - 10, name_w + 8, 14), Color(0.0, 0.02, 0.06, 0.5))
-	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_rect(Rect2(name_pos.x - 4, name_pos.y - 11, name_w + 8, 15), Color(0.0, 0.02, 0.06, 0.5))
+	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
-	var dist_w =font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	var dist_w =font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 	var dist_pos =Vector2(sp.x - dist_w * 0.5, sp.y + 18)
 	ctrl.draw_rect(Rect2(dist_pos.x - 4, dist_pos.y - 11, dist_w + 8, 15), Color(0.0, 0.02, 0.06, 0.5))
-	ctrl.draw_string(font, dist_pos, dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	ctrl.draw_string(font, dist_pos, dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
 
 
 func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: Camera3D, cam_pos: Vector3, world_pos: Vector3, ent_name: String, dist_str: String, col: Color) -> void:
@@ -289,8 +289,8 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 120.0)
 	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
 
-	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	ctrl.draw_string(font, text_pos + Vector2(0, 13), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, text_pos + Vector2(0, 14), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
 
 
 func _get_npc_nav_color(node: Node) -> Color:

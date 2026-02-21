@@ -99,6 +99,7 @@ func _wire_signals(refs: Dictionary) -> void:
 	event_manager.event_completed.connect(_on_event_completed)
 	event_manager.event_started.connect(_on_event_started)
 	event_manager.event_npc_killed.connect(_on_event_npc_killed)
+	event_manager.event_expired.connect(_on_event_expired)
 
 	# Network event sync (client receives from server)
 	NetworkManager.event_started_received.connect(_on_network_event_started)
@@ -275,30 +276,19 @@ func _on_event_started(evt: EventData) -> void:
 		hud.show_comm_transmission(evt.tier, evt.get_color())
 
 
-func _on_event_completed(evt: EventData) -> void:
-	# In multiplayer, rewards are handled via _on_network_event_ended (server RPC).
-	# Only give rewards locally in offline mode.
-	if NetworkManager.is_connected_to_server():
-		return
+func _on_event_completed(_evt: EventData) -> void:
+	pass  # Rewards and messages handled server-side via _on_network_event_ended
 
-	# Comm panel completion message (before rewards toast)
+
+func _on_event_expired(evt: EventData) -> void:
+	# Signal fires server-side only — server has no HUD so null checks handle it.
+	# Client announcements come through _on_network_event_ended via RPC.
 	var hud = _get_flight_hud()
 	if hud:
-		hud.show_comm_completion(evt.tier)
-
-	# Bonus credits for destroying the convoy leader
-	var bonus: int = EventDefinitions.get_leader_bonus_credits(evt.tier)
-	if _player_data and _player_data.economy:
-		_player_data.economy.add_credits(bonus)
-
-	# Pirate reputation penalty
-	if faction_manager:
-		faction_manager.modify_reputation(&"pirate", -3.0 * evt.tier)
-		faction_manager.modify_reputation(&"nova_terra", 1.0 * evt.tier)
-		faction_manager.modify_reputation(&"kharsis", 1.0 * evt.tier)
-
+		hud.show_comm_transmission(evt.tier, Color(0.55, 0.55, 0.65))
 	if _notif:
-		_notif.toast("%s éliminé! +%s CR" % [evt.get_display_name(), PlayerEconomy.format_credits(bonus)])
+		var event_name: String = EventDefinitions.get_display_name_for_type(String(evt.event_type), evt.tier)
+		_notif.toast("%s a disparu" % event_name)
 
 
 # =============================================================================

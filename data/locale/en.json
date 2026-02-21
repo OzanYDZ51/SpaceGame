@@ -554,6 +554,10 @@
 	"map.faction.hostile": "Hostile",
 	"map.faction.friendly": "Allied",
 	"map.faction.neutral": "Neutral",
+	"map.faction.pirate": "Pirate",
+	"map.faction.nova_terra": "Nova Terra",
+	"map.faction.kharsis": "Kharsis",
+	"map.faction.player_fleet": "Player Fleet",
 
 	"map.station_type.repair": "Repair",
 	"map.station_type.trade": "Commerce",

@@ -190,8 +190,12 @@ func _compute_exit_position() -> Dictionary:
 		for ent in stations:
 			var extra: Dictionary = ent.get("extra", {})
 			if extra.get("station_index", -1) == docked_station_idx:
-				station_node = ent.get("node")
-				station_pos = station_node.global_position if is_instance_valid(station_node) else FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+				var raw_node = ent.get("node")
+				if raw_node != null and is_instance_valid(raw_node):
+					station_node = raw_node as Node3D
+					station_pos = station_node.global_position
+				else:
+					station_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				break
 
 	# Build candidate exit positions ordered by priority

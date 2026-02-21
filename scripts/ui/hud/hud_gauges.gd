@@ -61,8 +61,9 @@ func _ready() -> void:
 	add_child(_warnings)
 
 
-func set_cockpit_mode(is_cockpit: bool) -> void:
-	_crosshair.visible = not is_cockpit
+func set_cockpit_mode(is_cockpit: bool, is_free_looking: bool = false) -> void:
+	# En vue libre : masquer le crosshair (le joueur regarde autour, pas en train de viser)
+	_crosshair.visible = not is_cockpit and not is_free_looking
 	_speed_arc.visible = not is_cockpit
 	_top_bar.visible = not is_cockpit
 	_compass.visible = not is_cockpit
@@ -187,7 +188,7 @@ func _draw_top_bar(ctrl: Control) -> void:
 	var sys_name ="---"
 	if system_transition and system_transition.current_system_data:
 		sys_name = system_transition.current_system_data.system_name.to_upper()
-	ctrl.draw_string(font, Vector2(12, row1_y), sys_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.PRIMARY)
+	ctrl.draw_string(font, Vector2(12, row1_y), sys_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.PRIMARY)
 
 	# Flight mode (center)
 	var mt =HudDrawHelpers.get_mode_text(ship)
@@ -203,8 +204,8 @@ func _draw_top_bar(ctrl: Control) -> void:
 		st = "%.1f km/s" % (ship.current_speed / 1000.0)
 	else:
 		st = "%.0f m/s" % ship.current_speed
-	var s_w =font.get_string_size(st, HORIZONTAL_ALIGNMENT_RIGHT, -1, 14).x
-	ctrl.draw_string(font, Vector2(w - s_w - 12, row1_y), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.TEXT)
+	var s_w =font.get_string_size(st, HORIZONTAL_ALIGNMENT_RIGHT, -1, 15).x
+	ctrl.draw_string(font, Vector2(w - s_w - 12, row1_y), st, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.TEXT)
 
 	# === Separator ===
 	ctrl.draw_line(Vector2(12, 25), Vector2(w - 12, 25), UITheme.PRIMARY_FAINT, 1.0)
@@ -375,8 +376,8 @@ func _draw_compass(ctrl: Control) -> void:
 		ctrl.draw_line(Vector2(sx + cs, cy_m), Vector2(sx, cy_m + cs), mc, 1.5 if m["is_target"] else 1.0)
 		# Small label
 		var lbl: String = m["label"]
-		var lw: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, 8).x
-		ctrl.draw_string(font, Vector2(sx - lw / 2.0, cy_m + cs + 7), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(mc.r, mc.g, mc.b, 0.7))
+		var lw: float = font.get_string_size(lbl, HORIZONTAL_ALIGNMENT_CENTER, -1, 10).x
+		ctrl.draw_string(font, Vector2(sx - lw / 2.0, cy_m + cs + 7), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(mc.r, mc.g, mc.b, 0.9))
 
 
 # =============================================================================

@@ -61,6 +61,15 @@ func spawn_deferred() -> void:
 	_do_spawn_encounters(_deferred_danger_level, _deferred_system_data)
 
 
+## Admin reset: clear active NPC list (nodes already freed by NpcAuthority) and re-spawn.
+func admin_clear_and_respawn() -> void:
+	_active_npc_ids.clear()
+	_encounter_counter = 0
+	# Re-spawn using the stored system data from the initial load
+	if _deferred_system_data != null:
+		_do_spawn_encounters(_deferred_danger_level, _deferred_system_data)
+
+
 func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	# Collect all station positions and scene nodes
 	var station_positions: Array[Vector3] = []

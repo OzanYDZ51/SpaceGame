@@ -15,9 +15,10 @@ var _panel: Control = null
 var _bg_alpha: float = 0.0
 var _bg_target: float = 0.0
 
-const PANEL_X: float = 16.0
-const PANEL_Y: float = 200.0  # Below economy panel
-const PANEL_W: float = 214.0
+const PANEL_OL: float = -210.0  # Left offset from right anchor (aligns with radar)
+const PANEL_OR: float = -16.0   # Right offset from right anchor
+const PANEL_Y: float = 218.0    # Top offset from screen top (below radar bottom at 210)
+const PANEL_W: float = 194.0    # Same width as radar
 const PANEL_H: float = 150.0
 const EMBLEM_R: float = 10.0  # Mini emblem radius for rep rows
 const HEADER_EMBLEM_R: float = 14.0  # Player faction emblem radius
@@ -34,7 +35,7 @@ const STANDING_LABELS: Dictionary = {
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel = HudDrawHelpers.make_ctrl(0.0, 0.0, 0.0, 0.0, PANEL_X, PANEL_Y, PANEL_X + PANEL_W, PANEL_Y + PANEL_H)
+	_panel = HudDrawHelpers.make_ctrl(1.0, 0.0, 1.0, 0.0, PANEL_OL, PANEL_Y, PANEL_OR, PANEL_Y + PANEL_H)
 	_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	_panel.mouse_entered.connect(func(): _bg_target = 1.0)
 	_panel.mouse_exited.connect(func(): _bg_target = 0.0)
@@ -74,18 +75,11 @@ func _draw_panel(ctrl: Control) -> void:
 	# Header: FACTION
 	var y: float = HudDrawHelpers.draw_section_header(ctrl, font, x, 16.0, w, "FACTION")
 
-	# Player faction: emblem + name
-	var emblem_cx: float = x + HEADER_EMBLEM_R + 2.0
-	var emblem_cy: float = y - 4.0
-	_draw_faction_emblem(ctrl, Vector2(emblem_cx, emblem_cy), HEADER_EMBLEM_R, fac_res.color_primary, fac_res.faction_id, true)
-	var name_x: float = emblem_cx + HEADER_EMBLEM_R + 8.0
-	ctrl.draw_string(font, Vector2(name_x, y), fac_res.faction_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_HEADER)
-	y += 22.0
-
-	# Reputation bars for all factions
+	# Reputation bars — player faction highlighted in-place, no separate header
 	var factions: Array[FactionResource] = faction_manager.get_all_factions()
 	for fac in factions:
-		_draw_rep_row(ctrl, font_sm, x, y, w, fac)
+		var is_player: bool = fac.faction_id == player_fac
+		_draw_rep_row(ctrl, font_sm, x, y, w, fac, is_player)
 		y += 32.0
 
 	# Adjust panel height dynamically
@@ -94,20 +88,27 @@ func _draw_panel(ctrl: Control) -> void:
 		ctrl.offset_bottom = PANEL_Y + needed_h
 
 
-func _draw_rep_row(ctrl: Control, font: Font, x: float, y: float, w: float, fac: FactionResource) -> void:
+func _draw_rep_row(ctrl: Control, font: Font, x: float, y: float, w: float, fac: FactionResource, is_player: bool = false) -> void:
 	var rep: float = faction_manager.get_reputation(fac.faction_id)
 	var standing: StringName = faction_manager.get_standing(fac.faction_id)
 	var standing_label: String = STANDING_LABELS.get(standing, "---")
 	var standing_col: Color = faction_manager.get_reputation_color(fac.faction_id)
 
-	# Mini emblem
+	# Player faction: subtle bg highlight + left accent bar
+	if is_player:
+		ctrl.draw_rect(Rect2(x - 4, y - 14, w + 8, 30), Color(fac.color_primary.r, fac.color_primary.g, fac.color_primary.b, 0.10))
+		ctrl.draw_line(Vector2(x - 4, y - 14), Vector2(x - 4, y + 16), fac.color_primary, 2.0)
+
+	# Emblem — filled for player, outline for others
 	var ecx: float = x + EMBLEM_R + 1.0
 	var ecy: float = y - 3.0
-	_draw_faction_emblem(ctrl, Vector2(ecx, ecy), EMBLEM_R, fac.color_primary, fac.faction_id, false)
+	_draw_faction_emblem(ctrl, Vector2(ecx, ecy), EMBLEM_R, fac.color_primary, fac.faction_id, is_player)
 
-	# Faction name (after emblem) + standing label (right)
+	# Faction name + standing label (right)
 	var text_x: float = ecx + EMBLEM_R + 6.0
-	ctrl.draw_string(font, Vector2(text_x, y), fac.faction_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, fac.color_primary)
+	var name_col: Color = fac.color_primary if is_player else Color(fac.color_primary.r, fac.color_primary.g, fac.color_primary.b, 0.65)
+	var name_size: int = UITheme.FONT_SIZE_SMALL if is_player else UITheme.FONT_SIZE_TINY
+	ctrl.draw_string(font, Vector2(text_x, y), fac.faction_name, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size, name_col)
 	ctrl.draw_string(font, Vector2(x + w - 60, y), standing_label, HORIZONTAL_ALIGNMENT_RIGHT, 60, UITheme.FONT_SIZE_TINY, standing_col)
 
 	# Bar: -100 to +100 mapped to 0..1

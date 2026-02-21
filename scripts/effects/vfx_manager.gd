@@ -13,7 +13,7 @@ var speed_effects_enabled =true
 var space_dust_reactive_enabled =true
 var camera_vibration_enabled =true
 var gforce_enabled =true
-var motion_blur_enabled =true
+var motion_blur_enabled =false  # Disabled — causes unwanted blur on ship model
 var nebula_wisps_enabled =false
 
 # --- Internal refs ---
@@ -27,7 +27,7 @@ var film_grain_enabled =true
 var _engine_exhaust: EngineExhaust = null
 var _speed_effects: SpeedEffects = null
 var _gforce: GForceEffects = null
-var _motion_blur: MotionBlur = null
+var _motion_blur = null  # Disabled
 var _space_dust: SpaceDust = null
 var _film_grain: FilmGrain = null
 var _damage_screen: DamageScreenEffect = null
@@ -79,9 +79,6 @@ func initialize(ship, camera, universe: Node3D, main_scene: Node3D) -> void:
 	main_scene.add_child(_damage_screen)
 	_damage_screen.set_ship(ship)
 
-	# --- Motion Blur (child of Camera) ---
-	_create_motion_blur()
-
 	# --- Film Grain (fullscreen anti-banding) ---
 	if film_grain_enabled:
 		_film_grain = FilmGrain.new()
@@ -113,12 +110,6 @@ func on_ship_rebuilt(new_ship) -> void:
 	if _camera:
 		_camera.vibration_enabled = camera_vibration_enabled
 
-	# Rewire motion blur to new camera
-	if _motion_blur and is_instance_valid(_motion_blur):
-		_motion_blur.queue_free()
-		_motion_blur = null
-	_create_motion_blur()
-
 	# Recreate ship-model-parented effects
 	_recreate_ship_model_effects()
 
@@ -146,14 +137,6 @@ func _create_engine_exhaust() -> void:
 	_engine_exhaust.setup(model.model_scale, model.engine_light_color, vfx_pts, _ship.ship_data)
 
 
-func _create_motion_blur() -> void:
-	if _camera == null or not motion_blur_enabled:
-		return
-	_motion_blur = MotionBlur.new()
-	_motion_blur.name = "MotionBlur"
-	_camera.add_child(_motion_blur)
-
-
 ## Called when entering a new star system to update nebula wisp colors/opacity.
 ## Pass the SystemEnvironmentData resolved by SpaceEnvironment.
 func configure_nebula_environment(_env_data: SystemEnvironmentData) -> void:
@@ -170,8 +153,6 @@ func set_all_enabled(enabled: bool) -> void:
 	nebula_wisps_enabled = enabled
 	film_grain_enabled = enabled
 
-	if _motion_blur and is_instance_valid(_motion_blur):
-		_motion_blur.visible = enabled
 	if _speed_effects:
 		_speed_effects.visible = enabled
 	if _gforce:
@@ -209,17 +190,3 @@ func _process(_delta: float) -> void:
 	# Update engine exhaust (throttle + speed mode aware)
 	if _engine_exhaust and is_instance_valid(_engine_exhaust):
 		_engine_exhaust.update_intensity(throttle, _ship.speed_mode, _ship.current_speed)
-
-	# Update motion blur intensity based on ship speed
-	if _motion_blur and is_instance_valid(_motion_blur):
-		var speed_ratio: float = clampf(_ship.current_speed / maxf(Constants.MAX_SPEED_BOOST, 1.0), 0.0, 1.0)
-		var blur_mult: float
-		if _ship.get("cruise_warp_active") and _ship.cruise_warp_active:
-			blur_mult = 4.0
-		elif speed_ratio > 0.8:
-			# Boost range: 1.5 to 2.5
-			blur_mult = 1.5 + (speed_ratio - 0.8) * 5.0
-		else:
-			# Normal flight: 0.3 to 1.5
-			blur_mult = 0.3 + speed_ratio * 1.5
-		_motion_blur.speed_multiplier = blur_mult

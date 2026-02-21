@@ -134,14 +134,14 @@ func _draw_left_panel(ctrl: Control) -> void:
 	var shd_c =UITheme.SHIELD
 
 	# Label: "COQUE" à gauche, bouclier% (bleu petit) + coque% à droite
-	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	var hp :="%d%%" % int(hull_r * 100)
 	var sp :="%d%%" % int(shd_r * 100)
-	var hp_w :=font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var sp_w :=font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	var hp_w :=font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+	var sp_w :=font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
 	# Bouclier% en bleu dim, légèrement avant le coque%
-	ctrl.draw_string(font, Vector2(x + w - hp_w - sp_w - 6, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(shd_c.r, shd_c.g, shd_c.b, 0.65))
-	ctrl.draw_string(font, Vector2(x + w - hp_w, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
+	ctrl.draw_string(font, Vector2(x + w - hp_w - sp_w - 6, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(shd_c.r, shd_c.g, shd_c.b, 0.85))
+	ctrl.draw_string(font, Vector2(x + w - hp_w, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, hull_c)
 	y += 8
 
 	# Bande bouclier (fine, bleue, collée au-dessus de la barre de coque)
@@ -154,15 +154,17 @@ func _draw_left_panel(ctrl: Control) -> void:
 	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
 	y += 22
 
-	# Energy
+	# Energie (compact — bande fine sous la coque, % à droite)
 	var nrg_r =energy_system.get_energy_ratio() if energy_system else 0.7
 	var nrg_c =Color(0.2, 0.6, 1.0, 0.9)
-	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.energy"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var np ="%d%%" % int(nrg_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), np, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, nrg_c)
-	y += 8
-	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, nrg_r, nrg_c)
-	y += 24
+	var nrg_pct :="%d%%" % int(nrg_r * 100)
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.energy"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(nrg_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x, y), nrg_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, nrg_c)
+	y += 5
+	ctrl.draw_rect(Rect2(x, y, w, 4), Color(nrg_c.r * 0.12, nrg_c.g * 0.12, nrg_c.b * 0.12, 0.9))
+	if nrg_r > 0.0:
+		ctrl.draw_rect(Rect2(x, y, w * nrg_r, 4), Color(nrg_c.r, nrg_c.g, nrg_c.b, 0.8))
+	y += 16
 
 	# 3D Shield Hologram area (SubViewport renders behind this _draw layer)
 	if ship != _holo_ship_ref:
@@ -189,9 +191,9 @@ func _draw_left_panel(ctrl: Control) -> void:
 			cargo_c = Color(1.0, 0.9, 0.2).lerp(Color(1.0, 0.5, 0.1), (cargo_r - 0.5) / 0.35)
 		else:
 			cargo_c = Color(1.0, 0.5, 0.1).lerp(Color(1.0, 0.2, 0.1), (cargo_r - 0.85) / 0.15)
-		ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.mining_cargo"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.mining_cargo"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 		var cp := "%d/%d" % [used, cap]
-		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(cp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), cp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, cargo_c)
+		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(cp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x, y), cp, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, cargo_c)
 		y += 8
 		HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, cargo_r, cargo_c)
 
@@ -440,7 +442,7 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 	# --- Resources (2-column grid, only qty > 0) ---
 	if active_resources.is_empty():
-		ctrl.draw_string(font, Vector2(x + 2, y + 10), Locale.t("hud.no_resource"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		ctrl.draw_string(font, Vector2(x + 2, y + 10), Locale.t("hud.no_resource"), HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 	else:
 		var col_w: float = (w - x * 2) / 2.0
 		for i in active_resources.size():
@@ -458,11 +460,11 @@ func _draw_economy_panel(ctrl: Control) -> void:
 
 			# Quantity (bright)
 			var qty_str =str(res["qty"])
-			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.95))
+			ctrl.draw_string(font, Vector2(rx + 13, ry + 8), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(rc.r, rc.g, rc.b, 0.95))
 
 			# Name (dimmer, after quantity)
-			var qty_w =font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(rc.r, rc.g, rc.b, 0.45))
+			var qty_w =font.get_string_size(qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
+			ctrl.draw_string(font, Vector2(rx + 15 + qty_w, ry + 8), res["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(rc.r, rc.g, rc.b, 0.65))
 
 	# Scanline
 	if _eco_bg_alpha > 0.001:

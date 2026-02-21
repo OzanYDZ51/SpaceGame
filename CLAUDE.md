@@ -65,6 +65,11 @@ docs/             # Architecture docs, system design notes
 - Keep scripts under 300 lines. Split into components if larger.
 - Every system script has a class_name declaration
 
+## CRITICAL RULES — Read Before Doing Anything
+
+- **NEVER `git commit` or `git push` without explicit user permission.** Always present the changes and wait for the user to say "commit" or "push". No exceptions.
+- **This is a multiplayer-only game. NEVER add offline mode code.** No `if not is_connected_to_server()` bypass logic, no single-player fallbacks, no offline simulation paths. The game requires a server connection at all times. If a feature only makes sense online, leave it gated behind the connection check — do not add an offline alternative.
+
 ## How to Work on This Project
 1. Read this file first for context
 2. Check `docs/ARCHITECTURE.md` for system design details

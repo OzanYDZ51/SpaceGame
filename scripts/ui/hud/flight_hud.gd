@@ -265,12 +265,13 @@ func _process(delta: float) -> void:
 	_comm_panel.pulse_t = _pulse_t
 	_comm_panel.scan_line_y = _scan_line_y
 
-	# Detect cockpit mode
+	# Detect cockpit mode and free look
 	var cam =get_viewport().get_camera_3d()
 	var is_cockpit: bool = cam is Camera3D and cam.get("camera_mode") != null and cam.camera_mode == 1
+	var is_free_looking: bool = cam is ShipCamera and cam.is_free_looking
 
 	# Toggle HUD layers based on mode
-	_gauges.set_cockpit_mode(is_cockpit)
+	_gauges.set_cockpit_mode(is_cockpit, is_free_looking)
 	_status_panels.set_cockpit_mode(is_cockpit)
 	_weapon_panel.set_cockpit_mode(is_cockpit)
 	_cockpit.set_cockpit_mode(is_cockpit)
@@ -283,7 +284,7 @@ func _process(delta: float) -> void:
 	_comm_panel.update(delta)
 
 	# Update targeting (flash decay, signal tracking)
-	_targeting.update(delta, is_cockpit)
+	_targeting.update(delta, is_cockpit, is_free_looking)
 
 	# --- Redraw scheduling ---
 	# Fast: every frame (crosshair, warnings, compass, target overlay, nav markers, radar)

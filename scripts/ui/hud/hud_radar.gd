@@ -260,12 +260,12 @@ func _draw_radar(ctrl: Control) -> void:
 				var pulse_a: float = 0.75 + 0.25 * sin(pulse_t * 3.5)
 				HudDrawHelpers.draw_diamond(ctrl, center + nav_dir * (radar_r - 10.0), 7.0,
 					Color(NAV_COL.r, NAV_COL.g, NAV_COL.b, pulse_a))
-				# Distance label below the header (above range label)
+				# Distance label + name (above range label)
 				var nav_dx: float = nav_ent["pos_x"] - float(ship.global_position.x + FloatingOrigin.origin_offset_x)
 				var nav_dz: float = nav_ent["pos_z"] - float(ship.global_position.z + FloatingOrigin.origin_offset_z)
 				var nav_dist: float = sqrt(nav_dx * nav_dx + nav_dz * nav_dz)
 				ctrl.draw_string(font, Vector2(0, s.y - 30),
-					nav_ent.get("name", "?") + "  " + HudDrawHelpers.format_nav_distance(nav_dist),
+					GameManager.nav_target_name + "  " + HudDrawHelpers.format_nav_distance(nav_dist),
 					HORIZONTAL_ALIGNMENT_CENTER, int(s.x), UITheme.FONT_SIZE_SMALL, NAV_COL)
 
 	# Player icon

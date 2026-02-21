@@ -105,6 +105,10 @@ static var SLASH_COMMANDS: Array[Dictionary]:
 		{"cmd": "/clear", "desc": Locale.t("chat.desc_clear")},
 	]
 
+static var ADMIN_COMMANDS: Array[Dictionary] = [
+	{"cmd": "/reset_npcs", "desc": "Supprimer tous les PNJ et repartir à zéro"},
+]
+
 
 func _ready() -> void:
 	# Initialize message storage for all channels
@@ -505,12 +509,7 @@ func _on_message_submitted(text: String) -> void:
 		_input_field.grab_focus()
 		return
 
-	# Prefer AuthManager.username (source of truth) over NetworkManager.local_player_name
-	var player_name: String = ""
-	if AuthManager.is_authenticated and AuthManager.username != "":
-		player_name = AuthManager.username
-	else:
-		player_name = NetworkManager.local_player_name
+	var player_name: String = AuthManager.username
 	var corp_tag: String = ""
 	var corp_mgr = GameManager.get_node_or_null("CorporationManager")
 	if corp_mgr and corp_mgr.has_corporation():
@@ -788,6 +787,9 @@ func _handle_command(text: String) -> void:
 			add_system_message(Locale.t("chat.cmd_players"))
 			add_system_message(Locale.t("chat.cmd_players"))
 			add_system_message(Locale.t("chat.cmd_clear"))
+			if AuthManager.is_authenticated and AuthManager.role == "admin":
+				add_system_message("── ADMIN ──")
+				add_system_message("/reset_npcs — Supprimer tous les PNJ et repartir à zéro")
 
 		"/clear":
 			_messages[_current_channel].clear()
@@ -826,6 +828,22 @@ func _handle_command(text: String) -> void:
 			message_sent.emit("WHISPER:" + _private_target, msg_text)
 			add_message(Channel.PRIVATE, "→ " + _private_target, msg_text, Color(0.85, 0.5, 1.0))
 
+		"/reset_npcs":
+			if not AuthManager.is_authenticated or AuthManager.role != "admin":
+				add_system_message("⚠ Accès refusé — commande réservée aux admins.")
+				return
+			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+			if npc_auth:
+				# Running as server: execute directly
+				npc_auth.admin_reset_all_npcs()
+				add_system_message("♛ Reset des PNJ effectué.")
+			elif NetworkManager.is_connected_to_server():
+				# Client: send via RPC, server executes
+				NetworkManager.send_admin_command("reset_npcs")
+				add_system_message("♛ Commande de reset envoyée au serveur...")
+			else:
+				add_system_message("⚠ Non connecté au serveur.")
+
 		_:
 			add_system_message(Locale.t("chat.unknown_cmd") % cmd)
 
@@ -846,7 +864,11 @@ func _on_input_text_changed(new_text: String) -> void:
 
 func _filter_autocomplete(typed: String) -> void:
 	_autocomplete_items.clear()
-	for entry in SLASH_COMMANDS:
+	var all_cmds: Array = SLASH_COMMANDS.duplicate()
+	# Admin commands are only shown to admins
+	if AuthManager.is_authenticated and AuthManager.role == "admin":
+		all_cmds.append_array(ADMIN_COMMANDS)
+	for entry in all_cmds:
 		var cmd: String = entry["cmd"]
 		if cmd.begins_with(typed) or typed == "/":
 			_autocomplete_items.append(entry)

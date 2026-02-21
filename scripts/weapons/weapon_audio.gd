@@ -26,10 +26,10 @@ func _ready() -> void:
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer3D.new()
 		player.stream = _fire_stream
-		player.volume_db = -24.0
+		player.volume_db = -3.0
 		player.max_db = 6.0
-		player.unit_size = 80.0          # Distance at which sound is at 0dB
-		player.max_distance = 2000.0     # Audible up to 2km (combat range)
+		player.unit_size = 500.0         # Son plein volume jusqu'à ~500m (portée de combat)
+		player.max_distance = 3000.0     # Audible jusqu'à 3km
 		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 		player.bus = &"SFX"
 		player.autoplay = false

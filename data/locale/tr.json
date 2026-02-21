@@ -554,6 +554,10 @@
 	"map.faction.hostile": "Düşman",
 	"map.faction.friendly": "Müttefik",
 	"map.faction.neutral": "Tarafsız",
+	"map.faction.pirate": "Korsan",
+	"map.faction.nova_terra": "Nova Terra",
+	"map.faction.kharsis": "Kharsis",
+	"map.faction.player_fleet": "Oyuncu Filosu",
 
 	"map.station_type.repair": "Onarım",
 	"map.station_type.trade": "Ticaret",

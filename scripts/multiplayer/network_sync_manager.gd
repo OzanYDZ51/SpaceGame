@@ -26,6 +26,10 @@ var fleet_deployment_mgr = null
 
 var remote_players: Dictionary = {}  # peer_id -> RemotePlayerShip
 var remote_npcs: Dictionary = {}     # npc_id (StringName) -> true
+
+# Shared audio pool for incoming fire events (remote players + NPCs).
+# Uses 3D positional audio — volume attenuates automatically with distance.
+var _remote_weapon_audio: WeaponAudio = null
 var _recently_dead_npcs: Dictionary = {}  # npc_id -> death_ticks_ms (prevents ghost re-creation from delayed batch)
 var _system_mismatch_grace: Dictionary = {}  # peer_id -> first_mismatch_ticks_ms
 const SYSTEM_MISMATCH_GRACE_MS: int = 3000  # 3s grace before removing remote player
@@ -62,6 +66,11 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	event_reporter = EventReporter.new()
 	event_reporter.name = "EventReporter"
 	game_manager.add_child(event_reporter)
+
+	# Shared audio pool for remote fire events (players + NPCs)
+	_remote_weapon_audio = WeaponAudio.new()
+	_remote_weapon_audio.name = "RemoteWeaponAudio"
+	game_manager.add_child(_remote_weapon_audio)
 
 	# Connect network signals
 	NetworkManager.peer_connected.connect(_on_peer_connected)
@@ -556,6 +565,10 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
 		bolt.look_at(look_target, Vector3.UP)
 
+	# Son 3D positionnel — volume atténué automatiquement selon la distance
+	if _remote_weapon_audio:
+		_remote_weapon_audio.play_fire(spawn_pos)
+
 
 # =============================================================================
 # PVP DAMAGE — Server validated, applied on target client
@@ -686,6 +699,10 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
 		bolt.look_at(look_target, Vector3.UP)
 
+	# Son 3D positionnel — volume atténué automatiquement selon la distance
+	if _remote_weapon_audio:
+		_remote_weapon_audio.play_fire(spawn_pos)
+
 
 # =============================================================================
 # REMOTE PLAYER DEATH / RESPAWN / SHIP CHANGE
@@ -776,6 +793,15 @@ func on_system_unloading(_system_id: int) -> void:
 	# Clear server NPC authority registry
 	if npc_authority and NetworkManager.is_server():
 		npc_authority.clear_system_npcs(_system_id)
+
+
+## Admin reset: clear all remote NPC nodes on this client (called via _rpc_admin_npcs_reset).
+func clear_all_remote_npcs() -> void:
+	if lod_manager:
+		for npc_id in remote_npcs.keys():
+			lod_manager.unregister_ship(npc_id)
+	remote_npcs.clear()
+	_recently_dead_npcs.clear()
 
 
 ## Sends all NPCs to a peer after a short delay so the client has time to finish

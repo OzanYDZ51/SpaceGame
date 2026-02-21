@@ -78,12 +78,17 @@ const VIBRATION_FREQ_X: float = 7.3
 const VIBRATION_FREQ_Y: float = 5.1
 const VIBRATION_FREQ_Z: float = 9.7
 
-## Free look: orbit camera around ship during cruise (mouse redirected from ship rotation)
-var _free_look_yaw: float = 0.0
-var _free_look_pitch: float = 0.0
-const FREE_LOOK_SENSITIVITY: float = 0.15
-const FREE_LOOK_PITCH_MAX: float = 80.0
-const FREE_LOOK_RETURN_SPEED: float = 4.0
+## Free look: orbit camera around ship (mouse redirected from ship rotation)
+## Two-layer system: raw target + smoothed render value = Star Citizen cinematic lag
+var _free_look_yaw: float = 0.0        ## Smoothed value used for rendering
+var _free_look_pitch: float = 0.0      ## Smoothed value used for rendering
+var _free_look_yaw_raw: float = 0.0    ## Raw accumulated target (mouse input)
+var _free_look_pitch_raw: float = 0.0  ## Raw accumulated target (mouse input)
+const FREE_LOOK_SENSITIVITY: float = 0.04   ## Degrees per pixel (matches MOUSE_SENSITIVITY)
+const FREE_LOOK_MAX_DELTA: float = 20.0     ## Pixels max par frame — plafonne les coups de souris rapides
+const FREE_LOOK_PITCH_MAX: float = 70.0     ## Max vertical look angle
+const FREE_LOOK_RETURN_SPEED: float = 2.0   ## Return-to-center speed (slow = cinematic)
+const FREE_LOOK_SMOOTH: float = 10.0        ## Camera lag speed (lower = more SC-like inertia)
 
 ## Ship-size camera scaling — base values saved from @export defaults
 const CAMERA_REF_SCALE: float = 2.0  ## Reference model_scale (fighters)
@@ -243,22 +248,29 @@ func _update_third_person(delta: float) -> void:
 	# FREE LOOK (Alt key or cruise: mouse orbits camera; otherwise smooth return)
 	# =========================================================================
 	if _ship.free_look_active:
-		# Accumulate mouse delta while free look is held
-		var md: Vector2 = _ship.cruise_look_delta
+		# Plafonne le delta par frame pour éviter les rotations trop rapides sur coup de souris
+		var md: Vector2 = _ship.cruise_look_delta.limit_length(FREE_LOOK_MAX_DELTA)
 		if md.length_squared() > 0.01:
-			_free_look_yaw += md.x * FREE_LOOK_SENSITIVITY
-			_free_look_pitch += md.y * FREE_LOOK_SENSITIVITY
-			_free_look_pitch = clampf(_free_look_pitch, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
+			_free_look_yaw_raw += md.x * FREE_LOOK_SENSITIVITY
+			_free_look_pitch_raw += md.y * FREE_LOOK_SENSITIVITY
+			_free_look_pitch_raw = clampf(_free_look_pitch_raw, -FREE_LOOK_PITCH_MAX, FREE_LOOK_PITCH_MAX)
+		# Smooth rendered values toward raw target — creates Star Citizen-like inertia lag
+		_free_look_yaw = lerpf(_free_look_yaw, _free_look_yaw_raw, FREE_LOOK_SMOOTH * delta)
+		_free_look_pitch = lerpf(_free_look_pitch, _free_look_pitch_raw, FREE_LOOK_SMOOTH * delta)
 		is_free_looking = true
 	else:
-		# Free look released — smoothly return camera behind ship
-		_free_look_yaw = lerpf(_free_look_yaw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
-		_free_look_pitch = lerpf(_free_look_pitch, 0.0, FREE_LOOK_RETURN_SPEED * delta)
-		if absf(_free_look_yaw) < 0.1:
+		# Key released — raw target and rendered value both smoothly return to center
+		_free_look_yaw_raw = lerpf(_free_look_yaw_raw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
+		_free_look_pitch_raw = lerpf(_free_look_pitch_raw, 0.0, FREE_LOOK_RETURN_SPEED * delta)
+		_free_look_yaw = lerpf(_free_look_yaw, _free_look_yaw_raw, FREE_LOOK_SMOOTH * delta)
+		_free_look_pitch = lerpf(_free_look_pitch, _free_look_pitch_raw, FREE_LOOK_SMOOTH * delta)
+		if absf(_free_look_yaw_raw) < 0.05:
+			_free_look_yaw_raw = 0.0
 			_free_look_yaw = 0.0
-		if absf(_free_look_pitch) < 0.1:
+		if absf(_free_look_pitch_raw) < 0.05:
+			_free_look_pitch_raw = 0.0
 			_free_look_pitch = 0.0
-		is_free_looking = absf(_free_look_yaw) > 0.5 or absf(_free_look_pitch) > 0.5
+		is_free_looking = absf(_free_look_yaw) > 0.3 or absf(_free_look_pitch) > 0.3
 
 	# =========================================================================
 	# DYNAMIC DISTANCE (fixed — no speed pull-back in any mode)

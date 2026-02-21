@@ -1598,3 +1598,47 @@ func _process_pending_reconnects() -> void:
 	for entry in _pending_reconnects:
 		_send_fleet_reconnect_status(entry["uuid"], entry["pid"])
 	_pending_reconnects.clear()
+
+
+# =============================================================================
+# ADMIN COMMANDS
+# =============================================================================
+
+## Force-despawn ALL NPCs (encounter + fleet), clear all registries,
+## and re-trigger encounter spawning. Called by /reset_npcs admin command.
+func admin_reset_all_npcs() -> void:
+	if not _active:
+		return
+	print("[NpcAuthority] admin_reset_all_npcs: clearing %d NPCs (%d fleet)" % [_npcs.size(), _fleet_npcs.size()])
+
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+
+	# Despawn all NPC nodes (covers both encounter NPCs and fleet NPCs)
+	var all_ids: Array = _npcs.keys().duplicate()
+	for npc_id in all_ids:
+		if lod_mgr:
+			var lod_data = lod_mgr.get_ship_data(npc_id)
+			if lod_data and is_instance_valid(lod_data.node_ref):
+				EntityRegistry.unregister(String(npc_id))
+				lod_data.node_ref.queue_free()
+			lod_mgr.unregister_ship(npc_id)
+
+	# Clear all registries
+	_npcs.clear()
+	_npcs_by_system.clear()
+	_fleet_npcs.clear()
+	_fleet_npcs_by_owner.clear()
+	_destroyed_encounter_npcs.clear()  # Allow encounters to respawn immediately
+
+	# Reset EncounterManager state
+	var enc_mgr = GameManager.get_node_or_null("EncounterManager")
+	if enc_mgr:
+		enc_mgr.admin_clear_and_respawn()
+
+	# Notify all clients to clear their remote NPC nodes
+	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
+	if sync_mgr:
+		for pid in NetworkManager.peers:
+			NetworkManager._rpc_admin_npcs_reset.rpc_id(pid)
+
+	print("[NpcAuthority] admin_reset_all_npcs: done")

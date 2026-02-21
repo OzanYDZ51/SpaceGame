@@ -231,7 +231,7 @@ func _cleanup_current_system() -> void:
 			player_lod.ship_id = GameManager.player_ship.ship_data.ship_id if GameManager.player_ship.ship_data else Constants.DEFAULT_SHIP_ID
 			player_lod.ship_class = GameManager.player_ship.ship_data.ship_class if GameManager.player_ship.ship_data else &"Fighter"
 			player_lod.faction = &"nova_terra"
-			player_lod.display_name = NetworkManager.local_player_name
+			player_lod.display_name = AuthManager.username
 			player_lod.node_ref = GameManager.player_ship
 			player_lod.current_lod = ShipLODData.LODLevel.LOD0
 			player_lod.position = GameManager.player_ship.global_position
@@ -283,7 +283,7 @@ func _cleanup_current_system() -> void:
 	# Re-register player (always persists)
 	if GameManager.player_ship:
 		EntityRegistry.register("player_ship", {
-			"name": "Player Ship",
+			"name": AuthManager.username,
 			"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
 			"node": GameManager.player_ship,
 			"radius": 15.0,
