@@ -127,24 +127,32 @@ func _draw_left_panel(ctrl: Control) -> void:
 	y = HudDrawHelpers.draw_section_header(ctrl, font, x, y, w, Locale.t("hud.systems"))
 	y += 2
 
-	# Hull
+	# Hull + Shield (fusionnés — coque en barre principale, bouclier en fine bande bleue collée dessus)
 	var hull_r =health_system.get_hull_ratio() if health_system else 1.0
-	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
-	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var hp ="%d%%" % int(hull_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
-	y += 8
-	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
-	y += 20
-
-	# Shield
 	var shd_r =health_system.get_total_shield_ratio() if health_system else 0.85
-	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.shield_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
-	var sp ="%d%%" % int(shd_r * 100)
-	ctrl.draw_string(font, Vector2(x + w - font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.SHIELD)
+	var hull_c =UITheme.ACCENT if hull_r > 0.5 else (UITheme.WARNING if hull_r > 0.25 else UITheme.DANGER)
+	var shd_c =UITheme.SHIELD
+
+	# Label: "COQUE" à gauche, bouclier% (bleu petit) + coque% à droite
+	ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.hull_label"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+	var hp :="%d%%" % int(hull_r * 100)
+	var sp :="%d%%" % int(shd_r * 100)
+	var hp_w :=font.get_string_size(hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var sp_w :=font.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	# Bouclier% en bleu dim, légèrement avant le coque%
+	ctrl.draw_string(font, Vector2(x + w - hp_w - sp_w - 6, y), sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(shd_c.r, shd_c.g, shd_c.b, 0.65))
+	ctrl.draw_string(font, Vector2(x + w - hp_w, y), hp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, hull_c)
 	y += 8
-	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, shd_r, UITheme.SHIELD)
-	y += 20
+
+	# Bande bouclier (fine, bleue, collée au-dessus de la barre de coque)
+	ctrl.draw_rect(Rect2(x, y, w, 3), Color(shd_c.r * 0.15, shd_c.g * 0.15, shd_c.b * 0.15, 0.9))
+	if shd_r > 0.0:
+		ctrl.draw_rect(Rect2(x, y, w * shd_r, 3), Color(shd_c.r, shd_c.g, shd_c.b, 0.75))
+	y += 3
+
+	# Barre principale coque (directement sous le bouclier, sans espace)
+	HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, hull_r, hull_c)
+	y += 22
 
 	# Energy
 	var nrg_r =energy_system.get_energy_ratio() if energy_system else 0.7
