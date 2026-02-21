@@ -3,7 +3,6 @@
 [ext_resource type="PackedScene" path="res://assets/models/freighter_arion.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
-[ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
 
 [node name="FreighterArion" type="Node3D" unique_id=261113263]
 transform = Transform3D(-10, 0, -1.509958e-06, 0, 10, 0, 1.509958e-06, 0, -10, 0, 0, 0)
@@ -81,32 +80,6 @@ nozzle_size = 5.0
 transform = Transform3D(9.981434, 0, -0.60909265, 0, 10, 0, 0.60909265, 0, 9.981434, -7.4063773, -0.55829, -21.684362)
 script = ExtResource("3_vfx")
 nozzle_size = 5.0
-
-[node name="HullLight_Dorsal" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16, -5)
-script = ExtResource("4_hlight")
-light_color = Color(1, 0.95, 0.85, 1)
-light_energy = 0.6
-light_range = 30.0
-
-[node name="HullLight_Ventral" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 5)
-script = ExtResource("4_hlight")
-light_color = Color(0.85, 0.9, 1, 1)
-light_energy = 0.4
-light_range = 25.0
-
-[node name="HullLight_Port" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 8, 5)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 20.0
-
-[node name="HullLight_Starboard" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 8, 5)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 20.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=999286590]
 transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 60, -70)

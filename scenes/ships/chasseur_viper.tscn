@@ -3,7 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://bsmu3k384ry1a" path="res://assets/models/chasseur_viper.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
-[ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
 
 [node name="ChasseurViper" type="Node3D" unique_id=1358779631]
 
@@ -41,32 +40,6 @@ nozzle_size = 1.8
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 17.40126, 8.103281, 26.7676)
 script = ExtResource("3_vfx")
 nozzle_size = 1.8
-
-[node name="HullLight_Dorsal" type="Marker3D" parent="." unique_id=1746408593]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0326998, -33.24382)
-script = ExtResource("4_hlight")
-light_color = Color(1, 0.95, 0.85, 1)
-light_energy = 0.6
-light_range = 18.0
-
-[node name="HullLight_Ventral" type="Marker3D" parent="." unique_id=2055496515]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -10)
-script = ExtResource("4_hlight")
-light_color = Color(0.85, 0.9, 1, 1)
-light_energy = 0.4
-light_range = 14.0
-
-[node name="HullLight_Port" type="Marker3D" parent="." unique_id=1748754505]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -37.69663, 4.0757303, -3.13432)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 12.0
-
-[node name="HullLight_Starboard" type="Marker3D" parent="." unique_id=905148446]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.69663, 4.0757303, -3.13432)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 12.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=424396772]
 transform = Transform3D(1, 0, 0, 0, 0.42262, 0.90631, 0, -0.90631, 0.42262, 0, 45, 20)

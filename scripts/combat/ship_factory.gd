@@ -50,7 +50,6 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 		if vp.get("type") == &"ENGINE":
 			engine_pts.append(vp["position"])
 	ship_model.vfx_engine_positions = engine_pts
-	ship_model.hull_light_configs = scene_result.get("hull_lights", [] as Array[Dictionary])
 	controller.add_child(ship_model)
 
 	# Cargo container visual — only for ships with Container_XX meshes in model
@@ -193,7 +192,6 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 		if vp.get("type") == &"ENGINE":
 			npc_engine_pts.append(vp["position"])
 	ship_model.vfx_engine_positions = npc_engine_pts
-	ship_model.hull_light_configs = scene_result.get("hull_lights", [] as Array[Dictionary])
 	ship.add_child(ship_model)
 
 	# Cargo container visual — only for ships with Container_XX meshes
@@ -398,7 +396,6 @@ static var _root_basis_cache: Dictionary = {}  # ship_id -> Basis
 static var _model_scale_cache: Dictionary = {}  # ship_id -> float
 static var _center_offset_cache: Dictionary = {}  # ship_id -> Vector3
 static var _vfx_points_cache: Dictionary = {}  # ship_id -> Array[Dictionary]
-static var _hull_light_cache: Dictionary = {}  # ship_id -> Array[Dictionary]
 static var _equip_camera_cache: Dictionary = {}  # ship_id -> Dictionary (position, basis, fov...)
 
 static func get_hardpoint_configs(ship_id: StringName) -> Array[Dictionary]:
@@ -444,13 +441,6 @@ static func get_vfx_points(ship_id: StringName) -> Array[Dictionary]:
 	return _vfx_points_cache.get(ship_id, [] as Array[Dictionary])
 
 
-## Returns hull light configs for a ship, transformed by root_basis (ready for ShipModel space).
-static func get_hull_light_configs(ship_id: StringName) -> Array[Dictionary]:
-	if _hull_light_cache.has(ship_id):
-		return _hull_light_cache[ship_id]
-	_cache_scene_info(ship_id)
-	return _hull_light_cache.get(ship_id, [] as Array[Dictionary])
-
 
 ## Returns EquipmentCamera data for a ship (position, basis, fov, projection, size).
 ## Empty dict if no EquipmentCamera node exists in the ship scene.
@@ -470,7 +460,6 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		_model_scale_cache[ship_id] = 1.0
 		_center_offset_cache[ship_id] = Vector3.ZERO
 		_vfx_points_cache[ship_id] = [] as Array[Dictionary]
-		_hull_light_cache[ship_id] = [] as Array[Dictionary]
 		_equip_camera_cache[ship_id] = {}
 		return
 	if not _scene_cache.has(data.ship_scene_path):
@@ -482,7 +471,6 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 			_model_scale_cache[ship_id] = 1.0
 			_center_offset_cache[ship_id] = Vector3.ZERO
 			_vfx_points_cache[ship_id] = [] as Array[Dictionary]
-			_hull_light_cache[ship_id] = [] as Array[Dictionary]
 			_equip_camera_cache[ship_id] = {}
 			return
 		var packed: PackedScene = load(data.ship_scene_path) as PackedScene
@@ -493,14 +481,12 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 			_model_scale_cache[ship_id] = 1.0
 			_center_offset_cache[ship_id] = Vector3.ZERO
 			_vfx_points_cache[ship_id] = [] as Array[Dictionary]
-			_hull_light_cache[ship_id] = [] as Array[Dictionary]
 			_equip_camera_cache[ship_id] = {}
 			return
 		_scene_cache[data.ship_scene_path] = packed
 	var instance: Node3D = _scene_cache[data.ship_scene_path].instantiate() as Node3D
 	var configs: Array[Dictionary] = []
 	var vfx_points: Array[Dictionary] = []
-	var hull_lights: Array[Dictionary] = []
 	var equip_cam_data: Dictionary = {}
 	var root_rotation: Vector3 = instance.rotation_degrees
 	var root_scale: float = instance.scale.x
@@ -510,8 +496,6 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
-		elif child is HullLightPoint:
-			hull_lights.append(child.get_config())
 		elif child is VFXAttachPoint:
 			vfx_points.append(child.get_config())
 		elif child.name == "ShipCenter":
@@ -537,9 +521,6 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 		for vp in vfx_points:
 			vp["position"] = root_xform_basis * vp["position"]
 			vp["direction"] = root_xform_basis * vp["direction"]
-		# Transform hull light positions from scene-local to ShipModel space
-		for hl in hull_lights:
-			hl["position"] = root_xform_basis * hl["position"]
 		# Transform EquipmentCamera data by root basis
 		if not equip_cam_data.is_empty():
 			equip_cam_data["position"] = root_xform_basis * equip_cam_data["position"]
@@ -552,7 +533,6 @@ static func _cache_scene_info(ship_id: StringName) -> void:
 	_model_scale_cache[ship_id] = model_scale
 	_center_offset_cache[ship_id] = center_off
 	_vfx_points_cache[ship_id] = vfx_points
-	_hull_light_cache[ship_id] = hull_lights
 	_equip_camera_cache[ship_id] = equip_cam_data
 
 
@@ -570,10 +550,9 @@ static func _load_ship_scene(data) -> Dictionary:
 	var packed_scene: PackedScene = _scene_cache[data.ship_scene_path]
 	var instance: Node3D = packed_scene.instantiate() as Node3D
 
-	# Extract HardpointSlot configs, VFX points, hull lights, model node, model scale, center offset
+	# Extract HardpointSlot configs, VFX points, model node, model scale, center offset
 	var configs: Array[Dictionary] = []
 	var vfx_points: Array[Dictionary] = []
-	var hull_lights: Array[Dictionary] = []
 	var model_node: Node3D = null
 	var scene_model_scale: float = 1.0
 	var scene_model_rotation: Vector3 = Vector3.ZERO
@@ -586,8 +565,6 @@ static func _load_ship_scene(data) -> Dictionary:
 	for child in instance.get_children():
 		if child is HardpointSlot:
 			configs.append(child.get_slot_config())
-		elif child is HullLightPoint:
-			hull_lights.append(child.get_config())
 		elif child is VFXAttachPoint:
 			vfx_points.append(child.get_config())
 		elif child.name == "ShipCenter":
@@ -616,14 +593,12 @@ static func _load_ship_scene(data) -> Dictionary:
 	# automatically via Godot's scene tree, guaranteeing WYSIWYG with the editor.
 	var root_xform_basis: Basis = instance.transform.basis
 
-	# Only center_offset, VFX points, and hull lights need manual transform (standalone vectors)
+	# Only center_offset and VFX points need manual transform (standalone vectors)
 	if not root_xform_basis.is_equal_approx(Basis.IDENTITY):
 		center_offset = root_xform_basis * center_offset
 		for vp in vfx_points:
 			vp["position"] = root_xform_basis * vp["position"]
 			vp["direction"] = root_xform_basis * vp["direction"]
-		for hl in hull_lights:
-			hl["position"] = root_xform_basis * hl["position"]
 
 	# Clean up the temporary instance
 	instance.queue_free()
@@ -653,7 +628,6 @@ static func _load_ship_scene(data) -> Dictionary:
 	return {
 		"configs": configs,
 		"vfx_points": vfx_points,
-		"hull_lights": hull_lights,
 		"model_node": model_node,
 		"model_scale": scene_model_scale,
 		"model_rotation": scene_model_rotation,

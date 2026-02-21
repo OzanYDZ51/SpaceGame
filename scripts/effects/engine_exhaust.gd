@@ -81,6 +81,9 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 	# Minimum idle glow — engines always show a faint plume
 	var idle: float = 0.1
 
+	# Advance pulse clock ONCE per frame (not per-nozzle, not per-update-method)
+	_pulse_time += 0.016
+
 	for nozzle in _nozzles:
 		_update_cone(nozzle, t, idle)
 		_update_volume_fill(nozzle, t, idle)
@@ -525,7 +528,6 @@ func _update_afterburner(nozzle: Dictionary, t: float) -> void:
 		return
 	disc.visible = true
 
-	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 9.0) * 0.12 + sin(_pulse_time * 14.0) * 0.06
 	var es: float = nozzle.get("es", _exhaust_scale)
 	var disc_size := (3.0 + _boost_blend * 2.0 + _cruise_blend * 1.5) * es * pulse
@@ -585,10 +587,9 @@ func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
 		return
 	var effective_t := maxf(t, idle)
 
-	_pulse_time += 0.016
 	var pulse := 1.0 + sin(_pulse_time * 7.3) * 0.15 + sin(_pulse_time * 11.7) * 0.08
 
-	var base_energy := 2.5 * effective_t * pulse
+	var base_energy := 1.5 * effective_t * pulse
 	base_energy += _boost_blend * 4.0 * effective_t
 	base_energy += _cruise_blend * 5.0 * effective_t
 	light.light_energy = base_energy

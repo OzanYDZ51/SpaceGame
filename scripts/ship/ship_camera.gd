@@ -84,11 +84,11 @@ var _free_look_yaw: float = 0.0        ## Smoothed value used for rendering
 var _free_look_pitch: float = 0.0      ## Smoothed value used for rendering
 var _free_look_yaw_raw: float = 0.0    ## Raw accumulated target (mouse input)
 var _free_look_pitch_raw: float = 0.0  ## Raw accumulated target (mouse input)
-const FREE_LOOK_SENSITIVITY: float = 0.04   ## Degrees per pixel (matches MOUSE_SENSITIVITY)
-const FREE_LOOK_MAX_DELTA: float = 20.0     ## Pixels max par frame — plafonne les coups de souris rapides
+const FREE_LOOK_SENSITIVITY: float = 0.06   ## Degrees per pixel — middle ground
+const FREE_LOOK_MAX_DELTA: float = 50.0     ## Pixels max par frame — évite les saccades sur swipe brutal
 const FREE_LOOK_PITCH_MAX: float = 70.0     ## Max vertical look angle
 const FREE_LOOK_RETURN_SPEED: float = 2.0   ## Return-to-center speed (slow = cinematic)
-const FREE_LOOK_SMOOTH: float = 10.0        ## Camera lag speed (lower = more SC-like inertia)
+const FREE_LOOK_SMOOTH: float = 8.0         ## Camera lag speed
 
 ## Ship-size camera scaling — base values saved from @export defaults
 const CAMERA_REF_SCALE: float = 2.0  ## Reference model_scale (fighters)
@@ -248,7 +248,6 @@ func _update_third_person(delta: float) -> void:
 	# FREE LOOK (Alt key or cruise: mouse orbits camera; otherwise smooth return)
 	# =========================================================================
 	if _ship.free_look_active:
-		# Plafonne le delta par frame pour éviter les rotations trop rapides sur coup de souris
 		var md: Vector2 = _ship.cruise_look_delta.limit_length(FREE_LOOK_MAX_DELTA)
 		if md.length_squared() > 0.01:
 			_free_look_yaw_raw += md.x * FREE_LOOK_SENSITIVITY
@@ -415,6 +414,7 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Camera is top_level — it doesn't shift with the parent.
 	# Apply the same shift so camera stays in sync with the ship.
 	global_position -= shift
-	# Reset spring to avoid explosion from sudden position discontinuity
-	_spring_velocity = Vector3.ZERO
-	_prev_velocity = _ship.linear_velocity if _ship else Vector3.ZERO
+	# Keep spring velocity and prev_velocity intact — the position was shifted
+	# but relative distances are unchanged, so the spring-damper continues smoothly.
+	# Zeroing spring_velocity caused visible saccades at high speed (boost/cruise)
+	# because the camera lost all momentum and had to rebuild from zero.

@@ -3,7 +3,6 @@
 [ext_resource type="PackedScene" path="res://assets/models/frigate_mk1.glb" id="1_model"]
 [ext_resource type="Script" uid="uid://bic3xkf8f5bj0" path="res://scripts/combat/hardpoint_slot.gd" id="2_hpslot"]
 [ext_resource type="Script" uid="uid://di7f5oqiilhnm" path="res://scripts/effects/vfx_attach_point.gd" id="3_vfx"]
-[ext_resource type="Script" uid="uid://clgw1igdvvcyb" path="res://scripts/effects/hull_light_point.gd" id="4_hlight"]
 
 [node name="FrigateMk1" type="Node3D" unique_id=2078971498]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
@@ -94,32 +93,6 @@ nozzle_size = 3.0
 transform = Transform3D(-10, 0, -8.7422785e-07, 0, 10, 0, 8.7422785e-07, 0, -10, 1.5, 2.9626188, 3.2316847)
 script = ExtResource("3_vfx")
 nozzle_size = 3.0
-
-[node name="HullLight_Dorsal" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, -10)
-script = ExtResource("4_hlight")
-light_color = Color(1, 0.95, 0.85, 1)
-light_energy = 0.6
-light_range = 25.0
-
-[node name="HullLight_Ventral" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -8)
-script = ExtResource("4_hlight")
-light_color = Color(0.85, 0.9, 1, 1)
-light_energy = 0.4
-light_range = 20.0
-
-[node name="HullLight_Port" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 4, -8)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 16.0
-
-[node name="HullLight_Starboard" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 4, -8)
-script = ExtResource("4_hlight")
-light_energy = 0.3
-light_range = 16.0
 
 [node name="EquipmentCamera" type="Camera3D" parent="." unique_id=1432655218]
 transform = Transform3D(-0.33333334, -2.3870852e-08, 1.6714548e-08, 0, 0.19119212, 0.2730507, -2.9140928e-08, 0.2730507, -0.19119212, 0, 27.471779, -26.787548)
