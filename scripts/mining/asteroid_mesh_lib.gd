@@ -36,9 +36,11 @@ static func ensure_loaded() -> void:
 		var max_extent: float = maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z)) * 0.5
 		if max_extent < 0.01:
 			continue
+		var aabb_center: Vector3 = aabb.position + aabb.size * 0.5
 		entries.append({
 			"mesh": mi.mesh,
 			"max_extent": max_extent,
+			"aabb_center": aabb_center,
 		})
 
 	# Sort by volume (biggest first) for consistent ordering

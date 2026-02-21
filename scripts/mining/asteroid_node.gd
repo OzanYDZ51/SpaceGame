@@ -12,6 +12,7 @@ const _AsteroidMeshLib = preload("res://scripts/mining/asteroid_mesh_lib.gd")
 signal depleted(asteroid_id: StringName)
 
 var data = null
+var _mesh_pivot: Node3D = null          # Pivot at asteroid center — rotated each frame
 var _mesh_instance: MeshInstance3D = null
 var _collision: CollisionShape3D = null
 var _glb_scale: Vector3 = Vector3.ONE  # Scale computed from GLB normalization
@@ -32,6 +33,10 @@ func setup(p_data) -> void:
 	collision_layer = Constants.LAYER_ASTEROIDS
 	collision_mask = 0
 
+	# Pivot node — rotated each frame so mesh spins around its visual center
+	_mesh_pivot = Node3D.new()
+	add_child(_mesh_pivot)
+
 	# Mesh: GLB variant from AsteroidMeshLib
 	_mesh_instance = MeshInstance3D.new()
 	var variant: Dictionary = _AsteroidMeshLib.get_variant(data.mesh_variant_idx)
@@ -39,6 +44,9 @@ func setup(p_data) -> void:
 		_mesh_instance.mesh = variant["mesh"]
 		_glb_scale = _AsteroidMeshLib.compute_scale_for_radius(variant, data.visual_radius)
 		_mesh_instance.scale = _glb_scale * data.scale_distort
+		# Center mesh so rotation orbits around the visual center, not the GLB pivot
+		var aabb_center: Vector3 = variant.get("aabb_center", Vector3.ZERO)
+		_mesh_instance.position = -aabb_center * _mesh_instance.scale
 	else:
 		# Fallback: procedural sphere if GLB failed to load
 		var sphere = SphereMesh.new()
@@ -65,14 +73,14 @@ func setup(p_data) -> void:
 			overlay.emission_energy_multiplier = 0.5
 			overlay.albedo_color = Color(data.color_tint, 0.35)
 	_mesh_instance.material_overlay = overlay
-	add_child(_mesh_instance)
+	_mesh_pivot.add_child(_mesh_instance)
 
 
 func _process(delta: float) -> void:
-	if data == null or _mesh_instance == null:
+	if data == null or _mesh_pivot == null:
 		return
-	# Rotate only the visual mesh — StaticBody3D stays fixed so collision/label/targeting work correctly
-	_mesh_instance.rotate(data.rotation_axis, data.rotation_speed * delta)
+	# Rotate the pivot — mesh is centered inside so it spins in place
+	_mesh_pivot.rotate(data.rotation_axis, data.rotation_speed * delta)
 
 
 func take_mining_damage(amount: float) -> Dictionary:
@@ -101,21 +109,20 @@ func _on_depleted() -> void:
 		var mat: StandardMaterial3D = _mesh_instance.material_overlay
 		mat.albedo_color = Color(0.1, 0.1, 0.1, 0.7)
 		mat.emission_enabled = false
-	# Shrink slightly
-	var target_scale: Vector3 = _glb_scale * data.scale_distort * 0.6
-	var tw = create_tween()
-	tw.tween_property(_mesh_instance, "scale", target_scale, 0.5)
+	# Shrink via pivot so mesh centering offset stays correct
+	if _mesh_pivot:
+		var tw = create_tween()
+		tw.tween_property(_mesh_pivot, "scale", Vector3.ONE * 0.6, 0.5)
 
 
 ## Tween mesh scale based on HP ratio (for cooperative mining visual feedback).
 ## At 100% HP → full scale. At 0% → 60% scale (matches depleted shrink).
 func apply_health_visual_update(hp_ratio: float) -> void:
-	if _mesh_instance == null:
+	if _mesh_pivot == null:
 		return
 	var scale_factor: float = lerpf(0.6, 1.0, clampf(hp_ratio, 0.0, 1.0))
-	var target_scale: Vector3 = _glb_scale * data.scale_distort * scale_factor
 	var tw = create_tween()
-	tw.tween_property(_mesh_instance, "scale", target_scale, 0.3).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_mesh_pivot, "scale", Vector3.ONE * scale_factor, 0.3).set_ease(Tween.EASE_OUT)
 
 
 func respawn() -> void:
@@ -123,8 +130,9 @@ func respawn() -> void:
 	data.health_current = data.health_max
 	data.respawn_timer = 0.0
 	# Restore visuals
+	if _mesh_pivot:
+		_mesh_pivot.scale = Vector3.ONE
 	if _mesh_instance:
-		_mesh_instance.scale = _glb_scale * data.scale_distort
 		if _mesh_instance.material_overlay:
 			var mat: StandardMaterial3D = _mesh_instance.material_overlay
 			mat.albedo_color = Color(data.color_tint, 0.0)  # Invisible overlay
