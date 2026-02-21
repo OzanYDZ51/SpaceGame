@@ -20,10 +20,8 @@ extends Node3D
 signal scan_radius_updated(radius: float)
 signal scan_completed
 
-const MAX_RANGE  : float = 2000.0
-const SPEED_SLOW : float = 20.0    # m/s — slow visible phase
-const SPEED_FAST : float = 800.0   # m/s — fast scan phase
-const SLOW_END   : float = 55.0    # m  — switch point
+const MAX_RANGE    : float = 2000.0
+const PULSE_SPEED  : float = 350.0   # m/s — single speed, ~5.7 s total
 
 var _current_radius : float = 1.0
 var _elapsed        : float = 0.0
@@ -73,8 +71,7 @@ func _process(delta: float) -> void:
 
 	_elapsed += delta
 
-	var speed : float = SPEED_SLOW if _current_radius < SLOW_END else SPEED_FAST
-	_current_radius = minf(_current_radius + delta * speed, MAX_RANGE)
+	_current_radius = minf(_current_radius + delta * PULSE_SPEED, MAX_RANGE)
 
 	# Flash decays over ~1 s
 	if _flash_light != null:
