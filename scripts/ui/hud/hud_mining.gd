@@ -16,6 +16,10 @@ var _cargo_full_msg: Control = null
 var _cargo_full_timer: float = 0.0
 const CARGO_FULL_DISPLAY_TIME: float = 3.0
 
+# Session yield counter (resets each time a new asteroid is started)
+var _session_yield: int = 0
+var _session_resource: String = ""
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -25,7 +29,7 @@ func _ready() -> void:
 	_mining_heat.visible = false
 	add_child(_mining_heat)
 
-	_mining_progress = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -140, 280, 140, 315)
+	_mining_progress = HudDrawHelpers.make_ctrl(0.5, 0.5, 0.5, 0.5, -140, 280, 140, 330)
 	_mining_progress.draw.connect(_draw_mining_progress.bind(_mining_progress))
 	_mining_progress.visible = false
 	add_child(_mining_progress)
@@ -38,15 +42,40 @@ func _ready() -> void:
 
 
 func connect_mining_system(ms) -> void:
-	if mining_system and mining_system.cargo_full.is_connected(_on_cargo_full):
-		mining_system.cargo_full.disconnect(_on_cargo_full)
+	if mining_system:
+		if mining_system.cargo_full.is_connected(_on_cargo_full):
+			mining_system.cargo_full.disconnect(_on_cargo_full)
+		if mining_system.mining_progress.is_connected(_on_mining_progress):
+			mining_system.mining_progress.disconnect(_on_mining_progress)
+		if mining_system.mining_stopped.is_connected(_on_mining_stopped):
+			mining_system.mining_stopped.disconnect(_on_mining_stopped)
+		if mining_system.mining_started.is_connected(_on_mining_started):
+			mining_system.mining_started.disconnect(_on_mining_started)
 	mining_system = ms
 	if mining_system:
 		mining_system.cargo_full.connect(_on_cargo_full)
+		mining_system.mining_progress.connect(_on_mining_progress)
+		mining_system.mining_stopped.connect(_on_mining_stopped)
+		mining_system.mining_started.connect(_on_mining_started)
 
 
 func _on_cargo_full() -> void:
 	_cargo_full_timer = CARGO_FULL_DISPLAY_TIME
+
+
+func _on_mining_started(_asteroid) -> void:
+	_session_yield = 0
+	_session_resource = ""
+
+
+func _on_mining_progress(resource_name: String, quantity: int) -> void:
+	_session_yield += quantity
+	_session_resource = resource_name
+
+
+func _on_mining_stopped() -> void:
+	_session_yield = 0
+	_session_resource = ""
 
 
 func update_visibility() -> void:
@@ -156,6 +185,13 @@ func _draw_mining_progress(ctrl: Control) -> void:
 	var hp_text = "%d%%" % int(hp_ratio * 100.0)
 	ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 2), hp_text,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM)
+
+	# Session yield — shows resources extracted since mining started
+	if _session_yield > 0 and _session_resource != "":
+		var yield_text: String = "+%d %s" % [_session_yield, _session_resource]
+		var yield_col = Color(mine_col.r, mine_col.g, mine_col.b, 0.85 * pulse)
+		ctrl.draw_string(font, Vector2(0, bar_y + bar_h + 17), yield_text,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, yield_col)
 
 
 func _draw_cargo_full_msg(ctrl: Control) -> void:

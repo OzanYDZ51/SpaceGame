@@ -41,31 +41,31 @@ static func get_danger_config(danger_level: int) -> Array[Dictionary]:
 	var configs: Array[Dictionary] = []
 	match danger_level:
 		0:
-			configs = [{"count": 1, "ship": t0, "fac": &"hostile", "radius": 400.0}]
+			configs = [{"count": 1, "ship": t0, "fac": &"pirate", "radius": 400.0}]
 		1:
 			configs = [{"count": 2, "ship": t0, "fac": &"pirate", "radius": 300.0}]
 		2:
-			configs = [{"count": 2, "ship": t0, "fac": &"hostile", "radius": 400.0}]
+			configs = [{"count": 2, "ship": t0, "fac": &"pirate", "radius": 400.0}]
 		3:
 			configs = [
-				{"count": 1, "ship": t1, "fac": &"hostile", "radius": 500.0},
-				{"count": 2, "ship": t0, "fac": &"hostile", "radius": 400.0},
+				{"count": 1, "ship": t1, "fac": &"pirate", "radius": 500.0},
+				{"count": 2, "ship": t0, "fac": &"pirate", "radius": 400.0},
 			]
 			if freighter != &"":
 				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
 		4:
 			configs = [
-				{"count": 1, "ship": t2, "fac": &"hostile", "radius": 600.0},
-				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 400.0},
-				{"count": 1, "ship": t0, "fac": &"hostile", "radius": 300.0},
+				{"count": 1, "ship": t2, "fac": &"pirate", "radius": 600.0},
+				{"count": 2, "ship": t1, "fac": &"pirate", "radius": 400.0},
+				{"count": 1, "ship": t0, "fac": &"pirate", "radius": 300.0},
 			]
 			if freighter != &"":
 				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})
 				configs.append({"count": 2, "ship": t0, "fac": &"pirate", "radius": 500.0})
 		5:
 			configs = [
-				{"count": 1, "ship": t2, "fac": &"hostile", "radius": 500.0},
-				{"count": 2, "ship": t1, "fac": &"hostile", "radius": 400.0},
+				{"count": 1, "ship": t2, "fac": &"pirate", "radius": 500.0},
+				{"count": 2, "ship": t1, "fac": &"pirate", "radius": 400.0},
 			]
 			if freighter != &"":
 				configs.append({"count": 1, "ship": freighter, "fac": &"pirate", "radius": 600.0})

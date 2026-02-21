@@ -832,17 +832,18 @@ func _handle_command(text: String) -> void:
 			if not AuthManager.is_authenticated or AuthManager.role != "admin":
 				add_system_message("⚠ Accès refusé — commande réservée aux admins.")
 				return
-			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-			if npc_auth:
-				# Running as server: execute directly
-				npc_auth.admin_reset_all_npcs()
-				add_system_message("♛ Reset des PNJ effectué.")
-			elif NetworkManager.is_connected_to_server():
-				# Client: send via RPC, server executes
+			if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+				# Pure client connected to remote server: send via RPC
 				NetworkManager.send_admin_command("reset_npcs")
 				add_system_message("♛ Commande de reset envoyée au serveur...")
 			else:
-				add_system_message("⚠ Non connecté au serveur.")
+				# Offline or running as server: execute directly
+				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+				if npc_auth:
+					npc_auth.admin_reset_all_npcs()
+					add_system_message("♛ Reset des PNJ effectué.")
+				else:
+					add_system_message("⚠ NpcAuthority introuvable.")
 
 		_:
 			add_system_message(Locale.t("chat.unknown_cmd") % cmd)

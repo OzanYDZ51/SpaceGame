@@ -70,9 +70,11 @@ const AUTOPILOT_GATE_ARRIVAL_DIST: float = 30.0      # 30m — inside 40m gate t
 const AUTOPILOT_DECEL_DIST: float = 5000.0           # 5 km — drop cruise, start decelerating
 const AUTOPILOT_GATE_DECEL_DIST: float = 5000.0      # 5 km — decel for gate approach
 const AUTOPILOT_ALIGN_THRESHOLD: float = 0.98        # dot product threshold to engage cruise
-const AUTOPILOT_APPROACH_SPEED: float = 3000.0        # 3 km/s — fast final approach during autopilot
+const AUTOPILOT_APPROACH_SPEED: float = 3000.0       # 3 km/s — fast final approach during autopilot
 const AUTOPILOT_PLANET_ORBIT_MARGIN: float = 50000.0 # 50 km above surface for planet orbit stop
 const AUTOPILOT_PLANET_AVOIDANCE_MARGIN: float = 1.5 # Avoidance radius = render_radius * this
+const AUTOPILOT_SHIP_ARRIVAL_DIST: float = 120.0     # 120m — arrivée sur cible vaisseau (serré)
+const AUTOPILOT_SHIP_DECEL_DIST: float = 5000.0      # 5 km — même zone decel, mais pas de speed cap
 
 # --- Rotation state ---
 var _target_pitch_rate: float = 0.0
@@ -743,10 +745,18 @@ func engage_autopilot(target_id: String, target_name: String, is_gate: bool = fa
 
 func disengage_autopilot() -> void:
 	var was_planet_approach: bool = false
+	var was_static_approach: bool = false
 	if autopilot_active and autopilot_target_id != "":
 		var ent: Dictionary = EntityRegistry.get_entity(autopilot_target_id)
-		if ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+		var target_type: int = ent.get("type", -1)
+		if target_type == EntityRegistrySystem.EntityType.PLANET:
 			was_planet_approach = true
+		elif target_type not in [
+			EntityRegistrySystem.EntityType.SHIP_NPC,
+			EntityRegistrySystem.EntityType.SHIP_FLEET,
+			EntityRegistrySystem.EntityType.SHIP_PLAYER,
+		] and not autopilot_is_gate:
+			was_static_approach = true
 	autopilot_active = false
 	autopilot_target_id = ""
 	autopilot_target_name = ""
@@ -760,8 +770,9 @@ func disengage_autopilot() -> void:
 	throttle_input = Vector3.ZERO
 	if speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
-	# Planet arrival: kill velocity to prevent drifting into the planet
-	if was_planet_approach:
+	# Arrêt net à l'arrivée : stopper la vélocité pour les cibles statiques (stations)
+	# et les planètes (éviter de dériver dans la planète)
+	if was_planet_approach or was_static_approach:
 		linear_velocity = Vector3.ZERO
 		_post_cruise_decel_active = false
 
@@ -819,15 +830,24 @@ func _run_autopilot() -> void:
 	var to_target: Vector3 = target_world - global_position
 	var dist: float = to_target.length()
 
-	# --- Planet-aware arrival distance ---
-	# If target is a planet, stop at render_radius + margin above surface
+	# --- Détection type de cible ---
+	var target_type: int = ent.get("type", -1)
+	var is_ship_target: bool = target_type in [
+		EntityRegistrySystem.EntityType.SHIP_NPC,
+		EntityRegistrySystem.EntityType.SHIP_FLEET,
+		EntityRegistrySystem.EntityType.SHIP_PLAYER,
+	]
+
+	# --- Arrival distance selon type ---
 	var arrival_dist: float
 	if autopilot_is_gate:
 		arrival_dist = AUTOPILOT_GATE_ARRIVAL_DIST
-	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+	elif target_type == EntityRegistrySystem.EntityType.PLANET:
 		var extra: Dictionary = ent.get("extra", {})
 		var rr: float = extra.get("render_radius", 50_000.0)
 		arrival_dist = rr + AUTOPILOT_PLANET_ORBIT_MARGIN
+	elif is_ship_target:
+		arrival_dist = AUTOPILOT_SHIP_ARRIVAL_DIST
 	else:
 		arrival_dist = AUTOPILOT_ARRIVAL_DIST
 
@@ -839,8 +859,10 @@ func _run_autopilot() -> void:
 	var decel_dist: float
 	if autopilot_is_gate:
 		decel_dist = AUTOPILOT_GATE_DECEL_DIST
-	elif ent.get("type") == EntityRegistrySystem.EntityType.PLANET:
+	elif target_type == EntityRegistrySystem.EntityType.PLANET:
 		decel_dist = arrival_dist + 40_000.0  # Start slowing 40km before orbit (planet guard handles safety)
+	elif is_ship_target:
+		decel_dist = AUTOPILOT_SHIP_DECEL_DIST
 	else:
 		decel_dist = AUTOPILOT_DECEL_DIST
 	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
@@ -871,7 +893,7 @@ func _run_autopilot() -> void:
 		_exit_cruise()
 
 	# Throttle: full forward once aligned, active brake when misaligned
-	var is_planet: bool = ent.get("type") == EntityRegistrySystem.EntityType.PLANET
+	var is_planet: bool = target_type == EntityRegistrySystem.EntityType.PLANET
 	if _autopilot_aligned:
 		if is_planet and dist < arrival_dist + 50_000.0:
 			if _gate_approach_speed_cap > 0.0 and current_speed > _gate_approach_speed_cap * 1.2:
@@ -879,32 +901,38 @@ func _run_autopilot() -> void:
 			else:
 				var approach_factor: float = clampf((dist - arrival_dist) / 50_000.0, 0.05, 1.0)
 				throttle_input = Vector3(0, 0, -approach_factor)
+		elif is_ship_target:
+			# Cible NPC/flotte : plein gaz jusqu'à l'arrivée — pas de réduction à 500m
+			# Le NPC bouge ; ralentir trop tôt = ne jamais le rattraper
+			throttle_input = Vector3(0, 0, -1)
 		elif dist < 500.0:
-			# Final approach (gates + stations): reduce throttle to land precisely
+			# Final approach (stations uniquement): réduire le throttle pour s'arrêter précisément
 			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
 			throttle_input = Vector3(0, 0, -approach_factor)
 		else:
-			# Full throttle — go as fast as possible toward destination
 			throttle_input = Vector3(0, 0, -1)
 	else:
 		# Target is to the side/behind: actively brake to allow turning
-		# The faster we go, the harder we brake (reverse throttle proportional to speed)
 		var max_normal: float = ship_data.max_speed_normal if ship_data else 300.0
 		if current_speed > max_normal * 0.5:
 			throttle_input = Vector3(0, 0, 1)  # Reverse throttle = active braking
 		else:
-			throttle_input = Vector3.ZERO  # Slow enough to turn, just stop thrusting
+			throttle_input = Vector3.ZERO
 
-	# Approach speed cap to avoid overshooting target (last 2 km)
+	# Speed cap approche — NE PAS limiter la vitesse pour les cibles vaisseau (NPC qui bougent)
+	# Un speed cap à 80 m/s à 200m empêche de rattraper un NPC qui fuit à 300 m/s
 	if is_planet:
 		var margin: float = dist - arrival_dist
 		if margin < 100_000.0:
 			_gate_approach_speed_cap = lerpf(50.0, 5000.0, clampf(margin / 100_000.0, 0.0, 1.0))
 		else:
 			_gate_approach_speed_cap = 0.0
+	elif is_ship_target:
+		# Pas de speed cap — le post-cruise decel ramène la vitesse à la normale
+		_gate_approach_speed_cap = 0.0
 	elif dist < 2000.0:
-		# Gates + stations: decel in last 2 km to stop precisely at destination
-		_gate_approach_speed_cap = lerpf(80.0, 500.0, clampf(dist / 2000.0, 0.0, 1.0))
+		# Stations : décélération quadratique → ~5 m/s à 200m, arrêt net au disengage
+		_gate_approach_speed_cap = maxf(5.0, 500.0 * pow(dist / 2000.0, 2.0))
 	else:
 		_gate_approach_speed_cap = 0.0
 

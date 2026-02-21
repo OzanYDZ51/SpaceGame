@@ -95,6 +95,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
 	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
+	NetworkManager.server_connection_lost.connect(_on_server_connection_lost)
 
 	# Parse CLI args
 	var args = OS.get_cmdline_args()
@@ -175,6 +176,13 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 
 func _on_peer_disconnected(peer_id: int) -> void:
 	remove_remote_player(peer_id)
+
+
+func _on_server_connection_lost(_reason: String) -> void:
+	# Server dropped — immediately clear all remote NPC nodes so they don't
+	# linger in the scene during the reconnect window, and don't accumulate
+	# when the new server session sends fresh NPC data.
+	clear_all_remote_npcs()
 
 
 func _on_player_left_system(peer_id: int) -> void:
@@ -347,6 +355,8 @@ func _on_npc_spawned(data: Dictionary) -> void:
 
 	if fac == &"hostile":
 		lod_data.color_tint = Color(1.0, 0.55, 0.5)
+	elif fac == &"pirate":
+		lod_data.color_tint = Color(1.0, 0.7, 0.2)
 	elif fac == &"friendly":
 		lod_data.color_tint = Color(0.5, 1.0, 0.6)
 	elif fac == &"player_fleet":

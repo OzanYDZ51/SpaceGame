@@ -39,7 +39,7 @@ func redraw() -> void:
 
 
 func _get_faction_nav_color(faction: StringName) -> Color:
-	if faction == &"hostile":
+	if faction == &"hostile" or faction == &"pirate":
 		return Color(1.0, 0.3, 0.2, 0.85)
 	elif faction == &"friendly":
 		return Color(0.3, 0.9, 0.4, 0.85)
@@ -50,7 +50,7 @@ func _get_faction_nav_color(faction: StringName) -> Color:
 
 func _get_npc_nav_color(node: Node) -> Color:
 	var faction = node.get("faction")
-	if faction == &"hostile":
+	if faction == &"hostile" or faction == &"pirate":
 		return Color(1.0, 0.3, 0.2, 0.85)
 	elif faction == &"friendly":
 		return Color(0.3, 0.9, 0.4, 0.85)

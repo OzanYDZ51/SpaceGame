@@ -53,6 +53,9 @@ func _setup_model() -> void:
 	if faction == &"hostile":
 		_ship_model.color_tint = Color(1.0, 0.55, 0.5)
 		_ship_model.engine_light_color = Color(1.0, 0.3, 0.2)
+	elif faction == &"pirate":
+		_ship_model.color_tint = Color(1.0, 0.7, 0.2)
+		_ship_model.engine_light_color = Color(1.0, 0.5, 0.1)
 	elif faction == &"friendly":
 		_ship_model.color_tint = Color(0.5, 1.0, 0.6)
 		_ship_model.engine_light_color = Color(0.2, 1.0, 0.4)
@@ -94,6 +97,8 @@ func _setup_name_label() -> void:
 
 	if faction == &"hostile":
 		_name_label.modulate = Color(1.0, 0.4, 0.3, 0.8)
+	elif faction == &"pirate":
+		_name_label.modulate = Color(1.0, 0.65, 0.15, 0.8)
 	elif faction == &"friendly":
 		_name_label.modulate = Color(0.3, 1.0, 0.5, 0.8)
 	elif faction == &"player_fleet":

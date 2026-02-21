@@ -945,6 +945,10 @@ func _on_network_reconnected() -> void:
 		_initial_connect_done = true
 		return  # First connect — _ready already loaded backend state + corporation
 	print("[GameManager] Network reconnected — saving current state then reloading backend state")
+	# Clear stale remote NPCs from the previous server session so they don't
+	# accumulate on top of the freshly-spawned NPCs sent by the new server.
+	if _net_sync_mgr:
+		_net_sync_mgr.clear_all_remote_npcs()
 	# Save current in-memory state FIRST so credits/progress aren't overwritten
 	# by a stale auto-save from before the disconnect.
 	await SaveManager.save_player_state(true)

@@ -578,9 +578,6 @@ func _spawn_full(id: StringName, asteroid) -> void:
 	_full_nodes[id] = node
 	# Connect depleted signal for persistence across cell loads
 	node.depleted.connect(_on_node_depleted)
-	# Show scan info only if already scanned
-	if asteroid.is_scanned and asteroid.has_resource:
-		node.show_scan_info()
 
 
 func _spawn_simplified(id: StringName, asteroid) -> void:
@@ -808,7 +805,6 @@ func apply_server_health_batch(batch: Array) -> void:
 				ast.node_ref._on_depleted()
 				ast.node_ref.depleted.emit(aid)
 		elif hp_ratio > 0.0 and not ast.is_depleted:
-			# Update visual (scale tween + label)
+			# Update visual (scale tween)
 			if is_instance_valid(ast.node_ref):
 				ast.node_ref.apply_health_visual_update(hp_ratio)
-				ast.node_ref._update_label_text()

@@ -112,10 +112,10 @@ static func _generate_kill_mission(
 	var target_count: int = danger_level + rng.randi_range(1, 3)
 
 	# Determine target faction based on system danger
-	var target_faction: StringName = &"hostile"
+	var target_faction: StringName = &"pirate"
 
 	# Build objective
-	var label: String = "Detruire %d hostiles" % target_count
+	var label: String = "Eliminer %d pirates" % target_count
 	m.objectives.append({
 		"type": "kill",
 		"target_faction": String(target_faction),

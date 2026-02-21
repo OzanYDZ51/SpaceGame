@@ -177,6 +177,9 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	if faction_name == &"hostile":
 		ship_model.color_tint = Color(1.0, 0.55, 0.5)  # Red-ish tint
 		ship_model.engine_light_color = Color(1.0, 0.3, 0.2)  # Red engines
+	elif faction_name == &"pirate":
+		ship_model.color_tint = Color(1.0, 0.7, 0.2)  # Orange/gold tint
+		ship_model.engine_light_color = Color(1.0, 0.5, 0.1)  # Orange engines
 	elif faction_name == &"friendly":
 		ship_model.color_tint = Color(0.5, 1.0, 0.6)  # Green-ish tint
 		ship_model.engine_light_color = Color(0.2, 1.0, 0.4)  # Green engines
@@ -344,6 +347,8 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			lod_data.behavior_name = behavior_name
 			if faction_name == &"hostile":
 				lod_data.color_tint = Color(1.0, 0.55, 0.5)
+			elif faction_name == &"pirate":
+				lod_data.color_tint = Color(1.0, 0.7, 0.2)
 			elif faction_name == &"friendly":
 				lod_data.color_tint = Color(0.5, 1.0, 0.6)
 			elif faction_name == &"player_fleet":
@@ -378,6 +383,8 @@ static func create_npc_data_only(ship_id: StringName, behavior_name: StringName,
 	# Faction color
 	if faction_name == &"hostile":
 		lod_data.color_tint = Color(1.0, 0.55, 0.5)
+	elif faction_name == &"pirate":
+		lod_data.color_tint = Color(1.0, 0.7, 0.2)
 	elif faction_name == &"friendly":
 		lod_data.color_tint = Color(0.5, 1.0, 0.6)
 	elif faction_name == &"player_fleet":
@@ -730,6 +737,6 @@ static func _get_faction_map_color(faction: StringName) -> Color:
 		&"player_fleet": return MapColors.FLEET_SHIP
 		&"nova_terra": return Color(0.2, 0.6, 1.0, 0.9)
 		&"kharsis": return Color(0.9, 0.15, 0.15, 0.9)
-		&"pirate": return Color(0.8, 0.6, 0.1, 0.9)
+		&"pirate": return Color(0.9, 0.6, 0.1, 0.9)  # Gold/orange — pirate faction color
 		&"neutral": return MapColors.NPC_SHIP
 	return MapColors.NPC_NEUTRAL

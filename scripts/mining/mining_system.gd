@@ -254,13 +254,9 @@ func _start_extraction(asteroid) -> void:
 	mining_target = asteroid
 	_mining_tick_timer = 0.0
 
-	# Auto-reveal asteroid on mining (no scanner needed)
+	# Auto-reveal asteroid on mining (no scanner needed — color tint appears on first hit)
 	if not asteroid.is_scanned and asteroid.has_resource and _asteroid_mgr:
 		_asteroid_mgr.reveal_single_asteroid(asteroid)
-
-	# Show scan label if it has a resource
-	if asteroid.has_resource and is_instance_valid(asteroid.node_ref):
-		asteroid.node_ref.show_scan_info()
 
 	mining_started.emit(mining_target)
 
@@ -272,10 +268,6 @@ func _stop_extraction() -> void:
 	# Flush any pending network claims before stopping
 	if not _pending_claims.is_empty() and NetworkManager.is_connected_to_server():
 		_send_mining_claims()
-
-	# Hide scan label
-	if mining_target and is_instance_valid(mining_target.node_ref):
-		mining_target.node_ref.hide_scan_info()
 
 	is_mining = false
 	mining_target = null
@@ -338,9 +330,6 @@ func _do_mining_tick() -> void:
 				cargo_full.emit()
 				_stop_extraction()
 				return
-
-	if not is_barren and mining_target and is_instance_valid(mining_target.node_ref):
-		mining_target.node_ref._update_label_text()
 
 	if mining_target and mining_target.is_depleted:
 		# Broadcast depletion to other players

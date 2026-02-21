@@ -909,10 +909,25 @@ func _draw_trails(entities: Dictionary) -> void:
 	if trails == null:
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
+	var ctrl_size := get_size()
+	# Culling rect: visible area + 200px margin (trails can start just off-screen)
+	var cull_rect := Rect2(-200.0, -200.0, ctrl_size.x + 400.0, ctrl_size.y + 400.0)
+
+	# Cache own-fleet results for this frame (avoids O(fleet_size) per fleet entity)
+	var fleet_own_cache: Dictionary = {}
+
 	for id in trails._trails:
 		var arr: PackedFloat64Array = trails._trails[id]
 		if arr.size() < 6:
 			continue
+
+		# --- Entity-position culling: skip trails for off-screen entities ---
+		if entities.has(id):
+			var ent: Dictionary = entities[id]
+			var cur_sp: Vector2 = camera.universe_to_screen(ent["pos_x"], ent["pos_z"])
+			if not cull_rect.has_point(cur_sp):
+				continue
+
 		# Determine trail color from entity type
 		var trail_col: Color = MapColors.NPC_SHIP
 		if entities.has(id):
@@ -920,7 +935,9 @@ func _draw_trails(entities: Dictionary) -> void:
 			if ent["type"] == EntityRegistrySystem.EntityType.SHIP_PLAYER:
 				trail_col = MapColors.PLAYER
 			elif ent["type"] == EntityRegistrySystem.EntityType.SHIP_FLEET:
-				trail_col = MapColors.FLEET_SHIP if _is_own_fleet_entity(ent) else MapColors.FLEET_SHIP_FOREIGN
+				if not fleet_own_cache.has(id):
+					fleet_own_cache[id] = _is_own_fleet_entity(ent)
+				trail_col = MapColors.FLEET_SHIP if fleet_own_cache[id] else MapColors.FLEET_SHIP_FOREIGN
 			else:
 				trail_col = ent.get("color", MapColors.NPC_SHIP)
 

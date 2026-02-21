@@ -295,7 +295,7 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 
 func _get_npc_nav_color(node: Node) -> Color:
 	var faction = node.get("faction")
-	if faction == &"hostile":
+	if faction == &"hostile" or faction == &"pirate":
 		return NAV_COL_HOSTILE
 	elif faction == &"friendly":
 		return NAV_COL_FRIENDLY
@@ -305,7 +305,7 @@ func _get_npc_nav_color(node: Node) -> Color:
 
 
 func _get_faction_nav_color(faction: StringName) -> Color:
-	if faction == &"hostile":
+	if faction == &"hostile" or faction == &"pirate":
 		return NAV_COL_HOSTILE
 	elif faction == &"friendly":
 		return NAV_COL_FRIENDLY

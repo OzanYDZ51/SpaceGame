@@ -14,8 +14,6 @@ signal depleted(asteroid_id: StringName)
 var data = null
 var _mesh_instance: MeshInstance3D = null
 var _collision: CollisionShape3D = null
-var _label: Label3D = null
-var _label_visible: bool = false
 var _glb_scale: Vector3 = Vector3.ONE  # Scale computed from GLB normalization
 
 
@@ -71,10 +69,10 @@ func setup(p_data) -> void:
 
 
 func _process(delta: float) -> void:
-	if data == null:
+	if data == null or _mesh_instance == null:
 		return
-	# Slow tumble rotation
-	rotate(data.rotation_axis, data.rotation_speed * delta)
+	# Rotate only the visual mesh — StaticBody3D stays fixed so collision/label/targeting work correctly
+	_mesh_instance.rotate(data.rotation_axis, data.rotation_speed * delta)
 
 
 func take_mining_damage(amount: float) -> Dictionary:
@@ -155,7 +153,6 @@ func apply_scan_reveal(ast_data) -> void:
 		mat.emission = target_col * 0.5
 		mat.emission_energy_multiplier = 1.5
 		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.5, 1.0).set_delay(0.3)
-	show_scan_info()
 
 
 func apply_scan_expire() -> void:
@@ -167,7 +164,6 @@ func apply_scan_expire() -> void:
 	if mat.emission_enabled:
 		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.0, 0.8)
 		tw.tween_callback(func(): mat.emission_enabled = false)
-	hide_scan_info()
 
 
 func flash_barren() -> void:
@@ -180,47 +176,3 @@ func flash_barren() -> void:
 	var tw = create_tween()
 	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): mat.emission_enabled = false)
-
-
-func show_scan_info() -> void:
-	if _label_visible:
-		return
-	_label_visible = true
-	if _label == null:
-		_label = Label3D.new()
-		_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		_label.no_depth_test = true
-		_label.font_size = 28
-		_label.outline_size = 4
-		_label.modulate = Color(0.7, 0.9, 1.0, 0.9)
-		_label.pixel_size = 0.05
-		add_child(_label)
-	_label.position = Vector3(0, data.visual_radius + 5.0, 0)
-	_update_label_text()
-	_label.visible = true
-
-
-func hide_scan_info() -> void:
-	_label_visible = false
-	if _label:
-		_label.visible = false
-
-
-func _update_label_text() -> void:
-	if _label == null or data == null:
-		return
-	var res = MiningRegistry.get_resource(data.primary_resource)
-	var res_name: String = res.display_name if res else "?"
-	var size_name: String
-	match data.size:
-		AsteroidData.AsteroidSize.SMALL: size_name = "S"
-		AsteroidData.AsteroidSize.MEDIUM: size_name = "M"
-		AsteroidData.AsteroidSize.LARGE: size_name = "L"
-		_: size_name = "?"
-	var hp_pct: int = int(data.health_current / data.health_max * 100.0) if data.health_max > 0 else 0
-	if data.is_depleted:
-		_label.text = "%s [%s] ÉPUISÉ" % [res_name, size_name]
-		_label.modulate = Color(0.5, 0.5, 0.5, 0.7)
-	else:
-		_label.text = "%s [%s] %d%%" % [res_name, size_name, hp_pct]
-		_label.modulate = Color(0.7, 0.9, 1.0, 0.9)

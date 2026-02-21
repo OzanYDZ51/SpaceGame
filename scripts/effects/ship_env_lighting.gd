@@ -183,7 +183,7 @@ func _update_nebula_fill() -> void:
 # =============================================================================
 
 func _update_rim_color() -> void:
-	if _ship_model == null or _ship_model._rim_material == null:
+	if _ship_model == null or not "_rim_material" in _ship_model or _ship_model._rim_material == null:
 		return
 
 	var env_color := _base_rim_color

@@ -604,10 +604,10 @@ func _is_faction_allied(target_faction: StringName, target_id: StringName = &"")
 			return my_fac == fm.player_faction
 		return false
 
-	# Generic 'hostile' and 'lawless' factions are hostile to everyone
-	if my_fac == &"hostile" or my_fac == &"lawless":
+	# Generic 'hostile', 'lawless', and 'pirate' factions are hostile to everyone
+	if my_fac == &"hostile" or my_fac == &"lawless" or my_fac == &"pirate":
 		return false
-	if target_faction == &"hostile" or target_faction == &"lawless":
+	if target_faction == &"hostile" or target_faction == &"lawless" or target_faction == &"pirate":
 		return false
 
 	# Use FactionManager: not enemies = allied (includes neutral)
