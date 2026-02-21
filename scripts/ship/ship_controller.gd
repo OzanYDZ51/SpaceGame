@@ -34,6 +34,7 @@ var engine_boost_drain_mult: float = 1.0
 var speed_mode: int = Constants.SpeedMode.NORMAL
 var current_speed: float = 0.0
 var throttle_input: Vector3 = Vector3.ZERO
+var cruise_disabled: bool = false  ## Prevents cruise mode (used by convoy NPCs)
 
 # --- Combat lock (no cruise while in combat) ---
 const COMBAT_LOCK_DURATION: float = 5.0
@@ -74,7 +75,6 @@ const AUTOPILOT_APPROACH_SPEED: float = 3000.0       # 3 km/s — fast final app
 const AUTOPILOT_PLANET_ORBIT_MARGIN: float = 50000.0 # 50 km above surface for planet orbit stop
 const AUTOPILOT_PLANET_AVOIDANCE_MARGIN: float = 1.5 # Avoidance radius = render_radius * this
 const AUTOPILOT_SHIP_ARRIVAL_DIST: float = 120.0     # 120m — arrivée sur cible vaisseau (serré)
-const AUTOPILOT_SHIP_DECEL_DIST: float = 5000.0      # 5 km — même zone decel, mais pas de speed cap
 
 # --- Rotation state ---
 var _target_pitch_rate: float = 0.0
@@ -448,7 +448,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# Cruise mode: two-phase acceleration system
 	# Phase 1 (0-10s): Gentle spool-up — FTL drive charging, speed builds slowly
 	# Phase 2 (10-20s): Explosive punch — massive acceleration to max cruise speed
-	if speed_mode == Constants.SpeedMode.CRUISE and ship_data:
+	if speed_mode == Constants.SpeedMode.CRUISE and ship_data and not cruise_disabled:
 		cruise_time += dt
 		var cruise_mult: float
 		if cruise_time <= CRUISE_SPOOL_DURATION:
@@ -851,21 +851,29 @@ func _run_autopilot() -> void:
 	else:
 		arrival_dist = AUTOPILOT_ARRIVAL_DIST
 
-	if dist < arrival_dist:
+	# Arrival: arrêt net — instant stop at destination
+	# Speed-adaptive distance prevents frame-skip overshoot at high cruise speeds
+	var effective_arrival: float = maxf(arrival_dist, current_speed * 0.05)
+	if dist < effective_arrival:
+		if speed_mode == Constants.SpeedMode.CRUISE:
+			_exit_cruise()
+		linear_velocity = Vector3.ZERO
+		_post_cruise_decel_active = false
+		_gate_approach_speed_cap = 0.0
 		disengage_autopilot()
 		return
 
-	# Deceleration zone — drop cruise (gate uses shorter decel zone, planet uses orbit dist)
+	# Deceleration zone — only for planets (orbit approach) and actual gate navigation.
+	# Everything else: cruise at full speed → arrêt net at arrival.
 	var decel_dist: float
-	if autopilot_is_gate:
+	var is_actual_gate: bool = autopilot_is_gate and target_type == EntityRegistrySystem.EntityType.JUMP_GATE
+	if is_actual_gate:
 		decel_dist = AUTOPILOT_GATE_DECEL_DIST
 	elif target_type == EntityRegistrySystem.EntityType.PLANET:
-		decel_dist = arrival_dist + 40_000.0  # Start slowing 40km before orbit (planet guard handles safety)
-	elif is_ship_target:
-		decel_dist = AUTOPILOT_SHIP_DECEL_DIST
+		decel_dist = arrival_dist + 40_000.0  # Start slowing 40km before orbit
 	else:
-		decel_dist = AUTOPILOT_DECEL_DIST
-	if dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
+		decel_dist = 0.0  # No early decel — arrêt net at arrival
+	if decel_dist > 0.0 and dist < decel_dist and speed_mode == Constants.SpeedMode.CRUISE:
 		_exit_cruise()
 
 	# --- Planet avoidance: steer around planets in the flight path ---
@@ -901,15 +909,8 @@ func _run_autopilot() -> void:
 			else:
 				var approach_factor: float = clampf((dist - arrival_dist) / 50_000.0, 0.05, 1.0)
 				throttle_input = Vector3(0, 0, -approach_factor)
-		elif is_ship_target:
-			# Cible NPC/flotte : plein gaz jusqu'à l'arrivée — pas de réduction à 500m
-			# Le NPC bouge ; ralentir trop tôt = ne jamais le rattraper
-			throttle_input = Vector3(0, 0, -1)
-		elif dist < 500.0:
-			# Final approach (stations uniquement): réduire le throttle pour s'arrêter précisément
-			var approach_factor: float = clampf(dist / 500.0, 0.1, 1.0)
-			throttle_input = Vector3(0, 0, -approach_factor)
 		else:
+			# Full throttle until arrival_dist — ship stops net when it gets there
 			throttle_input = Vector3(0, 0, -1)
 	else:
 		# Target is to the side/behind: actively brake to allow turning
@@ -919,25 +920,21 @@ func _run_autopilot() -> void:
 		else:
 			throttle_input = Vector3.ZERO
 
-	# Speed cap approche — NE PAS limiter la vitesse pour les cibles vaisseau (NPC qui bougent)
-	# Un speed cap à 80 m/s à 200m empêche de rattraper un NPC qui fuit à 300 m/s
+	# Speed cap — only for planets (surface safety) and actual gate approach (trigger zone precision)
 	if is_planet:
 		var margin: float = dist - arrival_dist
 		if margin < 100_000.0:
 			_gate_approach_speed_cap = lerpf(50.0, 5000.0, clampf(margin / 100_000.0, 0.0, 1.0))
 		else:
 			_gate_approach_speed_cap = 0.0
-	elif is_ship_target:
-		# Pas de speed cap — le post-cruise decel ramène la vitesse à la normale
-		_gate_approach_speed_cap = 0.0
-	elif dist < 2000.0:
-		# Stations : décélération quadratique → ~5 m/s à 200m, arrêt net au disengage
+	elif is_actual_gate and dist < 2000.0:
+		# Actual gate: slow down near trigger zone for reliable jump detection
 		_gate_approach_speed_cap = maxf(5.0, 500.0 * pow(dist / 2000.0, 2.0))
 	else:
 		_gate_approach_speed_cap = 0.0
 
-	# Engage cruise once well aligned and outside decel zone
-	if dot > AUTOPILOT_ALIGN_THRESHOLD and dist > decel_dist and not combat_locked:
+	# Engage cruise once well aligned (and outside decel zone if one exists)
+	if dot > AUTOPILOT_ALIGN_THRESHOLD and (decel_dist <= 0.0 or dist > decel_dist) and not combat_locked:
 		if speed_mode != Constants.SpeedMode.CRUISE:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0

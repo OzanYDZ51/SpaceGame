@@ -31,6 +31,12 @@ static func _ensure_init() -> void:
 		"requires_position": false,
 		"requires_target": false,
 	})
+	_register(&"attack", {
+		"display_name": "ATTAQUER",
+		"description": "Attaquer une cible ennemie",
+		"requires_position": false,
+		"requires_target": true,
+	})
 
 
 static func _register(id: StringName, data: Dictionary) -> void:

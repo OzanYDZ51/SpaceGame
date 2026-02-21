@@ -104,11 +104,11 @@ func register_ship(id: StringName, data) -> void:
 	_ensure_entity_registered(id, data)
 
 
-func unregister_ship(id: StringName) -> void:
+func unregister_ship(id: StringName, free_node: bool = true) -> void:
 	if not _ships.has(id):
 		return
 	var data = _ships[id]
-	if is_instance_valid(data.node_ref):
+	if free_node and is_instance_valid(data.node_ref):
 		if id != _player_id:
 			data.node_ref.queue_free()
 	_grid.remove(id)
@@ -380,8 +380,8 @@ func _evaluate_lod_levels() -> void:
 		else:
 			target_lod = ShipLODData.LODLevel.LOD3
 
-		# Fleet ships: never demote below LOD1 — they need full AI (cruise, FleetAIBridge)
-		if data.fleet_index >= 0 and target_lod > ShipLODData.LODLevel.LOD1:
+		# All NPCs: never demote below LOD1 — full AI needed for autonomous behavior
+		if target_lod > ShipLODData.LODLevel.LOD1:
 			target_lod = ShipLODData.LODLevel.LOD1
 
 		if target_lod != data.current_lod:
@@ -878,4 +878,6 @@ func _on_origin_shifted(shift: Vector3) -> void:
 		for i in data.ai_route_waypoints.size():
 			data.ai_route_waypoints[i] -= shift
 
+	# Sync LOD0/LOD1 node positions BEFORE grid shift so grid stays consistent
+	_sync_node_positions()
 	_grid.apply_origin_shift(shift)

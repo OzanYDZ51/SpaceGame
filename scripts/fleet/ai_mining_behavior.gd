@@ -7,7 +7,7 @@ extends Node
 # States: SEARCHING → SCANNING → ROAMING → NAVIGATING → POSITIONING → EXTRACTING
 #         → COOLING → RETURNING → DOCKED → DEPARTING → SEARCHING ...
 # Reuses MiningSystem constants, AsteroidFieldManager API, MiningLaserBeam visual.
-# Supports physical asteroids (near player) and virtual mining (far from player).
+# Uses physical asteroids only — forces cell loading at ship position via register_interest_position.
 # =============================================================================
 
 enum MiningState { SEARCHING, SCANNING, ROAMING, NAVIGATING, POSITIONING, EXTRACTING, COOLING, RETURNING, DOCKED, DEPARTING }
@@ -21,11 +21,8 @@ var _brain = null
 var _pilot = null
 var _asteroid_mgr = null
 
-# Physical mining target (when near player — real AsteroidData from AsteroidFieldManager)
+# Physical mining target (real AsteroidData from AsteroidFieldManager)
 var _mining_target = null
-
-# Virtual mining target (when far from player — simulated asteroid)
-var _virtual_target: Dictionary = {}  # { resource_id, health, yield_per_hit, position }
 
 # Mining stats
 var _mining_dps: float = 10.0
@@ -62,9 +59,6 @@ const SEARCH_FAIL_MAX: int = 5          # After N failed search cycles, roam to 
 var _roam_target: Vector3 = Vector3.ZERO
 const ROAM_ARRIVE_DIST: float = 500.0
 var _belt_field: AsteroidFieldData = null
-
-# Virtual mining
-var _virtual_rng: RandomNumberGenerator = null
 
 # Autonomous sell loop
 var _resource_capacity: int = 50
@@ -108,10 +102,6 @@ func _ready() -> void:
 	_beam = MiningLaserBeam.new()
 	_beam.name = "AIMiningBeam"
 	add_child(_beam)
-
-	# Virtual RNG for procedural virtual asteroids
-	_virtual_rng = RandomNumberGenerator.new()
-	_virtual_rng.seed = hash(fleet_index) + int(Time.get_unix_time_from_system())
 
 	# Read cargo capacity + sensor range from ship data
 	if fleet_ship:
@@ -191,6 +181,8 @@ func _exit_tree() -> void:
 			_exit_dock()
 		_clear_nav_boost()
 	_clear_entity_mining_data()
+	if _asteroid_mgr and is_instance_valid(_asteroid_mgr):
+		_asteroid_mgr.unregister_interest_position("fleet_%d_mining" % fleet_index)
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
 	if _beam and _beam._active:
@@ -211,7 +203,6 @@ func update_params(params: Dictionary) -> void:
 	# Stop current mining action
 	_stop_beam()
 	_mining_target = null
-	_virtual_target = {}
 	_search_fail_count = 0
 	_roam_target = Vector3.ZERO
 
@@ -242,6 +233,13 @@ func update_params(params: Dictionary) -> void:
 	# Reset to searching at new location
 	_state = MiningState.SEARCHING
 	_scan_cooldown = 0.0
+
+
+## Ensure asteroid cells are loaded around this ship's position even when the player
+## camera is far away. Called before searching so physical asteroids are available.
+func _ensure_cells_loaded() -> void:
+	if _asteroid_mgr and is_instance_valid(_asteroid_mgr) and _ship:
+		_asteroid_mgr.register_interest_position("fleet_%d_mining" % fleet_index, _ship.global_position)
 
 
 ## Find the nearest station (by universe coords) to use as home base for sell runs.
@@ -373,6 +371,9 @@ func _tick_searching(delta: float) -> void:
 		return
 	_search_timer = 0.0
 
+	# Force asteroid cell loading around this ship (even when camera/player is far away)
+	_ensure_cells_loaded()
+
 	# If scan cooldown is ready, do a scan to reveal nearby asteroids (same as player H key)
 	if _scan_cooldown <= 0.0 and _asteroid_mgr:
 		_scan_cooldown = SCAN_COOLDOWN
@@ -382,20 +383,10 @@ func _tick_searching(delta: float) -> void:
 		_search_timer = 0.0
 		return
 
-	# Try physical asteroid first (near player, cells loaded)
+	# Try physical asteroid (cells are loaded around the ship)
 	var asteroid =_find_physical_asteroid()
 	if asteroid:
 		_mining_target = asteroid
-		_virtual_target = {}
-		_search_fail_count = 0
-		_state = MiningState.NAVIGATING
-		return
-
-	# Try virtual mining (check if we're in a belt)
-	var vt =_generate_virtual_target()
-	if not vt.is_empty():
-		_virtual_target = vt
-		_mining_target = null
 		_search_fail_count = 0
 		_state = MiningState.NAVIGATING
 		return
@@ -419,16 +410,6 @@ func _tick_scanning(delta: float) -> void:
 	var asteroid =_find_physical_asteroid()
 	if asteroid:
 		_mining_target = asteroid
-		_virtual_target = {}
-		_search_fail_count = 0
-		_state = MiningState.NAVIGATING
-		return
-
-	# Try virtual mining
-	var vt =_generate_virtual_target()
-	if not vt.is_empty():
-		_virtual_target = vt
-		_mining_target = null
 		_search_fail_count = 0
 		_state = MiningState.NAVIGATING
 		return
@@ -699,8 +680,10 @@ func _get_total_resources() -> int:
 func _do_mining_tick() -> void:
 	if _mining_target:
 		_do_physical_mining_tick()
-	elif not _virtual_target.is_empty():
-		_do_virtual_mining_tick()
+	else:
+		# No physical target — something changed mid-tick, go back to searching
+		_stop_beam()
+		_state = MiningState.SEARCHING
 
 
 func _do_physical_mining_tick() -> void:
@@ -754,32 +737,6 @@ func _do_physical_mining_tick() -> void:
 		_state = MiningState.SEARCHING
 
 
-func _do_virtual_mining_tick() -> void:
-	if _virtual_target.is_empty():
-		_state = MiningState.SEARCHING
-		return
-
-	var resource_id: StringName = _virtual_target["resource_id"]
-	var res =MiningRegistry.get_resource(resource_id)
-	var difficulty: float = res.mining_difficulty if res else 1.0
-	var damage: float = _mining_dps * MiningSystem.MINING_TICK_INTERVAL / difficulty
-
-	_virtual_target["health"] -= damage
-
-	var yield_data ={
-		"resource_id": resource_id,
-		"quantity": int(_virtual_target["yield_per_hit"]),
-	}
-	_store_yield(yield_data)
-	if _state == MiningState.RETURNING:
-		return  # Cargo full — _store_yield already transitioned
-
-	if _virtual_target["health"] <= 0.0:
-		_stop_beam()
-		_virtual_target = {}
-		_state = MiningState.SEARCHING
-
-
 func _store_yield(yield_data: Dictionary) -> void:
 	if yield_data.is_empty() or yield_data.get("quantity", 0) <= 0:
 		return
@@ -795,7 +752,6 @@ func _store_yield(yield_data: Dictionary) -> void:
 	if _home_station_id != "" and _get_total_resources() >= int(_resource_capacity * CARGO_RETURN_RATIO):
 		_stop_beam()
 		_mining_target = null
-		_virtual_target = {}
 		_state = MiningState.RETURNING
 		# Update map destination to station
 		var station_ent =EntityRegistry.get_entity(_home_station_id)
@@ -831,92 +787,11 @@ func _find_physical_asteroid() -> AsteroidData:
 	return _asteroid_mgr.get_nearest_minable_asteroid_filtered(_ship.global_position, SEARCH_RADIUS, _resource_filter)
 
 
-func _generate_virtual_target() -> Dictionary:
-	if _asteroid_mgr == null:
-		return {}
-
-	# Check if ship is inside a belt (using universe coords)
-	var upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
-	var belt_name = _asteroid_mgr.get_belt_at_position(upos[0], upos[2])
-	if belt_name == "":
-		return {}
-
-	# Find the matching belt data
-	var field: AsteroidFieldData = null
-	for f in _asteroid_mgr._fields:
-		if f.field_name == belt_name:
-			field = f
-			break
-	if field == null:
-		return {}
-
-	# Resource distribution: 60% dominant, 25% secondary, 15% rare
-	# With filter: check if any belt resource matches, then re-roll until hit (max 8 attempts)
-	var resource_id: StringName
-	if not _resource_filter.is_empty():
-		# Check if this belt even has what we're looking for
-		var belt_has_match: bool = (
-			field.dominant_resource in _resource_filter
-			or field.secondary_resource in _resource_filter
-			or field.rare_resource in _resource_filter
-		)
-		if not belt_has_match:
-			return {}
-		# Re-roll until we get a matching resource
-		var attempts: int = 0
-		while attempts < 8:
-			var res_roll: float = _virtual_rng.randf()
-			if res_roll < 0.60:
-				resource_id = field.dominant_resource
-			elif res_roll < 0.85:
-				resource_id = field.secondary_resource
-			else:
-				resource_id = field.rare_resource
-			if resource_id in _resource_filter:
-				break
-			attempts += 1
-		if not (resource_id in _resource_filter):
-			return {}
-	else:
-		var res_roll: float = _virtual_rng.randf()
-		if res_roll < 0.60:
-			resource_id = field.dominant_resource
-		elif res_roll < 0.85:
-			resource_id = field.secondary_resource
-		else:
-			resource_id = field.rare_resource
-
-	# Size distribution: 60% small, 30% medium, 10% large
-	var size_roll: float = _virtual_rng.randf()
-	var health: float
-	var yield_per_hit: int
-	if size_roll < 0.6:
-		health = 50.0; yield_per_hit = 1
-	elif size_roll < 0.9:
-		health = 150.0; yield_per_hit = 2
-	else:
-		health = 400.0; yield_per_hit = 4
-
-	# Virtual position: nearby random offset from ship
-	var angle: float = _virtual_rng.randf() * TAU
-	var dist: float = _virtual_rng.randf_range(80.0, 200.0)
-	var offset =Vector3(cos(angle) * dist, _virtual_rng.randf_range(-20.0, 20.0), sin(angle) * dist)
-
-	return {
-		"resource_id": resource_id,
-		"health": health,
-		"yield_per_hit": yield_per_hit,
-		"position": _ship.global_position + offset,
-	}
-
-
 func _get_target_position() -> Vector3:
 	if _mining_target:
 		if is_instance_valid(_mining_target.node_ref):
 			return _mining_target.node_ref.global_position
 		return _mining_target.position
-	if not _virtual_target.is_empty():
-		return _virtual_target["position"]
 	return Vector3.ZERO
 
 
@@ -1026,10 +901,6 @@ func _clear_entity_mining_data() -> void:
 # =========================================================================
 
 func _on_origin_shifted(shift: Vector3) -> void:
-	# Physical asteroid positions are shifted by AsteroidFieldManager.
-	# Virtual target position needs manual correction.
-	if not _virtual_target.is_empty():
-		_virtual_target["position"] -= shift
-	# Correct roaming target too
+	# Correct roaming target position on origin shift
 	if _roam_target != Vector3.ZERO:
 		_roam_target -= shift

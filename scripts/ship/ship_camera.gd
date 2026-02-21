@@ -13,7 +13,7 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 @export_group("Third Person")
 @export var cam_height: float = 8.0            ## Height above ship
 @export var cam_distance_default: float = 25.0 ## Default follow distance
-@export var cam_distance_min: float = 8.0      ## Min zoom distance
+@export var cam_distance_min: float = 25.0     ## Min physical zoom distance (prevents fillrate FPS drops)
 @export var cam_distance_max: float = 250.0    ## Max zoom distance
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
 @export var cam_rotation_speed: float = 10.0   ## Rotation follow speed (low = cinematic lag)
@@ -31,6 +31,8 @@ enum CameraMode { THIRD_PERSON, COCKPIT }
 @export var fov_base: float = 75.0
 @export var fov_boost: float = 78.0
 @export var fov_cruise: float = 75.0  # No FOV change in cruise — shader handles speed feel
+@export var fov_zoom_min: float = 25.0  ## Minimum FOV when fully optically zoomed in (telephoto)
+@export var fov_zoom_step: float = 5.0  ## FOV reduction per scroll tick past physical minimum
 
 @export_group("Cockpit")
 @export var cockpit_offset: Vector3 = Vector3(0.0, 3.0, -5.0)
@@ -45,11 +47,12 @@ var _targeting = null
 var _weapon_manager = null
 
 var _fov_spike: float = 0.0  # Temporary FOV burst (decays) — cruise punch/exit effects
+var _fov_zoom_offset: float = 0.0  # Optical zoom: negative = telephoto, 0 = normal
 
 ## Spring-damper position follow (replaces lerp for cinematic inertia + overshoot)
 var _spring_velocity: Vector3 = Vector3.ZERO
 const SPRING_STIFFNESS: float = 120.0
-const SPRING_DAMPING: float = 18.0
+const SPRING_DAMPING: float = 22.0  ## 2×√120 ≈ 21.9 → critically damped, no overshoot
 
 ## G-force camera sway (visual inertia feedback on acceleration)
 var _prev_velocity: Vector3 = Vector3.ZERO
@@ -77,6 +80,9 @@ const VIBRATION_AMP_SPEED: float = 0.015   # Stronger at high speed
 const VIBRATION_FREQ_X: float = 7.3
 const VIBRATION_FREQ_Y: float = 5.1
 const VIBRATION_FREQ_Z: float = 9.7
+
+## Smoothed look target — prevents sudden orientation jumps when ship turns fast
+var _smooth_look_target: Vector3 = Vector3.ZERO
 
 ## Free look: orbit camera around ship (mouse redirected from ship rotation)
 ## Two-layer system: raw target + smoothed render value = Star Citizen cinematic lag
@@ -134,6 +140,7 @@ func _ready() -> void:
 	var center: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 	global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
 	look_at(center, ship_basis.y)
+	_smooth_look_target = center + ship_basis * Vector3(0.0, cam_look_ahead_y, -50.0)
 
 	# Camera is top_level so floating origin shifts don't move it automatically.
 	# We must shift it manually to avoid the camera lagging behind after each shift.
@@ -189,8 +196,9 @@ func adapt_to_ship_size() -> void:
 
 func _on_ship_rebuilt(_ship_ref) -> void:
 	adapt_to_ship_size()
-	# Smoothly transition to new default distance
+	# Smoothly transition to new default distance, reset any optical zoom
 	target_distance = cam_distance_default
+	_fov_zoom_offset = 0.0
 	_find_combat_systems()
 
 
@@ -216,12 +224,25 @@ func _unhandled_input(event: InputEvent) -> void:
 	if camera_mode == CameraMode.THIRD_PERSON:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				target_distance = max(cam_distance_min, target_distance - cam_zoom_step)
+				if target_distance <= cam_distance_min + 0.5:
+					# Déjà à la distance physique minimum → zoom optique (réduction FOV)
+					# La caméra reste à distance safe, mais le FOV se réduit (effet téléobjectif)
+					var base_fov: float = _get_fov_for_mode(0)
+					_fov_zoom_offset = clampf(_fov_zoom_offset - fov_zoom_step, fov_zoom_min - base_fov, 0.0)
+				else:
+					target_distance = max(cam_distance_min, target_distance - cam_zoom_step)
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				target_distance = min(cam_distance_max, target_distance + cam_zoom_step)
+				if _fov_zoom_offset < -0.5:
+					# Dézoomer optiquement avant de s'éloigner physiquement
+					_fov_zoom_offset = clampf(_fov_zoom_offset + fov_zoom_step, fov_zoom_min - _get_fov_for_mode(0), 0.0)
+				else:
+					_fov_zoom_offset = 0.0
+					target_distance = min(cam_distance_max, target_distance + cam_zoom_step)
 
 	if event.is_action_pressed("toggle_camera"):
 		camera_mode = CameraMode.COCKPIT if camera_mode == CameraMode.THIRD_PERSON else CameraMode.THIRD_PERSON
+		# Réinitialiser le zoom optique lors du changement de mode
+		_fov_zoom_offset = 0.0
 
 
 func _process(delta: float) -> void:
@@ -357,33 +378,38 @@ func _update_third_person(delta: float) -> void:
 		look_target = ship_pos + ship_basis * Vector3(0.0, cam_look_ahead_y, -look_ahead)
 
 	# =========================================================================
-	# SMOOTH ROTATION (combat boost: faster tracking when target-locked)
+	# SMOOTH ROTATION — Basis.slerp: shortest-path rotation, never flips
+	# Replaces look_at + Gram-Schmidt which could snap 180° when up ≈ forward
 	# =========================================================================
 	var rot_speed: float = cam_rotation_speed
 	if _targeting and is_instance_valid(_targeting) and _targeting.current_target and is_instance_valid(_targeting.current_target):
 		rot_speed = 12.0
-	var rot_follow: float = rot_speed * delta
-	var current_forward: Vector3 = -global_transform.basis.z
-	var desired_forward: Vector3 = (look_target - global_position).normalized()
-	var smooth_forward: Vector3 = current_forward.lerp(desired_forward, rot_follow).normalized()
 
-	if smooth_forward.length_squared() > 0.001:
-		var target_pos: Vector3 = global_position + smooth_forward
-		if not global_position.is_equal_approx(target_pos):
-			var up_hint: Vector3 = ship_basis.y.lerp(Vector3.UP, 0.05)
-			# Planetary mode: blend toward planet surface normal as "up"
-			if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
-				up_hint = up_hint.lerp(planetary_up, planetary_up_blend)
-			# Gram-Schmidt orthogonalization: strip the forward component → guaranteed perpendicular
-			var up_vec: Vector3 = (up_hint - smooth_forward * smooth_forward.dot(up_hint)).normalized()
-			if up_vec.length_squared() > 0.001:
-				look_at(target_pos, up_vec)
+	# Smooth the look target independently — absorbs jumps when ship turns fast
+	_smooth_look_target = _smooth_look_target.lerp(look_target, minf(rot_speed * 1.5 * delta, 1.0))
+
+	var desired_fwd: Vector3 = _smooth_look_target - global_position
+	if desired_fwd.length_squared() > 0.01:
+		desired_fwd = desired_fwd.normalized()
+		# Use ship's own up as reference — stable through any pitch/roll/yaw
+		var up_ref: Vector3 = ship_basis.y
+		# Planetary mode: blend up reference toward planet surface normal
+		if planetary_up_blend > 0.01 and planetary_up.length_squared() > 0.5:
+			up_ref = up_ref.lerp(planetary_up, planetary_up_blend)
+		# Build orthonormal basis (same convention as look_at: -Z = forward)
+		var right: Vector3 = desired_fwd.cross(up_ref)
+		if right.length_squared() < 0.0001:
+			right = ship_basis.x  # Fallback: camera pointing straight along up axis
+		right = right.normalized()
+		var desired_basis := Basis(right, right.cross(desired_fwd).normalized(), -desired_fwd)
+		# Slerp toward desired orientation — takes shortest path, never flips
+		global_transform.basis = global_transform.basis.slerp(desired_basis, minf(rot_speed * delta, 1.0))
 
 	# =========================================================================
-	# DYNAMIC FOV (phase-aware cruise + spike effects)
+	# DYNAMIC FOV (phase-aware cruise + optical zoom + spike effects)
 	# =========================================================================
-	var target_fov: float = _get_fov_for_mode(_ship.speed_mode)
-	_current_fov = lerpf(_current_fov, target_fov, 2.0 * delta)
+	var target_fov: float = _get_fov_for_mode(_ship.speed_mode) + _fov_zoom_offset
+	_current_fov = lerpf(_current_fov, target_fov, 3.0 * delta)
 	# Cruise punch/exit spike (decays over time)
 	_fov_spike = lerpf(_fov_spike, 0.0, FOV_SPIKE_DECAY * delta)
 	fov = _current_fov + _fov_spike

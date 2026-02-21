@@ -296,23 +296,17 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	)
 
 	health.ship_destroyed.connect(func():
-		var death_pos: Vector3 = ship.global_position
 		var npc_name =StringName(ship.name)
 
-		# Server only: broadcast death via NpcAuthority (clients get loot via RPC)
+		# Server only: route ALL deaths through NpcAuthority._on_npc_killed for single codepath.
+		# If _player_killing is set, validate_hit_claim already calls _on_npc_killed — skip here.
 		if NetworkManager.is_server():
 			var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-			var info: Dictionary = npc_auth._npcs.get(npc_name, {}) if npc_auth else {}
-			if info.get("_player_killing", false):
-				pass  # _on_npc_killed handles death with correct killer_pid — skip
-			elif npc_auth and npc_auth._npcs.has(npc_name):
-				var upos =FloatingOrigin.to_universe_pos(death_pos)
-				var drops =LootTable.roll_drops_for_ship(ship.ship_data)
-				# killer_pid=0 means killed by local AI/combat bridge (no player killer)
-				npc_auth.broadcast_npc_death(npc_name, 0, upos, drops)
-				npc_auth.unregister_npc(npc_name)
-			else:
-				push_warning("ShipFactory: NPC '%s' died but not registered in NpcAuthority — skipping loot" % String(npc_name))
+			if npc_auth and npc_auth._npcs.has(npc_name):
+				var info: Dictionary = npc_auth._npcs[npc_name]
+				if not info.get("_player_killing", false):
+					# AI-killed: route through _on_npc_killed with killer_pid=0
+					npc_auth._on_npc_killed(npc_name, 0)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system
@@ -358,41 +352,6 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			lod_mgr.register_ship(StringName(ship.name), lod_data)
 
 	return ship
-
-
-static func create_npc_data_only(ship_id: StringName, behavior_name: StringName, pos: Vector3, faction_name: StringName = &"hostile"):
-	var data =ShipRegistry.get_ship_data(ship_id)
-	if data == null:
-		push_error("ShipFactory: Unknown ship_id '%s'" % ship_id)
-		return null
-
-	var lod_data =ShipLODData.new()
-	var uid =randi() % 100000
-	lod_data.id = StringName("NPC_%s_%d" % [ship_id, uid])
-	lod_data.ship_id = data.ship_id
-	lod_data.ship_class = data.ship_class
-	lod_data.faction = faction_name
-	lod_data.display_name = "%s #%d" % [data.ship_name, uid % 1000]
-	lod_data.behavior_name = behavior_name
-	lod_data.position = pos
-	lod_data.velocity = Vector3.ZERO
-	lod_data.model_scale = data.model_scale
-	lod_data.current_lod = ShipLODData.LODLevel.LOD3
-	lod_data.node_ref = null
-
-	# Faction color
-	if faction_name == &"hostile":
-		lod_data.color_tint = Color(1.0, 0.55, 0.5)
-	elif faction_name == &"pirate":
-		lod_data.color_tint = Color(1.0, 0.7, 0.2)
-	elif faction_name == &"friendly":
-		lod_data.color_tint = Color(0.5, 1.0, 0.6)
-	elif faction_name == &"player_fleet":
-		lod_data.color_tint = Color(0.5, 0.7, 1.0)
-	else:
-		lod_data.color_tint = Color(0.8, 0.7, 1.0)
-
-	return lod_data
 
 
 ## Returns hardpoint configs for a ship_id (lightweight, no collision generation).

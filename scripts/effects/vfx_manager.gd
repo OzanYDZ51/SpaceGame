@@ -27,7 +27,6 @@ var film_grain_enabled =true
 var _engine_exhaust: EngineExhaust = null
 var _speed_effects: SpeedEffects = null
 var _gforce: GForceEffects = null
-var _motion_blur = null  # Disabled
 var _space_dust: SpaceDust = null
 var _film_grain: FilmGrain = null
 var _damage_screen: DamageScreenEffect = null

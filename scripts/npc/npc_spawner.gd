@@ -17,24 +17,59 @@ var _encounter_counter: int = 0
 var _deferred_spawn_pending: bool = false
 var _deferred_danger_level: int = 0
 var _deferred_system_data = null
+var _deferred_spawn_time_ms: float = 0.0  # Watchdog: when deferred spawn was requested
 
 # Override system_id for _register_npc_on_server (set by spawn_for_remote_system).
 var _override_system_id: int = -1
 
+const DEFERRED_SPAWN_WATCHDOG_MS: float = 10000.0  # 10s timeout
+
+
+func _process(_delta: float) -> void:
+	# Watchdog: if deferred spawn is still pending after 10s, log warning
+	if _deferred_spawn_pending and _deferred_spawn_time_ms > 0.0:
+		if Time.get_ticks_msec() - _deferred_spawn_time_ms > DEFERRED_SPAWN_WATCHDOG_MS:
+			push_warning("EncounterManager: Deferred spawn still pending after %.0fs — NetworkSyncManager may not exist" % (DEFERRED_SPAWN_WATCHDOG_MS / 1000.0))
+			_deferred_spawn_time_ms = Time.get_ticks_msec()  # Reset to avoid spam
+
 
 func clear_all_npcs() -> void:
-	var lod_mgr =_get_lod_manager()
+	var lod_mgr = _get_lod_manager()
 	if lod_mgr:
 		for npc_id in _active_npc_ids:
 			lod_mgr.unregister_ship(npc_id)
 	else:
-		# Legacy fallback: free nodes directly
 		for npc_id in _active_npc_ids:
-			var node =get_tree().current_scene.get_node_or_null(NodePath(String(npc_id)))
+			var node = get_tree().current_scene.get_node_or_null(NodePath(String(npc_id)))
 			if node and is_instance_valid(node):
 				node.queue_free()
 	_active_npc_ids.clear()
 	_encounter_counter = 0
+
+
+## Save NPCs to persistence instead of destroying them. Returns the NPC nodes
+## (already detached from LOD/authority) so NpcPersistence can reparent them.
+func save_npcs_for_persistence(system_id: int) -> Array[Node]:
+	var lod_mgr = _get_lod_manager()
+	var npc_nodes: Array[Node] = []
+
+	for npc_id in _active_npc_ids:
+		var npc_node: Node = null
+		if lod_mgr:
+			var lod_data = lod_mgr.get_ship_data(npc_id)
+			if lod_data and is_instance_valid(lod_data.node_ref):
+				npc_node = lod_data.node_ref
+			# Unregister from LOD without freeing the node
+			lod_mgr.unregister_ship(npc_id, false)  # false = don't queue_free
+		else:
+			npc_node = get_tree().current_scene.get_node_or_null(NodePath(String(npc_id)))
+
+		if npc_node and is_instance_valid(npc_node):
+			npc_nodes.append(npc_node)
+
+	_active_npc_ids.clear()
+	_encounter_counter = 0
+	return npc_nodes
 
 
 func spawn_system_encounters(danger_level: int, system_data) -> void:
@@ -48,6 +83,15 @@ func spawn_system_encounters(danger_level: int, system_data) -> void:
 		_deferred_spawn_pending = true
 		_deferred_danger_level = danger_level
 		_deferred_system_data = system_data
+		_deferred_spawn_time_ms = Time.get_ticks_msec()
+		return
+
+	# Check if we have dormant NPCs from a previous visit
+	var sys_trans = GameManager._system_transition
+	var system_id: int = sys_trans.current_system_id if sys_trans else 0
+	var persistence: NpcPersistence = GameManager.get_node_or_null("NpcPersistence")
+	if persistence and persistence.has_saved_state(system_id):
+		_restore_from_persistence(system_id, persistence)
 		return
 
 	_do_spawn_encounters(danger_level, system_data)
@@ -61,6 +105,66 @@ func spawn_deferred() -> void:
 	_do_spawn_encounters(_deferred_danger_level, _deferred_system_data)
 
 
+## Restore dormant NPCs from persistence back into the scene.
+func _restore_from_persistence(system_id: int, persistence: NpcPersistence) -> void:
+	var universe: Node3D = GameManager.universe_node
+	if universe == null:
+		return
+
+	var restored_nodes: Array[Node] = persistence.restore_system(system_id, universe)
+	if restored_nodes.is_empty():
+		return
+
+	var lod_mgr = _get_lod_manager()
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+
+	for npc in restored_nodes:
+		if npc == null or not is_instance_valid(npc):
+			continue
+		var npc_id := StringName(npc.name)
+		_active_npc_ids.append(npc_id)
+
+		# Re-register in LOD system
+		if lod_mgr and npc.get("ship_data"):
+			var lod_data := ShipLODData.new()
+			lod_data.id = npc_id
+			lod_data.ship_id = npc.ship_data.ship_id
+			lod_data.ship_class = npc.ship_data.ship_class
+			lod_data.faction = npc.faction if "faction" in npc else &"hostile"
+			lod_data.node_ref = npc
+			lod_data.position = npc.global_position
+			if npc is RigidBody3D:
+				lod_data.velocity = npc.linear_velocity
+			lod_data.rotation_basis = npc.global_transform.basis
+			# Read health if available
+			var health = npc.get_node_or_null("HealthSystem")
+			if health:
+				lod_data.hull_ratio = health.get_hull_ratio()
+				lod_data.shield_ratio = health.get_total_shield_ratio()
+			lod_mgr.register_ship(npc_id, lod_data)
+
+		# Re-register with NPC authority
+		if npc_auth and npc.get("ship_data"):
+			var ship_id: StringName = npc.ship_data.ship_id
+			var fac: StringName = npc.faction if "faction" in npc else &"hostile"
+			npc_auth.register_npc(npc_id, system_id, ship_id, fac)
+			npc_auth.notify_spawn_to_peers(npc_id, system_id)
+			npc_auth.connect_npc_fire_relay(npc_id, npc)
+
+		# Re-register in EntityRegistry
+		var upos: Array = FloatingOrigin.to_universe_pos(npc.global_position)
+		EntityRegistry.register(npc.name, {
+			"name": npc.name,
+			"type": EntityRegistrySystem.EntityType.SHIP_NPC,
+			"node": npc,
+			"radius": 10.0,
+			"color": Color.RED,
+			"pos_x": upos[0], "pos_y": upos[1], "pos_z": upos[2],
+		})
+
+	print("EncounterManager: Restored %d NPCs from persistence for system %d" % [restored_nodes.size(), system_id])
+
+
 ## Admin reset: clear active NPC list (nodes already freed by NpcAuthority) and re-spawn.
 func admin_clear_and_respawn() -> void:
 	_active_npc_ids.clear()
@@ -71,25 +175,44 @@ func admin_clear_and_respawn() -> void:
 
 
 func _do_spawn_encounters(danger_level: int, system_data) -> void:
-	# Collect all station positions and scene nodes
+	# Resolve the system's default station faction from galaxy data
+	var sys_trans = GameManager._system_transition
+	var system_id_for_fac: int = sys_trans.current_system_id if sys_trans else 0
+	var default_faction: StringName = &"nova_terra"
+	if sys_trans and sys_trans.galaxy:
+		var galaxy_sys_fac: StringName = sys_trans.galaxy.get_system(system_id_for_fac).get("faction", &"neutral")
+		default_faction = SystemTransition._map_system_faction(galaxy_sys_fac)
+
+	# Collect all station positions, scene nodes, and factions
 	var station_positions: Array[Vector3] = []
 	var station_nodes: Array = []  # Node3D or null
+	var station_factions: Array[StringName] = []
+	var universe: Node3D = GameManager.universe_node
 	if system_data and system_data.stations.size() > 0:
-		for st in system_data.stations:
+		for st_i in system_data.stations.size():
+			var st: StationData = system_data.stations[st_i]
 			var orbit_r: float = st.orbital_radius
 			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
 			var station_pos := Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
 			station_positions.append(station_pos)
-			# Find the actual station scene node via EntityRegistry
+			# Find the actual station scene node — try by name first, then EntityRegistry
 			var station_node: Node3D = null
-			var all_stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-			for ent in all_stations:
-				if ent.get("node") and is_instance_valid(ent["node"]):
-					var ent_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-					if ent_pos.distance_to(station_pos) < 500.0:
-						station_node = ent["node"]
-						break
+			if universe:
+				station_node = universe.get_node_or_null("Station_%d" % st_i)
+			if station_node == null:
+				var all_stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
+				for ent in all_stations:
+					if ent.get("node") and is_instance_valid(ent["node"]):
+						var ent_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+						if ent_pos.distance_to(station_pos) < 500.0:
+							station_node = ent["node"]
+							break
 			station_nodes.append(station_node)
+			# Use station node's faction if available, otherwise fall back to galaxy default
+			if station_node and "faction" in station_node:
+				station_factions.append(station_node.faction)
+			else:
+				station_factions.append(default_faction)
 
 	# Collect gate positions for system-wide routes.
 	# Gates are at system scale (millions of units) — clamp to playable patrol distance.
@@ -112,15 +235,15 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	if station_positions.is_empty():
 		station_positions.append(Vector3(500, 0, -1500))
 		station_nodes.append(null)
+		station_factions.append(default_faction)
 	if key_points.is_empty():
 		key_points.append(Vector3(500, 0, -1500))
 
 	# Get current system_id for encounter key generation
-	var sys_trans = GameManager._system_transition
-	var system_id: int = sys_trans.current_system_id if sys_trans else 0
+	var system_id: int = system_id_for_fac
 
 	# Spawn dedicated station guards (faction matches the station)
-	_spawn_station_guards(station_positions, station_nodes, system_id)
+	_spawn_station_guards(station_positions, station_nodes, system_id, station_factions)
 
 	var configs := EncounterConfig.get_danger_config(danger_level)
 	if danger_level == 5 and configs.size() >= 2:
@@ -157,13 +280,14 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		elif st_idx < station_factions.size():
 			guard_faction = station_factions[st_idx]
 		else:
-			continue
+			guard_faction = &"nova_terra"  # Fallback — always spawn guards
 		var st_pos: Vector3 = station_positions[st_idx]
 		# Guards patrol OUTSIDE the station model (~2500m radius + margin)
 		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
 		if offset_dir.length_squared() < 0.01:
 			offset_dir = Vector3.FORWARD
 		var guard_center: Vector3 = st_pos + offset_dir * randf_range(3500.0, 4500.0) + Vector3(0, randf_range(-50, 50), 0)
+		print("EncounterManager: Spawning 2 guards (faction=%s, ship=%s) for station %d (node=%s)" % [guard_faction, guard_ship, st_idx, station_node != null])
 		spawn_patrol(2, guard_ship, guard_center, 1000.0, guard_faction, system_id, 100 + st_idx, station_node)
 
 
@@ -235,12 +359,6 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 	if parent == null:
 		parent = get_tree().current_scene
 
-	var lod_mgr =_get_lod_manager()
-	var cam_pos =Vector3.ZERO
-	var cam =get_viewport().get_camera_3d()
-	if cam:
-		cam_pos = cam.global_position
-
 	# Push patrol center away from large obstacles (stations, planets, stars)
 	center = _push_spawn_from_obstacles(center)
 
@@ -262,39 +380,23 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 		var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
 		var pos: Vector3 = center + offset
 
-		# If LOD manager exists and spawn is far away, use data-only (LOD2)
 		# Clamp patrol radius for station guards
 		var patrol_radius: float = radius
 		if station_node:
 			patrol_radius = clampf(radius, 500.0, 1000.0)
 
-		# On dedicated server, always spawn full nodes — no rendering overhead
-		# and camera distance is meaningless on headless (cam_pos always zero).
-		var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
-		if spawn_data_only:
-			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
-			if lod_data:
-				lod_data.ai_patrol_center = center
-				lod_data.ai_patrol_radius = patrol_radius
-				lod_data.velocity = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized() * randf_range(100.0, 200.0)
+		# Always spawn full nodes — all NPCs are real ships with AI + physics
+		var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
+		if ship:
+			var brain = ship.get_node_or_null("AIBrain")
+			if brain:
+				brain.set_patrol_area(center, patrol_radius)
 				if station_node:
-					lod_data.guard_station_name = StringName(station_node.name)
-				lod_mgr.register_ship(lod_data.id, lod_data)
-				_active_npc_ids.append(lod_data.id)
-				_register_npc_on_server(lod_data.id, ship_id, faction)
-				_store_encounter_key(lod_data.id, system_id, cfg_idx, i)
-		else:
-			var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
-			if ship:
-				var brain = ship.get_node_or_null("AIBrain")
-				if brain:
-					brain.set_patrol_area(center, patrol_radius)
-					if station_node:
-						brain.guard_station = station_node
-				_active_npc_ids.append(StringName(ship.name))
-				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
-				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
-				_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
+					brain.guard_station = station_node
+			_active_npc_ids.append(StringName(ship.name))
+			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+			_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
+			_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
 
 	encounter_started.emit(eid)
 
@@ -308,12 +410,6 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 	var parent = get_tree().current_scene.get_node_or_null("Universe")
 	if parent == null:
 		parent = get_tree().current_scene
-
-	var lod_mgr = _get_lod_manager()
-	var cam_pos = Vector3.ZERO
-	var cam = get_viewport().get_camera_3d()
-	if cam:
-		cam_pos = cam.global_position
 
 	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 	var now: float = Time.get_unix_time_from_system()
@@ -331,30 +427,18 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 		var start_idx: int = i % route.size()
 		var pos: Vector3 = route[start_idx] + Vector3(randf_range(-200, 200), randf_range(-50, 50), randf_range(-200, 200))
 
-		var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
-		if spawn_data_only:
-			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"balanced", pos, faction)
-			if lod_data:
-				lod_data.ai_route_waypoints = route.duplicate()
-				lod_data.ai_patrol_center = route[0]
-				lod_data.ai_patrol_radius = 50000.0  # Large radius (system-wide)
-				lod_data.velocity = (route[(start_idx + 1) % route.size()] - pos).normalized() * randf_range(200.0, 400.0)
-				lod_mgr.register_ship(lod_data.id, lod_data)
-				_active_npc_ids.append(lod_data.id)
-				_register_npc_on_server(lod_data.id, ship_id, faction)
-				_store_encounter_key(lod_data.id, system_id, cfg_idx, i)
-		else:
-			var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
-			if ship:
-				var brain = ship.get_node_or_null("AIBrain")
-				if brain:
-					brain.set_patrol_area(route[0], 50000.0)
-					brain._waypoints = route.duplicate()
-					brain.route_priority = false  # Can break route for combat
-				_active_npc_ids.append(StringName(ship.name))
-				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
-				_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
-				_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
+		# Always spawn full nodes — all NPCs are real ships with AI + physics
+		var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
+		if ship:
+			var brain = ship.get_node_or_null("AIBrain")
+			if brain:
+				brain.set_patrol_area(route[0], 50000.0)
+				brain._waypoints = route.duplicate()
+				brain.route_priority = false  # Can break route for combat
+			_active_npc_ids.append(StringName(ship.name))
+			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+			_register_npc_on_server(StringName(ship.name), ship_id, faction, ship)
+			_store_encounter_key(StringName(ship.name), system_id, cfg_idx, i)
 
 	encounter_started.emit(eid)
 
@@ -403,7 +487,9 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 	_encounter_counter += 1
 	var eid =_encounter_counter
 
-	var lod_mgr =_get_lod_manager()
+	var parent =get_tree().current_scene.get_node_or_null("Universe")
+	if parent == null:
+		parent = get_tree().current_scene
 
 	for i in count:
 		var angle: float = randf() * TAU
@@ -414,36 +500,15 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 		# Unique faction per ship — everyone fights everyone
 		var unique_faction =StringName("npc_%d" % i)
 
-		# Random initial velocity so LOD2 ships move on radar
-		var vel =Vector3(
-			randf_range(-1.0, 1.0),
-			randf_range(-0.2, 0.2),
-			randf_range(-1.0, 1.0)
-		).normalized() * randf_range(100.0, 200.0)
-
-		if lod_mgr:
-			# All spawn as data-only (LOD2) — LOD manager promotes nearby ones
-			var lod_data = ShipFactory.create_npc_data_only(ship_id, &"aggressive", pos, unique_faction)
-			if lod_data:
-				lod_data.ai_patrol_center = center
-				lod_data.ai_patrol_radius = radius
-				lod_data.velocity = vel
-				lod_mgr.register_ship(lod_data.id, lod_data)
-				_active_npc_ids.append(lod_data.id)
-				_register_npc_on_server(lod_data.id, ship_id, unique_faction)
-		else:
-			# Legacy fallback: no LOD manager
-			var parent =get_tree().current_scene.get_node_or_null("Universe")
-			if parent == null:
-				parent = get_tree().current_scene
-			var ship = ShipFactory.spawn_npc_ship(ship_id, &"aggressive", pos, parent, unique_faction)
-			if ship:
-				var brain = ship.get_node_or_null("AIBrain")
-				if brain:
-					brain.set_patrol_area(center, radius)
-				_active_npc_ids.append(StringName(ship.name))
-				ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
-				_register_npc_on_server(StringName(ship.name), ship_id, unique_faction)
+		# Always spawn full nodes — all NPCs are real ships with AI + physics
+		var ship = ShipFactory.spawn_npc_ship(ship_id, &"aggressive", pos, parent, unique_faction)
+		if ship:
+			var brain = ship.get_node_or_null("AIBrain")
+			if brain:
+				brain.set_patrol_area(center, radius)
+			_active_npc_ids.append(StringName(ship.name))
+			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
+			_register_npc_on_server(StringName(ship.name), ship_id, unique_faction, ship)
 
 	encounter_started.emit(eid)
 
@@ -599,10 +664,7 @@ func spawn_for_remote_system(system_id: int) -> void:
 	# Store virtual station IDs on NpcAuthority for cleanup
 	var npc_auth_ref = GameManager.get_node_or_null("NpcAuthority")
 	if npc_auth_ref:
-		if not npc_auth_ref.has_meta("virtual_stations"):
-			npc_auth_ref.set_meta("virtual_stations", {})
-		var vs_dict: Dictionary = npc_auth_ref.get_meta("virtual_stations")
-		vs_dict[system_id] = virtual_station_ids
+		npc_auth_ref._virtual_stations[system_id] = virtual_station_ids
 
 	# Set override so _register_npc_on_server uses the correct system_id
 	_override_system_id = system_id

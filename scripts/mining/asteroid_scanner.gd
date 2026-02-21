@@ -5,6 +5,8 @@ extends Node
 # Asteroid Scanner — Sends expanding ring pulses to reveal asteroid resources
 # Triggered by H key. Cooldown 8s, range 5km, reveal lasts 30s.
 # Multiple pulses can coexist — each is independent.
+# Progressive reveal: asteroids color as the wavefront passes them.
+# Networked: other players in the same system see the pulse visual.
 # =============================================================================
 
 signal scan_triggered
@@ -21,8 +23,8 @@ var _universe_node: Node3D = null
 var _cooldown: float = 0.0
 var _notif: NotificationService = null
 
-# Each active pulse tracks its own reveal count
-var _active_pulses: Array[Dictionary] = []  # [{pulse, revealed}]
+# Each active pulse tracks its own reveal count and previous radius
+var _active_pulses: Array[Dictionary] = []  # [{pulse, revealed, prev_radius}]
 
 
 func initialize(mgr, ship: RigidBody3D, universe: Node3D) -> void:
@@ -58,18 +60,23 @@ func trigger_scan() -> void:
 	_cooldown = SCAN_COOLDOWN
 
 	# Spawn pulse effect at ship position (in Universe node so it shifts with origin)
-	var pulse =ScannerPulseEffect.new()
+	var pulse = ScannerPulseEffect.new()
 	pulse.name = "ScannerPulse_%d" % Time.get_ticks_msec()
 	pulse.position = _ship.global_position
 	_universe_node.add_child(pulse)
 
-	var pulse_data ={"pulse": pulse, "revealed": 0}
+	var pulse_data = {"pulse": pulse, "revealed": 0, "prev_radius": 0.0}
 	_active_pulses.append(pulse_data)
 
 	pulse.scan_radius_updated.connect(_on_pulse_radius_updated.bind(pulse_data))
 	pulse.scan_completed.connect(_on_pulse_completed.bind(pulse_data))
 
 	scan_triggered.emit()
+
+	# Send scanner pulse to server for remote players
+	if NetworkManager.is_connected_to_server() and not NetworkManager.is_server():
+		var scan_pos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+		NetworkManager._rpc_scanner_pulse.rpc_id(1, scan_pos)
 
 
 func _process(delta: float) -> void:
@@ -85,8 +92,10 @@ func _on_pulse_radius_updated(radius: float, data: Dictionary) -> void:
 	if not is_instance_valid(pulse):
 		return
 	var center: Vector3 = pulse.global_position
-	var count: int = _asteroid_mgr.reveal_asteroids_in_radius(center, radius)
+	var prev_radius: float = data["prev_radius"]
+	var count: int = _asteroid_mgr.reveal_asteroids_in_shell(center, prev_radius, radius)
 	data["revealed"] += count
+	data["prev_radius"] = radius
 
 
 func _on_pulse_completed(data: Dictionary) -> void:

@@ -802,7 +802,7 @@ func _input(event: InputEvent) -> void:
 					if target_id != "":
 						_select_entity(target_id)
 				elif _right_hold_start <= 0.0 and not effective_indices.is_empty():
-					push_warning("StellarMap: right-click cancelled (hold_start=0, likely mouse moved >%dpx)" % int(RIGHT_HOLD_MAX_MOVE))
+					pass  # Right-click cancelled early (mouse moved or quick release)
 				elif _right_hold_triggered:
 					pass  # Long-hold context menu was opened — expected
 				_right_hold_start = 0.0
@@ -971,7 +971,7 @@ func _center_on_entity(id: String) -> void:
 	_camera.center_x = ent["pos_x"]
 	_camera.center_z = ent["pos_z"]
 	_camera.follow_enabled = false
-	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, _camera.max_zoom())
 	_select_entity(id)
 
 
@@ -983,7 +983,7 @@ func _follow_entity(id: String) -> void:
 	_camera.center_z = ent["pos_z"]
 	_camera.follow_entity_id = id
 	_camera.follow_enabled = true
-	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+	_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, _camera.max_zoom())
 	_select_entity(id)
 
 
@@ -1092,7 +1092,7 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 			_camera.center_x = virt["pos_x"]
 			_camera.center_z = virt["pos_z"]
 			_camera.follow_enabled = false
-			_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+			_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, _camera.max_zoom())
 			_restore_route_for_fleet_selection(fleet_index)
 			_dirty = true
 			return
@@ -1107,7 +1107,7 @@ func _on_fleet_ship_selected(fleet_index: int, _system_id: int) -> void:
 		_camera.center_x = fs.last_known_pos[0]
 		_camera.center_z = fs.last_known_pos[2]
 		_camera.follow_enabled = false
-		_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, MapCamera.ZOOM_MAX)
+		_camera.target_zoom = clampf(MapCamera.PRESET_LOCAL, MapCamera.ZOOM_MIN, _camera.max_zoom())
 		_restore_route_for_fleet_selection(fleet_index)
 		_dirty = true
 		return

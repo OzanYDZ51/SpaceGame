@@ -41,8 +41,8 @@ const _OBSTACLE_TYPES: Array = [
 ]
 
 # Route travel: convoy flies from A to B across the system
-const ROUTE_LENGTH_MIN: float = 80000.0   # 80 km
-const ROUTE_LENGTH_MAX: float = 150000.0  # 150 km
+const CONVOY_SPAWN_DIST_MIN: float = 8000.0   # 8 km — spawn closer to player
+const CONVOY_SPAWN_DIST_MAX: float = 20000.0  # 20 km
 const ROUTE_WAYPOINT_COUNT: int = 5
 
 # Map entity position update
@@ -135,19 +135,23 @@ func _spawn_pirate_convoy(system_id: int, tier: int) -> void:
 	_event_counter += 1
 	var event_id: String = "evt_%d_%d" % [system_id, _event_counter]
 
-	# Pick spawn position far from origin and objects
-	var start_pos := _find_safe_spawn_position()
-	var start_universe: Array = FloatingOrigin.to_universe_pos(start_pos)
-
-	# Generate a long travel route: start → destination across the system
+	# Route crosses through the player zone: spawn on one side, destination on the other
 	var obstacles := _gather_obstacles()
-	var end_pos := Vector3.ZERO
-	for _dir_attempt in 10:
-		var route_dir: float = randf() * TAU
-		var route_length: float = randf_range(ROUTE_LENGTH_MIN, ROUTE_LENGTH_MAX)
-		end_pos = start_pos + Vector3(cos(route_dir) * route_length, 0.0, sin(route_dir) * route_length)
-		if _is_clear_of_obstacles(end_pos, obstacles):
+	var angle: float = randf() * TAU
+	var spawn_dist: float = randf_range(CONVOY_SPAWN_DIST_MIN, CONVOY_SPAWN_DIST_MAX)
+	var start_pos := Vector3(cos(angle) * spawn_dist, 0.0, sin(angle) * spawn_dist)
+	var end_dist: float = randf_range(CONVOY_SPAWN_DIST_MIN, CONVOY_SPAWN_DIST_MAX)
+	var end_pos := Vector3(cos(angle + PI) * end_dist, 0.0, sin(angle + PI) * end_dist)
+
+	# Try to avoid obstacles at start/end
+	for _attempt in 5:
+		if _is_clear_of_obstacles(start_pos, obstacles) and _is_clear_of_obstacles(end_pos, obstacles):
 			break
+		angle += 0.3
+		start_pos = Vector3(cos(angle) * spawn_dist, 0.0, sin(angle) * spawn_dist)
+		end_pos = Vector3(cos(angle + PI) * end_dist, 0.0, sin(angle + PI) * end_dist)
+
+	var start_universe: Array = FloatingOrigin.to_universe_pos(start_pos)
 
 	var route_waypoints: Array[Vector3] = []
 	for i in ROUTE_WAYPOINT_COUNT:
@@ -214,15 +218,18 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vecto
 	if cam:
 		cam_pos = cam.global_position
 
-	# Spawn leader (freighter) — route_priority: keeps route during combat
+	# Spawn leader (freighter) — route_priority + no cruise
 	var leader_id_name: StringName = definition["leader"]
-	var leader_pos: Vector3 = start_pos
-	var leader_npc_id := _spawn_single_npc(leader_id_name, leader_pos, evt.faction, route_waypoints, parent, lod_mgr, cam_pos, true)
+	var leader_result := _spawn_single_npc(leader_id_name, start_pos, evt.faction, route_waypoints, parent, lod_mgr, cam_pos, true)
+	var leader_npc_id: StringName = leader_result[0]
+	var leader_ship: Node3D = leader_result[1]
 	if leader_npc_id != &"":
 		evt.leader_id = leader_npc_id
 		evt.npc_ids.append(leader_npc_id)
+		if leader_ship:
+			leader_ship.cruise_disabled = true
 
-	# Spawn escorts — normal combat behavior (they chase attackers)
+	# Spawn escorts — FORMATION following the leader, no cruise
 	var escort_idx: int = 0
 	for group in definition["escorts"]:
 		var ship_id: StringName = group["ship_id"]
@@ -234,51 +241,42 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vecto
 			var offset := Vector3(cos(angle) * dist, randf_range(-50, 50), sin(angle) * dist)
 			var pos: Vector3 = start_pos + offset
 
-			var npc_id := _spawn_single_npc(ship_id, pos, evt.faction, route_waypoints, parent, lod_mgr, cam_pos, false)
+			# Escorts get no route — they follow the leader in formation
+			var escort_result := _spawn_single_npc(ship_id, pos, evt.faction, [], parent, lod_mgr, cam_pos, false)
+			var npc_id: StringName = escort_result[0]
+			var escort_ship: Node3D = escort_result[1]
 			if npc_id != &"":
 				evt.npc_ids.append(npc_id)
+				if escort_ship:
+					escort_ship.cruise_disabled = true
+					if leader_ship:
+						var escort_brain = escort_ship.get_node_or_null("AIBrain")
+						if escort_brain:
+							escort_brain.formation_leader = leader_ship
+							escort_brain.formation_offset = offset.normalized() * clampf(dist, 200.0, 400.0)
+							escort_brain.current_state = AIBrain.State.FORMATION
 
 
-func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, route_waypoints: Array[Vector3], parent: Node, lod_mgr, cam_pos: Vector3, is_leader: bool) -> StringName:
+func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, route_waypoints: Array[Vector3], parent: Node, lod_mgr, _cam_pos: Vector3, is_leader: bool) -> Array:
 	var behavior: StringName = &"balanced"
 
-	# On dedicated server, always spawn full nodes
-	var spawn_data_only: bool = lod_mgr != null and not NetworkManager.is_server() and cam_pos.distance_to(pos) > ShipLODManager.LOD1_DISTANCE
-	if spawn_data_only:
-		var lod_data = ShipFactory.create_npc_data_only(ship_id, behavior, pos, faction)
-		if lod_data:
-			# Route-based travel: set waypoints + velocity toward first waypoint
-			lod_data.ai_route_waypoints = route_waypoints.duplicate()
-			lod_data.ai_route_priority = is_leader
-			if route_waypoints.size() >= 2:
-				var dir: Vector3 = (route_waypoints[1] - route_waypoints[0]).normalized()
-				var sd: ShipData = ShipRegistry.get_ship_data(ship_id)
-				var speed: float = sd.max_speed_normal if sd else 100.0
-				lod_data.velocity = dir * speed
-			# Set patrol center/radius as fallback for non-route systems
-			var mid: Vector3 = route_waypoints[0].lerp(route_waypoints[route_waypoints.size() - 1], 0.5) if route_waypoints.size() >= 2 else pos
-			lod_data.ai_patrol_center = mid
-			lod_data.ai_patrol_radius = mid.distance_to(route_waypoints[0]) + 5000.0 if route_waypoints.size() >= 2 else 15000.0
-			lod_data.is_event_npc = true
-			lod_mgr.register_ship(lod_data.id, lod_data)
-			_register_npc_on_server(lod_data.id, ship_id, faction)
-			return lod_data.id
-	else:
-		var ship = ShipFactory.spawn_npc_ship(ship_id, behavior, pos, parent, faction)
-		if ship:
-			var brain = ship.get_node_or_null("AIBrain")
-			if brain:
+	# Always spawn full nodes — all NPCs are real ships with AI + physics
+	var ship = ShipFactory.spawn_npc_ship(ship_id, behavior, pos, parent, faction)
+	if ship:
+		var brain = ship.get_node_or_null("AIBrain")
+		if brain:
+			if not route_waypoints.is_empty():
 				brain.set_route(route_waypoints)
-				if is_leader:
-					brain.route_priority = true
-			var npc_id := StringName(ship.name)
-			ship.tree_exiting.connect(_on_npc_removed.bind(npc_id))
-			_register_npc_on_server(npc_id, ship_id, faction, ship)
-			# Mark in LOD manager so combat bridge won't target this NPC
-			if lod_mgr and lod_mgr._ships.has(npc_id):
-				lod_mgr._ships[npc_id].is_event_npc = true
-			return npc_id
-	return &""
+			if is_leader:
+				brain.route_priority = true
+		var npc_id := StringName(ship.name)
+		ship.tree_exiting.connect(_on_npc_removed.bind(npc_id))
+		_register_npc_on_server(npc_id, ship_id, faction, ship)
+		# Mark in LOD manager so combat bridge won't target this NPC
+		if lod_mgr and lod_mgr._ships.has(npc_id):
+			lod_mgr._ships[npc_id].is_event_npc = true
+		return [npc_id, ship]
+	return [&"", null]
 
 
 # =============================================================================

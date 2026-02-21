@@ -683,6 +683,11 @@ func _initialize_game() -> void:
 	_encounter_manager.name = "EncounterManager"
 	add_child(_encounter_manager)
 
+	# NPC Persistence (saves/restores NPCs across system transitions)
+	var npc_persistence := NpcPersistence.new()
+	npc_persistence.name = "NpcPersistence"
+	add_child(npc_persistence)
+
 	# Corporation Manager
 	_corporation_manager = CorporationManager.new()
 	_corporation_manager.name = "CorporationManager"
@@ -960,6 +965,10 @@ func _show_faction_selection() -> void:
 	if _gameplay_integrator == null or _gameplay_integrator.faction_manager == null:
 		return
 	var fm = _gameplay_integrator.faction_manager
+
+	# Skip selection for returning players who already chose a faction
+	if fm.player_faction != &"":
+		return
 
 	var faction_screen := FactionSelectionScreen.new()
 	var playable: Array[FactionResource] = []
@@ -1374,7 +1383,7 @@ func _autopilot_player_to(params: Dictionary) -> void:
 	_player_autopilot_wp = "player_wp_%d" % Time.get_ticks_msec()
 	EntityRegistry.register(_player_autopilot_wp, {
 		"name": "Destination",
-		"type": EntityRegistrySystem.EntityType.SHIP_PLAYER,
+		"type": EntityRegistrySystem.EntityType.POINT_OF_INTEREST,
 		"pos_x": target_x,
 		"pos_y": ship_upos[1],
 		"pos_z": target_z,
@@ -1383,8 +1392,7 @@ func _autopilot_player_to(params: Dictionary) -> void:
 		"color": Color.TRANSPARENT,
 		"extra": {"hidden": true},
 	})
-	# is_gate=true → 30m arrival (not 10km), smooth approach
-	ship.engage_autopilot(_player_autopilot_wp, "Destination", true)
+	ship.engage_autopilot(_player_autopilot_wp, "Destination", false)
 
 
 func _cleanup_player_autopilot_wp() -> void:

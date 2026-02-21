@@ -94,6 +94,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.remote_mining_beam_received.connect(_on_remote_mining_beam)
 	NetworkManager.asteroid_depleted_received.connect(_on_remote_asteroid_depleted)
 	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
+	NetworkManager.remote_scanner_pulse_received.connect(_on_remote_scanner_pulse)
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
 	NetworkManager.server_connection_lost.connect(_on_server_connection_lost)
 
@@ -760,6 +761,21 @@ func _on_remote_mining_beam(peer_id: int, is_active: bool, source_pos: Array, ta
 		remote.show_mining_beam(source_pos, target_pos)
 	else:
 		remote.hide_mining_beam()
+
+
+func _on_remote_scanner_pulse(peer_id: int, scan_pos: Array) -> void:
+	if universe_node == null:
+		return
+	var local_pos: Vector3 = FloatingOrigin.to_local_pos(scan_pos)
+	# Skip if too far from camera (no point rendering a pulse we can't see)
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam and cam.global_position.distance_to(local_pos) > 7000.0:
+		return
+	var pulse := ScannerPulseEffect.new()
+	pulse.name = "RemoteScanPulse_%d_%d" % [peer_id, Time.get_ticks_msec()]
+	pulse.is_remote = true
+	pulse.position = local_pos
+	universe_node.add_child(pulse)
 
 
 func _on_remote_asteroid_depleted(asteroid_id_str: String) -> void:

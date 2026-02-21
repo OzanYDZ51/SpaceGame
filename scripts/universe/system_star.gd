@@ -24,7 +24,6 @@ var _star_radius: float = 696340.0  # default ~Sun size in game meters (~696 km)
 var _star_luminosity: float = 1.0
 
 var _mesh_instance: MeshInstance3D = null
-var _lens_flare: LensFlare = null
 var _last_cam_pos: Vector3 = Vector3(INF, INF, INF)
 var _last_origin_x: float = INF
 var _last_origin_y: float = INF
@@ -58,12 +57,6 @@ func _build_visuals() -> void:
 	_mesh_instance.material_override = surface_mat
 	_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_mesh_instance)
-
-	# Lens flare (anamorphic streak + halo)
-	_lens_flare = LensFlare.new()
-	_lens_flare.name = "LensFlare"
-	add_child(_lens_flare)
-	_lens_flare.setup(_star_color, _star_luminosity)
 
 
 func _process(_delta: float) -> void:

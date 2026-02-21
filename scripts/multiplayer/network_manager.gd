@@ -77,7 +77,11 @@ signal remote_mining_beam_received(peer_id: int, is_active: bool, source_pos: Ar
 signal asteroid_depleted_received(asteroid_id: String)
 signal asteroid_health_batch_received(batch: Array)
 
+# Scanner pulse sync
+signal remote_scanner_pulse_received(peer_id: int, scan_pos: Array)
+
 # Structure (station) sync signals
+@warning_ignore("unused_signal")
 signal structure_hit_claimed(sender_pid: int, target_id: String, weapon: String, damage: float, hit_dir: Array)
 signal structure_destroyed_received(struct_id: String, killer_pid: int, pos: Array, loot: Array)
 
@@ -121,7 +125,7 @@ var peers: Dictionary:
 
 
 ## Full ws/wss URL for reconnect display.
-var _server_url: String:
+var server_url: String:
 	get:
 		return _connection.get_server_url()
 
@@ -410,7 +414,6 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 		return
 
 	# First registration
-	var state: NetworkState = result["state"]
 	var spawn_sys: int = result["spawn_sys"]
 	var is_reconnect: bool = result["is_reconnect"]
 	var old_pid: int = result["old_pid"]
@@ -1038,3 +1041,24 @@ func _rpc_admin_npcs_reset() -> void:
 	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
 	if sync_mgr and sync_mgr.has_method("clear_all_remote_npcs"):
 		sync_mgr.clear_all_remote_npcs()
+
+
+# =============================================================================
+# SCANNER PULSE SYNC (visual wavefront for other players)
+# =============================================================================
+
+## Client -> Server: Player triggered a scanner pulse.
+@rpc("any_peer", "reliable")
+func _rpc_scanner_pulse(scan_pos: Array) -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
+	if npc_auth:
+		npc_auth.relay_scanner_pulse(sender_id, scan_pos)
+
+
+## Server -> Client: Another player triggered a scanner pulse (visual only).
+@rpc("authority", "reliable")
+func _rpc_remote_scanner_pulse(peer_id: int, scan_pos: Array) -> void:
+	remote_scanner_pulse_received.emit(peer_id, scan_pos)

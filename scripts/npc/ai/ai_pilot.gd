@@ -27,10 +27,6 @@ var _obstacle_sensor = null
 var _maneuver_dir: Vector3 = Vector3.ZERO
 var _maneuver_timer: float = 0.0
 
-# Evasion jink
-var _jink_offset: Vector3 = Vector3.ZERO
-var _jink_timer: float = 0.0
-
 # Intercept approach offset (persistent until close)
 var _approach_offset_dir: Vector3 = Vector3.ZERO
 var _approach_offset_set: bool = false
@@ -38,8 +34,8 @@ var _approach_offset_set: bool = false
 # Orbit angle for combat circling
 var _orbit_angle: float = 0.0
 
-# LOS check mask for fire_at_target (stations + asteroids)
-const LOS_COLLISION_MASK: int = 6
+# LOS check mask for fire_at_target (stations + asteroids + ships)
+const LOS_COLLISION_MASK: int = 7  # LAYER_SHIPS(1) | LAYER_STATIONS(2) | LAYER_ASTEROIDS(4)
 
 
 func _ready() -> void:
@@ -225,6 +221,10 @@ func face_target(target_pos: Vector3) -> void:
 # =============================================================================
 
 func _update_cruise(dist: float, alignment: float) -> void:
+	if _ship.cruise_disabled:
+		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+			_ship._exit_cruise()
+		return
 	if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 		# Exit cruise at fixed distance (like player autopilot, NOT speed-dependent)
 		# Old formula "speed * 3.0" caused premature exit at cruise phase 2 speeds
@@ -258,8 +258,8 @@ func update_combat_maneuver(delta: float) -> void:
 			randf_range(-0.3, 0.3),
 			randf_range(-0.4, 0.1)
 		)
-	# Advance orbit angle
-	_orbit_angle += ORBIT_ANGULAR_SPEED * delta
+	# Advance orbit angle (wrap to prevent unbounded growth)
+	_orbit_angle = fmod(_orbit_angle + ORBIT_ANGULAR_SPEED * delta, TAU)
 
 
 func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> void:
@@ -340,42 +340,11 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 				_ship.global_position, target.global_position)
 			los_query.collision_mask = LOS_COLLISION_MASK
 			los_query.collide_with_areas = false
-			los_query.exclude = [_ship.get_rid()]
+			los_query.exclude = [_ship.get_rid(), target.get_rid()]
 			var los_hit =space.intersect_ray(los_query)
 			if not los_hit.is_empty():
 				return
 		_cached_wm.fire_group(0, true, target_pos)
-
-
-func evade_random(delta: float, amplitude: float = 30.0, frequency: float = 2.0) -> void:
-	if _ship == null:
-		return
-
-	var avoid =Vector3.ZERO
-	if _obstacle_sensor:
-		_obstacle_sensor.update()
-		avoid = _obstacle_sensor.avoidance_vector
-
-	_jink_timer -= delta
-	if _jink_timer <= 0.0:
-		_jink_timer = 1.0 / frequency
-		_jink_offset = Vector3(
-			randf_range(-1.0, 1.0),
-			randf_range(-1.0, 1.0),
-			randf_range(-0.3, 0.3)
-		).normalized() * amplitude
-
-	var throttle =Vector3(signf(_jink_offset.x), signf(_jink_offset.y), -1.0)
-
-	# Emergency: reverse thrust instead of charging forward
-	if _obstacle_sensor and _obstacle_sensor.is_emergency:
-		throttle.z = 0.8  # Back away
-
-	if avoid.length_squared() > 100.0:
-		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
-		throttle.x = clampf(local_avoid.x, -1.0, 1.0)
-		throttle.y = clampf(local_avoid.y, -0.6, 0.6)
-	_ship.set_throttle(throttle)
 
 
 func get_distance_to(pos: Vector3) -> float:

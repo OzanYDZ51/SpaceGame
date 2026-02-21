@@ -220,6 +220,18 @@ func _cleanup_current_system() -> void:
 			impostor.queue_free()
 	_active_planet_impostors.clear()
 
+	# Save NPCs to persistence (server only) BEFORE clearing LOD/Universe
+	var encounter_mgr = _get_encounter_manager()
+	var persistence: NpcPersistence = GameManager.get_node_or_null("NpcPersistence")
+	if encounter_mgr and persistence and NetworkManager.is_server():
+		var npc_nodes: Array[Node] = encounter_mgr.save_npcs_for_persistence(current_system_id)
+		if not npc_nodes.is_empty():
+			persistence.save_system(current_system_id, npc_nodes)
+		else:
+			encounter_mgr.clear_all_npcs()
+	elif encounter_mgr:
+		encounter_mgr.clear_all_npcs()
+
 	# Clear LOD system (frees LOD0/1 nodes, clears LOD2 data, resets MultiMesh)
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
@@ -260,11 +272,6 @@ func _cleanup_current_system() -> void:
 			continue
 		child.visible = false  # Immediately hide (Label3D no_depth_test bleeds through overlay)
 		child.queue_free()
-
-	# Clear NPCs via encounter manager
-	var encounter_mgr = _get_encounter_manager()
-	if encounter_mgr:
-		encounter_mgr.clear_all_npcs()
 
 	# Clear structure authority
 	var struct_auth = GameManager.get_node_or_null("StructureAuthority")

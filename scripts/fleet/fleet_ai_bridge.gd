@@ -41,6 +41,10 @@ var _bay_signal_connected: bool = false
 
 var _initialized: bool = false
 
+# 15-minute idle timeout → auto return to station when ship has nothing to do
+const IDLE_TIMEOUT: float = 900.0  # 15 minutes
+var _idle_timer: float = 0.0
+
 
 func _ready() -> void:
 	_ship = get_parent()
@@ -167,6 +171,7 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	_returning = false
 	_arrived = false
 	_attack_target_id = ""
+	_idle_timer = 0.0
 	if _brain == null:
 		if _initialized:
 			push_warning("FleetAIBridge[%d]: _brain is null, command ignored!" % fleet_index)
@@ -401,6 +406,28 @@ func _process(_delta: float) -> void:
 				else:
 					_brain.set_patrol_area(target_pos, 0.0)
 					_brain.current_state = AIBrain.State.PATROL
+
+	# --- 15-minute idle timeout: return to station when ship has nothing to do ---
+	# Applies to: move_to/construction (arrived), attack (target gone), no command.
+	# Does NOT apply to: patrol (always active), mine (AIMiningBehavior handles it),
+	# return_to_station (already returning).
+	if command not in [&"patrol", &"mine", &"return_to_station"] and _initialized:
+		var currently_idle: bool = (
+			(_arrived and command in [&"move_to", &"construction"])
+			or (command == &"attack" and _attack_target_id == "" and _brain.current_state == AIBrain.State.IDLE)
+			or command == &""
+		)
+		if currently_idle:
+			_idle_timer += _delta
+			if _idle_timer >= IDLE_TIMEOUT:
+				_idle_timer = 0.0
+				# Dock instantly — no return trip needed
+				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+				if npc_auth and npc_auth._active:
+					npc_auth.handle_fleet_npc_self_docked(StringName(_ship.name), fleet_index)
+				return
+		else:
+			_idle_timer = 0.0
 
 	# Safety net: if ignore_threats is set but the brain somehow slipped into a combat
 	# state (PURSUE/ATTACK), force it back to IDLE so the auto-resume above

@@ -55,20 +55,27 @@ func get_ship_count() -> int:
 
 func serialize() -> Array:
 	var result: Array = []
-	for ship in ships:
-		var d = ship.serialize()
-		d["active"] = (ships.find(ship) == active_index)
-		result.append(d)
+	for i in ships.size():
+		var ship = ships[i]
+		if ship.ship_id == &"":
+			result.append({"empty": true})
+		else:
+			var d = ship.serialize()
+			d["active"] = (i == active_index)
+			result.append(d)
 	return result
 
 
 static func deserialize(data: Array):
-	var fleet =PlayerFleet.new()
+	var fleet = PlayerFleet.new()
 	for i in data.size():
-		var ship = FleetShip.deserialize(data[i])
-		fleet.ships.append(ship)
-		if data[i].get("active", false):
-			fleet.active_index = i
+		if data[i].get("empty", false):
+			fleet.ships.append(FleetShip.new())  # Preserve slot index, ship_id stays ""
+		else:
+			var ship = FleetShip.deserialize(data[i])
+			fleet.ships.append(ship)
+			if data[i].get("active", false):
+				fleet.active_index = i
 	return fleet
 
 
@@ -114,6 +121,6 @@ func get_ships_in_system(system_id: int) -> Array[int]:
 	var result: Array[int] = []
 	for i in ships.size():
 		var fs = ships[i]
-		if fs.docked_system_id == system_id and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+		if fs.ship_id != &"" and fs.docked_system_id == system_id and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
 			result.append(i)
 	return result

@@ -116,7 +116,7 @@ func _process(_delta: float) -> void:
 	if not _is_shown:
 		return
 	var elapsed: float = Time.get_ticks_msec() / 1000.0 - _disconnect_time
-	var m: int = int(elapsed) / 60
+	var m: int = int(elapsed / 60.0)
 	var s: int = int(elapsed) % 60
 	_time_label.text = "Hors ligne depuis %02d:%02d" % [m, s]
 

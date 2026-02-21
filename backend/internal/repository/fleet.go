@@ -96,6 +96,9 @@ func (r *FleetRepository) BulkUpsertFleetShips(ctx context.Context, ships []mode
 
 	now := time.Now()
 	for _, s := range ships {
+		if s.ShipID == "" {
+			continue // Empty slot — skip
+		}
 		cmdParams := s.CommandParams
 		if cmdParams == nil {
 			cmdParams = json.RawMessage(`{}`)
@@ -203,15 +206,10 @@ func (r *FleetRepository) BatchUpdatePositions(ctx context.Context, updates []mo
 	return tx.Commit(ctx)
 }
 
-// MarkDestroyed marks a fleet ship as destroyed.
+// MarkDestroyed permanently deletes a fleet ship row (ship is irrecoverably lost).
 func (r *FleetRepository) MarkDestroyed(ctx context.Context, playerID string, fleetIndex int) error {
-	now := time.Now()
 	_, err := r.pool.Exec(ctx, `
-		UPDATE fleet_ships SET
-			deployment_state = 2,
-			destroyed_at = $3,
-			updated_at = $3
-		WHERE player_id = $1 AND fleet_index = $2
-	`, playerID, fleetIndex, now)
+		DELETE FROM fleet_ships WHERE player_id = $1 AND fleet_index = $2
+	`, playerID, fleetIndex)
 	return err
 }

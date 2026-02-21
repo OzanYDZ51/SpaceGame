@@ -9,6 +9,7 @@ extends MeshInstance3D
 
 var _shader_mat: ShaderMaterial = null
 var _base_scale: float = 800.0
+var _base_intensity: float = 1.0
 
 
 func _ready() -> void:
@@ -34,7 +35,8 @@ func _ready() -> void:
 func setup(star_color: Color, star_luminosity: float) -> void:
 	if _shader_mat:
 		_shader_mat.set_shader_parameter("flare_color", Vector3(star_color.r, star_color.g, star_color.b))
-		_shader_mat.set_shader_parameter("flare_intensity", clampf(0.5 + star_luminosity * 0.3, 0.3, 1.5))
+		_base_intensity = clampf(0.5 + star_luminosity * 0.3, 0.3, 1.5)
+		_shader_mat.set_shader_parameter("flare_intensity", _base_intensity)
 	_base_scale = 600.0 + star_luminosity * 200.0
 
 
@@ -44,10 +46,15 @@ func _process(_delta: float) -> void:
 		visible = false
 		return
 
+	var to_flare: Vector3 = global_position - cam.global_position
+	var dist: float = to_flare.length()
+	if dist < 1.0:
+		visible = false
+		return
+
 	# Fade based on angle between camera forward and direction to sun
-	var to_flare := (global_position - cam.global_position).normalized()
 	var cam_forward := -cam.global_basis.z
-	var dot_val: float = cam_forward.dot(to_flare)
+	var dot_val: float = cam_forward.dot(to_flare / dist)
 
 	# Only show when sun is roughly in front of camera
 	if dot_val < 0.1:
@@ -55,9 +62,14 @@ func _process(_delta: float) -> void:
 		return
 
 	visible = true
-	# Smooth fade: strongest when looking directly at sun
+	# Smooth fade based on viewing angle
 	var fade: float = smoothstep(0.1, 0.6, dot_val)
-	scale = Vector3.ONE * _base_scale * fade
+	# Fixed angular size (~2.5°) regardless of fade — decoupled from opacity so
+	# the flare doesn't appear to "approach/retreat" as the camera angle changes.
+	scale = Vector3.ONE * (dist * 0.04)
+	# Fade controls opacity only via shader intensity, not geometry size
+	if _shader_mat:
+		_shader_mat.set_shader_parameter("flare_intensity", _base_intensity * fade)
 
 
 func smoothstep(edge0: float, edge1: float, x: float) -> float:

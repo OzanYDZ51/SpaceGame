@@ -8,9 +8,10 @@ extends RefCounted
 
 # Zoom is in "pixels per meter" (logarithmic scale)
 const ZOOM_MIN: float = 5e-6     # Full system view (~384M meters visible)
-const ZOOM_MAX: float = 2.0       # Tactical view (~960m visible)
+const ZOOM_MAX: float = 2.0       # Hard cap (limited by MIN_VISIBLE_RANGE in practice)
 const ZOOM_STEP: float = 1.35     # Multiplier per scroll notch (~42 notches full range)
 const ZOOM_SMOOTH_SPEED: float = 14.0
+const MIN_VISIBLE_RANGE: float = 10_000.0  # 10 km — never zoom closer than this
 
 # Zoom presets (pixels per meter)
 const PRESET_TACTICAL: float = 1.0
@@ -66,6 +67,13 @@ func update(delta: float) -> void:
 	clamp_center()
 
 
+## Effective max zoom based on screen size (ensures MIN_VISIBLE_RANGE is always visible).
+func max_zoom() -> float:
+	if screen_size.x < 1.0:
+		return ZOOM_MIN
+	return minf(ZOOM_MAX, screen_size.x / MIN_VISIBLE_RANGE)
+
+
 func zoom_at(screen_pos: Vector2, factor: float) -> void:
 	# Record world point under cursor as anchor
 	_anchor_world_x = screen_to_universe_x(screen_pos.x)
@@ -73,7 +81,7 @@ func zoom_at(screen_pos: Vector2, factor: float) -> void:
 	_anchor_screen = screen_pos
 	_anchored = true
 
-	target_zoom = clampf(target_zoom * factor, ZOOM_MIN, ZOOM_MAX)
+	target_zoom = clampf(target_zoom * factor, ZOOM_MIN, max_zoom())
 
 
 func pan(screen_delta: Vector2) -> void:
@@ -91,7 +99,7 @@ func set_preset(index: int) -> void:
 		3: target_zoom = PRESET_REGIONAL
 		4: target_zoom = PRESET_SYSTEM
 		5: target_zoom = PRESET_FULL
-	target_zoom = clampf(target_zoom, ZOOM_MIN, ZOOM_MAX)
+	target_zoom = clampf(target_zoom, ZOOM_MIN, max_zoom())
 
 
 func recenter_on_player() -> void:
@@ -166,7 +174,7 @@ func fit_entities(entities: Dictionary, animate: bool = true) -> void:
 	var zoom_x: float = screen_size.x * 0.6 / range_x  # 0.6 = usable viewport fraction
 	var zoom_z: float = screen_size.y * 0.85 / range_z
 	var fit_zoom: float = minf(zoom_x, zoom_z)
-	fit_zoom = clampf(fit_zoom, ZOOM_MIN, ZOOM_MAX)
+	fit_zoom = clampf(fit_zoom, ZOOM_MIN, max_zoom())
 	# Center on bounding box center
 	center_x = (min_x + max_x) * 0.5
 	center_z = (min_z + max_z) * 0.5

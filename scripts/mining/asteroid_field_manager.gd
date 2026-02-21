@@ -69,6 +69,10 @@ var _dots_dirty: bool = false
 # Look-ahead: player ship reference for velocity prediction
 var _ship_ref: WeakRef = WeakRef.new()
 
+# Interest positions: off-camera positions that must keep cells loaded
+# (e.g. fleet mining ships far from the player). Key = registrar name, value = local Vector3.
+var _interest_positions: Dictionary = {}
+
 
 func _ready() -> void:
 	_grid = SpatialGrid.new(500.0)
@@ -199,6 +203,19 @@ func on_asteroid_depleted(id: StringName) -> void:
 	_depleted_ids[id] = Time.get_unix_time_from_system()
 
 
+## Register an interest position so cells stay loaded around it even when the camera
+## is far away. Call this regularly (e.g. every frame in a mining ship's _process).
+## key: unique registrar name (e.g. "fleet_5_mining"), pos: local-space position.
+func register_interest_position(key: String, pos: Vector3) -> void:
+	_interest_positions[key] = pos
+
+
+## Unregister an interest position. Cells only needed for this position will be
+## unloaded on the next cell evaluation cycle.
+func unregister_interest_position(key: String) -> void:
+	_interest_positions.erase(key)
+
+
 # === Process ===
 
 func _process(delta: float) -> void:
@@ -286,7 +303,15 @@ func _evaluate_cells(ship: Node3D, speed: float) -> void:
 		var ahead_cell_z: int = floori(ahead_z / CELL_SIZE)
 		_gather_cells_in_radius(ahead_cell_x, ahead_cell_z, cell_range, ahead_x, ahead_z, LOAD_RADIUS, desired_cells)
 
-	# Unload cells beyond UNLOAD_RADIUS from BOTH current and predicted positions
+	# Load around interest positions (fleet mining ships far from camera)
+	for ipos: Vector3 in _interest_positions.values():
+		var ipx: float = ipos.x + FloatingOrigin.origin_offset_x
+		var ipz: float = ipos.z + FloatingOrigin.origin_offset_z
+		var icx: int = floori(ipx / CELL_SIZE)
+		var icz: int = floori(ipz / CELL_SIZE)
+		_gather_cells_in_radius(icx, icz, cell_range, ipx, ipz, LOAD_RADIUS, desired_cells)
+
+	# Unload cells beyond UNLOAD_RADIUS from ALL tracked positions
 	var cells_to_remove: Array[Vector2i] = []
 	for key: Vector2i in _loaded_cells:
 		if desired_cells.has(key):
@@ -296,15 +321,26 @@ func _evaluate_cells(ship: Node3D, speed: float) -> void:
 		var dx: float = ccx - universe_x
 		var dz: float = ccz - universe_z
 		var dist_sq: float = dx * dx + dz * dz
+		var too_far: bool
 		if use_lookahead:
 			var dx2: float = ccx - ahead_x
 			var dz2: float = ccz - ahead_z
 			var dist_sq2: float = dx2 * dx2 + dz2 * dz2
-			if dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS and dist_sq2 > UNLOAD_RADIUS * UNLOAD_RADIUS:
-				cells_to_remove.append(key)
+			too_far = dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS and dist_sq2 > UNLOAD_RADIUS * UNLOAD_RADIUS
 		else:
-			if dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS:
-				cells_to_remove.append(key)
+			too_far = dist_sq > UNLOAD_RADIUS * UNLOAD_RADIUS
+		# Keep cells near interest positions (fleet mining ships)
+		if too_far and not _interest_positions.is_empty():
+			for ipos: Vector3 in _interest_positions.values():
+				var ipx: float = ipos.x + FloatingOrigin.origin_offset_x
+				var ipz: float = ipos.z + FloatingOrigin.origin_offset_z
+				var idx: float = ccx - ipx
+				var idz: float = ccz - ipz
+				if idx * idx + idz * idz <= UNLOAD_RADIUS * UNLOAD_RADIUS:
+					too_far = false
+					break
+		if too_far:
+			cells_to_remove.append(key)
 
 	for key in cells_to_remove:
 		_unload_cell(key)
@@ -672,6 +708,10 @@ func _on_node_depleted(asteroid_id: StringName) -> void:
 # === Origin Shift ===
 
 func _on_origin_shifted(shift: Vector3) -> void:
+	# Shift interest positions (they're stored in local space)
+	for key in _interest_positions:
+		_interest_positions[key] = (_interest_positions[key] as Vector3) - shift
+
 	# Shift all asteroid positions in data
 	for id: StringName in _all_asteroids:
 		var asteroid = _all_asteroids[id]
@@ -693,6 +733,38 @@ func _on_origin_shifted(shift: Vector3) -> void:
 
 
 # === Scanner Reveal ===
+
+## Reveals asteroids in a shell (between inner_radius and outer_radius) around center.
+## Only asteroids not yet reached by the wavefront are revealed (progressive scan).
+## Returns count of resource-bearing asteroids found.
+func reveal_asteroids_in_shell(center: Vector3, inner_radius: float, outer_radius: float) -> int:
+	var ids = _grid.query_radius(center, outer_radius)
+	var revealed_count: int = 0
+	var now: float = Time.get_ticks_msec() / 1000.0
+
+	for id: StringName in ids:
+		var ast = _all_asteroids.get(id)
+		if ast == null or ast.is_depleted or ast.is_scanned:
+			continue
+		# Only reveal asteroids in the shell (not already passed by the wavefront)
+		var dist: float = center.distance_to(ast.position)
+		if dist < inner_radius:
+			continue
+
+		ast.is_scanned = true
+		ast.scan_expire_time = now + SCAN_REVEAL_DURATION
+
+		if ast.has_resource:
+			ast.color_tint = ast.resource_color
+			revealed_count += 1
+			_update_asteroid_visual(ast, true)
+		else:
+			_flash_barren_asteroid(ast)
+
+	if revealed_count > 0:
+		_dots_dirty = true
+	return revealed_count
+
 
 ## Reveals asteroids within radius of center. Returns count of resource-bearing asteroids found.
 func reveal_asteroids_in_radius(center: Vector3, radius: float) -> int:

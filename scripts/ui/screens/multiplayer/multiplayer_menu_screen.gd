@@ -75,7 +75,7 @@ func _draw() -> void:
 
 	# --- Mode & IP info ---
 	if NetworkManager.is_connected_to_server():
-		var server_text = Locale.t("mp.connected_to") % NetworkManager._server_url
+		var server_text = Locale.t("mp.connected_to") % NetworkManager.server_url
 		draw_string(font, Vector2(0, y), server_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, UITheme.FONT_SIZE_HEADER, UITheme.ACCENT)
 		y += 18
 		var info_text = Locale.t("mp.peer_id") % NetworkManager.local_peer_id

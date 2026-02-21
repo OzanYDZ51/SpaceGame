@@ -2,26 +2,23 @@ class_name ScannerPulseEffect
 extends Node3D
 
 # =============================================================================
-# Scanner Pulse Effect — Star Citizen style.
+# Scanner Pulse Effect — Visible wavefront ring.
 #
-# TWO-PHASE expansion:
-#   Phase 1 (SLOW  — 20 m/s, 0→50 m):
-#     Camera is at ~25–50 m. The sphere expands slowly FROM the ship,
-#     growing from a tiny dot to a ring that FILLS the screen over ~2.5 s.
-#     You clearly watch it leave the ship. Then it passes through you.
+# Single-speed expansion from ship to SCAN_RANGE.
+# The shader renders only a thin shell band at the sphere edge,
+# so the ring stays visible even when the camera is inside the sphere.
 #
-#   Phase 2 (FAST  — 800 m/s, 50→2000 m):
-#     Sphere zooms to full scan range in ~2.4 s. Camera is inside →
-#     sphere not visible, but asteroids reveal themselves as the wave passes.
-#
-# Total: ~5 seconds.  No rings, no cull_disabled, no blue screen.
+# is_remote = true for pulses spawned from other players' scans:
+#   → visual only, no scan_radius_updated signal emitted.
 # =============================================================================
 
 signal scan_radius_updated(radius: float)
 signal scan_completed
 
-const MAX_RANGE    : float = 2000.0
-const PULSE_SPEED  : float = 350.0   # m/s — single speed, ~5.7 s total
+const MAX_RANGE    : float = 5000.0   # Matches AsteroidScanner.SCAN_RANGE
+const PULSE_SPEED  : float = 350.0    # m/s — ~14.3 s total
+
+var is_remote      : bool  = false
 
 var _current_radius : float = 1.0
 var _elapsed        : float = 0.0
@@ -53,6 +50,7 @@ func _build_sphere() -> void:
 	_mat.set_shader_parameter("brightness", 5.0)
 	_mat.set_shader_parameter("rim_power",  5.0)
 	_mat.set_shader_parameter("fade",       1.0)
+	_mat.set_shader_parameter("shell_band", 0.15)
 	_mesh.material_override = _mat
 	add_child(_mesh)
 
@@ -91,7 +89,8 @@ func _process(delta: float) -> void:
 	var range_fade : float = 1.0 - smoothstep(MAX_RANGE * 0.78, MAX_RANGE * 0.98, _current_radius)
 	_mat.set_shader_parameter("fade", range_fade)
 
-	scan_radius_updated.emit(_current_radius)
+	if not is_remote:
+		scan_radius_updated.emit(_current_radius)
 
 
 func _fade_out() -> void:
