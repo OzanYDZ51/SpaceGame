@@ -40,7 +40,7 @@ var _shield_center: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	_left_panel = HudDrawHelpers.make_ctrl(0.0, 0.5, 0.0, 0.5, 16, -195, 242, 113)
+	_left_panel = HudDrawHelpers.make_ctrl(0.0, 0.5, 0.0, 0.5, 16, -195, 242, 145)
 	_left_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	_left_panel.mouse_entered.connect(func(): _left_bg_target = 1.0)
 	_left_panel.mouse_exited.connect(func(): _left_bg_target = 0.0)
@@ -159,7 +159,33 @@ func _draw_left_panel(ctrl: Control) -> void:
 	# 3D Shield Hologram area (SubViewport renders behind this _draw layer)
 	if ship != _holo_ship_ref:
 		_setup_shield_holo()
-	y += 86
+	# Hologram occupies y=128..218 (position.y=128, size.y=90) — align y below it
+	y = 228
+
+	# Separator
+	ctrl.draw_line(Vector2(x, y), Vector2(x + w, y), UITheme.PRIMARY_FAINT, 1.0)
+	y += 10
+
+	# --- Cargo hold (soute) — always visible, same style as hull/shield/energy ---
+	var _fs = null
+	if GameManager.player_data and GameManager.player_data.fleet:
+		_fs = GameManager.player_data.fleet.get_active()
+	if _fs:
+		var cap: int = _fs.get_cargo_capacity()
+		var used: int = _fs.get_total_stored()
+		var cargo_r: float = clampf(float(used) / float(cap) if cap > 0 else 0.0, 0.0, 1.0)
+		var cargo_c: Color
+		if cargo_r < 0.5:
+			cargo_c = Color(0.2, 0.8, 0.5).lerp(Color(1.0, 0.9, 0.2), cargo_r * 2.0)
+		elif cargo_r < 0.85:
+			cargo_c = Color(1.0, 0.9, 0.2).lerp(Color(1.0, 0.5, 0.1), (cargo_r - 0.5) / 0.35)
+		else:
+			cargo_c = Color(1.0, 0.5, 0.1).lerp(Color(1.0, 0.2, 0.1), (cargo_r - 0.85) / 0.15)
+		ctrl.draw_string(font, Vector2(x, y), Locale.t("hud.mining_cargo"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.TEXT_DIM)
+		var cp := "%d/%d" % [used, cap]
+		ctrl.draw_string(font, Vector2(x + w - font.get_string_size(cp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, y), cp, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, cargo_c)
+		y += 8
+		HudDrawHelpers.draw_bar(ctrl, Vector2(x, y), w, cargo_r, cargo_c)
 
 
 
