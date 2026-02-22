@@ -66,6 +66,11 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 		var exclude_rids: Array[RID] = [_owner_node.get_rid()]
 		if target is CollisionObject3D:
 			exclude_rids.append(target.get_rid())
+		else:
+			# RemotePlayerShip is Node3D — exclude its HitBody child so LOS isn't blocked
+			var hit_body = target.get_node_or_null("HitBody")
+			if hit_body and hit_body is CollisionObject3D:
+				exclude_rids.append(hit_body.get_rid())
 		# Exclude guard station to prevent station blocking guard's own shots
 		if guard_station and is_instance_valid(guard_station):
 			if guard_station is CollisionObject3D:

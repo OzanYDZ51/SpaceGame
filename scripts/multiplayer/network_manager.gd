@@ -516,6 +516,10 @@ func _rpc_sync_state(state_dict: Dictionary) -> void:
 		state.system_id = saved_system_id
 		state.ship_id = saved_ship_id
 		_peer_registry.update_last_system(sender_id, state.system_id)
+		# Server must also emit so NetworkSyncManager updates RemotePlayerShip
+		# position, LOD data, and interpolation snapshots — otherwise NPC AI
+		# targets a stuck-at-origin puppet and all NPCs fire at the same point.
+		player_state_received.emit(sender_id, state)
 
 
 ## Server -> Client: Another player's state update.

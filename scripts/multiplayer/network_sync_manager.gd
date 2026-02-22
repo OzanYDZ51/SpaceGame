@@ -151,7 +151,7 @@ func _on_peer_connected(peer_id: int, player_name: String) -> void:
 		rdata.is_remote_player = true
 		rdata.peer_id = peer_id
 		rdata.display_name = player_name
-		rdata.faction = &"neutral"
+		rdata.faction = &"player"
 		rdata.node_ref = remote
 		rdata.current_lod = ShipLODData.LODLevel.LOD0
 		lod_manager.register_ship(StringName(remote.name), rdata)

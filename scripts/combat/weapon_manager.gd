@@ -178,6 +178,8 @@ func update_turrets(target_node: Variant = null) -> void:
 	var target_vel =Vector3.ZERO
 	if target_node is RigidBody3D:
 		target_vel = (target_node as RigidBody3D).linear_velocity
+	elif "linear_velocity" in target_node:
+		target_vel = target_node.linear_velocity
 	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
 
 	for hp in hardpoints:
