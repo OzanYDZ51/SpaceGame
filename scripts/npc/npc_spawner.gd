@@ -23,6 +23,8 @@ var _deferred_spawn_time_ms: float = 0.0  # Watchdog: when deferred spawn was re
 var _override_system_id: int = -1
 
 const DEFERRED_SPAWN_WATCHDOG_MS: float = 10000.0  # 10s timeout
+const MAX_GATE_ROUTE_DIST: float = 25000.0  # Clamp gate positions to playable patrol distance
+const STATION_SAFE_RADIUS: float = 3500.0  # Min spawn distance from station centers
 
 
 func _process(_delta: float) -> void:
@@ -216,7 +218,6 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 
 	# Collect gate positions for system-wide routes.
 	# Gates are at system scale (millions of units) — clamp to playable patrol distance.
-	const MAX_GATE_ROUTE_DIST: float = 25000.0
 	var gate_positions: Array[Vector3] = []
 	if system_data and system_data.jump_gates.size() > 0:
 		for gd_gate in system_data.jump_gates:
@@ -245,7 +246,18 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	# Spawn dedicated station guards (faction matches the station)
 	_spawn_station_guards(station_positions, station_nodes, system_id, station_factions)
 
-	var configs := EncounterConfig.get_danger_config(danger_level)
+	# Encounters use hostile/pirate faction — not the station's defensive faction
+	var encounter_faction: StringName = &"pirate"
+	if sys_trans and sys_trans.galaxy:
+		var sys_fac: StringName = sys_trans.galaxy.get_system(system_id_for_fac).get("faction", &"neutral")
+		if sys_fac in [&"hostile", &"lawless", &"pirate"]:
+			encounter_faction = &"pirate"
+		elif sys_fac == &"kharsis":
+			encounter_faction = &"kharsis"
+		else:
+			encounter_faction = &"pirate"  # Neutral/allied systems still spawn pirate threats
+
+	var configs := EncounterConfig.get_danger_config(danger_level, encounter_faction)
 	var used_cfg_indices: Array[int] = []
 
 	# --- Danger 5: combat formation (heavy ship + mid wingmen) ---
@@ -331,9 +343,6 @@ func _get_guard_ship_id() -> StringName:
 		if data and data.npc_tier == 0:
 			return sid
 	return Constants.DEFAULT_SHIP_ID
-
-
-const STATION_SAFE_RADIUS: float = 3500.0  ## Min spawn distance from station centers
 
 
 ## Push a position outside all large entity exclusion zones (stations, planets, stars).
@@ -669,8 +678,8 @@ func spawn_for_remote_system(system_id: int) -> void:
 		for gd_gate in system_data.jump_gates:
 			var raw_gate := Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z)
 			var gate_dist: float = raw_gate.length()
-			if gate_dist > 25000.0:
-				raw_gate = raw_gate.normalized() * 25000.0
+			if gate_dist > MAX_GATE_ROUTE_DIST:
+				raw_gate = raw_gate.normalized() * MAX_GATE_ROUTE_DIST
 			gate_positions.append(raw_gate)
 
 	var key_points: Array[Vector3] = []
@@ -719,8 +728,13 @@ func spawn_for_remote_system(system_id: int) -> void:
 	# Spawn station guards (no scene nodes, use computed factions)
 	_spawn_station_guards(station_positions, [], system_id, station_factions)
 
+	# Encounters use faction based on system affiliation
+	var encounter_faction: StringName = &"pirate"
+	if galaxy_sys_fac == &"kharsis":
+		encounter_faction = &"kharsis"
+
 	# Spawn encounters based on danger level
-	var configs := EncounterConfig.get_danger_config(danger_level)
+	var configs := EncounterConfig.get_danger_config(danger_level, encounter_faction)
 	var used_cfg_indices: Array[int] = []
 
 	# --- Danger 5: combat formation ---

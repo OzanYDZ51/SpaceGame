@@ -130,4 +130,4 @@ func _is_target_valid() -> bool:
 
 
 func get_behavior_name() -> StringName:
-	return &"combat"
+	return NAME_COMBAT

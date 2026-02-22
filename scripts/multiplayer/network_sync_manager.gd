@@ -523,66 +523,11 @@ func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array
 	var remote = remote_players[peer_id]
 	if not is_instance_valid(remote):
 		return
-
-	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
-	if weapon == null:
-		return
-
-	var proj_scene_path: String = weapon.projectile_scene_path
-	if proj_scene_path.is_empty():
-		return
-
-	var pool = null
-	if lod_manager:
-		pool = lod_manager.get_node_or_null("ProjectilePool")
-
-	var bolt = null
-	if pool:
-		bolt = pool.acquire(proj_scene_path)
-		if bolt:
-			bolt._pool = pool
-	if bolt == null:
-		var scene: PackedScene = load(proj_scene_path)
-		if scene == null:
-			return
-		bolt = scene.instantiate()
-		if bolt == null:
-			return
-		get_tree().current_scene.add_child(bolt)
-
-	bolt.collision_layer = 0
-	bolt.collision_mask = 0
-	bolt.set_deferred("monitoring", false)
-	bolt.owner_ship = remote
-	bolt.damage = 0.0
-	bolt.max_lifetime = weapon.projectile_lifetime
-
-	var dir =Vector3(
+	var spawn_pos: Vector3 = remote.global_position + Vector3(
 		fire_dir[0] if fire_dir.size() > 0 else 0.0,
 		fire_dir[1] if fire_dir.size() > 1 else 0.0,
-		fire_dir[2] if fire_dir.size() > 2 else 0.0)
-	var ship_vel =Vector3(
-		fire_dir[3] if fire_dir.size() > 3 else 0.0,
-		fire_dir[4] if fire_dir.size() > 4 else 0.0,
-		fire_dir[5] if fire_dir.size() > 5 else 0.0)
-
-	var spawn_pos: Vector3
-	if is_instance_valid(remote):
-		spawn_pos = remote.global_position + dir * 5.0
-	else:
-		spawn_pos = FloatingOrigin.to_local_pos(fire_pos)
-	bolt.global_position = spawn_pos
-	bolt.velocity = dir * weapon.projectile_speed + ship_vel
-	# Prevent backward-flying projectiles when ship velocity exceeds projectile speed
-	if bolt.velocity.dot(dir) < weapon.projectile_speed * 0.5:
-		bolt.velocity = dir * weapon.projectile_speed
-	var look_target: Vector3 = spawn_pos + dir
-	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
-		bolt.look_at(look_target, Vector3.UP)
-
-	# Son 3D positionnel — volume atténué automatiquement selon la distance
-	if _remote_weapon_audio:
-		_remote_weapon_audio.play_fire(spawn_pos)
+		fire_dir[2] if fire_dir.size() > 2 else 0.0) * 5.0
+	_spawn_visual_projectile(weapon_name, spawn_pos, fire_dir, remote)
 
 
 # =============================================================================
@@ -660,14 +605,13 @@ func _on_hit_effect_received(target_id: String, hit_dir: Array, shield_absorbed:
 
 
 # =============================================================================
-# NPC FIRE RELAY — Visual projectiles from server NPCs on remote clients
+# SHARED — Visual-only projectile spawning (remote player + NPC fire)
 # =============================================================================
 
-func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
-	var weapon =WeaponRegistry.get_weapon(StringName(weapon_name))
+func _spawn_visual_projectile(weapon_name: String, spawn_pos: Vector3, fire_dir: Array, owner_ship) -> void:
+	var weapon = WeaponRegistry.get_weapon(StringName(weapon_name))
 	if weapon == null:
 		return
-
 	var proj_scene_path: String = weapon.projectile_scene_path
 	if proj_scene_path.is_empty():
 		return
@@ -675,7 +619,6 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 	var pool = null
 	if lod_manager:
 		pool = lod_manager.get_node_or_null("ProjectilePool")
-
 	var bolt = null
 	if pool:
 		bolt = pool.acquire(proj_scene_path)
@@ -690,36 +633,40 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 			return
 		get_tree().current_scene.add_child(bolt)
 
-	# Visual-only projectile (no collision, no damage)
 	bolt.collision_layer = 0
 	bolt.collision_mask = 0
 	bolt.set_deferred("monitoring", false)
-	bolt.owner_ship = null
+	bolt.owner_ship = owner_ship
 	bolt.damage = 0.0
 	bolt.max_lifetime = weapon.projectile_lifetime
 
-	var dir =Vector3(
+	var dir := Vector3(
 		fire_dir[0] if fire_dir.size() > 0 else 0.0,
 		fire_dir[1] if fire_dir.size() > 1 else 0.0,
 		fire_dir[2] if fire_dir.size() > 2 else 0.0)
-	var ship_vel =Vector3(
+	var ship_vel := Vector3(
 		fire_dir[3] if fire_dir.size() > 3 else 0.0,
 		fire_dir[4] if fire_dir.size() > 4 else 0.0,
 		fire_dir[5] if fire_dir.size() > 5 else 0.0)
 
-	var spawn_pos: Vector3 = FloatingOrigin.to_local_pos(fire_pos)
 	bolt.global_position = spawn_pos
 	bolt.velocity = dir * weapon.projectile_speed + ship_vel
-	# Prevent backward-flying projectiles when ship velocity exceeds projectile speed
 	if bolt.velocity.dot(dir) < weapon.projectile_speed * 0.5:
 		bolt.velocity = dir * weapon.projectile_speed
 	var look_target: Vector3 = spawn_pos + dir
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
 		bolt.look_at(look_target, Vector3.UP)
 
-	# Son 3D positionnel — volume atténué automatiquement selon la distance
 	if _remote_weapon_audio:
 		_remote_weapon_audio.play_fire(spawn_pos)
+
+
+# =============================================================================
+# NPC FIRE RELAY — Visual projectiles from server NPCs on remote clients
+# =============================================================================
+
+func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+	_spawn_visual_projectile(weapon_name, FloatingOrigin.to_local_pos(fire_pos), fire_dir, null)
 
 
 # =============================================================================

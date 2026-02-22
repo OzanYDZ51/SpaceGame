@@ -49,7 +49,7 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 		return
 
 	# Apply inaccuracy AFTER dot check (only affects fire direction, not firing decision)
-	var inaccuracy := (1.0 - accuracy_mod) * 12.0
+	var inaccuracy := (1.0 - accuracy_mod) * Constants.AI_INACCURACY_SPREAD
 	target_pos += Vector3(
 		randf_range(-inaccuracy, inaccuracy),
 		randf_range(-inaccuracy, inaccuracy),

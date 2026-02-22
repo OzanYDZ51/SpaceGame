@@ -74,13 +74,13 @@ var current_state: State:
 					return State.IDLE
 				var bname: StringName = _current_behavior.get_behavior_name()
 				match bname:
-					&"patrol":
+					AIBehavior.NAME_PATROL:
 						return State.PATROL
-					&"formation":
+					AIBehavior.NAME_FORMATION:
 						return State.FORMATION
-					&"guard":
+					AIBehavior.NAME_GUARD:
 						return State.PATROL  # Guard shows as PATROL externally
-					&"loot":
+					AIBehavior.NAME_LOOT:
 						return State.LOOT_PICKUP
 					_:
 						return State.PATROL
@@ -97,7 +97,7 @@ var current_state: State:
 					_current_behavior = null
 			State.PATROL:
 				mode = Mode.BEHAVIOR
-				if _current_behavior == null or _current_behavior.get_behavior_name() != &"patrol":
+				if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_PATROL:
 					_switch_to_patrol()
 			State.PURSUE, State.ATTACK:
 				if mode != Mode.COMBAT:
@@ -108,7 +108,7 @@ var current_state: State:
 					_combat_behavior.enter()
 			State.FORMATION:
 				mode = Mode.BEHAVIOR
-				if _current_behavior == null or _current_behavior.get_behavior_name() != &"formation":
+				if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_FORMATION:
 					var fb := FormationBehavior.new()
 					fb.controller = self
 					_set_behavior(fb)
@@ -231,6 +231,10 @@ func setup_as_station(station: Node3D, _wm = null) -> void:
 	mode = Mode.BEHAVIOR
 	# Set detection range for station
 	detection_range = Constants.AI_DETECTION_RANGE
+	# Connect structure damage so station reacts when attacked
+	var sh = station.get_node_or_null("StructureHealth")
+	if sh:
+		sh.damage_taken.connect(_on_damage_taken)
 
 
 func _ready() -> void:
@@ -302,7 +306,7 @@ func _process(delta: float) -> void:
 
 	# Turrets track + auto-fire every frame
 	if combat:
-		var can_fire: bool = mode == Mode.COMBAT or (route_priority and _current_behavior and _current_behavior.get_behavior_name() == &"patrol")
+		var can_fire: bool = mode == Mode.COMBAT or (route_priority and _current_behavior and _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL)
 		if _combat_behavior and _combat_behavior.target and is_instance_valid(_combat_behavior.target) and weapons_enabled and can_fire:
 			combat.update_turrets(_combat_behavior.target)
 		else:
@@ -317,9 +321,9 @@ func _process(delta: float) -> void:
 	var player := GameManager.player_ship
 	if player and is_instance_valid(player):
 		var dist: float = _ship.global_position.distance_to(player.global_position)
-		if dist > 8000.0:
+		if dist > Constants.AI_LOD_TICK_FAR_DIST:
 			tick_rate = TICK_INTERVAL * 10.0
-		elif dist > 3000.0:
+		elif dist > Constants.AI_LOD_TICK_MID_DIST:
 			tick_rate = TICK_INTERVAL * 3.0
 	_tick_timer = tick_rate
 
@@ -354,6 +358,8 @@ func _tick_idle() -> void:
 	# Check for threats
 	if not ignore_threats and weapons_enabled:
 		var threat = perception.detect_nearest_hostile(detection_range)
+		if threat == null:
+			threat = perception.get_highest_threat()
 		if threat:
 			_enter_combat(threat)
 			return
@@ -372,7 +378,7 @@ func _tick_behavior(dt: float) -> void:
 
 	# Detect threats (unless ignoring)
 	if not ignore_threats and weapons_enabled:
-		if route_priority and _current_behavior.get_behavior_name() == &"patrol":
+		if route_priority and _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
 			# Route priority = DEFENSIVE: only engage threats from threat table (damage received)
 			# Do NOT proactively scan for hostiles — convoys should not attack on sight
 			var best_threat = perception.get_highest_threat()
@@ -393,9 +399,15 @@ func _tick_behavior(dt: float) -> void:
 			if threat:
 				_enter_combat(threat)
 				return
+			# Fallback: check threat table for attackers that faction check missed
+			# (e.g. same-faction player attacking guards/station)
+			var table_threat = perception.get_highest_threat()
+			if table_threat:
+				_enter_combat(table_threat)
+				return
 
 	# Check for loot during patrol
-	if _current_behavior.get_behavior_name() == &"patrol":
+	if _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
 		if _loot_pickup and _loot_pickup.can_pickup and _loot_pickup.nearest_crate:
 			var lb := LootBehavior.new()
 			lb.controller = self
@@ -504,7 +516,7 @@ func alert_to_threat(attacker: Node3D) -> void:
 		return
 	perception.alert_to_threat(attacker)
 	if mode in [Mode.IDLE, Mode.BEHAVIOR]:
-		if _current_behavior == null or _current_behavior.get_behavior_name() != &"combat":
+		if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_COMBAT:
 			_enter_combat(attacker)
 	elif mode == Mode.COMBAT:
 		# Already fighting — evaluate if the new threat is more dangerous than current target
@@ -548,7 +560,7 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		_alert_formation_group(effective_attacker)
 
 	# Route-priority leaders: fire but keep patrolling unless badly hurt
-	if mode == Mode.BEHAVIOR and route_priority and _current_behavior and _current_behavior.get_behavior_name() == &"patrol":
+	if mode == Mode.BEHAVIOR and route_priority and _current_behavior and _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
 		_combat_behavior.set_target(effective_attacker)
 		if _health and _health.get_hull_ratio() < 0.5:
 			_enter_combat(effective_attacker)

@@ -37,6 +37,11 @@ const LANDING_POS: Vector3 = Vector3(0.0, 308.0, 0.0)
 # Ring rotation speed (radians per second)
 const RING_ROTATION_SPEED: float = 0.03
 
+# Station collision dimensions (model-local, pre-scale)
+# Derived from light positions and model structure — reliable simple shapes
+const COLLISION_HALF_SIZE: Vector3 = Vector3(2000.0, 2100.0, 2000.0)
+const COLLISION_CENTER_Y: float = -1680.0
+
 
 func _ready() -> void:
 	collision_layer = Constants.LAYER_STATIONS
@@ -52,10 +57,9 @@ func _ready() -> void:
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
 
-	# Build bay area SYNCHRONOUSLY before async model loading.
-	# The BayArea uses fixed constants and doesn't depend on the model.
-	# Creating it before _load_model() ensures the Area3D is registered with
-	# the physics server BEFORE any potential universe freeze (respawn auto-dock).
+	# Build BOTH collision and bay area SYNCHRONOUSLY before async model loading.
+	# This guarantees projectile raycasts can hit the station immediately.
+	_build_station_collision()
 	_build_bay_area()
 
 	await _load_model()
@@ -90,12 +94,7 @@ func _load_model() -> void:
 
 	_model = scene.instantiate()
 	add_child(_model)
-
-	# Build collision from model mesh — ConvexPolygonShape3D from all vertices,
-	# exactly like ShipFactory._generate_convex_shape() does for ships.
-	# This matches the visible model geometry at any scale.
-	_build_model_collision()
-
+	# Collision is already built synchronously in _ready() via _build_station_collision()
 	await get_tree().process_frame
 
 
@@ -225,50 +224,20 @@ func _on_bay_body_exited(body: Node3D) -> void:
 
 
 # =========================================================================
-# COLLISION — Generated from model mesh (same approach as ShipFactory)
+# COLLISION — Simple box shape from known station dimensions
 # =========================================================================
 
-## Generates a ConvexPolygonShape3D from all MeshInstance3D vertices in the model,
-## exactly like ShipFactory._generate_convex_shape() does for ships.
-## The convex hull matches the visible model at any parent scale.
-func _build_model_collision() -> void:
-	if _model == null:
-		push_warning("SpaceStation: No model to build collision from")
-		return
-	var verts = PackedVector3Array()
-	_collect_mesh_vertices(_model, verts, Transform3D.IDENTITY)
-	if verts.is_empty():
-		push_warning("SpaceStation: No mesh vertices found for collision")
-		return
-
-	var shape = ConvexPolygonShape3D.new()
-	shape.points = verts
-
+## Builds a reliable BoxShape3D collision from hardcoded station dimensions.
+## The previous ConvexPolygonShape3D approach (from all model vertices) could
+## produce degenerate hulls with complex models, causing raycasts to pass through.
+func _build_station_collision() -> void:
 	var col = CollisionShape3D.new()
+	var shape = BoxShape3D.new()
+	shape.size = COLLISION_HALF_SIZE * 2.0
 	col.shape = shape
-	col.name = "ModelCollision"
+	col.position = Vector3(0.0, COLLISION_CENTER_Y, 0.0)
+	col.name = "StationCollision"
 	add_child(col)
-
-
-## Recursively collects all mesh vertices from a node tree, applying transforms.
-## Same implementation as ShipFactory._collect_mesh_vertices().
-func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent_xform: Transform3D) -> void:
-	var xform = parent_xform
-	if node is Node3D:
-		xform = parent_xform * (node as Node3D).transform
-
-	if node is MeshInstance3D:
-		var mesh: Mesh = (node as MeshInstance3D).mesh
-		if mesh:
-			for si in mesh.get_surface_count():
-				var arrays = mesh.surface_get_arrays(si)
-				if arrays.size() > Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX] != null:
-					var surface_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-					for v in surface_verts:
-						verts.append(xform * v)
-
-	for child in node.get_children():
-		_collect_mesh_vertices(child, verts, xform)
 
 
 func _build_fallback() -> void:

@@ -179,8 +179,8 @@ func alert_to_threat(attacker: Node3D) -> void:
 	var aid: int = attacker.get_instance_id()
 	var now: float = Time.get_ticks_msec() / 1000.0
 	if threat_table.has(aid):
-		threat_table[aid]["threat"] += 50.0
+		threat_table[aid]["threat"] += Constants.AI_ALERT_THREAT_VALUE
 		threat_table[aid]["last_hit"] = now
 		threat_table[aid]["node"] = attacker
 	else:
-		threat_table[aid] = { "node": attacker, "threat": 50.0, "last_hit": now }
+		threat_table[aid] = { "node": attacker, "threat": Constants.AI_ALERT_THREAT_VALUE, "last_hit": now }

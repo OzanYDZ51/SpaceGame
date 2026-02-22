@@ -74,27 +74,9 @@ func notify_spawn_to_peers(npc_id: StringName, system_id: int) -> void:
 	if not _auth._npcs.has(npc_id):
 		return
 	var info: Dictionary = _auth._npcs[npc_id]
-
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
-
-	var spawn_dict: Dictionary = {
-		"nid": String(npc_id),
-		"sid": String(info.get("ship_id", "")),
-		"fac": String(info.get("faction", "hostile")),
-		"px": 0.0, "py": 0.0, "pz": 0.0,
-		"vx": 0.0, "vy": 0.0, "vz": 0.0,
-	}
-	if lod_data:
-		var upos = FloatingOrigin.to_universe_pos(lod_data.position)
-		spawn_dict["px"] = upos[0]
-		spawn_dict["py"] = upos[1]
-		spawn_dict["pz"] = upos[2]
-		spawn_dict["vx"] = lod_data.velocity.x
-		spawn_dict["vy"] = lod_data.velocity.y
-		spawn_dict["vz"] = lod_data.velocity.z
-		spawn_dict["hull"] = lod_data.hull_ratio
-		spawn_dict["shd"] = lod_data.shield_ratio
+	var spawn_dict: Dictionary = _build_spawn_dict(npc_id, info, lod_data)
 
 	var peers_in_sys = NetworkManager.get_peers_in_system(system_id)
 	for pid in peers_in_sys:
@@ -112,26 +94,7 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 				continue
 			var info: Dictionary = _auth._npcs[npc_id]
 			var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id) if lod_mgr else null
-
-			var spawn_dict: Dictionary = {
-				"nid": String(npc_id),
-				"sid": String(info.get("ship_id", "")),
-				"fac": String(info.get("faction", "hostile")),
-				"px": 0.0, "py": 0.0, "pz": 0.0,
-				"vx": 0.0, "vy": 0.0, "vz": 0.0,
-			}
-			if lod_data:
-				var upos = FloatingOrigin.to_universe_pos(lod_data.position)
-				spawn_dict["px"] = upos[0]
-				spawn_dict["py"] = upos[1]
-				spawn_dict["pz"] = upos[2]
-				spawn_dict["vx"] = lod_data.velocity.x
-				spawn_dict["vy"] = lod_data.velocity.y
-				spawn_dict["vz"] = lod_data.velocity.z
-				spawn_dict["hull"] = lod_data.hull_ratio
-				spawn_dict["shd"] = lod_data.shield_ratio
-
-			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, spawn_dict)
+			NetworkManager._rpc_npc_spawned.rpc_id(peer_id, _build_spawn_dict(npc_id, info, lod_data))
 
 	# Send active events to late-joining peer (map markers + HUD)
 	var gi = GameManager.get_node_or_null("GameplayIntegrator")
@@ -139,14 +102,40 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 		gi.event_manager.send_active_events_to_peer(peer_id)
 
 
+func _build_spawn_dict(npc_id: StringName, info: Dictionary, lod_data: ShipLODData) -> Dictionary:
+	var spawn_dict: Dictionary = {
+		"nid": String(npc_id),
+		"sid": String(info.get("ship_id", "")),
+		"fac": String(info.get("faction", "hostile")),
+		"px": 0.0, "py": 0.0, "pz": 0.0,
+		"vx": 0.0, "vy": 0.0, "vz": 0.0,
+	}
+	if lod_data:
+		var upos = FloatingOrigin.to_universe_pos(lod_data.position)
+		spawn_dict["px"] = upos[0]
+		spawn_dict["py"] = upos[1]
+		spawn_dict["pz"] = upos[2]
+		spawn_dict["vx"] = lod_data.velocity.x
+		spawn_dict["vy"] = lod_data.velocity.y
+		spawn_dict["vz"] = lod_data.velocity.z
+		spawn_dict["hull"] = lod_data.hull_ratio
+		spawn_dict["shd"] = lod_data.shield_ratio
+	return spawn_dict
+
+
 func _broadcast_npc_states() -> void:
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr == null:
 		return
 
+	# Filter against actually connected peers to avoid sending to disconnected ones
+	var connected: PackedInt32Array = _auth.multiplayer.get_peers()
+
 	# Group peers by system
 	var peers_by_sys: Dictionary = {}
 	for pid in NetworkManager.peers:
+		if pid not in connected:
+			continue
 		var pstate = NetworkManager.peers[pid]
 		if not peers_by_sys.has(pstate.system_id):
 			peers_by_sys[pstate.system_id] = []
@@ -206,6 +195,16 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 			else:
 				tid = &""
 
+	# Compute throttle ratio from actual ship velocity / max speed
+	var thr: float = 0.0
+	if is_instance_valid(lod_data.node_ref):
+		var ship = lod_data.node_ref
+		if "linear_velocity" in ship:
+			var max_spd: float = 300.0
+			if "ship_data" in ship and ship.ship_data:
+				max_spd = ship.ship_data.max_speed_normal
+			thr = clampf(ship.linear_velocity.length() / max_spd, 0.0, 1.0)
+
 	return {
 		"nid": String(npc_id),
 		"sid": String(lod_data.ship_id),
@@ -221,7 +220,7 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 		"rz": rot_deg.z,
 		"hull": hull,
 		"shd": shd,
-		"thr": 0.5,
+		"thr": thr,
 		"ai": ai,
 		"tid": String(tid),
 		"t": Time.get_ticks_msec() / 1000.0,

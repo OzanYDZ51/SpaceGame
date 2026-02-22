@@ -94,12 +94,11 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 
 	# Distance check
 	var sender_pos =FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
-	if sender_pos.distance_to(node.global_position) > 5000.0:
+	if sender_pos.distance_to(node.global_position) > Constants.AI_STRUCTURE_HIT_RANGE:
 		return
 
-	# Damage tolerance check (±50%)
-	# We accept reasonable values — prevents obvious cheats
-	if damage > 500.0 or damage < 0.1:
+	# Damage tolerance check — prevents obvious cheats
+	if damage > Constants.AI_STRUCTURE_MAX_DAMAGE or damage < 0.1:
 		return
 
 	# Apply damage — resolve attacker node so AIController/GuardBehavior can retaliate

@@ -102,9 +102,35 @@ const FTL_FUEL_PER_UNIT: float = 1.0
 const FTL_CHARGE_TIME: float = 10.0      # Seconds to spool FTL drive
 const JUMP_GATE_TRANSIT_TIME: float = 5.0 # Seconds for gate transition
 
-# --- Backend (Go + PostgreSQL) ---
-const BACKEND_URL: String = "https://backend-production-05a9.up.railway.app"
-const BACKEND_WS_URL: String = "wss://backend-production-05a9.up.railway.app/ws"
+# --- Environment ---
+# Change this to force DEV (localhost) or PROD (Railway). AUTO = editor→DEV, export→PROD.
+enum Env { AUTO, DEV, PROD }
+const ENVIRONMENT: Env = Env.AUTO
+
+var _dev_mode: bool = false
+
+# Production URLs (Railway)
+const _BACKEND_URL_PROD: String = "https://backend-production-05a9.up.railway.app"
+const _BACKEND_WS_URL_PROD: String = "wss://backend-production-05a9.up.railway.app/ws"
+const _GAME_SERVER_URL_PROD: String = "wss://gameserver-production-49ba.up.railway.app"
+
+# Local dev URLs (docker-compose up in backend/)
+const _BACKEND_URL_DEV: String = "http://localhost:3000"
+const _BACKEND_WS_URL_DEV: String = "ws://localhost:3000/ws"
+const _GAME_SERVER_URL_DEV: String = "ws://localhost:7777"
+
+# Dynamic URL properties — auto-switch based on environment
+var BACKEND_URL: String:
+	get:
+		return _BACKEND_URL_DEV if _dev_mode else _BACKEND_URL_PROD
+
+var BACKEND_WS_URL: String:
+	get:
+		return _BACKEND_WS_URL_DEV if _dev_mode else _BACKEND_WS_URL_PROD
+
+var NET_GAME_SERVER_URL: String:
+	get:
+		return _GAME_SERVER_URL_DEV if _dev_mode else _GAME_SERVER_URL_PROD
 
 # --- Network (MMORPG) ---
 const NET_DEFAULT_PORT: int = 7777
@@ -113,7 +139,6 @@ const NET_TICK_RATE: float = 30.0         # Position updates per second (every 2
 const NET_INTERPOLATION_DELAY: float = 0.05   # 50ms interpolation buffer for players
 const NPC_INTERPOLATION_DELAY: float = 0.1    # 100ms interpolation buffer for NPCs (3 broadcast intervals for jitter tolerance)
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
-const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 
 # --- Discord Rich Presence ---
 const DISCORD_RPC_PORT: int = 27150
@@ -138,6 +163,12 @@ const AI_ENGAGEMENT_RANGE: float = 2000.0        # Preferred combat distance (al
 const AI_DISENGAGE_RANGE: float = 6500.0         # Break off combat beyond this distance
 const AI_MIN_SAFE_DIST: float = 50.0             # Min distance before NPC reverses away
 const AI_STATION_EXCLUSION_RADIUS: float = 2000.0  # Station obstacle zone radius for AI
+const AI_ALERT_THREAT_VALUE: float = 50.0        # Threat table increment for alert_to_threat()
+const AI_INACCURACY_SPREAD: float = 12.0         # Max meters of fire inaccuracy at accuracy=0
+const AI_LOD_TICK_FAR_DIST: float = 8000.0       # Distance for 10x slower AI tick
+const AI_LOD_TICK_MID_DIST: float = 3000.0       # Distance for 3x slower AI tick
+const AI_STRUCTURE_HIT_RANGE: float = 5000.0     # Max distance for structure hit validation
+const AI_STRUCTURE_MAX_DAMAGE: float = 500.0     # Max single-hit damage for structure validation
 
 # --- NPC Authority ---
 const NPC_HIT_VALIDATION_RANGE: float = 5000.0   # Max distance for hit validation
@@ -146,6 +177,64 @@ const NPC_ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 min base respawn delay
 const NPC_ENCOUNTER_RESPAWN_MAX: float = 1800.0   # 30 min max (escalating anti-farm)
 const NPC_DEAD_GUARD_MS: int = 10000              # 10s guard window for dead NPC ghost prevention
 const NPC_EXTRAPOLATION_MAX: float = 1.0          # Max extrapolation time (seconds)
+
+func _ready() -> void:
+	match ENVIRONMENT:
+		Env.DEV:
+			_dev_mode = true
+		Env.PROD:
+			_dev_mode = false
+		_: # AUTO: editor = dev, export = prod, --local or env var = dev
+			_dev_mode = OS.has_feature("editor") or "--local" in OS.get_cmdline_args() or OS.get_environment("IMPERION_LOCAL") != ""
+
+	var mode_str: String = "DEV (localhost)" if _dev_mode else "PROD (Railway)"
+	print("========================================")
+	print("  %s" % mode_str)
+	print("  Backend:     %s" % BACKEND_URL)
+	print("  Game Server: %s" % NET_GAME_SERVER_URL)
+	print("========================================")
+
+	# Auto-start local dev stack (Docker + game server) on F5 from editor
+	if _dev_mode and OS.has_feature("editor"):
+		_start_dev_stack()
+
+
+# =============================================================================
+# DEV STACK — auto-launch Docker + game server on F5
+# =============================================================================
+
+func _start_dev_stack() -> void:
+	var project_path: String = ProjectSettings.globalize_path("res://").trim_suffix("/")
+	var pid_file: String = project_path + "/.godot/dev_server.pid"
+
+	# 1. Kill previous game server (picks up code changes on every F5)
+	if FileAccess.file_exists(pid_file):
+		var f: FileAccess = FileAccess.open(pid_file, FileAccess.READ)
+		if f:
+			var old_pid: int = f.get_as_text().strip_edges().to_int()
+			f.close()
+			if old_pid > 0:
+				OS.execute("taskkill", ["/PID", str(old_pid), "/F"], [], false, false)
+
+	# 2. Docker: PostgreSQL + Go backend (idempotent, ~1s if already running)
+	var compose_file: String = project_path + "/backend/docker-compose.yml"
+	OS.create_process("cmd.exe", ["/c", "docker-compose", "-f", compose_file, "up", "-d"])
+	print("[DEV] Docker backend starting (localhost:3000)...")
+
+	# 3. Game server: headless Godot on port 7777 with current code
+	var godot_exe: String = OS.get_executable_path()
+	var pid: int = OS.create_process(godot_exe, [
+		"--headless", "--path", project_path, "--", "--server", "--local"
+	])
+	if pid > 0:
+		var f: FileAccess = FileAccess.open(pid_file, FileAccess.WRITE)
+		if f:
+			f.store_string(str(pid))
+			f.close()
+		print("[DEV] Game server started (PID %d, port 7777)" % pid)
+	else:
+		push_warning("[DEV] Failed to start game server")
+
 
 # --- Speed Modes ---
 enum SpeedMode { NORMAL, BOOST, CRUISE }

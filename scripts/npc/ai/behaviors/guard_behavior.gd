@@ -63,6 +63,8 @@ func _tick_turret_guard(dt: float) -> void:
 	if _scan_timer <= 0.0:
 		_scan_timer = SCAN_INTERVAL
 		var threat = controller.perception.detect_nearest_hostile(controller.detection_range)
+		if threat == null:
+			threat = controller.perception.get_highest_threat()
 		if threat:
 			# Check if this is a new target
 			var prev = controller._combat_behavior.target if controller._combat_behavior else null
@@ -99,4 +101,4 @@ func _alert_nearby_guards(attacker: Node3D) -> void:
 
 
 func get_behavior_name() -> StringName:
-	return &"guard"
+	return NAME_GUARD

@@ -177,22 +177,3 @@ func _get_children_array(node: Node) -> Array:
 	return arr
 
 
-## Stubs for future DB persistence.
-func serialize_all() -> Dictionary:
-	var data: Dictionary = {}
-	for sys_id in _dormant_systems:
-		var nodes: Array = _dormant_systems[sys_id]
-		var npcs: Array = []
-		for npc in nodes:
-			if npc == null or not is_instance_valid(npc):
-				continue
-			npcs.append({
-				"name": npc.name,
-				"position": [npc.global_position.x, npc.global_position.y, npc.global_position.z],
-			})
-		data[sys_id] = npcs
-	return data
-
-
-func deserialize_all(_data: Dictionary) -> void:
-	pass  # Future: restore from DB

@@ -63,4 +63,4 @@ func tick(_dt: float) -> void:
 
 
 func get_behavior_name() -> StringName:
-	return &"formation"
+	return NAME_FORMATION

@@ -126,4 +126,4 @@ func _generate_patrol_waypoints() -> void:
 
 
 func get_behavior_name() -> StringName:
-	return &"patrol"
+	return NAME_PATROL

@@ -33,4 +33,4 @@ func tick(_dt: float) -> void:
 
 
 func get_behavior_name() -> StringName:
-	return &"loot"
+	return NAME_LOOT
