@@ -147,25 +147,27 @@ func main() {
 	admin.Post("/announce", adminH.Announce)
 	admin.Post("/changelog", changelogH.Create)
 
-	// JWT-protected routes (catch-all — must be LAST)
-	protected := v1.Group("", middleware.Auth(cfg.JWTSecret))
+	// JWT-protected routes — use explicit groups per resource instead of a
+	// catch-all Group("") which in Fiber acts like Use() and blocks public routes.
+	authMw := middleware.Auth(cfg.JWTSecret)
 
 	// Player
 	playerH := handler.NewPlayerHandler(playerSvc)
-	protected.Get("/player/state", playerH.GetState)
-	protected.Put("/player/state", playerH.SaveState)
-	protected.Get("/player/profile/:id", playerH.GetProfile)
+	player := v1.Group("/player", authMw)
+	player.Get("/state", playerH.GetState)
+	player.Put("/state", playerH.SaveState)
+	player.Get("/profile/:id", playerH.GetProfile)
 
 	// Player bug reports & Discord linking
 	bugH := handler.NewBugReportHandler(eventSvc)
-	protected.Post("/player/bug-report", bugH.Submit)
+	player.Post("/bug-report", bugH.Submit)
 	discordH := handler.NewDiscordHandler(discordRepo)
-	protected.Post("/player/discord-link", discordH.ConfirmLink)
-	protected.Get("/player/discord-status", discordH.GetStatus)
+	player.Post("/discord-link", discordH.ConfirmLink)
+	player.Get("/discord-status", discordH.GetStatus)
 
 	// Corporations
 	corpH := handler.NewCorporationHandler(corpSvc)
-	corporations := protected.Group("/corporations")
+	corporations := v1.Group("/corporations", authMw)
 	corporations.Post("/", corpH.Create)
 	corporations.Get("/search", corpH.Search)
 	corporations.Get("/my-applications", corpH.GetMyApplications)
