@@ -35,6 +35,7 @@ var _orbit_angle: float = 0.0
 # PD controller derivative terms
 var _prev_yaw_error: float = 0.0
 var _prev_pitch_error: float = 0.0
+var _last_face_time_ms: float = 0.0
 
 # LOS check mask
 const LOS_COLLISION_MASK: int = 7
@@ -184,6 +185,12 @@ func face_target(target_pos: Vector3) -> void:
 		return
 	to_target = to_target.normalized()
 
+	# Compute time delta for derivative normalization
+	var now_ms: float = Time.get_ticks_msec()
+	var dt: float = (now_ms - _last_face_time_ms) * 0.001 if _last_face_time_ms > 0.0 else 0.1
+	_last_face_time_ms = now_ms
+	dt = clampf(dt, 0.016, 2.0)
+
 	var local_dir: Vector3 = _ship.global_transform.basis.inverse() * to_target
 	var yaw_error: float = rad_to_deg(atan2(-local_dir.x, -local_dir.z))
 	var xz_len: float = sqrt(local_dir.x * local_dir.x + local_dir.z * local_dir.z)
@@ -192,13 +199,14 @@ func face_target(target_pos: Vector3) -> void:
 	var pitch_speed = _ship.ship_data.rotation_pitch_speed if _ship.ship_data else 30.0
 	var yaw_speed = _ship.ship_data.rotation_yaw_speed if _ship.ship_data else 25.0
 
-	var yaw_deriv: float = yaw_error - _prev_yaw_error
-	var pitch_deriv: float = pitch_error - _prev_pitch_error
+	# Time-normalized derivatives (deg/sec) for consistent behavior across tick rates
+	var yaw_deriv: float = (yaw_error - _prev_yaw_error) / dt
+	var pitch_deriv: float = (pitch_error - _prev_pitch_error) / dt
 	_prev_yaw_error = yaw_error
 	_prev_pitch_error = pitch_error
 
-	var pitch_rate: float = clampf(pitch_error * 3.0 - pitch_deriv * 1.5, -pitch_speed, pitch_speed)
-	var yaw_rate: float = clampf(yaw_error * 3.0 - yaw_deriv * 1.5, -yaw_speed, yaw_speed)
+	var pitch_rate: float = clampf(pitch_error * 3.0 - pitch_deriv * 0.15, -pitch_speed, pitch_speed)
+	var yaw_rate: float = clampf(yaw_error * 3.0 - yaw_deriv * 0.15, -yaw_speed, yaw_speed)
 	_ship.set_rotation_target(pitch_rate, yaw_rate, 0.0)
 
 

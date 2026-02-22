@@ -107,12 +107,8 @@ func _tick_attack(dt: float) -> void:
 	if dist > controller.preferred_range * 1.3:
 		nav.fly_intercept(target, controller.preferred_range)
 	else:
-		var lead_pos := target.global_position
-		if target is RigidBody3D:
-			var tvel: Vector3 = (target as RigidBody3D).linear_velocity
-			var closing := maxf(-(controller._ship.linear_velocity - tvel).dot((target.global_position - controller._ship.global_position).normalized()), 10.0)
-			var tti := clampf(dist / closing, 0.0, 3.0)
-			lead_pos += tvel * tti
+		# Use the SAME lead position that try_fire_forward will use for dot check
+		var lead_pos: Vector3 = controller.combat.get_lead_position(target)
 		nav.face_target(lead_pos)
 		nav.apply_attack_throttle(dist, controller.preferred_range)
 

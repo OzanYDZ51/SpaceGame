@@ -70,6 +70,28 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 		_weapon_manager.fire_group(0, true, target_pos)
 
 
+func get_lead_position(target: Node3D) -> Vector3:
+	if target == null or not is_instance_valid(target):
+		if _owner_node:
+			return _owner_node.global_position + (-_owner_node.global_transform.basis.z) * 500.0
+		return Vector3.ZERO
+	if _targeting_system:
+		_targeting_system.current_target = target
+		return _targeting_system.get_lead_indicator_position()
+	# Fallback: simple linear lead (no targeting system)
+	if _owner_node == null:
+		return target.global_position
+	var target_vel: Vector3 = Vector3.ZERO
+	if "linear_velocity" in target:
+		target_vel = target.linear_velocity
+	var to_target: Vector3 = target.global_position - _owner_node.global_position
+	var dist: float = to_target.length()
+	var my_vel: Vector3 = _owner_node.linear_velocity if "linear_velocity" in _owner_node else Vector3.ZERO
+	var closing: float = maxf(-(my_vel - target_vel).dot(to_target.normalized()), 10.0)
+	var tti: float = clampf(dist / closing, 0.0, 3.0)
+	return target.global_position + target_vel * tti
+
+
 func update_turrets(target: Node3D) -> void:
 	if _weapon_manager:
 		_weapon_manager.update_turrets(target)
