@@ -130,11 +130,11 @@ const en: Translations = {
   ships: {
     title: "Ships",
     subtitleDefault:
-      "Inspect the ships awaiting you in the Imperion universe.",
+      "Ships available for purchase at stations in the Imperion universe.",
     subtitleNovaTerra:
-      "The Nova Terra Confederation fleet. Precision and protection.",
+      "The Confederation fleet. Choose your vessel.",
     subtitleKharsis:
-      "The Kharsis Dominion arsenal. Power and destruction.",
+      "The Dominion arsenal. Choose your war machine.",
     moreShips: "More ships to discover...",
     dragHint: "Drag to rotate",
     weaponsHint: "Weapons and modules — discover in-game",
@@ -142,57 +142,39 @@ const en: Translations = {
       speed: "Max speed",
       hull: "Hull",
       shields: "Shields",
+      price: "Price",
     },
     defaultShips: [
       {
         name: "Chasseur Viper",
         class: "Interceptor",
         description:
-          "Fast and deadly, the Chasseur Viper is the interceptor of choice for elite pilots. Three cannons and unmatched agility — for veterans only.",
+          "Fast and deadly, the Chasseur Viper is the interceptor of elite pilots. Three laser cannons and unmatched agility — the starting choice for dogfight aces.",
         statsClass: "Light interceptor",
       },
       {
-        name: "Frigate Mk1",
-        class: "Frigate",
+        name: "Chasseur Arrw",
+        class: "Light fighter",
         description:
-          "A heavy vessel designed for prolonged combat. Its multiple turrets make it a formidable adversary.",
-        statsClass: "Assault frigate",
+          "Versatile and well-armed, the Arrw is the fleet's Swiss army knife. Its reinforced armor and 50-unit cargo hold make it capable of anything: combat, patrol, and escort.",
+        statsClass: "Versatile fighter",
+      },
+      {
+        name: "Chasseur Lourd CV",
+        class: "Heavy fighter",
+        description:
+          "A warship built to endure. With 2,800 HP hull and medium weapon slots, the CV dominates prolonged engagements. Slow but devastating.",
+        statsClass: "Heavy assault fighter",
+      },
+      {
+        name: "Croiseur Bodhammer",
+        class: "Cruiser",
+        description:
+          "The titan of the battlefield. 12,000 HP hull, 8 weapon slots and a massive 250-unit cargo hold. The Bodhammer is a capital ship built to crush all opposition.",
+        statsClass: "Line cruiser",
       },
     ],
-    factionShips: {
-      nova_terra: [
-        {
-          name: "Fighter NT-7",
-          class: "Fighter",
-          description:
-            "The NT-7 embodies the Nova Terra doctrine: precision and protection. Its overpowered shields and speed make it the perfect fighter for Confederation patrols.",
-          statsClass: "Line interceptor",
-        },
-        {
-          name: "Aurora Frigate",
-          class: "Frigate",
-          description:
-            "The Aurora Frigate is the fleet's shield. Designed to absorb and protect, its next-generation shield generators are unmatched in the galaxy.",
-          statsClass: "Defense frigate",
-        },
-      ],
-      kharsis: [
-        {
-          name: "Kha'ri Interceptor",
-          class: "Fighter",
-          description:
-            "Forged beyond the Rift, the Kha'ri is a raw war machine. Its hull reinforced by alien alloys and devastating weapons more than compensate for its limited shields.",
-          statsClass: "Assault fighter",
-        },
-        {
-          name: "Kha'ri Cruiser",
-          class: "Cruiser",
-          description:
-            "The Kha'ri Cruiser is the terror of battlefields. Its colossal mass and devastating armament make it a vessel designed for one purpose: total destruction.",
-          statsClass: "Heavy cruiser",
-        },
-      ],
-    },
+    factionShips: {},
   },
   universe: {
     title: "The Universe",
@@ -222,25 +204,19 @@ const en: Translations = {
   },
   screenshots: {
     title: "Preview",
-    subtitle: "A few captures from the Imperion Online universe.",
+    subtitle: "Dive into the Imperion Online universe.",
+    filterAll: "All",
+    filterSpace: "Space",
+    filterUi: "Interface",
     items: [
-      { alt: "Space flight", caption: "Explore the vastness of outer space" },
-      {
-        alt: "Combat",
-        caption: "Face your enemies in intense battles",
-      },
-      {
-        alt: "Orbital station",
-        caption: "Dock at stations to trade and resupply",
-      },
-      {
-        alt: "Planetary view",
-        caption: "Land on planets with unique atmospheres",
-      },
-      {
-        alt: "Galaxy map",
-        caption: "Navigate through 120+ star systems",
-      },
+      { alt: "Asteroid field", caption: "Fly through asteroid fields in breathtaking nebulae" },
+      { alt: "Station docking", caption: "Approach orbital stations under cinematic lighting" },
+      { alt: "Combat flight", caption: "Engage enemies in the vast emptiness of space" },
+      { alt: "Mining", caption: "Extract rare ores with your mining laser" },
+      { alt: "Galaxy map", caption: "Navigate through 120+ interconnected star systems" },
+      { alt: "System map", caption: "Plan your routes between stars, planets and stations" },
+      { alt: "Station services", caption: "Access trade, repairs and equipment at the docks" },
+      { alt: "Fleet equipment", caption: "Customize weapons and modules on your ships" },
     ],
   },
   roadmap: {

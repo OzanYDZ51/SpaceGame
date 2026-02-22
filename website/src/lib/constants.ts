@@ -36,69 +36,62 @@ export type ShipStructure = {
   modelPath: string;
   scale: number;
   cameraDistance: number;
-  stats: { speed: string; hull: string; shields: string };
+  stats: { speed: string; hull: string; shields: string; price: string };
 };
 
 export const SHIP_STRUCTURE: ShipStructure[] = [
   {
-    id: "fighter",
-    modelPath: "/models/tie.glb",
+    id: "chasseur_viper",
+    modelPath: "/models/chasseur_viper.glb",
     scale: 1.5,
     cameraDistance: 4,
-    stats: { speed: "320 m/s", hull: "450 HP", shields: "200 SP" },
+    stats: { speed: "380 m/s", hull: "1 200 HP", shields: "600 SP", price: "55 000" },
   },
   {
-    id: "frigate",
-    modelPath: "/models/frigate_mk1.glb",
+    id: "chasseur_arrw",
+    modelPath: "/models/chasseur_arrw.glb",
+    scale: 1.5,
+    cameraDistance: 4,
+    stats: { speed: "350 m/s", hull: "1 500 HP", shields: "800 SP", price: "80 000" },
+  },
+  {
+    id: "chasseur_lourd_cv",
+    modelPath: "/models/chasseur_lourd_cv.glb",
+    scale: 1.0,
+    cameraDistance: 5,
+    stats: { speed: "240 m/s", hull: "2 800 HP", shields: "1 400 SP", price: "160 000" },
+  },
+  {
+    id: "croiseur_bodhammer",
+    modelPath: "/models/croiseur_bodhammer.glb",
     scale: 0.6,
     cameraDistance: 6,
-    stats: { speed: "140 m/s", hull: "2800 HP", shields: "1200 SP" },
+    stats: { speed: "100 m/s", hull: "12 000 HP", shields: "6 000 SP", price: "850 000" },
   },
 ];
 
-export const SHIP_STRUCTURE_BY_FACTION: Record<string, ShipStructure[]> = {
-  nova_terra: [
-    {
-      id: "nt-fighter",
-      modelPath: "/models/tie.glb",
-      scale: 1.5,
-      cameraDistance: 4,
-      stats: { speed: "340 m/s", hull: "400 HP", shields: "280 SP" },
-    },
-    {
-      id: "nt-frigate",
-      modelPath: "/models/frigate_mk1.glb",
-      scale: 0.6,
-      cameraDistance: 6,
-      stats: { speed: "160 m/s", hull: "2400 HP", shields: "1600 SP" },
-    },
-  ],
-  kharsis: [
-    {
-      id: "kh-fighter",
-      modelPath: "/models/tie.glb",
-      scale: 1.5,
-      cameraDistance: 4,
-      stats: { speed: "300 m/s", hull: "550 HP", shields: "150 SP" },
-    },
-    {
-      id: "kh-frigate",
-      modelPath: "/models/frigate_mk1.glb",
-      scale: 0.6,
-      cameraDistance: 6,
-      stats: { speed: "120 m/s", hull: "3600 HP", shields: "800 SP" },
-    },
-  ],
+/* Faction ship variants — currently both factions share the same buyable ships.
+   Faction selection only affects UI color theme (cyan vs red rim lighting). */
+export const SHIP_STRUCTURE_BY_FACTION: Record<string, ShipStructure[]> = {};
+
+/* ── Screenshots — structural data (paths + layout) ── */
+
+export type ScreenshotLayout = {
+  src: string;
+  category: "space" | "ui";
+  /** Tailwind col-span class for the grid */
+  span: string;
 };
 
-/* ── Screenshots — structural data (paths) ─────── */
-
-export const SCREENSHOT_PATHS = [
-  "/screenshots/flight.jpg",
-  "/screenshots/combat.jpg",
-  "/screenshots/station.jpg",
-  "/screenshots/planet.jpg",
-  "/screenshots/galaxy.jpg",
+export const SCREENSHOT_DATA: ScreenshotLayout[] = [
+  { src: "/screenshots/asteroid_field.png",   category: "space", span: "sm:col-span-2 lg:col-span-3" },  // hero — full width
+  { src: "/screenshots/station_docking.png",  category: "space", span: "lg:col-span-2" },
+  { src: "/screenshots/combat_flight.png",    category: "space", span: "" },
+  { src: "/screenshots/mining_laser.png",     category: "space", span: "" },
+  { src: "/screenshots/galaxy_map.png",       category: "ui",    span: "" },
+  { src: "/screenshots/system_map.png",       category: "ui",    span: "" },
+  { src: "/screenshots/station_services.png", category: "ui",    span: "" },
+  { src: "/screenshots/ship_equipment.png",   category: "ui",    span: "sm:col-span-2 lg:col-span-2" },
 ];
 
 /* ── Roadmap — structural IDs + statuses ────────── */

@@ -95,7 +95,7 @@ export type Translations = {
     moreShips: string;
     dragHint: string;
     weaponsHint: string;
-    statLabels: { speed: string; hull: string; shields: string };
+    statLabels: { speed: string; hull: string; shields: string; price: string };
     defaultShips: ShipText[];
     factionShips: Record<string, ShipText[]>;
   };
@@ -119,6 +119,9 @@ export type Translations = {
   screenshots: {
     title: string;
     subtitle: string;
+    filterAll: string;
+    filterSpace: string;
+    filterUi: string;
     items: ScreenshotText[];
   };
   roadmap: {

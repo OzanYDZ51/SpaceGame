@@ -130,11 +130,11 @@ const fr: Translations = {
   ships: {
     title: "Vaisseaux",
     subtitleDefault:
-      "Inspectez les vaisseaux qui vous attendent dans l'univers d'Imperion.",
+      "Les vaisseaux achetables en station dans l'univers d'Imperion.",
     subtitleNovaTerra:
-      "La flotte de la Confédération Nova Terra. Précision et protection.",
+      "La flotte de la Confédération. Choisissez votre vaisseau.",
     subtitleKharsis:
-      "L'arsenal du Dominion Kharsis. Puissance et destruction.",
+      "L'arsenal du Dominion. Choisissez votre machine de guerre.",
     moreShips: "Plus de vaisseaux à découvrir...",
     dragHint: "Glisser pour tourner",
     weaponsHint: "Armement et modules — à découvrir en jeu",
@@ -142,57 +142,39 @@ const fr: Translations = {
       speed: "Vitesse max",
       hull: "Coque",
       shields: "Boucliers",
+      price: "Prix",
     },
     defaultShips: [
       {
         name: "Chasseur Viper",
         class: "Intercepteur",
         description:
-          "Rapide et redoutable, le Chasseur Viper est l'intercepteur des pilotes d'élite. Trois canons et une agilité incomparable — réservé aux vétérans.",
+          "Rapide et redoutable, le Chasseur Viper est l'intercepteur des pilotes d'élite. Trois canons laser et une agilité incomparable — le choix de départ pour les as du dogfight.",
         statsClass: "Intercepteur léger",
       },
       {
-        name: "Frigate Mk1",
-        class: "Frégate",
+        name: "Chasseur Arrw",
+        class: "Chasseur léger",
         description:
-          "Un vaisseau lourd conçu pour le combat prolongé. Ses tourelles multiples en font un adversaire redoutable.",
-        statsClass: "Frégate d'assaut",
+          "Polyvalent et bien armé, l'Arrw est le couteau suisse de la flotte. Son blindage renforcé et sa soute de 50 unités en font un chasseur capable de tout : combat, patrouille et convoyage.",
+        statsClass: "Chasseur polyvalent",
+      },
+      {
+        name: "Chasseur Lourd CV",
+        class: "Chasseur lourd",
+        description:
+          "Un vaisseau de guerre construit pour encaisser. Avec 2 800 HP de coque et des emplacements d'armes moyens, le CV domine les combats prolongés. Lent mais dévastateur.",
+        statsClass: "Chasseur lourd d'assaut",
+      },
+      {
+        name: "Croiseur Bodhammer",
+        class: "Croiseur",
+        description:
+          "Le titan des champs de bataille. 12 000 HP de coque, 8 emplacements d'armes et une soute massive de 250 unités. Le Bodhammer est un capital ship conçu pour écraser toute opposition.",
+        statsClass: "Croiseur de ligne",
       },
     ],
-    factionShips: {
-      nova_terra: [
-        {
-          name: "Fighter NT-7",
-          class: "Chasseur",
-          description:
-            "Le NT-7 incarne la doctrine Nova Terra : précision et protection. Ses boucliers surpuissants et sa vitesse en font le chasseur parfait pour les patrouilles de la Confédération.",
-          statsClass: "Intercepteur de ligne",
-        },
-        {
-          name: "Frégate Aurore",
-          class: "Frégate",
-          description:
-            "La Frégate Aurore est le bouclier de la flotte. Conçue pour encaisser et protéger, ses générateurs de boucliers de dernière génération sont inégalés dans la galaxie.",
-          statsClass: "Frégate de défense",
-        },
-      ],
-      kharsis: [
-        {
-          name: "Intercepteur Kha'ri",
-          class: "Chasseur",
-          description:
-            "Forgé au-delà du Rift, le Kha'ri est une machine de guerre brute. Sa coque renforcée par des alliages aliens et ses armes dévastatrices compensent largement ses boucliers limités.",
-          statsClass: "Chasseur d'assaut",
-        },
-        {
-          name: "Croiseur Kha'ri",
-          class: "Croiseur",
-          description:
-            "Le Croiseur Kha'ri est la terreur des champs de bataille. Sa masse colossale et son armement dévastateur en font un vaisseau conçu pour un seul objectif : la destruction totale.",
-          statsClass: "Croiseur lourd",
-        },
-      ],
-    },
+    factionShips: {},
   },
   universe: {
     title: "L'Univers",
@@ -222,27 +204,19 @@ const fr: Translations = {
   },
   screenshots: {
     title: "Aperçu",
-    subtitle: "Quelques captures de l'univers d'Imperion Online.",
+    subtitle: "Plongez dans l'univers d'Imperion Online.",
+    filterAll: "Tout",
+    filterSpace: "Espace",
+    filterUi: "Interface",
     items: [
-      { alt: "Vol spatial", caption: "Explorez l'immensité du vide spatial" },
-      {
-        alt: "Combat",
-        caption: "Affrontez vos ennemis dans des combats intenses",
-      },
-      {
-        alt: "Station orbitale",
-        caption:
-          "Amarrez-vous aux stations pour commercer et vous ravitailler",
-      },
-      {
-        alt: "Vue planétaire",
-        caption:
-          "Atterrissez sur des planètes aux atmosphères uniques",
-      },
-      {
-        alt: "Galaxy map",
-        caption: "Naviguez à travers 120+ systèmes stellaires",
-      },
+      { alt: "Champ d'astéroïdes", caption: "Traversez des champs d'astéroïdes dans des nébuleuses à couper le souffle" },
+      { alt: "Amarrage station", caption: "Approchez les stations orbitales sous un éclairage cinématique" },
+      { alt: "Vol de combat", caption: "Affrontez des ennemis dans l'immensité du vide" },
+      { alt: "Minage", caption: "Extrayez des minerais rares avec votre laser de minage" },
+      { alt: "Carte galactique", caption: "Naviguez à travers 120+ systèmes stellaires interconnectés" },
+      { alt: "Carte du système", caption: "Planifiez vos routes entre étoiles, planètes et stations" },
+      { alt: "Services de station", caption: "Accédez au commerce, réparations et équipements dans les docks" },
+      { alt: "Équipement de flotte", caption: "Personnalisez l'armement et les modules de vos vaisseaux" },
     ],
   },
   roadmap: {

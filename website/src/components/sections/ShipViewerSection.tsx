@@ -221,6 +221,7 @@ export function ShipViewerSection() {
                   <StatRow label={t.ships.statLabels.speed} value={activeShip.stats.speed} />
                   <StatRow label={t.ships.statLabels.hull} value={activeShip.stats.hull} />
                   <StatRow label={t.ships.statLabels.shields} value={activeShip.stats.shields} />
+                  <StatRow label={t.ships.statLabels.price} value={`${activeShip.stats.price} ¢`} />
                 </div>
 
                 <div className="mt-auto pt-6">
