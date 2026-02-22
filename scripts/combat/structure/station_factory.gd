@@ -40,8 +40,8 @@ static func setup_station(station, equipment) -> void:
 	# Create AI controller for defense (turrets + guard alerts)
 	var ai_ctrl := AIController.new()
 	ai_ctrl.name = "AIController"
-	station.add_child(ai_ctrl)
 	ai_ctrl.setup_as_station(station, wm)
+	station.add_child(ai_ctrl)
 	station.defense_ai = ai_ctrl
 
 	# Build visual service modules

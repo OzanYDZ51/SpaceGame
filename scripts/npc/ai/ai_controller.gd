@@ -239,10 +239,15 @@ func _ready() -> void:
 
 	_ship = get_parent()
 
-	# Create modules
+	# Create modules + combat behavior immediately (before await)
 	perception = AIPerception.new()
 	combat = AICombat.new()
 	environment = AIBrainEnvironment.new()
+	_combat_behavior = CombatBehavior.new()
+	_combat_behavior.controller = self
+
+	# Random initial tick offset
+	_tick_timer = randf() * TICK_INTERVAL
 
 	await get_tree().process_frame
 
@@ -265,10 +270,6 @@ func _ready() -> void:
 		environment.setup(_ship, navigation)
 		environment.update_environment()
 
-	# Create combat behavior (always ready)
-	_combat_behavior = CombatBehavior.new()
-	_combat_behavior.controller = self
-
 	# Default to patrol behavior
 	if _current_behavior == null:
 		_switch_to_patrol()
@@ -281,9 +282,6 @@ func _ready() -> void:
 			pb._generate_patrol_waypoints()
 
 	_default_behavior = _current_behavior
-
-	# Random initial tick offset
-	_tick_timer = randf() * TICK_INTERVAL
 
 
 func _process(delta: float) -> void:
