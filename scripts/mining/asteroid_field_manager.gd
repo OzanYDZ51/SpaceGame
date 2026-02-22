@@ -89,6 +89,23 @@ func set_system_seed(seed_val: int) -> void:
 	_system_seed = seed_val
 
 
+## Hot-reload asteroid cells with a new seed. Called when the server sends a
+## different galaxy_seed mid-session (e.g. server config arriving after initial
+## system load). Keeps belt definitions, only regenerates cell contents.
+func resync_seed(new_seed: int) -> void:
+	if new_seed == _system_seed:
+		return
+	# Unload all cells (frees nodes, clears data)
+	var cells_to_remove: Array[Vector2i] = []
+	for key: Vector2i in _loaded_cells:
+		cells_to_remove.append(key)
+	for key in cells_to_remove:
+		_unload_cell(key)
+	_depleted_ids.clear()
+	_system_seed = new_seed
+	# Cells will be re-generated on the next _evaluate_cells tick
+
+
 func _setup_multimesh() -> void:
 	if _universe_node == null:
 		return

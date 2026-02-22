@@ -133,9 +133,9 @@ const LAYER_TERRAIN: int = 16
 
 # --- AI ---
 const AI_TICK_INTERVAL: float = 0.1              # 10Hz — base AI tick rate
-const AI_DETECTION_RANGE: float = 3000.0         # NPC threat detection radius
-const AI_ENGAGEMENT_RANGE: float = 1500.0        # Preferred combat distance (also used for combat bridge, defend range)
-const AI_DISENGAGE_RANGE: float = 4000.0         # Break off combat beyond this distance
+const AI_DETECTION_RANGE: float = 5000.0         # NPC threat detection radius
+const AI_ENGAGEMENT_RANGE: float = 2000.0        # Preferred combat distance (also used for combat bridge, defend range)
+const AI_DISENGAGE_RANGE: float = 6500.0         # Break off combat beyond this distance
 
 # --- Speed Modes ---
 enum SpeedMode { NORMAL, BOOST, CRUISE }

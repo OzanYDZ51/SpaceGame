@@ -762,6 +762,7 @@ func _initialize_game() -> void:
 		if _wormhole_mgr:
 			_wormhole_mgr.initiate_wormhole_jump()
 	)
+	_input_router.cinematic_toggled.connect(_on_cinematic_toggled)
 	# terminal_requested, undock_requested, loot_pickup_requested connected after
 	# _docking_mgr and _loot_mgr are created (see below)
 
@@ -1493,6 +1494,38 @@ func _process(_delta: float) -> void:
 	if current_state == GameState.DOCKED and _dock_instance and _dock_instance.hangar_scene and _screen_manager:
 		_dock_instance.hangar_scene.terminal_open = _screen_manager.is_any_screen_open()
 
+
+
+# =============================================================================
+# CINEMATIC / PHOTO MODE
+# =============================================================================
+func _on_cinematic_toggled() -> void:
+	var entering: bool = _input_router.cinematic_active
+
+	# HUD fade
+	var hud = main_scene.get_node_or_null("UI/FlightHUD")
+	if hud:
+		hud.cinematic_mode = entering
+
+	# ChatPanel visibility
+	var chat_panel = main_scene.get_node_or_null("UI/ChatPanel")
+	if chat_panel:
+		chat_panel.visible = not entering
+
+	# Camera mode
+	var camera = player_ship.get_node_or_null("ShipCamera") if player_ship else null
+	if camera:
+		if entering:
+			camera.enter_cinematic()
+		else:
+			camera.exit_cinematic()
+
+	# Ship controller: block all input in cinematic, ship drifts inertially
+	if player_ship:
+		player_ship.cinematic_mode = entering
+
+	# Mouse capture for free camera
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 
 # =============================================================================

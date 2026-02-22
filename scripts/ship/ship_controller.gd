@@ -35,6 +35,7 @@ var speed_mode: int = Constants.SpeedMode.NORMAL
 var current_speed: float = 0.0
 var throttle_input: Vector3 = Vector3.ZERO
 var cruise_disabled: bool = false  ## Prevents cruise mode (used by convoy NPCs)
+var cinematic_mode: bool = false   ## Blocks all player input (photo mode)
 
 # --- Combat lock (no cruise while in combat) ---
 const COMBAT_LOCK_DURATION: float = 5.0
@@ -66,6 +67,7 @@ var autopilot_target_name: String = ""
 var autopilot_is_gate: bool = false  # True when navigating to a jump gate (closer approach)
 var _autopilot_aligned: bool = false  # True when ship faces target (dot > 0.5) — gates speed boost
 var _autopilot_grace_frames: int = 0  # Ignore mouse input for N frames after engage
+var _was_ui_blocking: bool = false    # Track UI blocking transition for autopilot grace reset
 const AUTOPILOT_ARRIVAL_DIST: float = 200.0           # 200m — disengage autopilot (stations/general)
 const AUTOPILOT_GATE_ARRIVAL_DIST: float = 30.0      # 30m — inside 40m gate trigger sphere
 const AUTOPILOT_DECEL_DIST: float = 5000.0           # 5 km — drop cruise, start decelerating
@@ -182,7 +184,7 @@ func _notification(what: int) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not is_player_controlled:
+	if not is_player_controlled or cinematic_mode:
 		return
 	if event is InputEventMouseMotion:
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -204,11 +206,28 @@ func _read_input() -> void:
 	if not InputMap.has_action("pip_weapons"):
 		return
 
+	# Cinematic / photo mode — block all ship input, ship drifts inertially
+	if cinematic_mode:
+		throttle_input = Vector3.ZERO
+		_target_pitch_rate = 0.0
+		_target_yaw_rate = 0.0
+		_target_roll_rate = 0.0
+		_mouse_delta = Vector2.ZERO
+		cruise_look_delta = Vector2.ZERO
+		free_look_active = false
+		return
+
 	# === COMBAT LOCK UPDATE (always runs) ===
 	combat_locked = (Time.get_ticks_msec() * 0.001 - _last_combat_time) < COMBAT_LOCK_DURATION
 
 	# === UI SCREEN CHECK — block all ship input when a UI screen is open ===
 	var _ui_blocking: bool = (GameManager._screen_manager != null and GameManager._screen_manager.is_any_screen_open()) or get_viewport().gui_get_focus_owner() != null
+
+	# Reset autopilot grace when UI closes (mouse recapture generates spurious delta)
+	if _was_ui_blocking and not _ui_blocking and autopilot_active:
+		_autopilot_grace_frames = 10
+		_mouse_delta = Vector2.ZERO
+	_was_ui_blocking = _ui_blocking
 
 	# === AUTOPILOT (runs even when GUI has focus, e.g. during screen close transition) ===
 	if autopilot_active:
@@ -330,7 +349,7 @@ func _read_input() -> void:
 
 
 func _handle_player_weapon_input() -> void:
-	if not InputMap.has_action("target_cycle"):
+	if not InputMap.has_action("target_cycle") or cinematic_mode:
 		return
 	# Lazy-cache: refs may be null if _cache_refs ran before GameManager added children
 	if _cached_targeting == null or _cached_weapon_mgr == null:

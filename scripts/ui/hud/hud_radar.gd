@@ -5,11 +5,15 @@ extends Control
 # HUD Radar — Holographic tactical scanning display (top-right)
 # =============================================================================
 
-var ship = null
+var ship = null:
+	set(value):
+		ship = value
+		if ship and ship.ship_data:
+			RADAR_RANGE = ship.ship_data.sensor_range
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
 
-const RADAR_RANGE: float = 5000.0
+var RADAR_RANGE: float = 5000.0
 const RADAR_SWEEP_SPEED: float = 1.2
 const RADAR_COL_BG: Color = Color(0.0, 0.03, 0.06, 0.7)
 const RADAR_COL_RING: Color = Color(0.1, 0.4, 0.5, 0.25)

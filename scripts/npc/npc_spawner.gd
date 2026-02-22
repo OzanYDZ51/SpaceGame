@@ -231,13 +231,13 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	key_points.append_array(station_positions)
 	key_points.append_array(gate_positions)
 
-	# Fallback if no stations
+	# Fallback if no stations — far enough from star center (0,0,0)
 	if station_positions.is_empty():
-		station_positions.append(Vector3(500, 0, -1500))
+		station_positions.append(Vector3(5000, 0, -15000))
 		station_nodes.append(null)
 		station_factions.append(default_faction)
 	if key_points.is_empty():
-		key_points.append(Vector3(500, 0, -1500))
+		key_points.append(Vector3(5000, 0, -15000))
 
 	# Get current system_id for encounter key generation
 	var system_id: int = system_id_for_fac
@@ -316,13 +316,13 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		else:
 			guard_faction = &"nova_terra"  # Fallback — always spawn guards
 		var st_pos: Vector3 = station_positions[st_idx]
-		# Guards patrol OUTSIDE the station model (~2500m radius + margin)
+		# Guards patrol near the station (outside model radius but within detection range)
 		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
 		if offset_dir.length_squared() < 0.01:
 			offset_dir = Vector3.FORWARD
-		var guard_center: Vector3 = st_pos + offset_dir * randf_range(3500.0, 4500.0)
+		var guard_center: Vector3 = st_pos + offset_dir * randf_range(2500.0, 3000.0)
 		print("EncounterManager: Spawning 2 guards (faction=%s, ship=%s) for station %d (node=%s)" % [guard_faction, guard_ship, st_idx, station_node != null])
-		spawn_patrol(2, guard_ship, guard_center, 1000.0, guard_faction, system_id, 100 + st_idx, station_node)
+		spawn_patrol(2, guard_ship, guard_center, 1500.0, guard_faction, system_id, 100 + st_idx, station_node)
 
 
 func _get_guard_ship_id() -> StringName:
@@ -581,6 +581,9 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 	if parent == null:
 		parent = get_tree().current_scene
 
+	# Push spawn position away from obstacles (star, planets, stations)
+	pos = _push_spawn_from_obstacles(pos)
+
 	# Spawn leader
 	var leader = ShipFactory.spawn_npc_ship(leader_id, &"aggressive", pos, parent, faction)
 	if leader == null:
@@ -604,7 +607,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 		@warning_ignore("integer_division")
 		var row: int = i / 2 + 1
 		var offset =Vector3(side * 120.0 * row, 0.0, 15.0 * row)
-		var wing_pos: Vector3 = pos + offset
+		var wing_pos: Vector3 = _push_spawn_from_obstacles(pos + offset)
 
 		var wingman = ShipFactory.spawn_npc_ship(wingman_id, &"balanced", wing_pos, parent, faction)
 		if wingman:
@@ -671,10 +674,10 @@ func spawn_for_remote_system(system_id: int) -> void:
 	key_points.append_array(gate_positions)
 
 	if station_positions.is_empty():
-		station_positions.append(Vector3(500, 0, -1500))
+		station_positions.append(Vector3(5000, 0, -15000))
 		station_factions.append(default_faction)
 	if key_points.is_empty():
-		key_points.append(Vector3(500, 0, -1500))
+		key_points.append(Vector3(5000, 0, -15000))
 
 	# Register virtual stations in EntityRegistry so AIBrain environment awareness works.
 	# Without these, _update_environment() can't find stations → no push-away, no avoidance.

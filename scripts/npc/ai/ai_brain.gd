@@ -123,9 +123,9 @@ func _process(delta: float) -> void:
 	var player =GameManager.player_ship
 	if player and is_instance_valid(player):
 		var dist: float = _ship.global_position.distance_to(player.global_position)
-		if dist > 5000.0:
+		if dist > 8000.0:
 			tick_rate = TICK_INTERVAL * 10.0
-		elif dist > 2000.0:
+		elif dist > 3000.0:
 			tick_rate = TICK_INTERVAL * 3.0
 	_tick_timer = tick_rate
 
@@ -194,6 +194,8 @@ func _tick_patrol() -> void:
 				_ship._exit_cruise()
 			if weapons_enabled:
 				_pilot.fire_at_target(target, accuracy * 0.7)
+			# Alert wingmen so escorts break off and engage
+			_alert_formation_wingmen(target)
 		else:
 			current_state = State.PURSUE
 			return
@@ -323,8 +325,24 @@ func _tick_formation() -> void:
 		current_state = State.PURSUE
 		return
 
-	var leader_basis: Basis = formation_leader.global_transform.basis
-	var target_pos: Vector3 = formation_leader.global_position + leader_basis * formation_offset
+	# Use leader's velocity direction for the formation basis instead of the leader's
+	# raw transform basis. This filters out small heading oscillations that would cause
+	# the wingman's target to jitter laterally every frame.
+	var leader_vel: Vector3 = Vector3.ZERO
+	if "linear_velocity" in formation_leader:
+		leader_vel = formation_leader.linear_velocity
+	var formation_basis: Basis
+	if leader_vel.length_squared() > 25.0:  # Moving at > 5 m/s
+		var fwd: Vector3 = -leader_vel.normalized()
+		var up: Vector3 = Vector3.UP
+		var right: Vector3 = up.cross(fwd).normalized()
+		if right.length_squared() < 0.5:
+			right = Vector3.RIGHT
+		up = fwd.cross(right).normalized()
+		formation_basis = Basis(right, up, fwd)
+	else:
+		formation_basis = formation_leader.global_transform.basis
+	var target_pos: Vector3 = formation_leader.global_position + formation_basis * formation_offset
 	_pilot.fly_toward(target_pos, 20.0)
 
 	# Also follow leader's target if leader is already fighting
@@ -453,9 +471,14 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		if defense_ai:
 			defense_ai.alert_guards(attacker)
 
+	# Alert formation wingmen so escorts break off and engage the attacker
+	_alert_formation_wingmen(attacker)
+
 	if current_state == State.IDLE or current_state == State.FORMATION or (current_state == State.PATROL and not route_priority):
 		target = attacker
 		current_state = State.PURSUE
+		if _ship and _ship.speed_mode == Constants.SpeedMode.CRUISE:
+			_ship._exit_cruise()
 		return
 
 	if current_state in [State.PURSUE, State.ATTACK]:
@@ -471,3 +494,17 @@ func alert_to_threat(attacker: Node3D) -> void:
 	if current_state in [State.IDLE, State.PATROL, State.FORMATION]:
 		target = attacker
 		current_state = State.PURSUE
+		# Exit cruise immediately so wingman can engage
+		if _ship and _ship.speed_mode == Constants.SpeedMode.CRUISE:
+			_ship._exit_cruise()
+
+
+func _alert_formation_wingmen(attacker: Node3D) -> void:
+	if not is_instance_valid(attacker):
+		return
+	for ship in get_tree().get_nodes_in_group("ships"):
+		if ship == _ship or not is_instance_valid(ship):
+			continue
+		var brain = ship.get_node_or_null("AIBrain")
+		if brain and brain.formation_leader == _ship:
+			brain.alert_to_threat(attacker)

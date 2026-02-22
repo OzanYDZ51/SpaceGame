@@ -165,7 +165,7 @@ func _draw_mining_progress(ctrl: Control) -> void:
 	ctrl.draw_rect(bg_rect, Color(0.0, 0.04, 0.02, 0.7))
 	ctrl.draw_rect(bg_rect, Color(mine_col.r, mine_col.g, mine_col.b, 0.4 * pulse), false, 1.0)
 
-	var res = MiningRegistry.get_resource(target.primary_resource)
+	var res = MiningRegistry.get_resource(target.primary_resource) if target.primary_resource != &"" else null
 	var res_name: String = res.display_name if res else "?"
 	ctrl.draw_string(font, Vector2(0, 13), (Locale.t("hud.mining_extraction") % res_name).to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, Color(mine_col.r, mine_col.g, mine_col.b, pulse))

@@ -13,6 +13,7 @@ var player_name: String = ""
 var corporation_tag: String = ""
 var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var ship_class: StringName = &"Fighter"
+var faction: StringName = &"player"
 var linear_velocity: Vector3 = Vector3.ZERO
 var _was_dead: bool = false
 var _is_cruising: bool = false
@@ -45,8 +46,8 @@ func _ready() -> void:
 	_setup_model()
 	_setup_collision()
 	_setup_health_proxy()
-	# Set faction for HUD color coding (remote players = friendly)
-	set_meta("faction", &"player")
+	# Faction is a real property (var faction) so that "faction" in body checks work
+	# for NPC threat detection and projectile friendly-fire logic.
 
 
 func _setup_model() -> void:

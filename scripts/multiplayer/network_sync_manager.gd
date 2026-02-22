@@ -296,6 +296,15 @@ func _on_server_config_received(config: Dictionary) -> void:
 			player_data.station_services.init_center_systems(galaxy)
 		server_galaxy_changed.emit(galaxy)
 
+		# Re-sync asteroid seed: the player may already be in a system whose
+		# asteroids were generated with the old (default) galaxy seed.
+		if system_transition and system_transition.current_system_id >= 0:
+			var sys_entry: Dictionary = galaxy.get_system(system_transition.current_system_id)
+			if not sys_entry.is_empty():
+				var asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
+				if asteroid_mgr:
+					asteroid_mgr.resync_seed(sys_entry["seed"])
+
 	_populate_wormhole_targets()
 
 	# NOTE: spawn_system_id from server config is intentionally IGNORED.

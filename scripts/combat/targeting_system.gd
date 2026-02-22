@@ -340,21 +340,18 @@ static func _is_fleet_pvp_enemy(own_faction: StringName, own_owner_pid: int, tar
 
 
 ## Returns true if two factions are allied (should not attack each other).
+## Player factions: &"neutral" (local player), &"player" (remote players), &"player_fleet" (fleet ships)
 static func _is_allied(faction_a: StringName, faction_b: StringName) -> bool:
-	# Player and player_fleet are allies
-	if faction_a == &"neutral" and faction_b == &"player_fleet":
+	# All player-side factions are allied with each other
+	if _is_player_faction(faction_a) and _is_player_faction(faction_b):
 		return true
-	if faction_a == &"player_fleet" and faction_b == &"neutral":
+	# Friendly NPCs are allied with all player factions
+	if faction_a == &"friendly" and _is_player_faction(faction_b):
 		return true
-	if faction_a == &"player_fleet" and faction_b == &"player_fleet":
-		return true
-	# Friendly NPCs are allied with player
-	if faction_a == &"neutral" and faction_b == &"friendly":
-		return true
-	if faction_a == &"friendly" and faction_b == &"neutral":
-		return true
-	if faction_a == &"player_fleet" and faction_b == &"friendly":
-		return true
-	if faction_a == &"friendly" and faction_b == &"player_fleet":
+	if _is_player_faction(faction_a) and faction_b == &"friendly":
 		return true
 	return false
+
+
+static func _is_player_faction(fac: StringName) -> bool:
+	return fac == &"neutral" or fac == &"player" or fac == &"player_fleet"

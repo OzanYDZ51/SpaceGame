@@ -15,6 +15,7 @@ signal terminal_requested
 signal undock_requested
 signal build_requested
 signal scanner_pulse_requested
+signal cinematic_toggled
 
 # Injected refs
 var screen_manager = null
@@ -23,6 +24,7 @@ var loot_pickup: LootPickupSystem = null
 var system_transition = null
 var get_game_state: Callable  # () -> GameState
 var construction_proximity_check: Callable  # () -> bool
+var cinematic_active: bool = false
 
 
 func _ready() -> void:
@@ -64,6 +66,7 @@ func _setup_input_actions() -> void:
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
 		"toggle_weapon_4": KEY_4,
+		"toggle_cinematic": KEY_F10,
 	}
 
 	var mouse_actions ={
@@ -94,6 +97,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if state == Constants.GameState.DEAD:
 		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_R:
 			respawn_requested.emit()
+		return
+
+	# Cinematic mode toggle (F10) — works anytime while alive
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_F10:
+		cinematic_active = not cinematic_active
+		cinematic_toggled.emit()
+		get_viewport().set_input_as_handled()
+		return
+
+	# Block all other inputs while in cinematic mode
+	if cinematic_active:
+		# Only Escape exits cinematic mode
+		if event.is_action_pressed("toggle_mouse_capture"):
+			cinematic_active = false
+			cinematic_toggled.emit()
+			get_viewport().set_input_as_handled()
 		return
 
 	# Map keys (M/G) always work

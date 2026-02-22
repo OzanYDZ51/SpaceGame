@@ -29,6 +29,7 @@ var _pulse_t: float = 0.0
 var _warning_flash: float = 0.0
 var _boot_alpha: float = 0.0
 var _boot_done: bool = false
+var cinematic_mode: bool = false
 
 # --- HUD redraw throttle ---
 const HUD_SLOW_INTERVAL: float = 0.1  # 10 Hz for panels/weapon/economy
@@ -233,12 +234,18 @@ func _process(delta: float) -> void:
 		_slow_timer -= HUD_SLOW_INTERVAL
 		_slow_dirty = true
 
-	# Boot animation
-	if not _boot_done:
+	# Boot animation + cinematic fade
+	if cinematic_mode:
+		modulate.a = lerpf(modulate.a, 0.0, 8.0 * delta)
+	elif not _boot_done:
 		_boot_alpha = min(_boot_alpha + delta * 0.8, 1.0)
 		if _boot_alpha >= 1.0:
 			_boot_done = true
 		modulate.a = _boot_alpha
+	else:
+		# Fade back in after cinematic mode exits
+		if modulate.a < 0.99:
+			modulate.a = lerpf(modulate.a, 1.0, 5.0 * delta)
 
 	# Propagate animation state to all components
 	_gauges.pulse_t = _pulse_t

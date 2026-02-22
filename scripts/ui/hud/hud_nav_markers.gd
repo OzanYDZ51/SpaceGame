@@ -5,10 +5,14 @@ extends Control
 # HUD Nav Markers — BSGO-style POI indicators with distance
 # =============================================================================
 
-var ship = null
+var ship = null:
+	set(value):
+		ship = value
+		if ship and ship.ship_data:
+			NAV_NPC_RANGE = ship.ship_data.sensor_range
 
 const NAV_EDGE_MARGIN: float = 40.0
-const NAV_NPC_RANGE: float = 4000.0
+var NAV_NPC_RANGE: float = 5000.0
 const NAV_COL_STATION: Color = Color(0.2, 0.85, 0.8, 0.85)
 const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)

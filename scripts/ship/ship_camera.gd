@@ -8,7 +8,7 @@ extends Camera3D
 # Inspired by Star Citizen / Elite Dangerous third-person cameras.
 # =============================================================================
 
-enum CameraMode { THIRD_PERSON, COCKPIT }
+enum CameraMode { THIRD_PERSON, COCKPIT, CINEMATIC }
 
 @export_group("Third Person")
 @export var cam_height: float = 8.0            ## Height above ship
@@ -95,6 +95,19 @@ const FREE_LOOK_MAX_DELTA: float = 50.0     ## Pixels max par frame — évite l
 const FREE_LOOK_PITCH_MAX: float = 70.0     ## Max vertical look angle
 const FREE_LOOK_RETURN_SPEED: float = 2.0   ## Return-to-center speed (slow = cinematic)
 const FREE_LOOK_SMOOTH: float = 8.0         ## Camera lag speed
+
+## Cinematic / Photo mode — free camera detached from ship
+var _cinematic_yaw: float = 0.0
+var _cinematic_pitch: float = 0.0
+var _cinematic_speed: float = 50.0        ## Current movement speed (m/s)
+var _cinematic_speed_tier: int = 2        ## 0-4 speed presets
+var _cinematic_fov: float = 75.0          ## Cinematic FOV (adjustable via scroll)
+var _cinematic_mouse_delta: Vector2 = Vector2.ZERO
+var _pre_cinematic_mode: CameraMode = CameraMode.THIRD_PERSON
+const CINEMATIC_SENSITIVITY: float = 0.08
+const CINEMATIC_PITCH_MAX: float = 89.0
+const CINEMATIC_SPEEDS: Array[float] = [5.0, 20.0, 50.0, 150.0, 500.0]
+const CINEMATIC_BOOST_MULT: float = 5.0
 
 ## Ship-size camera scaling — base values saved from @export defaults
 const CAMERA_REF_SCALE: float = 2.0  ## Reference model_scale (fighters)
@@ -221,6 +234,27 @@ func _on_cruise_exit() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Cinematic mode: capture mouse + scroll for FOV/speed
+	if camera_mode == CameraMode.CINEMATIC:
+		if event is InputEventMouseMotion:
+			_cinematic_mouse_delta += event.relative
+		elif event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				if Input.is_action_pressed("boost"):
+					# Shift+scroll = FOV zoom (telephoto)
+					_cinematic_fov = clampf(_cinematic_fov - fov_zoom_step, fov_zoom_min, 120.0)
+				else:
+					# Scroll = faster speed tier
+					_cinematic_speed_tier = mini(_cinematic_speed_tier + 1, CINEMATIC_SPEEDS.size() - 1)
+					_cinematic_speed = CINEMATIC_SPEEDS[_cinematic_speed_tier]
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				if Input.is_action_pressed("boost"):
+					_cinematic_fov = clampf(_cinematic_fov + fov_zoom_step, fov_zoom_min, 120.0)
+				else:
+					_cinematic_speed_tier = maxi(_cinematic_speed_tier - 1, 0)
+					_cinematic_speed = CINEMATIC_SPEEDS[_cinematic_speed_tier]
+		return
+
 	if camera_mode == CameraMode.THIRD_PERSON:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -239,7 +273,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_fov_zoom_offset = 0.0
 					target_distance = min(cam_distance_max, target_distance + cam_zoom_step)
 
-	if event.is_action_pressed("toggle_camera"):
+	if event.is_action_pressed("toggle_camera") and camera_mode != CameraMode.CINEMATIC:
 		camera_mode = CameraMode.COCKPIT if camera_mode == CameraMode.THIRD_PERSON else CameraMode.THIRD_PERSON
 		# Réinitialiser le zoom optique lors du changement de mode
 		_fov_zoom_offset = 0.0
@@ -258,6 +292,8 @@ func _process(delta: float) -> void:
 			_update_third_person(delta)
 		CameraMode.COCKPIT:
 			_update_cockpit(delta)
+		CameraMode.CINEMATIC:
+			_update_cinematic(delta)
 
 
 func _update_third_person(delta: float) -> void:
@@ -434,6 +470,70 @@ func _get_fov_for_mode(mode: int) -> float:
 		Constants.SpeedMode.BOOST: return fov_boost
 		Constants.SpeedMode.CRUISE: return fov_base  # Zero FOV change — no fisheye
 	return fov_base
+
+
+## Enter cinematic / photo mode: detach camera from ship, free movement
+func enter_cinematic() -> void:
+	_pre_cinematic_mode = camera_mode
+	camera_mode = CameraMode.CINEMATIC
+	# Initialize cinematic orientation from current camera rotation
+	var euler: Vector3 = global_transform.basis.get_euler()
+	_cinematic_pitch = rad_to_deg(euler.x)
+	_cinematic_yaw = rad_to_deg(euler.y)
+	_cinematic_mouse_delta = Vector2.ZERO
+	_cinematic_speed_tier = 2
+	_cinematic_speed = CINEMATIC_SPEEDS[_cinematic_speed_tier]
+	_cinematic_fov = fov
+
+
+## Exit cinematic mode: return camera to ship smoothly
+func exit_cinematic() -> void:
+	camera_mode = _pre_cinematic_mode
+	# Spring-damper will naturally pull camera back to ship position
+	# Reset optical zoom
+	_fov_zoom_offset = 0.0
+	_cinematic_mouse_delta = Vector2.ZERO
+
+
+func _update_cinematic(delta: float) -> void:
+	# --- Mouse look ---
+	var md: Vector2 = _cinematic_mouse_delta
+	_cinematic_mouse_delta = Vector2.ZERO
+	_cinematic_yaw -= md.x * CINEMATIC_SENSITIVITY
+	_cinematic_pitch -= md.y * CINEMATIC_SENSITIVITY
+	_cinematic_pitch = clampf(_cinematic_pitch, -CINEMATIC_PITCH_MAX, CINEMATIC_PITCH_MAX)
+
+	# Build orientation basis from yaw/pitch
+	var basis_rot: Basis = Basis(Vector3.UP, deg_to_rad(_cinematic_yaw))
+	basis_rot = basis_rot * Basis(Vector3.RIGHT, deg_to_rad(_cinematic_pitch))
+	global_transform.basis = basis_rot
+
+	# --- Movement (WASD + Space/Ctrl in camera space) ---
+	var move_dir: Vector3 = Vector3.ZERO
+	if Input.is_action_pressed("move_forward"):
+		move_dir.z -= 1.0
+	if Input.is_action_pressed("move_backward"):
+		move_dir.z += 1.0
+	if Input.is_action_pressed("strafe_left"):
+		move_dir.x -= 1.0
+	if Input.is_action_pressed("strafe_right"):
+		move_dir.x += 1.0
+	if Input.is_action_pressed("strafe_up"):
+		move_dir.y += 1.0
+	if Input.is_action_pressed("strafe_down"):
+		move_dir.y -= 1.0
+
+	if move_dir.length_squared() > 0.01:
+		move_dir = move_dir.normalized()
+
+	var speed: float = _cinematic_speed
+	if Input.is_action_pressed("boost"):
+		speed *= CINEMATIC_BOOST_MULT
+
+	global_position += basis_rot * move_dir * speed * delta
+
+	# --- FOV ---
+	fov = lerpf(fov, _cinematic_fov, 5.0 * delta)
 
 
 func _on_origin_shifted(shift: Vector3) -> void:

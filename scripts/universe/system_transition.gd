@@ -407,9 +407,14 @@ func _populate_system() -> void:
 			})
 
 	# Spawn asteroid fields
+	# Use the galaxy-derived seed (synced from server via galaxy_seed) rather than
+	# the .tres override seed_value. This guarantees all clients use the same seed
+	# even if their local game builds differ slightly.
 	var asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 	if asteroid_mgr:
-		asteroid_mgr.set_system_seed(current_system_data.seed_value)
+		var galaxy_sys_ast: Dictionary = galaxy.get_system(current_system_id)
+		var ast_seed: int = galaxy_sys_ast.get("seed", current_system_data.seed_value)
+		asteroid_mgr.set_system_seed(ast_seed)
 		for i in current_system_data.asteroid_belts.size():
 			var belt: AsteroidBeltData = current_system_data.asteroid_belts[i]
 			var field =_generate_asteroid_field(belt, i)

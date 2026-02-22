@@ -104,12 +104,12 @@ func try_fire(aim_point: Vector3) -> void:
 		return
 
 	# Hitting an asteroid — start/continue extraction
-	var target_pos: Vector3 = asteroid_hit.position
+	var asteroid_center: Vector3 = asteroid_hit.position
 	if is_instance_valid(asteroid_hit.node_ref):
-		target_pos = asteroid_hit.node_ref.global_position
+		asteroid_center = asteroid_hit.node_ref.global_position
 
 	# Check range
-	var dist: float = _ship.global_position.distance_to(target_pos)
+	var dist: float = _ship.global_position.distance_to(asteroid_center)
 	if dist > Constants.MINING_RANGE:
 		if is_mining:
 			_stop_extraction()
@@ -121,6 +121,16 @@ func try_fire(aim_point: Vector3) -> void:
 
 	if not is_mining or mining_target != asteroid_hit:
 		_start_extraction(asteroid_hit)
+
+	# Compute beam endpoint on asteroid surface (not center)
+	var to_asteroid: Vector3 = asteroid_center - source_pos
+	var to_dist: float = to_asteroid.length()
+	var surface_radius: float = asteroid_hit.visual_radius
+	var target_pos: Vector3
+	if to_dist > surface_radius:
+		target_pos = source_pos + to_asteroid.normalized() * (to_dist - surface_radius)
+	else:
+		target_pos = asteroid_center
 
 	# Update beam visual
 	if not _beam._active:

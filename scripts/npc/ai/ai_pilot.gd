@@ -34,6 +34,10 @@ var _approach_offset_set: bool = false
 # Orbit angle for combat circling
 var _orbit_angle: float = 0.0
 
+# Previous yaw/pitch errors for derivative dampening (reduces steering oscillation)
+var _prev_yaw_error: float = 0.0
+var _prev_pitch_error: float = 0.0
+
 # LOS check mask for fire_at_target (stations + asteroids + ships)
 const LOS_COLLISION_MASK: int = 7  # LAYER_SHIPS(1) | LAYER_STATIONS(2) | LAYER_ASTEROIDS(4)
 
@@ -210,8 +214,15 @@ func face_target(target_pos: Vector3) -> void:
 	var pitch_speed = _ship.ship_data.rotation_pitch_speed if _ship.ship_data else 30.0
 	var yaw_speed = _ship.ship_data.rotation_yaw_speed if _ship.ship_data else 25.0
 
-	var pitch_rate: float = clampf(pitch_error * 4.0, -pitch_speed, pitch_speed)
-	var yaw_rate: float = clampf(yaw_error * 4.0, -yaw_speed, yaw_speed)
+	# PD controller: proportional + derivative dampening to prevent oscillation.
+	# The derivative term resists rapid error changes, smoothing out steering.
+	var yaw_deriv: float = yaw_error - _prev_yaw_error
+	var pitch_deriv: float = pitch_error - _prev_pitch_error
+	_prev_yaw_error = yaw_error
+	_prev_pitch_error = pitch_error
+
+	var pitch_rate: float = clampf(pitch_error * 3.0 - pitch_deriv * 1.5, -pitch_speed, pitch_speed)
+	var yaw_rate: float = clampf(yaw_error * 3.0 - yaw_deriv * 1.5, -yaw_speed, yaw_speed)
 
 	_ship.set_rotation_target(pitch_rate, yaw_rate, 0.0)
 
@@ -340,7 +351,10 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 				_ship.global_position, target.global_position)
 			los_query.collision_mask = LOS_COLLISION_MASK
 			los_query.collide_with_areas = false
-			los_query.exclude = [_ship.get_rid(), target.get_rid()]
+			var exclude_rids: Array[RID] = [_ship.get_rid()]
+			if target is CollisionObject3D:
+				exclude_rids.append(target.get_rid())
+			los_query.exclude = exclude_rids
 			var los_hit =space.intersect_ray(los_query)
 			if not los_hit.is_empty():
 				return

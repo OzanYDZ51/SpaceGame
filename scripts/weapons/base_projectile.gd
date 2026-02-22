@@ -41,7 +41,7 @@ func _physics_process(delta: float) -> void:
 			query.collision_mask = collision_mask
 			query.collide_with_areas = false
 			query.collide_with_bodies = true
-			if owner_ship and is_instance_valid(owner_ship):
+			if owner_ship and is_instance_valid(owner_ship) and owner_ship is CollisionObject3D:
 				query.exclude = [owner_ship.get_rid()]
 			var hit =space.intersect_ray(query)
 			if not hit.is_empty():

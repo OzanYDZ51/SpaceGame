@@ -40,9 +40,9 @@ engine_slot_size = "L"
 module_slots = Array[String](["S", "M", "M", "L"])
 price = 350000
 cargo_capacity = 100
-sensor_range = 4000.0
-engagement_range = 2000.0
-disengage_range = 5000.0
+sensor_range = 7000.0
+engagement_range = 3000.0
+disengage_range = 9000.0
 default_shield = &"Bouclier Lourd"
 default_engine = &"Propulseur Militaire"
 default_modules = Array[StringName]([&"Blindage Renforce", &"Generateur Auxiliaire", &"Amplificateur de Bouclier", &"Systeme de Ciblage"])
@@ -53,7 +53,7 @@ loot_mat_count_max = 4
 loot_weapon_part_chance = 0.25
 lod_combat_dps = 65.0
 npc_tier = 2
-sold_at_station_types = Array[StringName]([&"repair", &"military"])
+sold_at_station_types = Array[StringName]([])
 resource_cost = {
 &"iron": 200,
 &"copper": 80,

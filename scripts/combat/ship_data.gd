@@ -68,9 +68,9 @@ extends Resource
 @export var cargo_capacity: int = 50
 
 # --- AI / Sensor ---
-@export var sensor_range: float = 3000.0          # Threat detection radius
-@export var engagement_range: float = 1500.0      # Preferred max combat distance
-@export var disengage_range: float = 4000.0       # Break off combat beyond this
+@export var sensor_range: float = 5000.0          # Threat detection radius
+@export var engagement_range: float = 2000.0      # Preferred max combat distance
+@export var disengage_range: float = 6500.0       # Break off combat beyond this
 
 # --- Utility ---
 @export var utility_slot_count: int = 0

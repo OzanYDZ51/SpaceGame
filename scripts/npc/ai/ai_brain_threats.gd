@@ -80,9 +80,12 @@ func is_faction_allied(target_faction: StringName, target_id: StringName = &"") 
 	if target_faction == my_fac:
 		return true
 
+	# Player-side factions: &"neutral" (local), &"player" (remote), &"player_fleet" (fleet)
+	var target_is_player: bool = target_faction == &"player_fleet" or target_faction == &"player" or target_id == &"player_ship"
+
 	if my_fac == &"player_fleet":
-		return target_faction == &"player_fleet" or target_id == &"player_ship"
-	if target_faction == &"player_fleet" or target_id == &"player_ship":
+		return target_is_player
+	if target_is_player:
 		var gi = GameManager.get_node_or_null("GameplayIntegrator")
 		if gi == null:
 			return false

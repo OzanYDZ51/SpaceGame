@@ -6,7 +6,7 @@ extends Node
 # =============================================================================
 
 const SCAN_INTERVAL: float = 0.5
-const DETECTION_RANGE: float = 2000.0
+const DETECTION_RANGE: float = 3000.0
 const THREAT_DECAY_TIME: float = 30.0
 
 var _station = null
@@ -38,7 +38,11 @@ func _process(delta: float) -> void:
 	_scan_timer -= delta
 	if _scan_timer <= 0.0:
 		_scan_timer = SCAN_INTERVAL
+		var prev_target = _current_target
 		_current_target = _find_best_target()
+		# Alert guards when station acquires a new hostile target
+		if _current_target != null and _current_target != prev_target:
+			alert_guards(_current_target)
 
 	# Validate current target
 	if _current_target != null and not is_instance_valid(_current_target):
@@ -102,7 +106,8 @@ func _find_best_target() -> Node3D:
 	if best_node != null:
 		return best_node
 
-	# Priority 2: Any hostile ship in range from "ships" group
+	# Priority 2: Any hostile-faction ship in range (proactive defense)
+	var station_faction: StringName = _station.faction if "faction" in _station else &"nova_terra"
 	for ship in get_tree().get_nodes_in_group("ships"):
 		if ship == null or not is_instance_valid(ship) or ship.is_queued_for_deletion():
 			continue
@@ -110,13 +115,27 @@ func _find_best_target() -> Node3D:
 		var brain = ship.get_node_or_null("AIBrain")
 		if brain and brain.guard_station == _station:
 			continue
-		# Target ships that are in ATTACK or PURSUE state (actively hostile)
-		if brain == null:
+		# Check faction — target hostile/pirate/lawless ships
+		var ship_faction: StringName = ship.faction if "faction" in ship else &""
+		if ship_faction == &"" or ship_faction == station_faction:
 			continue
-		if brain.current_state != AIBrain.State.ATTACK and brain.current_state != AIBrain.State.PURSUE:
+		# Skip player-side factions (don't fire at players/fleet unprovoked)
+		if ship_faction == &"neutral" or ship_faction == &"player" or ship_faction == &"player_fleet" or ship_faction == &"friendly":
 			continue
+		# Skip same-faction NPCs and non-hostile factions
+		if ship_faction != &"hostile" and ship_faction != &"pirate" and ship_faction != &"lawless":
+			# Use FactionManager for dynamic faction wars
+			var gi = GameManager.get_node_or_null("GameplayIntegrator")
+			if gi:
+				var fm = gi.get_node_or_null("FactionManager")
+				if fm and not fm.are_enemies(station_faction, ship_faction):
+					continue
 		var dist: float = station_pos.distance_to(ship.global_position)
 		if dist > DETECTION_RANGE:
+			continue
+		# Check if target is alive
+		var health = ship.get_node_or_null("HealthSystem")
+		if health and health.is_dead():
 			continue
 		# Pick closest hostile
 		var score: float = DETECTION_RANGE - dist

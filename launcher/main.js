@@ -330,11 +330,14 @@ function computeFileHash(filePath) {
   });
 }
 
-function downloadToBuffer(url) {
+function downloadToBuffer(url, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const doRequest = (requestUrl) => {
       const mod = requestUrl.startsWith("https") ? https : http;
-      mod.get(requestUrl, { headers: { "User-Agent": "ImperionOnlineLauncher/1.0" } }, (res) => {
+      const req = mod.get(requestUrl, {
+        headers: { "User-Agent": "ImperionOnlineLauncher/1.0" },
+        timeout: timeoutMs,
+      }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           return doRequest(res.headers.location);
         }
@@ -343,10 +346,42 @@ function downloadToBuffer(url) {
         res.on("data", (c) => chunks.push(c));
         res.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
         res.on("error", reject);
-      }).on("error", reject);
+      });
+      req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
+      req.on("error", reject);
     };
     doRequest(url);
   });
+}
+
+async function downloadToBufferWithRetry(url, retries = 3, timeoutMs = 15000) {
+  let lastErr;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await downloadToBuffer(url, timeoutMs);
+    } catch (err) {
+      lastErr = err;
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+function computeManifestFromDisk(gameDir) {
+  const manifest = { files: {} };
+  const files = ["ImperionOnline.exe", "ImperionOnline.pck"];
+  for (const f of files) {
+    const fp = path.join(gameDir, f);
+    if (fs.existsSync(fp)) {
+      const hash = crypto.createHash("sha256");
+      hash.update(fs.readFileSync(fp));
+      manifest.files[f] = {
+        hash: hash.digest("hex"),
+        size: fs.statSync(fp).size,
+      };
+    }
+  }
+  return manifest;
 }
 
 // =========================================================================
@@ -512,44 +547,51 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
   ensureDirs();
   fs.mkdirSync(GAME_DIR, { recursive: true });
 
+  const sendStatus = (msg) => {
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send("status", msg);
+  };
+  const sendProgress = (received, total) => {
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send("progress", { phase: "game", received, total });
+  };
+
   let remoteManifest = null;
-  let filesToUpdate = null; // null = update all, array = selective
+  let filesToUpdate = null; // null = full download, array = selective delta
   let filesToDelete = [];
+  let deltaFailed = false;
 
   // --- Delta check via manifest ---
   if (manifestUrl) {
+    // Step 1: Download remote manifest (with retry)
+    sendStatus("Telechargement du manifeste...");
     try {
-      if (mainWindow && !mainWindow.isDestroyed())
-        mainWindow.webContents.send("status", "Verification des fichiers...");
-
-      const raw = await downloadToBuffer(manifestUrl);
+      const raw = await downloadToBufferWithRetry(manifestUrl, 3, 15000);
       remoteManifest = JSON.parse(raw);
-      const localManifest = getLocalManifest();
+    } catch (err) {
+      console.error("[update-game] Manifest download failed after retries:", err.message);
+      sendStatus("Manifeste indisponible, telechargement complet...");
+      // remoteManifest stays null → full download
+    }
 
-      if (remoteManifest && remoteManifest.files) {
+    // Step 2: Compare file hashes if manifest was fetched
+    if (remoteManifest && remoteManifest.files) {
+      sendStatus("Verification des fichiers locaux...");
+      try {
         filesToUpdate = [];
+        const localManifest = getLocalManifest();
 
         // Godot's Windows export is non-deterministic: the .exe hash changes every
         // build even with identical sources (PE metadata, timestamps, icon embedding).
-        // Skip the exe hash check when the Godot version hasn't changed — only
-        // re-download the exe if the engine version changed or the file is missing.
+        // Skip the exe hash check when the Godot version hasn't changed.
         const remoteGodotVersion = remoteManifest.godot_version || null;
         const localGodotVersion = localManifest?.godot_version || null;
-        // godotUpgraded is true ONLY when both versions are known AND they differ.
-        // If localGodotVersion is null (first delta install), godotUpgraded = false,
-        // meaning we still skip the exe if it exists on disk.
         const godotUpgraded = !!(remoteGodotVersion && localGodotVersion && remoteGodotVersion !== localGodotVersion);
 
-        // Check each remote file against local hash
-        // Manifest format: { "files": { "name": {"hash":"...", "size":N} } }
-        // Legacy format:   { "files": { "name": "hashstring" } }
         for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
           const localPath = path.join(GAME_DIR, fileName);
 
-          // Engine binary: skip hash check if Godot hasn't been upgraded and file exists.
-          // The exe hash is non-deterministic across builds (PE timestamps, icon embedding).
-          // Re-download the exe ONLY when Godot itself upgrades (version string changes)
-          // or on a brand-new install where the file doesn't exist yet.
+          // Skip exe hash check unless Godot upgraded or file is missing
           if (!godotUpgraded && fileName.endsWith(".exe") && fs.existsSync(localPath)) {
             continue;
           }
@@ -561,7 +603,7 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
           }
         }
 
-        // Check for local files that no longer exist in remote manifest
+        // Detect deleted files
         if (localManifest && localManifest.files) {
           for (const fileName of Object.keys(localManifest.files)) {
             if (!remoteManifest.files[fileName]) {
@@ -570,85 +612,83 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
           }
         }
 
-        // Nothing to do — already up to date
+        // Already up to date
         if (filesToUpdate.length === 0 && filesToDelete.length === 0) {
           saveLocalManifest(remoteManifest);
           setGameVersion(version);
           return { success: true, skipped: true, message: "Deja a jour" };
         }
+      } catch (err) {
+        console.error("[update-game] Hash comparison failed:", err.message);
+        filesToUpdate = null;
+        // remoteManifest is still valid — keep it for post-download verification
       }
-    } catch (err) {
-      // Manifest fetch/parse failed — fall back to full download
-      console.error("[update-game] Manifest delta check failed:", err.message);
-      remoteManifest = null;
-      filesToUpdate = null;
     }
   }
 
-  // --- Determine if we can do per-file downloads (delta) or need full zip ---
-  // Per-file download: derive individual asset URLs from the zip URL
-  // e.g. ".../releases/download/v0.1.185/ImperionOnline.zip"
-  //   → ".../releases/download/v0.1.185/ImperionOnline.pck"
+  // --- Determine update mode ---
   const baseUrl = downloadUrl.replace(/\/[^/]+$/, "/");
   const canDoDelta = filesToUpdate !== null && filesToUpdate.length > 0;
 
   if (canDoDelta) {
-    // --- DELTA UPDATE: download only changed files individually ---
+    // --- DELTA UPDATE: download only changed files ---
     const totalSize = filesToUpdate.reduce((sum, f) => {
       const info = remoteManifest.files[f];
       return sum + (typeof info === "object" && info.size ? info.size : 0);
     }, 0);
 
-    if (mainWindow && !mainWindow.isDestroyed())
-      mainWindow.webContents.send("status", `Mise a jour: ${filesToUpdate.length} fichier(s)...`);
+    sendStatus(`Mise a jour: ${filesToUpdate.length} fichier(s)...`);
 
     let downloadedSoFar = 0;
     for (const fileName of filesToUpdate) {
       const fileUrl = baseUrl + fileName;
       const destPath = path.join(GAME_DIR, fileName);
 
-      if (mainWindow && !mainWindow.isDestroyed())
-        mainWindow.webContents.send("status", `Telechargement: ${fileName}...`);
+      sendStatus(`Telechargement: ${fileName}...`);
 
       try {
         const fileSizeBefore = downloadedSoFar;
         await downloadFile(fileUrl, destPath, (received, total) => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            // Report overall progress across all files
-            const overallReceived = totalSize > 0 ? fileSizeBefore + received : received;
-            const overallTotal = totalSize > 0 ? totalSize : total;
-            mainWindow.webContents.send("progress", { phase: "game", received: overallReceived, total: overallTotal });
-          }
+          const overallReceived = totalSize > 0 ? fileSizeBefore + received : received;
+          const overallTotal = totalSize > 0 ? totalSize : total;
+          sendProgress(overallReceived, overallTotal);
         });
         const info = remoteManifest.files[fileName];
         downloadedSoFar += (typeof info === "object" && info.size ? info.size : 0);
       } catch (err) {
-        console.error(`[update-game] Per-file download failed for ${fileName}: ${err.message}, falling back to full zip`);
-        // Fall back to full zip download
+        console.error(`[update-game] Delta download failed for ${fileName}: ${err.message}`);
+        sendStatus("Erreur delta, telechargement complet...");
+        deltaFailed = true;
         filesToUpdate = null;
         break;
       }
     }
   }
 
-  // --- FULL DOWNLOAD via zip (first install or delta failed) ---
-  if (!canDoDelta || filesToUpdate === null) {
+  // --- FULL DOWNLOAD via zip (first install, no manifest, or delta failed) ---
+  if (!canDoDelta || deltaFailed) {
     const zipPath = path.join(INSTALL_DIR, "ImperionOnline.zip");
 
-    if (mainWindow && !mainWindow.isDestroyed())
-      mainWindow.webContents.send("status", "Telechargement du jeu complet...");
+    sendStatus("Telechargement du jeu complet...");
 
     await downloadFile(downloadUrl, zipPath, (received, total) => {
-      if (mainWindow && !mainWindow.isDestroyed())
-        mainWindow.webContents.send("progress", { phase: "game", received, total });
+      sendProgress(received, total);
     });
 
-    if (mainWindow && !mainWindow.isDestroyed())
-      mainWindow.webContents.send("status", "Extraction en cours...");
+    sendStatus("Extraction en cours...");
 
     const zip = new AdmZip(zipPath);
     zip.extractAllTo(GAME_DIR, true);
     fs.unlinkSync(zipPath);
+
+    // After a full zip install, compute and save a local manifest from disk.
+    // This ensures the NEXT update can do a proper delta check even if the
+    // remote manifest download failed this time.
+    if (!remoteManifest) {
+      const diskManifest = computeManifestFromDisk(GAME_DIR);
+      diskManifest.version = version;
+      saveLocalManifest(diskManifest);
+    }
   }
 
   // --- Delete obsolete files ---
@@ -659,14 +699,13 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
 
   // --- Post-download verification ---
   if (remoteManifest && remoteManifest.files) {
+    sendStatus("Verification de l'integrite...");
     const verifyRemoteGodot = remoteManifest.godot_version || null;
     const verifyLocalGodot = getLocalManifest()?.godot_version || null;
-    // Same logic as delta check: skip exe unless Godot actually upgraded.
     const verifyGodotUpgraded = !!(verifyRemoteGodot && verifyLocalGodot && verifyRemoteGodot !== verifyLocalGodot);
     const verifyErrors = [];
     for (const [fileName, fileInfo] of Object.entries(remoteManifest.files)) {
-      // Skip exe verification when Godot hasn't upgraded (hash is non-deterministic)
-      if (!verifyGodotUpgraded && fileName.endsWith(".exe") && canDoDelta) continue;
+      if (!verifyGodotUpgraded && fileName.endsWith(".exe")) continue;
       const expectedHash = typeof fileInfo === "string" ? fileInfo : fileInfo.hash;
       const localHash = await computeFileHash(path.join(GAME_DIR, fileName));
       if (localHash !== expectedHash) {
@@ -683,7 +722,7 @@ ipcMain.handle("update-game", async (_event, downloadUrl, version, manifestUrl) 
     saveLocalManifest(remoteManifest);
   }
   setGameVersion(version);
-  return { success: true, updated: canDoDelta ? filesToUpdate : null };
+  return { success: true, updated: canDoDelta && !deltaFailed ? filesToUpdate : null };
 });
 
 // =========================================================================
