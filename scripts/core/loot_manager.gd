@@ -49,6 +49,9 @@ func _on_loot_collected(selected_items: Array[Dictionary], crate: CargoCrate) ->
 		if rejected > 0 and notif:
 			notif.general.cargo_full(rejected)
 	if crate and is_instance_valid(crate):
+		# Notify other clients to despawn this crate
+		if crate.sync_id != "" and NetworkManager.is_connected_to_server():
+			NetworkManager._rpc_crate_picked_up.rpc_id(1, crate.sync_id)
 		crate._destroy()
 	SaveManager.mark_dirty()
 	if get_game_state.is_valid() and get_game_state.call() == Constants.GameState.PLAYING:

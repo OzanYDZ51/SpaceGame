@@ -33,15 +33,27 @@ func get_pvp_attacker(victim_pid: int) -> int:
 
 
 ## Handle player death notification from sender_id.
-func handle_death(sender_id: int, death_pos: Array) -> void:
+func handle_death(sender_id: int, death_pos: Array, cargo_loot: Array = []) -> void:
 	var state = _nm.peers.get(sender_id)
 	if state == null:
 		return
 	state.is_dead = true
+
+	# Determine PvP killer — use the killed player's actual cargo as loot
+	var killer_pid: int = -1
+	var loot: Array = []
+	if _pvp_last_attacker.has(sender_id):
+		var info: Dictionary = _pvp_last_attacker[sender_id]
+		var elapsed: float = Time.get_unix_time_from_system() - info["time"]
+		if elapsed <= 15.0:
+			killer_pid = info.get("attacker_pid", -1)
+			if killer_pid > 0:
+				loot = cargo_loot  # Real cargo from the killed player
+
 	for pid in _nm.get_peers_in_system(state.system_id):
 		if pid == sender_id:
 			continue
-		_nm._rpc_receive_player_died.rpc_id(pid, sender_id, death_pos)
+		_nm._rpc_receive_player_died.rpc_id(pid, sender_id, death_pos, killer_pid, loot)
 	_report_pvp_kill(sender_id, state)
 
 

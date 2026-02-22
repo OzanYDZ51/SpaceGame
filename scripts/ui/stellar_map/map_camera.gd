@@ -8,13 +8,16 @@ extends RefCounted
 
 # Zoom is in "pixels per meter" (logarithmic scale)
 const ZOOM_MIN: float = 5e-6     # Full system view (~384M meters visible)
-const ZOOM_MAX: float = 2.0       # Hard cap (limited by MIN_VISIBLE_RANGE in practice)
+const ZOOM_MAX: float = 2.0       # Hard cap (limited by scale bar limit in practice)
 const ZOOM_STEP: float = 1.35     # Multiplier per scroll notch (~42 notches full range)
 const ZOOM_SMOOTH_SPEED: float = 14.0
-const MIN_VISIBLE_RANGE: float = 10_000.0  # 10 km — never zoom closer than this
+# Scale bar zoom cap: ensures the bottom-right scale bar never shows less than 10 km.
+# max_zoom = SCALE_BAR_PX / SCALE_BAR_MIN_METERS = 120 / 10000 = 0.012
+const SCALE_BAR_PX: float = 120.0           # must match MapRenderer target_px
+const SCALE_BAR_MIN_METERS: float = 10_000.0 # 10 km minimum on scale bar
 
 # Zoom presets (pixels per meter)
-const PRESET_TACTICAL: float = 1.0
+const PRESET_TACTICAL: float = 0.012  # matches max zoom (~10 km scale bar)
 const PRESET_LOCAL: float = 0.01
 const PRESET_REGIONAL: float = 0.0001
 const PRESET_SYSTEM: float = 1e-5
@@ -67,11 +70,9 @@ func update(delta: float) -> void:
 	clamp_center()
 
 
-## Effective max zoom based on screen size (ensures MIN_VISIBLE_RANGE is always visible).
+## Effective max zoom: scale bar never shows less than SCALE_BAR_MIN_METERS.
 func max_zoom() -> float:
-	if screen_size.x < 1.0:
-		return ZOOM_MIN
-	return minf(ZOOM_MAX, screen_size.x / MIN_VISIBLE_RANGE)
+	return minf(ZOOM_MAX, SCALE_BAR_PX / SCALE_BAR_MIN_METERS)
 
 
 func zoom_at(screen_pos: Vector2, factor: float) -> void:
@@ -126,9 +127,9 @@ func get_visible_range() -> float:
 
 
 func get_zoom_label() -> String:
-	if zoom >= 0.5:
+	if zoom >= 0.008:
 		return "TACTIQUE"
-	elif zoom >= 0.005:
+	elif zoom >= 0.001:
 		return "LOCAL"
 	elif zoom >= 5e-5:
 		return "RÉGIONAL"

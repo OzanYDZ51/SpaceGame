@@ -140,7 +140,13 @@ func _on_body_hit(body: Node3D) -> void:
 				NetworkManager._rpc_structure_hit_claim.rpc_id(1,
 					body.name, String(weapon_name), damage,
 					[hit_dir.x, hit_dir.y, hit_dir.z])
-				_spawn_hit_effect(body, {"shield_absorbed": false})
+				# Read local shield state for accurate hit effect
+				var struct_hp = body.get_node_or_null("StructureHealth")
+				var shield_info := {"shield_absorbed": false, "shield_ratio": 0.0}
+				if struct_hp and struct_hp.shield_current > 0.0:
+					shield_info["shield_absorbed"] = true
+					shield_info["shield_ratio"] = struct_hp.get_shield_ratio()
+				_spawn_hit_effect(body, shield_info)
 				_return_to_pool()
 				return
 

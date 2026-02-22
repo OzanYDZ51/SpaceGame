@@ -11,6 +11,7 @@ signal picked_up(crate: CargoCrate)
 
 var contents: Array[Dictionary] = []   # loot items from LootTable
 var owner_peer_id: int = -1            # peer who killed the NPC (-1 = anyone)
+var sync_id: String = ""               # Set before add_child() for network sync
 var _abandon_time: float = 120.0       # seconds until anyone can loot
 var _lifetime: float = 120.0           # despawn timer (seconds)
 var _spin_axis: Vector3 = Vector3.UP
@@ -22,8 +23,11 @@ var _registry_id: String = ""
 
 
 func _ready() -> void:
-	# Generate unique registry id
-	_registry_id = "crate_%d" % (randi() % 1000000)
+	# Use sync_id if set (network-synced crate), otherwise random
+	if sync_id != "":
+		_registry_id = sync_id
+	else:
+		_registry_id = "crate_%d" % (randi() % 1000000)
 	name = _registry_id
 
 	# Random tumble

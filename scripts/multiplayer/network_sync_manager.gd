@@ -96,6 +96,7 @@ func setup(player_ship: RigidBody3D, game_manager: Node) -> void:
 	NetworkManager.asteroid_health_batch_received.connect(_on_asteroid_health_batch)
 	NetworkManager.remote_scanner_pulse_received.connect(_on_remote_scanner_pulse)
 	NetworkManager.hit_effect_received.connect(_on_hit_effect_received)
+	NetworkManager.crate_picked_up_received.connect(_on_remote_crate_picked_up)
 	NetworkManager.server_connection_lost.connect(_on_server_connection_lost)
 
 	# Parse CLI args
@@ -489,18 +490,9 @@ func _on_npc_died(npc_id_str: String, killer_pid: int, death_pos: Array, loot: A
 
 	remote_npcs.erase(npc_id)
 
-	if killer_pid == NetworkManager.local_peer_id and not loot.is_empty():
-		var local_pos =FloatingOrigin.to_local_pos(death_pos)
-		var crate =CargoCrate.new()
-		var typed_loot: Array[Dictionary] = []
-		for item in loot:
-			if item is Dictionary:
-				typed_loot.append(item)
-		crate.contents = typed_loot
-		crate.owner_peer_id = killer_pid
-		if universe_node:
-			universe_node.add_child(crate)
-			crate.global_position = local_pos
+	# Spawn cargo crate for ALL clients (not just killer) so everyone sees it
+	if not loot.is_empty():
+		_spawn_synced_crate("crate_npc_%s" % npc_id_str, death_pos, loot, killer_pid)
 
 
 func _on_remote_fleet_deployed(_owner_pid: int, _fleet_idx: int, _npc_id_str: String, spawn_data: Dictionary) -> void:
@@ -728,11 +720,15 @@ func _on_npc_fire_received(_npc_id_str: String, weapon_name: String, fire_pos: A
 # REMOTE PLAYER DEATH / RESPAWN / SHIP CHANGE
 # =============================================================================
 
-func _on_remote_player_died(peer_id: int, _death_pos: Array) -> void:
+func _on_remote_player_died(peer_id: int, death_pos: Array, killer_pid: int, loot: Array) -> void:
 	if remote_players.has(peer_id):
 		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.show_death_explosion()
+
+	# Spawn cargo crate for ALL clients so everyone sees it
+	if not loot.is_empty():
+		_spawn_synced_crate("crate_pvp_%d" % peer_id, death_pos, loot, killer_pid)
 
 
 func _on_remote_player_respawned(_peer_id: int, _system_id: int) -> void:
@@ -754,6 +750,36 @@ func _on_remote_player_ship_changed(peer_id: int, new_ship_id: StringName) -> vo
 			if sdata:
 				rdata.ship_class = sdata.ship_class
 				rdata.model_scale = sdata.model_scale
+
+
+# =============================================================================
+# CARGO CRATE SYNC
+# =============================================================================
+
+## Spawn a synced cargo crate visible to all clients in the system.
+func _spawn_synced_crate(crate_id: String, death_pos: Array, loot: Array, owner_pid: int) -> void:
+	var local_pos = FloatingOrigin.to_local_pos(death_pos)
+	var crate = CargoCrate.new()
+	var typed_loot: Array[Dictionary] = []
+	for item in loot:
+		if item is Dictionary:
+			typed_loot.append(item)
+	crate.contents = typed_loot
+	crate.owner_peer_id = owner_pid
+	crate.sync_id = crate_id
+	if universe_node:
+		universe_node.add_child(crate)
+		crate.global_position = local_pos
+
+
+## Remote client picked up a crate — destroy it locally.
+func _on_remote_crate_picked_up(crate_id: String) -> void:
+	var ent: Dictionary = EntityRegistry.get_entity(crate_id)
+	if ent.is_empty():
+		return
+	var node = ent.get("node")
+	if node and is_instance_valid(node) and node is CargoCrate:
+		node._destroy()
 
 
 # =============================================================================

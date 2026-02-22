@@ -108,6 +108,10 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
 	if sync_mgr and sync_mgr.remote_players.has(sender_pid):
 		attacker = sync_mgr.remote_players[sender_pid]
+	if attacker == null and sender_pid == NetworkManager.local_peer_id:
+		var player = GameManager.player_ship
+		if player and is_instance_valid(player):
+			attacker = player
 	health.apply_damage(damage, &"thermal", dir, attacker)
 
 	# If destroyed, broadcast death
@@ -201,12 +205,13 @@ func apply_structure_destroyed(struct_id: String, killer_pid: int, pos: Array, l
 		health.hull_current = 0.0
 		health._is_dead = true
 		health.structure_destroyed.emit()
-	# Spawn local loot crate for the killer
-	if not loot.is_empty() and killer_pid == NetworkManager.local_peer_id:
+	# Spawn synced loot crate for ALL clients
+	if not loot.is_empty():
 		var crate := CargoCrate.new()
-		crate.global_position = FloatingOrigin.to_local_pos(pos) + Vector3(0, 50, 0)
+		crate.sync_id = "crate_struct_%s" % struct_id
 		crate.contents.assign(loot)
 		crate.owner_peer_id = killer_pid
 		var universe = GameManager.universe_node
 		if universe:
 			universe.add_child(crate)
+			crate.global_position = FloatingOrigin.to_local_pos(pos) + Vector3(0, 50, 0)

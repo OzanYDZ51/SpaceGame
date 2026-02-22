@@ -46,7 +46,7 @@ signal player_left_system_received(peer_id: int)
 signal player_entered_system_received(peer_id: int, ship_id: StringName)
 
 # Player death/respawn sync (reliable)
-signal player_died_received(peer_id: int, death_pos: Array)
+signal player_died_received(peer_id: int, death_pos: Array, killer_pid: int, loot: Array)
 signal player_respawned_received(peer_id: int, system_id: int)
 
 # Ship change sync (reliable)
@@ -91,6 +91,9 @@ signal event_ended_received(event_dict: Dictionary)
 
 # NPC fire relay signal
 signal npc_fire_received(npc_id: String, weapon_name: String, fire_pos: Array, fire_dir: Array)
+
+# Cargo crate sync
+signal crate_picked_up_received(crate_id: String)
 
 enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
@@ -672,19 +675,19 @@ func _rpc_npc_fire(npc_id_str: String, weapon_name: String, fire_pos: Array, fir
 # PLAYER DEATH / RESPAWN RPCs (reliable)
 # =========================================================================
 
-## Client -> Server: I just died.
+## Client -> Server: I just died (includes cargo for PvP loot drop).
 @rpc("any_peer", "reliable")
-func _rpc_player_died(death_pos: Array) -> void:
+func _rpc_player_died(death_pos: Array, cargo_loot: Array = []) -> void:
 	if not is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	_player_events.handle_death(sender_id, death_pos)
+	_player_events.handle_death(sender_id, death_pos, cargo_loot)
 
 
 ## Server -> Client: A player has died (reliable notification).
 @rpc("authority", "reliable")
-func _rpc_receive_player_died(pid: int, death_pos: Array) -> void:
-	player_died_received.emit(pid, death_pos)
+func _rpc_receive_player_died(pid: int, death_pos: Array, killer_pid: int, loot: Array) -> void:
+	player_died_received.emit(pid, death_pos, killer_pid, loot)
 
 
 ## Client -> Server: I just respawned.
@@ -700,6 +703,31 @@ func _rpc_player_respawned(system_id: int) -> void:
 @rpc("authority", "reliable")
 func _rpc_receive_player_respawned(pid: int, system_id: int) -> void:
 	player_respawned_received.emit(pid, system_id)
+
+
+# =========================================================================
+# CARGO CRATE SYNC RPCs (reliable)
+# =========================================================================
+
+## Client -> Server: I picked up a cargo crate.
+@rpc("any_peer", "reliable")
+func _rpc_crate_picked_up(crate_id: String) -> void:
+	if not is_server():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var state = peers.get(sender_id)
+	if state == null:
+		return
+	for pid in get_peers_in_system(state.system_id):
+		if pid == sender_id:
+			continue
+		_rpc_receive_crate_picked_up.rpc_id(pid, crate_id)
+
+
+## Server -> Client: A cargo crate was picked up (destroy it locally).
+@rpc("authority", "reliable")
+func _rpc_receive_crate_picked_up(crate_id: String) -> void:
+	crate_picked_up_received.emit(crate_id)
 
 
 # =========================================================================

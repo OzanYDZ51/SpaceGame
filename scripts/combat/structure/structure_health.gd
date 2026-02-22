@@ -47,8 +47,7 @@ func apply_damage(amount: float, _damage_type: StringName, _hit_direction: Vecto
 	if _is_dead:
 		return {"shield_absorbed": false, "shield_ratio": 0.0}
 
-	if attacker:
-		damage_taken.emit(attacker, amount)
+	damage_taken.emit(attacker, amount)
 
 	var shield_absorbed := false
 	var hull_damage := 0.0

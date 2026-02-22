@@ -110,7 +110,10 @@ func _send_state() -> void:
 	if state.is_dead and not _was_dead:
 		_was_dead = true
 		var death_pos = FloatingOrigin.to_universe_pos(_ship.global_position)
-		NetworkManager._rpc_player_died.rpc_id(1, death_pos)
+		var cargo_loot: Array = _collect_cargo_for_drop()
+		NetworkManager._rpc_player_died.rpc_id(1, death_pos, cargo_loot)
+		# Clear cargo after sending — player loses it on death
+		_clear_cargo_on_death()
 	elif not state.is_dead and _was_dead:
 		_was_dead = false
 		NetworkManager._rpc_player_respawned.rpc_id(1, state.system_id)
@@ -208,3 +211,58 @@ func _process(_delta: float) -> void:
 		var empty: Array = [0.0, 0.0, 0.0]
 		NetworkManager._rpc_mining_beam.rpc_id(1, false, empty, empty)
 	_was_mining = currently_mining
+
+
+## Collect player's actual cargo for loot drop on death.
+func _collect_cargo_for_drop() -> Array:
+	var loot: Array = []
+	var pd = GameManager.player_data
+	if pd == null or pd.fleet == null:
+		return loot
+	var active_ship = pd.fleet.get_active()
+	if active_ship == null:
+		return loot
+	# Cargo items (loot collected from kills, etc.)
+	if active_ship.cargo:
+		for item in active_ship.cargo.get_all():
+			var qty: int = item.get("quantity", 1)
+			if qty > 0:
+				loot.append({
+					"name": item.get("name", ""),
+					"type": item.get("type", ""),
+					"quantity": qty,
+					"icon_color": item.get("icon_color", Color.WHITE),
+				})
+	# Ship resources (mining ores)
+	for res_id in active_ship.ship_resources:
+		var qty: int = active_ship.ship_resources[res_id]
+		if qty > 0:
+			var res_str: String = String(res_id)
+			var res_def = PlayerEconomy.RESOURCE_DEFS.get(res_id, {})
+			var display_name: String = res_def.get("name", res_str.capitalize()) if not res_def.is_empty() else res_str.capitalize()
+			loot.append({
+				"name": display_name,
+				"type": res_str,
+				"quantity": qty,
+				"icon_color": res_def.get("color", Color.WHITE) if not res_def.is_empty() else Color.WHITE,
+			})
+	return loot
+
+
+## Clear player cargo after death (they lose it).
+func _clear_cargo_on_death() -> void:
+	var pd = GameManager.player_data
+	if pd == null or pd.fleet == null:
+		return
+	var active_ship = pd.fleet.get_active()
+	if active_ship == null:
+		return
+	if active_ship.cargo:
+		active_ship.cargo.clear()
+	for res_id in active_ship.ship_resources:
+		active_ship.ship_resources[res_id] = 0
+	# Sync economy mirror so HUD updates
+	if pd.economy:
+		for res_id in pd.economy.resources:
+			pd.economy.resources[res_id] = 0
+			pd.economy.resources_changed.emit(res_id, 0)

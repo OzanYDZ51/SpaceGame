@@ -258,7 +258,7 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vecto
 
 
 func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, route_waypoints: Array[Vector3], parent: Node, lod_mgr, _cam_pos: Vector3, is_leader: bool) -> Array:
-	var behavior: StringName = &"balanced"
+	var behavior: StringName = &"balanced" if is_leader else &"aggressive"
 
 	# Always spawn full nodes — all NPCs are real ships with AI + physics
 	var ship = ShipFactory.spawn_npc_ship(ship_id, behavior, pos, parent, faction)

@@ -258,3 +258,15 @@ func broadcast_hit_effect(target_id: String, exclude_pid: int, hit_dir: Array, s
 		if pid == exclude_pid:
 			continue
 		NetworkManager._rpc_hit_effect.rpc_id(pid, target_id, hit_dir, shield_absorbed)
+
+
+## Relay a scanner pulse to all peers in the sender's system (except the sender).
+func relay_scanner_pulse(sender_pid: int, scan_pos: Array) -> void:
+	var sender_state = NetworkManager.peers.get(sender_pid)
+	if sender_state == null:
+		return
+	var peers_in_sys = NetworkManager.get_peers_in_system(sender_state.system_id)
+	for pid in peers_in_sys:
+		if pid == sender_pid:
+			continue
+		NetworkManager._rpc_remote_scanner_pulse.rpc_id(pid, sender_pid, scan_pos)

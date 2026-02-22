@@ -162,6 +162,13 @@ func relay_fire_event(sender_pid: int, weapon_name: String, fire_pos: Array, fir
 		_broadcaster.relay_fire_event(sender_pid, weapon_name, fire_pos, fire_dir)
 
 
+func relay_scanner_pulse(sender_pid: int, scan_pos: Array) -> void:
+	if not _active:
+		return
+	if _broadcaster:
+		_broadcaster.relay_scanner_pulse(sender_pid, scan_pos)
+
+
 func broadcast_hit_effect(target_id: String, exclude_pid: int, hit_dir: Array, shield_absorbed: bool, system_id: int) -> void:
 	if not _active:
 		return

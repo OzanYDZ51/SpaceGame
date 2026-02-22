@@ -609,7 +609,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 		var offset =Vector3(side * 120.0 * row, 0.0, 15.0 * row)
 		var wing_pos: Vector3 = _push_spawn_from_obstacles(pos + offset)
 
-		var wingman = ShipFactory.spawn_npc_ship(wingman_id, &"balanced", wing_pos, parent, faction)
+		var wingman = ShipFactory.spawn_npc_ship(wingman_id, &"aggressive", wing_pos, parent, faction)
 		if wingman:
 			var brain = wingman.get_node_or_null("AIBrain")
 			if brain:

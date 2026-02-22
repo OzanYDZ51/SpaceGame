@@ -79,8 +79,7 @@ func apply_damage(amount: float, damage_type: StringName, hit_direction: Vector3
 	if _is_dead:
 		return {"shield_absorbed": false, "facing": 0, "shield_ratio": 0.0}
 
-	if attacker:
-		damage_taken.emit(attacker, amount)
+	damage_taken.emit(attacker, amount)
 
 	var facing =_direction_to_facing(hit_direction)
 	var shield_absorbed =false

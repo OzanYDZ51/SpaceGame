@@ -344,7 +344,7 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 	var to_target: Vector3 = (target_pos - _ship.global_position).normalized()
 	var forward: Vector3 = -_ship.global_transform.basis.z
 	var dot: float = forward.dot(to_target)
-	if dot > 0.75:
+	if dot > 0.6:
 		var space = _ship.get_world_3d().direct_space_state
 		if space:
 			var los_query =PhysicsRayQueryParameters3D.create(
@@ -354,6 +354,11 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 			var exclude_rids: Array[RID] = [_ship.get_rid()]
 			if target is CollisionObject3D:
 				exclude_rids.append(target.get_rid())
+			# Exclude guard station to prevent station blocking guard's own shots
+			var brain = _ship.get_node_or_null("AIBrain")
+			if brain and brain.guard_station and is_instance_valid(brain.guard_station):
+				if brain.guard_station is CollisionObject3D:
+					exclude_rids.append(brain.guard_station.get_rid())
 			los_query.exclude = exclude_rids
 			var los_hit =space.intersect_ray(los_query)
 			if not los_hit.is_empty():
