@@ -414,10 +414,20 @@ func _handle_player_weapon_input() -> void:
 const WEAPON_CONVERGENCE_DISTANCE: float = 500.0  ## Meters ahead of ship where projectiles meet
 
 func _get_crosshair_aim_point() -> Vector3:
+	var ship_fwd_point: Vector3 = global_position + (-global_transform.basis.z) * WEAPON_CONVERGENCE_DISTANCE
+
+	# Free-look: camera is decoupled from ship, always fire ship-forward
+	if free_look_active:
+		return ship_fwd_point
+
 	# Raycast from camera through screen center to find where crosshair actually points
 	var cam =get_viewport().get_camera_3d()
 	if cam == null:
-		return global_position + global_transform.basis * Vector3.FORWARD * WEAPON_CONVERGENCE_DISTANCE
+		return ship_fwd_point
+
+	# Check if camera is in free-look mode (e.g. returning to center)
+	if cam is ShipCamera and (cam as ShipCamera).is_free_looking:
+		return ship_fwd_point
 
 	var screen_center =get_viewport().get_visible_rect().size / 2.0
 	var ray_origin =cam.project_ray_origin(screen_center)
@@ -426,7 +436,7 @@ func _get_crosshair_aim_point() -> Vector3:
 	# Physics raycast to check if we hit something
 	var world =get_world_3d()
 	if world == null:
-		return global_position + (-global_transform.basis.z) * WEAPON_CONVERGENCE_DISTANCE
+		return ship_fwd_point
 	var space_state =world.direct_space_state
 	var query =PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_dir * 5000.0)
 	query.collision_mask = Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_SHIPS | Constants.LAYER_TERRAIN
@@ -436,9 +446,8 @@ func _get_crosshair_aim_point() -> Vector3:
 	if result.size() > 0:
 		return result["position"]
 
-	# Nothing hit: converge ahead of the SHIP (not the camera).
-	# In cruise mode the camera can free-look — weapons must always fire ship-forward.
-	return global_position + (-global_transform.basis.z) * WEAPON_CONVERGENCE_DISTANCE
+	# Nothing hit: converge ahead of the SHIP (not the camera)
+	return ship_fwd_point
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:

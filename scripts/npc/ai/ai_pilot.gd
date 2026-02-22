@@ -325,6 +325,7 @@ func fire_at_target(target: Node3D, accuracy_mod: float = 1.0) -> void:
 		return
 
 	if _cached_wm == null:
+		push_error("AIPilot.fire_at_target: WeaponManager is null on '%s'" % _ship.name)
 		return
 
 	var target_pos: Vector3

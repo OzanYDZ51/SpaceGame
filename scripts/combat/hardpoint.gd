@@ -272,19 +272,17 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 
 	if is_turret and _turret_pivot:
 		# Turret: fire from muzzle directly toward the lead target position
-		# (not along muzzle -Z, which has rotation lag and pivot offset error)
 		fire_dir = (target_pos - spawn_pos).normalized()
-		# Safety: if target is too close, fall back to ship forward
 		if fire_dir.length_squared() < 0.25:
+			push_warning("Hardpoint %d: turret target too close, using ship forward" % slot_id)
 			fire_dir = ship_fwd
 		up_hint = ship_node.global_transform.basis.y if ship_node else Vector3.UP
 	else:
 		# Fixed: aim from muzzle toward target
 		fire_dir = (target_pos - spawn_pos).normalized()
 		var ship_basis: Basis = ship_node.global_transform.basis if ship_node else Basis.IDENTITY
-		# Safety: if target is too close or behind, fall back to ship forward
-		# (NOT muzzle -Z, which may be flipped by weapon model rotation)
 		if fire_dir.length() < 0.5 or ship_basis.z.dot(fire_dir) > 0.5:
+			push_warning("Hardpoint %d: target behind ship or too close, using ship forward" % slot_id)
 			fire_dir = ship_fwd
 		up_hint = ship_node.global_transform.basis.y if ship_node else Vector3.UP
 

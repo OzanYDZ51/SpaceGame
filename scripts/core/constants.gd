@@ -110,8 +110,8 @@ const BACKEND_WS_URL: String = "wss://backend-production-05a9.up.railway.app/ws"
 const NET_DEFAULT_PORT: int = 7777
 const NET_MAX_PLAYERS: int = 128          # Per system server instance
 const NET_TICK_RATE: float = 30.0         # Position updates per second (every 2 physics frames @ 60Hz)
-const NET_INTERPOLATION_DELAY: float = 0.066  # 66ms = 2 snapshots buffer @ 30Hz
-const NPC_INTERPOLATION_DELAY: float = 0.1   # 100ms = 3 snapshots buffer @ 30Hz
+const NET_INTERPOLATION_DELAY: float = 0.05   # 50ms interpolation buffer for players
+const NPC_INTERPOLATION_DELAY: float = 0.05   # 50ms interpolation buffer for NPCs
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
 const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 

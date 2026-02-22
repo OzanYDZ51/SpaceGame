@@ -98,6 +98,9 @@ func _ready() -> void:
 		_env.update_environment()
 		_generate_patrol_waypoints()
 
+	# Random initial tick offset so NPCs don't all tick on the same frame
+	_tick_timer = randf() * TICK_INTERVAL
+
 
 func _process(delta: float) -> void:
 	if _ship == null or _pilot == null:
@@ -234,7 +237,10 @@ func _tick_patrol() -> void:
 	wp = _env.deflect_from_obstacles(wp)
 	_pilot.fly_toward(wp, arrival)
 
-	if _pilot.get_distance_to(_waypoints[_current_waypoint]) < arrival:
+	# Check arrival against the DEFLECTED position (wp), not the original waypoint.
+	# Obstacle deflection can push the target thousands of meters away; checking the
+	# original causes NPCs to loop forever near obstacles without ever "arriving".
+	if _pilot.get_distance_to(wp) < arrival:
 		_current_waypoint = (_current_waypoint + 1) % _waypoints.size()
 
 
@@ -243,9 +249,6 @@ func _tick_pursue() -> void:
 		target = _threats.get_highest_threat()
 		if target == null:
 			current_state = _default_state()
-		return
-
-	if _env.check_obstacle_emergency():
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
@@ -279,9 +282,6 @@ func _tick_attack(_delta: float) -> void:
 			current_state = _default_state()
 		else:
 			current_state = State.PURSUE
-		return
-
-	if _env.check_obstacle_emergency():
 		return
 
 	var dist: float = _pilot.get_distance_to(target.global_position)
@@ -420,13 +420,20 @@ func _generate_patrol_waypoints() -> void:
 	if _patrol_radius <= 0.0:
 		_waypoints.append(_patrol_center)
 		return
-	for i in 4:
-		var angle: float = (float(i) / 4.0) * TAU
-		var wp =_patrol_center + Vector3(
-			cos(angle) * _patrol_radius,
+	# Random phase offset per NPC so patrols don't overlap
+	var phase: float = randf() * TAU
+	# Vary waypoint count (3-5) and radius (±20%) per NPC
+	var wp_count: int = randi_range(3, 5)
+	var radius_var: float = _patrol_radius * randf_range(0.8, 1.2)
+	for i in wp_count:
+		var angle: float = phase + (float(i) / float(wp_count)) * TAU
+		var wp = _patrol_center + Vector3(
+			cos(angle) * radius_var,
 			0.0,
-			sin(angle) * _patrol_radius,
+			sin(angle) * radius_var,
 		)
+		# Per-waypoint noise so paths aren't perfect circles
+		wp += Vector3(randf_range(-200, 200), 0.0, randf_range(-200, 200))
 		wp = _env.push_away_from_obstacles(wp)
 		_waypoints.append(wp)
 
@@ -434,9 +441,10 @@ func _generate_patrol_waypoints() -> void:
 func set_patrol_area(center: Vector3, radius: float) -> void:
 	_patrol_center = center
 	_patrol_radius = radius
-	_current_waypoint = 0
 	_env.update_environment()
 	_generate_patrol_waypoints()
+	# Start at a random waypoint so NPCs don't all begin at the same point
+	_current_waypoint = randi() % maxi(_waypoints.size(), 1)
 
 
 func shift_patrol_waypoints(new_center: Vector3, new_radius: float) -> void:

@@ -468,6 +468,7 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 			if brain:
 				brain.set_patrol_area(route[0], 50000.0)
 				brain._waypoints = route.duplicate()
+				brain._current_waypoint = start_idx
 				brain.route_priority = false  # Can break route for combat
 			_active_npc_ids.append(StringName(ship.name))
 			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))

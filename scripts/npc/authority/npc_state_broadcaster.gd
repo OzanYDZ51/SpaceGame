@@ -6,14 +6,13 @@ extends RefCounted
 # Extracted from NpcAuthority. Runs as a RefCounted sub-object.
 # =============================================================================
 
-const BATCH_INTERVAL: float = 0.033  # 30Hz NPC state sync
-const SLOW_SYNC_INTERVAL: float = 0.5  # 2Hz for distant NPCs
-const FULL_SYNC_DISTANCE: float = 5000.0  # <5km = full sync
-const MAX_NPCS_PER_BATCH: int = 15  # Cap per RPC to avoid WebSocket buffer overflow
+const BATCH_INTERVAL: float = 0.033  # 30Hz NPC state sync — ALL NPCs, no distance throttle
+const PEER_CHECK_INTERVAL: float = 0.5  # 2Hz peer system-change housekeeping
+const MAX_NPCS_PER_BATCH: int = 30  # Cap per RPC to avoid WebSocket buffer overflow
 
 var _auth: NpcAuthority = null
 var _batch_timer: float = 0.0
-var _slow_batch_timer: float = 0.0
+var _peer_check_timer: float = 0.0
 
 
 func setup(auth: NpcAuthority) -> void:
@@ -22,19 +21,15 @@ func setup(auth: NpcAuthority) -> void:
 
 func tick(delta: float) -> void:
 	_batch_timer -= delta
-	_slow_batch_timer -= delta
+	_peer_check_timer -= delta
 
-	var do_full: bool = _batch_timer <= 0.0
-	var do_slow: bool = _slow_batch_timer <= 0.0
-
-	if do_full:
-		_batch_timer = BATCH_INTERVAL
-	if do_slow:
-		_slow_batch_timer = SLOW_SYNC_INTERVAL
+	if _peer_check_timer <= 0.0:
+		_peer_check_timer = PEER_CHECK_INTERVAL
 		_auth._check_peer_system_changes()
 
-	if do_full or do_slow:
-		_broadcast_npc_states(do_full, do_slow)
+	if _batch_timer <= 0.0:
+		_batch_timer = BATCH_INTERVAL
+		_broadcast_npc_states()
 
 
 ## Connect NPC weapon_fired signal to relay fire events to remote clients.
@@ -142,7 +137,7 @@ func send_all_npcs_to_peer(peer_id: int, system_id: int) -> void:
 		gi.event_manager.send_active_events_to_peer(peer_id)
 
 
-func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
+func _broadcast_npc_states() -> void:
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr == null:
 		return
@@ -162,29 +157,21 @@ func _broadcast_npc_states(full_sync: bool, slow_sync: bool) -> void:
 		var peer_ids: Array = peers_by_sys[system_id]
 		var npc_ids: Array = _auth._npcs_by_system[system_id]
 
+		# Build batch once per system — all NPCs at full 30Hz, no distance throttle
+		var batch: Array = []
+		for npc_id in npc_ids:
+			var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
+			if lod_data == null or lod_data.is_dead:
+				continue
+			if is_instance_valid(lod_data.node_ref) and not lod_data.node_ref.visible:
+				continue
+			batch.append(_build_npc_state_dict(npc_id, lod_data))
+
+		if batch.is_empty():
+			continue
+
+		# Send to all peers in this system
 		for pid in peer_ids:
-			var pstate = NetworkManager.peers.get(pid)
-			if pstate == null:
-				continue
-			var peer_pos = FloatingOrigin.to_local_pos([pstate.pos_x, pstate.pos_y, pstate.pos_z])
-
-			var batch: Array = []
-			for npc_id in npc_ids:
-				var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
-				if lod_data == null or lod_data.is_dead:
-					continue
-				if is_instance_valid(lod_data.node_ref) and not lod_data.node_ref.visible:
-					continue
-
-				var dist = peer_pos.distance_to(lod_data.position)
-				if dist <= FULL_SYNC_DISTANCE and full_sync:
-					batch.append(_build_npc_state_dict(npc_id, lod_data))
-				elif slow_sync:
-					batch.append(_build_npc_state_dict(npc_id, lod_data))
-
-			if batch.is_empty():
-				continue
-
 			if batch.size() <= MAX_NPCS_PER_BATCH:
 				NetworkManager._rpc_npc_batch.rpc_id(pid, batch)
 			else:

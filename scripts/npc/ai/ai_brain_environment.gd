@@ -11,6 +11,7 @@ const MIN_SAFE_DIST: float = 50.0
 const STATION_MODEL_RADIUS: float = 2000.0
 const OBSTACLE_CACHE_RANGE: float = 10000.0
 const ENV_UPDATE_INTERVAL: float = 2.0
+const MAX_AI_EXCL_RADIUS: float = 50000.0  # Cap exclusion radius (50km) to prevent absurd star zones
 
 var in_asteroid_belt: bool = false
 var near_obstacle: bool = false
@@ -72,12 +73,12 @@ func update_environment() -> void:
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
 
-	# Stars (use visual impostor size — star_radius is already in game meters ~300-700km)
+	# Stars (use visual impostor size — cap exclusion to MAX_AI_EXCL_RADIUS)
 	var stars = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR)
 	for star in stars:
 		var scene_pos: Vector3 = FloatingOrigin.to_local_pos([star["pos_x"], star["pos_y"], star["pos_z"]])
 		var star_r: float = star.get("radius", 696340.0)
-		var excl_r: float = star_r * 1.5
+		var excl_r: float = minf(star_r * 1.5, MAX_AI_EXCL_RADIUS)
 		var dist: float = ship_pos.distance_to(scene_pos)
 		if dist < excl_r + OBSTACLE_CACHE_RANGE:
 			obstacle_zones.append({"pos": scene_pos, "radius": excl_r})
