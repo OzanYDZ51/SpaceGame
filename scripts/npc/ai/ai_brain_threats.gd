@@ -14,6 +14,7 @@ const THREAT_CLEANUP_TIME: float = 10.0
 # Threat table: tracks accumulated damage from each attacker
 # Key = attacker instance_id, Value = { "node": Node3D, "threat": float, "last_hit": float }
 var threat_table: Dictionary = {}
+var _last_threat_update_ms: float = 0.0
 
 var _ship = null
 var _cached_lod_mgr = null
