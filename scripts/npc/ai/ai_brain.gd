@@ -152,6 +152,7 @@ func _process(delta: float) -> void:
 		if not _waypoints_regenerated_for_obstacle:
 			_waypoints_regenerated_for_obstacle = true
 			_generate_patrol_waypoints()
+			_current_waypoint = 0
 	else:
 		_waypoints_regenerated_for_obstacle = false
 
@@ -233,6 +234,8 @@ func _tick_patrol() -> void:
 	else:
 		arrival = 80.0 if _patrol_radius >= 80.0 else maxf(_patrol_radius * 0.6, 15.0)
 
+	if _current_waypoint >= _waypoints.size():
+		_current_waypoint = 0
 	var wp: Vector3 = _waypoints[_current_waypoint]
 	wp = _env.deflect_from_obstacles(wp)
 	_pilot.fly_toward(wp, arrival)

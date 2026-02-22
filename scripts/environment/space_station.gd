@@ -40,7 +40,7 @@ const RING_ROTATION_SPEED: float = 0.03
 
 func _ready() -> void:
 	collision_layer = Constants.LAYER_STATIONS
-	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_PROJECTILES
+	collision_mask = Constants.LAYER_PROJECTILES
 	add_to_group("structures")
 
 	structure_health = StructureHealth.new()
@@ -51,10 +51,6 @@ func _ready() -> void:
 	var death_handler = StructureDeathHandler.new()
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
-
-	# Build simple collision SYNCHRONOUSLY — guarantees projectiles can hit the
-	# station immediately, even before the detailed trimesh loads.
-	_build_simple_collision()
 
 	# Build bay area SYNCHRONOUSLY before async model loading.
 	# The BayArea uses fixed constants and doesn't depend on the model.
@@ -95,9 +91,12 @@ func _load_model() -> void:
 	_model = scene.instantiate()
 	add_child(_model)
 
+	# Build collision from model mesh — ConvexPolygonShape3D from all vertices,
+	# exactly like ShipFactory._generate_convex_shape() does for ships.
+	# This matches the visible model geometry at any scale.
+	_build_model_collision()
+
 	await get_tree().process_frame
-	# Trimesh collision disabled — simple shapes from _build_simple_collision()
-	# are faster, more reliable, and already available before the model loads.
 
 
 func _find_ring_nodes() -> void:
@@ -226,60 +225,50 @@ func _on_bay_body_exited(body: Node3D) -> void:
 
 
 # =========================================================================
-# COLLISION
+# COLLISION — Generated from model mesh (same approach as ShipFactory)
 # =========================================================================
 
-## Simple collision shapes that are available IMMEDIATELY (before model loads).
-## Covers the main station body so projectiles can hit right away.
-func _build_simple_collision() -> void:
-	# Main body: cylinder covering the station core (~4000 units tall, ~2000 radius)
-	var col_main = CollisionShape3D.new()
-	var cyl = CylinderShape3D.new()
-	cyl.radius = 2000.0
-	cyl.height = 4000.0
-	col_main.shape = cyl
-	col_main.position = Vector3(0, -1600, 0)  # Center between bay top (441) and bottom (-3800)
-	col_main.name = "CollisionMain"
-	add_child(col_main)
-
-	# Upper bay area: wider cylinder for the docking bay ring
-	var col_bay = CollisionShape3D.new()
-	var cyl_bay = CylinderShape3D.new()
-	cyl_bay.radius = BAY_RADIUS + 100.0  # ~788
-	cyl_bay.height = 900.0
-	col_bay.shape = cyl_bay
-	col_bay.position = Vector3(0, BAY_OPENING_Y - 450.0, 0)  # Centered on bay opening
-	col_bay.name = "CollisionBay"
-	add_child(col_bay)
-
-
-func _create_trimesh_collision(mesh_instance: MeshInstance3D) -> void:
-	var mesh: Mesh = mesh_instance.mesh
-	var faces: PackedVector3Array = mesh.get_faces()
-	if faces.is_empty():
+## Generates a ConvexPolygonShape3D from all MeshInstance3D vertices in the model,
+## exactly like ShipFactory._generate_convex_shape() does for ships.
+## The convex hull matches the visible model at any parent scale.
+func _build_model_collision() -> void:
+	if _model == null:
+		push_warning("SpaceStation: No model to build collision from")
+		return
+	var verts = PackedVector3Array()
+	_collect_mesh_vertices(_model, verts, Transform3D.IDENTITY)
+	if verts.is_empty():
+		push_warning("SpaceStation: No mesh vertices found for collision")
 		return
 
-	var rel_transform: Transform3D = global_transform.affine_inverse() * mesh_instance.global_transform
-	var transformed_faces = PackedVector3Array()
-	transformed_faces.resize(faces.size())
-	for i in range(faces.size()):
-		transformed_faces[i] = rel_transform * faces[i]
-
-	var shape = ConcavePolygonShape3D.new()
-	shape.backface_collision = true
-	shape.set_faces(transformed_faces)
+	var shape = ConvexPolygonShape3D.new()
+	shape.points = verts
 
 	var col = CollisionShape3D.new()
 	col.shape = shape
+	col.name = "ModelCollision"
 	add_child(col)
 
 
-func _get_all_children(node: Node) -> Array[Node]:
-	var result: Array[Node] = []
+## Recursively collects all mesh vertices from a node tree, applying transforms.
+## Same implementation as ShipFactory._collect_mesh_vertices().
+func _collect_mesh_vertices(node: Node, verts: PackedVector3Array, parent_xform: Transform3D) -> void:
+	var xform = parent_xform
+	if node is Node3D:
+		xform = parent_xform * (node as Node3D).transform
+
+	if node is MeshInstance3D:
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		if mesh:
+			for si in mesh.get_surface_count():
+				var arrays = mesh.surface_get_arrays(si)
+				if arrays.size() > Mesh.ARRAY_VERTEX and arrays[Mesh.ARRAY_VERTEX] != null:
+					var surface_verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+					for v in surface_verts:
+						verts.append(xform * v)
+
 	for child in node.get_children():
-		result.append(child)
-		result.append_array(_get_all_children(child))
-	return result
+		_collect_mesh_vertices(child, verts, xform)
 
 
 func _build_fallback() -> void:

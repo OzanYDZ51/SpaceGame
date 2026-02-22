@@ -56,7 +56,9 @@ func _relay_npc_fire(npc_id: StringName, system_id: int, ship_node: Node3D, hard
 	var hp: Hardpoint = wm.hardpoints[hardpoint_id]
 	var muzzle = hp.get_muzzle_transform()
 	var fire_pos = FloatingOrigin.to_universe_pos(muzzle.origin)
-	var fire_dir = (-muzzle.basis.z).normalized()
+	# Use the actual fire direction computed by try_fire (not muzzle -Z which
+	# is flipped 180° on weapon models with rotated WeaponRoot)
+	var fire_dir = hp.last_fire_dir
 	var ship_vel = Vector3.ZERO
 	if ship_node is RigidBody3D:
 		ship_vel = ship_node.linear_velocity

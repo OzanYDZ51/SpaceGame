@@ -36,6 +36,7 @@ var _muzzle_index: int = 0
 var _turret_base: Node3D = null  # Future: static turret base mesh
 
 # --- Internals ---
+var last_fire_dir: Vector3 = Vector3.FORWARD  # Actual fire direction (for network relay)
 var _cooldown_timer: float = 0.0
 var _projectile_scene: PackedScene = null
 var _cached_ship: Node3D = null
@@ -286,7 +287,11 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 			fire_dir = ship_fwd
 		up_hint = ship_node.global_transform.basis.y if ship_node else Vector3.UP
 
+	last_fire_dir = fire_dir  # Store for network relay
 	bolt.velocity = fire_dir * mounted_weapon.projectile_speed + ship_velocity
+	# Prevent backward-flying projectiles when ship velocity exceeds projectile speed
+	if bolt.velocity.dot(fire_dir) < mounted_weapon.projectile_speed * 0.5:
+		bolt.velocity = fire_dir * mounted_weapon.projectile_speed
 	bolt.global_transform = Transform3D(Basis.looking_at(fire_dir, up_hint), spawn_pos)
 
 	# Apply weapon-specific bolt color
