@@ -23,7 +23,13 @@ func tick(_dt: float) -> void:
 		return
 
 	if leader == null or not is_instance_valid(leader):
-		controller._return_to_default_behavior()
+		# Leader dead → become autonomous, patrol around current position
+		var pb := PatrolBehavior.new()
+		pb.controller = controller
+		pb.set_patrol_area(controller._ship.global_position, 2000.0)
+		controller._set_behavior(pb)
+		controller._default_behavior = pb
+		controller.mode = AIController.Mode.BEHAVIOR
 		return
 
 	# Follow leader into combat: if leader has a target, engage it

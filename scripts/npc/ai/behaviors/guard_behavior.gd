@@ -25,6 +25,11 @@ func enter() -> void:
 	if not turret_only:
 		_patrol = PatrolBehavior.new()
 		_patrol.controller = controller
+		# Initialize patrol around the guard target, offset from station center
+		if guard_target and is_instance_valid(guard_target):
+			var offset_dir := Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+			var offset_center := guard_target.global_position + offset_dir * (AIEnvironment.STATION_MODEL_RADIUS + 500.0)
+			_patrol.set_patrol_area(offset_center, 800.0)
 		_patrol.enter()
 
 

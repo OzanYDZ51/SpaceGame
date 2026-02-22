@@ -257,7 +257,7 @@ func retrieve_ship(fleet_index: int) -> bool:
 	if sq_mgr:
 		sq_mgr.on_ship_retrieved(fleet_index)
 
-	# Despawn NPC and update docked station from FleetAIBridge target
+	# Despawn NPC and update docked station from FleetAICommand target
 	if _deployed_ships.has(fleet_index):
 		var npc_ref = _deployed_ships[fleet_index]
 		if is_instance_valid(npc_ref):
@@ -390,9 +390,24 @@ func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 		if lod_mgr:
 			lod_mgr.unregister_ship(npc_id)
 
-	# Save name before clearing for the notification
+	_clear_fleet_ship_state(fs, fleet_index)
+
+
+## Network handler: fleet NPC died on the server (multiplayer client path).
+## Local deaths go through _on_fleet_npc_died via HealthSystem signal instead.
+func _on_network_npc_died(npc_id_str: String, _killer_pid: int, _death_pos: Array, _loot: Array) -> void:
+	if _fleet == null:
+		return
+	var npc_id := StringName(npc_id_str)
+	for i in _fleet.ships.size():
+		var fs = _fleet.ships[i]
+		if fs.deployed_npc_id == npc_id:
+			_clear_fleet_ship_state(fs, i)
+			break
+
+
+func _clear_fleet_ship_state(fs, fleet_index: int) -> void:
 	var ship_name_copy: String = fs.custom_name
-	# Clear slot completely — ship is permanently lost
 	fs.ship_id = &""
 	fs.custom_name = ""
 	fs.deployment_state = FleetShip.DeploymentState.DOCKED
@@ -407,51 +422,12 @@ func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
 	fs.shield_name = &""
 	fs.engine_name = &""
 	_deployed_ships.erase(fleet_index)
-
 	_fleet.fleet_changed.emit()
-
-	# Notify squadron manager
 	var sq_mgr = GameManager.get_node_or_null("SquadronManager")
 	if sq_mgr:
 		sq_mgr.on_member_destroyed(fleet_index)
-
-	# Toast notification
 	if GameManager._notif:
 		GameManager._notif.fleet.lost(ship_name_copy)
-
-
-## Network handler: fleet NPC died on the server (multiplayer client path).
-## Local deaths go through _on_fleet_npc_died via HealthSystem signal instead.
-func _on_network_npc_died(npc_id_str: String, _killer_pid: int, _death_pos: Array, _loot: Array) -> void:
-	if _fleet == null:
-		return
-	var npc_id := StringName(npc_id_str)
-	for i in _fleet.ships.size():
-		var fs = _fleet.ships[i]
-		if fs.deployed_npc_id == npc_id:
-			var ship_name_copy: String = fs.custom_name
-			# Clear slot completely — ship is permanently lost
-			fs.ship_id = &""
-			fs.custom_name = ""
-			fs.deployment_state = FleetShip.DeploymentState.DOCKED
-			fs.deployed_npc_id = &""
-			fs.deployed_command = &""
-			fs.deployed_command_params = {}
-			fs.docked_station_id = ""
-			fs.last_known_pos = []
-			fs.ai_state = {}
-			fs.weapons.clear()
-			fs.modules.clear()
-			fs.shield_name = &""
-			fs.engine_name = &""
-			_deployed_ships.erase(i)
-			_fleet.fleet_changed.emit()
-			var sq_mgr = GameManager.get_node_or_null("SquadronManager")
-			if sq_mgr:
-				sq_mgr.on_member_destroyed(i)
-			if GameManager._notif:
-				GameManager._notif.fleet.lost(ship_name_copy)
-			break
 
 
 func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:

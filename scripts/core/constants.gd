@@ -111,7 +111,7 @@ const NET_DEFAULT_PORT: int = 7777
 const NET_MAX_PLAYERS: int = 128          # Per system server instance
 const NET_TICK_RATE: float = 30.0         # Position updates per second (every 2 physics frames @ 60Hz)
 const NET_INTERPOLATION_DELAY: float = 0.05   # 50ms interpolation buffer for players
-const NPC_INTERPOLATION_DELAY: float = 0.05   # 50ms interpolation buffer for NPCs
+const NPC_INTERPOLATION_DELAY: float = 0.1    # 100ms interpolation buffer for NPCs (3 broadcast intervals for jitter tolerance)
 const NET_SNAP_THRESHOLD: float = 10.0    # Metres: beyond this, teleport instead of lerp
 const NET_GAME_SERVER_URL: String = "wss://gameserver-production-49ba.up.railway.app"
 
@@ -136,6 +136,16 @@ const AI_TICK_INTERVAL: float = 0.1              # 10Hz — base AI tick rate
 const AI_DETECTION_RANGE: float = 5000.0         # NPC threat detection radius
 const AI_ENGAGEMENT_RANGE: float = 2000.0        # Preferred combat distance (also used for combat bridge, defend range)
 const AI_DISENGAGE_RANGE: float = 6500.0         # Break off combat beyond this distance
+const AI_MIN_SAFE_DIST: float = 50.0             # Min distance before NPC reverses away
+const AI_STATION_EXCLUSION_RADIUS: float = 2000.0  # Station obstacle zone radius for AI
+
+# --- NPC Authority ---
+const NPC_HIT_VALIDATION_RANGE: float = 5000.0   # Max distance for hit validation
+const NPC_HIT_DAMAGE_TOLERANCE: float = 0.5      # ±50% damage variance allowed
+const NPC_ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 min base respawn delay
+const NPC_ENCOUNTER_RESPAWN_MAX: float = 1800.0   # 30 min max (escalating anti-farm)
+const NPC_DEAD_GUARD_MS: int = 10000              # 10s guard window for dead NPC ghost prevention
+const NPC_EXTRAPOLATION_MAX: float = 1.0          # Max extrapolation time (seconds)
 
 # --- Speed Modes ---
 enum SpeedMode { NORMAL, BOOST, CRUISE }

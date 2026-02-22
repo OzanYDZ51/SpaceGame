@@ -10,10 +10,12 @@ extends RefCounted
 const FLEET_SYNC_INTERVAL: float = 30.0
 const MAX_RETRY_COUNT: int = 3
 const RETRY_BASE_DELAY: float = 1.0  # 1s, 2s, 4s
+const MAX_PENDING_RECONNECTS: int = 50
+const PENDING_RECONNECT_TIMEOUT: float = 60.0  # Drop queued reconnects older than 60s
 
 var _fleet_sync_timer: float = FLEET_SYNC_INTERVAL
 var _fleet_backend_loaded: bool = false
-var _pending_reconnects: Array = []  # [{uuid, pid}] queued while backend fleet loads
+var _pending_reconnects: Array = []  # [{uuid, pid, time}] queued while backend fleet loads
 var _backend_client: ServerBackendClient = null
 
 # Retry queue for failed sync operations
@@ -237,7 +239,13 @@ func load_deployed_fleet_ships_from_backend() -> void:
 func _process_pending_reconnects() -> void:
 	if _pending_reconnects.is_empty():
 		return
-	print("NpcAuthority: Processing %d pending reconnects" % _pending_reconnects.size())
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var valid: int = 0
 	for entry in _pending_reconnects:
+		# Drop entries older than timeout
+		if now - entry.get("time", 0.0) > PENDING_RECONNECT_TIMEOUT:
+			continue
 		_auth._fleet.send_fleet_reconnect_status(entry["uuid"], entry["pid"])
+		valid += 1
+	print("NpcAuthority: Processed %d pending reconnects (%d expired)" % [valid, _pending_reconnects.size() - valid])
 	_pending_reconnects.clear()

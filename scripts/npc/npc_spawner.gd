@@ -79,7 +79,7 @@ func spawn_system_encounters(danger_level: int, system_data) -> void:
 
 	# During initial load, NetworkSyncManager (and NpcAuthority) don't exist yet.
 	# Defer spawning until GameManager triggers it after network role is determined.
-	if not GameManager.get_node_or_null("NetworkSyncManager"):
+	if not GameManager.get_node_or_null("NetworkSyncManager") or not GameManager.get_node_or_null("NpcAuthority"):
 		_deferred_spawn_pending = true
 		_deferred_danger_level = danger_level
 		_deferred_system_data = system_data
@@ -320,7 +320,7 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
 		if offset_dir.length_squared() < 0.01:
 			offset_dir = Vector3.FORWARD
-		var guard_center: Vector3 = st_pos + offset_dir * randf_range(2500.0, 3000.0)
+		var guard_center: Vector3 = st_pos + offset_dir * randf_range(800.0, 1500.0)
 		print("EncounterManager: Spawning 2 guards (faction=%s, ship=%s) for station %d (node=%s)" % [guard_faction, guard_ship, st_idx, station_node != null])
 		spawn_patrol(2, guard_ship, guard_center, 1500.0, guard_faction, system_id, 100 + st_idx, station_node)
 
@@ -337,6 +337,22 @@ const STATION_SAFE_RADIUS: float = 3500.0  ## Min spawn distance from station ce
 
 
 ## Push a position outside all large entity exclusion zones (stations, planets, stars).
+func _is_respawn_on_cooldown(system_id: int, cfg_idx: int, i: int) -> bool:
+	if system_id < 0 or cfg_idx < 0:
+		return false
+	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
+	if npc_auth == null:
+		return false
+	var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
+	if npc_auth._destroyed_encounter_npcs.has(encounter_key):
+		var entry = npc_auth._destroyed_encounter_npcs[encounter_key]
+		var respawn_time: float = entry["time"] if entry is Dictionary else float(entry)
+		if Time.get_unix_time_from_system() < respawn_time:
+			return true
+		npc_auth._destroyed_encounter_npcs.erase(encounter_key)
+	return false
+
+
 func _push_spawn_from_obstacles(pos: Vector3) -> Vector3:
 	# Stations
 	var stations: Array[Dictionary] = EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
@@ -394,25 +410,17 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 		parent = get_tree().current_scene
 
 	# Push patrol center away from large obstacles (stations, planets, stars)
-	center = _push_spawn_from_obstacles(center)
-
-	# Get NpcAuthority for respawn checking
-	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-	var now: float = Time.get_unix_time_from_system()
+	# Skip push for station guards — they SHOULD be near their station
+	if station_node == null:
+		center = _push_spawn_from_obstacles(center)
 
 	for i in count:
-		# Check respawn cooldown if encounter key is available
-		if system_id >= 0 and cfg_idx >= 0 and npc_auth:
-			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
-			if npc_auth._destroyed_encounter_npcs.has(encounter_key):
-				if now < npc_auth._destroyed_encounter_npcs[encounter_key]:
-					continue
-				else:
-					npc_auth._destroyed_encounter_npcs.erase(encounter_key)
+		if _is_respawn_on_cooldown(system_id, cfg_idx, i):
+			continue
 
 		var angle: float = (float(i) / float(count)) * TAU
 		var offset =Vector3(cos(angle) * radius * 0.5, 0.0, sin(angle) * radius * 0.5)
-		var pos: Vector3 = _push_spawn_from_obstacles(center + offset)
+		var pos: Vector3 = center + offset if station_node else _push_spawn_from_obstacles(center + offset)
 
 		# Clamp patrol radius for station guards
 		var patrol_radius: float = radius
@@ -445,17 +453,9 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 	if parent == null:
 		parent = get_tree().current_scene
 
-	var npc_auth = GameManager.get_node_or_null("NpcAuthority")
-	var now: float = Time.get_unix_time_from_system()
-
 	for i in count:
-		if system_id >= 0 and cfg_idx >= 0 and npc_auth:
-			var encounter_key: String = "%d:enc_%d_%d" % [system_id, cfg_idx, i]
-			if npc_auth._destroyed_encounter_npcs.has(encounter_key):
-				if now < npc_auth._destroyed_encounter_npcs[encounter_key]:
-					continue
-				else:
-					npc_auth._destroyed_encounter_npcs.erase(encounter_key)
+		if _is_respawn_on_cooldown(system_id, cfg_idx, i):
+			continue
 
 		# Stagger start positions along the route
 		var start_idx: int = i % route.size()
@@ -467,8 +467,8 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 			var brain = ship.get_node_or_null("AIController")
 			if brain:
 				brain.set_patrol_area(route[0], 50000.0)
-				brain._waypoints = route.duplicate()
-				brain._current_waypoint = start_idx
+				brain.waypoints_compat = route.duplicate()
+				brain.current_waypoint_compat = start_idx
 				brain.route_priority = false  # Can break route for combat
 			_active_npc_ids.append(StringName(ship.name))
 			ship.tree_exiting.connect(_on_npc_removed.bind(StringName(ship.name)))
@@ -596,7 +596,9 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 			leader_brain.route_priority = true
 		else:
 			leader_brain.set_patrol_area(pos, 2000.0)
-		if station_node:
+		# Only set guard_station if the convoy's faction matches the station's faction
+		# (prevents pirate convoys from alerting enemy station guards when attacked)
+		if station_node and "faction" in station_node and station_node.faction == faction:
 			leader_brain.guard_station = station_node
 	_active_npc_ids.append(StringName(leader.name))
 	leader.tree_exiting.connect(_on_npc_removed.bind(StringName(leader.name)))
@@ -617,7 +619,8 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 				brain.formation_leader = leader
 				brain.formation_offset = offset
 				brain.current_state = AIController.State.FORMATION
-				if station_node:
+				# Only set guard_station if faction matches station faction
+				if station_node and "faction" in station_node and station_node.faction == faction:
 					brain.guard_station = station_node
 			_active_npc_ids.append(StringName(wingman.name))
 			wingman.tree_exiting.connect(_on_npc_removed.bind(StringName(wingman.name)))

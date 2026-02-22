@@ -36,7 +36,7 @@ var engagement_range: float = Constants.AI_ENGAGEMENT_RANGE
 var disengage_range: float = Constants.AI_DISENGAGE_RANGE
 
 # --- Simplified AI ---
-var ai_state: int = 0  # Maps to AIBrain.State
+var ai_state: int = 0  # Maps to AIController.State
 var ai_target_id: StringName = &""
 var ai_patrol_center: Vector3 = Vector3.ZERO
 var ai_patrol_radius: float = 300.0
@@ -183,11 +183,11 @@ func capture_from_node(ship: Node3D) -> void:
 	var brain = ship.get_node_or_null("AIController")
 	if brain:
 		ai_state = brain.current_state
-		ai_patrol_center = brain._patrol_center
-		ai_patrol_radius = brain._patrol_radius
+		ai_patrol_center = brain.patrol_center_compat
+		ai_patrol_radius = brain.patrol_radius_compat
 		var wps: Array[Vector3] = []
-		if not brain._waypoints.is_empty() and brain.route_priority:
-			wps.assign(brain._waypoints)
+		if not brain.waypoints_compat.is_empty() and brain.route_priority:
+			wps.assign(brain.waypoints_compat)
 		ai_route_waypoints = wps
 		ai_route_priority = brain.route_priority
 		if brain.target and is_instance_valid(brain.target):

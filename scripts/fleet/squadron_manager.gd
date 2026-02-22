@@ -183,7 +183,7 @@ func reset_to_follow(fleet_index: int) -> void:
 	var sq = _fleet.get_ship_squadron(fleet_index)
 	if sq == null or sq.is_leader(fleet_index):
 		return
-	# Clear the bridge command so SquadronAIController resumes formation
+	# Clear the bridge command so SquadronAICommand resumes formation
 	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc:
 		var bridge = npc.get_node_or_null("FleetAICommand")
@@ -267,7 +267,7 @@ func on_member_destroyed(fleet_index: int) -> void:
 
 
 # =========================================================================
-# Internal — SquadronAIController attach/detach
+# Internal — SquadronAICommand attach/detach
 # =========================================================================
 
 func setup_squadron_controller(fleet_index: int, npc: Node) -> void:

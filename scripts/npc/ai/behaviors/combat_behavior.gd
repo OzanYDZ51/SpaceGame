@@ -12,7 +12,7 @@ enum SubState { PURSUE, ATTACK }
 var sub_state: SubState = SubState.PURSUE
 var target: Node3D = null
 
-const MIN_SAFE_DIST: float = 50.0
+const MIN_SAFE_DIST: float = Constants.AI_MIN_SAFE_DIST
 
 var _cached_target_health = null
 var _cached_target_ref: Node3D = null

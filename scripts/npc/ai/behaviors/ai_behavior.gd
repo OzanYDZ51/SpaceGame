@@ -6,6 +6,13 @@ extends RefCounted
 # Behaviors are owned by AIController and swapped at runtime.
 # =============================================================================
 
+# Behavior name constants (avoid scattered StringName literals)
+const NAME_PATROL: StringName = &"patrol"
+const NAME_COMBAT: StringName = &"combat"
+const NAME_GUARD: StringName = &"guard"
+const NAME_FORMATION: StringName = &"formation"
+const NAME_LOOT: StringName = &"loot"
+
 var controller = null  # AIController ref
 
 

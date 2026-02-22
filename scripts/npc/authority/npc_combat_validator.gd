@@ -6,8 +6,8 @@ extends RefCounted
 # Extracted from NpcAuthority. Runs as a RefCounted sub-object.
 # =============================================================================
 
-const HIT_VALIDATION_RANGE: float = 5000.0
-const HIT_DAMAGE_TOLERANCE: float = 0.5  # ±50% damage variance allowed
+const HIT_VALIDATION_RANGE: float = Constants.NPC_HIT_VALIDATION_RANGE
+const HIT_DAMAGE_TOLERANCE: float = Constants.NPC_HIT_DAMAGE_TOLERANCE
 
 # Effective HP cache: ship_id -> { "shield_total": float, "hull_total": float }
 var _effective_hp_cache: Dictionary = {}
@@ -97,6 +97,11 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	if lod_data == null or lod_data.is_dead:
 		return
 
+	# Friendly-fire check: don't let players damage their own fleet NPCs
+	if _auth._fleet and _auth._fleet.is_fleet_npc(npc_id):
+		if _auth._fleet.get_fleet_npc_owner(npc_id) == sender_pid:
+			return
+
 	# Distance check
 	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
@@ -123,23 +128,41 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	var attacker_node: Node3D = _resolve_player_node(sender_pid)
 	var shield_absorbed: bool = false
 
-	if not is_instance_valid(lod_data.node_ref):
-		push_warning("NpcAuthority: Hit on %s rejected — no valid node (should not happen)" % String(npc_id))
-		return
-
-	var health = lod_data.node_ref.get_node_or_null("HealthSystem")
-	if health:
-		_auth._npcs[npc_id]["_player_killing"] = true
-		var hit_result = health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, attacker_node)
-		shield_absorbed = hit_result.get("shield_absorbed", false)
-		lod_data.hull_ratio = health.get_hull_ratio()
-		lod_data.shield_ratio = health.get_total_shield_ratio()
+	if is_instance_valid(lod_data.node_ref):
+		# Full node exists (LOD0/1) — apply damage via HealthSystem
+		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
+		if health:
+			_auth._npcs[npc_id]["_player_killing"] = true
+			var hit_result = health.apply_damage(claimed_damage, &"thermal", hit_dir_vec, attacker_node)
+			shield_absorbed = hit_result.get("shield_absorbed", false)
+			lod_data.hull_ratio = health.get_hull_ratio()
+			lod_data.shield_ratio = health.get_total_shield_ratio()
+			_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
+			if health.is_dead():
+				lod_data.is_dead = true
+				_on_npc_killed(npc_id, sender_pid, weapon_name)
+			elif _auth._npcs.has(npc_id):
+				_auth._npcs[npc_id].erase("_player_killing")
+	else:
+		# Node LOD-demoted (LOD2/3) — apply damage via lod_data ratios directly
+		var info: Dictionary = _auth._npcs[npc_id]
+		var hp: Dictionary = get_effective_hp(StringName(info.get("ship_id", "")))
+		var shield_hp: float = lod_data.shield_ratio * hp["shield_total"]
+		var remaining_dmg: float = claimed_damage
+		if shield_hp > 0.0:
+			var absorbed: float = minf(remaining_dmg, shield_hp)
+			shield_hp -= absorbed
+			remaining_dmg -= absorbed
+			shield_absorbed = true
+			lod_data.shield_ratio = shield_hp / maxf(hp["shield_total"], 1.0)
+		if remaining_dmg > 0.0:
+			var hull_hp: float = lod_data.hull_ratio * hp["hull_total"]
+			hull_hp -= remaining_dmg
+			lod_data.hull_ratio = maxf(hull_hp / maxf(hp["hull_total"], 1.0), 0.0)
 		_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
-		if health.is_dead():
+		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
 			_on_npc_killed(npc_id, sender_pid, weapon_name)
-		elif _auth._npcs.has(npc_id):
-			_auth._npcs[npc_id].erase("_player_killing")
 
 	# Broadcast hit effect
 	_auth._broadcaster.broadcast_hit_effect(target_npc, sender_pid, hit_dir, shield_absorbed, sender_state.system_id)
@@ -193,10 +216,16 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 	# Report kill to Discord
 	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
 
-	# Record encounter NPC death for respawn tracking
+	# Record encounter NPC death for respawn tracking (escalating delay anti-farm)
 	var encounter_key: String = info.get("encounter_key", "")
 	if encounter_key != "":
-		_auth._destroyed_encounter_npcs[encounter_key] = Time.get_unix_time_from_system() + _auth.ENCOUNTER_RESPAWN_DELAY
+		var prev: Dictionary = _auth._destroyed_encounter_npcs.get(encounter_key, {})
+		var kills: int = prev.get("kills", 0) + 1
+		var delay: float = minf(_auth.ENCOUNTER_RESPAWN_DELAY * kills, _auth.ENCOUNTER_RESPAWN_MAX_DELAY)
+		_auth._destroyed_encounter_npcs[encounter_key] = {
+			"time": Time.get_unix_time_from_system() + delay,
+			"kills": kills,
+		}
 
 	# Broadcast death
 	_broadcast_npc_death(npc_id, killer_pid, death_pos, loot, system_id)

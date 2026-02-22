@@ -37,6 +37,10 @@ var _prev_yaw_error: float = 0.0
 var _prev_pitch_error: float = 0.0
 var _last_face_time_ms: float = 0.0
 
+# Obstacle sensor cache (avoid double update per frame)
+var _obstacle_cache_frame: int = -1
+var _cached_avoidance: Vector3 = Vector3.ZERO
+
 # LOS check mask
 const LOS_COLLISION_MASK: int = 7
 
@@ -52,6 +56,15 @@ func _ready() -> void:
 
 func _cache_refs() -> void:
 	_obstacle_sensor = _ship.get_node_or_null("ObstacleSensor")
+
+
+func _get_avoidance() -> Vector3:
+	var frame: int = Engine.get_process_frames()
+	if frame != _obstacle_cache_frame:
+		_obstacle_cache_frame = frame
+		_obstacle_sensor.update()
+		_cached_avoidance = _obstacle_sensor.avoidance_vector
+	return _cached_avoidance
 
 
 # =============================================================================
@@ -116,8 +129,7 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 	# Obstacle avoidance
 	var avoid := Vector3.ZERO
 	if _obstacle_sensor:
-		_obstacle_sensor.update()
-		avoid = _obstacle_sensor.avoidance_vector
+		avoid = _get_avoidance()
 
 	var effective_target := target_pos
 	if avoid.length_squared() > 1.0:
@@ -255,8 +267,7 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 
 	var avoid := Vector3.ZERO
 	if _obstacle_sensor:
-		_obstacle_sensor.update()
-		avoid = _obstacle_sensor.avoidance_vector
+		avoid = _get_avoidance()
 
 	var throttle: Vector3
 
@@ -293,3 +304,29 @@ func get_distance_to(pos: Vector3) -> float:
 	if _ship == null:
 		return INF
 	return _ship.global_position.distance_to(pos)
+
+
+# =============================================================================
+# NAVIGATION BOOST (shared by FleetAICommand + AIMiningBehavior)
+# =============================================================================
+const NAV_BOOST_MIN_DIST: float = 500.0
+const NAV_BOOST_RAMP_DIST: float = 5000.0
+const NAV_BOOST_MIN_SPEED: float = 50.0
+
+
+func update_nav_boost(target_pos: Vector3) -> void:
+	if _ship == null:
+		return
+	var dist: float = _ship.global_position.distance_to(target_pos)
+	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
+	if dist < NAV_BOOST_RAMP_DIST:
+		var t: float = clampf(dist / NAV_BOOST_RAMP_DIST, 0.0, 1.0)
+		_ship._gate_approach_speed_cap = lerpf(NAV_BOOST_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
+	else:
+		_ship._gate_approach_speed_cap = 0.0
+
+
+func clear_nav_boost() -> void:
+	if _ship and is_instance_valid(_ship):
+		_ship.ai_navigation_active = false
+		_ship._gate_approach_speed_cap = 0.0

@@ -102,7 +102,7 @@ func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, dam
 	if damage > 500.0 or damage < 0.1:
 		return
 
-	# Apply damage — resolve attacker node so StationDefenseAI can retaliate
+	# Apply damage — resolve attacker node so AIController/GuardBehavior can retaliate
 	var dir = Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
 	var attacker: Node3D = null
 	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")

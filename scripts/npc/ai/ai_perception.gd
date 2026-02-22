@@ -13,7 +13,7 @@ const THREAT_CLEANUP_TIME: float = 10.0
 
 # Threat table: instance_id → { "node": Node3D, "threat": float, "last_hit": float }
 var threat_table: Dictionary = {}
-var _last_threat_update_ms: float = 0.0
+var last_threat_update_ms: float = 0.0
 
 var _owner_node: Node3D = null
 var _cached_lod_mgr = null

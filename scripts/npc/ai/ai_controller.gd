@@ -20,7 +20,7 @@ var mode: Mode = Mode.BEHAVIOR
 var perception: AIPerception = null
 var combat: AICombat = null
 var navigation: AINavigation = null
-var environment: AIBrainEnvironment = null
+var environment: AIEnvironment = null
 
 # --- Behaviors ---
 var _current_behavior: AIBehavior = null
@@ -163,19 +163,19 @@ var formation_offset: Vector3:
 			(_current_behavior as FormationBehavior).offset = value
 
 # --- Legacy compat: patrol properties ---
-var _patrol_center: Vector3:
+var patrol_center_compat: Vector3:
 	get:
 		if _current_behavior and _current_behavior is PatrolBehavior:
 			return (_current_behavior as PatrolBehavior).patrol_center
 		return Vector3.ZERO
 
-var _patrol_radius: float:
+var patrol_radius_compat: float:
 	get:
 		if _current_behavior and _current_behavior is PatrolBehavior:
 			return (_current_behavior as PatrolBehavior).patrol_radius
 		return 0.0
 
-var _waypoints: Array[Vector3]:
+var waypoints_compat: Array[Vector3]:
 	get:
 		if _current_behavior and _current_behavior is PatrolBehavior:
 			return (_current_behavior as PatrolBehavior).waypoints
@@ -190,7 +190,7 @@ var _waypoints: Array[Vector3]:
 			_set_behavior(pb)
 			mode = Mode.BEHAVIOR
 
-var _current_waypoint: int:
+var current_waypoint_compat: int:
 	get:
 		if _current_behavior and _current_behavior is PatrolBehavior:
 			return (_current_behavior as PatrolBehavior).current_waypoint
@@ -230,13 +230,14 @@ func setup_as_station(station: Node3D, _wm = null) -> void:
 	_default_behavior = gb
 	mode = Mode.BEHAVIOR
 	# Set detection range for station
-	detection_range = 4000.0
+	detection_range = Constants.AI_DETECTION_RANGE
 
 
 func _ready() -> void:
 	# Station mode: setup_as_station() was called before add_child(), skip ship init
 	if _ship != null:
 		_tick_timer = randf() * TICK_INTERVAL
+		FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
 		return
 
 	_ship = get_parent()
@@ -244,7 +245,7 @@ func _ready() -> void:
 	# Create modules + combat behavior immediately (before await)
 	perception = AIPerception.new()
 	combat = AICombat.new()
-	environment = AIBrainEnvironment.new()
+	environment = AIEnvironment.new()
 	_combat_behavior = CombatBehavior.new()
 	_combat_behavior.controller = self
 
@@ -271,6 +272,8 @@ func _ready() -> void:
 
 		environment.setup(_ship, navigation)
 		environment.update_environment()
+
+	FloatingOrigin.origin_shifted.connect(_on_origin_shifted)
 
 	# Default to patrol behavior
 	if _current_behavior == null:
@@ -330,8 +333,8 @@ func _process(delta: float) -> void:
 
 	# Decay threat table
 	var now_ms: float = Time.get_ticks_msec()
-	var real_dt: float = (now_ms - perception._last_threat_update_ms) * 0.001 if perception._last_threat_update_ms > 0.0 else tick_rate
-	perception._last_threat_update_ms = now_ms
+	var real_dt: float = (now_ms - perception.last_threat_update_ms) * 0.001 if perception.last_threat_update_ms > 0.0 else tick_rate
+	perception.last_threat_update_ms = now_ms
 	perception.update(real_dt)
 
 	# Periodic environment scan (ships only)
@@ -367,23 +370,27 @@ func _tick_behavior(dt: float) -> void:
 		mode = Mode.IDLE
 		return
 
-	# Detect threats (unless ignoring or in route_priority mode)
+	# Detect threats (unless ignoring)
 	if not ignore_threats and weapons_enabled:
-		var threat = perception.detect_nearest_hostile(detection_range)
-		if threat:
-			if route_priority and _current_behavior.get_behavior_name() == &"patrol":
-				# Route priority: fire turrets + forward guns but keep patrolling
+		if route_priority and _current_behavior.get_behavior_name() == &"patrol":
+			# Route priority = DEFENSIVE: only engage threats from threat table (damage received)
+			# Do NOT proactively scan for hostiles — convoys should not attack on sight
+			var best_threat = perception.get_highest_threat()
+			if best_threat:
 				if _ship and _ship.speed_mode == Constants.SpeedMode.CRUISE:
 					_ship._exit_cruise()
 				if combat:
-					combat.try_fire_forward(threat, accuracy, guard_station)
-				_combat_behavior.set_target(threat)
-				_alert_formation_group(threat)
+					combat.try_fire_forward(best_threat, accuracy, guard_station)
+				_combat_behavior.set_target(best_threat)
+				_alert_formation_group(best_threat)
 				# Abandon route if hull critically low
 				if _health and _health.get_hull_ratio() < 0.5:
-					_enter_combat(threat)
-				return
-			else:
+					_enter_combat(best_threat)
+				# Don't return — let patrol behavior continue ticking (keep moving)
+			# Fall through to behavior tick below
+		else:
+			var threat = perception.detect_nearest_hostile(detection_range)
+			if threat:
 				_enter_combat(threat)
 				return
 
@@ -412,8 +419,8 @@ func _enter_combat(threat: Node3D) -> void:
 	if mode == Mode.COMBAT:
 		_combat_behavior.set_target(threat)
 		return
-	# Save current behavior as default to return to
-	if _current_behavior:
+	# Save current behavior as default to return to (only if not already in combat)
+	if _current_behavior and mode != Mode.COMBAT:
 		_default_behavior = _current_behavior
 		_current_behavior = null
 	mode = Mode.COMBAT
@@ -499,6 +506,11 @@ func alert_to_threat(attacker: Node3D) -> void:
 	if mode in [Mode.IDLE, Mode.BEHAVIOR]:
 		if _current_behavior == null or _current_behavior.get_behavior_name() != &"combat":
 			_enter_combat(attacker)
+	elif mode == Mode.COMBAT:
+		# Already fighting — evaluate if the new threat is more dangerous than current target
+		var switch_to = perception.maybe_switch_target(_combat_behavior.target)
+		if switch_to:
+			_combat_behavior.set_target(switch_to)
 
 
 # =============================================================================
@@ -581,3 +593,20 @@ func _alert_formation_group(attacker: Node3D) -> void:
 				ctrl.alert_to_threat(attacker)
 			elif leader and fb.leader == leader:
 				ctrl.alert_to_threat(attacker)
+
+
+# =============================================================================
+# ORIGIN SHIFT
+# =============================================================================
+func _on_origin_shifted(shift: Vector3) -> void:
+	# Shift patrol waypoints in active behavior
+	if _current_behavior and _current_behavior is PatrolBehavior:
+		(_current_behavior as PatrolBehavior).apply_origin_shift(shift)
+	# Also shift the saved default behavior if it's a different PatrolBehavior
+	if _default_behavior and _default_behavior is PatrolBehavior and _default_behavior != _current_behavior:
+		(_default_behavior as PatrolBehavior).apply_origin_shift(shift)
+	# Shift guard behavior's internal patrol if active behavior is GuardBehavior
+	if _current_behavior and _current_behavior is GuardBehavior:
+		var gb := _current_behavior as GuardBehavior
+		if gb._patrol:
+			gb._patrol.apply_origin_shift(shift)

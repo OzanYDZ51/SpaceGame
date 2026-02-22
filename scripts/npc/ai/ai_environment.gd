@@ -1,14 +1,13 @@
-class_name AIBrainEnvironment
+class_name AIEnvironment
 extends RefCounted
 
 # =============================================================================
-# AI Brain Environment - Obstacle detection and avoidance for NPC AI.
-# Extracted from AIBrain to keep the core state machine lean.
-# Runs as a RefCounted sub-object owned by AIBrain.
+# AI Environment — Obstacle detection and avoidance for NPC AI.
+# Runs as a RefCounted sub-object owned by AIController.
 # =============================================================================
 
-const MIN_SAFE_DIST: float = 50.0
-const STATION_MODEL_RADIUS: float = 2000.0
+const MIN_SAFE_DIST: float = Constants.AI_MIN_SAFE_DIST
+const STATION_MODEL_RADIUS: float = Constants.AI_STATION_EXCLUSION_RADIUS
 const OBSTACLE_CACHE_RANGE: float = 10000.0
 const ENV_UPDATE_INTERVAL: float = 2.0
 const MAX_AI_EXCL_RADIUS: float = 50000.0  # Cap exclusion radius (50km) to prevent absurd star zones
@@ -20,12 +19,12 @@ var obstacle_zones: Array = []  # Array of { "pos": Vector3, "radius": float }
 var _env_timer: float = 0.0
 var _cached_asteroid_mgr = null
 var _ship = null
-var _pilot = null
+var _navigation = null
 
 
-func setup(ship: Node3D, pilot) -> void:
+func setup(ship: Node3D, navigation) -> void:
 	_ship = ship
-	_pilot = pilot
+	_navigation = navigation
 	_cached_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
 
 
@@ -145,6 +144,6 @@ func check_obstacle_emergency() -> bool:
 		if dist < excl_r * 0.8:
 			var escape_dir: Vector3 = to_ship.normalized() if dist > 1.0 else Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
 			var escape_pos: Vector3 = obs_pos + escape_dir * (excl_r + 500.0)
-			_pilot.fly_toward(escape_pos, 50.0)
+			_navigation.fly_toward(escape_pos, 50.0)
 			return true
 	return false

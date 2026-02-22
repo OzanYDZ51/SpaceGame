@@ -33,7 +33,7 @@ var _remote_weapon_audio: WeaponAudio = null
 var _recently_dead_npcs: Dictionary = {}  # npc_id -> death_ticks_ms (prevents ghost re-creation from delayed batch)
 var _system_mismatch_grace: Dictionary = {}  # peer_id -> first_mismatch_ticks_ms
 const SYSTEM_MISMATCH_GRACE_MS: int = 3000  # 3s grace before removing remote player
-const DEAD_NPC_GUARD_MS: int = 10000  # 10s guard against batch re-creation
+const DEAD_NPC_GUARD_MS: int = Constants.NPC_DEAD_GUARD_MS
 
 
 func setup(player_ship: RigidBody3D, game_manager: Node) -> void:

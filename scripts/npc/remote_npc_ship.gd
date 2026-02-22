@@ -17,7 +17,7 @@ var linear_velocity: Vector3 = Vector3.ZERO
 # Interpolation buffer
 var _snapshots: Array[Dictionary] = []
 const MAX_SNAPSHOTS: int = 30
-const EXTRAPOLATION_MAX: float = 1.0  # 1 second max extrapolation before freeze
+const EXTRAPOLATION_MAX: float = Constants.NPC_EXTRAPOLATION_MAX
 
 # Visual
 var _ship_model = null

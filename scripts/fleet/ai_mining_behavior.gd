@@ -77,10 +77,7 @@ var _dock_sold: bool = false
 var _saved_collision_layer: int = 0
 var _saved_collision_mask: int = 0
 
-# Navigation boost for autonomous travel (RETURNING / DEPARTING)
-const NAV_BOOST_MIN_DIST: float = 500.0
-const NAV_BOOST_RAMP_DIST: float = 5000.0
-const NAV_BOOST_MIN_SPEED: float = 50.0
+# Navigation boost delegated to AINavigation
 
 
 func _ready() -> void:
@@ -111,7 +108,7 @@ func _ready() -> void:
 			_scan_radius = ship_data.sensor_range
 		_home_station_id = fleet_ship.docked_station_id
 
-	# Read belt center + resource filter from FleetAIBridge sibling
+	# Read belt center + resource filter from FleetAICommand sibling
 	var bridge = _ship.get_node_or_null("FleetAICommand")
 	if bridge:
 		_belt_center_x = bridge.command_params.get("center_x", 0.0)
@@ -854,23 +851,17 @@ func _spawn_scan_pulse() -> void:
 
 
 # =========================================================================
-# Navigation boost for autonomous travel
+# Navigation boost (delegated to AINavigation)
 # =========================================================================
 
 func _update_nav_boost(target_pos: Vector3) -> void:
-	var dist = _ship.global_position.distance_to(target_pos)
-	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
-	if dist < NAV_BOOST_RAMP_DIST:
-		var t =clampf(dist / NAV_BOOST_RAMP_DIST, 0.0, 1.0)
-		_ship._gate_approach_speed_cap = lerpf(NAV_BOOST_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
-	else:
-		_ship._gate_approach_speed_cap = 0.0
+	if _pilot:
+		_pilot.update_nav_boost(target_pos)
 
 
 func _clear_nav_boost() -> void:
-	if _ship and is_instance_valid(_ship):
-		_ship.ai_navigation_active = false
-		_ship._gate_approach_speed_cap = 0.0
+	if _pilot:
+		_pilot.clear_nav_boost()
 
 
 # =========================================================================

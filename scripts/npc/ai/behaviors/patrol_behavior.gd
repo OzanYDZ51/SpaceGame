@@ -23,7 +23,7 @@ func tick(_dt: float) -> void:
 	if controller == null:
 		return
 	var nav: AINavigation = controller.navigation
-	var env: AIBrainEnvironment = controller.environment
+	var env: AIEnvironment = controller.environment
 	if nav == null:
 		return
 
@@ -45,7 +45,7 @@ func tick(_dt: float) -> void:
 				dir_from_station = dir_from_station.normalized()
 			else:
 				dir_from_station = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
-			var offset_center: Vector3 = controller.guard_station.global_position + dir_from_station * (AIBrainEnvironment.STATION_MODEL_RADIUS + 500.0)
+			var offset_center: Vector3 = controller.guard_station.global_position + dir_from_station * (AIEnvironment.STATION_MODEL_RADIUS + 500.0)
 			set_patrol_area(offset_center, patrol_radius)
 
 	if waypoints.is_empty():
@@ -83,6 +83,12 @@ func shift_patrol_waypoints(new_center: Vector3, new_radius: float) -> void:
 	var shift: Vector3 = new_center - patrol_center
 	patrol_center = new_center
 	patrol_radius = new_radius
+	for i in range(waypoints.size()):
+		waypoints[i] += shift
+
+
+func apply_origin_shift(shift: Vector3) -> void:
+	patrol_center += shift
 	for i in range(waypoints.size()):
 		waypoints[i] += shift
 

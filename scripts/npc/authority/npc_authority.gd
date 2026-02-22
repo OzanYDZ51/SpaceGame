@@ -15,7 +15,8 @@ extends Node
 @warning_ignore("unused_signal")
 signal npc_killed(npc_id: StringName, killer_pid: int)
 
-const ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 minutes
+const ENCOUNTER_RESPAWN_DELAY: float = Constants.NPC_ENCOUNTER_RESPAWN_DELAY
+const ENCOUNTER_RESPAWN_MAX_DELAY: float = Constants.NPC_ENCOUNTER_RESPAWN_MAX
 
 var _active: bool = false
 
@@ -34,7 +35,7 @@ var _npcs_by_system: Dictionary = {}
 # Peer system tracking: peer_id -> last known system_id
 var _peer_systems: Dictionary = {}
 
-# Encounter respawn tracking: "system_id:encounter_key" -> respawn_unix_timestamp
+# Encounter respawn tracking: "system_id:encounter_key" -> { time: unix_timestamp, kills: int }
 var _destroyed_encounter_npcs: Dictionary = {}
 var _respawn_cleanup_timer: float = 60.0
 
@@ -331,7 +332,9 @@ func _cleanup_expired_respawns() -> void:
 	var now: float = Time.get_unix_time_from_system()
 	var expired: Array = []
 	for key in _destroyed_encounter_npcs:
-		if now >= _destroyed_encounter_npcs[key]:
+		var entry = _destroyed_encounter_npcs[key]
+		var respawn_time: float = entry["time"] if entry is Dictionary else float(entry)
+		if now >= respawn_time:
 			expired.append(key)
 	for key in expired:
 		_destroyed_encounter_npcs.erase(key)

@@ -32,10 +32,7 @@ var _bay_signal_connected: bool = false
 var _initialized: bool = false
 var _idle_timer: float = 0.0
 
-# Navigation boost
-const NAV_BOOST_MIN_DIST: float = 500.0
-const NAV_APPROACH_RAMP_DIST: float = 5000.0
-const NAV_APPROACH_MIN_SPEED: float = 50.0
+var _nav: AINavigation = null
 
 
 func _ready() -> void:
@@ -44,9 +41,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if _ship and is_instance_valid(_ship):
-		_ship.ai_navigation_active = false
-		_ship._gate_approach_speed_cap = 0.0
+	if _nav and is_instance_valid(_nav):
+		_nav.clear_nav_boost()
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
 	_disconnect_bay_signals()
@@ -57,6 +53,7 @@ func _do_init() -> void:
 		return
 	_initialized = true
 	_ctrl = _ship.get_node_or_null("AIController") if _ship else null
+	_nav = _ship.get_node_or_null("AINavigation") if _ship else null
 
 	if _ctrl:
 		_ctrl.idle_after_combat = true
@@ -474,14 +471,14 @@ func _on_origin_shifted(_delta_shift: Vector3) -> void:
 
 
 func _update_navigation_boost() -> void:
+	if _nav == null:
+		return
 	if command == &"mine" and _arrived:
 		return
 	if _arrived or command == &"":
-		_ship.ai_navigation_active = false
-		if _ship.linear_velocity.length() > NAV_APPROACH_MIN_SPEED:
-			_ship._gate_approach_speed_cap = NAV_APPROACH_MIN_SPEED
-		else:
-			_ship._gate_approach_speed_cap = 0.0
+		_nav.clear_nav_boost()
+		if _ship.linear_velocity.length() > AINavigation.NAV_BOOST_MIN_SPEED:
+			_ship._gate_approach_speed_cap = AINavigation.NAV_BOOST_MIN_SPEED
 		return
 
 	var target_pos: Vector3
@@ -494,8 +491,7 @@ func _update_navigation_boost() -> void:
 			target_pos = FloatingOrigin.to_local_pos([cx, 0.0, cz])
 		&"return_to_station":
 			if not _bay_target_valid:
-				_ship.ai_navigation_active = false
-				_ship._gate_approach_speed_cap = 0.0
+				_nav.clear_nav_boost()
 				return
 			target_pos = _bay_approach_pos
 		&"attack":
@@ -504,22 +500,13 @@ func _update_navigation_boost() -> void:
 				if not ent.is_empty():
 					target_pos = FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 				else:
-					_ship.ai_navigation_active = false
-					_ship._gate_approach_speed_cap = 0.0
+					_nav.clear_nav_boost()
 					return
 			else:
-				_ship.ai_navigation_active = false
-				_ship._gate_approach_speed_cap = 0.0
+				_nav.clear_nav_boost()
 				return
 		_:
-			_ship.ai_navigation_active = false
-			_ship._gate_approach_speed_cap = 0.0
+			_nav.clear_nav_boost()
 			return
 
-	var dist: float = _ship.global_position.distance_to(target_pos)
-	_ship.ai_navigation_active = dist > NAV_BOOST_MIN_DIST
-	if dist < NAV_APPROACH_RAMP_DIST:
-		var t: float = clampf(dist / NAV_APPROACH_RAMP_DIST, 0.0, 1.0)
-		_ship._gate_approach_speed_cap = lerpf(NAV_APPROACH_MIN_SPEED, ShipController.AUTOPILOT_APPROACH_SPEED, t * t)
-	else:
-		_ship._gate_approach_speed_cap = 0.0
+	_nav.update_nav_boost(target_pos)

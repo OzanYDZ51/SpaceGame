@@ -73,7 +73,10 @@ func on_player_reconnected(uuid: String, new_pid: int) -> void:
 	if uuid == "":
 		return
 	if not _auth._backend._fleet_backend_loaded:
-		_auth._backend._pending_reconnects.append({"uuid": uuid, "pid": new_pid})
+		# Enforce max queue size to prevent memory leaks if backend stays down
+		if _auth._backend._pending_reconnects.size() >= NpcFleetBackend.MAX_PENDING_RECONNECTS:
+			_auth._backend._pending_reconnects.pop_front()
+		_auth._backend._pending_reconnects.append({"uuid": uuid, "pid": new_pid, "time": Time.get_ticks_msec() / 1000.0})
 		print("NpcAuthority: Queuing reconnect for %s (pid=%d) — backend fleet not loaded yet" % [uuid, new_pid])
 		return
 	send_fleet_reconnect_status(uuid, new_pid)

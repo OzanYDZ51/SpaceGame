@@ -39,6 +39,16 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 	else:
 		target_pos = target.global_position
 
+	# Dot check on CLEAN lead position (before inaccuracy) — front hemisphere only.
+	# Hardpoints already prevent backward shots internally.
+	# Threshold at 0.0 (90°) because face_target queues rotation that hasn't applied yet,
+	# so the ship is always "catching up" to the lead position.
+	var to_lead: Vector3 = (target_pos - _owner_node.global_position).normalized()
+	var forward: Vector3 = -_owner_node.global_transform.basis.z
+	if forward.dot(to_lead) < 0.0:
+		return
+
+	# Apply inaccuracy AFTER dot check (only affects fire direction, not firing decision)
 	var inaccuracy := (1.0 - accuracy_mod) * 12.0
 	target_pos += Vector3(
 		randf_range(-inaccuracy, inaccuracy),
@@ -46,28 +56,25 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 		randf_range(-inaccuracy, inaccuracy)
 	)
 
-	var to_target: Vector3 = (target_pos - _owner_node.global_position).normalized()
-	var forward: Vector3 = -_owner_node.global_transform.basis.z
-	var dot: float = forward.dot(to_target)
-	if dot > 0.6:
-		var space = _owner_node.get_world_3d().direct_space_state
-		if space:
-			var los_query := PhysicsRayQueryParameters3D.create(
-				_owner_node.global_position, target.global_position)
-			los_query.collision_mask = LOS_COLLISION_MASK
-			los_query.collide_with_areas = false
-			var exclude_rids: Array[RID] = [_owner_node.get_rid()]
-			if target is CollisionObject3D:
-				exclude_rids.append(target.get_rid())
-			# Exclude guard station to prevent station blocking guard's own shots
-			if guard_station and is_instance_valid(guard_station):
-				if guard_station is CollisionObject3D:
-					exclude_rids.append(guard_station.get_rid())
-			los_query.exclude = exclude_rids
-			var los_hit = space.intersect_ray(los_query)
-			if not los_hit.is_empty():
-				return
-		_weapon_manager.fire_group(0, true, target_pos)
+	# LOS check
+	var space = _owner_node.get_world_3d().direct_space_state
+	if space:
+		var los_query := PhysicsRayQueryParameters3D.create(
+			_owner_node.global_position, target.global_position)
+		los_query.collision_mask = LOS_COLLISION_MASK
+		los_query.collide_with_areas = false
+		var exclude_rids: Array[RID] = [_owner_node.get_rid()]
+		if target is CollisionObject3D:
+			exclude_rids.append(target.get_rid())
+		# Exclude guard station to prevent station blocking guard's own shots
+		if guard_station and is_instance_valid(guard_station):
+			if guard_station is CollisionObject3D:
+				exclude_rids.append(guard_station.get_rid())
+		los_query.exclude = exclude_rids
+		var los_hit = space.intersect_ray(los_query)
+		if not los_hit.is_empty():
+			return
+	_weapon_manager.fire_group(0, true, target_pos)
 
 
 func get_lead_position(target: Node3D) -> Vector3:
