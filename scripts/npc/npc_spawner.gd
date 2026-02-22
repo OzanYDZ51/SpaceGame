@@ -246,28 +246,62 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 	_spawn_station_guards(station_positions, station_nodes, system_id, station_factions)
 
 	var configs := EncounterConfig.get_danger_config(danger_level)
+	var used_cfg_indices: Array[int] = []
+
+	# --- Danger 5: combat formation (heavy ship + mid wingmen) ---
 	if danger_level == 5 and configs.size() >= 2:
-		# Danger 5: formation near first station
 		var st_pos: Vector3 = station_positions[0]
 		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-		var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
-		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"], station_nodes[0])
-	else:
-		var cfg_idx: int = 0
-		for cfg in configs:
-			# Alternate between route patrols and area patrols
+		var base_pos := st_pos + radial_dir * 2000.0
+		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"], station_nodes[0] if not station_nodes.is_empty() else null)
+		used_cfg_indices.append(0)
+		used_cfg_indices.append(1)
+
+	# --- Convoy formations: group freighter + escort as a real formation ---
+	for c_idx in configs.size():
+		if used_cfg_indices.has(c_idx):
+			continue
+		var _ship_data_check = ShipRegistry.get_ship_data(configs[c_idx]["ship"])
+		if _ship_data_check == null or _ship_data_check.ship_class != &"Freighter":
+			continue
+		# Found a freighter — pair with adjacent config as escort
+		var escort_idx: int = -1
+		if c_idx + 1 < configs.size() and not used_cfg_indices.has(c_idx + 1):
+			escort_idx = c_idx + 1
+		elif c_idx - 1 >= 0 and not used_cfg_indices.has(c_idx - 1):
+			escort_idx = c_idx - 1
+		var leader_cfg: Dictionary = configs[c_idx]
+		var st_idx: int = c_idx % station_positions.size()
+		var st_pos: Vector3 = station_positions[st_idx]
+		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+		var base_pos := st_pos + radial_dir * 3000.0
+		var escort_ship: StringName = &""
+		var escort_count: int = 0
+		if escort_idx >= 0:
+			escort_ship = configs[escort_idx]["ship"]
+			escort_count = configs[escort_idx]["count"]
+			used_cfg_indices.append(escort_idx)
+		# Build route for convoy to traverse the system
+		var convoy_route: Array[Vector3] = []
+		if key_points.size() >= 2:
+			convoy_route = _build_system_route(st_pos, key_points)
+		spawn_formation(leader_cfg["ship"], escort_ship, escort_count, base_pos, leader_cfg["fac"], station_nodes[st_idx] if st_idx < station_nodes.size() else null, convoy_route)
+		used_cfg_indices.append(c_idx)
+
+	# --- Remaining configs: route patrols / area patrols ---
+	var cfg_idx: int = 0
+	for cfg in configs:
+		if not used_cfg_indices.has(cfg_idx):
 			var st_idx: int = cfg_idx % station_positions.size()
 			var st_pos: Vector3 = station_positions[st_idx]
-			# Even configs get system-wide route patrols (visible traffic)
-			# Odd configs get area patrols near stations
 			if cfg_idx % 2 == 0 and key_points.size() >= 2:
 				var route: Array[Vector3] = _build_system_route(st_pos, key_points)
 				spawn_route_patrol(cfg["count"], cfg["ship"], route, cfg["fac"], system_id, cfg_idx)
 			else:
 				var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-				var base_pos := st_pos + radial_dir * 3000.0 + Vector3(0, 100, 0)
-				spawn_patrol(cfg["count"], cfg["ship"], base_pos, maxf(cfg["radius"], 2000.0), cfg["fac"], system_id, cfg_idx, station_nodes[st_idx])
-			cfg_idx += 1
+				var base_pos := st_pos + radial_dir * 5000.0
+				spawn_patrol(cfg["count"], cfg["ship"], base_pos, maxf(cfg["radius"], 2000.0), cfg["fac"], system_id, cfg_idx, station_nodes[st_idx] if st_idx < station_nodes.size() else null)
+		cfg_idx += 1
 
 
 func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Array, system_id: int, station_factions: Array[StringName] = []) -> void:
@@ -286,7 +320,7 @@ func _spawn_station_guards(station_positions: Array[Vector3], station_nodes: Arr
 		var offset_dir: Vector3 = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
 		if offset_dir.length_squared() < 0.01:
 			offset_dir = Vector3.FORWARD
-		var guard_center: Vector3 = st_pos + offset_dir * randf_range(3500.0, 4500.0) + Vector3(0, randf_range(-50, 50), 0)
+		var guard_center: Vector3 = st_pos + offset_dir * randf_range(3500.0, 4500.0)
 		print("EncounterManager: Spawning 2 guards (faction=%s, ship=%s) for station %d (node=%s)" % [guard_faction, guard_ship, st_idx, station_node != null])
 		spawn_patrol(2, guard_ship, guard_center, 1000.0, guard_faction, system_id, 100 + st_idx, station_node)
 
@@ -377,8 +411,8 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 					npc_auth._destroyed_encounter_npcs.erase(encounter_key)
 
 		var angle: float = (float(i) / float(count)) * TAU
-		var offset =Vector3(cos(angle) * radius * 0.5, randf_range(-30.0, 30.0), sin(angle) * radius * 0.5)
-		var pos: Vector3 = center + offset
+		var offset =Vector3(cos(angle) * radius * 0.5, 0.0, sin(angle) * radius * 0.5)
+		var pos: Vector3 = _push_spawn_from_obstacles(center + offset)
 
 		# Clamp patrol radius for station guards
 		var patrol_radius: float = radius
@@ -425,7 +459,7 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 
 		# Stagger start positions along the route
 		var start_idx: int = i % route.size()
-		var pos: Vector3 = route[start_idx] + Vector3(randf_range(-200, 200), randf_range(-50, 50), randf_range(-200, 200))
+		var pos: Vector3 = route[start_idx] + Vector3(randf_range(-200, 200), 0.0, randf_range(-200, 200))
 
 		# Always spawn full nodes — all NPCs are real ships with AI + physics
 		var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
@@ -540,7 +574,7 @@ func spawn_ambush(ship_ids: Array[StringName], range_dist: float, faction: Strin
 	encounter_started.emit(_encounter_counter)
 
 
-func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile", station_node: Node3D = null) -> void:
+func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_count: int, pos: Vector3, faction: StringName = &"hostile", station_node: Node3D = null, route: Array[Vector3] = []) -> void:
 	_encounter_counter += 1
 
 	var parent =get_tree().current_scene.get_node_or_null("Universe")
@@ -552,18 +586,24 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 	if leader == null:
 		return
 	var leader_brain = leader.get_node_or_null("AIBrain")
-	if leader_brain and station_node:
-		leader_brain.guard_station = station_node
+	if leader_brain:
+		if route.size() >= 2:
+			leader_brain.set_route(route)
+			leader_brain.route_priority = true
+		else:
+			leader_brain.set_patrol_area(pos, 2000.0)
+		if station_node:
+			leader_brain.guard_station = station_node
 	_active_npc_ids.append(StringName(leader.name))
 	leader.tree_exiting.connect(_on_npc_removed.bind(StringName(leader.name)))
 	_register_npc_on_server(StringName(leader.name), leader_id, faction, leader)
 
-	# Spawn wingmen in formation
+	# Spawn wingmen in side-by-side formation
 	for i in wingman_count:
 		var side: float = -1.0 if i % 2 == 0 else 1.0
 		@warning_ignore("integer_division")
 		var row: int = i / 2 + 1
-		var offset =Vector3(side * 60.0 * row, 0.0, 40.0 * row)
+		var offset =Vector3(side * 120.0 * row, 0.0, 15.0 * row)
 		var wing_pos: Vector3 = pos + offset
 
 		var wingman = ShipFactory.spawn_npc_ship(wingman_id, &"balanced", wing_pos, parent, faction)
@@ -674,14 +714,50 @@ func spawn_for_remote_system(system_id: int) -> void:
 
 	# Spawn encounters based on danger level
 	var configs := EncounterConfig.get_danger_config(danger_level)
+	var used_cfg_indices: Array[int] = []
+
+	# --- Danger 5: combat formation ---
 	if danger_level == 5 and configs.size() >= 2:
 		var st_pos: Vector3 = station_positions[0]
 		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-		var base_pos := st_pos + radial_dir * 2000.0 + Vector3(0, 100, 0)
+		var base_pos := st_pos + radial_dir * 2000.0
 		spawn_formation(configs[0]["ship"], configs[1]["ship"], configs[1]["count"], base_pos, configs[0]["fac"], null)
-	else:
-		var cfg_idx: int = 0
-		for cfg in configs:
+		used_cfg_indices.append(0)
+		used_cfg_indices.append(1)
+
+	# --- Convoy formations: group freighter + escort ---
+	for c_idx in configs.size():
+		if used_cfg_indices.has(c_idx):
+			continue
+		var _ship_data_check = ShipRegistry.get_ship_data(configs[c_idx]["ship"])
+		if _ship_data_check == null or _ship_data_check.ship_class != &"Freighter":
+			continue
+		var escort_idx: int = -1
+		if c_idx + 1 < configs.size() and not used_cfg_indices.has(c_idx + 1):
+			escort_idx = c_idx + 1
+		elif c_idx - 1 >= 0 and not used_cfg_indices.has(c_idx - 1):
+			escort_idx = c_idx - 1
+		var leader_cfg: Dictionary = configs[c_idx]
+		var st_idx: int = c_idx % station_positions.size()
+		var st_pos: Vector3 = station_positions[st_idx]
+		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+		var base_pos := st_pos + radial_dir * 3000.0
+		var escort_ship: StringName = &""
+		var escort_count: int = 0
+		if escort_idx >= 0:
+			escort_ship = configs[escort_idx]["ship"]
+			escort_count = configs[escort_idx]["count"]
+			used_cfg_indices.append(escort_idx)
+		var convoy_route: Array[Vector3] = []
+		if key_points.size() >= 2:
+			convoy_route = _build_system_route(st_pos, key_points)
+		spawn_formation(leader_cfg["ship"], escort_ship, escort_count, base_pos, leader_cfg["fac"], null, convoy_route)
+		used_cfg_indices.append(c_idx)
+
+	# --- Remaining configs: route patrols / area patrols ---
+	var cfg_idx: int = 0
+	for cfg in configs:
+		if not used_cfg_indices.has(cfg_idx):
 			var st_idx: int = cfg_idx % station_positions.size()
 			var st_pos: Vector3 = station_positions[st_idx]
 			if cfg_idx % 2 == 0 and key_points.size() >= 2:
@@ -689,9 +765,9 @@ func spawn_for_remote_system(system_id: int) -> void:
 				spawn_route_patrol(cfg["count"], cfg["ship"], route, cfg["fac"], system_id, cfg_idx)
 			else:
 				var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-				var base_pos := st_pos + radial_dir * 3000.0 + Vector3(0, 100, 0)
+				var base_pos := st_pos + radial_dir * 3000.0
 				spawn_patrol(cfg["count"], cfg["ship"], base_pos, maxf(cfg["radius"], 2000.0), cfg["fac"], system_id, cfg_idx, null)
-			cfg_idx += 1
+		cfg_idx += 1
 
 	_override_system_id = -1
 	print("EncounterManager: Spawned real NPCs for remote system %d (danger %d)" % [system_id, danger_level])

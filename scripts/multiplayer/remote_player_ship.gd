@@ -33,7 +33,6 @@ var _dr_time: float = 0.0       # Local time when last cruise packet was receive
 
 # Visual
 var _ship_model = null
-var _name_label: Label3D = null
 var _health_system: HealthSystem = null
 
 
@@ -44,7 +43,6 @@ func _ready() -> void:
 	# Without this, nodes created by LOD re-promotion would have zero collision.
 	visible = false
 	_setup_model()
-	_setup_name_label()
 	_setup_collision()
 	_setup_health_proxy()
 	# Set faction for HUD color coding (remote players = friendly)
@@ -67,28 +65,6 @@ func _setup_model() -> void:
 	_ship_model.color_tint = Color(0.6, 0.85, 1.0)
 	_ship_model.engine_light_color = Color(0.3, 0.7, 1.0)
 	add_child(_ship_model)
-
-
-func _setup_name_label() -> void:
-	_name_label = Label3D.new()
-	_name_label.name = "NameLabel"
-	_name_label.text = _build_display_name()
-	_name_label.font_size = 64
-	_name_label.pixel_size = 0.04
-	_name_label.outline_size = 8
-	_name_label.outline_modulate = Color(0.0, 0.1, 0.2, 0.9)
-	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_name_label.no_depth_test = true
-	# Position label above the actual model (using visual AABB, not hardcoded collision_size)
-	var label_height: float = 15.0
-	if _ship_model:
-		var aabb: AABB = _ship_model.get_visual_aabb()
-		label_height = aabb.position.y + aabb.size.y + 5.0
-		if label_height < 10.0:
-			label_height = 15.0
-	_name_label.position = Vector3(0, label_height, 0)
-	_name_label.modulate = Color(0.3, 0.85, 1.0, 0.9)
-	add_child(_name_label)
 
 
 func _setup_collision() -> void:
@@ -139,8 +115,6 @@ func change_ship_model(new_ship_id: StringName) -> void:
 		_ship_model = null
 	# Build new model
 	_setup_model()
-	if _name_label:
-		_name_label.position = Vector3(0, 15, 0)
 
 
 ## Called when we receive a new state snapshot from the network.
@@ -437,5 +411,4 @@ func _build_display_name() -> String:
 
 
 func _update_name_display() -> void:
-	if _name_label:
-		_name_label.text = _build_display_name()
+	pass

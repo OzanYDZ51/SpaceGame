@@ -23,7 +23,6 @@ var _model: Node3D = null
 var _bay_area: Area3D = null
 var _ring_nodes: Array[Node3D] = []
 var _nav_lights: Array[OmniLight3D] = []
-var _name_label: Label3D = null
 var _light_time: float = 0.0
 
 # --- Bay geometry (model-local coords, pre-scale) ---
@@ -61,7 +60,6 @@ func _ready() -> void:
 
 	await _load_model()
 	_build_lights()
-	_build_name_label()
 	_find_ring_nodes()
 
 	if station_equipment == null:
@@ -185,21 +183,6 @@ func _add_light(pos: Vector3, color: Color, energy: float, range_val: float) -> 
 	light.shadow_enabled = false
 	add_child(light)
 	return light
-
-
-func _build_name_label() -> void:
-	_name_label = Label3D.new()
-	_name_label.name = "StationLabel"
-	_name_label.text = station_name.to_upper()
-	_name_label.font_size = 64
-	_name_label.pixel_size = 1.0
-	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_name_label.no_depth_test = true
-	_name_label.position = Vector3(0, BAY_OPENING_Y + 300, 0)
-	_name_label.modulate = Color(0.2, 0.85, 0.8, 0.9)
-	_name_label.outline_modulate = Color(0.0, 0.1, 0.1, 0.6)
-	_name_label.outline_size = 8
-	add_child(_name_label)
 
 
 # =========================================================================

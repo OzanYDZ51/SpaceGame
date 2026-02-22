@@ -53,6 +53,7 @@ var _loot_pickup = null
 var _debug_timer: float = 0.0
 var _cached_target_health = null
 var _cached_target_ref: Node3D = null
+var _waypoints_regenerated_for_obstacle: bool = false
 
 
 func setup(behavior_name: StringName) -> void:
@@ -143,9 +144,13 @@ func _process(delta: float) -> void:
 
 	# Periodic environment scan
 	_env.tick(tick_rate)
-	# Regenerate waypoints if inside obstacle zone
+	# Regenerate waypoints if inside obstacle zone (debounced — once per obstacle encounter)
 	if _env.near_obstacle and current_state == State.PATROL:
-		_generate_patrol_waypoints()
+		if not _waypoints_regenerated_for_obstacle:
+			_waypoints_regenerated_for_obstacle = true
+			_generate_patrol_waypoints()
+	else:
+		_waypoints_regenerated_for_obstacle = false
 
 	match current_state:
 		State.IDLE:
@@ -312,10 +317,17 @@ func _tick_formation() -> void:
 		current_state = _default_state()
 		return
 
+	# Scan for nearby hostile faction ships (pirates vs nova_terra, etc.)
+	_detect_threats()
+	if target:
+		current_state = State.PURSUE
+		return
+
 	var leader_basis: Basis = formation_leader.global_transform.basis
 	var target_pos: Vector3 = formation_leader.global_position + leader_basis * formation_offset
 	_pilot.fly_toward(target_pos, 20.0)
 
+	# Also follow leader's target if leader is already fighting
 	if weapons_enabled and formation_leader.has_node("AIBrain"):
 		var leader_brain = formation_leader.get_node("AIBrain")
 		if leader_brain and leader_brain.target:
@@ -388,7 +400,7 @@ func _generate_patrol_waypoints() -> void:
 		var angle: float = (float(i) / 4.0) * TAU
 		var wp =_patrol_center + Vector3(
 			cos(angle) * _patrol_radius,
-			randf_range(-50.0, 50.0),
+			0.0,
 			sin(angle) * _patrol_radius,
 		)
 		wp = _env.push_away_from_obstacles(wp)
@@ -441,7 +453,7 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		if defense_ai:
 			defense_ai.alert_guards(attacker)
 
-	if current_state == State.IDLE or (current_state == State.PATROL and not route_priority):
+	if current_state == State.IDLE or current_state == State.FORMATION or (current_state == State.PATROL and not route_priority):
 		target = attacker
 		current_state = State.PURSUE
 		return

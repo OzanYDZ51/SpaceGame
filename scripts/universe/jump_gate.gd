@@ -40,7 +40,6 @@ var target_system_name: String = ""
 var gate_name: String = ""
 
 var _model_pivot: Node3D = null
-var _label: Label3D = null
 var _portal_material: StandardMaterial3D = null  # Surface 0 (ScdGate)
 var _player_inside: bool = false
 var _inside_tunnel: bool = false
@@ -55,7 +54,6 @@ var _vortex_tween: Tween = null
 func _ready() -> void:
 	_build_model()
 	_build_lights()
-	_build_label()
 
 
 func _build_model() -> void:
@@ -161,27 +159,11 @@ func _build_lights() -> void:
 		add_child(light)
 
 
-func _build_label() -> void:
-	_label = Label3D.new()
-	_label.name = "GateLabel"
-	_label.text = gate_name if gate_name != "" else "JUMP GATE"
-	_label.font_size = 64
-	_label.modulate = Color(emission_color.r, emission_color.g, emission_color.b, 0.9)
-	_label.outline_modulate = Color(0.0, 0.1, 0.2, 0.8)
-	_label.outline_size = 8
-	_label.position = Vector3(0, 850, 0)
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_label.no_depth_test = true
-	add_child(_label)
-
-
 func setup(data: Dictionary) -> void:
 	target_system_id = data["target_system_id"]
 	target_system_name = data.get("target_system_name", "Unknown")
 	gate_name = data["name"]
 	global_position = Vector3(data["pos_x"], data["pos_y"], data["pos_z"])
-	if _label:
-		_label.text = gate_name
 	_orient_toward_center()
 
 
@@ -190,8 +172,6 @@ func setup_from_data(data: JumpGateData) -> void:
 	target_system_name = data.target_system_name
 	gate_name = data.gate_name
 	global_position = Vector3(data.pos_x, data.pos_y, data.pos_z)
-	if _label:
-		_label.text = gate_name
 	_orient_toward_center()
 
 

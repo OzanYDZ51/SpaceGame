@@ -21,15 +21,12 @@ const EXTRAPOLATION_MAX: float = 1.0  # 1 second max extrapolation before freeze
 
 # Visual
 var _ship_model = null
-var _name_label: Label3D = null
-
 # Health proxy (synced from network state)
 var _health: HealthSystem = null
 
 
 func _ready() -> void:
 	_setup_model()
-	_setup_name_label()
 	_setup_collision()
 	_setup_health_proxy()
 	add_to_group("ships")
@@ -67,46 +64,6 @@ func _setup_model() -> void:
 		_ship_model.engine_light_color = Color(0.5, 0.4, 1.0)
 
 	add_child(_ship_model)
-
-
-func _setup_name_label() -> void:
-	var data = ShipRegistry.get_ship_data(ship_id)
-	var ship_name: String = String(data.ship_name) if data else String(ship_id)
-	var display_name: String = ship_name
-	if faction == &"player_fleet":
-		if owner_name != "":
-			display_name = "[%s] %s" % [owner_name, ship_name]
-		else:
-			display_name = ship_name + " [Flotte]"
-
-	_name_label = Label3D.new()
-	_name_label.name = "NameLabel"
-	_name_label.text = display_name
-	_name_label.font_size = 48
-	_name_label.pixel_size = 0.05
-	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_name_label.no_depth_test = true
-	# Position label above the actual model (using visual AABB, not hardcoded collision_size)
-	var label_height: float = 15.0
-	if _ship_model:
-		var aabb: AABB = _ship_model.get_visual_aabb()
-		label_height = aabb.position.y + aabb.size.y + 5.0
-		if label_height < 10.0:
-			label_height = 15.0
-	_name_label.position = Vector3(0, label_height, 0)
-
-	if faction == &"hostile":
-		_name_label.modulate = Color(1.0, 0.4, 0.3, 0.8)
-	elif faction == &"pirate":
-		_name_label.modulate = Color(1.0, 0.65, 0.15, 0.8)
-	elif faction == &"friendly":
-		_name_label.modulate = Color(0.3, 1.0, 0.5, 0.8)
-	elif faction == &"player_fleet":
-		_name_label.modulate = Color(0.4, 0.65, 1.0, 0.9)
-	else:
-		_name_label.modulate = Color(0.7, 0.6, 1.0, 0.8)
-
-	add_child(_name_label)
 
 
 func _setup_collision() -> void:

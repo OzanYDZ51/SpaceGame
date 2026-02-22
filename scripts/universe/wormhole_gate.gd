@@ -23,7 +23,6 @@ signal player_left_wormhole()
 var gate_name: String = ""
 var _ring_mesh: MeshInstance3D = null
 var _inner_glow: MeshInstance3D = null
-var _label: Label3D = null
 var _material: StandardMaterial3D = null
 var _glow_material: StandardMaterial3D = null
 var _player_inside: bool = false
@@ -36,7 +35,6 @@ func _ready() -> void:
 	_build_ring()
 	_build_inner_glow()
 	_build_trigger()
-	_build_label()
 
 
 func _build_ring() -> void:
@@ -100,29 +98,12 @@ func _build_trigger() -> void:
 	pass
 
 
-func _build_label() -> void:
-	_label = Label3D.new()
-	_label.name = "WormholeLabel"
-	_label.text = gate_name if gate_name != "" else "WORMHOLE"
-	_label.font_size = 36
-	_label.modulate = Color(emission_color.r, emission_color.g, emission_color.b, 0.9)
-	_label.outline_modulate = Color(0.1, 0.0, 0.15, 0.8)
-	_label.outline_size = 4
-	_label.position = Vector3(0, ring_outer_radius + 20, 0)
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_label.no_depth_test = true
-	add_child(_label)
-
-
 func setup(data: Dictionary) -> void:
 	target_galaxy_seed = data.get("target_seed", 0)
 	target_galaxy_name = data.get("target_name", "Unknown Galaxy")
 	target_server_url = data.get("target_url", "")
 	gate_name = "Wormhole → " + target_galaxy_name
 	global_position = Vector3(data.get("pos_x", 0.0), data.get("pos_y", 0.0), data.get("pos_z", 0.0))
-
-	if _label:
-		_label.text = gate_name
 
 
 func _process(_delta: float) -> void:

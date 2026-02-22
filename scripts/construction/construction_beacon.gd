@@ -15,7 +15,6 @@ var marker_type: StringName = &"station"
 
 var _torus: MeshInstance3D = null
 var _pillar: MeshInstance3D = null
-var _label: Label3D = null
 var _trigger: Area3D = null
 var _player_inside: bool = false
 
@@ -38,8 +37,6 @@ func setup(marker: Dictionary) -> void:
 	var pos_x: float = marker.get("pos_x", 0.0)
 	var pos_z: float = marker.get("pos_z", 0.0)
 	global_position = FloatingOrigin.to_local_pos([pos_x, 0.0, pos_z])
-	if _label:
-		_label.text = display_name + " [CONSTRUCTION]"
 
 
 func _build_visuals() -> void:
@@ -77,18 +74,6 @@ func _build_visuals() -> void:
 	_pillar.material_override = pillar_mat
 	_pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_pillar)
-
-	# Billboard label
-	_label = Label3D.new()
-	_label.text = "Construction"
-	_label.font_size = 48
-	_label.pixel_size = 0.02
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_label.modulate = Color(1.0, 0.7, 0.2, 0.9)
-	_label.position = Vector3(0, PILLAR_HEIGHT * 0.5 + 5.0, 0)
-	_label.no_depth_test = true
-	_label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_label)
 
 
 func _build_trigger() -> void:

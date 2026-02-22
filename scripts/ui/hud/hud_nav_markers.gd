@@ -14,9 +14,11 @@ const NAV_COL_STAR: Color = Color(1.0, 0.85, 0.4, 0.75)
 const NAV_COL_GATE: Color = Color(0.15, 0.6, 1.0, 0.85)
 const NAV_COL_BELT: Color = Color(0.7, 0.55, 0.35, 0.7)
 const NAV_COL_HOSTILE: Color = Color(1.0, 0.3, 0.2, 0.85)
+const NAV_COL_PIRATE: Color = Color(1.0, 0.65, 0.15, 0.85)
 const NAV_COL_FRIENDLY: Color = Color(0.3, 0.9, 0.4, 0.85)
 const NAV_COL_NEUTRAL_NPC: Color = Color(0.6, 0.4, 0.9, 0.85)
 const NAV_COL_FLEET: Color = Color(0.4, 0.65, 1.0, 0.9)
+const NAV_COL_PLAYER: Color = Color(0.3, 0.85, 1.0, 0.9)
 const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
 const NAV_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
 const NAV_COL_TARGET: Color = Color(1.0, 0.72, 0.08, 1.0)  # Gold — selected map nav target
@@ -247,7 +249,7 @@ func _draw_nav_onscreen(ctrl: Control, font: Font, sp: Vector2, ent_name: String
 	var name_w =font.get_string_size(ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY).x
 	var name_pos =Vector2(sp.x - name_w * 0.5, sp.y - 18)
 	ctrl.draw_rect(Rect2(name_pos.x - 4, name_pos.y - 11, name_w + 8, 15), Color(0.0, 0.02, 0.06, 0.5))
-	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, name_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, col)
 
 	var dist_w =font.get_string_size(dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL).x
 	var dist_pos =Vector2(sp.x - dist_w * 0.5, sp.y + 18)
@@ -289,28 +291,26 @@ func _draw_nav_offscreen(ctrl: Control, font: Font, screen_size: Vector2, cam: C
 	text_pos.x = clampf(text_pos.x, 8.0, screen_size.x - 120.0)
 	text_pos.y = clampf(text_pos.y, 16.0, screen_size.y - 16.0)
 
-	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
+	ctrl.draw_string(font, text_pos, ent_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, col)
 	ctrl.draw_string(font, text_pos + Vector2(0, 14), dist_str, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_SMALL, col)
 
 
 func _get_npc_nav_color(node: Node) -> Color:
 	var faction = node.get("faction")
-	if faction == &"hostile" or faction == &"pirate":
-		return NAV_COL_HOSTILE
-	elif faction == &"friendly":
-		return NAV_COL_FRIENDLY
-	elif faction == &"player_fleet":
-		return NAV_COL_FLEET
-	return NAV_COL_NEUTRAL_NPC
+	return _get_faction_nav_color(faction if faction else &"")
 
 
 func _get_faction_nav_color(faction: StringName) -> Color:
-	if faction == &"hostile" or faction == &"pirate":
+	if faction == &"hostile" or faction == &"lawless":
 		return NAV_COL_HOSTILE
+	elif faction == &"pirate":
+		return NAV_COL_PIRATE
 	elif faction == &"friendly":
 		return NAV_COL_FRIENDLY
 	elif faction == &"player_fleet":
 		return NAV_COL_FLEET
+	elif faction == &"player":
+		return NAV_COL_PLAYER
 	return NAV_COL_NEUTRAL_NPC
 
 
