@@ -12,6 +12,7 @@ extends Node
 #   _asteroids    → NpcAsteroidAuthority  (asteroid health, mining validation)
 # =============================================================================
 
+@warning_ignore("unused_signal")
 signal npc_killed(npc_id: StringName, killer_pid: int)
 
 const ENCOUNTER_RESPAWN_DELAY: float = 300.0  # 5 minutes
@@ -182,6 +183,11 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "") -> void:
 	if _combat:
 		_combat._on_npc_killed(npc_id, killer_pid, weapon_name)
+
+
+func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, loot: Array, system_id: int = -1) -> void:
+	if _combat:
+		_combat._broadcast_npc_death(npc_id, killer_pid, death_pos, loot, system_id)
 
 
 func _get_effective_hp(ship_id: StringName) -> Dictionary:

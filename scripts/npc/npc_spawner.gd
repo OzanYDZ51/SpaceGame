@@ -49,7 +49,7 @@ func clear_all_npcs() -> void:
 
 ## Save NPCs to persistence instead of destroying them. Returns the NPC nodes
 ## (already detached from LOD/authority) so NpcPersistence can reparent them.
-func save_npcs_for_persistence(system_id: int) -> Array[Node]:
+func save_npcs_for_persistence(_system_id: int) -> Array[Node]:
 	var lod_mgr = _get_lod_manager()
 	var npc_nodes: Array[Node] = []
 
