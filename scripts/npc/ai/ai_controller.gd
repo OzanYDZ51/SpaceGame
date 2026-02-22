@@ -217,6 +217,8 @@ func setup_as_station(station: Node3D, _wm = null) -> void:
 	perception.setup(station)
 	combat = AICombat.new()
 	combat.setup(station)
+	_combat_behavior = CombatBehavior.new()
+	_combat_behavior.controller = self
 	# No navigation for stations
 	# Set up guard behavior in turret-only mode
 	var gb := GuardBehavior.new()
