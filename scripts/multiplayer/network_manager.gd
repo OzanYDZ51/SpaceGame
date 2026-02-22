@@ -1053,7 +1053,7 @@ func _rpc_admin_command(cmd: String) -> void:
 	var sender_id: int = multiplayer.get_remote_sender_id()
 	var sender_state = _peer_registry.peers.get(sender_id)
 	if sender_state == null or sender_state.role != "admin":
-		push_warning("[NetworkManager] Admin command '%s' from non-admin peer %d — rejected" % [cmd, sender_id])
+		_rpc_receive_chat.rpc_id(sender_id, "SYSTÈME", 0, "⚠ Accès refusé — commande admin requise.", "", "system")
 		return
 	match cmd:
 		"reset_npcs":

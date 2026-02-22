@@ -460,7 +460,7 @@ func _demote_lod0_to_lod1(id: StringName, data) -> void:
 		rb.collision_layer = Constants.LAYER_SHIPS
 		rb.collision_mask = 0
 
-	var brain = node.get_node_or_null("AIBrain")
+	var brain = node.get_node_or_null("AIController")
 	if brain:
 		brain.weapons_enabled = true
 
@@ -570,7 +570,7 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 			for nl: OmniLight3D in model._nav_lights.get_lights():
 				nl.omni_range *= 0.7
 
-	var brain = node.get_node_or_null("AIBrain")
+	var brain = node.get_node_or_null("AIController")
 	if brain:
 		brain.weapons_enabled = true
 		if not data.ai_route_waypoints.is_empty():
@@ -640,7 +640,7 @@ func _promote_to_lod0(id: StringName, data) -> void:
 		rb.collision_layer = Constants.LAYER_SHIPS
 		rb.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
 
-	var brain = node.get_node_or_null("AIBrain")
+	var brain = node.get_node_or_null("AIController")
 	if brain:
 		brain.set_process(true)
 		brain.weapons_enabled = true
@@ -831,10 +831,10 @@ func _reequip_fleet_ship(npc, fleet_index: int) -> void:
 			if mod_res:
 				em.equip_module(i, mod_res)
 
-	# Re-attach FleetAIBridge + AIMiningBehavior
-	if npc.get_node_or_null("FleetAIBridge") == null:
-		var bridge =FleetAIBridge.new()
-		bridge.name = "FleetAIBridge"
+	# Re-attach FleetAICommand + AIMiningBehavior
+	if npc.get_node_or_null("FleetAICommand") == null:
+		var bridge =FleetAICommand.new()
+		bridge.name = "FleetAICommand"
 		bridge.fleet_index = fleet_index
 		bridge.command = fs.deployed_command
 		bridge.command_params = fs.deployed_command_params

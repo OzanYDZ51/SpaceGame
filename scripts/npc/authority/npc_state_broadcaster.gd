@@ -198,7 +198,7 @@ func _build_npc_state_dict(npc_id: StringName, lod_data: ShipLODData) -> Diction
 		if health:
 			hull = health.get_hull_ratio()
 			shd = health.get_total_shield_ratio()
-		var brain = lod_data.node_ref.get_node_or_null("AIBrain")
+		var brain = lod_data.node_ref.get_node_or_null("AIController")
 		if brain:
 			ai = brain.current_state
 			if brain.target and is_instance_valid(brain.target):

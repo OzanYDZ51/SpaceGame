@@ -250,11 +250,11 @@ func _spawn_convoy_npcs(evt: EventData, definition: Dictionary, start_pos: Vecto
 				if escort_ship:
 					escort_ship.cruise_disabled = true
 					if leader_ship:
-						var escort_brain = escort_ship.get_node_or_null("AIBrain")
+						var escort_brain = escort_ship.get_node_or_null("AIController")
 						if escort_brain:
 							escort_brain.formation_leader = leader_ship
 							escort_brain.formation_offset = offset.normalized() * clampf(dist, 200.0, 400.0)
-							escort_brain.current_state = AIBrain.State.FORMATION
+							escort_brain.current_state = AIController.State.FORMATION
 
 
 func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, route_waypoints: Array[Vector3], parent: Node, lod_mgr, _cam_pos: Vector3, is_leader: bool) -> Array:
@@ -263,7 +263,7 @@ func _spawn_single_npc(ship_id: StringName, pos: Vector3, faction: StringName, r
 	# Always spawn full nodes — all NPCs are real ships with AI + physics
 	var ship = ShipFactory.spawn_npc_ship(ship_id, behavior, pos, parent, faction)
 	if ship:
-		var brain = ship.get_node_or_null("AIBrain")
+		var brain = ship.get_node_or_null("AIController")
 		if brain:
 			if not route_waypoints.is_empty():
 				brain.set_route(route_waypoints)

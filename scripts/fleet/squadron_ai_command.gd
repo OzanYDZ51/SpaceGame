@@ -1,10 +1,9 @@
-class_name SquadronAIController
+class_name SquadronAICommand
 extends Node
 
 # =============================================================================
-# Squadron AI Controller — Formation follow for squadron members
-# Attached as child of deployed fleet NPC. Ticks at 10Hz.
-# Writes to AIBrain: formation_leader, formation_offset, current_state
+# Squadron AI Command — Formation follow for squadron members.
+# Replaces SquadronAIController. Talks to AIController instead of AIBrain.
 # =============================================================================
 
 var fleet_index: int = -1
@@ -12,8 +11,8 @@ var squadron = null
 var leader_node: Node3D = null
 
 var _ship = null
-var _brain = null
-var _bridge = null
+var _ctrl: AIController = null
+var _bridge: FleetAICommand = null
 var _tick_timer: float = 0.0
 
 const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
@@ -22,8 +21,8 @@ const TICK_INTERVAL: float = Constants.AI_TICK_INTERVAL
 func _ready() -> void:
 	_ship = get_parent()
 	if _ship:
-		_brain = _ship.get_node_or_null("AIBrain")
-		_bridge = _ship.get_node_or_null("FleetAIBridge")
+		_ctrl = _ship.get_node_or_null("AIController")
+		_bridge = _ship.get_node_or_null("FleetAICommand")
 
 
 func _process(delta: float) -> void:
@@ -32,34 +31,33 @@ func _process(delta: float) -> void:
 		return
 	_tick_timer = 0.0
 
-	if _brain == null or squadron == null:
+	if _ctrl == null or squadron == null:
 		return
 
-	# If FleetAIBridge has an active command that hasn't arrived,
-	# let the bridge handle navigation — don't override to FORMATION
+	# If FleetAICommand has an active command that hasn't arrived, let it handle navigation
 	if _bridge and not _bridge._arrived and _bridge.command in [&"move_to", &"patrol", &"attack", &"return_to_station", &"mine"]:
 		return
 
-	# Mining state is handled entirely by AIMiningBehavior — don't override
-	if _brain.current_state == AIBrain.State.MINING:
+	# Mining state is handled entirely by AIMiningBehavior
+	if _ctrl.current_state == AIController.State.MINING:
 		return
 
 	# Validate leader
 	if leader_node == null or not is_instance_valid(leader_node):
-		_brain.formation_leader = null
-		_brain.current_state = AIBrain.State.PATROL
+		_ctrl.formation_leader = null
+		_ctrl.current_state = AIController.State.PATROL
 		return
 
 	# Calculate formation offset
 	var member_idx: int = squadron.get_member_index(fleet_index)
 	if member_idx < 0:
 		return
-	var offset =SquadronFormation.get_offset(
+	var offset := SquadronFormation.get_offset(
 		squadron.formation_type, member_idx, squadron.member_fleet_indices.size()
 	)
 
 	# Follow leader in formation
-	_brain.formation_leader = leader_node
-	_brain.formation_offset = offset
-	if _brain.current_state != AIBrain.State.FORMATION:
-		_brain.current_state = AIBrain.State.FORMATION
+	_ctrl.formation_leader = leader_node
+	_ctrl.formation_offset = offset
+	if _ctrl.current_state != AIController.State.FORMATION:
+		_ctrl.current_state = AIController.State.FORMATION

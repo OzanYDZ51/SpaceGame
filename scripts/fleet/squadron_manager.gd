@@ -186,12 +186,12 @@ func reset_to_follow(fleet_index: int) -> void:
 	# Clear the bridge command so SquadronAIController resumes formation
 	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc:
-		var bridge = npc.get_node_or_null("FleetAIBridge")
+		var bridge = npc.get_node_or_null("FleetAICommand")
 		if bridge:
 			bridge._arrived = true
 			bridge.command = &""
 		# Re-attach controller if missing
-		var ctrl = npc.get_node_or_null("SquadronAIController")
+		var ctrl = npc.get_node_or_null("SquadronAICommand")
 		if ctrl == null:
 			setup_squadron_controller(fleet_index, npc)
 	# Clear deployed command on FleetShip
@@ -281,19 +281,19 @@ func setup_squadron_controller(fleet_index: int, npc: Node) -> void:
 	if leader_node == null:
 		return
 
-	var existing = npc.get_node_or_null("SquadronAIController")
+	var existing = npc.get_node_or_null("SquadronAICommand")
 	if existing:
 		existing.queue_free()
 
-	var ctrl =SquadronAIController.new()
-	ctrl.name = "SquadronAIController"
+	var ctrl =SquadronAICommand.new()
+	ctrl.name = "SquadronAICommand"
 	ctrl.fleet_index = fleet_index
 	ctrl.squadron = sq
 	ctrl.leader_node = leader_node
 	npc.add_child(ctrl)
 
-	# Clear FleetAIBridge command so SquadronAIController takes priority immediately
-	var bridge = npc.get_node_or_null("FleetAIBridge")
+	# Clear FleetAICommand command so SquadronAICommand takes priority immediately
+	var bridge = npc.get_node_or_null("FleetAICommand")
 	if bridge:
 		bridge._arrived = true
 		bridge.command = &""
@@ -308,13 +308,13 @@ func _detach_squadron_controller(fleet_index: int) -> void:
 	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc == null:
 		return
-	var ctrl = npc.get_node_or_null("SquadronAIController")
+	var ctrl = npc.get_node_or_null("SquadronAICommand")
 	if ctrl:
 		ctrl.queue_free()
-	var brain = npc.get_node_or_null("AIBrain")
-	if brain and brain.current_state == AIBrain.State.FORMATION:
+	var brain = npc.get_node_or_null("AIController")
+	if brain and brain.current_state == AIController.State.FORMATION:
 		brain.formation_leader = null
-		brain.current_state = AIBrain.State.PATROL
+		brain.current_state = AIController.State.PATROL
 
 
 func _refresh_controller(fleet_index: int, sq) -> void:
@@ -323,7 +323,7 @@ func _refresh_controller(fleet_index: int, sq) -> void:
 	var npc = _fleet_deployment_mgr.get_deployed_npc(fleet_index)
 	if npc == null:
 		return
-	var ctrl = npc.get_node_or_null("SquadronAIController")
+	var ctrl = npc.get_node_or_null("SquadronAICommand")
 	if ctrl:
 		ctrl.squadron = sq
 		ctrl.leader_node = _resolve_leader_node(sq)

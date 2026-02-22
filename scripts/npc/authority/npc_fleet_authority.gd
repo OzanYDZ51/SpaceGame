@@ -105,7 +105,7 @@ func send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 						entry["pos_y"] = upos[1]
 						entry["pos_z"] = upos[2]
 						if is_instance_valid(lod_data.node_ref):
-							var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
+							var bridge = lod_data.node_ref.get_node_or_null("FleetAICommand")
 							if bridge:
 								entry["command"] = String(bridge.command)
 				alive_list.append(entry)
@@ -235,7 +235,7 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 		var lod_data = lod_mgr.get_ship_data(npc_id)
 		if lod_data and is_instance_valid(lod_data.node_ref):
 			var npc = lod_data.node_ref
-			var bridge = npc.get_node_or_null("FleetAIBridge")
+			var bridge = npc.get_node_or_null("FleetAICommand")
 			if bridge:
 				bridge.apply_command(cmd, params)
 			var existing_mining = npc.get_node_or_null("AIMiningBehavior")
@@ -394,9 +394,9 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 			if mod_res:
 				em.equip_module(i, mod_res)
 
-	# Attach FleetAIBridge
-	var bridge = FleetAIBridge.new()
-	bridge.name = "FleetAIBridge"
+	# Attach FleetAICommand
+	var bridge = FleetAICommand.new()
+	bridge.name = "FleetAICommand"
 	bridge.fleet_index = fleet_index
 	bridge.command = cmd
 	bridge.command_params = params

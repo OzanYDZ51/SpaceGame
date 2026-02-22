@@ -524,7 +524,7 @@ func _clear_npc_targets_on_player() -> void:
 		var targeting = npc.get_node_or_null("TargetingSystem")
 		if targeting and targeting.current_target == player_ship:
 			targeting.clear_target()
-		var brain = npc.get_node_or_null("AIBrain")
+		var brain = npc.get_node_or_null("AIController")
 		if brain:
 			brain.target = null
 

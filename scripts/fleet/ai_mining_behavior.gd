@@ -89,8 +89,8 @@ func _ready() -> void:
 		return
 
 	await get_tree().process_frame
-	_brain = _ship.get_node_or_null("AIBrain")
-	_pilot = _ship.get_node_or_null("AIPilot")
+	_brain = _ship.get_node_or_null("AIController")
+	_pilot = _ship.get_node_or_null("AINavigation")
 
 	# Find AsteroidFieldManager (child of GameManager)
 	_asteroid_mgr = GameManager.get_node_or_null("AsteroidFieldManager")
@@ -112,7 +112,7 @@ func _ready() -> void:
 		_home_station_id = fleet_ship.docked_station_id
 
 	# Read belt center + resource filter from FleetAIBridge sibling
-	var bridge = _ship.get_node_or_null("FleetAIBridge")
+	var bridge = _ship.get_node_or_null("FleetAICommand")
 	if bridge:
 		_belt_center_x = bridge.command_params.get("center_x", 0.0)
 		_belt_center_z = bridge.command_params.get("center_z", 0.0)
@@ -327,7 +327,7 @@ func _validate_home_station() -> void:
 func _process(delta: float) -> void:
 	if _ship == null or _pilot == null:
 		return
-	if _brain == null or _brain.current_state != AIBrain.State.MINING:
+	if _brain == null or _brain.current_state != AIController.State.MINING:
 		_stop_beam()
 		return
 

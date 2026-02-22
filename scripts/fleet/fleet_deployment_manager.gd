@@ -164,9 +164,9 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 			if mod_res:
 				em.equip_module(i, mod_res)
 
-	# Attach FleetAIBridge
-	var bridge =FleetAIBridge.new()
-	bridge.name = "FleetAIBridge"
+	# Attach FleetAICommand
+	var bridge =FleetAICommand.new()
+	bridge.name = "FleetAICommand"
 	bridge.fleet_index = fleet_index
 	bridge.command = cmd
 	bridge.command_params = params
@@ -263,7 +263,7 @@ func retrieve_ship(fleet_index: int) -> bool:
 		if is_instance_valid(npc_ref):
 			var npc = npc_ref
 			# Update docked_station_id from bridge (ship may have been sent to a different station)
-			var bridge = npc.get_node_or_null("FleetAIBridge")
+			var bridge = npc.get_node_or_null("FleetAICommand")
 			if bridge and bridge._station_id != "":
 				fs.docked_station_id = bridge._station_id
 			npc.queue_free()
@@ -302,7 +302,7 @@ func change_command(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 		return false
 	var npc = npc_ref
 
-	var bridge = npc.get_node_or_null("FleetAIBridge")
+	var bridge = npc.get_node_or_null("FleetAICommand")
 	if bridge:
 		bridge.apply_command(cmd, params)
 

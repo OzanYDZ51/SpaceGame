@@ -422,7 +422,7 @@ func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: floa
 		# Always spawn full nodes — all NPCs are real ships with AI + physics
 		var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
 		if ship:
-			var brain = ship.get_node_or_null("AIBrain")
+			var brain = ship.get_node_or_null("AIController")
 			if brain:
 				brain.set_patrol_area(center, patrol_radius)
 				if station_node:
@@ -464,7 +464,7 @@ func spawn_route_patrol(count: int, ship_id: StringName, route: Array[Vector3], 
 		# Always spawn full nodes — all NPCs are real ships with AI + physics
 		var ship = ShipFactory.spawn_npc_ship(ship_id, &"balanced", pos, parent, faction)
 		if ship:
-			var brain = ship.get_node_or_null("AIBrain")
+			var brain = ship.get_node_or_null("AIController")
 			if brain:
 				brain.set_patrol_area(route[0], 50000.0)
 				brain._waypoints = route.duplicate()
@@ -538,7 +538,7 @@ func spawn_free_for_all(count: int, ship_id: StringName, center: Vector3, radius
 		# Always spawn full nodes — all NPCs are real ships with AI + physics
 		var ship = ShipFactory.spawn_npc_ship(ship_id, &"aggressive", pos, parent, unique_faction)
 		if ship:
-			var brain = ship.get_node_or_null("AIBrain")
+			var brain = ship.get_node_or_null("AIController")
 			if brain:
 				brain.set_patrol_area(center, radius)
 			_active_npc_ids.append(StringName(ship.name))
@@ -589,7 +589,7 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 	var leader = ShipFactory.spawn_npc_ship(leader_id, &"aggressive", pos, parent, faction)
 	if leader == null:
 		return
-	var leader_brain = leader.get_node_or_null("AIBrain")
+	var leader_brain = leader.get_node_or_null("AIController")
 	if leader_brain:
 		if route.size() >= 2:
 			leader_brain.set_route(route)
@@ -612,11 +612,11 @@ func spawn_formation(leader_id: StringName, wingman_id: StringName, wingman_coun
 
 		var wingman = ShipFactory.spawn_npc_ship(wingman_id, &"aggressive", wing_pos, parent, faction)
 		if wingman:
-			var brain = wingman.get_node_or_null("AIBrain")
+			var brain = wingman.get_node_or_null("AIController")
 			if brain:
 				brain.formation_leader = leader
 				brain.formation_offset = offset
-				brain.current_state = AIBrain.State.FORMATION
+				brain.current_state = AIController.State.FORMATION
 				if station_node:
 					brain.guard_station = station_node
 			_active_npc_ids.append(StringName(wingman.name))
@@ -680,7 +680,7 @@ func spawn_for_remote_system(system_id: int) -> void:
 	if key_points.is_empty():
 		key_points.append(Vector3(5000, 0, -15000))
 
-	# Register virtual stations in EntityRegistry so AIBrain environment awareness works.
+	# Register virtual stations in EntityRegistry so AIController environment awareness works.
 	# Without these, _update_environment() can't find stations → no push-away, no avoidance.
 	var virtual_station_ids: Array[String] = []
 	for st_idx in station_positions.size():

@@ -1,39 +1,37 @@
-class_name AIBrainThreats
+class_name AIPerception
 extends RefCounted
 
 # =============================================================================
-# AI Brain Threats - Threat detection, faction checks, threat table management.
-# Extracted from AIBrain to keep the core state machine lean.
-# Runs as a RefCounted sub-object owned by AIBrain.
+# AI Perception — Unified threat detection, faction checks, threat table.
+# Fuses AIBrainThreats + StationDefenseAI threat logic.
+# Works for both ships and stations.
 # =============================================================================
 
 const THREAT_DECAY_RATE: float = 5.0
 const THREAT_SWITCH_RATIO: float = 1.5
 const THREAT_CLEANUP_TIME: float = 10.0
 
-# Threat table: tracks accumulated damage from each attacker
-# Key = attacker instance_id, Value = { "node": Node3D, "threat": float, "last_hit": float }
+# Threat table: instance_id → { "node": Node3D, "threat": float, "last_hit": float }
 var threat_table: Dictionary = {}
-@warning_ignore("unused_private_class_variable")
 var _last_threat_update_ms: float = 0.0
 
-var _ship = null
+var _owner_node: Node3D = null
 var _cached_lod_mgr = null
 
 
-func setup(ship: Node3D) -> void:
-	_ship = ship
+func setup(owner: Node3D) -> void:
+	_owner_node = owner
 	_cached_lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 
 
-func detect_threats(detection_range: float, weapons_enabled: bool, ignore_threats: bool) -> Node3D:
-	if _ship == null or ignore_threats or not weapons_enabled:
+func detect_nearest_hostile(detection_range: float) -> Node3D:
+	if _owner_node == null:
 		return null
 
-	# Use spatial grid via LOD manager if available (O(k) instead of O(n))
+	# Fast path: spatial grid via LOD manager (O(k) instead of O(n))
 	if _cached_lod_mgr:
-		var self_id =StringName(_ship.name)
-		var results = _cached_lod_mgr.get_nearest_ships(_ship.global_position, detection_range, 5, self_id)
+		var self_id := StringName(_owner_node.name)
+		var results = _cached_lod_mgr.get_nearest_ships(_owner_node.global_position, detection_range, 5, self_id)
 		var nearest_threat: Node3D = null
 		var nearest_dist: float = detection_range
 		for entry in results:
@@ -50,38 +48,40 @@ func detect_threats(detection_range: float, weapons_enabled: bool, ignore_threat
 				nearest_threat = data.node_ref
 		return nearest_threat
 
-	# Legacy fallback
-	var all_ships = _ship.get_tree().get_nodes_in_group("ships") if _ship.is_inside_tree() else []
+	# Legacy fallback: scan "ships" group
+	if not _owner_node.is_inside_tree():
+		return null
+	var all_ships = _owner_node.get_tree().get_nodes_in_group("ships")
 	var fallback_threat: Node3D = null
 	var fallback_dist: float = detection_range
 
 	for node in all_ships:
-		if node == _ship:
+		if node == _owner_node:
 			continue
-		if node.get("ship_data") != null:
-			var other = node
-			var other_faction: StringName = other.faction
-			if is_faction_allied(other_faction, StringName(other.name)):
+		if node.get("ship_data") == null:
+			continue
+		var other_faction: StringName = node.faction
+		if is_faction_allied(other_faction, StringName(node.name)):
+			continue
+		var dist: float = _owner_node.global_position.distance_to(node.global_position)
+		if dist < fallback_dist:
+			var other_health = node.get_node_or_null("HealthSystem")
+			if other_health and other_health.is_dead():
 				continue
-			var dist: float = _ship.global_position.distance_to(other.global_position)
-			if dist < fallback_dist:
-				var other_health = other.get_node_or_null("HealthSystem")
-				if other_health and other_health.is_dead():
-					continue
-				fallback_dist = dist
-				fallback_threat = other
+			fallback_dist = dist
+			fallback_threat = node
 
 	return fallback_threat
 
 
 func is_faction_allied(target_faction: StringName, target_id: StringName = &"") -> bool:
-	var my_fac: StringName = _ship.faction
+	var my_fac: StringName = _owner_node.faction if "faction" in _owner_node else &"neutral"
 
 	if target_faction == my_fac:
 		return true
 
-	# Player-side factions: &"neutral" (local), &"player" (remote), &"player_fleet" (fleet)
-	var target_is_player: bool = target_faction == &"player_fleet" or target_faction == &"player" or target_id == &"player_ship"
+	# Player-side factions
+	var target_is_player: bool = target_faction in [&"player_fleet", &"player"] or target_id == &"player_ship"
 
 	if my_fac == &"player_fleet":
 		return target_is_player
@@ -94,9 +94,9 @@ func is_faction_allied(target_faction: StringName, target_id: StringName = &"") 
 			return my_fac == fm.player_faction
 		return false
 
-	if my_fac == &"hostile" or my_fac == &"lawless" or my_fac == &"pirate":
+	if my_fac in [&"hostile", &"lawless", &"pirate"]:
 		return false
-	if target_faction == &"hostile" or target_faction == &"lawless" or target_faction == &"pirate":
+	if target_faction in [&"hostile", &"lawless", &"pirate"]:
 		return false
 
 	var gi2 = GameManager.get_node_or_null("GameplayIntegrator")
@@ -105,15 +105,12 @@ func is_faction_allied(target_faction: StringName, target_id: StringName = &"") 
 	var fm2 = gi2.get_node_or_null("FactionManager")
 	if fm2:
 		return not fm2.are_enemies(my_fac, target_faction)
-
 	return false
 
 
 func on_damage_taken(attacker: Node3D, amount: float = 0.0) -> Dictionary:
-	## Returns { "should_engage": bool, "attacker": Node3D } if state change needed
-	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
+	if attacker == null or not is_instance_valid(attacker) or attacker == _owner_node:
 		return {}
-
 	var aid: int = attacker.get_instance_id()
 	var now: float = Time.get_ticks_msec() / 1000.0
 	if threat_table.has(aid):
@@ -122,11 +119,10 @@ func on_damage_taken(attacker: Node3D, amount: float = 0.0) -> Dictionary:
 		threat_table[aid]["node"] = attacker
 	else:
 		threat_table[aid] = { "node": attacker, "threat": amount, "last_hit": now }
-
 	return { "should_engage": true, "attacker": attacker }
 
 
-func update_threat_table(dt: float) -> void:
+func update(dt: float) -> void:
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var to_remove: Array[int] = []
 	for aid: int in threat_table:
@@ -144,7 +140,6 @@ func update_threat_table(dt: float) -> void:
 func maybe_switch_target(current_target: Node3D) -> Node3D:
 	if current_target == null or not is_instance_valid(current_target):
 		return get_highest_threat()
-
 	var current_tid: int = current_target.get_instance_id()
 	var current_threat: float = 0.0
 	if threat_table.has(current_tid):
@@ -162,7 +157,7 @@ func maybe_switch_target(current_target: Node3D) -> Node3D:
 
 	if best_node and best_node != current_target and best_threat > current_threat * THREAT_SWITCH_RATIO:
 		return best_node
-	return null  # No switch
+	return null
 
 
 func get_highest_threat() -> Node3D:
@@ -179,7 +174,7 @@ func get_highest_threat() -> Node3D:
 
 
 func alert_to_threat(attacker: Node3D) -> void:
-	if attacker == null or not is_instance_valid(attacker) or attacker == _ship:
+	if attacker == null or not is_instance_valid(attacker) or attacker == _owner_node:
 		return
 	var aid: int = attacker.get_instance_id()
 	var now: float = Time.get_ticks_msec() / 1000.0

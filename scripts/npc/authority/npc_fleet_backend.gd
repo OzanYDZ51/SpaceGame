@@ -61,7 +61,7 @@ func _sync_fleet_to_backend() -> void:
 		var cmd: String = fleet_info.get("command", "")
 		var cmd_params: Dictionary = fleet_info.get("command_params", {})
 		if is_instance_valid(lod_data.node_ref):
-			var bridge = lod_data.node_ref.get_node_or_null("FleetAIBridge")
+			var bridge = lod_data.node_ref.get_node_or_null("FleetAICommand")
 			if bridge:
 				cmd = String(bridge.command)
 				fleet_info["command"] = cmd
@@ -211,8 +211,8 @@ func load_deployed_fleet_ships_from_backend() -> void:
 			if command == "mine" and cmd_params.get("center_x", 0.0) == 0.0 and cmd_params.get("center_z", 0.0) == 0.0:
 				cmd_params = {"center_x": pos_x, "center_z": pos_z, "resource_filter": []}
 
-			var bridge = FleetAIBridge.new()
-			bridge.name = "FleetAIBridge"
+			var bridge = FleetAICommand.new()
+			bridge.name = "FleetAICommand"
 			bridge.fleet_index = fleet_index
 			bridge.command = StringName(command)
 			bridge.command_params = cmd_params

@@ -271,16 +271,16 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	lps.override_peer_id = 0  # NPCs only loot unowned/abandoned crates
 	ship.add_child(lps)
 
-	# AI Brain
-	var brain =AIBrain.new()
-	brain.name = "AIBrain"
-	ship.add_child(brain)
-	brain.setup(behavior_name)
+	# AI Controller
+	var ctrl =AIController.new()
+	ctrl.name = "AIController"
+	ship.add_child(ctrl)
+	ctrl.setup(behavior_name)
 
-	# AI Pilot
-	var pilot =AIPilot.new()
-	pilot.name = "AIPilot"
-	ship.add_child(pilot)
+	# AI Navigation
+	var nav =AINavigation.new()
+	nav.name = "AINavigation"
+	ship.add_child(nav)
 
 	# Obstacle Sensor (omnidirectional proximity + velocity avoidance)
 	var sensor =ObstacleSensor.new()

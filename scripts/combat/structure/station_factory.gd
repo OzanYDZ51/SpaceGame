@@ -37,12 +37,12 @@ static func setup_station(station, equipment) -> void:
 			station.structure_health.shield_current = station.structure_health.shield_max
 			station.structure_health.shield_regen_rate += shield_res.regen_rate * 0.5
 
-	# Create defense AI
-	var defense_ai := StationDefenseAI.new()
-	defense_ai.name = "StationDefenseAI"
-	station.add_child(defense_ai)
-	defense_ai.initialize(station, wm)
-	station.defense_ai = defense_ai
+	# Create AI controller for defense (turrets + guard alerts)
+	var ai_ctrl := AIController.new()
+	ai_ctrl.name = "AIController"
+	station.add_child(ai_ctrl)
+	ai_ctrl.setup_as_station(station, wm)
+	station.defense_ai = ai_ctrl
 
 	# Build visual service modules
 	ServiceModuleBuilder.build_modules(station, station.station_type)

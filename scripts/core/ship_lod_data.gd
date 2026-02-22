@@ -180,7 +180,7 @@ func capture_from_node(ship: Node3D) -> void:
 		shield_ratio = health.get_total_shield_ratio()
 		is_dead = health.is_dead()
 
-	var brain = ship.get_node_or_null("AIBrain")
+	var brain = ship.get_node_or_null("AIController")
 	if brain:
 		ai_state = brain.current_state
 		ai_patrol_center = brain._patrol_center
