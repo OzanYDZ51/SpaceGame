@@ -181,9 +181,7 @@ export function ShipViewerSection() {
                     <OrbitControls
                       target={[0, 0, 0]}
                       enablePan={false}
-                      enableZoom={true}
-                      minDistance={2}
-                      maxDistance={50}
+                      enableZoom={false}
                       minPolarAngle={Math.PI / 6}
                       maxPolarAngle={Math.PI / 1.3}
                       autoRotate={false}

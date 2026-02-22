@@ -1,0 +1,16 @@
+{
+  "name": "Imperion Online",
+  "short_name": "Imperion",
+  "description": "MMORPG spatial en monde ouvert — explorez, combattez, conquérez.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#050810",
+  "theme_color": "#00c8ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
