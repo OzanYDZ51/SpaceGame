@@ -7,7 +7,7 @@ extends AIBehavior
 # =============================================================================
 
 
-func tick(dt: float) -> void:
+func tick(_dt: float) -> void:
 	if controller == null:
 		return
 	var nav: AINavigation = controller.navigation

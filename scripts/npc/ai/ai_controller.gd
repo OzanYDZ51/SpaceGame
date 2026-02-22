@@ -72,8 +72,8 @@ var current_state: State:
 			Mode.BEHAVIOR:
 				if _current_behavior == null:
 					return State.IDLE
-				var name: StringName = _current_behavior.get_behavior_name()
-				match name:
+				var bname: StringName = _current_behavior.get_behavior_name()
+				match bname:
 					&"patrol":
 						return State.PATROL
 					&"formation":
@@ -210,7 +210,7 @@ func setup(behavior_name: StringName) -> void:
 			aggression = 0.5; accuracy = 0.7
 
 
-func setup_as_station(station: Node3D, wm = null) -> void:
+func setup_as_station(station: Node3D, _wm = null) -> void:
 	_ship = station
 	can_move = false
 	perception = AIPerception.new()

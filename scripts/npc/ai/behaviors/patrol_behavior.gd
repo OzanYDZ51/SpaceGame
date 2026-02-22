@@ -19,7 +19,7 @@ func enter() -> void:
 		_generate_patrol_waypoints()
 
 
-func tick(dt: float) -> void:
+func tick(_dt: float) -> void:
 	if controller == null:
 		return
 	var nav: AINavigation = controller.navigation

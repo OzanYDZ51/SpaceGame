@@ -17,7 +17,7 @@ func exit() -> void:
 	pass
 
 
-func tick(dt: float) -> void:
+func tick(_dt: float) -> void:
 	pass
 
 

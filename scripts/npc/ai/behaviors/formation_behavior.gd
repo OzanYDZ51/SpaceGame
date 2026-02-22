@@ -15,7 +15,7 @@ func set_leader(node: Node3D, formation_offset: Vector3) -> void:
 	offset = formation_offset
 
 
-func tick(dt: float) -> void:
+func tick(_dt: float) -> void:
 	if controller == null:
 		return
 	var nav: AINavigation = controller.navigation
