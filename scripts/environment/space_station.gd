@@ -52,6 +52,10 @@ func _ready() -> void:
 	death_handler.name = "StructureDeathHandler"
 	add_child(death_handler)
 
+	# Build simple collision SYNCHRONOUSLY — guarantees projectiles can hit the
+	# station immediately, even before the detailed trimesh loads.
+	_build_simple_collision()
+
 	# Build bay area SYNCHRONOUSLY before async model loading.
 	# The BayArea uses fixed constants and doesn't depend on the model.
 	# Creating it before _load_model() ensures the Area3D is registered with
@@ -92,10 +96,8 @@ func _load_model() -> void:
 	add_child(_model)
 
 	await get_tree().process_frame
-
-	for child in _get_all_children(_model):
-		if child is MeshInstance3D and child.mesh != null:
-			_create_trimesh_collision(child)
+	# Trimesh collision disabled — simple shapes from _build_simple_collision()
+	# are faster, more reliable, and already available before the model loads.
 
 
 func _find_ring_nodes() -> void:
@@ -226,6 +228,30 @@ func _on_bay_body_exited(body: Node3D) -> void:
 # =========================================================================
 # COLLISION
 # =========================================================================
+
+## Simple collision shapes that are available IMMEDIATELY (before model loads).
+## Covers the main station body so projectiles can hit right away.
+func _build_simple_collision() -> void:
+	# Main body: cylinder covering the station core (~4000 units tall, ~2000 radius)
+	var col_main = CollisionShape3D.new()
+	var cyl = CylinderShape3D.new()
+	cyl.radius = 2000.0
+	cyl.height = 4000.0
+	col_main.shape = cyl
+	col_main.position = Vector3(0, -1600, 0)  # Center between bay top (441) and bottom (-3800)
+	col_main.name = "CollisionMain"
+	add_child(col_main)
+
+	# Upper bay area: wider cylinder for the docking bay ring
+	var col_bay = CollisionShape3D.new()
+	var cyl_bay = CylinderShape3D.new()
+	cyl_bay.radius = BAY_RADIUS + 100.0  # ~788
+	cyl_bay.height = 900.0
+	col_bay.shape = cyl_bay
+	col_bay.position = Vector3(0, BAY_OPENING_Y - 450.0, 0)  # Centered on bay opening
+	col_bay.name = "CollisionBay"
+	add_child(col_bay)
+
 
 func _create_trimesh_collision(mesh_instance: MeshInstance3D) -> void:
 	var mesh: Mesh = mesh_instance.mesh
