@@ -101,18 +101,34 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			_ctrl.current_state = AIController.State.PATROL
 		&"attack":
 			_attack_target_id = params.get("target_entity_id", "")
+			_ctrl.ignore_threats = false
+			print("[FleetAttack] idx=%d target_entity_id='%s'" % [fleet_index, _attack_target_id])
 			if _attack_target_id != "":
 				var ent = EntityRegistry.get_entity(_attack_target_id)
 				if not ent.is_empty():
 					var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					var dist: float = _ship.global_position.distance_to(target_pos)
 					var target_node = _find_target_node(_attack_target_id)
+					print("[FleetAttack] entity found, dist=%.0f detection_range=%.0f target_node=%s" % [dist, _ctrl.detection_range, target_node != null])
 					if dist <= _ctrl.detection_range and target_node:
 						_ctrl.target = target_node
 						_ctrl.current_state = AIController.State.PURSUE
+						print("[FleetAttack] -> PURSUE")
 					else:
 						_ctrl.set_patrol_area(target_pos, 0.0)
 						_ctrl.current_state = AIController.State.PATROL
+						print("[FleetAttack] -> PATROL toward target")
+				else:
+					# Entity not in registry — fallback: patrol toward coordinates if available
+					var tx: float = params.get("target_x", 0.0)
+					var tz: float = params.get("target_z", 0.0)
+					if tx != 0.0 or tz != 0.0:
+						var fallback_pos := FloatingOrigin.to_local_pos([tx, 0.0, tz])
+						_ctrl.set_patrol_area(fallback_pos, 0.0)
+						_ctrl.current_state = AIController.State.PATROL
+						print("[FleetAttack] entity '%s' not in registry, fallback PATROL to (%.0f, %.0f)" % [_attack_target_id, tx, tz])
+					else:
+						print("[FleetAttack] entity '%s' not in registry and no fallback coords" % _attack_target_id)
 		&"construction":
 			var target_pos := _resolve_target_pos(params)
 			target_pos = _push_target_outside_stations(target_pos)

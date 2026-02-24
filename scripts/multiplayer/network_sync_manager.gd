@@ -517,7 +517,7 @@ func _on_remote_fleet_command_changed(_owner_pid: int, _fleet_idx: int, _npc_id_
 # COMBAT SYNC
 # =============================================================================
 
-func _on_remote_fire_received(peer_id: int, weapon_name: String, fire_pos: Array, fire_dir: Array) -> void:
+func _on_remote_fire_received(peer_id: int, weapon_name: String, _fire_pos: Array, fire_dir: Array) -> void:
 	if not remote_players.has(peer_id):
 		return
 	var remote = remote_players[peer_id]

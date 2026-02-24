@@ -225,6 +225,7 @@ func handle_fleet_npc_self_docked(npc_id: StringName, fleet_index: int) -> void:
 func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: StringName, params: Dictionary) -> void:
 	var fleet_mgr = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fleet_mgr == null:
+		print("[FleetCmd] FleetDeploymentManager not found")
 		return
 
 	var sys_id: int = GameManager.current_system_id_safe()
@@ -233,6 +234,8 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 		push_warning("NpcAuthority: Fleet command pid=%d idx=%d — NPC not found" % [sender_pid, fleet_index])
 		return
 
+	print("[FleetCmd] pid=%d idx=%d cmd=%s npc=%s params=%s" % [sender_pid, fleet_index, cmd, npc_id, params])
+
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
 	if lod_mgr:
 		var lod_data = lod_mgr.get_ship_data(npc_id)
@@ -240,7 +243,10 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 			var npc = lod_data.node_ref
 			var bridge = npc.get_node_or_null("FleetAICommand")
 			if bridge:
+				print("[FleetCmd] Applying command via FleetAICommand bridge")
 				bridge.apply_command(cmd, params)
+			else:
+				print("[FleetCmd] WARNING: FleetAICommand bridge not found on NPC %s" % npc_id)
 			var existing_mining = npc.get_node_or_null("AIMiningBehavior")
 			if cmd == &"mine":
 				if existing_mining:
@@ -252,6 +258,8 @@ func handle_fleet_command_request(sender_pid: int, fleet_index: int, cmd: String
 					npc.add_child(mining_behavior)
 			elif existing_mining:
 				existing_mining.queue_free()
+		else:
+			print("[FleetCmd] WARNING: node_ref invalid for NPC %s (lod_data=%s)" % [npc_id, lod_data != null])
 
 	if _fleet_npcs.has(npc_id):
 		_fleet_npcs[npc_id]["command"] = String(cmd)

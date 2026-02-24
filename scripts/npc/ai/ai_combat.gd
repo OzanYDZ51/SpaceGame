@@ -50,6 +50,14 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 
 	# Apply inaccuracy AFTER dot check (only affects fire direction, not firing decision)
 	var inaccuracy := (1.0 - accuracy_mod) * Constants.AI_INACCURACY_SPREAD
+
+	# Closing bonus: reduce inaccuracy when flying toward target (head-on approach)
+	var ship_vel: Vector3 = _owner_node.linear_velocity if "linear_velocity" in _owner_node else Vector3.ZERO
+	if ship_vel.length_squared() > 100.0:
+		var closing_dot: float = ship_vel.normalized().dot(to_lead)
+		var closing_factor: float = clampf(1.0 - closing_dot * Constants.AI_CLOSING_ACCURACY_BONUS, 0.4, 1.0)
+		inaccuracy *= closing_factor
+
 	target_pos += Vector3(
 		randf_range(-inaccuracy, inaccuracy),
 		randf_range(-inaccuracy, inaccuracy),

@@ -255,7 +255,7 @@ func update_combat_maneuver(delta: float) -> void:
 		_maneuver_timer = randf_range(1.0, 2.5)
 		_maneuver_dir = Vector3(
 			randf_range(-0.7, 0.7),
-			randf_range(-0.3, 0.3),
+			randf_range(-0.5, 0.5),
 			randf_range(-0.4, 0.1)
 		)
 	_orbit_angle = fmod(_orbit_angle + ORBIT_ANGULAR_SPEED * delta, TAU)
@@ -283,6 +283,52 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 		var orbit_x := cos(_orbit_angle) * 0.5
 		throttle = Vector3(orbit_x + _maneuver_dir.x * 0.3, _maneuver_dir.y * 0.2, -0.2)
 
+	if _obstacle_sensor:
+		var obs_dist = _obstacle_sensor.nearest_obstacle_dist
+		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:
+			var brake_factor := clampf(obs_dist / AVOIDANCE_BRAKE_THRESHOLD, 0.1, 1.0)
+			throttle.z *= brake_factor
+		if _obstacle_sensor.is_emergency:
+			throttle.z = 0.6
+
+	if avoid.length_squared() > 100.0:
+		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
+		throttle.x = clampf(local_avoid.x, -1.0, 1.0)
+		throttle.y = clampf(local_avoid.y, -0.6, 0.6)
+		throttle.z = maxf(throttle.z, 0.3)
+
+	_ship.set_throttle(throttle)
+
+
+func apply_attack_run_throttle(dist_to_target: float, preferred_range: float, is_heavy: bool) -> void:
+	if _ship == null:
+		return
+
+	var avoid := Vector3.ZERO
+	if _obstacle_sensor:
+		avoid = _get_avoidance()
+
+	# Full forward with minimal jink — charging toward target
+	var fwd_throttle: float
+	var jink_amount: float = 0.1 if is_heavy else randf_range(0.15, 0.25)
+
+	if dist_to_target > preferred_range * 0.8:
+		# Closing: full speed
+		fwd_throttle = -1.0 if not is_heavy else -0.7
+	elif dist_to_target > preferred_range * 0.4:
+		# Mid-range: sustained approach
+		fwd_throttle = -0.8 if not is_heavy else -0.6
+	else:
+		# Close: maintain speed, commit to the pass
+		fwd_throttle = -0.6 if not is_heavy else -0.5
+
+	var throttle := Vector3(
+		_maneuver_dir.x * jink_amount,
+		_maneuver_dir.y * jink_amount * 0.5,
+		fwd_throttle
+	)
+
+	# Obstacle handling
 	if _obstacle_sensor:
 		var obs_dist = _obstacle_sensor.nearest_obstacle_dist
 		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:

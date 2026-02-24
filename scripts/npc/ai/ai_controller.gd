@@ -64,10 +64,14 @@ var current_state: State:
 			Mode.COMBAT:
 				if _combat_behavior:
 					match _combat_behavior.sub_state:
-						CombatBehavior.SubState.PURSUE:
+						CombatBehavior.SubState.ENGAGE:
 							return State.PURSUE
-						CombatBehavior.SubState.ATTACK:
+						CombatBehavior.SubState.ATTACK_RUN:
 							return State.ATTACK
+						CombatBehavior.SubState.BREAK_OFF:
+							return State.PURSUE
+						CombatBehavior.SubState.REPOSITION:
+							return State.PURSUE
 				return State.PURSUE
 			Mode.BEHAVIOR:
 				if _current_behavior == null:
@@ -571,6 +575,13 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		return
 
 	if mode == Mode.COMBAT:
+		# If currently fighting a structure (station) and a ship/player attacks us,
+		# switch immediately — a mobile attacker is always more dangerous than a static target.
+		var cur_target: Node3D = _combat_behavior.target
+		if cur_target and is_instance_valid(cur_target) and cur_target.is_in_group("structures"):
+			if effective_attacker != cur_target and not effective_attacker.is_in_group("structures"):
+				_combat_behavior.set_target(effective_attacker)
+				return
 		var switch_to = perception.maybe_switch_target(_combat_behavior.target)
 		if switch_to:
 			_combat_behavior.set_target(switch_to)
@@ -617,6 +628,9 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Also shift the saved default behavior if it's a different PatrolBehavior
 	if _default_behavior and _default_behavior is PatrolBehavior and _default_behavior != _current_behavior:
 		(_default_behavior as PatrolBehavior).apply_origin_shift(shift)
+	# Shift combat behavior's reposition point
+	if _combat_behavior and _combat_behavior._reposition_point != Vector3.ZERO:
+		_combat_behavior._reposition_point += shift
 	# Shift guard behavior's internal patrol if active behavior is GuardBehavior
 	if _current_behavior and _current_behavior is GuardBehavior:
 		var gb := _current_behavior as GuardBehavior

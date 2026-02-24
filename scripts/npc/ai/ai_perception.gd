@@ -111,6 +111,11 @@ func is_faction_allied(target_faction: StringName, target_id: StringName = &"") 
 func on_damage_taken(attacker: Node3D, amount: float = 0.0) -> Dictionary:
 	if attacker == null or not is_instance_valid(attacker) or attacker == _owner_node:
 		return {}
+	# Don't retaliate against allied faction (prevents pirate vs pirate friendly fire)
+	if "faction" in attacker:
+		var attacker_faction: StringName = attacker.faction
+		if is_faction_allied(attacker_faction, StringName(attacker.name)):
+			return {}
 	var aid: int = attacker.get_instance_id()
 	var now: float = Time.get_ticks_msec() / 1000.0
 	if threat_table.has(aid):
@@ -176,6 +181,11 @@ func get_highest_threat() -> Node3D:
 func alert_to_threat(attacker: Node3D) -> void:
 	if attacker == null or not is_instance_valid(attacker) or attacker == _owner_node:
 		return
+	# Don't treat allied faction as threat (prevents pirate vs pirate friendly fire)
+	if "faction" in attacker:
+		var attacker_faction: StringName = attacker.faction
+		if is_faction_allied(attacker_faction, StringName(attacker.name)):
+			return
 	var aid: int = attacker.get_instance_id()
 	var now: float = Time.get_ticks_msec() / 1000.0
 	if threat_table.has(aid):

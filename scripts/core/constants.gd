@@ -170,6 +170,16 @@ const AI_LOD_TICK_MID_DIST: float = 3000.0       # Distance for 3x slower AI tic
 const AI_STRUCTURE_HIT_RANGE: float = 5000.0     # Max distance for structure hit validation
 const AI_STRUCTURE_MAX_DAMAGE: float = 500.0     # Max single-hit damage for structure validation
 
+# --- AI Attack Runs ---
+const AI_ATTACK_RUN_MAX_TIME_LIGHT: float = 3.0   # Max run duration: fighters/interceptors
+const AI_ATTACK_RUN_MAX_TIME_HEAVY: float = 5.0   # Max run duration: frigates/cruisers
+const AI_BREAK_OFF_DURATION_MIN: float = 1.5
+const AI_BREAK_OFF_DURATION_MAX: float = 3.0
+const AI_REPOSITION_MAX_TIME: float = 8.0
+const AI_PASS_DISTANCE_LIGHT: float = 80.0        # Break-off trigger distance (fighters)
+const AI_PASS_DISTANCE_HEAVY: float = 150.0       # Break-off trigger distance (frigates)
+const AI_CLOSING_ACCURACY_BONUS: float = 0.4      # Max inaccuracy reduction when closing
+
 # --- NPC Authority ---
 const NPC_HIT_VALIDATION_RANGE: float = 5000.0   # Max distance for hit validation
 const NPC_HIT_DAMAGE_TOLERANCE: float = 0.5      # ±50% damage variance allowed

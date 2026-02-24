@@ -185,43 +185,45 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 		var galaxy_sys_fac: StringName = sys_trans.galaxy.get_system(system_id_for_fac).get("faction", &"neutral")
 		default_faction = SystemTransition._map_system_faction(galaxy_sys_fac)
 
-	# Collect all station positions, scene nodes, and factions
+	# Collect all station positions, scene nodes, and factions.
+	# Use actual scene node positions (not orbital math) — floating origin shifts may have
+	# moved everything since the system was loaded, especially for deferred spawns.
 	var station_positions: Array[Vector3] = []
 	var station_nodes: Array = []  # Node3D or null
 	var station_factions: Array[StringName] = []
 	var universe: Node3D = GameManager.universe_node
 	if system_data and system_data.stations.size() > 0:
 		for st_i in system_data.stations.size():
-			var st: StationData = system_data.stations[st_i]
-			var orbit_r: float = st.orbital_radius
-			var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
-			var station_pos := Vector3(cos(angle) * orbit_r, 0.0, sin(angle) * orbit_r)
-			station_positions.append(station_pos)
-			# Find the actual station scene node — try by name first, then EntityRegistry
 			var station_node: Node3D = null
 			if universe:
 				station_node = universe.get_node_or_null("Station_%d" % st_i)
-			if station_node == null:
-				var all_stations := EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION)
-				for ent in all_stations:
-					if ent.get("node") and is_instance_valid(ent["node"]):
-						var ent_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
-						if ent_pos.distance_to(station_pos) < 500.0:
-							station_node = ent["node"]
-							break
+			if station_node and is_instance_valid(station_node):
+				station_positions.append(station_node.global_position)
+			else:
+				# Fallback: compute from orbital math (remote systems without scene nodes)
+				var st: StationData = system_data.stations[st_i]
+				var angle: float = EntityRegistrySystem.compute_orbital_angle(st.orbital_angle, st.orbital_period)
+				station_positions.append(Vector3(cos(angle) * st.orbital_radius, 0.0, sin(angle) * st.orbital_radius))
 			station_nodes.append(station_node)
-			# Use station node's faction if available, otherwise fall back to galaxy default
 			if station_node and "faction" in station_node:
 				station_factions.append(station_node.faction)
 			else:
 				station_factions.append(default_faction)
 
 	# Collect gate positions for system-wide routes.
-	# Gates are at system scale (millions of units) — clamp to playable patrol distance.
+	# Use actual scene node positions when available, fallback to data for remote systems.
 	var gate_positions: Array[Vector3] = []
 	if system_data and system_data.jump_gates.size() > 0:
-		for gd_gate in system_data.jump_gates:
-			var raw_gate := Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z)
+		for gd_i in system_data.jump_gates.size():
+			var raw_gate: Vector3
+			var gate_node: Node3D = null
+			if universe:
+				gate_node = universe.get_node_or_null("JumpGate_%d" % gd_i)
+			if gate_node and is_instance_valid(gate_node):
+				raw_gate = gate_node.global_position
+			else:
+				var gd_gate = system_data.jump_gates[gd_i]
+				raw_gate = Vector3(gd_gate.pos_x, gd_gate.pos_y, gd_gate.pos_z)
 			var gate_dist: float = raw_gate.length()
 			if gate_dist > MAX_GATE_ROUTE_DIST:
 				raw_gate = raw_gate.normalized() * MAX_GATE_ROUTE_DIST
