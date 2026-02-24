@@ -524,9 +524,11 @@ func alert_to_threat(attacker: Node3D) -> void:
 			_enter_combat(attacker)
 	elif mode == Mode.COMBAT:
 		# Already fighting — evaluate if the new threat is more dangerous than current target
-		var switch_to = perception.maybe_switch_target(_combat_behavior.target)
-		if switch_to:
-			_combat_behavior.set_target(switch_to)
+		var at_target: Node3D = _combat_behavior.target
+		if at_target and is_instance_valid(at_target):
+			var switch_to = perception.maybe_switch_target(at_target)
+			if switch_to:
+				_combat_behavior.set_target(switch_to)
 
 
 # =============================================================================
@@ -588,9 +590,11 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 			if force_switch:
 				_combat_behavior.set_target(effective_attacker)
 				return
-		var switch_to = perception.maybe_switch_target(_combat_behavior.target)
-		if switch_to:
-			_combat_behavior.set_target(switch_to)
+		var dmg_target: Node3D = _combat_behavior.target
+		if dmg_target and is_instance_valid(dmg_target):
+			var switch_to = perception.maybe_switch_target(dmg_target)
+			if switch_to:
+				_combat_behavior.set_target(switch_to)
 
 
 func _alert_formation_group(attacker: Node3D) -> void:

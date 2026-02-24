@@ -11,6 +11,9 @@ signal hit_landed(hit_type: int, damage_amount: float, shield_ratio: float)
 
 enum HitType { SHIELD, HULL, KILL, SHIELD_BREAK }
 
+# LOS mask: ships + stations + asteroids (same as AICombat)
+const _LOS_MASK: int = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS
+
 var hardpoints: Array[Hardpoint] = []
 # 3 weapon groups, each is an array of hardpoint indices
 var weapon_groups: Array[Array] = [[], [], []]
@@ -182,6 +185,27 @@ func update_turrets(target_node: Variant = null) -> void:
 		target_vel = target_node.linear_velocity
 	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
 
+	# LOS check: shared raycast setup (one per frame, not per turret — target is same)
+	var los_blocked: bool = false
+	var space = _ship.get_world_3d().direct_space_state if _ship else null
+	if space:
+		var los_query := PhysicsRayQueryParameters3D.create(
+			_ship.global_position, target_pos)
+		los_query.collision_mask = _LOS_MASK
+		los_query.collide_with_areas = false
+		var exclude_rids: Array[RID] = []
+		if _ship is CollisionObject3D:
+			exclude_rids.append(_ship.get_rid())
+		if target_node is CollisionObject3D:
+			exclude_rids.append((target_node as CollisionObject3D).get_rid())
+		else:
+			var hit_body = target_node.get_node_or_null("HitBody")
+			if hit_body and hit_body is CollisionObject3D:
+				exclude_rids.append(hit_body.get_rid())
+		los_query.exclude = exclude_rids
+		var los_hit = space.intersect_ray(los_query)
+		los_blocked = not los_hit.is_empty()
+
 	for hp in hardpoints:
 		if not hp.is_turret or not hp.enabled or hp.mounted_weapon == null:
 			continue
@@ -192,9 +216,13 @@ func update_turrets(target_node: Variant = null) -> void:
 		# Quadratic lead prediction per turret (same as TargetingSystem)
 		var lead_pos =_solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed)
 
-		# Update aim direction
+		# Update aim direction (keep tracking even when LOS blocked)
 		var aim_dir =(lead_pos - hp.global_position).normalized()
 		hp.set_target_direction(aim_dir)
+
+		# Don't fire if LOS blocked by a structure/asteroid
+		if los_blocked:
+			continue
 
 		# Auto-fire when aligned
 		var bolt = hp.try_fire(lead_pos, ship_vel)

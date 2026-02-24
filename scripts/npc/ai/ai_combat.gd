@@ -79,10 +79,6 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D
 			var hit_body = target.get_node_or_null("HitBody")
 			if hit_body and hit_body is CollisionObject3D:
 				exclude_rids.append(hit_body.get_rid())
-		# Exclude guard station to prevent station blocking guard's own shots
-		if guard_station and is_instance_valid(guard_station):
-			if guard_station is CollisionObject3D:
-				exclude_rids.append(guard_station.get_rid())
 		los_query.exclude = exclude_rids
 		var los_hit = space.intersect_ray(los_query)
 		if not los_hit.is_empty():
