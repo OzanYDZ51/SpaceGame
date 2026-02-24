@@ -1269,6 +1269,15 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
 		if _stellar_map:
 			_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
+		# Warn if attacking without weapons
+		if order_id == &"attack":
+			var has_weapons: bool = false
+			for w in fs.weapons:
+				if w != &"":
+					has_weapons = true
+					break
+			if not has_weapons:
+				_notif.fleet.deploy_failed("ATTENTION: %s n'a aucun armement!" % fs.custom_name)
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:

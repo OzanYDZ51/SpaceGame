@@ -178,6 +178,17 @@ func get_highest_threat() -> Node3D:
 	return best_node
 
 
+## Returns true if target has dealt damage to us within the last `window` seconds.
+func has_recent_threat(target: Node3D, window: float = 5.0) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	var tid: int = target.get_instance_id()
+	if not threat_table.has(tid):
+		return false
+	var now: float = Time.get_ticks_msec() / 1000.0
+	return (now - threat_table[tid]["last_hit"]) < window
+
+
 func alert_to_threat(attacker: Node3D) -> void:
 	if attacker == null or not is_instance_valid(attacker) or attacker == _owner_node:
 		return

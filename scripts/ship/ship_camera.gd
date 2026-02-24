@@ -540,6 +540,7 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Camera is top_level — it doesn't shift with the parent.
 	# Apply the same shift so camera stays in sync with the ship.
 	global_position -= shift
+	reset_physics_interpolation()
 	# Keep spring velocity and prev_velocity intact — the position was shifted
 	# but relative distances are unchanged, so the spring-damper continues smoothly.
 	# Zeroing spring_velocity caused visible saccades at high speed (boost/cruise)

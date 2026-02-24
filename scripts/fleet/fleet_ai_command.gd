@@ -102,14 +102,23 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 		&"attack":
 			_attack_target_id = params.get("target_entity_id", "")
 			_ctrl.ignore_threats = false
-			print("[FleetAttack] idx=%d target_entity_id='%s'" % [fleet_index, _attack_target_id])
-			if _attack_target_id != "":
+			# Unarmed ship: just move to target position, don't enter combat
+			if not _ctrl.weapons_enabled:
+				_ctrl.ignore_threats = true
+				var target_pos := _resolve_attack_target_pos(params)
+				if _ship.global_position.distance_to(target_pos) > MOVE_ARRIVE_DIST:
+					_ctrl.set_patrol_area(target_pos, 0.0)
+					_ctrl.current_state = AIController.State.PATROL
+				else:
+					_mark_arrived(target_pos)
+				print("[FleetAttack] idx=%d UNARMED — move_to fallback" % fleet_index)
+			elif _attack_target_id != "":
 				var ent = EntityRegistry.get_entity(_attack_target_id)
 				if not ent.is_empty():
 					var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 					var dist: float = _ship.global_position.distance_to(target_pos)
 					var target_node = _find_target_node(_attack_target_id)
-					print("[FleetAttack] entity found, dist=%.0f detection_range=%.0f target_node=%s" % [dist, _ctrl.detection_range, target_node != null])
+					print("[FleetAttack] idx=%d entity found, dist=%.0f detection_range=%.0f target_node=%s" % [fleet_index, dist, _ctrl.detection_range, target_node != null])
 					if dist <= _ctrl.detection_range and target_node:
 						_ctrl.target = target_node
 						_ctrl.current_state = AIController.State.PURSUE
@@ -321,6 +330,17 @@ func _check_idle_timeout(dt: float) -> void:
 # =============================================================================
 # HELPERS
 # =============================================================================
+func _resolve_attack_target_pos(params: Dictionary) -> Vector3:
+	var ent = EntityRegistry.get_entity(params.get("target_entity_id", ""))
+	if not ent.is_empty():
+		return FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
+	var tx: float = params.get("target_x", 0.0)
+	var tz: float = params.get("target_z", 0.0)
+	if tx != 0.0 or tz != 0.0:
+		return FloatingOrigin.to_local_pos([tx, 0.0, tz])
+	return _ship.global_position
+
+
 func _resolve_target_pos(params: Dictionary) -> Vector3:
 	var tx: float = params.get("target_x", 0.0)
 	var tz: float = params.get("target_z", 0.0)

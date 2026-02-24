@@ -575,11 +575,17 @@ func _on_damage_taken(attacker: Node3D, amount: float = 0.0) -> void:
 		return
 
 	if mode == Mode.COMBAT:
-		# If currently fighting a structure (station) and a ship/player attacks us,
-		# switch immediately — a mobile attacker is always more dangerous than a static target.
 		var cur_target: Node3D = _combat_behavior.target
-		if cur_target and is_instance_valid(cur_target) and cur_target.is_in_group("structures"):
-			if effective_attacker != cur_target and not effective_attacker.is_in_group("structures"):
+		if effective_attacker != cur_target and cur_target and is_instance_valid(cur_target):
+			# Switch immediately if:
+			# 1. Current target is a structure (station) — mobile attacker is always priority
+			# 2. Current target hasn't hit us recently — it's no longer a real threat
+			var force_switch: bool = false
+			if cur_target.is_in_group("structures"):
+				force_switch = true
+			elif not perception.has_recent_threat(cur_target):
+				force_switch = true
+			if force_switch:
 				_combat_behavior.set_target(effective_attacker)
 				return
 		var switch_to = perception.maybe_switch_target(_combat_behavior.target)

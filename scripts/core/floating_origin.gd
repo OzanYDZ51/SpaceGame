@@ -56,11 +56,13 @@ func _perform_shift(shift: Vector3) -> void:
 
 	# Shift the tracked node (player ship) back to near origin
 	_tracked_node.global_position -= shift
+	_tracked_node.reset_physics_interpolation()
 
 	# Shift all children of the universe container
 	for child in _universe_node.get_children():
 		if child is Node3D:
 			child.global_position -= shift
+			child.reset_physics_interpolation()
 
 	total_shifts += 1
 	origin_shifted.emit(shift)
