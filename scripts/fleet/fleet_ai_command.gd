@@ -61,6 +61,7 @@ func _do_init() -> void:
 		var has_weapons: bool = wm != null and wm.has_combat_weapons_in_group(0)
 		if not has_weapons:
 			_ctrl.weapons_enabled = false
+			push_warning("[FleetAICommand] idx=%d (%s) has NO combat weapons — weapons disabled" % [fleet_index, _get_ship_name()])
 		apply_command(command, command_params)
 
 	if not FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
@@ -264,6 +265,7 @@ func _monitor_attack_target() -> void:
 	if ent.is_empty():
 		_attack_target_id = ""
 		_ctrl.current_state = AIController.State.IDLE
+		_clear_completed_command()
 		return
 	var target_pos := FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]])
 	var dist: float = _ship.global_position.distance_to(target_pos)
@@ -330,6 +332,16 @@ func _check_idle_timeout(dt: float) -> void:
 # =============================================================================
 # HELPERS
 # =============================================================================
+func _get_ship_name() -> String:
+	if GameManager.player_data and GameManager.player_data.fleet:
+		var fleet = GameManager.player_data.fleet
+		if fleet_index >= 0 and fleet_index < fleet.ships.size():
+			var ship_name: String = fleet.ships[fleet_index].custom_name
+			if ship_name != "":
+				return ship_name
+	return "Vaisseau #%d" % fleet_index
+
+
 func _resolve_attack_target_pos(params: Dictionary) -> Vector3:
 	var ent = EntityRegistry.get_entity(params.get("target_entity_id", ""))
 	if not ent.is_empty():
@@ -357,6 +369,18 @@ func _mark_arrived(_target_pos: Vector3) -> void:
 	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
 	if fdm:
 		fdm.update_entity_extra(fleet_index, "arrived", true)
+
+
+func _clear_completed_command() -> void:
+	command = &""
+	command_params = {}
+	var fdm = GameManager.get_node_or_null("FleetDeploymentManager")
+	if fdm and fdm._fleet:
+		var ships: Array = fdm._fleet.ships
+		if fleet_index >= 0 and fleet_index < ships.size():
+			ships[fleet_index].deployed_command = &""
+			ships[fleet_index].deployed_command_params = {}
+			fdm._fleet.fleet_changed.emit()
 
 
 func _push_target_outside_stations(target_pos: Vector3) -> Vector3:

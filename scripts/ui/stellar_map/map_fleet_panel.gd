@@ -18,7 +18,7 @@ signal ship_context_menu_requested(fleet_index: int, screen_pos: Vector2)
 signal squadron_disband_requested(squadron_id: int)
 signal squadron_remove_member_requested(fleet_index: int)
 signal squadron_formation_requested(squadron_id: int, formation_type: StringName)
-signal squadron_add_ship_requested(fleet_index: int)
+signal squadron_add_ship_requested(fleet_index: int, squadron_id: int)
 
 const PANEL_W: float = 240.0
 const HEADER_H: float = 32.0
@@ -44,8 +44,8 @@ var _hover_fleet_index: int = -1
 
 # Squadron section
 var _squadron_mgr = null
-var _sq_disband_btn_rect: Rect2 = Rect2()
-var _sq_formation_btn_rects: Array[Dictionary] = []  # [{rect, formation_id}]
+var _sq_disband_btn_rects: Array[Dictionary] = []  # [{rect, squadron_id}]
+var _sq_formation_btn_rects: Array[Dictionary] = []  # [{rect, formation_id, squadron_id}]
 var _sq_remove_btn_rects: Array[Dictionary] = []  # [{rect, fleet_index}]
 var _sq_add_btn_rects: Array[Dictionary] = []  # [{rect, fleet_index}]
 var _squadron_section_height: float = 0.0
@@ -189,18 +189,15 @@ func get_panel_rect() -> Rect2:
 
 
 func _check_squadron_section_click(pos: Vector2) -> bool:
-	# Disband button
-	if _sq_disband_btn_rect.size.x > 0.0 and _sq_disband_btn_rect.has_point(pos):
-		var sq = _get_player_squadron()
-		if sq:
-			squadron_disband_requested.emit(sq.squadron_id)
-		return true
+	# Disband buttons
+	for entry in _sq_disband_btn_rects:
+		if entry["rect"].has_point(pos):
+			squadron_disband_requested.emit(entry["squadron_id"])
+			return true
 	# Formation buttons
 	for entry in _sq_formation_btn_rects:
 		if entry["rect"].has_point(pos):
-			var sq = _get_player_squadron()
-			if sq:
-				squadron_formation_requested.emit(sq.squadron_id, entry["formation_id"])
+			squadron_formation_requested.emit(entry["squadron_id"], entry["formation_id"])
 			return true
 	# Remove member buttons
 	for entry in _sq_remove_btn_rects:
@@ -210,7 +207,7 @@ func _check_squadron_section_click(pos: Vector2) -> bool:
 	# Add ship buttons
 	for entry in _sq_add_btn_rects:
 		if entry["rect"].has_point(pos):
-			squadron_add_ship_requested.emit(entry["fleet_index"])
+			squadron_add_ship_requested.emit(entry["fleet_index"], entry["squadron_id"])
 			return true
 	return false
 
@@ -759,19 +756,29 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 	if _fleet == null:
 		return y
 	# Clear hit rects
-	_sq_disband_btn_rect = Rect2()
+	_sq_disband_btn_rects.clear()
 	_sq_formation_btn_rects.clear()
 	_sq_remove_btn_rects.clear()
 	_sq_add_btn_rects.clear()
 
-	var sq = _get_player_squadron()
-	var _start_y: float = y
-
-	if sq == null:
-		# No player squadron — no create button here (use right-click on own ship)
+	if _fleet.squadrons.is_empty():
 		return y
 
-	# Squadron exists — management section
+	# Iterate ALL squadrons
+	for sq in _fleet.squadrons:
+		y = _draw_single_squadron(font, y, clip, sq)
+
+	# Separator after all squadrons
+	y += 2
+	if _in_clip(y, 2, clip):
+		draw_line(Vector2(MARGIN, y), Vector2(PANEL_W - MARGIN, y), Color(MapColors.PANEL_BORDER, 0.4), 1.0)
+	y += 4
+	return y
+
+
+func _draw_single_squadron(font: Font, y: float, clip: Rect2, sq) -> float:
+	var sq_id: int = sq.squadron_id
+
 	# Header: name + DISSOUDRE button
 	if _in_clip(y, SHIP_H, clip):
 		draw_string(font, Vector2(MARGIN, y + SHIP_H - 4), sq.squadron_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 70, UITheme.FONT_SIZE_BODY, MapColors.SQUADRON_HEADER)
@@ -781,7 +788,7 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.15))
 		draw_rect(disband_rect, Color(0.8, 0.2, 0.1, 0.5), false, 1.0)
 		draw_string(font, Vector2(disband_rect.position.x + 4, y + SHIP_H - 5), Locale.t("map.fleet.disband"), HORIZONTAL_ALIGNMENT_LEFT, disband_w - 8, UITheme.FONT_SIZE_TINY, Color(0.9, 0.3, 0.2))
-		_sq_disband_btn_rect = disband_rect
+		_sq_disband_btn_rects.append({"rect": disband_rect, "squadron_id": sq_id})
 	y += SHIP_H
 
 	# Formation buttons row
@@ -798,13 +805,22 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 			draw_rect(btn_rect, bg_col)
 			draw_rect(btn_rect, border_col, false, 1.0)
 			draw_string(font, Vector2(bx + 2, y + SHIP_H - 4), form["display"], HORIZONTAL_ALIGNMENT_CENTER, btn_w - 4, UITheme.FONT_SIZE_TINY, text_col)
-			_sq_formation_btn_rects.append({"rect": btn_rect, "formation_id": form["id"]})
+			_sq_formation_btn_rects.append({"rect": btn_rect, "formation_id": form["id"], "squadron_id": sq_id})
 			bx += btn_w + 2
 	y += SHIP_H + 2
 
-	# Leader line: "* VOUS (CHEF)"
+	# Leader line
 	if _in_clip(y, SHIP_H, clip):
-		draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), Locale.t("map.fleet.you_leader"), HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
+		if sq.leader_fleet_index == -1:
+			# Player is the leader
+			draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), Locale.t("map.fleet.you_leader"), HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
+		else:
+			# Fleet ship is the leader
+			var leader_name: String = ""
+			if sq.leader_fleet_index >= 0 and sq.leader_fleet_index < _fleet.ships.size():
+				var lfs = _fleet.ships[sq.leader_fleet_index]
+				leader_name = lfs.custom_name if lfs.custom_name != "" else String(lfs.ship_id)
+			draw_string(font, Vector2(MARGIN + 4, y + SHIP_H - 4), "* %s (CHEF)" % leader_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
 	y += SHIP_H
 
 	# Members
@@ -845,11 +861,6 @@ func _draw_squadron_section(font: Font, y: float, clip: Rect2) -> float:
 				_sq_remove_btn_rects.append({"rect": x_rect, "fleet_index": member_idx})
 			y += SHIP_H
 
-	# Separator
-	y += 2
-	if _in_clip(y, 2, clip):
-		draw_line(Vector2(MARGIN, y), Vector2(PANEL_W - MARGIN, y), Color(MapColors.PANEL_BORDER, 0.4), 1.0)
-	y += 4
 	return y
 
 
@@ -974,8 +985,8 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 	if ship_data:
 		var cls_text =String(ship_data.ship_class)
 		var cls_right: float = PANEL_W - MARGIN - 2
-		var player_sq_check = _get_player_squadron()
-		if player_sq_check and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+		var has_single_sq: bool = _fleet != null and _fleet.squadrons.size() == 1
+		if has_single_sq and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
 			cls_right -= 14.0  # Make room for "+" button
 		# Current order label (deployed ships only), drawn left of the class
 		var order_label: String = _get_order_label(fs)
@@ -1004,12 +1015,12 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 				fc2 = Color(0.9, 0.3, 0.15, 0.5)
 			draw_rect(Rect2(bar_x2, bar_y2, bar_w2 * f2, 1.5), fc2)
 
-	# "+" button: add to player squadron (only if player has a squadron and ship is eligible)
-	var player_sq = _get_player_squadron()
-	if player_sq and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+	# "+" button: add to squadron (only if exactly 1 squadron exists and ship is eligible)
+	if _fleet and _fleet.squadrons.size() == 1 and not is_active and fs.squadron_id < 0 and fs.deployment_state != FleetShip.DeploymentState.DESTROYED:
+		var target_sq = _fleet.squadrons[0]
 		var plus_rect := Rect2(PANEL_W - MARGIN - 2, y + 2, 12, SHIP_H - 4)
 		draw_string(font, Vector2(PANEL_W - MARGIN - 1, y + SHIP_H - 4), "+", HORIZONTAL_ALIGNMENT_LEFT, 12, UITheme.FONT_SIZE_SMALL, Color(UITheme.PRIMARY, 0.7))
-		_sq_add_btn_rects.append({"rect": plus_rect, "fleet_index": fleet_index})
+		_sq_add_btn_rects.append({"rect": plus_rect, "fleet_index": fleet_index, "squadron_id": target_sq.squadron_id})
 
 
 static func _get_order_label(fs) -> String:

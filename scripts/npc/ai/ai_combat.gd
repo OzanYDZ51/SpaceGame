@@ -26,7 +26,7 @@ func _cache_refs() -> void:
 	_targeting_system = _owner_node.get_node_or_null("TargetingSystem")
 
 
-func try_fire_forward(target: Node3D, accuracy_mod: float, guard_station: Node3D = null) -> void:
+func try_fire_forward(target: Node3D, accuracy_mod: float, _guard_station: Node3D = null) -> void:
 	if _owner_node == null or target == null or not is_instance_valid(target):
 		return
 	if _weapon_manager == null:

@@ -182,7 +182,7 @@ func load_deployed_fleet_ships_from_backend() -> void:
 			push_warning("NpcAuthority: Fleet restore — ship '%s' is retired, using default '%s'" % [ship_id, Constants.DEFAULT_SHIP_ID])
 			effective_ship_id = Constants.DEFAULT_SHIP_ID
 
-		var spawn_pos := Vector3(pos_x, pos_y, pos_z)
+		var spawn_pos := FloatingOrigin.to_local_pos([pos_x, pos_y, pos_z])
 		var npc = ShipFactory.spawn_npc_ship(effective_ship_id, &"balanced", spawn_pos, universe, faction)
 		if npc == null:
 			push_error("NpcAuthority: Fleet ship restore FAILED for %s" % effective_ship_id)

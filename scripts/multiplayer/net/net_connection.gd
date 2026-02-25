@@ -15,8 +15,8 @@ var _reconnect_attempts: int = 0
 var _reconnect_timer: float = 0.0
 var _peer: WebSocketMultiplayerPeer = null
 
-const MAX_RECONNECT_ATTEMPTS: int = 5
-const RECONNECT_DELAY: float = 3.0
+const MAX_RECONNECT_ATTEMPTS: int = 20
+const RECONNECT_DELAY: float = 2.0
 
 
 func _init(nm: NetworkManagerSystem) -> void:
@@ -65,7 +65,8 @@ func start_server(port: int) -> Error:
 
 
 ## Connect to the game server as a client.
-func connect_to_server(address: String, port: int) -> Error:
+## If is_reconnect is true, preserves the attempt counter for retry logic.
+func connect_to_server(address: String, port: int, is_reconnect: bool = false) -> Error:
 	if _nm.connection_state != NetworkManagerSystem.ConnectionState.DISCONNECTED:
 		push_warning("NetConnection: Already connected or connecting")
 		return ERR_ALREADY_IN_USE
@@ -86,7 +87,8 @@ func connect_to_server(address: String, port: int) -> Error:
 		return err
 	_nm.multiplayer.multiplayer_peer = _peer
 	_nm.connection_state = NetworkManagerSystem.ConnectionState.CONNECTING
-	_reconnect_attempts = 0
+	if not is_reconnect:
+		_reconnect_attempts = 0
 	return OK
 
 
@@ -112,7 +114,10 @@ func on_connection_failed() -> void:
 	if _reconnect_attempts < MAX_RECONNECT_ATTEMPTS:
 		_reconnect_attempts += 1
 		_reconnect_timer = RECONNECT_DELAY
-		_nm.connection_failed.emit("Connexion échouée. Tentative %d/%d..." % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
+		# Only emit UI-visible message every 5 attempts to avoid spam
+		if _reconnect_attempts <= 1 or _reconnect_attempts % 5 == 0:
+			_nm.connection_failed.emit("Connexion au serveur... tentative %d/%d" % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS])
+		print("[Net] Connection attempt %d/%d failed, retrying in %.0fs..." % [_reconnect_attempts, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY])
 	else:
 		_nm.connection_failed.emit("Connexion impossible après %d tentatives." % MAX_RECONNECT_ATTEMPTS)
 
@@ -134,4 +139,4 @@ func _attempt_reconnect() -> void:
 		_reconnect_attempts = 0
 		return
 	var url: String = _server_url if _server_url != "" else Constants.NET_GAME_SERVER_URL
-	_nm.connect_to_server(url)
+	_nm.connect_to_server(url, Constants.NET_DEFAULT_PORT, true)

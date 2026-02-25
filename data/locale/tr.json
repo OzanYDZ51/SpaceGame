@@ -206,6 +206,8 @@
 	"notif.squadron_renamed": "FİLO YENİDEN ADLANDIRILDI: %s",
 	"notif.squadron_formation": "FORMASYON: %s",
 	"notif.squadron_new_leader": "YENİ LİDER: %s",
+	"notif.squadron_member_added": "%s KATILDI: %s",
+	"notif.squadron_member_removed": "%s FİLODAN ÇIKARILDI",
 	"notif.mission_accepted": "GÖREV KABUL EDİLDİ: %s",
 	"notif.mission_abandoned": "GÖREV TERK EDİLDİ: %s",
 
@@ -405,6 +407,7 @@
 	"map.invite_group": "GRUBA DAVET ET",
 	"map.kick": "AT",
 	"map.create_squadron": "FİLO OLUŞTUR",
+	"map.rename_squadron": "FİLOYU YENİDEN ADLANDIR",
 	"map.disband_squadron": "FİLOYU DAĞIT",
 	"map.join_squadron": "KATIL: %s",
 	"map.follow": "TAKİP ET: %s",

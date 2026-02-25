@@ -442,6 +442,23 @@ func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
 		var ent = EntityRegistry.get_entity(fs.docked_station_id)
 		if not ent.is_empty():
 			fs.last_known_pos = [ent["pos_x"], ent["pos_y"], ent["pos_z"]]
+	# Ensure EntityRegistry has correct fleet type + owner_pid (the NPC spawn via
+	# _on_npc_spawned may have registered before owner_pid was available)
+	var fleet_ent = EntityRegistry.get_entity(npc_id_str)
+	if not fleet_ent.is_empty():
+		fleet_ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
+		if not fleet_ent.has("extra"):
+			fleet_ent["extra"] = {}
+		fleet_ent["extra"]["owner_pid"] = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
+		fleet_ent["extra"]["fleet_index"] = fleet_index
+		fleet_ent["extra"]["faction"] = "player_fleet"
+	# Tag LOD data with fleet_index for proper LOD transitions
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(StringName(npc_id_str))
+		if lod_data:
+			lod_data.fleet_index = fleet_index
+			lod_data.owner_pid = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
 	_fleet.fleet_changed.emit()
 
 

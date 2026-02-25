@@ -383,6 +383,8 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if fac == &"player_fleet":
 		lod_data.owner_pid = int(data.get("owner_pid", 0))
 		lod_data.owner_name = data.get("owner_name", "")
+		# Mark as fleet ship so LOD manager registers entity as SHIP_FLEET (not SHIP_NPC)
+		lod_data.fleet_index = 0
 
 	if lod_manager:
 		lod_manager.register_ship(npc_id, lod_data)
@@ -396,7 +398,7 @@ func _on_npc_spawned(data: Dictionary) -> void:
 			if not ent.has("extra"):
 				ent["extra"] = {}
 			ent["extra"]["owner_name"] = data.get("owner_name", "")
-			ent["extra"]["owner_pid"] = data.get("owner_pid", -1)
+			ent["extra"]["owner_pid"] = int(data.get("owner_pid", 0))
 			ent["extra"]["command"] = data.get("cmd", "")
 			ent["extra"]["faction"] = "player_fleet"
 

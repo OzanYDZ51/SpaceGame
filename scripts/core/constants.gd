@@ -195,7 +195,8 @@ func _ready() -> void:
 		Env.PROD:
 			_dev_mode = false
 		_: # AUTO: editor = dev, export = prod, --local or env var = dev
-			_dev_mode = OS.has_feature("editor") or "--local" in OS.get_cmdline_args() or OS.get_environment("IMPERION_LOCAL") != ""
+			var all_cli_args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+			_dev_mode = OS.has_feature("editor") or "--local" in all_cli_args or OS.get_environment("IMPERION_LOCAL") != ""
 
 	var mode_str: String = "DEV (localhost)" if _dev_mode else "PROD (Railway)"
 	print("========================================")
@@ -218,13 +219,21 @@ func _start_dev_stack() -> void:
 	var pid_file: String = project_path + "/.godot/dev_server.pid"
 
 	# 1. Kill previous game server (picks up code changes on every F5)
+	#    First by saved PID, then scan port 7777 for orphaned processes.
 	if FileAccess.file_exists(pid_file):
 		var f: FileAccess = FileAccess.open(pid_file, FileAccess.READ)
 		if f:
 			var old_pid: int = f.get_as_text().strip_edges().to_int()
 			f.close()
 			if old_pid > 0:
+				print("[DEV] Killing old game server (PID %d)..." % old_pid)
 				OS.execute("taskkill", ["/PID", str(old_pid), "/F"], [], false, false)
+
+	# Kill ANY process still holding port 7777 (catches orphans from crashes)
+	_kill_process_on_port(7777)
+
+	# Brief wait for OS to release the port
+	OS.delay_msec(300)
 
 	# 2. Docker: PostgreSQL + Go backend (idempotent, ~1s if already running)
 	var compose_file: String = project_path + "/backend/docker-compose.yml"
@@ -232,18 +241,44 @@ func _start_dev_stack() -> void:
 	print("[DEV] Docker backend starting (localhost:3000)...")
 
 	# 3. Game server: headless Godot on port 7777 with current code
+	#    Redirect stdout/stderr to a log file for debugging crashes.
 	var godot_exe: String = OS.get_executable_path()
-	var pid: int = OS.create_process(godot_exe, [
-		"--headless", "--path", project_path, "--", "--server", "--local"
-	])
+	var server_log: String = project_path + "/.godot/dev_server.log"
+	var cmd: String = '"%s" --headless --path "%s" -- --server --local > "%s" 2>&1' % [godot_exe, project_path, server_log]
+	var pid: int = OS.create_process("cmd.exe", ["/c", cmd])
 	if pid > 0:
 		var f: FileAccess = FileAccess.open(pid_file, FileAccess.WRITE)
 		if f:
 			f.store_string(str(pid))
 			f.close()
 		print("[DEV] Game server started (PID %d, port 7777)" % pid)
+		print("[DEV] Server log: %s" % server_log)
 	else:
 		push_warning("[DEV] Failed to start game server")
+
+
+## Kill any process listening on a given TCP/UDP port (Windows).
+func _kill_process_on_port(port: int) -> void:
+	var output: Array = []
+	OS.execute("cmd.exe", ["/c", "netstat -ano | findstr :%d" % port], output, true, false)
+	if output.is_empty() or str(output[0]).strip_edges() == "":
+		return
+	# Parse netstat lines to extract PIDs
+	var killed_pids: Dictionary = {}
+	for line_raw in str(output[0]).split("\n"):
+		var line: String = line_raw.strip_edges()
+		if line == "":
+			continue
+		# netstat format: "  TCP    0.0.0.0:7777    0.0.0.0:0    LISTENING    12345"
+		var parts: PackedStringArray = line.split(" ", false)
+		if parts.size() < 5:
+			continue
+		var pid_str: String = parts[parts.size() - 1].strip_edges()
+		var pid: int = pid_str.to_int()
+		if pid > 0 and not killed_pids.has(pid):
+			killed_pids[pid] = true
+			print("[DEV] Killing orphan process on port %d (PID %d)" % [port, pid])
+			OS.execute("taskkill", ["/PID", str(pid), "/F"], [], false, false)
 
 
 # --- Speed Modes ---

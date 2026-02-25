@@ -217,8 +217,23 @@ func face_target(target_pos: Vector3) -> void:
 	_prev_yaw_error = yaw_error
 	_prev_pitch_error = pitch_error
 
-	var pitch_rate: float = clampf(pitch_error * 3.0 - pitch_deriv * 0.15, -pitch_speed, pitch_speed)
-	var yaw_rate: float = clampf(yaw_error * 3.0 - yaw_deriv * 0.15, -yaw_speed, yaw_speed)
+	# Dead zone: well-aligned → stop rotating
+	if absf(yaw_error) < 0.5 and absf(pitch_error) < 0.5:
+		_ship.set_rotation_target(0.0, 0.0, 0.0)
+		return
+
+	# PD controller: P=2.0, D=0.5 (well-damped to prevent pitch/yaw oscillation)
+	# Old: P=3.0, D=0.15 — ratio 20:1 caused continuous overshoot
+	var pitch_rate: float = clampf(pitch_error * 2.0 - pitch_deriv * 0.5, -pitch_speed, pitch_speed)
+	var yaw_rate: float = clampf(yaw_error * 2.0 - yaw_deriv * 0.5, -yaw_speed, yaw_speed)
+
+	# Smooth ramp-down near alignment: avoids hard discontinuity at dead zone edge
+	var max_error: float = maxf(absf(yaw_error), absf(pitch_error))
+	if max_error < 5.0:
+		var ramp: float = max_error / 5.0
+		pitch_rate *= ramp
+		yaw_rate *= ramp
+
 	_ship.set_rotation_target(pitch_rate, yaw_rate, 0.0)
 
 

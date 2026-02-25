@@ -62,6 +62,10 @@ func disband_squadron(squadron_id: int) -> void:
 func add_to_squadron(squadron_id: int, fleet_index: int) -> bool:
 	if _fleet == null:
 		return false
+	if fleet_index < 0 or fleet_index >= _fleet.ships.size():
+		return false
+	if _fleet.ships[fleet_index].deployment_state == FleetShip.DeploymentState.DESTROYED:
+		return false
 	if _fleet.get_ship_squadron(fleet_index) != null:
 		return false
 	var sq = _fleet.get_squadron(squadron_id)

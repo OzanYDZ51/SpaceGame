@@ -1265,19 +1265,12 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 			return
 		_fleet_deployment_mgr.request_deploy(fleet_index, order_id, params)
 		_notif.fleet.deployed(fs.custom_name)
+		_warn_unarmed_attack(fs, order_id)
 	elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 		_fleet_deployment_mgr.request_change_command(fleet_index, order_id, params)
 		if _stellar_map:
 			_stellar_map._set_route_lines([fleet_index] as Array[int], _route_x, _route_z)
-		# Warn if attacking without weapons
-		if order_id == &"attack":
-			var has_weapons: bool = false
-			for w in fs.weapons:
-				if w != &"":
-					has_weapons = true
-					break
-			if not has_weapons:
-				_notif.fleet.deploy_failed("ATTENTION: %s n'a aucun armement!" % fs.custom_name)
+		_warn_unarmed_attack(fs, order_id)
 
 	# Propagate to squadron members if this ship is a leader
 	if _squadron_mgr and fs.squadron_id >= 0:
@@ -1309,10 +1302,25 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 		&"add_member":
 			var sq_id: int = int(data.get("squadron_id", -1))
 			var fleet_idx: int = int(data.get("fleet_index", -1))
-			_squadron_mgr.add_to_squadron(sq_id, fleet_idx)
+			if _squadron_mgr.add_to_squadron(sq_id, fleet_idx):
+				var ship_name: String = ""
+				var sq_name: String = ""
+				if player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
+					var fs = player_fleet.ships[fleet_idx]
+					ship_name = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+				var sq = player_fleet.get_squadron(sq_id) if player_fleet else null
+				if sq:
+					sq_name = sq.squadron_name
+				_notif.squadron.member_added(ship_name, sq_name)
 		&"remove_member":
 			var fleet_idx: int = int(data.get("fleet_index", -1))
+			var ship_name: String = ""
+			if player_fleet and fleet_idx >= 0 and fleet_idx < player_fleet.ships.size():
+				var fs = player_fleet.ships[fleet_idx]
+				ship_name = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
 			_squadron_mgr.remove_from_squadron(fleet_idx)
+			if ship_name != "":
+				_notif.squadron.member_removed(ship_name)
 		&"reset_to_follow":
 			var fleet_idx: int = int(data.get("fleet_index", -1))
 			_squadron_mgr.reset_to_follow(fleet_idx)
@@ -1344,7 +1352,8 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 			var fleet_idx: int = int(data.get("fleet_index", -1))
 			if fleet_idx < 0 or fleet_idx >= player_fleet.ships.size():
 				return
-			var sq = _squadron_mgr.get_player_squadron()
+			var target_sq_id: int = int(data.get("squadron_id", -1))
+			var sq = player_fleet.get_squadron(target_sq_id) if target_sq_id >= 0 else _squadron_mgr.get_player_squadron()
 			if sq == null:
 				_notif.toast("AUCUN ESCADRON ACTIF")
 				return
@@ -1360,7 +1369,18 @@ func _on_squadron_action(action: StringName, data: Dictionary) -> void:
 				if _fleet_deployment_mgr:
 					_fleet_deployment_mgr.request_deploy(fleet_idx, &"move_to", {})
 					_notif.fleet.deployed(fs.custom_name)
-			_squadron_mgr.add_to_squadron(sq.squadron_id, fleet_idx)
+			if _squadron_mgr.add_to_squadron(sq.squadron_id, fleet_idx):
+				var ship_name: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+				_notif.squadron.member_added(ship_name, sq.squadron_name)
+
+
+func _warn_unarmed_attack(fs: FleetShip, order_id: StringName) -> void:
+	if order_id != &"attack":
+		return
+	for w in fs.weapons:
+		if w != &"":
+			return
+	_notif.fleet.deploy_failed("ATTENTION: %s n'a aucun armement!" % fs.custom_name)
 
 
 func _autopilot_player_to(params: Dictionary) -> void:

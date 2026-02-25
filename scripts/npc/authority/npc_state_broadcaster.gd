@@ -120,6 +120,9 @@ func _build_spawn_dict(npc_id: StringName, info: Dictionary, lod_data: ShipLODDa
 		spawn_dict["vz"] = lod_data.velocity.z
 		spawn_dict["hull"] = lod_data.hull_ratio
 		spawn_dict["shd"] = lod_data.shield_ratio
+	# Include fleet owner data so clients can distinguish own vs foreign fleet ships
+	if info.get("faction") == "player_fleet" and _auth._fleet:
+		spawn_dict["owner_pid"] = _auth._fleet.get_fleet_npc_owner(npc_id)
 	return spawn_dict
 
 

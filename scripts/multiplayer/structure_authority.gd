@@ -72,34 +72,44 @@ func _on_hit_claimed(sender_pid: int, target_id: String, _weapon: String, damage
 
 func validate_hit_claim(sender_pid: int, target_id: String, _weapon: String, damage: float, hit_dir: Array) -> void:
 	if not _structures.has(target_id):
+		print("[StructAuth] REJECT %s: not in _structures (keys=%s)" % [target_id, _structures.keys()])
 		return
 
 	var entry: Dictionary = _structures[target_id]
 	var node_ref = entry.get("node_ref")
 	if node_ref == null or not is_instance_valid(node_ref):
+		print("[StructAuth] REJECT %s: node_ref invalid" % target_id)
 		return
 	var node: Node3D = node_ref
 
 	var health = node.get_node_or_null("StructureHealth")
 	if health == null or health.is_dead():
+		print("[StructAuth] REJECT %s: health=%s dead=%s" % [target_id, health, health.is_dead() if health else "N/A"])
 		return
 
 	# System check — sender must be in the same system as the structure
 	var sender_state = NetworkManager.peers.get(sender_pid)
 	if sender_state == null:
+		print("[StructAuth] REJECT %s: sender_pid=%d not in peers" % [target_id, sender_pid])
 		return
 	var struct_sys: int = entry.get("system_id", -1)
 	if sender_state.system_id != struct_sys:
+		print("[StructAuth] REJECT %s: system mismatch sender=%d struct=%d" % [target_id, sender_state.system_id, struct_sys])
 		return
 
 	# Distance check
-	var sender_pos =FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
-	if sender_pos.distance_to(node.global_position) > Constants.AI_STRUCTURE_HIT_RANGE:
+	var sender_pos = FloatingOrigin.to_local_pos([sender_state.pos_x, sender_state.pos_y, sender_state.pos_z])
+	var dist: float = sender_pos.distance_to(node.global_position)
+	if dist > Constants.AI_STRUCTURE_HIT_RANGE:
+		print("[StructAuth] REJECT %s: dist=%.0f > %.0f (sender=%s station=%s)" % [target_id, dist, Constants.AI_STRUCTURE_HIT_RANGE, sender_pos, node.global_position])
 		return
 
 	# Damage tolerance check — prevents obvious cheats
 	if damage > Constants.AI_STRUCTURE_MAX_DAMAGE or damage < 0.1:
+		print("[StructAuth] REJECT %s: damage=%.1f out of range" % [target_id, damage])
 		return
+
+	print("[StructAuth] HIT ACCEPTED %s: dmg=%.1f shield=%.0f/%.0f hull=%.0f/%.0f" % [target_id, damage, health.shield_current, health.shield_max, health.hull_current, health.hull_max])
 
 	# Apply damage — resolve attacker node so AIController/GuardBehavior can retaliate
 	var dir = Vector3(hit_dir[0], hit_dir[1], hit_dir[2]) if hit_dir.size() >= 3 else Vector3.FORWARD
@@ -177,6 +187,7 @@ func apply_batch(batch: Array) -> void:
 	for entry in batch:
 		var sid: String = entry.get("sid", "")
 		if not _structures.has(sid):
+			print("[StructAuth-Client] batch: sid=%s NOT in local _structures (keys=%s)" % [sid, _structures.keys()])
 			continue
 		var node_ref = _structures[sid].get("node_ref")
 		if node_ref == null or not is_instance_valid(node_ref):

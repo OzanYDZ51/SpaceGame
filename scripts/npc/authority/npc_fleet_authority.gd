@@ -380,6 +380,13 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 		for w in weapons:
 			weapons_sn.append(StringName(w))
 		wm.equip_weapons(weapons_sn)
+		# Validate weapons were actually mounted
+		var mounted_count: int = 0
+		for hp in wm.hardpoints:
+			if hp.mounted_weapon:
+				mounted_count += 1
+		if mounted_count == 0 and weapons_sn.size() > 0:
+			push_warning("NpcFleetAuthority: Fleet NPC %s has 0 mounted weapons (requested %d: %s)" % [npc.name, weapons_sn.size(), str(weapons_sn)])
 
 	# Equip shield/engine/modules
 	var em = npc.get_node_or_null("EquipmentManager")

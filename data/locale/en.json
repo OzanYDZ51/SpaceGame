@@ -206,6 +206,8 @@
 	"notif.squadron_renamed": "SQUADRON RENAMED: %s",
 	"notif.squadron_formation": "FORMATION: %s",
 	"notif.squadron_new_leader": "NEW LEADER: %s",
+	"notif.squadron_member_added": "%s JOINED %s",
+	"notif.squadron_member_removed": "%s REMOVED FROM SQUADRON",
 	"notif.mission_accepted": "MISSION ACCEPTED: %s",
 	"notif.mission_abandoned": "MISSION ABANDONED: %s",
 
@@ -405,6 +407,7 @@
 	"map.invite_group": "INVITE TO GROUP",
 	"map.kick": "KICK",
 	"map.create_squadron": "CREATE SQUADRON",
+	"map.rename_squadron": "RENAME SQUADRON",
 	"map.disband_squadron": "DISBAND SQUADRON",
 	"map.join_squadron": "JOIN: %s",
 	"map.follow": "FOLLOW: %s",

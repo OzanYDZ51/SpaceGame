@@ -46,6 +46,7 @@ func _ready() -> void:
 	if _camera == null:
 		push_error("HangarScene: No 'HangarCamera' node found — add one in the .tscn")
 		return
+	_camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 	# Use the camera position/rotation as placed in the editor
 	_cam_base_pos = _camera.position

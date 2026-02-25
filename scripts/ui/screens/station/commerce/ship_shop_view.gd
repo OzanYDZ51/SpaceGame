@@ -156,6 +156,7 @@ func _setup_3d_viewer() -> void:
 	_viewport.add_child(key_light)
 
 	_viewer_camera = Camera3D.new()
+	_viewer_camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_viewer_camera.fov = 40.0
 	_viewer_camera.near = 0.1
 	_viewer_camera.far = 500.0

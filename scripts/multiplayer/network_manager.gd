@@ -181,15 +181,15 @@ func _process(delta: float) -> void:
 
 
 func _check_dedicated_server() -> bool:
-	var args: Array = OS.get_cmdline_args()
-	for arg in args:
+	var all_args: Array = Array(OS.get_cmdline_args()) + Array(OS.get_cmdline_user_args())
+	for arg in all_args:
 		if arg == "--server" or arg == "--headless":
 			return true
 	return DisplayServer.get_name() == "headless"
 
 
 func _parse_galaxy_seed_arg() -> void:
-	var args: Array = OS.get_cmdline_args()
+	var args: Array = Array(OS.get_cmdline_args()) + Array(OS.get_cmdline_user_args())
 	for i in args.size():
 		if args[i] == "--galaxy-seed" and i + 1 < args.size():
 			var seed_val: int = args[i + 1].to_int()
@@ -214,8 +214,8 @@ func start_dedicated_server(port: int = Constants.NET_DEFAULT_PORT) -> Error:
 
 
 ## Connect to the Railway server as a client.
-func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT) -> Error:
-	return _connection.connect_to_server(address, port)
+func connect_to_server(address: String, port: int = Constants.NET_DEFAULT_PORT, is_reconnect: bool = false) -> Error:
+	return _connection.connect_to_server(address, port, is_reconnect)
 
 
 ## Disconnect and clean up everything.

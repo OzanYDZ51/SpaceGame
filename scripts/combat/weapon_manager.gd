@@ -58,13 +58,17 @@ func _create_hardpoints_from_configs(configs: Array[Dictionary], parent: Node3D)
 
 
 func equip_weapons(weapon_names: Array[StringName]) -> void:
+	if hardpoints.is_empty() and not weapon_names.is_empty():
+		push_warning("WeaponManager.equip_weapons: hardpoints is EMPTY but %d weapons requested!" % weapon_names.size())
 	for i in mini(weapon_names.size(), hardpoints.size()):
 		if weapon_names[i] == &"":
 			hardpoints[i].unmount_weapon()
 		else:
-			var weapon =WeaponRegistry.get_weapon(weapon_names[i])
-			if weapon:
-				hardpoints[i].mount_weapon(weapon)
+			var weapon = WeaponRegistry.get_weapon(weapon_names[i])
+			if weapon == null:
+				push_warning("WeaponManager.equip_weapons[%d]: weapon '%s' NOT FOUND in registry" % [i, weapon_names[i]])
+			elif not hardpoints[i].mount_weapon(weapon):
+				push_warning("WeaponManager.equip_weapons[%d]: mount_weapon FAILED for '%s' (slot=%s turret=%s)" % [i, weapon_names[i], hardpoints[i].slot_size, hardpoints[i].is_turret])
 	_recalculate_groups()
 
 

@@ -1198,8 +1198,8 @@ func _on_fp_set_formation(sq_id: int, formation_type: StringName) -> void:
 	squadron_action_requested.emit(&"set_formation", {"squadron_id": sq_id, "formation_type": formation_type})
 
 
-func _on_fp_add_ship(fleet_idx: int) -> void:
-	squadron_action_requested.emit(&"add_and_deploy", {"fleet_index": fleet_idx})
+func _on_fp_add_ship(fleet_idx: int, sq_id: int) -> void:
+	squadron_action_requested.emit(&"add_and_deploy", {"fleet_index": fleet_idx, "squadron_id": sq_id})
 
 
 func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:
@@ -1487,8 +1487,13 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		if not any_in_sq:
 			result.append({"id": &"sq_create", "display_name": Locale.t("map.create_squadron")})
 
+	# Single fleet ship (not active): "CREATE SQUADRON" with this ship as leader
+	if fleet_index != fleet.active_index and sq == null and effective.size() <= 1:
+		result.append({"id": &"sq_create_single", "display_name": Locale.t("map.create_squadron")})
+
 	if sq:
 		# Ship is in a squadron
+		result.append({"id": &"sq_rename", "display_name": Locale.t("map.rename_squadron")})
 		if sq.is_leader(fleet_index) or (sq.leader_fleet_index == -1 and fleet_index == fleet.active_index):
 			# Leader options
 			result.append({"id": &"sq_disband", "display_name": Locale.t("map.disband_squadron")})
@@ -1509,6 +1514,10 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 
 	if order_id == &"sq_create_player":
 		squadron_action_requested.emit(&"create_player", {})
+	elif order_id == &"sq_create_single":
+		var idx =_get_effective_fleet_index()
+		if idx >= 0:
+			squadron_action_requested.emit(&"create", {"leader": idx, "members": []})
 	elif order_id == &"sq_create" and effective.size() >= 2:
 		squadron_action_requested.emit(&"create", {
 			"leader": effective[0],
@@ -1524,6 +1533,12 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		var idx =_get_effective_fleet_index()
 		if idx >= 0:
 			squadron_action_requested.emit(&"remove_member", {"fleet_index": idx})
+	elif order_id == &"sq_rename":
+		var idx =_get_effective_fleet_index()
+		if idx >= 0 and _fleet_panel._fleet:
+			var sq = _fleet_panel._fleet.get_ship_squadron(idx)
+			if sq:
+				_start_squadron_rename(sq.squadron_id, _fleet_panel.global_position + Vector2(120, 40))
 	elif order_id == &"sq_promote":
 		var idx =_get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:
@@ -1567,8 +1582,7 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 				_set_follow_route(all_following, target_eid)
 	elif order_str.begins_with("sq_join_"):
 		var sq_id =int(order_str.substr(8))
-		var idx =_get_effective_fleet_index()
-		if idx >= 0:
+		for idx in effective:
 			squadron_action_requested.emit(&"add_member", {"squadron_id": sq_id, "fleet_index": idx})
 
 

@@ -30,3 +30,11 @@ func formation(display_name: String) -> void:
 
 func new_leader(ship_name: String) -> void:
 	_svc.toast(Locale.t("notif.squadron_new_leader") % ship_name, UIToast.ToastType.SUCCESS)
+
+
+func member_added(ship_name: String, squadron_name: String) -> void:
+	_svc.toast(Locale.t("notif.squadron_member_added") % [ship_name, squadron_name])
+
+
+func member_removed(ship_name: String) -> void:
+	_svc.toast(Locale.t("notif.squadron_member_removed") % ship_name)

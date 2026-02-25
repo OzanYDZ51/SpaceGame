@@ -20,7 +20,7 @@ func _get_server_key() -> String:
 	var env_key: String = OS.get_environment("SERVER_KEY")
 	if env_key != "":
 		return env_key
-	var args := OS.get_cmdline_args()
+	var args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
 	for i in args.size():
 		if args[i] == "--server-key" and i + 1 < args.size():
 			return args[i + 1]

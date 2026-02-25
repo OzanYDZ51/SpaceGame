@@ -108,6 +108,7 @@ func _on_body_hit(body: Node3D) -> void:
 
 		# Structure hit (station) — both server and client
 		if body.is_in_group("structures"):
+			print("[Projectile] Structure hit: %s weapon=%s dmg=%.1f connected=%s is_server=%s" % [body.name, weapon_name, damage, NetworkManager.is_connected_to_server(), NetworkManager.is_server()])
 			var hit_dir =(body.global_position - global_position).normalized()
 			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():
