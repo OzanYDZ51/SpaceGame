@@ -19,6 +19,17 @@ var _current_target_index: int = -1
 var _cached_target_health = null
 var _cached_target_ref: Node3D = null  # tracks which target the cached health belongs to
 
+# --- Acceleration tracking for lead prediction ---
+var _prev_target_vel: Vector3 = Vector3.ZERO
+var _target_accel: Vector3 = Vector3.ZERO
+var _has_prev_vel: bool = false
+var _accel_target_ref: Node3D = null  # reset accel when target switches
+
+# --- Output smoothing (eliminates jitter on the lead indicator) ---
+var _smoothed_lead_pos: Vector3 = Vector3.ZERO
+var _has_smoothed_lead: bool = false
+const LEAD_SMOOTH_SPEED: float = 12.0  # Higher = more responsive, lower = smoother
+
 
 func _ready() -> void:
 	var ship = get_parent()
@@ -54,6 +65,12 @@ func _process(delta: float) -> void:
 		var ship =get_parent() as Node3D
 		if ship and ship.global_position.distance_to(current_target.global_position) > target_lock_range * 1.5:
 			clear_target()
+			return
+
+		# Track target acceleration every frame for lead prediction
+		_update_target_accel(delta)
+	else:
+		_reset_accel_tracking()
 
 
 func cycle_target_forward() -> void:
@@ -159,6 +176,39 @@ func clear_target() -> void:
 		target_lost.emit()
 
 
+func _update_target_accel(delta: float) -> void:
+	if current_target == null:
+		return
+	# Reset on target switch
+	if current_target != _accel_target_ref:
+		_reset_accel_tracking()
+		_accel_target_ref = current_target
+		return
+
+	var target_vel: Vector3 = Vector3.ZERO
+	if "linear_velocity" in current_target:
+		target_vel = current_target.linear_velocity
+
+	if _has_prev_vel and delta > 0.001:
+		var raw_accel: Vector3 = (target_vel - _prev_target_vel) / delta
+		# Heavy smoothing (0.08): only reacts to sustained acceleration, ignores frame jitter
+		_target_accel = _target_accel.lerp(raw_accel, 0.08)
+		# Clamp to physically reasonable values (no ship accelerates >200 m/s²)
+		if _target_accel.length() > 200.0:
+			_target_accel = _target_accel.normalized() * 200.0
+	else:
+		_has_prev_vel = true
+	_prev_target_vel = target_vel
+
+
+func _reset_accel_tracking() -> void:
+	_prev_target_vel = Vector3.ZERO
+	_target_accel = Vector3.ZERO
+	_has_prev_vel = false
+	_accel_target_ref = null
+	_has_smoothed_lead = false
+
+
 func get_lead_indicator_position() -> Vector3:
 	if current_target == null or not is_instance_valid(current_target):
 		var parent_ship =get_parent() as Node3D
@@ -215,7 +265,18 @@ func get_lead_indicator_position() -> Vector3:
 			tof = t2
 
 	tof = clampf(tof, 0.0, 5.0)  # Cap at 5 seconds
-	return target_pos + target_vel * tof
+	# Acceleration correction: predict curved trajectory for maneuvering targets
+	var raw_lead: Vector3 = target_pos + target_vel * tof + 0.5 * _target_accel * tof * tof
+
+	# Smooth output: frame-rate independent lerp prevents visual jitter
+	var dt: float = get_process_delta_time()
+	if not _has_smoothed_lead:
+		_smoothed_lead_pos = raw_lead
+		_has_smoothed_lead = true
+	else:
+		var t: float = 1.0 - exp(-LEAD_SMOOTH_SPEED * dt)
+		_smoothed_lead_pos = _smoothed_lead_pos.lerp(raw_lead, t)
+	return _smoothed_lead_pos
 
 
 func get_target_distance() -> float:

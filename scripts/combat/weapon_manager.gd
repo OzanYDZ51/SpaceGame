@@ -24,6 +24,12 @@ var _fire_index: Dictionary = {}  # group_id -> int, for sequential firing
 # Stations: all mounted weapons auto-track as turrets (set by StationFactory)
 var all_weapons_are_turrets: bool = false
 
+# --- Acceleration tracking for lead prediction ---
+var _prev_target_vel: Vector3 = Vector3.ZERO
+var _target_accel: Vector3 = Vector3.ZERO
+var _has_prev_vel: bool = false
+var _prev_turret_target: Variant = null
+
 # Module multipliers (set by EquipmentManager)
 var weapon_energy_mult: float = 1.0
 var weapon_range_mult: float = 1.0
@@ -174,11 +180,20 @@ func update_turrets(target_node: Variant = null) -> void:
 	if target_node != null and not is_instance_valid(target_node):
 		target_node = null
 	if target_node == null:
-		# No target: return all turrets to forward rest position
+		# No target: return all turrets to forward rest position + reset tracking
+		_has_prev_vel = false
+		_target_accel = Vector3.ZERO
+		_prev_turret_target = null
 		for hp in hardpoints:
 			if hp.is_turret and hp.enabled and hp.mounted_weapon != null:
 				hp.clear_target_direction()
 		return
+
+	# Reset acceleration tracking when target changes
+	if target_node != _prev_turret_target:
+		_has_prev_vel = false
+		_target_accel = Vector3.ZERO
+		_prev_turret_target = target_node
 
 	var target_pos: Vector3 = TargetingSystem.get_ship_center(target_node)
 
@@ -188,6 +203,18 @@ func update_turrets(target_node: Variant = null) -> void:
 	elif "linear_velocity" in target_node:
 		target_vel = target_node.linear_velocity
 	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
+
+	# Track target acceleration for better lead prediction on maneuvering targets
+	var delta: float = get_process_delta_time()
+	if _has_prev_vel and delta > 0.001:
+		var raw_accel: Vector3 = (target_vel - _prev_target_vel) / delta
+		# Heavy smoothing: only reacts to sustained acceleration, ignores frame jitter
+		_target_accel = _target_accel.lerp(raw_accel, 0.08)
+		if _target_accel.length() > 200.0:
+			_target_accel = _target_accel.normalized() * 200.0
+	else:
+		_has_prev_vel = true
+	_prev_target_vel = target_vel
 
 	# LOS check: shared raycast setup (one per frame, not per turret — target is same)
 	var los_blocked: bool = false
@@ -217,8 +244,8 @@ func update_turrets(target_node: Variant = null) -> void:
 		if not all_weapons_are_turrets and hp.mounted_weapon.weapon_type != WeaponResource.WeaponType.TURRET:
 			continue
 
-		# Quadratic lead prediction per turret (same as TargetingSystem)
-		var lead_pos =_solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed)
+		# Acceleration-aware lead prediction per turret
+		var lead_pos =_solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed, _target_accel)
 
 		# Update aim direction (keep tracking even when LOS blocked)
 		var aim_dir =(lead_pos - hp.global_position).normalized()
@@ -236,8 +263,10 @@ func update_turrets(target_node: Variant = null) -> void:
 				_weapon_audio.play_fire(hp.global_position)
 
 
-## Quadratic intercept prediction: solves where to aim so projectile meets target.
-static func _solve_turret_lead(turret_pos: Vector3, ship_vel: Vector3, target_pos: Vector3, target_vel: Vector3, projectile_speed: float) -> Vector3:
+## Intercept prediction with optional acceleration correction.
+## Solves the standard quadratic for time-of-flight, then applies acceleration
+## to predict where a maneuvering target will actually be (curved trajectory).
+static func _solve_turret_lead(turret_pos: Vector3, ship_vel: Vector3, target_pos: Vector3, target_vel: Vector3, projectile_speed: float, target_accel: Vector3 = Vector3.ZERO) -> Vector3:
 	var rel_pos: Vector3 = target_pos - turret_pos
 	var rel_vel: Vector3 = target_vel - ship_vel
 
@@ -264,7 +293,8 @@ static func _solve_turret_lead(turret_pos: Vector3, ship_vel: Vector3, target_po
 			tof = t2
 
 	tof = clampf(tof, 0.0, 5.0)
-	return target_pos + target_vel * tof
+	# Apply acceleration correction: predict curved trajectory instead of straight line
+	return target_pos + target_vel * tof + 0.5 * target_accel * tof * tof
 
 
 func swap_weapon(hardpoint_index: int, weapon_name: StringName) -> StringName:

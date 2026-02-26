@@ -46,6 +46,9 @@ var _visual_aabb_cached: bool = false
 var _weapon_meshes: Array[Node3D] = []  # Weapon model instances attached to this ship
 var _weapon_mount_root: Node3D = null  # Wrapper with root_basis for correct weapon positioning
 
+const SHIELD_EXPANSION: float = 1.12  # Shield mesh is 12% larger than the hull
+static var _shield_mesh_cache: Dictionary = {}  # model_path -> ArrayMesh
+
 
 
 
@@ -258,6 +261,70 @@ func get_visual_aabb() -> AABB:
 	_visual_aabb_cache = _transform_aabb(raw_aabb, pivot_xform)
 	_visual_aabb_cached = true
 	return _visual_aabb_cache
+
+
+func get_shield_mesh() -> ArrayMesh:
+	## Returns a hull-conforming ArrayMesh for shield effects, expanded by SHIELD_EXPANSION.
+	## Cached per model_path so all instances of the same ship type share the mesh.
+	if _shield_mesh_cache.has(model_path):
+		return _shield_mesh_cache[model_path]
+	var mesh := _build_shield_mesh()
+	if mesh:
+		_shield_mesh_cache[model_path] = mesh
+	return mesh
+
+
+func _build_shield_mesh() -> ArrayMesh:
+	if _model_instance == null or _model_pivot == null:
+		return null
+
+	var base_xform: Transform3D = _model_pivot.transform * _model_instance.transform
+	var aabb := get_visual_aabb()
+	var center := aabb.get_center()
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var vert_count := 0
+
+	for desc in _get_all_descendants(_model_instance):
+		if not (desc is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = desc
+		if mi.mesh == null:
+			continue
+		var mesh_xform: Transform3D = base_xform * _get_relative_transform(mi, _model_instance)
+
+		for surf_idx in mi.mesh.get_surface_count():
+			var arrays := mi.mesh.surface_get_arrays(surf_idx)
+			if arrays.is_empty() or not (arrays[Mesh.ARRAY_VERTEX] is PackedVector3Array):
+				continue
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] is PackedInt32Array else PackedInt32Array()
+
+			if indices.size() > 0:
+				# Indexed geometry: emit non-indexed triangles
+				for i in range(0, indices.size() - 2, 3):
+					for j in 3:
+						var idx := indices[i + j]
+						if idx >= verts.size():
+							break
+						var v: Vector3 = mesh_xform * verts[idx]
+						v = center + (v - center) * SHIELD_EXPANSION
+						st.add_vertex(v)
+						vert_count += 1
+			else:
+				# Non-indexed: vertices already in triangle order
+				for i in verts.size():
+					var v: Vector3 = mesh_xform * verts[i]
+					v = center + (v - center) * SHIELD_EXPANSION
+					st.add_vertex(v)
+					vert_count += 1
+
+	if vert_count < 3:
+		return null
+
+	st.generate_normals()
+	return st.commit()
 
 
 func get_silhouette_points() -> PackedVector3Array:

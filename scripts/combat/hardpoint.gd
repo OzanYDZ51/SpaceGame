@@ -202,18 +202,18 @@ func _update_turret_rotation(delta: float) -> void:
 	var clamped_yaw =clampf(raw_yaw, -half_arc, half_arc)
 	var clamped_pitch =clampf(raw_pitch, turret_pitch_min, turret_pitch_max)
 
-	# Smooth but fast rotation: move_toward at 2x speed for responsive tracking
-	var max_step =turret_speed_deg_s * delta * 2.0
+	# Fast tracking: 4x base speed so turrets can keep up with fighters
+	var max_step =turret_speed_deg_s * delta * 4.0
 	_current_yaw = move_toward(_current_yaw, clamped_yaw, max_step)
 	_current_pitch = move_toward(_current_pitch, clamped_pitch, max_step)
 
 	# Apply rotation to pivot
 	_turret_pivot.rotation_degrees = Vector3(_current_pitch, _current_yaw, 0.0)
 
-	# Can fire only if: target is within arc AND turret is aligned to it
+	# Can fire if: target is within arc AND turret is roughly aligned (5° tolerance)
 	var yaw_error =absf(_current_yaw - clamped_yaw)
 	var pitch_error =absf(_current_pitch - clamped_pitch)
-	_can_fire = target_in_arc and (yaw_error < 3.0 and pitch_error < 3.0)
+	_can_fire = target_in_arc and (yaw_error < 5.0 and pitch_error < 5.0)
 
 
 func try_fire(target_pos: Vector3, ship_velocity: Vector3):

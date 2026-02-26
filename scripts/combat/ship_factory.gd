@@ -29,6 +29,7 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 	# Load ship scene (source of truth for model, hardpoints, collision)
 	var scene_result =_load_ship_scene(data)
 	controller.center_offset = scene_result.center_offset
+	controller.cockpit_view_offset = scene_result.cockpit_view_offset
 
 	# Clean up all components from a previous ship (when switching ships)
 	for node_name in ["ShipModel", "CollisionShape3D", "HardpointRoot", "HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager", "ShipAnimator"]:
@@ -164,6 +165,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	# Load ship scene (source of truth for model, hardpoints, collision)
 	var scene_result =_load_ship_scene(data)
 	ship.center_offset = scene_result.center_offset
+	ship.cockpit_view_offset = scene_result.cockpit_view_offset
 	ship.add_child(scene_result.collision_shape)
 
 	# Add ship model from ShipData (path + scale), tinted by faction
@@ -523,6 +525,7 @@ static func _load_ship_scene(data) -> Dictionary:
 	var scene_model_scale: float = 1.0
 	var scene_model_rotation: Vector3 = Vector3.ZERO
 	var center_offset: Vector3 = Vector3.ZERO
+	var cockpit_view_offset: Vector3 = Vector3.ZERO
 
 	# Capture root node rotation and scale (user may set these on root instead of ModelPivot)
 	var root_rotation: Vector3 = instance.rotation_degrees
@@ -535,6 +538,8 @@ static func _load_ship_scene(data) -> Dictionary:
 			vfx_points.append(child.get_config())
 		elif child.name == "ShipCenter":
 			center_offset = child.position
+		elif child.name == "CockpitView":
+			cockpit_view_offset = child.position
 		elif child.name == "ModelPivot" or child.name.begins_with("Model"):
 			scene_model_scale = root_scale * child.scale.x
 			scene_model_rotation = root_rotation + child.rotation_degrees
@@ -559,9 +564,10 @@ static func _load_ship_scene(data) -> Dictionary:
 	# automatically via Godot's scene tree, guaranteeing WYSIWYG with the editor.
 	var root_xform_basis: Basis = instance.transform.basis
 
-	# Only center_offset and VFX points need manual transform (standalone vectors)
+	# Only center_offset, cockpit_view_offset and VFX points need manual transform (standalone vectors)
 	if not root_xform_basis.is_equal_approx(Basis.IDENTITY):
 		center_offset = root_xform_basis * center_offset
+		cockpit_view_offset = root_xform_basis * cockpit_view_offset
 		for vp in vfx_points:
 			vp["position"] = root_xform_basis * vp["position"]
 			vp["direction"] = root_xform_basis * vp["direction"]
@@ -599,6 +605,7 @@ static func _load_ship_scene(data) -> Dictionary:
 		"model_rotation": scene_model_rotation,
 		"collision_shape": col_node,
 		"center_offset": center_offset,
+		"cockpit_view_offset": cockpit_view_offset,
 		"root_basis": root_xform_basis,
 		"has_animations": has_animations,
 		"has_containers": has_containers,

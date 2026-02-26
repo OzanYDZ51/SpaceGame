@@ -164,7 +164,6 @@ const AI_DISENGAGE_RANGE: float = 6500.0         # Break off combat beyond this 
 const AI_MIN_SAFE_DIST: float = 50.0             # Min distance before NPC reverses away
 const AI_STATION_EXCLUSION_RADIUS: float = 2000.0  # Station obstacle zone radius for AI
 const AI_ALERT_THREAT_VALUE: float = 50.0        # Threat table increment for alert_to_threat()
-const AI_INACCURACY_SPREAD: float = 12.0         # Max meters of fire inaccuracy at accuracy=0
 const AI_LOD_TICK_FAR_DIST: float = 8000.0       # Distance for 10x slower AI tick
 const AI_LOD_TICK_MID_DIST: float = 3000.0       # Distance for 3x slower AI tick
 const AI_STRUCTURE_HIT_RANGE: float = 5000.0     # Max distance for structure hit validation
@@ -178,7 +177,6 @@ const AI_BREAK_OFF_DURATION_MAX: float = 3.0
 const AI_REPOSITION_MAX_TIME: float = 8.0
 const AI_PASS_DISTANCE_LIGHT: float = 80.0        # Break-off trigger distance (fighters)
 const AI_PASS_DISTANCE_HEAVY: float = 150.0       # Break-off trigger distance (frigates)
-const AI_CLOSING_ACCURACY_BONUS: float = 0.4      # Max inaccuracy reduction when closing
 
 # --- NPC Authority ---
 const NPC_HIT_VALIDATION_RANGE: float = 5000.0   # Max distance for hit validation

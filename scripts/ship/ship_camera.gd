@@ -454,9 +454,14 @@ func _update_third_person(delta: float) -> void:
 
 func _update_cockpit(delta: float) -> void:
 	var ship_basis: Basis = _ship.global_transform.basis
-	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
 
-	global_position = ship_pos + ship_basis * cockpit_offset
+	if _ship.cockpit_view_offset != Vector3.ZERO:
+		# Per-ship CockpitView marker — absolute position from ship origin
+		global_position = _ship.global_position + ship_basis * _ship.cockpit_view_offset
+	else:
+		# Fallback: generic offset from ship center
+		var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
+		global_position = ship_pos + ship_basis * cockpit_offset
 	global_transform.basis = ship_basis
 
 	# FOV in cockpit

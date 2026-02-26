@@ -13,7 +13,6 @@ var _owner_node: Node3D = null
 var _weapon_manager = null
 var _targeting_system = null
 
-
 func setup(owner: Node3D) -> void:
 	_owner_node = owner
 	_cache_refs.call_deferred()
@@ -26,12 +25,15 @@ func _cache_refs() -> void:
 	_targeting_system = _owner_node.get_node_or_null("TargetingSystem")
 
 
-func try_fire_forward(target: Node3D, accuracy_mod: float, _guard_station: Node3D = null) -> void:
+## Fire forward weapons at the lead position — no artificial spread.
+## Uses the same TargetingSystem lead prediction as the player (with acceleration).
+func try_fire_forward(target: Node3D, _guard_station: Node3D = null) -> void:
 	if _owner_node == null or target == null or not is_instance_valid(target):
 		return
 	if _weapon_manager == null:
 		return
 
+	# Use TargetingSystem lead position (same as player sees — includes accel correction)
 	var target_pos: Vector3
 	if _targeting_system:
 		_targeting_system.current_target = target
@@ -39,30 +41,11 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, _guard_station: Node3
 	else:
 		target_pos = target.global_position
 
-	# Dot check on CLEAN lead position (before inaccuracy) — front hemisphere only.
-	# Hardpoints already prevent backward shots internally.
-	# Threshold at 0.0 (90°) because face_target queues rotation that hasn't applied yet,
-	# so the ship is always "catching up" to the lead position.
+	# Dot check — front hemisphere only
 	var to_lead: Vector3 = (target_pos - _owner_node.global_position).normalized()
 	var forward: Vector3 = -_owner_node.global_transform.basis.z
 	if forward.dot(to_lead) < 0.0:
 		return
-
-	# Apply inaccuracy AFTER dot check (only affects fire direction, not firing decision)
-	var inaccuracy := (1.0 - accuracy_mod) * Constants.AI_INACCURACY_SPREAD
-
-	# Closing bonus: reduce inaccuracy when flying toward target (head-on approach)
-	var ship_vel: Vector3 = _owner_node.linear_velocity if "linear_velocity" in _owner_node else Vector3.ZERO
-	if ship_vel.length_squared() > 100.0:
-		var closing_dot: float = ship_vel.normalized().dot(to_lead)
-		var closing_factor: float = clampf(1.0 - closing_dot * Constants.AI_CLOSING_ACCURACY_BONUS, 0.4, 1.0)
-		inaccuracy *= closing_factor
-
-	target_pos += Vector3(
-		randf_range(-inaccuracy, inaccuracy),
-		randf_range(-inaccuracy, inaccuracy),
-		randf_range(-inaccuracy, inaccuracy)
-	)
 
 	# LOS check
 	var space = _owner_node.get_world_3d().direct_space_state
@@ -75,7 +58,6 @@ func try_fire_forward(target: Node3D, accuracy_mod: float, _guard_station: Node3
 		if target is CollisionObject3D:
 			exclude_rids.append(target.get_rid())
 		else:
-			# RemotePlayerShip is Node3D — exclude its HitBody child so LOS isn't blocked
 			var hit_body = target.get_node_or_null("HitBody")
 			if hit_body and hit_body is CollisionObject3D:
 				exclude_rids.append(hit_body.get_rid())

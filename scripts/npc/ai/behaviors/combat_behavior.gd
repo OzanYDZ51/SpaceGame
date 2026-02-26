@@ -116,13 +116,13 @@ func _tick_engage(_dt: float) -> void:
 	# Fly intercept toward target
 	nav.fly_intercept(target, controller.preferred_range)
 
-	# Opportunistic fire at reduced accuracy
+	# Opportunistic fire during approach
 	if dist < controller.preferred_range and controller.weapons_enabled:
-		controller.combat.try_fire_forward(target, controller.accuracy * 0.5, controller.guard_station)
+		controller.combat.try_fire_forward(target, controller.guard_station)
 
 
 # =============================================================================
-# ATTACK_RUN — Full speed charge, face lead position, fire at full accuracy
+# ATTACK_RUN — Full speed charge, face lead position, fire at lead
 # =============================================================================
 func _tick_attack_run(dt: float) -> void:
 	var nav: AINavigation = controller.navigation
@@ -156,9 +156,9 @@ func _tick_attack_run(dt: float) -> void:
 	nav.update_combat_maneuver(dt)
 	nav.apply_attack_run_throttle(dist, controller.preferred_range, _is_heavy)
 
-	# Fire at full accuracy
+	# Fire at lead position
 	if controller.weapons_enabled:
-		controller.combat.try_fire_forward(target, controller.accuracy, controller.guard_station)
+		controller.combat.try_fire_forward(target, controller.guard_station)
 
 
 # =============================================================================

@@ -14,6 +14,9 @@ transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
 [node name="ShipCenter" type="Marker3D" parent="." unique_id=2042931973]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.950042, -5.3799415)
 
+[node name="CockpitView" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -14)
+
 [node name="Hardpoint_0" type="Node3D" parent="." unique_id=671140870]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.584701, 3.2851539, -19.936855)
 script = ExtResource("2_hpslot")

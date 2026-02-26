@@ -390,7 +390,7 @@ func _tick_behavior(dt: float) -> void:
 				if _ship and _ship.speed_mode == Constants.SpeedMode.CRUISE:
 					_ship._exit_cruise()
 				if combat:
-					combat.try_fire_forward(best_threat, accuracy, guard_station)
+					combat.try_fire_forward(best_threat, guard_station)
 				_combat_behavior.set_target(best_threat)
 				_alert_formation_group(best_threat)
 				# Abandon route if hull critically low

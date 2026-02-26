@@ -22,6 +22,7 @@ signal autopilot_disengaged_by_player  ## Emitted when player manually cancels a
 @export_group("Ship Data")
 @export var ship_data: ShipData = null
 var center_offset: Vector3 = Vector3.ZERO  ## Visual center from ship scene ShipCenter marker
+var cockpit_view_offset: Vector3 = Vector3.ZERO  ## Cockpit camera position from CockpitView marker
 
 # --- Engine equipment multipliers (set by EquipmentManager) ---
 var engine_accel_mult: float = 1.0

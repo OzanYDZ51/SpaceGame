@@ -2,9 +2,10 @@ class_name ShieldHitEffect
 extends Node3D
 
 # =============================================================================
-# Shield Hit Effect - AABB-based ellipsoid shield at projectile impact
-# Uses SphereMesh(radius=1) scaled non-uniformly by ship AABB so the shield
-# conforms to the hull silhouette. Shader renders a curved cap around impact.
+# Shield Hit Effect - Hull-conforming shield at projectile impact
+# Uses a cloned+expanded ArrayMesh of the ship hull so the shield follows the
+# actual ship geometry. Falls back to a SphereMesh for targets without ShipModel.
+# Shader uses euclidean distance from impact point for glow/ripple effects.
 # Parented to the target ship so it moves with it.
 # =============================================================================
 
@@ -21,31 +22,54 @@ var _flash_light: OmniLight3D = null
 func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, intensity: float = 1.0) -> void:
 	_intensity = clampf(intensity, 0.5, 3.0)
 
-	# Get AABB from ShipModel for hull-conforming ellipsoid
-	var shield_half_extents =Vector3.ONE * FALLBACK_RADIUS
-	var shield_center =Vector3.ZERO
-	var ship_model =target_ship.get_node_or_null("ShipModel")
-	if ship_model and ship_model.has_method("get_visual_aabb"):
-		var aabb: AABB = ship_model.get_visual_aabb()
-		if aabb.size.length() > 0.1:
-			shield_half_extents = aabb.size * 0.5 * SHIELD_PADDING
-			shield_center = aabb.get_center()
-			# Ensure minimum size on any axis
-			shield_half_extents = shield_half_extents.clamp(
-				Vector3.ONE * 2.0, Vector3.ONE * 200.0
-			)
+	var shield_mesh: Mesh = null
+	var shield_center := Vector3.ZERO
+	var max_radius := FALLBACK_RADIUS
+	var use_hull_mesh := false
 
-	# Center shield mesh on AABB center (not ship origin)
+	var ship_model = target_ship.get_node_or_null("ShipModel")
+
+	# Try hull-conforming shield mesh from ShipModel
+	if ship_model and ship_model.has_method("get_shield_mesh"):
+		shield_mesh = ship_model.get_shield_mesh()
+		if shield_mesh:
+			use_hull_mesh = true
+			var aabb: AABB = ship_model.get_visual_aabb()
+			shield_center = aabb.get_center()
+			max_radius = aabb.size.length() * 0.5 * ShipModel.SHIELD_EXPANSION
+
+	# Fallback: sphere for stations or meshless ships
+	if not use_hull_mesh:
+		var half_extents := Vector3.ONE * FALLBACK_RADIUS
+		if ship_model and ship_model.has_method("get_visual_aabb"):
+			var aabb: AABB = ship_model.get_visual_aabb()
+			if aabb.size.length() > 0.1:
+				shield_center = aabb.get_center()
+				half_extents = aabb.size * 0.5 * SHIELD_PADDING
+				half_extents = half_extents.clamp(Vector3.ONE * 2.0, Vector3.ONE * 200.0)
+		max_radius = half_extents.length()
+		var sphere := SphereMesh.new()
+		sphere.radius = max_radius
+		sphere.height = max_radius * 2.0
+		sphere.radial_segments = 48
+		sphere.rings = 24
+		shield_mesh = sphere
+
+	# Center shield on AABB center
 	position = shield_center
 
-	# Impact direction in ship's local space, relative to shield center
-	var impact_world =hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
+	# Impact point in ship-local space, relative to shield center
+	var impact_world := hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
 	if impact_world.length_squared() < 0.01:
 		impact_world = -target_ship.global_transform.basis.z
-	var impact_local: Vector3 = target_ship.global_transform.basis.inverse() * impact_world.normalized()
+	var impact_local: Vector3 = target_ship.global_transform.basis.inverse() * impact_world
+
+	# For fallback sphere: project onto sphere surface
+	if not use_hull_mesh:
+		impact_local = impact_local.normalized() * max_radius
 
 	# === Load shader ===
-	var shader =load("res://shaders/shield_hit.gdshader") as Shader
+	var shader := load("res://shaders/shield_hit.gdshader") as Shader
 	if shader == null:
 		push_warning("ShieldHitEffect: shader not found")
 		queue_free()
@@ -53,29 +77,22 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 
 	_shield_mat = ShaderMaterial.new()
 	_shield_mat.shader = shader
-	_shield_mat.set_shader_parameter("impact_direction", impact_local)
+	_shield_mat.set_shader_parameter("impact_point", impact_local)
 	_shield_mat.set_shader_parameter("effect_time", 0.0)
 	_shield_mat.set_shader_parameter("shield_health", shield_ratio)
-	_shield_mat.set_shader_parameter("shield_scale", shield_half_extents)
+	_shield_mat.set_shader_parameter("max_radius", max_radius)
 
-	# === Unit sphere scaled to AABB ellipsoid ===
-	var shield_mesh =MeshInstance3D.new()
-	var sphere =SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 48
-	sphere.rings = 24
-	shield_mesh.mesh = sphere
-	shield_mesh.scale = shield_half_extents
-	shield_mesh.material_override = _shield_mat
-	shield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(shield_mesh)
+	# === Shield mesh instance ===
+	var shield_mesh_inst := MeshInstance3D.new()
+	shield_mesh_inst.mesh = shield_mesh
+	shield_mesh_inst.material_override = _shield_mat
+	shield_mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(shield_mesh_inst)
 
-	# === Flash light at impact point on ellipsoid surface ===
-	var flash_pos =impact_local * shield_half_extents
+	# === Flash light at impact point ===
 	_flash_light = OmniLight3D.new()
-	_flash_light.position = flash_pos
-	var flash_col =Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)
+	_flash_light.position = impact_local
+	var flash_col := Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)
 	_flash_light.light_color = flash_col
 	_flash_light.light_energy = 3.5 * _intensity
 	_flash_light.omni_range = 20.0 * sqrt(_intensity)
@@ -84,7 +101,7 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	add_child(_flash_light)
 
 	# === Electric arc sparks at impact ===
-	_create_sparks(flash_pos, impact_local, shield_ratio)
+	_create_sparks(impact_local, impact_local.normalized(), shield_ratio)
 
 
 func _process(delta: float) -> void:
