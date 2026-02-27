@@ -108,7 +108,6 @@ func _on_body_hit(body: Node3D) -> void:
 
 		# Structure hit (station) — both server and client
 		if body.is_in_group("structures"):
-			print("[Projectile] Structure hit: %s weapon=%s dmg=%.1f connected=%s is_server=%s" % [body.name, weapon_name, damage, NetworkManager.is_connected_to_server(), NetworkManager.is_server()])
 			var hit_dir =(body.global_position - global_position).normalized()
 			var hit_dir_arr: Array = [hit_dir.x, hit_dir.y, hit_dir.z]
 			if NetworkManager.is_server():
@@ -121,13 +120,10 @@ func _on_body_hit(body: Node3D) -> void:
 			else:
 				NetworkManager._rpc_structure_hit_claim.rpc_id(1,
 					body.name, String(weapon_name), damage, hit_dir_arr)
-			var struct_hp = body.get_node_or_null("StructureHealth")
-			var shield_info := {"shield_absorbed": false, "shield_ratio": 0.0}
-			if struct_hp and struct_hp.shield_current > 0.0:
-				shield_info["shield_absorbed"] = true
-				shield_info["shield_ratio"] = struct_hp.get_shield_ratio()
-			_spawn_hit_effect(body, shield_info)
-			_report_hit_to_owner(body, shield_info)
+			# Apply damage locally (optimistic) — server batch will correct
+			var hit_info = _apply_damage_to(body)
+			_spawn_hit_effect(body, hit_info)
+			_report_hit_to_owner(body, hit_info)
 			_return_to_pool()
 			return
 

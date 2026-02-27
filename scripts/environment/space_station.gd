@@ -63,6 +63,7 @@ func _ready() -> void:
 	_build_bay_area()
 
 	await _load_model()
+	_upgrade_to_mesh_collision()
 	_build_lights()
 	_find_ring_nodes()
 
@@ -227,9 +228,8 @@ func _on_bay_body_exited(body: Node3D) -> void:
 # COLLISION — Simple box shape from known station dimensions
 # =========================================================================
 
-## Builds a reliable BoxShape3D collision from hardcoded station dimensions.
-## The previous ConvexPolygonShape3D approach (from all model vertices) could
-## produce degenerate hulls with complex models, causing raycasts to pass through.
+## Builds a temporary BoxShape3D collision so raycasts work before model loads.
+## Replaced by accurate trimesh collision once the model is available.
 func _build_station_collision() -> void:
 	var col = CollisionShape3D.new()
 	var shape = BoxShape3D.new()
@@ -238,6 +238,60 @@ func _build_station_collision() -> void:
 	col.position = Vector3(0.0, COLLISION_CENTER_Y, 0.0)
 	col.name = "StationCollision"
 	add_child(col)
+
+
+## Replaces the temporary box collision with a ConcavePolygonShape3D (trimesh)
+## built from the actual model geometry. Only works for StaticBody3D (which we are).
+func _upgrade_to_mesh_collision() -> void:
+	if _model == null:
+		return
+
+	var faces := PackedVector3Array()
+	_collect_mesh_faces(_model, faces)
+
+	if faces.size() < 3:
+		push_warning("SpaceStation: not enough mesh faces for trimesh, keeping box collision")
+		return
+
+	# Remove temporary box
+	var old = get_node_or_null("StationCollision")
+	if old:
+		old.queue_free()
+
+	var shape = ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	shape.backface_collision = true
+
+	var col = CollisionShape3D.new()
+	col.shape = shape
+	col.name = "StationCollision"
+	add_child(col)
+
+
+## Recursively collects all triangle faces from MeshInstance3D nodes,
+## transforming vertices into station-local space.
+func _collect_mesh_faces(node: Node, faces: PackedVector3Array) -> void:
+	if node is MeshInstance3D and node.mesh:
+		var mi: MeshInstance3D = node
+		var xform: Transform3D = mi.global_transform * global_transform.affine_inverse()
+		for surf_idx in mi.mesh.get_surface_count():
+			var arrays: Array = mi.mesh.surface_get_arrays(surf_idx)
+			if arrays.is_empty():
+				continue
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices = arrays[Mesh.ARRAY_INDEX]
+			if indices != null and indices.size() > 0:
+				var idx: int = 0
+				while idx + 2 < indices.size():
+					faces.append(xform * verts[indices[idx]])
+					faces.append(xform * verts[indices[idx + 1]])
+					faces.append(xform * verts[indices[idx + 2]])
+					idx += 3
+			else:
+				for v in verts:
+					faces.append(xform * v)
+	for child in node.get_children():
+		_collect_mesh_faces(child, faces)
 
 
 func _build_fallback() -> void:
