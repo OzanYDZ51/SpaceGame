@@ -90,7 +90,7 @@ func enter(ctx: Dictionary) -> void:
 				hangar_scene.display_ship(ship_model.model_path, ship_model.model_scale, hp_configs, weapon_names, ship_model.model_rotation_degrees, root_basis)
 
 			# Setup ship selection cycling (A/D keys) — only owned ships
-			var fleet_indices: Array = _get_switchable_fleet_indices()
+			var fleet_indices: Array[int] = _get_switchable_fleet_indices()
 			var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
 			hangar_scene.setup_ship_selection(active_idx, fleet_indices)
 			if not hangar_scene.ship_selected.is_connected(_on_hangar_ship_selected):
@@ -181,12 +181,13 @@ func _on_hangar_ship_selected(fleet_index: int) -> void:
 func _on_fleet_changed() -> void:
 	if hangar_scene == null or not is_active:
 		return
-	var fleet_indices: Array = _get_switchable_fleet_indices()
+	var fleet_indices: Array[int] = _get_switchable_fleet_indices()
 	var active_idx: int = GameManager.player_fleet.active_index if GameManager.player_fleet else 0
+	print("[DockInstance] fleet_changed: active=%d indices=%s" % [active_idx, str(fleet_indices)])
 	hangar_scene.refresh_ship_list(active_idx, fleet_indices)
 
 
-func _get_switchable_fleet_indices() -> Array:
+func _get_switchable_fleet_indices() -> Array[int]:
 	var result: Array[int] = []
 	if GameManager.player_fleet == null:
 		return result

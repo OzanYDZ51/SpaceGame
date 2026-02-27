@@ -108,12 +108,26 @@ func rebuild_ship_for_respawn(fleet_index: int) -> void:
 	# Rebuild with new ship
 	ShipFactory.setup_player_ship(ship_id, ship)
 
-	# Equip loadout from FleetShip
+	# Equip loadout from FleetShip (same logic as handle_ship_change)
+	var has_custom_loadout: bool = false
+	for w in fs.weapons:
+		if w != &"":
+			has_custom_loadout = true
+			break
+	if not has_custom_loadout:
+		if fs.shield_name != &"" or fs.engine_name != &"":
+			has_custom_loadout = true
+	if not has_custom_loadout:
+		for m in fs.modules:
+			if m != &"":
+				has_custom_loadout = true
+				break
+
 	var wm = ship.get_node_or_null("WeaponManager")
-	if wm and not fs.weapons.is_empty():
+	if wm and has_custom_loadout:
 		wm.equip_weapons(fs.weapons)
 	var em = ship.get_node_or_null("EquipmentManager")
-	if em:
+	if em and has_custom_loadout:
 		em.remove_shield()
 		em.remove_engine()
 		for i in em.equipped_modules.size():
@@ -174,6 +188,23 @@ func handle_ship_change(fleet_index: int) -> void:
 
 	var ship = player_ship
 
+	# Sync current ship's loadout to its FleetShip before switching
+	if active_fs:
+		var old_wm = ship.get_node_or_null("WeaponManager")
+		if old_wm:
+			for i in old_wm.hardpoints.size():
+				if i < active_fs.weapons.size():
+					var hp = old_wm.hardpoints[i]
+					active_fs.weapons[i] = hp.mounted_weapon.weapon_name if hp.mounted_weapon else &""
+		var old_em = ship.get_node_or_null("EquipmentManager")
+		if old_em:
+			active_fs.shield_name = old_em.equipped_shield.shield_name if old_em.equipped_shield else &""
+			active_fs.engine_name = old_em.equipped_engine.engine_name if old_em.equipped_engine else &""
+			for i in old_em.equipped_modules.size():
+				if i < active_fs.modules.size():
+					var m: ModuleResource = old_em.equipped_modules[i]
+					active_fs.modules[i] = m.module_name if m else &""
+
 	# Strip old combat components
 	for comp_name in ["HealthSystem", "EnergySystem", "WeaponManager", "TargetingSystem", "EquipmentManager"]:
 		var comp =ship.get_node_or_null(comp_name)
@@ -194,18 +225,33 @@ func handle_ship_change(fleet_index: int) -> void:
 	# Rebuild with new ship
 	ShipFactory.setup_player_ship(ship_id, ship)
 
-	# Equip loadout from FleetShip (setup_player_ship applies defaults, strip them first)
+	# Equip loadout from FleetShip
+	# Check if FleetShip has ANY custom equipment (weapons, shield, engine, modules).
+	# If all empty (bare ship), keep defaults from setup_player_ship.
+	var has_custom_loadout: bool = false
+	for w in fs.weapons:
+		if w != &"":
+			has_custom_loadout = true
+			break
+	if not has_custom_loadout:
+		if fs.shield_name != &"" or fs.engine_name != &"":
+			has_custom_loadout = true
+	if not has_custom_loadout:
+		for m in fs.modules:
+			if m != &"":
+				has_custom_loadout = true
+				break
+
 	var wm = ship.get_node_or_null("WeaponManager")
-	if wm and not fs.weapons.is_empty():
+	if wm and has_custom_loadout:
 		wm.equip_weapons(fs.weapons)
 	var em = ship.get_node_or_null("EquipmentManager")
-	if em:
-		# Strip defaults applied by setup_player_ship
+	if em and has_custom_loadout:
+		# Strip defaults applied by setup_player_ship, replace with FleetShip loadout
 		em.remove_shield()
 		em.remove_engine()
 		for i in em.equipped_modules.size():
 			em.remove_module(i)
-		# Re-equip from FleetShip loadout
 		if fs.shield_name != &"":
 			var shield_res =ShieldRegistry.get_shield(fs.shield_name)
 			if shield_res:
