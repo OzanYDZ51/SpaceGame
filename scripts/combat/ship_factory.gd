@@ -307,8 +307,11 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 			if npc_auth and npc_auth._npcs.has(npc_name):
 				var info: Dictionary = npc_auth._npcs[npc_name]
 				if not info.get("_player_killing", false):
-					# AI-killed: route through _on_npc_killed with killer_pid=0
-					npc_auth._on_npc_killed(npc_name, 0)
+					# AI-killed: pass killer NPC name from last_attacker for Discord attribution
+					var killer_npc_name: String = ""
+					if health.last_attacker and is_instance_valid(health.last_attacker):
+						killer_npc_name = health.last_attacker.name
+					npc_auth._on_npc_killed(npc_name, 0, "", killer_npc_name)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system

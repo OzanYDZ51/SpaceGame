@@ -42,6 +42,8 @@ func detect_nearest_hostile(detection_range: float) -> Node3D:
 				continue
 			if data.node_ref == null or not is_instance_valid(data.node_ref):
 				continue
+			if not (data.node_ref as Node3D).visible:
+				continue
 			var dist_sq: float = entry["dist_sq"]
 			if dist_sq < nearest_dist * nearest_dist:
 				nearest_dist = sqrt(dist_sq)

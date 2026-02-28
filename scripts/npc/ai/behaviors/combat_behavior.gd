@@ -40,6 +40,10 @@ var _is_heavy: bool = false
 var _cached_target_health = null
 var _cached_target_ref: Node3D = null
 
+# Blind spot analysis (recalculated every 0.5s, not every frame)
+var _blind_spot_cache: Dictionary = {}
+var _blind_spot_timer: float = 0.0
+
 
 func enter() -> void:
 	sub_state = SubState.CLOSE_IN
@@ -65,6 +69,8 @@ func exit() -> void:
 	target = null
 	_cached_target_health = null
 	_cached_target_ref = null
+	_blind_spot_cache = {}
+	_blind_spot_timer = 0.0
 
 
 func set_target(node: Node3D) -> void:
@@ -244,7 +250,13 @@ func _tick_dogfight(dt: float) -> void:
 	var ideal_radius: float = Constants.AI_DOGFIGHT_ORBIT_RADIUS_HEAVY if _is_heavy else Constants.AI_DOGFIGHT_ORBIT_RADIUS_LIGHT
 	var max_dogfight_time: float = Constants.AI_DOGFIGHT_MAX_TIME_HEAVY if _is_heavy else Constants.AI_DOGFIGHT_MAX_TIME_LIGHT
 
-	# Update vertical weave phase
+	# Update blind spot analysis (every 0.5s)
+	_blind_spot_timer -= dt
+	if _blind_spot_timer <= 0.0:
+		_blind_spot_timer = 0.5
+		_blind_spot_cache = BlindSpotAnalyzer.analyze(target, controller._ship.global_position)
+
+	# Update vertical weave phase (bias toward blind spot if available)
 	var vert_speed: float = 0.6 if _is_heavy else 1.5
 	_vert_phase += vert_speed * dt
 
@@ -252,8 +264,17 @@ func _tick_dogfight(dt: float) -> void:
 	_orbit_reversal_timer -= dt
 	if _orbit_reversal_timer <= 0.0:
 		_orbit_reversal_timer = randf_range(3.0, 6.0)
-		if randf() < 0.3:
-			_orbit_direction *= -1.0
+		var preferred_side: float = _blind_spot_cache.get("orbit_side", 0.0)
+		if preferred_side != 0.0:
+			# Blind spot found — steer toward it (occasional random flip for unpredictability)
+			if randf() < 0.85:
+				_orbit_direction = preferred_side
+			else:
+				_orbit_direction *= -1.0
+		else:
+			# No preference — keep existing random behavior
+			if randf() < 0.3:
+				_orbit_direction *= -1.0
 
 	# Disengage check: target fled or max time reached
 	if dist > ideal_radius * 2.5:
@@ -271,9 +292,10 @@ func _tick_dogfight(dt: float) -> void:
 	var lead_pos: Vector3 = controller.combat.get_lead_position(target)
 	nav.face_target(lead_pos)
 
-	# Orbit throttle
+	# Orbit throttle — bias vertical weave toward blind spot
 	var orbit_strength: float = 0.4 if _is_heavy else 0.7
-	var vert_offset: float = sin(_vert_phase)
+	var vert_bias: float = _blind_spot_cache.get("vertical_bias", 0.0)
+	var vert_offset: float = sin(_vert_phase) + vert_bias * 0.5
 	nav.apply_dogfight_throttle(target, ideal_radius, _orbit_direction, orbit_strength, vert_offset, _is_heavy)
 
 	# Fire continuously while orbiting
@@ -323,7 +345,13 @@ func _tick_disengage_turn(dt: float) -> void:
 func _begin_attack_pass() -> void:
 	sub_state = SubState.ATTACK_PASS
 	_pass_timer = 0.0
-	_pass_side = 1.0 if randf() > 0.5 else -1.0
+	# Bias pass side toward target's blind spot
+	var analysis: Dictionary = BlindSpotAnalyzer.analyze(target, controller._ship.global_position)
+	var preferred: float = analysis.get("orbit_side", 0.0)
+	if preferred != 0.0:
+		_pass_side = preferred
+	else:
+		_pass_side = 1.0 if randf() > 0.5 else -1.0
 
 
 func _begin_lead_turn() -> void:
@@ -336,10 +364,16 @@ func _begin_lead_turn() -> void:
 func _begin_dogfight() -> void:
 	sub_state = SubState.DOGFIGHT
 	_dogfight_timer = 0.0
+	_blind_spot_timer = 0.0  # Force immediate analysis
 	_orbit_reversal_timer = randf_range(3.0, 6.0)
 	_vert_phase = randf() * TAU
-	# Randomize initial orbit direction
-	_orbit_direction = 1.0 if randf() > 0.5 else -1.0
+	# Initial orbit direction biased toward blind spot
+	var analysis: Dictionary = BlindSpotAnalyzer.analyze(target, controller._ship.global_position)
+	var preferred: float = analysis.get("orbit_side", 0.0)
+	if preferred != 0.0:
+		_orbit_direction = preferred
+	else:
+		_orbit_direction = 1.0 if randf() > 0.5 else -1.0
 
 
 func _begin_disengage_turn() -> void:
@@ -358,8 +392,14 @@ func _begin_disengage_turn() -> void:
 
 	# 45-90° offset — NOT directly away (that's boring), but not perpendicular either
 	var angle_t: float = randf_range(0.4, 0.8)  # blend between away and perpendicular
-	var lat_sign: float = 1.0 if randf() > 0.5 else -1.0
-	var vert := up * randf_range(-0.4, 0.4)
+	# Bias lateral direction and vertical component toward target's blind spot
+	var analysis: Dictionary = BlindSpotAnalyzer.analyze(target, controller._ship.global_position)
+	var lat_sign: float = analysis.get("orbit_side", 0.0)
+	if lat_sign == 0.0:
+		lat_sign = 1.0 if randf() > 0.5 else -1.0
+	var vert_bias: float = analysis.get("vertical_bias", 0.0)
+	var vert_range: float = randf_range(-0.4, 0.4) + vert_bias * 0.3
+	var vert := up * vert_range
 
 	_disengage_dir = (away * angle_t + right * lat_sign * (1.0 - angle_t) + vert * 0.3).normalized()
 
@@ -381,6 +421,9 @@ func _is_target_valid() -> bool:
 	if target == null or not is_instance_valid(target):
 		return false
 	if not target.is_inside_tree():
+		return false
+	# Docked/deactivated ships are invisible — stop targeting them
+	if target is Node3D and not (target as Node3D).visible:
 		return false
 	if _cached_target_ref != target:
 		_cached_target_ref = target

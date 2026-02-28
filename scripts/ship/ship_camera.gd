@@ -126,14 +126,15 @@ func _ready() -> void:
 
 	# Server-side ships are plain Node3D — no camera needed
 	if _ship == null or not ("center_offset" in _ship):
-		set_physics_process(false)
+		set_process(false)
 		set_process_unhandled_input(false)
 		return
 
 	set_as_top_level(true)
-	# Camera logic runs in _physics_process() (synced with ship physics).
-	# Physics interpolation smooths the rendered position between ticks.
-	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
+	# Camera runs in _process() with physics interpolation OFF (we control position
+	# every frame). We read the ship's interpolated transform to match the rendered
+	# ship position — this eliminates 60Hz stutter from raw physics transforms.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 	# Snapshot @export defaults as base reference for ship-size scaling
 	_base_distance_default = cam_distance_default
@@ -282,7 +283,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_fov_zoom_offset = 0.0
 
 
-func _physics_process(delta: float) -> void:
+func _process(delta: float) -> void:
 	if _ship == null:
 		return
 
@@ -300,15 +301,19 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_third_person(delta: float) -> void:
-	var ship_basis: Basis = _ship.global_transform.basis
+	# Read the INTERPOLATED ship transform — matches the visually rendered position,
+	# not the raw 60Hz physics transform. Eliminates stutter when rotating fast.
+	var ship_xform: Transform3D = _ship.get_global_transform_interpolated()
+	var ship_basis: Basis = ship_xform.basis
 	# Use ShipCenter offset as the visual center of the ship
-	var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
+	var ship_pos: Vector3 = ship_xform.origin + ship_basis * _ship.center_offset
 
 	# =========================================================================
 	# FREE LOOK (Alt key or cruise: mouse orbits camera; otherwise smooth return)
 	# =========================================================================
 	if _ship.free_look_active:
 		var md: Vector2 = _ship.cruise_look_delta.limit_length(FREE_LOOK_MAX_DELTA)
+		_ship.cruise_look_delta = Vector2.ZERO  # Consume — _read_input is in _physics_process
 		if md.length_squared() > 0.01:
 			_free_look_yaw_raw += md.x * FREE_LOOK_SENSITIVITY
 			_free_look_pitch_raw += md.y * FREE_LOOK_SENSITIVITY
@@ -455,14 +460,15 @@ func _update_third_person(delta: float) -> void:
 
 
 func _update_cockpit(delta: float) -> void:
-	var ship_basis: Basis = _ship.global_transform.basis
+	var ship_xform: Transform3D = _ship.get_global_transform_interpolated()
+	var ship_basis: Basis = ship_xform.basis
 
 	if _ship.cockpit_view_offset != Vector3.ZERO:
 		# Per-ship CockpitView marker — absolute position from ship origin
-		global_position = _ship.global_position + ship_basis * _ship.cockpit_view_offset
+		global_position = ship_xform.origin + ship_basis * _ship.cockpit_view_offset
 	else:
 		# Fallback: generic offset from ship center
-		var ship_pos: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
+		var ship_pos: Vector3 = ship_xform.origin + ship_basis * _ship.center_offset
 		global_position = ship_pos + ship_basis * cockpit_offset
 	global_transform.basis = ship_basis
 
@@ -548,8 +554,6 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Camera is top_level — it doesn't shift with the parent.
 	# Apply the same shift so camera stays in sync with the ship.
 	global_position -= shift
-	# Prevent interpolation from lerping between pre-shift and post-shift positions
-	reset_physics_interpolation()
 	# Keep spring velocity and prev_velocity intact — the position was shifted
 	# but relative distances are unchanged, so the spring-damper continues smoothly.
 	# Zeroing spring_velocity caused visible saccades at high speed (boost/cruise)

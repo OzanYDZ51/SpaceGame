@@ -168,7 +168,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	_auth._broadcaster.broadcast_hit_effect(target_npc, sender_pid, hit_dir, shield_absorbed, sender_state.system_id)
 
 
-func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "") -> void:
+func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "", killer_npc_id: String = "") -> void:
 	if not _auth._npcs.has(npc_id):
 		return
 
@@ -214,7 +214,8 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 				})
 
 	# Report kill to Discord
-	_report_kill_event(killer_pid, ship_data, weapon_name, system_id)
+	var victim_faction: StringName = StringName(info.get("faction", ""))
+	_report_kill_event(killer_pid, ship_data, victim_faction, weapon_name, system_id, killer_npc_id)
 
 	# Record encounter NPC death for respawn tracking (escalating delay anti-farm)
 	var encounter_key: String = info.get("encounter_key", "")
@@ -239,32 +240,66 @@ func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "
 		lod_mgr.unregister_ship(npc_id)
 
 
-func _report_kill_event(killer_pid: int, ship_data: ShipData, weapon_name: String, system_id: int) -> void:
+func _report_kill_event(killer_pid: int, ship_data: ShipData, victim_faction: StringName, weapon_name: String, system_id: int, killer_npc_id: String = "") -> void:
 	var reporter = GameManager.get_node_or_null("EventReporter")
 	if reporter == null:
-		print("[NpcAuthority] _report_kill_event: EventReporter not found!")
 		return
 
-	var killer_name: String = "Pilote"
-	if NetworkManager.peers.has(killer_pid):
+	# --- Killer name ---
+	var killer_name: String = ""
+	if killer_pid > 0 and NetworkManager.peers.has(killer_pid):
 		killer_name = NetworkManager.peers[killer_pid].player_name
+	elif killer_npc_id != "":
+		# NPC killer — build name from faction + ship type
+		killer_name = _build_npc_display_name(StringName(killer_npc_id))
+	if killer_name == "":
+		killer_name = "NPC inconnu"
 
-	var victim_name: String = "NPC"
-	if ship_data:
-		victim_name = ship_data.ship_name
+	# --- Victim name ---
+	var victim_name: String = _build_npc_display_name_from_data(ship_data, victim_faction)
 
+	# --- Weapon ---
 	var weapon_display: String = weapon_name
 	if weapon_name != "":
 		var w = WeaponRegistry.get_weapon(StringName(weapon_name))
 		if w:
 			weapon_display = String(w.weapon_name) if w.weapon_name != &"" else weapon_name
 
-	var system_name: String = "Unknown"
+	# --- System ---
+	var system_name: String = "Inconnu"
 	if GameManager._galaxy:
 		system_name = GameManager._galaxy.get_system_name(system_id)
 
-	print("[NpcAuthority] Reporting kill: %s -> %s (%s) in %s" % [killer_name, victim_name, weapon_display, system_name])
+	print("[NpcAuthority] Kill: %s -> %s (%s) in %s" % [killer_name, victim_name, weapon_display, system_name])
 	reporter.report_kill(killer_name, victim_name, weapon_display, system_name, system_id)
+
+
+## Build a display name for an NPC from its registered info: "Faction (ShipType)"
+func _build_npc_display_name(npc_id: StringName) -> String:
+	if not _auth._npcs.has(npc_id):
+		return "NPC"
+	var info: Dictionary = _auth._npcs[npc_id]
+	var sd: ShipData = ShipRegistry.get_ship_data(StringName(info.get("ship_id", "")))
+	var faction_id: StringName = StringName(info.get("faction", ""))
+	return _build_npc_display_name_from_data(sd, faction_id)
+
+
+func _build_npc_display_name_from_data(sd: ShipData, faction_id) -> String:
+	var ship_type: String = sd.ship_name if sd else "NPC"
+
+	var faction_label: String = ""
+	if faction_id != null and faction_id != &"" and faction_id != &"neutral":
+		var fm = GameManager.get_node_or_null("GameplayIntegrator")
+		if fm:
+			var faction_mgr = fm.get_node_or_null("FactionManager")
+			if faction_mgr:
+				var fres = faction_mgr.get_faction(faction_id)
+				if fres:
+					faction_label = fres.faction_name
+
+	if faction_label != "":
+		return "%s (%s)" % [faction_label, ship_type]
+	return ship_type
 
 
 func _broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, loot: Array, system_id: int = -1) -> void:

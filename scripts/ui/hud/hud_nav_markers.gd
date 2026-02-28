@@ -26,6 +26,7 @@ const NAV_COL_PLAYER: Color = Color(0.3, 0.85, 1.0, 0.9)
 const NAV_COL_CONSTRUCTION: Color = Color(0.2, 0.8, 1.0, 0.85)
 const NAV_COL_PLANET: Color = Color(0.6, 0.8, 1.0, 0.75)
 const NAV_COL_TARGET: Color = Color(1.0, 0.72, 0.08, 1.0)  # Gold — selected map nav target
+const NAV_COL_CRATE: Color = Color(1.0, 0.85, 0.3, 0.85)
 
 var _nav_markers: Control = null
 
@@ -58,7 +59,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 	# Stations + Star + Jump Gates + Asteroid Belts
 	for ent in EntityRegistry.get_all().values():
 		var etype: int = ent["type"]
-		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT and etype != EntityRegistrySystem.EntityType.CONSTRUCTION_SITE and etype != EntityRegistrySystem.EntityType.PLANET:
+		if etype != EntityRegistrySystem.EntityType.STATION and etype != EntityRegistrySystem.EntityType.STAR and etype != EntityRegistrySystem.EntityType.JUMP_GATE and etype != EntityRegistrySystem.EntityType.ASTEROID_BELT and etype != EntityRegistrySystem.EntityType.CONSTRUCTION_SITE and etype != EntityRegistrySystem.EntityType.PLANET and etype != EntityRegistrySystem.EntityType.CARGO_CRATE:
 			continue
 		var world_pos: Vector3
 		var node_ref = ent.get("node")
@@ -91,6 +92,7 @@ func _draw_nav_markers(ctrl: Control) -> void:
 			EntityRegistrySystem.EntityType.JUMP_GATE: marker_col = NAV_COL_GATE
 			EntityRegistrySystem.EntityType.ASTEROID_BELT: marker_col = NAV_COL_BELT
 			EntityRegistrySystem.EntityType.CONSTRUCTION_SITE: marker_col = NAV_COL_CONSTRUCTION
+			EntityRegistrySystem.EntityType.CARGO_CRATE: marker_col = NAV_COL_CRATE
 			EntityRegistrySystem.EntityType.PLANET:
 				# Use the planet's actual color (coherent with map + impostor)
 				var pcol: Color = ent.get("color", NAV_COL_PLANET)

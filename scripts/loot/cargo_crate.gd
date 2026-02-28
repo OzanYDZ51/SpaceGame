@@ -59,13 +59,17 @@ func _ready() -> void:
 	_light.omni_attenuation = 1.5
 	add_child(_light)
 
-	# Register in EntityRegistry
+	# Register in EntityRegistry (with universe position for nav markers)
+	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
 	EntityRegistry.register(_registry_id, {
 		"name": "Cargo Crate",
 		"type": EntityRegistrySystem.EntityType.CARGO_CRATE,
 		"node": self,
 		"radius": 2.0,
 		"color": Color(1.0, 0.7, 0.15),
+		"pos_x": upos[0],
+		"pos_y": upos[1],
+		"pos_z": upos[2],
 	})
 
 
@@ -82,6 +86,14 @@ func _process(delta: float) -> void:
 
 	# Drift
 	global_position += _drift * delta
+
+	# Update universe position in EntityRegistry (crate drifts)
+	var upos: Array = FloatingOrigin.to_universe_pos(global_position)
+	var ent: Dictionary = EntityRegistry.get_entity(_registry_id)
+	if not ent.is_empty():
+		ent["pos_x"] = upos[0]
+		ent["pos_y"] = upos[1]
+		ent["pos_z"] = upos[2]
 
 	# Abandon timer
 	if _abandon_time > 0.0:

@@ -80,7 +80,7 @@ func update_visibility() -> void:
 			_dock_prompt.queue_redraw()
 
 	if _loot_prompt:
-		var show_loot: bool = loot_pickup != null and loot_pickup.can_pickup
+		var show_loot: bool = loot_pickup != null and (loot_pickup.can_pickup or loot_pickup.nearest_crate_any != null)
 		_loot_prompt.visible = show_loot
 		if show_loot:
 			_loot_prompt.queue_redraw()
@@ -166,27 +166,48 @@ func _draw_loot_prompt(ctrl: Control) -> void:
 	var s =ctrl.size
 	var font =UITheme.get_font_medium()
 	var cx: float = s.x * 0.5
-	var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
 
 	var loot_col =Color(1.0, 0.85, 0.3)
-	var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
-	ctrl.draw_rect(bg_rect, Color(0.02, 0.015, 0.04, 0.6 * pulse))
-	ctrl.draw_rect(bg_rect, Color(loot_col.r, loot_col.g, loot_col.b, 0.3 * pulse), false, 1.0)
+	var in_pickup_range: bool = loot_pickup != null and loot_pickup.can_pickup
 
-	if loot_pickup and loot_pickup.nearest_crate:
-		var summary: String = loot_pickup.nearest_crate.get_contents_summary()
-		ctrl.draw_string(font, Vector2(0, 13), summary.to_upper(),
-			HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
+	if in_pickup_range:
+		# Active prompt: pulsing, shows [X] key
+		var pulse: float = 0.7 + sin(pulse_t * 3.0) * 0.3
+		var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+		ctrl.draw_rect(bg_rect, Color(0.02, 0.015, 0.04, 0.6 * pulse))
+		ctrl.draw_rect(bg_rect, Color(loot_col.r, loot_col.g, loot_col.b, 0.3 * pulse), false, 1.0)
 
-	var text_col =Color(loot_col.r, loot_col.g, loot_col.b, pulse)
-	var loot_text: String = Locale.t("hud.loot")
-	ctrl.draw_string(font, Vector2(0, 28), loot_text,
-		HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+		if loot_pickup.nearest_crate:
+			var summary: String = loot_pickup.nearest_crate.get_contents_summary()
+			ctrl.draw_string(font, Vector2(0, 13), summary.to_upper(),
+				HORIZONTAL_ALIGNMENT_CENTER, s.x, 13, UITheme.TEXT_DIM * Color(1, 1, 1, pulse))
 
-	var tw: float = font.get_string_size(loot_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	var dy: float = 24.0
-	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
-	HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+		var text_col =Color(loot_col.r, loot_col.g, loot_col.b, pulse)
+		var loot_text: String = Locale.t("hud.loot")
+		ctrl.draw_string(font, Vector2(0, 28), loot_text,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+
+		var tw: float = font.get_string_size(loot_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var dy: float = 24.0
+		HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+		HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
+	elif loot_pickup and loot_pickup.nearest_crate_any != null:
+		# Awareness prompt: dimmed, shows distance, no key binding
+		var dim: float = 0.5
+		var bg_rect =Rect2(Vector2(10, 0), Vector2(s.x - 20, s.y))
+		ctrl.draw_rect(bg_rect, Color(0.02, 0.015, 0.04, 0.3))
+		ctrl.draw_rect(bg_rect, Color(loot_col.r, loot_col.g, loot_col.b, 0.15), false, 1.0)
+
+		var dist_str: String = HudDrawHelpers.format_nav_distance(loot_pickup.nearest_dist)
+		var awareness_text: String = "SOUTE — %s" % dist_str
+		var text_col =Color(loot_col.r, loot_col.g, loot_col.b, dim)
+		ctrl.draw_string(font, Vector2(0, 22), awareness_text,
+			HORIZONTAL_ALIGNMENT_CENTER, s.x, 14, text_col)
+
+		var tw: float = font.get_string_size(awareness_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var dy: float = 18.0
+		HudDrawHelpers.draw_diamond(ctrl, Vector2(cx - tw * 0.5 - 10, dy), 3.0, text_col)
+		HudDrawHelpers.draw_diamond(ctrl, Vector2(cx + tw * 0.5 + 10, dy), 3.0, text_col)
 
 
 # --- Gate ---

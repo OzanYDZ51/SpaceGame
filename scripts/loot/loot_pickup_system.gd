@@ -8,8 +8,11 @@ extends Node
 
 signal crate_in_range(crate: CargoCrate)
 signal crate_out_of_range()
+signal crate_detected(crate: CargoCrate, dist: float)
+signal crate_lost()
 
 @export var pickup_range: float = 200.0
+@export var awareness_range: float = 1000.0
 @export var scan_interval: float = 0.25
 
 ## Override peer_id for loot ownership check. -1 = use local player peer.
@@ -18,6 +21,10 @@ var override_peer_id: int = -1
 
 var nearest_crate: CargoCrate = null
 var can_pickup: bool = false
+
+## Closest crate within awareness_range (even if not yet lootable)
+var nearest_crate_any: CargoCrate = null
+var nearest_dist: float = INF
 
 var _ship: Node3D = null
 var _check_timer: float = 0.0
@@ -54,6 +61,20 @@ func _scan_crates() -> void:
 			best_dist = dist
 			best_crate = node as CargoCrate
 
+	# Awareness range: track any crate within 1km (even if not lootable)
+	var had_awareness: bool = nearest_crate_any != null
+	if best_crate and best_dist < awareness_range:
+		nearest_crate_any = best_crate
+		nearest_dist = best_dist
+		if not had_awareness:
+			crate_detected.emit(best_crate, best_dist)
+	else:
+		nearest_crate_any = null
+		nearest_dist = INF
+		if had_awareness:
+			crate_lost.emit()
+
+	# Pickup range: can actually loot within 200m + ownership check
 	var was_available: bool = can_pickup
 
 	var peer_id: int = override_peer_id if override_peer_id >= 0 else NetworkManager.local_peer_id

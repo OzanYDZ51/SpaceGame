@@ -34,6 +34,7 @@ const SUBSYSTEM_DAMAGE_CHANCE: float = 0.1
 const SUBSYSTEM_DAMAGE_AMOUNT: float = 0.15
 
 var _is_dead: bool = false
+var last_attacker: Node3D = null  ## Most recent node that dealt damage (for kill attribution)
 var _cached_energy_sys = null
 var _energy_sys_checked: bool = false
 
@@ -79,6 +80,8 @@ func apply_damage(amount: float, damage_type: StringName, hit_direction: Vector3
 	if _is_dead:
 		return {"shield_absorbed": false, "facing": 0, "shield_ratio": 0.0}
 
+	if attacker and is_instance_valid(attacker):
+		last_attacker = attacker
 	damage_taken.emit(attacker, amount)
 
 	var facing =_direction_to_facing(hit_direction)

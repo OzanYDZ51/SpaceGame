@@ -192,7 +192,7 @@ func _input(event: InputEvent) -> void:
 			_mouse_delta += event.relative
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	# Read input at physics rate so mouse delta is consumed once per physics tick
 	# with the FULL accumulated movement. Reading in _process() caused stutter:
 	# multiple frames consumed partial deltas, physics only saw the last one.
