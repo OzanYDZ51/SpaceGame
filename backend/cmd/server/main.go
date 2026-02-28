@@ -44,12 +44,15 @@ func main() {
 	discordRepo := repository.NewDiscordRepository(db)
 	fleetRepo := repository.NewFleetRepository(db)
 	chatRepo := repository.NewChatRepository(db)
+	marketRepo := repository.NewMarketRepository(db)
 
 	// Services
 	authSvc := service.NewAuthService(playerRepo, sessionRepo, cfg.JWTSecret)
 	playerSvc := service.NewPlayerService(playerRepo)
 	corpSvc := service.NewCorporationService(corpRepo, playerRepo)
 	wsHub := service.NewWSHub()
+
+	marketSvc := service.NewMarketService(marketRepo, playerRepo)
 
 	// Discord webhook service
 	webhookSvc := service.NewDiscordWebhookService(
@@ -192,6 +195,16 @@ func main() {
 	corporations.Post("/:id/applications", corpH.Apply)
 	corporations.Put("/:id/applications/:aid", corpH.HandleApplication)
 
+	// Market (HDV)
+	marketH := handler.NewMarketHandler(marketSvc)
+	market := v1.Group("/market", authMw)
+	market.Get("/listings", marketH.Search)
+	market.Post("/listings", marketH.Create)
+	market.Get("/my-listings", marketH.MyListings)
+	market.Get("/listings/:id", marketH.GetByID)
+	market.Post("/listings/:id/buy", marketH.Buy)
+	market.Delete("/listings/:id", marketH.Cancel)
+
 	// WebSocket
 	wsH := handler.NewWSHandler(wsHub, cfg.JWTSecret)
 	app.Get("/ws", wsH.Upgrade)
@@ -209,6 +222,20 @@ func main() {
 				log.Printf("Chat cleanup error: %v", err)
 			} else if deleted > 0 {
 				log.Printf("Chat cleanup: deleted %d old messages", deleted)
+			}
+		}
+	}()
+
+	// Background: expire old market listings (runs every 10 minutes)
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			expired, err := marketSvc.ExpireListings(context.Background())
+			if err != nil {
+				log.Printf("Market expiry error: %v", err)
+			} else if expired > 0 {
+				log.Printf("Market expiry: expired %d listings", expired)
 			}
 		}
 	}()

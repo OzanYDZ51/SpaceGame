@@ -361,5 +361,13 @@ func (r *PlayerRepository) UpdateLastSeen(ctx context.Context, playerIDs []strin
 	return err
 }
 
+func (r *PlayerRepository) AddCredits(ctx context.Context, playerID string, amount int64) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE players SET credits = credits + $2, updated_at = NOW()
+		WHERE id = $1
+	`, playerID, amount)
+	return err
+}
+
 // Ensure rows interface is consumed even on error
 var _ pgx.Rows = (pgx.Rows)(nil)

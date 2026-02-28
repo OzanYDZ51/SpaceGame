@@ -50,6 +50,7 @@ const REBINDABLE_ACTIONS: Array = [
 	["toggle_flight_assist", "key.flight_assist", KEY_Z],
 	["toggle_map", "key.system_map", KEY_M],
 	["toggle_corporation", "key.corporation", KEY_N],
+	["toggle_market", "key.market", KEY_O],
 	["toggle_galaxy_map", "key.galaxy_map", KEY_G],
 	["toggle_multiplayer", "key.multiplayer", KEY_P],
 	["target_cycle", "key.target_cycle", KEY_TAB],

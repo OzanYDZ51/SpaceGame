@@ -209,6 +209,7 @@ func _draw_controls_tab(rect: Rect2, font: Font, font_bold: Font, vt: float, vb:
 		font, font_bold, vt, vb)
 	ry = _draw_kb(rx, ry + 10, col_w, Locale.t("help.misc.title"), [
 		["X", Locale.t("help.misc.loot")], ["R", Locale.t("help.misc.respawn")], ["N", Locale.t("help.misc.corporation")],
+		["O", Locale.t("help.misc.market")],
 		["P", Locale.t("help.misc.multiplayer")], ["F1", Locale.t("help.misc.help")], ["Esc", Locale.t("help.misc.pause")],
 		["F12", Locale.t("help.misc.bug_report")]], font, font_bold, vt, vb)
 

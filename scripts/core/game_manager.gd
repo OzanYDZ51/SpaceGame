@@ -68,6 +68,8 @@ var _asteroid_field_mgr = null
 var _mining_system = null
 var _commerce_screen = null
 var _commerce_manager = null
+var _market_screen = null
+var _market_manager: MarketManager = null
 var _route_manager = null
 var _fleet_deployment_mgr = null
 var _squadron_mgr = null
@@ -344,6 +346,15 @@ func _setup_ui_managers() -> void:
 	_storage_screen = StorageScreenClass.new()
 	_storage_screen.name = "StorageScreen"
 	_screen_manager.register_screen("storage", _storage_screen)
+
+	# Register Market / HDV screen (accessible anytime via O)
+	_market_manager = MarketManager.new()
+	_market_manager.name = "MarketManager"
+	add_child(_market_manager)
+	_market_screen = MarketScreen.new()
+	_market_screen.name = "MarketScreen"
+	_market_screen.setup(_market_manager, player_data)
+	_screen_manager.register_screen("market", _market_screen)
 
 	# Register Multiplayer connection screen
 	var mp_screen =MultiplayerMenuScreen.new()

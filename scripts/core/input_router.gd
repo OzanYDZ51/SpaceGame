@@ -66,6 +66,7 @@ func _setup_input_actions() -> void:
 		"toggle_weapon_2": KEY_2,
 		"toggle_weapon_3": KEY_3,
 		"toggle_weapon_4": KEY_4,
+		"toggle_market": KEY_O,
 		"toggle_cinematic": KEY_F10,
 	}
 
@@ -150,6 +151,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			var top =screen_manager.get_top_screen()
 			if top == null or top == screen_manager._screens.get("bug_report"):
 				screen_toggled.emit("bug_report")
+				get_viewport().set_input_as_handled()
+				return
+
+	# Market / HDV screen (O)
+	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_O:
+		if screen_manager:
+			var top =screen_manager.get_top_screen()
+			if top == null or top == screen_manager._screens.get("market"):
+				screen_toggled.emit("market")
 				get_viewport().set_input_as_handled()
 				return
 
