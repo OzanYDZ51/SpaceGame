@@ -353,7 +353,6 @@ func _setup_ui_managers() -> void:
 	add_child(_market_manager)
 	_market_screen = MarketScreen.new()
 	_market_screen.name = "MarketScreen"
-	_market_screen.setup(_market_manager, player_data)
 	_screen_manager.register_screen("market", _market_screen)
 
 	# Register Multiplayer connection screen

@@ -119,17 +119,35 @@ func _build_sellable_list() -> void:
 			if m:
 				_sellable_items.append({"category": "module", "id": str(mn), "name": str(mn).replace("_", " ").capitalize(), "quantity": inventory.get_module_count(mn), "price": m.price})
 
-	# Ores/resources from player economy
+	# Ship resources (ores) from active fleet ship
+	var fleet = _player_data.fleet if _player_data else null
+	if fleet:
+		var active_fs = fleet.get_active()
+		if active_fs:
+			for res_id in active_fs.ship_resources:
+				var qty: int = active_fs.ship_resources[res_id]
+				if qty > 0:
+					var def: Dictionary = PlayerEconomy.RESOURCE_DEFS.get(res_id, {})
+					var rname: String = def.get("name", str(res_id))
+					_sellable_items.append({"category": "ore", "id": str(res_id), "name": rname, "quantity": qty, "price": 0})
+
+	# Player-level resources (economy)
 	if economy:
 		for res_id in economy.resources:
 			var qty: int = economy.resources[res_id]
 			if qty > 0:
-				var def: Dictionary = PlayerEconomy.RESOURCE_DEFS.get(res_id, {})
-				var rname: String = def.get("name", str(res_id))
-				_sellable_items.append({"category": "ore", "id": str(res_id), "name": rname, "quantity": qty, "price": 0})
+				# Skip if already added from ship_resources
+				var already: bool = false
+				for existing in _sellable_items:
+					if existing["id"] == str(res_id) and existing["category"] == "ore":
+						already = true
+						break
+				if not already:
+					var def: Dictionary = PlayerEconomy.RESOURCE_DEFS.get(res_id, {})
+					var rname: String = def.get("name", str(res_id))
+					_sellable_items.append({"category": "ore", "id": str(res_id), "name": rname, "quantity": qty, "price": 0})
 
 	# Ship cargo (active ship)
-	var fleet = _player_data.fleet if _player_data else null
 	if fleet:
 		var active_fs = fleet.get_active()
 		if active_fs and active_fs.cargo:

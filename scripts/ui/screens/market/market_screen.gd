@@ -53,6 +53,10 @@ func setup(mgr: MarketManager, pdata) -> void:
 
 
 func _on_opened() -> void:
+	# Refresh refs every time we open (player_data may not exist at register time)
+	market_manager = GameManager._market_manager
+	player_data = GameManager.player_data
+	setup(market_manager, player_data)
 	_tab_bar.tabs = _get_tab_names()
 	_switch_tab(0)
 
