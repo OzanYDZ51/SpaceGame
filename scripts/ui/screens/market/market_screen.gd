@@ -120,15 +120,15 @@ func _draw() -> void:
 
 	if not _is_open: return
 
+	var font: Font = UITheme.get_font()
+
 	# Credits display
 	if player_data and player_data.economy:
-		var font: Font = UITheme.get_font()
 		var cr_text: String = PlayerEconomy.format_credits(player_data.economy.credits) + " CR"
 		draw_string(font, Vector2(s.x - 180, 55), cr_text,
 			HORIZONTAL_ALIGNMENT_RIGHT, 160, UITheme.FONT_SIZE_BODY, PlayerEconomy.CREDITS_COLOR)
 
 	# Docking status indicator
-	var font: Font = UITheme.get_font()
 	var is_docked: bool = GameManager.current_state == Constants.GameState.DOCKED
 	var dock_text: String = Locale.t("market.status_docked") if is_docked else Locale.t("market.status_flying")
 	var dock_col: Color = UITheme.ACCENT if is_docked else UITheme.TEXT_DIM

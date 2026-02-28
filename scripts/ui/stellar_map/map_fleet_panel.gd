@@ -391,22 +391,9 @@ func _get_row_y_for_index(fleet_index: int) -> float:
 	return -1.0
 
 
-func _get_squadron_header_at(pos: Vector2) -> int:
+func _get_squadron_header_at(_pos: Vector2) -> int:
 	# Squadron headers only exist in the top squadron section (handled by
 	# _check_squadron_section_click). No squadron headers in the group view.
-	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
-	for group in _groups:
-		y += GROUP_H
-		if group["collapsed"]:
-			continue
-		for st in group["stations"]:
-			y += 2
-			y += SHIP_H
-			for _entry in st["ships"]:
-				y += SHIP_H
-		for _entry in group["deployed"]:
-			y += SHIP_H
-		y += 6
 	return -1
 
 
