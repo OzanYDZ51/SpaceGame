@@ -58,6 +58,7 @@ func _ready() -> void:
 	_cancel_btn.accent_color = UITheme.DANGER
 	_cancel_btn.pressed.connect(_on_cancel_pressed)
 	_cancel_btn.enabled = false
+	_cancel_btn.visible = false
 	add_child(_cancel_btn)
 
 	resized.connect(_layout)
@@ -78,6 +79,7 @@ func setup(mgr: MarketManager, pdata) -> void:
 func refresh() -> void:
 	_selected_index = -1
 	_cancel_btn.enabled = false
+	_cancel_btn.visible = false
 	_do_fetch()
 	_layout()
 
@@ -93,6 +95,7 @@ func _on_my_listings_loaded(listings: Array) -> void:
 	_listings = listings
 	_selected_index = -1
 	_cancel_btn.enabled = false
+	_cancel_btn.visible = false
 
 	var rows: Array = []
 	for l in listings:
@@ -119,10 +122,11 @@ func _on_my_listings_loaded(listings: Array) -> void:
 
 func _on_row_selected(idx: int) -> void:
 	_selected_index = idx
-	_cancel_btn.enabled = false
+	var is_active: bool = false
 	if idx >= 0 and idx < _listings.size():
-		var listing: MarketListing = _listings[idx]
-		_cancel_btn.enabled = listing.status == "active"
+		is_active = _listings[idx].status == "active"
+	_cancel_btn.visible = is_active
+	_cancel_btn.enabled = is_active
 	queue_redraw()
 
 
