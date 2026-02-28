@@ -205,7 +205,9 @@ func _ready() -> void:
 	print("========================================")
 
 	# Auto-start local dev stack (Docker + game server) on F5 from editor
-	if _dev_mode and OS.has_feature("editor"):
+	# Skip if running as server (prevents recursive spawn and cmd.exe errors in Docker)
+	var all_args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	if _dev_mode and OS.has_feature("editor") and "--server" not in all_args:
 		_start_dev_stack()
 
 

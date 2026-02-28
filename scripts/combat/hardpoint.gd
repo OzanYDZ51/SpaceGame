@@ -283,7 +283,6 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 		fire_dir = (target_pos - spawn_pos).normalized()
 		var ship_basis: Basis = ship_node.global_transform.basis if ship_node else Basis.IDENTITY
 		if fire_dir.length() < 0.5 or ship_basis.z.dot(fire_dir) > 0.5:
-			push_warning("Hardpoint %d: target behind ship or too close, using ship forward" % slot_id)
 			fire_dir = ship_fwd
 		up_hint = ship_node.global_transform.basis.y if ship_node else Vector3.UP
 

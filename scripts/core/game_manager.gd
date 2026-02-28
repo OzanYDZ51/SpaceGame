@@ -713,6 +713,11 @@ func _initialize_game() -> void:
 	if hud_fac and _gameplay_integrator.faction_manager:
 		hud_fac.set_faction_manager(_gameplay_integrator.faction_manager)
 
+	# Structure Authority (must exist BEFORE jump_to_system so stations get registered)
+	_structure_auth = StructureAuthority.new()
+	_structure_auth.name = "StructureAuthority"
+	add_child(_structure_auth)
+
 	if _splash:
 		_splash.set_step("CHARGEMENT DU SYSTEME...", 0.50)
 
@@ -819,11 +824,6 @@ func _initialize_game() -> void:
 	if _ship_change_mgr:
 		_ship_change_mgr.ship_net_sync = _net_sync_mgr.ship_net_sync
 		_ship_change_mgr.lod_manager = _lod_manager
-
-	# Structure Authority (server-authoritative station damage sync)
-	_structure_auth = StructureAuthority.new()
-	_structure_auth.name = "StructureAuthority"
-	add_child(_structure_auth)
 
 	_crash_log("_init: before DockingManager")
 	# Docking Manager (needs screen_manager, station_screen, etc. from _setup_ui_managers)

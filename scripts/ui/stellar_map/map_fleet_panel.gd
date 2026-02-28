@@ -299,7 +299,10 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool 
 			_last_single_select_index = hit_index
 		selection_changed.emit(_selected_fleet_indices.duplicate())
 		if _selected_fleet_indices.size() == 1:
-			ship_move_selected.emit(_selected_fleet_indices[0])
+			var fi: int = _selected_fleet_indices[0]
+			ship_move_selected.emit(fi)
+			if _fleet and fi < _fleet.ships.size():
+				ship_selected.emit(fi, _fleet.ships[fi].docked_system_id)
 		queue_redraw()
 		return true
 

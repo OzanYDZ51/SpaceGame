@@ -168,6 +168,9 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 		selected_hardpoint: int) -> void:
 	if _viewer_camera == null or adapter == null or _viewport == null:
 		return
+	var vp_size =Vector2(_viewport.size)
+	if vp_size.x <= 0 or vp_size.y <= 0:
+		return
 
 	var cam_fwd =-_viewer_camera.global_transform.basis.z
 	var hp_count: int = adapter.get_hardpoint_count()
@@ -185,9 +188,6 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 
 		if not _viewer_camera.is_position_behind(world_pos):
 			var screen_pos =_viewer_camera.unproject_position(world_pos)
-			var vp_size =Vector2(_viewport.size)
-			if vp_size.x <= 0 or vp_size.y <= 0:
-				continue
 			var label_x =screen_pos.x / vp_size.x * viewer_w
 			var label_y =screen_pos.y / vp_size.y * viewer_h + EC.CONTENT_TOP
 
