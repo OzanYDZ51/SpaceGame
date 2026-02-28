@@ -181,7 +181,7 @@ func _on_listings_loaded(listings: Array, total: int) -> void:
 	for l in listings:
 		rows.append([
 			l.item_name,
-			l.station_name,
+			_format_location(l),
 			str(l.quantity),
 			PlayerEconomy.format_credits(l.unit_price),
 			l.seller_name,
@@ -222,6 +222,15 @@ func _on_market_error(msg: String) -> void:
 	if GameManager._notif:
 		GameManager._notif.toast(msg, UIToast.ToastType.ERROR)
 	queue_redraw()
+
+
+func _format_location(listing: MarketListing) -> String:
+	var sys_name: String = ""
+	if GameManager._galaxy:
+		sys_name = GameManager._galaxy.get_system_name(listing.system_id)
+	if sys_name != "" and sys_name != "Unknown":
+		return "%s (%s)" % [listing.station_name, sys_name]
+	return listing.station_name
 
 
 func _update_buy_button() -> void:
@@ -306,7 +315,7 @@ func _draw_detail_panel(rect: Rect2, listing: MarketListing) -> void:
 
 	# Key-value pairs
 	y = draw_key_value(x, y, w, Locale.t("market.detail.seller"), listing.seller_name)
-	y = draw_key_value(x, y, w, Locale.t("market.detail.station"), listing.station_name)
+	y = draw_key_value(x, y, w, Locale.t("market.detail.station"), _format_location(listing))
 	y = draw_key_value(x, y, w, Locale.t("market.detail.quantity"), str(listing.quantity))
 	y = draw_key_value(x, y, w, Locale.t("market.detail.unit_price"), PlayerEconomy.format_credits(listing.unit_price) + " CR")
 	y = draw_key_value(x, y, w, Locale.t("market.detail.total"), PlayerEconomy.format_credits(listing.get_total_price()) + " CR")

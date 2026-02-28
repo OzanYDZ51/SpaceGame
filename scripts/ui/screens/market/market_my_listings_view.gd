@@ -98,11 +98,16 @@ func _on_my_listings_loaded(listings: Array) -> void:
 	for l in listings:
 		var status_text: String = _translate_status(l.status)
 		var buyer_text: String = l.sold_to_name if l.sold_to_name != "" else "—"
+		var loc: String = l.station_name
+		if GameManager._galaxy:
+			var sn: String = GameManager._galaxy.get_system_name(l.system_id)
+			if sn != "" and sn != "Unknown":
+				loc = "%s (%s)" % [l.station_name, sn]
 		rows.append([
 			l.item_name,
 			PlayerEconomy.format_credits(l.unit_price),
 			str(l.quantity),
-			l.station_name,
+			loc,
 			status_text,
 			buyer_text,
 		])
