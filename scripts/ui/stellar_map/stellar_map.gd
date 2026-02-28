@@ -79,9 +79,10 @@ var _construction_mgr = null
 var _redraw_timer: float = 0.0
 const REDRAW_INTERVAL: float = 1.0 / 30.0  # 30 FPS max for entity/bg layers
 
-# Inline rename
+# Inline rename (squadron or ship)
 var _rename_edit: LineEdit = null
 var _rename_sq_id: int = -1
+var _rename_fleet_idx: int = -1
 
 
 # Filters: EntityType (int) -> bool (true = hidden)
@@ -152,6 +153,7 @@ func _build_children() -> void:
 	_fleet_panel.ship_context_menu_requested.connect(_on_sidebar_context_menu)
 	_fleet_panel.squadron_header_clicked.connect(_on_squadron_header_clicked)
 	_fleet_panel.squadron_rename_requested.connect(_on_squadron_rename_requested)
+	_fleet_panel.ship_rename_requested.connect(_on_ship_rename_requested)
 	_fleet_panel.squadron_disband_requested.connect(_on_fp_disband_sq)
 	_fleet_panel.squadron_remove_member_requested.connect(_on_fp_remove_member)
 	_fleet_panel.squadron_formation_requested.connect(_on_fp_set_formation)
@@ -1183,7 +1185,22 @@ func _on_squadron_header_clicked(_squadron_id: int) -> void:
 
 
 func _on_squadron_rename_requested(squadron_id: int, screen_pos: Vector2) -> void:
-	_start_squadron_rename(squadron_id, _fleet_panel.global_position + screen_pos)
+	if _fleet_panel._fleet == null:
+		return
+	var sq = _fleet_panel._fleet.get_squadron(squadron_id)
+	if sq == null:
+		return
+	_start_inline_rename(sq.squadron_name, _fleet_panel.global_position + screen_pos, squadron_id, -1)
+
+
+func _on_ship_rename_requested(fleet_index: int, screen_pos: Vector2) -> void:
+	if _fleet_panel._fleet == null:
+		return
+	if fleet_index < 0 or fleet_index >= _fleet_panel._fleet.ships.size():
+		return
+	var fs = _fleet_panel._fleet.ships[fleet_index]
+	var current_name: String = fs.custom_name if fs.custom_name != "" else String(fs.ship_id)
+	_start_inline_rename(current_name, _fleet_panel.global_position + screen_pos, -1, fleet_index)
 
 
 func _on_fp_disband_sq(sq_id: int) -> void:
@@ -1202,23 +1219,18 @@ func _on_fp_add_ship(fleet_idx: int, sq_id: int) -> void:
 	squadron_action_requested.emit(&"add_and_deploy", {"fleet_index": fleet_idx, "squadron_id": sq_id})
 
 
-func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:
+func _start_inline_rename(current_text: String, screen_pos: Vector2, sq_id: int, fleet_idx: int) -> void:
 	_cancel_rename()
-	if _fleet_panel._fleet == null:
-		return
-	var sq = _fleet_panel._fleet.get_squadron(squadron_id)
-	if sq == null:
-		return
-
-	_rename_sq_id = squadron_id
+	_rename_sq_id = sq_id
+	_rename_fleet_idx = fleet_idx
 	_rename_edit = LineEdit.new()
-	_rename_edit.text = sq.squadron_name
+	_rename_edit.text = current_text
 	_rename_edit.position = Vector2(screen_pos.x, screen_pos.y - 10)
 	_rename_edit.custom_minimum_size = Vector2(180, 24)
 	_rename_edit.select_all_on_focus = true
 	_rename_edit.add_theme_font_size_override("font_size", 13)
 	_rename_edit.add_theme_color_override("font_color", UITheme.PRIMARY)
-	var sb =StyleBoxFlat.new()
+	var sb = StyleBoxFlat.new()
 	sb.bg_color = Color(0.0, 0.05, 0.1, 0.95)
 	sb.border_color = UITheme.PRIMARY
 	sb.set_border_width_all(1)
@@ -1233,16 +1245,27 @@ func _start_squadron_rename(squadron_id: int, screen_pos: Vector2) -> void:
 
 
 func _on_rename_submitted(new_name: String) -> void:
-	if _rename_sq_id >= 0 and new_name.strip_edges() != "":
-		squadron_action_requested.emit(&"rename", {"squadron_id": _rename_sq_id, "name": new_name.strip_edges()})
+	var trimmed: String = new_name.strip_edges()
+	if trimmed == "":
+		_cancel_rename()
+		return
+	if _rename_sq_id >= 0:
+		squadron_action_requested.emit(&"rename", {"squadron_id": _rename_sq_id, "name": trimmed})
+	elif _rename_fleet_idx >= 0:
+		fleet_order_requested.emit(_rename_fleet_idx, &"rename_ship", {"name": trimmed})
 	_cancel_rename()
 
 
 func _cancel_rename() -> void:
 	if _rename_edit:
+		if _rename_edit.text_submitted.is_connected(_on_rename_submitted):
+			_rename_edit.text_submitted.disconnect(_on_rename_submitted)
+		if _rename_edit.focus_exited.is_connected(_cancel_rename):
+			_rename_edit.focus_exited.disconnect(_cancel_rename)
 		_rename_edit.queue_free()
 		_rename_edit = null
 	_rename_sq_id = -1
+	_rename_fleet_idx = -1
 
 
 func _on_search_entity_selected(id: String) -> void:
@@ -1459,6 +1482,10 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		return result
 
 	var fleet = _fleet_panel._fleet
+
+	# Rename ship (always available)
+	result.append({"id": &"ship_rename", "display_name": Locale.t("map.rename_ship")})
+
 	var sq = fleet.get_ship_squadron(fleet_index)
 
 	# "SUIVRE" option when the context menu target is a fleet ship
@@ -1512,7 +1539,12 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 	var effective =_get_effective_fleet_indices()
 	var order_str =String(order_id)
 
-	if order_id == &"sq_create_player":
+	if order_id == &"ship_rename":
+		var idx = _get_effective_fleet_index()
+		if idx >= 0:
+			_on_ship_rename_requested(idx, Vector2(120, 40))
+		return
+	elif order_id == &"sq_create_player":
 		squadron_action_requested.emit(&"create_player", {})
 	elif order_id == &"sq_create_single":
 		var idx =_get_effective_fleet_index()
@@ -1534,11 +1566,11 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		if idx >= 0:
 			squadron_action_requested.emit(&"remove_member", {"fleet_index": idx})
 	elif order_id == &"sq_rename":
-		var idx =_get_effective_fleet_index()
+		var idx = _get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:
 			var sq = _fleet_panel._fleet.get_ship_squadron(idx)
 			if sq:
-				_start_squadron_rename(sq.squadron_id, _fleet_panel.global_position + Vector2(120, 40))
+				_on_squadron_rename_requested(sq.squadron_id, Vector2(120, 40))
 	elif order_id == &"sq_promote":
 		var idx =_get_effective_fleet_index()
 		if idx >= 0 and _fleet_panel._fleet:

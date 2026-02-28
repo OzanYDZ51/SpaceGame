@@ -79,6 +79,16 @@ func tick(dt: float) -> void:
 		sub_state = SubState.ENGAGE
 		_run_timer = 0.0
 
+	# Formation leash: if we have a formation leader and drifted too far, abandon
+	# combat and return to formation (escorts must protect the convoy, not chase)
+	if controller._default_behavior and controller._default_behavior is FormationBehavior:
+		var fb: FormationBehavior = controller._default_behavior as FormationBehavior
+		if fb.leader and is_instance_valid(fb.leader):
+			var dist_to_leader: float = controller._ship.global_position.distance_to(fb.leader.global_position)
+			if dist_to_leader > Constants.AI_FORMATION_LEASH_DISTANCE:
+				controller._end_combat()
+				return
+
 	match sub_state:
 		SubState.ENGAGE:
 			_tick_engage(dt)

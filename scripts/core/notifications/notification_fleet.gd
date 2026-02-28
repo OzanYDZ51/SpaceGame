@@ -34,3 +34,7 @@ func earned(ship_name: String, credits: int) -> void:
 
 func destroyed() -> void:
 	_svc.toast(Locale.t("notif.ship_destroyed"), UIToast.ToastType.WARNING)
+
+
+func renamed(new_name: String) -> void:
+	_svc.toast(Locale.t("notif.ship_renamed") % new_name, UIToast.ToastType.SUCCESS)

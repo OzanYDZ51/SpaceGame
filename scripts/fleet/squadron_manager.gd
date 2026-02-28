@@ -221,9 +221,21 @@ func propagate_leader_order(squadron_id: int, order_id: StringName, params: Dict
 			continue
 
 		if fs.deployment_state == FleetShip.DeploymentState.DOCKED:
+			# Deploy docked members — setup_squadron_controller() will clear
+			# their FleetAICommand on deploy so they follow in formation
 			_fleet_deployment_mgr.request_deploy(member_idx, order_id, params)
 		elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
-			_fleet_deployment_mgr.request_change_command(member_idx, order_id, params)
+			# Clear FleetAICommand so SquadronAICommand takes over and
+			# members follow the leader in formation instead of going to
+			# the same absolute destination independently
+			var npc = _fleet_deployment_mgr.get_deployed_npc(member_idx)
+			if npc:
+				var bridge = npc.get_node_or_null("FleetAICommand")
+				if bridge:
+					bridge._arrived = true
+					bridge.command = &""
+			fs.deployed_command = &""
+			fs.deployed_command_params = {}
 
 
 # =========================================================================

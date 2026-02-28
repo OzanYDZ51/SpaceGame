@@ -169,6 +169,62 @@ func fire_group(group_index: int, sequential: bool, target_pos: Vector3) -> void
 						_weapon_audio.play_fire(hardpoints[hp_idx].global_position)
 
 
+## Like fire_group(), but computes per-hardpoint lead prediction from each cannon's position.
+## This makes fixed weapons on wide ships converge correctly on a moving target.
+func fire_group_with_lead(group_index: int, sequential: bool, target_node: Node3D) -> void:
+	if group_index < 0 or group_index >= weapon_groups.size():
+		return
+	var group: Array = weapon_groups[group_index]
+	if group.is_empty():
+		return
+	if target_node == null or not is_instance_valid(target_node):
+		return
+
+	var target_pos: Vector3 = TargetingSystem.get_ship_center(target_node)
+	var target_vel: Vector3 = Vector3.ZERO
+	if target_node is RigidBody3D:
+		target_vel = (target_node as RigidBody3D).linear_velocity
+	elif "linear_velocity" in target_node:
+		target_vel = target_node.linear_velocity
+	var ship_vel: Vector3 = (_ship as RigidBody3D).linear_velocity if _ship is RigidBody3D else Vector3.ZERO
+
+	if sequential:
+		var attempts: int = 0
+		while attempts < group.size():
+			var idx: int = _fire_index.get(group_index, 0) % group.size()
+			_fire_index[group_index] = idx + 1
+			var hp_idx: int = group[idx]
+			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
+				if hardpoints[hp_idx].mounted_weapon:
+					var wtype: int = hardpoints[hp_idx].mounted_weapon.weapon_type
+					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
+						attempts += 1
+						continue
+				var hp: Hardpoint = hardpoints[hp_idx]
+				var lead_pos: Vector3 = _solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed if hp.mounted_weapon else 1000.0, _target_accel)
+				var bolt = hp.try_fire(lead_pos, ship_vel)
+				if bolt:
+					weapon_fired.emit(hp_idx, hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+					if _weapon_audio:
+						_weapon_audio.play_fire(hp.global_position)
+					return
+			attempts += 1
+	else:
+		for hp_idx in group:
+			if hp_idx < hardpoints.size() and hardpoints[hp_idx].enabled:
+				if hardpoints[hp_idx].mounted_weapon:
+					var wtype: int = hardpoints[hp_idx].mounted_weapon.weapon_type
+					if wtype == WeaponResource.WeaponType.MINING_LASER or wtype == WeaponResource.WeaponType.TURRET:
+						continue
+				var hp: Hardpoint = hardpoints[hp_idx]
+				var lead_pos: Vector3 = _solve_turret_lead(hp.global_position, ship_vel, target_pos, target_vel, hp.mounted_weapon.projectile_speed if hp.mounted_weapon else 1000.0, _target_accel)
+				var bolt = hp.try_fire(lead_pos, ship_vel)
+				if bolt:
+					weapon_fired.emit(hp_idx, hp.mounted_weapon.weapon_name if hp.mounted_weapon else &"")
+					if _weapon_audio:
+						_weapon_audio.play_fire(hp.global_position)
+
+
 func update_cooldowns(_delta: float) -> void:
 	# Hardpoint cooldowns are handled in Hardpoint._process()
 	pass

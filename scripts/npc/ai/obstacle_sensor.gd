@@ -16,6 +16,9 @@ const VEL_AVOID_WEIGHT: float = 300.0
 const VEL_CONE_ANGLE: float = 0.3   # ~17° half-angle for cardinal probes
 const VEL_DIAG_ANGLE: float = 0.55  # ~31° half-angle for diagonal probes
 
+# --- Forward-facing detection (works even at low speed / when stuck) ---
+const FWD_LOOK_DIST: float = 300.0
+
 # --- Shared ---
 const COLLISION_MASK: int = 2  # LAYER_STATIONS(2) only — not asteroids
 const TICK_INTERVAL_MS: int = 100
@@ -64,64 +67,85 @@ func update() -> void:
 
 
 func _velocity_avoidance(space: PhysicsDirectSpaceState3D) -> Vector3:
-	var vel = _ship.linear_velocity
-	var speed = vel.length()
-	if speed < 5.0:
-		is_emergency = false
-		return Vector3.ZERO
+	var vel: Vector3 = _ship.linear_velocity
+	var speed: float = vel.length()
+	var origin: Vector3 = _ship.global_position
+	var ship_fwd: Vector3 = -_ship.global_transform.basis.z
 
-	var origin = _ship.global_position
-	var vel_dir = vel / speed
-	var look = clampf(speed * VEL_SPEED_SCALE, VEL_MIN_LOOK, VEL_MAX_LOOK)
+	# Primary probe: velocity-aligned if moving, else ship forward
+	var probe_dir: Vector3
+	var look: float
+	if speed >= 5.0:
+		probe_dir = vel / speed
+		look = clampf(speed * VEL_SPEED_SCALE, VEL_MIN_LOOK, VEL_MAX_LOOK)
+	else:
+		# Low speed / stuck: use ship facing direction
+		probe_dir = ship_fwd
+		look = FWD_LOOK_DIST
 
-	# Central ray along velocity
-	var center_dist = _ray_probe(space, origin, vel_dir, look)
+	# Always check ship forward direction (catches obstacles ship is turning toward)
+	var fwd_look: float = maxf(look, FWD_LOOK_DIST)
+	var fwd_dist: float = _ray_probe(space, origin, ship_fwd, fwd_look)
+	if fwd_dist < nearest_obstacle_dist:
+		nearest_obstacle_dist = fwd_dist
 
+	# Central ray along primary direction
+	var center_dist: float = _ray_probe(space, origin, probe_dir, look)
 	if center_dist < nearest_obstacle_dist:
 		nearest_obstacle_dist = center_dist
 
-	if center_dist >= look:
+	# If both directions clear, no avoidance
+	if center_dist >= look and fwd_dist >= fwd_look:
 		is_emergency = false
-		return Vector3.ZERO  # Path clear
+		return Vector3.ZERO
 
-	# Central blocked — probe 8 lateral directions (4 cardinal + 4 diagonal)
-	var up = _ship.global_transform.basis.y
-	var right = _ship.global_transform.basis.x
-	var s = VEL_CONE_ANGLE
-	var d = VEL_DIAG_ANGLE
+	# Use whichever has the closer obstacle for avoidance computation
+	var avoid_dir: Vector3 = probe_dir
+	var avoid_dist: float = center_dist
+	var avoid_look: float = look
+	if fwd_dist < center_dist:
+		avoid_dir = ship_fwd
+		avoid_dist = fwd_dist
+		avoid_look = fwd_look
+
+	# Probe 8 lateral directions around the obstacle direction
+	var up: Vector3 = _ship.global_transform.basis.y
+	var right: Vector3 = _ship.global_transform.basis.x
+	var s: float = VEL_CONE_ANGLE
+	var d: float = VEL_DIAG_ANGLE
 
 	var probes: Array[Vector3] = [
 		# Cardinal (17°)
-		(vel_dir + right * s).normalized(),
-		(vel_dir - right * s).normalized(),
-		(vel_dir + up * s).normalized(),
-		(vel_dir - up * s).normalized(),
+		(avoid_dir + right * s).normalized(),
+		(avoid_dir - right * s).normalized(),
+		(avoid_dir + up * s).normalized(),
+		(avoid_dir - up * s).normalized(),
 		# Diagonal (31°)
-		(vel_dir + (right + up).normalized() * d).normalized(),
-		(vel_dir + (right - up).normalized() * d).normalized(),
-		(vel_dir + (-right + up).normalized() * d).normalized(),
-		(vel_dir + (-right - up).normalized() * d).normalized(),
+		(avoid_dir + (right + up).normalized() * d).normalized(),
+		(avoid_dir + (right - up).normalized() * d).normalized(),
+		(avoid_dir + (-right + up).normalized() * d).normalized(),
+		(avoid_dir + (-right - up).normalized() * d).normalized(),
 	]
 
-	var best_dir = Vector3.ZERO
+	var best_dir: Vector3 = Vector3.ZERO
 	var best_dist: float = 0.0
 	var blocked_count: int = 0
 	for p in probes:
-		var probe_dist = _ray_probe(space, origin, p, look)
-		if probe_dist < look * 0.3:
+		var p_dist: float = _ray_probe(space, origin, p, avoid_look)
+		if p_dist < avoid_look * 0.3:
 			blocked_count += 1
-		if probe_dist > best_dist:
-			best_dist = probe_dist
+		if p_dist > best_dist:
+			best_dist = p_dist
 			best_dir = p
 
 	if best_dist < 10.0:
 		# Boxed in — pick clearest perpendicular direction
 		is_emergency = true
 		var escape_dirs: Array[Vector3] = [up, -up, right, -right]
-		var best_escape = up
+		var best_escape: Vector3 = up
 		var best_escape_dist: float = 0.0
 		for esc in escape_dirs:
-			var esc_dist = _ray_probe(space, origin, esc, VEL_MIN_LOOK)
+			var esc_dist: float = _ray_probe(space, origin, esc, VEL_MIN_LOOK)
 			if esc_dist > best_escape_dist:
 				best_escape_dist = esc_dist
 				best_escape = esc
@@ -129,9 +153,9 @@ func _velocity_avoidance(space: PhysicsDirectSpaceState3D) -> Vector3:
 	else:
 		is_emergency = blocked_count >= 6
 
-	var t = clampf(center_dist / look, 0.0, 1.0)
-	var urgency = (1.0 - t) * (1.0 - t)
-	var lateral = (best_dir - vel_dir * vel_dir.dot(best_dir)).normalized()
+	var t: float = clampf(avoid_dist / avoid_look, 0.0, 1.0)
+	var urgency: float = (1.0 - t) * (1.0 - t)
+	var lateral: Vector3 = (best_dir - avoid_dir * avoid_dir.dot(best_dir)).normalized()
 	return lateral * urgency * VEL_AVOID_WEIGHT
 
 

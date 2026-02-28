@@ -374,7 +374,35 @@ func ensure_deployed_visible() -> void:
 func redeploy_saved_ships() -> void:
 	# Server manages all fleet NPCs via NpcAuthority + backend persistence.
 	# Client never spawns fleet NPCs locally — they come via NPC batch sync.
-	pass
+	# After reconnect, tag LOD data with correct fleet_index for NPCs that
+	# already arrived via batch sync before the fleet state was restored.
+	if _fleet == null:
+		return
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	if lod_mgr == null:
+		return
+	var local_pid: int = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
+	for i in _fleet.ships.size():
+		var fs = _fleet.ships[i]
+		if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED and fs.deployed_npc_id != &"":
+			_tag_fleet_npc(lod_mgr, String(fs.deployed_npc_id), i, local_pid)
+
+
+## Tag LOD data + EntityRegistry for a fleet NPC so it shows correctly on map + 3D.
+func _tag_fleet_npc(lod_mgr, npc_id_str: String, fleet_index: int, owner_pid: int) -> void:
+	if lod_mgr:
+		var lod_data = lod_mgr.get_ship_data(StringName(npc_id_str))
+		if lod_data:
+			lod_data.fleet_index = fleet_index
+			lod_data.owner_pid = owner_pid
+	var ent: Dictionary = EntityRegistry.get_entity(npc_id_str)
+	if not ent.is_empty():
+		ent["type"] = EntityRegistrySystem.EntityType.SHIP_FLEET
+		if not ent.has("extra"):
+			ent["extra"] = {}
+		ent["extra"]["fleet_index"] = fleet_index
+		ent["extra"]["owner_pid"] = owner_pid
+		ent["extra"]["faction"] = "player_fleet"
 
 
 func _on_fleet_npc_died(fleet_index: int, _npc: Node) -> void:
@@ -459,6 +487,12 @@ func _on_deploy_confirmed(fleet_index: int, npc_id_str: String) -> void:
 		if lod_data:
 			lod_data.fleet_index = fleet_index
 			lod_data.owner_pid = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
+			# If NPC is already promoted to LOD1 (RemoteNPCShip), add weapon visuals now
+			if is_instance_valid(lod_data.node_ref) and lod_data.node_ref is RemoteNPCShip:
+				var remote_npc: RemoteNPCShip = lod_data.node_ref as RemoteNPCShip
+				if remote_npc.fleet_weapons.is_empty():
+					remote_npc.fleet_weapons = fs.weapons.duplicate()
+					remote_npc.setup_weapon_visuals(fs.weapons)
 	_fleet.fleet_changed.emit()
 
 
@@ -499,6 +533,16 @@ func get_deployed_npc(fleet_index: int):
 		if is_instance_valid(npc_ref):
 			return npc_ref
 		_deployed_ships.erase(fleet_index)
+	# Fallback: look up from LOD manager via deployed_npc_id (after reconnect,
+	# _deployed_ships is empty but the NPC may exist as a RemoteNPCShip)
+	if _fleet and fleet_index >= 0 and fleet_index < _fleet.ships.size():
+		var fs = _fleet.ships[fleet_index]
+		if fs.deployed_npc_id != &"":
+			var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+			if lod_mgr:
+				var lod_data = lod_mgr.get_ship_data(fs.deployed_npc_id)
+				if lod_data and is_instance_valid(lod_data.node_ref):
+					return lod_data.node_ref
 	return null
 
 
@@ -576,6 +620,10 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 				fs.deployed_npc_id = &""
 				fs.deployed_command = &""
 				fs.deployed_command_params = {}
+				# Clean up squadron membership
+				var sq_mgr = GameManager.get_node_or_null("SquadronManager")
+				if sq_mgr:
+					sq_mgr.on_member_destroyed(i)
 				if GameManager._notif:
 					GameManager._notif.fleet.lost(fs.custom_name)
 		else:
@@ -587,6 +635,16 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 				fs.deployed_npc_id = &""
 				fs.deployed_command = &""
 				fs.deployed_command_params = {}
+
+	# Tag LOD data + EntityRegistry for alive fleet NPCs so map + 3D display work
+	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
+	var local_pid: int = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
+	for entry in alive:
+		var fi: int = int(entry.get("fleet_index", -1))
+		var npc_id_str: String = entry.get("npc_id", "")
+		if fi < 0 or npc_id_str == "":
+			continue
+		_tag_fleet_npc(lod_mgr, npc_id_str, fi, local_pid)
 
 	_fleet.fleet_changed.emit()
 	print("FleetDeploy: Reconnect status — %d alive, %d died offline" % [alive.size(), deaths.size()])

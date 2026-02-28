@@ -43,6 +43,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if _nav and is_instance_valid(_nav):
 		_nav.clear_nav_boost()
+		_nav.docking_approach = false
 	if FloatingOrigin.origin_shifted.is_connected(_on_origin_shifted):
 		FloatingOrigin.origin_shifted.disconnect(_on_origin_shifted)
 	_disconnect_bay_signals()
@@ -83,6 +84,8 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	_ctrl.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction", &"mine"])
 	_ctrl.target = null
 	_ctrl.current_state = AIController.State.IDLE
+	if _nav:
+		_nav.docking_approach = false
 
 	match cmd:
 		&"move_to":
@@ -169,8 +172,9 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 			if _station_id != "":
 				_resolve_station_dock_targets()
 				if _bay_target_valid:
-					_ctrl.set_patrol_area(_bay_approach_pos, 50.0)
-					_ctrl.current_state = AIController.State.PATROL
+					# Use IDLE + direct fly_toward (handled in _process), NOT PATROL
+					# PATROL generates circular waypoints that cause orbiting
+					_ctrl.current_state = AIController.State.IDLE
 
 
 func _process(_delta: float) -> void:
@@ -184,37 +188,46 @@ func _process(_delta: float) -> void:
 
 	_update_navigation_boost()
 
-	# Return to station dock approach
+	# Return to station dock approach — 3-phase direct flight
 	if _returning and _station_id != "" and _bay_target_valid:
 		_refresh_dock_targets()
+		# Keep state as IDLE (direct fly_toward control, not AIController behaviors)
+		if _ctrl.current_state != AIController.State.IDLE:
+			_ctrl.current_state = AIController.State.IDLE
+
+		# Phase 3: In bay — descend to landing pad (skip obstacle avoidance inside bay)
 		if _in_bay:
+			if _nav:
+				_nav.docking_approach = true
 			var speed: float = _ship.linear_velocity.length()
 			if speed < DockingSystem.BAY_DOCK_MAX_SPEED:
 				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 				if npc_auth and npc_auth._active:
 					npc_auth.handle_fleet_npc_self_docked(StringName(_ship.name), fleet_index)
 				return
-			if _ctrl.current_state != AIController.State.IDLE:
-				_ctrl.current_state = AIController.State.IDLE
 			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 				_ship._exit_cruise()
-			if _ctrl.navigation:
-				_ctrl.navigation.fly_toward(_bay_dock_pos, 30.0)
+			if _nav:
+				_nav.fly_toward(_bay_dock_pos, 30.0)
 			return
+
+		# Phases 1-2: obstacle avoidance ACTIVE (navigate around decorations)
+		if _nav:
+			_nav.docking_approach = false
+
 		var dist_to_approach: float = _ship.global_position.distance_to(_bay_approach_pos)
+
+		# Phase 2: Near approach (<1200m) — fly to bay entrance, exit cruise
 		if dist_to_approach < DOCK_APPROACH_DIST:
-			if _ctrl.current_state != AIController.State.IDLE:
-				_ctrl.current_state = AIController.State.IDLE
 			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 				_ship._exit_cruise()
-			if _ctrl.navigation:
-				_ctrl.navigation.fly_toward(_bay_dock_pos, 30.0)
+			if _nav:
+				_nav.fly_toward(_bay_approach_pos, 50.0)
 			return
-		if _ctrl.current_state == AIController.State.IDLE:
-			_ctrl.set_patrol_area(_bay_approach_pos, 50.0)
-			_ctrl.current_state = AIController.State.PATROL
-		elif _ctrl.current_state == AIController.State.PATROL:
-			_ctrl.set_patrol_area(_bay_approach_pos, 50.0)
+
+		# Phase 1: Long range (>1200m) — fly straight toward bay entrance
+		if _nav:
+			_nav.fly_toward(_bay_approach_pos, 200.0)
 
 	# Monitor arrivals
 	_monitor_arrivals()
@@ -526,8 +539,6 @@ func _on_origin_shifted(_delta_shift: Vector3) -> void:
 		&"return_to_station":
 			if _station_id != "" and _bay_target_valid:
 				_resolve_station_dock_targets()
-				if _ctrl.current_state == AIController.State.PATROL:
-					_ctrl.set_patrol_area(_bay_approach_pos, 50.0)
 
 
 func _update_navigation_boost() -> void:

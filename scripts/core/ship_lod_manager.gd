@@ -512,6 +512,11 @@ func _promote_lod2_to_lod1(id: StringName, data) -> void:
 		remote_npc.faction = data.faction
 		remote_npc.owner_name = data.owner_name
 		remote_npc.name = String(id)
+		# Fleet NPC weapon visuals: read from local FleetShip data
+		if data.fleet_index >= 0:
+			var fleet = GameManager.player_data.fleet if GameManager.player_data else null
+			if fleet and data.fleet_index < fleet.ships.size():
+				remote_npc.fleet_weapons = fleet.ships[data.fleet_index].weapons.duplicate()
 		node = remote_npc
 	else:
 		var parent =_universe_node if _universe_node else get_tree().current_scene

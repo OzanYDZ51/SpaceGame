@@ -161,6 +161,7 @@ const AI_TICK_INTERVAL: float = 0.1              # 10Hz — base AI tick rate
 const AI_DETECTION_RANGE: float = 5000.0         # NPC threat detection radius
 const AI_ENGAGEMENT_RANGE: float = 2000.0        # Preferred combat distance (also used for combat bridge, defend range)
 const AI_DISENGAGE_RANGE: float = 6500.0         # Break off combat beyond this distance
+const AI_FORMATION_LEASH_DISTANCE: float = 3000.0 # Escorts return to leader if further than this
 const AI_MIN_SAFE_DIST: float = 50.0             # Min distance before NPC reverses away
 const AI_STATION_EXCLUSION_RADIUS: float = 2000.0  # Station obstacle zone radius for AI
 const AI_ALERT_THREAT_VALUE: float = 50.0        # Threat table increment for alert_to_threat()

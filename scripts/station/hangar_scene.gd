@@ -57,7 +57,7 @@ func _ready() -> void:
 
 	# Default ship preview transform (was previously baked from ShipPreview node in .tscn)
 	_preview_local_pos = Vector3(0, -1.1458678, -8.755791)
-	_preview_local_rot = Vector3.ZERO
+	_preview_local_rot = Vector3(0, 180, 0)  # Face the camera (ship forward is -Z, camera is at +Z)
 	_preview_local_scale = Vector3(0.15, 0.15, 0.15)
 
 	_setup_prompt_overlay()

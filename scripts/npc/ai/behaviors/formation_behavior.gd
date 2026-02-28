@@ -33,7 +33,9 @@ func tick(_dt: float) -> void:
 		return
 
 	# Follow leader into combat: if leader has a target, engage it
-	if controller.weapons_enabled and leader.has_node("AIController"):
+	# But only if we're close enough to the leader (leash check)
+	var dist_to_leader: float = controller._ship.global_position.distance_to(leader.global_position)
+	if controller.weapons_enabled and dist_to_leader < Constants.AI_FORMATION_LEASH_DISTANCE and leader.has_node("AIController"):
 		var leader_ctrl = leader.get_node("AIController")
 		if leader_ctrl and leader_ctrl._combat_behavior and leader_ctrl._combat_behavior.target:
 			var lt = leader_ctrl._combat_behavior.target

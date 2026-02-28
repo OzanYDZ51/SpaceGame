@@ -121,9 +121,9 @@ func _on_body_hit(body: Node3D) -> void:
 				NetworkManager._rpc_structure_hit_claim.rpc_id(1,
 					body.name, String(weapon_name), damage, hit_dir_arr)
 			# Apply damage locally (optimistic) — server batch will correct
-			var hit_info = _apply_damage_to(body)
-			_spawn_hit_effect(body, hit_info)
-			_report_hit_to_owner(body, hit_info)
+			var struct_info = _apply_damage_to(body)
+			_spawn_hit_effect(body, struct_info)
+			_report_hit_to_owner(body, struct_info)
 			_return_to_pool()
 			return
 

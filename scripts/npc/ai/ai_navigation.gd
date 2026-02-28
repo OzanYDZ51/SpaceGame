@@ -37,6 +37,18 @@ var _prev_yaw_error: float = 0.0
 var _prev_pitch_error: float = 0.0
 var _last_face_time_ms: float = 0.0
 
+# Docking approach: skip obstacle avoidance when inside station bay
+var docking_approach: bool = false
+
+# Stuck detection and recovery
+var _stuck_timer: float = 0.0
+var _stuck_recovery_timer: float = 0.0
+var _stuck_escape_dir: Vector3 = Vector3.ZERO
+const STUCK_SPEED_THRESHOLD: float = 3.0
+const STUCK_DETECT_TIME: float = 2.0
+const STUCK_RECOVERY_TIME: float = 1.5
+const STUCK_REVERSE_PHASE: float = 0.5  # First 0.5s: back up
+
 # Obstacle sensor cache (avoid double update per frame)
 var _obstacle_cache_frame: int = -1
 var _cached_avoidance: Vector3 = Vector3.ZERO
@@ -108,8 +120,70 @@ func fly_intercept(target: Node3D, arrival_dist: float = 50.0) -> void:
 	fly_toward(intercept_pos, arrival_dist)
 
 
+func _handle_stuck_recovery(target_pos: Vector3, arrival_dist: float) -> bool:
+	if _ship == null:
+		return false
+	var delta: float = get_process_delta_time()
+
+	# Currently in recovery mode — escape movement
+	if _stuck_recovery_timer > 0.0:
+		_stuck_recovery_timer -= delta
+		if _stuck_recovery_timer <= 0.0:
+			_stuck_timer = 0.0
+			return false
+		if _ship.speed_mode == Constants.SpeedMode.CRUISE:
+			_ship._exit_cruise()
+		if _stuck_recovery_timer > STUCK_RECOVERY_TIME - STUCK_REVERSE_PHASE:
+			# Phase 1: back up to pull away from collision
+			_ship.set_throttle(Vector3(0, 0, 1.0))
+		else:
+			# Phase 2: face escape direction and fly toward it
+			face_target(_ship.global_position + _stuck_escape_dir * 100.0)
+			_ship.set_throttle(Vector3(0, 0, -0.8))
+		return true
+
+	# Near target = not stuck, just arriving
+	var dist: float = _ship.global_position.distance_to(target_pos)
+	if dist < arrival_dist * DECEL_START_FACTOR:
+		_stuck_timer = 0.0
+		return false
+
+	# Check speed — very slow while far from target means possibly stuck
+	var speed: float = _ship.linear_velocity.length()
+	if speed < STUCK_SPEED_THRESHOLD:
+		_stuck_timer += delta
+	else:
+		_stuck_timer = maxf(_stuck_timer - delta * 2.0, 0.0)
+
+	if _stuck_timer >= STUCK_DETECT_TIME:
+		_stuck_timer = 0.0
+		_stuck_recovery_timer = STUCK_RECOVERY_TIME
+
+		# Choose escape direction: use obstacle sensor if available
+		if _obstacle_sensor:
+			_obstacle_sensor.update()
+			var avoid: Vector3 = _obstacle_sensor.avoidance_vector
+			if avoid.length_squared() > 10.0:
+				_stuck_escape_dir = avoid.normalized()
+				return true
+
+		# Fallback: perpendicular to target direction
+		var to_target: Vector3 = (target_pos - _ship.global_position).normalized()
+		var right: Vector3 = to_target.cross(Vector3.UP).normalized()
+		if right.length_squared() < 0.5:
+			right = to_target.cross(Vector3.RIGHT).normalized()
+		_stuck_escape_dir = right * (1.0 if randf() > 0.5 else -1.0)
+		return true
+
+	return false
+
+
 func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 	if _ship == null:
+		return
+
+	# Stuck detection: if stuck on obstacle, back up and escape
+	if not docking_approach and _handle_stuck_recovery(target_pos, arrival_dist):
 		return
 
 	var to_target: Vector3 = target_pos - _ship.global_position
@@ -126,9 +200,9 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 			_ship._exit_cruise()
 		return
 
-	# Obstacle avoidance
+	# Obstacle avoidance (skip during docking approach to allow flying into station bay)
 	var avoid := Vector3.ZERO
-	if _obstacle_sensor:
+	if _obstacle_sensor and not docking_approach:
 		avoid = _get_avoidance()
 
 	var effective_target := target_pos
@@ -159,8 +233,8 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 		var decel_t := clampf(dist / decel_zone, 0.0, 1.0)
 		fwd_throttle *= decel_t
 
-	# Obstacle braking
-	if _obstacle_sensor:
+	# Obstacle braking (skip during docking approach)
+	if _obstacle_sensor and not docking_approach:
 		var obs_dist = _obstacle_sensor.nearest_obstacle_dist
 		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:
 			var brake_factor := clampf(obs_dist / AVOIDANCE_BRAKE_THRESHOLD, 0.1, 1.0)
@@ -168,9 +242,9 @@ func fly_toward(target_pos: Vector3, arrival_dist: float = 50.0) -> void:
 		if _obstacle_sensor.is_emergency:
 			fwd_throttle = 1.0
 
-	# Lateral strafe for avoidance
+	# Lateral strafe for avoidance (skip during docking approach)
 	var strafe := Vector3.ZERO
-	if avoid.length_squared() > 100.0:
+	if avoid.length_squared() > 100.0 and not docking_approach:
 		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
 		strafe.x = clampf(local_avoid.x * 0.6, -0.6, 0.6)
 		strafe.y = clampf(local_avoid.y * 0.4, -0.4, 0.4)

@@ -14,6 +14,7 @@ signal ship_move_selected(fleet_index: int)
 signal selection_changed(fleet_indices: Array)
 signal squadron_header_clicked(squadron_id: int)
 signal squadron_rename_requested(squadron_id: int, screen_pos: Vector2)
+signal ship_rename_requested(fleet_index: int, screen_pos: Vector2)
 signal ship_context_menu_requested(fleet_index: int, screen_pos: Vector2)
 signal squadron_disband_requested(squadron_id: int)
 signal squadron_remove_member_requested(fleet_index: int)
@@ -254,10 +255,10 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool 
 
 	var hit_index: int = _get_fleet_index_at(pos)
 	if hit_index >= 0:
-		# Double-click = zoom/center on entity
+		# Double-click = rename ship
 		var now: float = Time.get_ticks_msec() / 1000.0
 		if hit_index == _last_ship_click_index and (now - _last_ship_click_time) < 0.4:
-			ship_selected.emit(hit_index, _get_system_id_for_fleet_index(hit_index))
+			ship_rename_requested.emit(hit_index, pos)
 			_last_ship_click_index = -1
 		else:
 			_last_ship_click_index = hit_index
@@ -318,24 +319,7 @@ func handle_click(pos: Vector2, ctrl_pressed: bool = false, shift_pressed: bool 
 			y += SHIP_H  # station sub-header
 			for _entry in st["ships"]:
 				y += SHIP_H
-		# Deployed ships — account for squadron headers
-		var sqd: Dictionary = {}
-		var unsqd: Array = []
-		for entry in group["deployed"]:
-			var fs = entry["ship"]
-			if fs.squadron_id >= 0:
-				if not sqd.has(fs.squadron_id):
-					sqd[fs.squadron_id] = []
-				sqd[fs.squadron_id].append(entry)
-			else:
-				unsqd.append(entry)
-		var sqd_ids: Array = sqd.keys()
-		sqd_ids.sort()
-		for sq_id in sqd_ids:
-			y += SHIP_H  # squadron header
-			for _entry in sqd[sq_id]:
-				y += SHIP_H
-		for _entry in unsqd:
+		for _entry in group["deployed"]:
 			y += SHIP_H
 		y += 6
 
@@ -396,25 +380,7 @@ func _get_row_y_for_index(fleet_index: int) -> float:
 				if entry["fleet_index"] == fleet_index:
 					return y
 				y += SHIP_H
-		var squadroned: Dictionary = {}
-		var unsquadroned: Array = []
 		for entry in group["deployed"]:
-			var fs = entry["ship"]
-			if fs.squadron_id >= 0:
-				if not squadroned.has(fs.squadron_id):
-					squadroned[fs.squadron_id] = []
-				squadroned[fs.squadron_id].append(entry)
-			else:
-				unsquadroned.append(entry)
-		var sq_ids: Array = squadroned.keys()
-		sq_ids.sort()
-		for sq_id in sq_ids:
-			y += SHIP_H  # squadron header
-			for entry in squadroned[sq_id]:
-				if entry["fleet_index"] == fleet_index:
-					return y
-				y += SHIP_H
-		for entry in unsquadroned:
 			if entry["fleet_index"] == fleet_index:
 				return y
 			y += SHIP_H
@@ -423,36 +389,19 @@ func _get_row_y_for_index(fleet_index: int) -> float:
 
 
 func _get_squadron_header_at(pos: Vector2) -> int:
+	# Squadron headers only exist in the top squadron section (handled by
+	# _check_squadron_section_click). No squadron headers in the group view.
 	var y: float = HEADER_H + MARGIN - _scroll_offset + _squadron_section_height
 	for group in _groups:
-		y += GROUP_H  # system header
+		y += GROUP_H
 		if group["collapsed"]:
 			continue
 		for st in group["stations"]:
 			y += 2
-			y += SHIP_H  # station sub-header
+			y += SHIP_H
 			for _entry in st["ships"]:
 				y += SHIP_H
-		# Deployed ships — check squadron headers
-		var squadroned: Dictionary = {}
-		var unsquadroned: Array = []
-		for entry in group["deployed"]:
-			var fs = entry["ship"]
-			if fs.squadron_id >= 0:
-				if not squadroned.has(fs.squadron_id):
-					squadroned[fs.squadron_id] = []
-				squadroned[fs.squadron_id].append(entry)
-			else:
-				unsquadroned.append(entry)
-		var sq_ids: Array = squadroned.keys()
-		sq_ids.sort()
-		for sq_id in sq_ids:
-			if _hit_row(pos.y, y, SHIP_H):
-				return sq_id
-			y += SHIP_H  # squadron header
-			for _entry in squadroned[sq_id]:
-				y += SHIP_H
-		for _entry in unsquadroned:
+		for _entry in group["deployed"]:
 			y += SHIP_H
 		y += 6
 	return -1
@@ -471,26 +420,7 @@ func _get_fleet_index_at(pos: Vector2) -> int:
 				if _hit_row(pos.y, y, SHIP_H):
 					return entry["fleet_index"]
 				y += SHIP_H
-		# Deployed ships (mirroring _draw_group layout with squadron groups)
-		var squadroned: Dictionary = {}
-		var unsquadroned: Array = []
 		for entry in group["deployed"]:
-			var fs = entry["ship"]
-			if fs.squadron_id >= 0:
-				if not squadroned.has(fs.squadron_id):
-					squadroned[fs.squadron_id] = []
-				squadroned[fs.squadron_id].append(entry)
-			else:
-				unsquadroned.append(entry)
-		var sq_ids: Array = squadroned.keys()
-		sq_ids.sort()
-		for sq_id in sq_ids:
-			y += SHIP_H  # squadron header
-			for entry in squadroned[sq_id]:
-				if _hit_row(pos.y, y, SHIP_H):
-					return entry["fleet_index"]
-				y += SHIP_H
-		for entry in unsquadroned:
 			if _hit_row(pos.y, y, SHIP_H):
 				return entry["fleet_index"]
 			y += SHIP_H
@@ -519,23 +449,7 @@ func _get_visible_fleet_indices() -> Array[int]:
 		for st in group["stations"]:
 			for entry in st["ships"]:
 				result.append(entry["fleet_index"])
-		# Deployed: same squadron grouping order as _draw_group
-		var squadroned: Dictionary = {}
-		var unsquadroned: Array = []
 		for entry in group["deployed"]:
-			var fs = entry["ship"]
-			if fs.squadron_id >= 0:
-				if not squadroned.has(fs.squadron_id):
-					squadroned[fs.squadron_id] = []
-				squadroned[fs.squadron_id].append(entry)
-			else:
-				unsquadroned.append(entry)
-		var sq_ids: Array = squadroned.keys()
-		sq_ids.sort()
-		for sq_id in sq_ids:
-			for entry in squadroned[sq_id]:
-				result.append(entry["fleet_index"])
-		for entry in unsquadroned:
 			result.append(entry["fleet_index"])
 	return result
 
@@ -891,39 +805,8 @@ func _draw_group(font: Font, y: float, group: Dictionary, clip: Rect2) -> float:
 				_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
 			y += SHIP_H
 
-	# Deployed ships — group by squadron
-	var squadroned: Dictionary = {}  # squadron_id -> Array[entry]
-	var unsquadroned: Array = []
+	# Deployed ships — flat list (squadron details are in the top section)
 	for entry in group["deployed"]:
-		var fs = entry["ship"]
-		if fs.squadron_id >= 0:
-			if not squadroned.has(fs.squadron_id):
-				squadroned[fs.squadron_id] = []
-			squadroned[fs.squadron_id].append(entry)
-		else:
-			unsquadroned.append(entry)
-
-	# Draw squadron groups first (sorted by ID for deterministic order)
-	var sq_ids: Array = squadroned.keys()
-	sq_ids.sort()
-	for sq_id in sq_ids:
-		var sq_entries: Array = squadroned[sq_id]
-		var sq_name = Locale.t("map.fleet.squadron_label")
-		if _fleet:
-			var sq = _fleet.get_squadron(sq_id)
-			if sq:
-				sq_name = sq.squadron_name
-		if _in_clip(y, SHIP_H, clip):
-			draw_rect(Rect2(MARGIN + 4, y + 2, PANEL_W - MARGIN * 2 - 4, SHIP_H - 2), Color(MapColors.SQUADRON_HEADER.r, MapColors.SQUADRON_HEADER.g, MapColors.SQUADRON_HEADER.b, 0.06))
-			draw_string(font, Vector2(MARGIN + 10, y + SHIP_H - 4), sq_name, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - MARGIN * 2 - 10, UITheme.FONT_SIZE_SMALL, MapColors.SQUADRON_HEADER)
-		y += SHIP_H
-		for entry in sq_entries:
-			if _in_clip(y, SHIP_H, clip):
-				_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
-			y += SHIP_H
-
-	# Unsquadroned deployed ships
-	for entry in unsquadroned:
 		if _in_clip(y, SHIP_H, clip):
 			_draw_ship_row(font, y, entry["fleet_index"], entry["ship"])
 		y += SHIP_H

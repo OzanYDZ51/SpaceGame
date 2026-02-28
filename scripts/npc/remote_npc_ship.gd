@@ -13,6 +13,7 @@ var ship_id: StringName = Constants.DEFAULT_SHIP_ID
 var faction: StringName = &"hostile"
 var owner_name: String = ""  # Non-empty for player_fleet NPCs: identifies the owner
 var linear_velocity: Vector3 = Vector3.ZERO
+var fleet_weapons: Array[StringName] = []  # Weapon loadout for fleet NPC visuals
 
 # Interpolation buffer
 var _snapshots: Array[Dictionary] = []
@@ -29,6 +30,8 @@ func _ready() -> void:
 	_setup_model()
 	_setup_collision()
 	_setup_health_proxy()
+	if not fleet_weapons.is_empty():
+		setup_weapon_visuals(fleet_weapons)
 	add_to_group("ships")
 	set_meta("faction", faction)
 
@@ -102,6 +105,20 @@ func _setup_health_proxy() -> void:
 	_health.set_process(false)
 	_health.set_physics_process(false)
 	add_child(_health)
+
+
+## Attach weapon model meshes at hardpoint positions (visual only, no firing logic).
+func setup_weapon_visuals(weapons: Array[StringName]) -> void:
+	if _ship_model == null:
+		return
+	var data = ShipRegistry.get_ship_data(ship_id)
+	if data == null or data.hardpoints.is_empty():
+		return
+	var hp_configs: Array[Dictionary] = []
+	for hp in data.hardpoints:
+		hp_configs.append(hp)
+	var root_basis: Basis = ShipFactory.get_root_basis(ship_id)
+	_ship_model.apply_equipment(hp_configs, weapons, root_basis)
 
 
 ## Update health proxy from network hull/shield ratios.

@@ -1226,6 +1226,15 @@ func _on_fleet_order_from_map(fleet_index: int, order_id: StringName, params: Di
 		push_warning("FleetOrder: invalid fleet_index=%d (fleet size=%d, fleet=%s)" % [fleet_index, player_fleet.ships.size() if player_fleet else -1, str(player_fleet != null)])
 		return
 
+	# Rename ship (local, no deployment needed)
+	if order_id == &"rename_ship":
+		var new_name: String = params.get("name", "")
+		if new_name != "":
+			player_fleet.ships[fleet_index].custom_name = new_name
+			player_fleet.fleet_changed.emit()
+			_notif.fleet.renamed(new_name)
+		return
+
 	# Active ship = engage player autopilot to destination
 	if fleet_index == player_fleet.active_index:
 		# If docked, undock first then autopilot after a frame

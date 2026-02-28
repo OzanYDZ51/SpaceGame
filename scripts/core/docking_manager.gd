@@ -119,6 +119,11 @@ func handle_undock() -> bool:
 	var ship = player_ship
 	if ship:
 		ship.is_player_controlled = true
+		# Reset camera to max zoom-out on undock
+		var cam = ship.get_node_or_null("ShipCamera") as ShipCamera
+		if cam:
+			cam.target_distance = cam.cam_distance_max
+			cam._fov_zoom_offset = 0.0
 
 	# Teleport to exit position
 	_reposition_at_station(exit_info)

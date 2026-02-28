@@ -383,8 +383,16 @@ func _on_npc_spawned(data: Dictionary) -> void:
 	if fac == &"player_fleet":
 		lod_data.owner_pid = int(data.get("owner_pid", 0))
 		lod_data.owner_name = data.get("owner_name", "")
-		# Mark as fleet ship so LOD manager registers entity as SHIP_FLEET (not SHIP_NPC)
-		lod_data.fleet_index = 0
+		# Resolve correct fleet_index from FleetShip.deployed_npc_id if this is our ship
+		var resolved_fi: int = 0
+		var is_own: bool = lod_data.owner_pid == (NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0)
+		if is_own and GameManager.player_fleet:
+			for fi in GameManager.player_fleet.ships.size():
+				var fs = GameManager.player_fleet.ships[fi]
+				if fs.deployed_npc_id == npc_id:
+					resolved_fi = fi
+					break
+		lod_data.fleet_index = resolved_fi
 
 	if lod_manager:
 		lod_manager.register_ship(npc_id, lod_data)

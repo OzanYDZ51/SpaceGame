@@ -65,7 +65,7 @@ func try_fire_forward(target: Node3D, _guard_station: Node3D = null) -> void:
 		var los_hit = space.intersect_ray(los_query)
 		if not los_hit.is_empty():
 			return
-	_weapon_manager.fire_group(0, true, target_pos)
+	_weapon_manager.fire_group_with_lead(0, true, target)
 
 
 func get_lead_position(target: Node3D) -> Vector3:
