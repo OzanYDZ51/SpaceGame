@@ -145,7 +145,7 @@ func _notification(what: int) -> void:
 		_layout_content()
 
 
-func _on_language_changed() -> void:
+func _on_language_changed(_lang: String) -> void:
 	screen_title = Locale.t("screen.market")
 	_tab_bar.tabs = _get_tab_names()
 	queue_redraw()
