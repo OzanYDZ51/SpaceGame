@@ -205,9 +205,10 @@ func _ready() -> void:
 	print("========================================")
 
 	# Auto-start local dev stack (Docker + game server) on F5 from editor
-	# Skip if running as server (prevents recursive spawn and cmd.exe errors in Docker)
+	# Only on Windows (uses cmd.exe/taskkill), skip headless/Docker/server instances
 	var all_args: PackedStringArray = OS.get_cmdline_args() + OS.get_cmdline_user_args()
-	if _dev_mode and OS.has_feature("editor") and "--server" not in all_args:
+	var is_headless: bool = "--headless" in all_args or DisplayServer.get_name() == "headless"
+	if _dev_mode and OS.has_feature("editor") and OS.get_name() == "Windows" and not is_headless and "--server" not in all_args:
 		_start_dev_stack()
 
 
