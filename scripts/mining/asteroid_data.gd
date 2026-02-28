@@ -30,6 +30,9 @@ var resource_color: Color = Color.GRAY  # True resource color (hidden until scan
 # Runtime references (null when data-only / LOD3+)
 var node_ref: Node3D = null
 
+# Cached distance to camera for LOD sort (updated each LOD tick)
+var _cached_dist: float = 0.0
+
 
 func get_yield_per_hit() -> int:
 	match size:

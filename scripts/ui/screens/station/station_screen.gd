@@ -134,9 +134,9 @@ func _compute_layout() -> void:
 	_cat_header_y.resize(_cat_labels.size())
 
 	# Calculate total content height first for vertical centering
+	# Station header: emblem (50) + name (22) + terminal info (18) + gap (10) = 100
 	# 3 categories: headers (26 each) + 3 rows of cards (CARD_H+14 gap between rows)
-	# + station header area (emblem+name ~60px above first card)
-	var total_content_h: float = 60.0  # emblem + name
+	var total_content_h: float = 100.0  # emblem + name + terminal info + gap
 	total_content_h += 3 * 26.0  # 3 category headers
 	total_content_h += 3 * CARD_H  # 3 rows of cards
 	total_content_h += 2 * 14.0  # gaps between card rows
@@ -147,8 +147,8 @@ func _compute_layout() -> void:
 	var ideal_top: float = (s.y - total_content_h) * 0.45
 	var start_y: float = maxf(min_top, ideal_top)
 
-	# Station emblem area starts at start_y, cards start after
-	var y: float = start_y + 60.0
+	# Station emblem area starts at start_y, cards start after header zone
+	var y: float = start_y + 100.0
 	var current_cat: int = -1
 	var row_start: int = 0
 
@@ -204,7 +204,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(0, name_y), _station_name.to_upper(),
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	var unlocked_count: int = _services.get_unlocked_count(_system_id, _station_idx) if _services else 0
-	draw_string(font, Vector2(0, name_y + 18), Locale.t("station.terminal") % unlocked_count,
+	draw_string(font, Vector2(0, name_y + 22), Locale.t("station.terminal") % unlocked_count,
 		HORIZONTAL_ALIGNMENT_CENTER, s.x, UITheme.FONT_SIZE_TINY, UITheme.TEXT_DIM)
 
 	# --- Category headers ---

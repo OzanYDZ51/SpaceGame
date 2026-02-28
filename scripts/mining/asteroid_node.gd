@@ -151,16 +151,28 @@ func apply_scan_reveal(ast_data) -> void:
 		return
 	var mat: StandardMaterial3D = _mesh_instance.material_overlay
 	var target_col: Color = ast_data.resource_color
-	# Tween overlay to show resource color semi-transparently
+
+	# Phase 1: Instant flash (0-0.15s) — bright white-tinted emission
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 1.0, 1.0).lerp(target_col, 0.3)
+	mat.emission_energy_multiplier = 3.0
+	mat.albedo_color = Color(target_col.lerp(Color.WHITE, 0.4), 0.6)
+
+	# Phase 2: Settle (0.15-0.8s) — tween to resource color
 	var tw = create_tween()
-	tw.tween_property(mat, "albedo_color", Color(target_col, 0.35), 0.5).set_ease(Tween.EASE_OUT)
-	# Emission pulse for rare+
+	tw.set_parallel(true)
+	tw.tween_property(mat, "albedo_color", Color(target_col, 0.4), 0.65).set_ease(Tween.EASE_OUT).set_delay(0.15)
+	tw.tween_property(mat, "emission", target_col * 0.5, 0.65).set_ease(Tween.EASE_OUT).set_delay(0.15)
+
+	# Rare resources keep sustained emission, normal ones fade out
 	var res = MiningRegistry.get_resource(ast_data.primary_resource)
 	if res and res.rarity >= MiningResource.Rarity.RARE:
-		mat.emission_enabled = true
-		mat.emission = target_col * 0.5
-		mat.emission_energy_multiplier = 1.5
-		tw.parallel().tween_property(mat, "emission_energy_multiplier", 0.5, 1.0).set_delay(0.3)
+		tw.tween_property(mat, "emission_energy_multiplier", 0.5, 0.65).set_ease(Tween.EASE_OUT).set_delay(0.15)
+	else:
+		tw.tween_property(mat, "emission_energy_multiplier", 0.5, 0.65).set_ease(Tween.EASE_OUT).set_delay(0.15)
+		var tw2 = create_tween()
+		tw2.tween_property(mat, "emission_energy_multiplier", 0.0, 0.7).set_delay(1.5)
+		tw2.tween_callback(func(): mat.emission_enabled = false)
 
 
 func apply_scan_expire() -> void:
@@ -179,8 +191,8 @@ func flash_barren() -> void:
 		return
 	var mat: StandardMaterial3D = _mesh_instance.material_overlay
 	mat.emission_enabled = true
-	mat.emission = Color(0.4, 0.1, 0.05)
-	mat.emission_energy_multiplier = 0.8
+	mat.emission = Color(0.6, 0.15, 0.05)
+	mat.emission_energy_multiplier = 1.5
 	var tw = create_tween()
-	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.6).set_ease(Tween.EASE_IN)
+	tw.tween_property(mat, "emission_energy_multiplier", 0.0, 0.8).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func(): mat.emission_enabled = false)

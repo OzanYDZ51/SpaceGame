@@ -215,7 +215,8 @@ func _tick_lead_turn(dt: float) -> void:
 
 	# Moderate forward throttle + slight vertical offset for 3D
 	var vert: float = sin(_vert_phase) * 0.15
-	controller._ship.set_throttle(Vector3(0.0, vert, -0.4))
+	var lat: float = _orbit_direction * 0.4
+	controller._ship.set_throttle(Vector3(lat, vert, -0.5))
 
 	# Transition conditions
 	if alignment > 0.7:

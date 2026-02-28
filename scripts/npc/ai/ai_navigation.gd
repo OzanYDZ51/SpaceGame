@@ -452,7 +452,7 @@ func apply_dogfight_throttle(target: Node3D, ideal_radius: float, orbit_dir: flo
 		fwd_throttle = clampf(-dist_error / 300.0, 0.0, 0.5)
 	else:
 		# Sweet spot — drift slightly forward
-		fwd_throttle = -0.1
+		fwd_throttle = -0.25
 
 	# Lateral strafe: orbit around target
 	var lateral: float = orbit_dir * orbit_strength

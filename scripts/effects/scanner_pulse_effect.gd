@@ -5,8 +5,8 @@ extends Node3D
 # Scanner Pulse Effect — Visible wavefront ring.
 #
 # Single-speed expansion from ship to SCAN_RANGE.
-# The shader renders only a thin shell band at the sphere edge,
-# so the ring stays visible even when the camera is inside the sphere.
+# The shader renders a wide shell band with concentric rings and grid pattern,
+# so the pulse stays visible even when the camera is inside the sphere.
 #
 # is_remote = true for pulses spawned from other players' scans:
 #   → visual only, no scan_radius_updated signal emitted.
@@ -48,9 +48,10 @@ func _build_sphere() -> void:
 	_mat = ShaderMaterial.new()
 	_mat.shader = load("res://shaders/scanner_pulse.gdshader")
 	_mat.set_shader_parameter("brightness", 5.0)
-	_mat.set_shader_parameter("rim_power",  5.0)
+	_mat.set_shader_parameter("rim_power",  2.5)
 	_mat.set_shader_parameter("fade",       1.0)
-	_mat.set_shader_parameter("shell_band", 0.15)
+	_mat.set_shader_parameter("shell_band", 0.4)
+	_mat.set_shader_parameter("scan_progress", 0.0)
 	_mesh.material_override = _mat
 	add_child(_mesh)
 
@@ -58,8 +59,8 @@ func _build_sphere() -> void:
 func _build_flash() -> void:
 	_flash_light              = OmniLight3D.new()
 	_flash_light.light_color  = Color(0.35, 0.85, 1.0)
-	_flash_light.light_energy = 80.0
-	_flash_light.omni_range   = 600.0
+	_flash_light.light_energy = 30.0
+	_flash_light.omni_range   = 300.0
 	add_child(_flash_light)
 
 
@@ -71,10 +72,14 @@ func _process(delta: float) -> void:
 
 	_current_radius = minf(_current_radius + delta * PULSE_SPEED, MAX_RANGE)
 
-	# Flash decays over ~1 s
+	var progress: float = _current_radius / MAX_RANGE
+
+	# Light follows wavefront — persistent, fades only near the end
 	if _flash_light != null:
-		_flash_light.light_energy = maxf(0.0, 80.0 - _elapsed * 80.0)
-		if _flash_light.light_energy <= 0.0:
+		var light_fade: float = 1.0 - smoothstep(0.85, 0.99, progress)
+		_flash_light.light_energy = 30.0 * light_fade
+		_flash_light.omni_range = clampf(_current_radius * 0.15, 100.0, 800.0)
+		if light_fade <= 0.01:
 			_flash_light.queue_free()
 			_flash_light = null
 
@@ -86,8 +91,10 @@ func _process(delta: float) -> void:
 
 	_mesh.scale = Vector3.ONE * _current_radius
 
-	var range_fade : float = 1.0 - smoothstep(MAX_RANGE * 0.78, MAX_RANGE * 0.98, _current_radius)
+	# Delayed fade — stays bright until 90% of range
+	var range_fade: float = 1.0 - smoothstep(MAX_RANGE * 0.90, MAX_RANGE * 0.99, _current_radius)
 	_mat.set_shader_parameter("fade", range_fade)
+	_mat.set_shader_parameter("scan_progress", progress)
 
 	if not is_remote:
 		scan_radius_updated.emit(_current_radius)

@@ -12,8 +12,11 @@ const _AsteroidMeshLib = preload("res://scripts/mining/asteroid_mesh_lib.gd")
 
 # --- LOD ---
 const LOD_FULL_DIST: float = 800.0
+const LOD_FULL_DEMOTE_DIST: float = 900.0
 const LOD_SIMPLIFIED_DIST: float = 4000.0
+const LOD_SIMPLIFIED_DEMOTE_DIST: float = 4400.0
 const LOD_DOT_DIST: float = 12000.0
+const LOD_DOT_DEMOTE_DIST: float = 13000.0
 const LOD_FULL_MAX: int = 60
 const LOD_SIMPLIFIED_MAX: int = 300
 const MAX_PROMOTIONS_PER_TICK: int = 30
@@ -553,42 +556,61 @@ func _evaluate_lod() -> void:
 	if cam:
 		cam_pos = cam.global_position
 
-	var promotions: int = 0
-	var new_dot_ids: Array[StringName] = []
-	var full_count: int = _full_nodes.size()
-	var simplified_count: int = _simplified_meshes.size()
-
+	# Cache distances and build sorted array — closest first
+	var sorted_asteroids: Array = []
 	for id: StringName in _all_asteroids:
 		var asteroid = _all_asteroids[id]
-		var dist: float = cam_pos.distance_to(asteroid.position)
+		asteroid._cached_dist = cam_pos.distance_to(asteroid.position)
+		sorted_asteroids.append(asteroid)
+	sorted_asteroids.sort_custom(func(a, b): return a._cached_dist < b._cached_dist)
+
+	var promotions: int = 0
+	var new_dot_ids: Array[StringName] = []
+	var full_count: int = 0
+	var simplified_count: int = 0
+
+	for asteroid in sorted_asteroids:
+		var id: StringName = asteroid.id
+		var dist: float = asteroid._cached_dist
 		var current_lod: AsteroidLOD = _lod_levels.get(id, AsteroidLOD.DATA_ONLY)
 		var target_lod: AsteroidLOD
 
-		if dist < LOD_FULL_DIST and full_count < LOD_FULL_MAX:
+		# Hysteresis: use wider demotion thresholds when already at a given LOD
+		var full_threshold: float = LOD_FULL_DEMOTE_DIST if current_lod == AsteroidLOD.FULL else LOD_FULL_DIST
+		var simplified_threshold: float = LOD_SIMPLIFIED_DEMOTE_DIST if current_lod == AsteroidLOD.SIMPLIFIED else LOD_SIMPLIFIED_DIST
+		var dot_threshold: float = LOD_DOT_DEMOTE_DIST if current_lod == AsteroidLOD.DOT else LOD_DOT_DIST
+
+		if dist < full_threshold and full_count < LOD_FULL_MAX:
 			target_lod = AsteroidLOD.FULL
-		elif dist < LOD_SIMPLIFIED_DIST and simplified_count < LOD_SIMPLIFIED_MAX:
+		elif dist < simplified_threshold and simplified_count < LOD_SIMPLIFIED_MAX:
 			target_lod = AsteroidLOD.SIMPLIFIED
-		elif dist < LOD_DOT_DIST:
+		elif dist < dot_threshold:
 			target_lod = AsteroidLOD.DOT
 		else:
 			target_lod = AsteroidLOD.DATA_ONLY
 
 		if target_lod != current_lod:
 			if promotions >= MAX_PROMOTIONS_PER_TICK:
-				if current_lod == AsteroidLOD.DOT:
+				# Can't transition yet — keep current LOD
+				if current_lod == AsteroidLOD.FULL:
+					full_count += 1
+				elif current_lod == AsteroidLOD.SIMPLIFIED:
+					simplified_count += 1
+				elif current_lod == AsteroidLOD.DOT:
 					new_dot_ids.append(id)
 				continue
 			_transition_lod(id, asteroid, current_lod, target_lod)
 			_lod_levels[id] = target_lod
 			promotions += 1
 
-			if target_lod == AsteroidLOD.FULL:
-				full_count += 1
-			elif target_lod == AsteroidLOD.SIMPLIFIED:
-				simplified_count += 1
-		else:
-			if current_lod == AsteroidLOD.DOT:
-				new_dot_ids.append(id)
+		# Count slots for the LOD the asteroid ends up at
+		var final_lod: AsteroidLOD = _lod_levels.get(id, AsteroidLOD.DATA_ONLY)
+		if final_lod == AsteroidLOD.FULL:
+			full_count += 1
+		elif final_lod == AsteroidLOD.SIMPLIFIED:
+			simplified_count += 1
+		elif final_lod == AsteroidLOD.DOT:
+			new_dot_ids.append(id)
 
 	# Rebuild DOT multimesh if changed
 	if new_dot_ids.size() != _dot_ids.size() or _dots_dirty:
@@ -598,7 +620,41 @@ func _evaluate_lod() -> void:
 
 
 func _transition_lod(id: StringName, asteroid, from, to) -> void:
-	# Remove old representation
+	var crossfade: bool = (from == AsteroidLOD.SIMPLIFIED and to == AsteroidLOD.FULL) or \
+						  (from == AsteroidLOD.FULL and to == AsteroidLOD.SIMPLIFIED)
+
+	if crossfade and from == AsteroidLOD.SIMPLIFIED and to == AsteroidLOD.FULL:
+		# Promotion: keep old simplified mesh, fade it out while new FULL scales in
+		var old_mesh: MeshInstance3D = _simplified_meshes.get(id)
+		if old_mesh and is_instance_valid(old_mesh):
+			_simplified_meshes.erase(id)
+			var tw = create_tween()
+			if old_mesh.material_overlay:
+				var mat: StandardMaterial3D = old_mesh.material_overlay
+				tw.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+			tw.tween_callback(old_mesh.queue_free)
+		_spawn_full(id, asteroid)
+		# Scale-in the new full node
+		var node = _full_nodes.get(id)
+		if node and is_instance_valid(node):
+			node.scale = Vector3.ONE * 0.9
+			var tw2 = create_tween()
+			tw2.tween_property(node, "scale", Vector3.ONE, 0.3).set_ease(Tween.EASE_OUT)
+		return
+
+	if crossfade and from == AsteroidLOD.FULL and to == AsteroidLOD.SIMPLIFIED:
+		# Demotion: shrink FULL node then free, spawn simplified normally
+		var old_node = _full_nodes.get(id)
+		if old_node and is_instance_valid(old_node):
+			_full_nodes.erase(id)
+			asteroid.node_ref = null
+			var tw = create_tween()
+			tw.tween_property(old_node, "scale", Vector3.ONE * 0.85, 0.3).set_ease(Tween.EASE_IN)
+			tw.tween_callback(old_node.queue_free)
+		_spawn_simplified(id, asteroid)
+		return
+
+	# Default: instant swap (DOT <-> SIMPLIFIED, or DATA_ONLY transitions)
 	match from:
 		AsteroidLOD.FULL:
 			if _full_nodes.has(id):
@@ -836,7 +892,7 @@ func _update_asteroid_visual(ast, reveal: bool) -> void:
 			var mat: StandardMaterial3D = mesh.material_overlay
 			var col: Color = ast.color_tint
 			if reveal:
-				mat.albedo_color = Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.5)
+				mat.albedo_color = Color(col.r * 0.8, col.g * 0.8, col.b * 0.8, 0.7)
 			else:
 				mat.albedo_color = Color(0.14, 0.13, 0.12, 0.5)
 
