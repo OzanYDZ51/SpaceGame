@@ -96,6 +96,8 @@ func _hide_all_views() -> void:
 
 
 func _layout_content() -> void:
+	if _tab_bar == null:
+		return
 	var s: Vector2 = size
 	var margin: float = 20.0
 	var tab_h: float = 32.0
