@@ -1445,8 +1445,8 @@ func _autopilot_player_to(params: Dictionary) -> void:
 			ship.engage_autopilot(entity_id, ent.get("name", "Destination"), is_gate)
 			return
 	# Fallback: register a temporary waypoint entity for autopilot
-	var target_x: float = params.get("target_x", 0.0)
-	var target_z: float = params.get("target_z", 0.0)
+	var target_x: float = params.get("target_x", params.get("center_x", 0.0))
+	var target_z: float = params.get("target_z", params.get("center_z", 0.0))
 	# Use ship's current universe Y so the autopilot target is coplanar with the ship.
 	# pos_y = 0 would cause a 3D Y-offset that skews the approach vector.
 	var ship_upos: Array = FloatingOrigin.to_universe_pos(ship.global_position)

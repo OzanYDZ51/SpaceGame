@@ -186,7 +186,7 @@ func draw_projected_labels(parent: Control, font: Font, viewer_w: float, viewer_
 		if cam_fwd.dot(to_marker) < 0.1:
 			continue
 
-		if not _viewer_camera.is_position_behind(world_pos):
+		if not _viewer_camera.is_position_behind(world_pos) and world_pos.distance_squared_to(_viewer_camera.global_position) > 0.001:
 			var screen_pos =_viewer_camera.unproject_position(world_pos)
 			var label_x =screen_pos.x / vp_size.x * viewer_w
 			var label_y =screen_pos.y / vp_size.y * viewer_h + EC.CONTENT_TOP

@@ -81,6 +81,8 @@ func _scan_stations() -> void:
 	var best_node: Node3D = null
 	var best_name: String = ""
 
+	var ship_upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+
 	for ent in entities.values():
 		if ent["type"] != EntityRegistrySystem.EntityType.STATION:
 			continue
@@ -103,7 +105,11 @@ func _scan_stations() -> void:
 		var sh = node.get_node_or_null("StructureHealth")
 		if sh and sh.is_dead():
 			continue
-		var dist: float = _ship.global_position.distance_to(node.global_position)
+		# Use float64 universe coordinates for distance — immune to floating origin desync
+		var dx: float = ent["pos_x"] - ship_upos[0]
+		var dy: float = ent["pos_y"] - ship_upos[1]
+		var dz: float = ent["pos_z"] - ship_upos[2]
+		var dist: float = sqrt(dx * dx + dy * dy + dz * dz)
 		if dist < best_dist:
 			best_dist = dist
 			best_node = node
