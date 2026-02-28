@@ -126,12 +126,14 @@ func _ready() -> void:
 
 	# Server-side ships are plain Node3D — no camera needed
 	if _ship == null or not ("center_offset" in _ship):
-		set_process(false)
+		set_physics_process(false)
 		set_process_unhandled_input(false)
 		return
 
 	set_as_top_level(true)
-	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	# Camera logic runs in _physics_process() (synced with ship physics).
+	# Physics interpolation smooths the rendered position between ticks.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 
 	# Snapshot @export defaults as base reference for ship-size scaling
 	_base_distance_default = cam_distance_default
@@ -144,15 +146,15 @@ func _ready() -> void:
 	# Auto-scale camera params to ship size
 	adapt_to_ship_size()
 
-	# Sync runtime vars from export defaults
-	target_distance = cam_distance_default
-	current_distance = cam_distance_default
+	# Start fully zoomed out so the player sees the surroundings
+	target_distance = cam_distance_max
+	current_distance = cam_distance_max
 	_current_fov = fov_base
 
 	# Initialize camera position immediately behind and above ship
 	var ship_basis: Basis = _ship.global_transform.basis
 	var center: Vector3 = _ship.global_position + ship_basis * _ship.center_offset
-	global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_default)
+	global_position = center + ship_basis * Vector3(0.0, cam_height, cam_distance_max)
 	look_at(center, ship_basis.y)
 	_smooth_look_target = center + ship_basis * Vector3(0.0, cam_look_ahead_y, -50.0)
 
@@ -280,7 +282,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_fov_zoom_offset = 0.0
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if _ship == null:
 		return
 
@@ -546,6 +548,8 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Camera is top_level — it doesn't shift with the parent.
 	# Apply the same shift so camera stays in sync with the ship.
 	global_position -= shift
+	# Prevent interpolation from lerping between pre-shift and post-shift positions
+	reset_physics_interpolation()
 	# Keep spring velocity and prev_velocity intact — the position was shifted
 	# but relative distances are unchanged, so the spring-damper continues smoothly.
 	# Zeroing spring_velocity caused visible saccades at high speed (boost/cruise)

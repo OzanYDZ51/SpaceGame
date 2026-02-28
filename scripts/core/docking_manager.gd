@@ -24,6 +24,7 @@ var station_screen = null
 var admin_screen = null
 var refinery_screen: Control = null  # RefineryScreen (UIScreen)
 var storage_screen: Control = null   # StorageScreen (UIScreen)
+var market_screen: Control = null    # MarketScreen (UIScreen)
 var system_transition = null
 var route_manager = null
 var fleet_deployment_mgr = null
@@ -516,6 +517,22 @@ func handle_storage_requested() -> void:
 
 
 func handle_storage_closed() -> void:
+	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
+	if state_val != Constants.GameState.DOCKED:
+		return
+	open_station_terminal()
+
+
+func handle_market_requested() -> void:
+	if market_screen == null or screen_manager == null:
+		return
+	market_screen.browse_only = false
+	screen_manager.close_screen("station")
+	await get_tree().process_frame
+	screen_manager.open_screen("market")
+
+
+func handle_market_closed() -> void:
 	var state_val: int = get_game_state.call() if get_game_state.is_valid() else 0
 	if state_val != Constants.GameState.DOCKED:
 		return

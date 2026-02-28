@@ -192,9 +192,16 @@ func _input(event: InputEvent) -> void:
 			_mouse_delta += event.relative
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	# Read input at physics rate so mouse delta is consumed once per physics tick
+	# with the FULL accumulated movement. Reading in _process() caused stutter:
+	# multiple frames consumed partial deltas, physics only saw the last one.
 	if is_player_controlled:
 		_read_input()
+
+
+func _process(delta: float) -> void:
+	if is_player_controlled:
 		_check_planet_collision(delta)
 		_aim_timer -= delta
 		_handle_player_weapon_input()

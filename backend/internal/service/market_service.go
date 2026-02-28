@@ -154,6 +154,10 @@ func (s *MarketService) GetMyListings(ctx context.Context, playerID string, stat
 	return s.marketRepo.GetBySellerID(ctx, playerID, status)
 }
 
+func (s *MarketService) GetAvgPrices(ctx context.Context) (map[string]int64, error) {
+	return s.marketRepo.GetAvgPrices(ctx)
+}
+
 func (s *MarketService) ExpireListings(ctx context.Context) (int64, error) {
 	return s.marketRepo.ExpireOld(ctx)
 }

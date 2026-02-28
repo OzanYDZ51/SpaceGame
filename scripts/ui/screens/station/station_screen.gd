@@ -16,6 +16,7 @@ signal storage_requested
 signal station_equipment_requested
 signal administration_requested
 signal missions_requested
+signal market_requested
 
 # --- Card grid constants ---
 const CARD_W: float = 150.0
@@ -46,7 +47,7 @@ var _emblem_center_y: float = 85.0
 var _cards: Array[Dictionary] = []
 var _cat_labels: PackedStringArray = PackedStringArray()
 
-enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMIN, MISSIONS }
+enum ICO { COMMERCE, SHIPYARD, STORAGE, REPAIR, EQUIP, REFINERY, STN_EQUIP, ADMIN, MISSIONS, MARKET }
 
 
 func _ready() -> void:
@@ -62,6 +63,7 @@ func _rebuild_labels() -> void:
 		{"svc": StationServices.Service.COMMERCE, "label": Locale.t("station.commerce"), "icon": ICO.COMMERCE, "cat": 0, "special": ""},
 		{"svc": StationServices.Service.SHIPYARD, "label": Locale.t("station.shipyard"), "icon": ICO.SHIPYARD, "cat": 0, "special": ""},
 		{"svc": StationServices.Service.ENTREPOT, "label": Locale.t("station.storage"), "icon": ICO.STORAGE, "cat": 0, "special": ""},
+		{"svc": StationServices.Service.MARKET, "label": Locale.t("station.market"), "icon": ICO.MARKET, "cat": 0, "special": ""},
 		{"svc": StationServices.Service.REPAIR, "label": Locale.t("station.repair"), "icon": ICO.REPAIR, "cat": 1, "special": ""},
 		{"svc": StationServices.Service.EQUIPMENT, "label": Locale.t("station.equipment"), "icon": ICO.EQUIP, "cat": 1, "special": ""},
 		{"svc": StationServices.Service.REFINERY, "label": Locale.t("station.refinery"), "icon": ICO.REFINERY, "cat": 1, "special": ""},
@@ -362,6 +364,20 @@ func _draw_icon(c: Vector2, icon: int, col: Color) -> void:
 			draw_polyline(d, col, 1.5)
 			draw_line(c + Vector2(0, -r * 0.45), c + Vector2(0, r * 0.15), col, 2.0)
 			draw_circle(c + Vector2(0, r * 0.4), 1.5, col)
+		ICO.MARKET:
+			# Balance / scales (auction house)
+			draw_line(c + Vector2(0, -r), c + Vector2(0, r * 0.7), col, 1.5)  # Center post
+			draw_line(c + Vector2(-r * 0.8, -r * 0.4), c + Vector2(r * 0.8, -r * 0.4), col, 1.5)  # Beam
+			# Left pan
+			draw_line(c + Vector2(-r * 0.8, -r * 0.4), c + Vector2(-r * 0.6, r * 0.2), col, 1.0)
+			draw_line(c + Vector2(-r * 0.8, -r * 0.4), c + Vector2(-r, r * 0.2), col, 1.0)
+			draw_line(c + Vector2(-r, r * 0.2), c + Vector2(-r * 0.6, r * 0.2), col, 1.0)
+			# Right pan
+			draw_line(c + Vector2(r * 0.8, -r * 0.4), c + Vector2(r * 0.6, r * 0.2), col, 1.0)
+			draw_line(c + Vector2(r * 0.8, -r * 0.4), c + Vector2(r, r * 0.2), col, 1.0)
+			draw_line(c + Vector2(r, r * 0.2), c + Vector2(r * 0.6, r * 0.2), col, 1.0)
+			# Base
+			draw_line(c + Vector2(-r * 0.35, r * 0.7), c + Vector2(r * 0.35, r * 0.7), col, 1.5)
 
 
 func _draw_lock(pos: Vector2, col: Color) -> void:
@@ -462,6 +478,7 @@ func _on_card_clicked(idx: int) -> void:
 			StationServices.Service.SHIPYARD: shipyard_requested.emit()
 			StationServices.Service.REFINERY: refinery_requested.emit()
 			StationServices.Service.ENTREPOT: storage_requested.emit()
+			StationServices.Service.MARKET: market_requested.emit()
 	else:
 		_try_unlock(svc)
 

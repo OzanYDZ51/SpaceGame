@@ -8,6 +8,7 @@ extends UIComponent
 
 var _market_manager: MarketManager = null
 var _player_data = null
+var _avg_prices: Dictionary = {}  # item_id -> avg market price
 
 # Inventory list
 var _table: UIDataTable = null
@@ -89,6 +90,15 @@ func refresh() -> void:
 	_build_sellable_list()
 	_layout()
 	queue_redraw()
+	_fetch_avg_prices()
+
+
+func _fetch_avg_prices() -> void:
+	if _market_manager == null:
+		return
+	_avg_prices = await _market_manager.get_avg_prices()
+	_update_table()
+	queue_redraw()
 
 
 func _build_sellable_list() -> void:
@@ -160,7 +170,8 @@ func _build_sellable_list() -> void:
 func _update_table() -> void:
 	var rows: Array = []
 	for item in _sellable_items:
-		var price_str: String = PlayerEconomy.format_credits(item["price"]) + " CR" if item["price"] > 0 else "—"
+		var avg: int = _avg_prices.get(item["id"], 0)
+		var price_str: String = PlayerEconomy.format_credits(avg) + " CR" if avg > 0 else "—"
 		rows.append([
 			item["name"],
 			item["category"].to_upper(),
@@ -177,8 +188,8 @@ func _on_item_selected(idx: int) -> void:
 	if idx >= 0 and idx < _sellable_items.size():
 		var item: Dictionary = _sellable_items[idx]
 		_quantity_input.set_text("1")
-		var suggested_price: int = item["price"] if item["price"] > 0 else 100
-		_price_input.set_text(str(suggested_price))
+		var avg: int = _avg_prices.get(item["id"], 0)
+		_price_input.set_text(str(avg) if avg > 0 else "")
 	queue_redraw()
 
 

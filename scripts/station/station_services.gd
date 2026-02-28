@@ -7,7 +7,7 @@ extends RefCounted
 # Each station has 6 services: commerce, equipment, repair, shipyard, refinery, entrepot.
 # =============================================================================
 
-enum Service { COMMERCE, EQUIPMENT, REPAIR, SHIPYARD, REFINERY, ENTREPOT }
+enum Service { COMMERCE, EQUIPMENT, REPAIR, SHIPYARD, REFINERY, ENTREPOT, MARKET }
 
 const SERVICE_NAMES: Dictionary = {
 	Service.COMMERCE: "commerce",
@@ -16,6 +16,7 @@ const SERVICE_NAMES: Dictionary = {
 	Service.SHIPYARD: "shipyard",
 	Service.REFINERY: "refinery",
 	Service.ENTREPOT: "entrepot",
+	Service.MARKET: "market",
 }
 
 ## Locale keys for service labels — use Locale.t(SERVICE_LABEL_KEYS[svc]) to get translated name.
@@ -26,6 +27,7 @@ const SERVICE_LABEL_KEYS: Dictionary = {
 	Service.SHIPYARD: "station.shipyard",
 	Service.REFINERY: "station.refinery",
 	Service.ENTREPOT: "station.storage",
+	Service.MARKET: "station.market",
 }
 
 ## Returns translated service label.
@@ -39,6 +41,7 @@ const SERVICE_PRICES: Dictionary = {
 	Service.SHIPYARD: 8000,
 	Service.REFINERY: 6000,
 	Service.ENTREPOT: 4000,
+	Service.MARKET: 5000,
 }
 
 # station_key -> { "commerce": bool, "equipment": bool, "repair": bool }
@@ -51,7 +54,7 @@ func _make_key(system_id: int, station_idx: int) -> String:
 
 func _get_or_create(key: String) -> Dictionary:
 	if not _states.has(key):
-		_states[key] = { "commerce": false, "equipment": false, "repair": false, "shipyard": false, "refinery": false, "entrepot": false }
+		_states[key] = { "commerce": false, "equipment": false, "repair": false, "shipyard": false, "refinery": false, "entrepot": false, "market": false }
 	return _states[key]
 
 
@@ -76,7 +79,7 @@ func unlock(system_id: int, station_idx: int, service: Service, economy) -> bool
 
 func unlock_all(system_id: int, station_idx: int) -> void:
 	var key =_make_key(system_id, station_idx)
-	_states[key] = { "commerce": true, "equipment": true, "repair": true, "shipyard": true, "refinery": true, "entrepot": true }
+	_states[key] = { "commerce": true, "equipment": true, "repair": true, "shipyard": true, "refinery": true, "entrepot": true, "market": true }
 
 
 func get_unlocked_count(system_id: int, station_idx: int) -> int:
@@ -129,6 +132,7 @@ func serialize() -> Array:
 			"shipyard": state.get("shipyard", false),
 			"refinery": state.get("refinery", false),
 			"entrepot": state.get("entrepot", false),
+			"market": state.get("market", false),
 		})
 	return result
 
@@ -146,4 +150,5 @@ func deserialize(data: Array) -> void:
 					"shipyard": entry.get("shipyard", false),
 					"refinery": entry.get("refinery", false),
 					"entrepot": entry.get("entrepot", false),
+					"market": entry.get("market", false),
 				}

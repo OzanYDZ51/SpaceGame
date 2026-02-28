@@ -198,6 +198,7 @@ func main() {
 	// Market (HDV)
 	marketH := handler.NewMarketHandler(marketSvc)
 	market := v1.Group("/market", authMw)
+	market.Get("/avg-prices", marketH.AvgPrices)
 	market.Get("/listings", marketH.Search)
 	market.Post("/listings", marketH.Create)
 	market.Get("/my-listings", marketH.MyListings)

@@ -170,14 +170,18 @@ const AI_LOD_TICK_MID_DIST: float = 3000.0       # Distance for 3x slower AI tic
 const AI_STRUCTURE_HIT_RANGE: float = 5000.0     # Max distance for structure hit validation
 const AI_STRUCTURE_MAX_DAMAGE: float = 500.0     # Max single-hit damage for structure validation
 
-# --- AI Attack Runs ---
-const AI_ATTACK_RUN_MAX_TIME_LIGHT: float = 3.0   # Max run duration: fighters/interceptors
-const AI_ATTACK_RUN_MAX_TIME_HEAVY: float = 5.0   # Max run duration: frigates/cruisers
-const AI_BREAK_OFF_DURATION_MIN: float = 1.5
-const AI_BREAK_OFF_DURATION_MAX: float = 3.0
-const AI_REPOSITION_MAX_TIME: float = 8.0
-const AI_PASS_DISTANCE_LIGHT: float = 80.0        # Break-off trigger distance (fighters)
-const AI_PASS_DISTANCE_HEAVY: float = 150.0       # Break-off trigger distance (frigates)
+# --- AI Combat (Dogfight) ---
+const AI_ATTACK_PASS_MAX_TIME_LIGHT: float = 2.0   # Max pass duration: fighters/interceptors
+const AI_ATTACK_PASS_MAX_TIME_HEAVY: float = 3.5   # Max pass duration: frigates/cruisers
+const AI_LEAD_TURN_MAX_TIME: float = 1.5            # Max lead turn duration after pass
+const AI_DOGFIGHT_MAX_TIME_LIGHT: float = 20.0      # Max dogfight orbit duration (fighters)
+const AI_DOGFIGHT_MAX_TIME_HEAVY: float = 25.0      # Max dogfight orbit duration (frigates)
+const AI_DOGFIGHT_ORBIT_RADIUS_LIGHT: float = 250.0 # Ideal orbit radius (fighters)
+const AI_DOGFIGHT_ORBIT_RADIUS_HEAVY: float = 500.0 # Ideal orbit radius (frigates)
+const AI_DISENGAGE_TURN_MIN: float = 0.8             # Brief disengage duration min
+const AI_DISENGAGE_TURN_MAX: float = 1.5             # Brief disengage duration max
+const AI_PASS_DISTANCE_LIGHT: float = 80.0           # Break-off trigger distance (fighters)
+const AI_PASS_DISTANCE_HEAVY: float = 150.0          # Break-off trigger distance (frigates)
 
 # --- NPC Authority ---
 const NPC_HIT_VALIDATION_RANGE: float = 5000.0   # Max distance for hit validation

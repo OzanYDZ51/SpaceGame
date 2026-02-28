@@ -8,6 +8,7 @@ extends UIScreen
 
 var market_manager: MarketManager = null
 var player_data = null
+var browse_only: bool = false
 
 var _tab_bar: UITabBar = null
 var _browse_view: MarketBrowseView = null
@@ -57,6 +58,7 @@ func _on_opened() -> void:
 	market_manager = GameManager._market_manager
 	player_data = GameManager.player_data
 	setup(market_manager, player_data)
+	_browse_view.browse_only = browse_only
 	_tab_bar.tabs = _get_tab_names()
 	_switch_tab(0)
 
@@ -70,6 +72,8 @@ func _on_tab_changed(idx: int) -> void:
 
 
 func _switch_tab(idx: int) -> void:
+	if browse_only and idx > 0:
+		return
 	_current_tab = idx
 	_tab_bar.current_tab = idx
 	_hide_all_views()
@@ -158,6 +162,8 @@ func _on_language_changed(_lang: String) -> void:
 
 
 func _get_tab_names() -> Array[String]:
+	if browse_only:
+		return [Locale.t("market.tab.browse")]
 	return [
 		Locale.t("market.tab.browse"),
 		Locale.t("market.tab.sell"),

@@ -299,6 +299,31 @@ func (r *MarketRepository) Cancel(ctx context.Context, listingID int64, sellerID
 	return nil
 }
 
+func (r *MarketRepository) GetAvgPrices(ctx context.Context) (map[string]int64, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT item_id, ROUND(AVG(unit_price))::bigint
+		FROM market_listings
+		WHERE status = 'active'
+		GROUP BY item_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]int64)
+	for rows.Next() {
+		var itemID string
+		var avg int64
+		if err := rows.Scan(&itemID, &avg); err != nil {
+			return nil, err
+		}
+		result[itemID] = avg
+	}
+	return result, nil
+}
+
+
 func (r *MarketRepository) ExpireOld(ctx context.Context) (int64, error) {
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE market_listings SET status = 'expired'

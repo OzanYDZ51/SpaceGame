@@ -2,30 +2,36 @@ class_name CombatBehavior
 extends AIBehavior
 
 # =============================================================================
-# Combat Behavior — Attack-run passes (X4/Elite style).
-# 4 cyclic sub-states: ENGAGE → ATTACK_RUN → BREAK_OFF → REPOSITION → ...
-# Light ships (fighters) do fast, tight passes. Heavy ships (frigates) do
-# slower, sustained runs. Replaces the old PURSUE/ATTACK orbit standoff.
+# Combat Behavior — Dogfight system (X4/Star Citizen style).
+# 5 cyclic sub-states: CLOSE_IN → ATTACK_PASS → LEAD_TURN → DOGFIGHT ←→ DISENGAGE_TURN
+# Light ships orbit tight and fast. Heavy ships orbit wide and slow.
+# ~75-80% of combat time is spent actively firing (vs ~20-30% with old joust).
 # =============================================================================
 
-enum SubState { ENGAGE, ATTACK_RUN, BREAK_OFF, REPOSITION }
+enum SubState { CLOSE_IN, ATTACK_PASS, LEAD_TURN, DOGFIGHT, DISENGAGE_TURN }
 
-var sub_state: SubState = SubState.ENGAGE
+var sub_state: SubState = SubState.CLOSE_IN
 var target: Node3D = null
 
 const MIN_SAFE_DIST: float = Constants.AI_MIN_SAFE_DIST
 
-# Phase timers (accumulate dt — works at any AI LOD tick rate)
-var _run_timer: float = 0.0
-var _break_off_timer: float = 0.0
-var _break_off_duration: float = 2.0
-var _reposition_timer: float = 0.0
+# Phase timers
+var _pass_timer: float = 0.0
+var _lead_turn_timer: float = 0.0
+var _dogfight_timer: float = 0.0
+var _disengage_timer: float = 0.0
+var _disengage_duration: float = 1.0
 
-# Break-off direction (randomised at break initiation)
-var _break_off_dir: Vector3 = Vector3.ZERO
+# Dogfight orbit state
+var _orbit_direction: float = 1.0       # +1 = orbit right, -1 = orbit left
+var _orbit_reversal_timer: float = 0.0
+var _vert_phase: float = 0.0            # Sinusoidal vertical weave phase
 
-# Reposition target point (where to fly before next pass)
-var _reposition_point: Vector3 = Vector3.ZERO
+# Attack pass state
+var _pass_side: float = 1.0             # +1 = strafe right, -1 = strafe left
+
+# Disengage state
+var _disengage_dir: Vector3 = Vector3.ZERO
 
 # Ship classification cache
 var _is_heavy: bool = false
@@ -36,12 +42,16 @@ var _cached_target_ref: Node3D = null
 
 
 func enter() -> void:
-	sub_state = SubState.ENGAGE
-	_run_timer = 0.0
-	_break_off_timer = 0.0
-	_reposition_timer = 0.0
-	_break_off_dir = Vector3.ZERO
-	_reposition_point = Vector3.ZERO
+	sub_state = SubState.CLOSE_IN
+	_pass_timer = 0.0
+	_lead_turn_timer = 0.0
+	_dogfight_timer = 0.0
+	_disengage_timer = 0.0
+	_disengage_dir = Vector3.ZERO
+	_orbit_direction = 1.0 if randf() > 0.5 else -1.0
+	_orbit_reversal_timer = randf_range(3.0, 6.0)
+	_vert_phase = randf() * TAU
+	_pass_side = 1.0 if randf() > 0.5 else -1.0
 
 	# Classify ship as heavy or light
 	_is_heavy = false
@@ -61,10 +71,10 @@ func set_target(node: Node3D) -> void:
 	target = node
 	_cached_target_ref = null
 	_cached_target_health = null
-	# Reset to engage when switching targets
-	if sub_state == SubState.REPOSITION or sub_state == SubState.BREAK_OFF:
-		sub_state = SubState.ENGAGE
-		_run_timer = 0.0
+	# Reset to close_in when switching targets
+	if sub_state == SubState.DISENGAGE_TURN:
+		sub_state = SubState.CLOSE_IN
+		_pass_timer = 0.0
 
 
 func tick(dt: float) -> void:
@@ -76,8 +86,8 @@ func tick(dt: float) -> void:
 		if target == null:
 			controller._end_combat()
 			return
-		sub_state = SubState.ENGAGE
-		_run_timer = 0.0
+		sub_state = SubState.CLOSE_IN
+		_pass_timer = 0.0
 
 	# Formation leash: if we have a formation leader and drifted too far, abandon
 	# combat and return to formation (escorts must protect the convoy, not chase)
@@ -90,20 +100,22 @@ func tick(dt: float) -> void:
 				return
 
 	match sub_state:
-		SubState.ENGAGE:
-			_tick_engage(dt)
-		SubState.ATTACK_RUN:
-			_tick_attack_run(dt)
-		SubState.BREAK_OFF:
-			_tick_break_off(dt)
-		SubState.REPOSITION:
-			_tick_reposition(dt)
+		SubState.CLOSE_IN:
+			_tick_close_in(dt)
+		SubState.ATTACK_PASS:
+			_tick_attack_pass(dt)
+		SubState.LEAD_TURN:
+			_tick_lead_turn(dt)
+		SubState.DOGFIGHT:
+			_tick_dogfight(dt)
+		SubState.DISENGAGE_TURN:
+			_tick_disengage_turn(dt)
 
 
 # =============================================================================
-# ENGAGE — Aggressive intercept approach, opportunistic fire
+# CLOSE_IN — Aggressive intercept approach, opportunistic fire
 # =============================================================================
-func _tick_engage(_dt: float) -> void:
+func _tick_close_in(_dt: float) -> void:
 	var nav: AINavigation = controller.navigation
 	if nav == null:
 		return
@@ -117,10 +129,10 @@ func _tick_engage(_dt: float) -> void:
 			controller._end_combat()
 		return
 
-	# Transition to attack run
-	var engage_threshold: float = controller.preferred_range * (0.8 if _is_heavy else 1.2)
-	if dist <= engage_threshold:
-		_begin_attack_run()
+	# Transition to attack pass when close enough
+	var merge_range: float = controller.preferred_range * (0.5 if _is_heavy else 0.8)
+	if dist <= merge_range:
+		_begin_attack_pass()
 		return
 
 	# Fly intercept toward target
@@ -132,22 +144,27 @@ func _tick_engage(_dt: float) -> void:
 
 
 # =============================================================================
-# ATTACK_RUN — Full speed charge, face lead position, fire at lead
+# ATTACK_PASS — Short attack pass with lateral offset, fire continuously
 # =============================================================================
-func _tick_attack_run(dt: float) -> void:
+func _tick_attack_pass(dt: float) -> void:
 	var nav: AINavigation = controller.navigation
 	if nav == null:
 		return
 
-	_run_timer += dt
+	_pass_timer += dt
 	var dist: float = nav.get_distance_to(target.global_position)
 
-	# Break-off conditions
-	var max_run_time: float = Constants.AI_ATTACK_RUN_MAX_TIME_HEAVY if _is_heavy else Constants.AI_ATTACK_RUN_MAX_TIME_LIGHT
+	# Max pass time
+	var max_pass_time: float = Constants.AI_ATTACK_PASS_MAX_TIME_HEAVY if _is_heavy else Constants.AI_ATTACK_PASS_MAX_TIME_LIGHT
 	var pass_dist: float = Constants.AI_PASS_DISTANCE_HEAVY if _is_heavy else Constants.AI_PASS_DISTANCE_LIGHT
 
-	if dist < pass_dist or _has_flown_past_target() or _run_timer > max_run_time:
-		_initiate_break_off()
+	# Transition conditions
+	if _has_flown_past_target() or dist < pass_dist:
+		_begin_lead_turn()
+		return
+	if _pass_timer > max_pass_time:
+		# Merged without flying past — go straight to dogfight
+		_begin_dogfight()
 		return
 
 	# Disengage check (target fled)
@@ -156,151 +173,195 @@ func _tick_attack_run(dt: float) -> void:
 		if target == null:
 			controller._end_combat()
 		else:
-			sub_state = SubState.ENGAGE
-			_run_timer = 0.0
+			sub_state = SubState.CLOSE_IN
+			_pass_timer = 0.0
 		return
 
-	# Face lead position + charge forward
+	# Face lead position + charge with lateral offset
 	var lead_pos: Vector3 = controller.combat.get_lead_position(target)
 	nav.face_target(lead_pos)
 	nav.update_combat_maneuver(dt)
-	nav.apply_attack_run_throttle(dist, controller.preferred_range, _is_heavy)
+	nav.apply_attack_pass_throttle(dist, controller.preferred_range, _is_heavy, _pass_side)
 
-	# Fire at lead position
+	# Fire continuously
 	if controller.weapons_enabled:
 		controller.combat.try_fire_forward(target, controller.guard_station)
 
 
 # =============================================================================
-# BREAK_OFF — Evasive turn away, no fire
+# LEAD_TURN — Immediate turn toward target after passing (replaces BREAK_OFF)
 # =============================================================================
-func _tick_break_off(dt: float) -> void:
+func _tick_lead_turn(dt: float) -> void:
 	var nav: AINavigation = controller.navigation
 	if nav == null:
 		return
 
-	_break_off_timer += dt
+	_lead_turn_timer += dt
 	var dist: float = nav.get_distance_to(target.global_position)
 
-	# Transition to reposition
-	if _break_off_timer > _break_off_duration or dist > controller.preferred_range * 0.6:
-		_begin_reposition()
+	# Face the target — turn hard toward it
+	nav.face_target(target.global_position)
+
+	# Check alignment
+	var forward: Vector3 = -controller._ship.global_transform.basis.z
+	var to_target: Vector3 = (target.global_position - controller._ship.global_position).normalized()
+	var alignment: float = forward.dot(to_target)
+
+	# Moderate forward throttle + slight vertical offset for 3D
+	var vert: float = sin(_vert_phase) * 0.15
+	controller._ship.set_throttle(Vector3(0.0, vert, -0.4))
+
+	# Transition conditions
+	if alignment > 0.7:
+		if dist < controller.preferred_range:
+			_begin_dogfight()
+		else:
+			sub_state = SubState.CLOSE_IN
+			_pass_timer = 0.0
 		return
 
-	# Fly along break-off direction
-	var break_point: Vector3 = controller._ship.global_position + _break_off_dir * 500.0
-	nav.fly_toward(break_point, 10.0)
+	# Force merge after max lead turn time
+	if _lead_turn_timer > Constants.AI_LEAD_TURN_MAX_TIME:
+		_begin_dogfight()
+		return
+
+	# Opportunistic fire if somewhat aligned
+	if alignment > 0.5 and controller.weapons_enabled:
+		controller.combat.try_fire_forward(target, controller.guard_station)
 
 
 # =============================================================================
-# REPOSITION — Circle back to set up next pass, no fire
+# DOGFIGHT — Sustained close combat orbit (main state, ~60-70% of combat time)
 # =============================================================================
-func _tick_reposition(dt: float) -> void:
+func _tick_dogfight(dt: float) -> void:
 	var nav: AINavigation = controller.navigation
 	if nav == null:
 		return
 
-	_reposition_timer += dt
-	var dist_to_point: float = nav.get_distance_to(_reposition_point)
-	var dist_to_target: float = nav.get_distance_to(target.global_position)
+	_dogfight_timer += dt
+
+	var dist: float = nav.get_distance_to(target.global_position)
+	var ideal_radius: float = Constants.AI_DOGFIGHT_ORBIT_RADIUS_HEAVY if _is_heavy else Constants.AI_DOGFIGHT_ORBIT_RADIUS_LIGHT
+	var max_dogfight_time: float = Constants.AI_DOGFIGHT_MAX_TIME_HEAVY if _is_heavy else Constants.AI_DOGFIGHT_MAX_TIME_LIGHT
+
+	# Update vertical weave phase
+	var vert_speed: float = 0.6 if _is_heavy else 1.5
+	_vert_phase += vert_speed * dt
+
+	# Update orbit reversal timer
+	_orbit_reversal_timer -= dt
+	if _orbit_reversal_timer <= 0.0:
+		_orbit_reversal_timer = randf_range(3.0, 6.0)
+		if randf() < 0.3:
+			_orbit_direction *= -1.0
+
+	# Disengage check: target fled or max time reached
+	if dist > ideal_radius * 2.5:
+		sub_state = SubState.CLOSE_IN
+		_pass_timer = 0.0
+		return
+
+	if _dogfight_timer > max_dogfight_time:
+		_begin_disengage_turn()
+		return
+
+	# Target dead/invalid check happens in tick() already
+
+	# Face lead position while orbiting
+	var lead_pos: Vector3 = controller.combat.get_lead_position(target)
+	nav.face_target(lead_pos)
+
+	# Orbit throttle
+	var orbit_strength: float = 0.4 if _is_heavy else 0.7
+	var vert_offset: float = sin(_vert_phase)
+	nav.apply_dogfight_throttle(target, ideal_radius, _orbit_direction, orbit_strength, vert_offset, _is_heavy)
+
+	# Fire continuously while orbiting
+	if controller.weapons_enabled:
+		controller.combat.try_fire_forward(target, controller.guard_station)
+
+
+# =============================================================================
+# DISENGAGE_TURN — Brief disengagement for variety (replaces REPOSITION)
+# =============================================================================
+func _tick_disengage_turn(dt: float) -> void:
+	var nav: AINavigation = controller.navigation
+	if nav == null:
+		return
+
+	_disengage_timer += dt
+
+	# Transition: timer expired → re-engage
+	if _disengage_timer > _disengage_duration:
+		var dist: float = nav.get_distance_to(target.global_position)
+		if dist > controller.preferred_range * 0.5:
+			sub_state = SubState.CLOSE_IN
+			_pass_timer = 0.0
+		else:
+			_begin_dogfight()
+		return
 
 	# Disengage check
+	var dist_to_target: float = nav.get_distance_to(target.global_position)
 	if dist_to_target > controller.disengage_range:
 		target = controller.perception.get_highest_threat()
 		if target == null:
 			controller._end_combat()
 		else:
-			sub_state = SubState.ENGAGE
-			_run_timer = 0.0
+			sub_state = SubState.CLOSE_IN
+			_pass_timer = 0.0
 		return
 
-	# Transition to engage (next pass)
-	if dist_to_point < 200.0 or _reposition_timer > Constants.AI_REPOSITION_MAX_TIME:
-		sub_state = SubState.ENGAGE
-		_run_timer = 0.0
-		return
-
-	nav.fly_toward(_reposition_point, 150.0)
+	# Fly along disengage direction — no fire
+	var disengage_point: Vector3 = controller._ship.global_position + _disengage_dir * 400.0
+	nav.fly_toward(disengage_point, 10.0)
 
 
 # =============================================================================
 # PHASE TRANSITIONS
 # =============================================================================
-func _begin_attack_run() -> void:
-	sub_state = SubState.ATTACK_RUN
-	_run_timer = 0.0
+func _begin_attack_pass() -> void:
+	sub_state = SubState.ATTACK_PASS
+	_pass_timer = 0.0
+	_pass_side = 1.0 if randf() > 0.5 else -1.0
 
 
-func _initiate_break_off() -> void:
-	sub_state = SubState.BREAK_OFF
-	_break_off_timer = 0.0
+func _begin_lead_turn() -> void:
+	sub_state = SubState.LEAD_TURN
+	_lead_turn_timer = 0.0
+	# Small random vertical offset for 3D variety
+	_vert_phase = randf() * TAU
 
-	# Randomise break-off duration (heavy ships take longer)
-	var min_dur: float = Constants.AI_BREAK_OFF_DURATION_MIN
-	var max_dur: float = Constants.AI_BREAK_OFF_DURATION_MAX
-	if _is_heavy:
-		min_dur += 0.5
-		max_dur += 1.0
-	_break_off_duration = randf_range(min_dur, max_dur)
 
-	# Compute break-off direction: mostly away + random lateral + vertical
+func _begin_dogfight() -> void:
+	sub_state = SubState.DOGFIGHT
+	_dogfight_timer = 0.0
+	_orbit_reversal_timer = randf_range(3.0, 6.0)
+	_vert_phase = randf() * TAU
+	# Randomize initial orbit direction
+	_orbit_direction = 1.0 if randf() > 0.5 else -1.0
+
+
+func _begin_disengage_turn() -> void:
+	sub_state = SubState.DISENGAGE_TURN
+	_disengage_timer = 0.0
+	_disengage_duration = randf_range(Constants.AI_DISENGAGE_TURN_MIN, Constants.AI_DISENGAGE_TURN_MAX)
+
+	# Compute disengage direction: 45-90° from target direction + vertical component
 	var to_target: Vector3 = target.global_position - controller._ship.global_position
 	var away: Vector3 = -to_target.normalized()
 
-	# Random perpendicular component
 	var up := Vector3.UP
 	var right := away.cross(up).normalized()
 	if right.length_squared() < 0.5:
 		right = away.cross(Vector3.RIGHT).normalized()
-	var lat := right * randf_range(-1.0, 1.0)
-	var vert := up * randf_range(-0.6, 0.6)
 
-	_break_off_dir = (away * 0.6 + lat * 0.3 + vert * 0.2).normalized()
+	# 45-90° offset — NOT directly away (that's boring), but not perpendicular either
+	var angle_t: float = randf_range(0.4, 0.8)  # blend between away and perpendicular
+	var lat_sign: float = 1.0 if randf() > 0.5 else -1.0
+	var vert := up * randf_range(-0.4, 0.4)
 
-
-func _begin_reposition() -> void:
-	sub_state = SubState.REPOSITION
-	_reposition_timer = 0.0
-	_reposition_point = _compute_reposition_point()
-
-
-func _compute_reposition_point() -> Vector3:
-	if target == null or not is_instance_valid(target):
-		return controller._ship.global_position
-
-	var target_pos: Vector3 = target.global_position
-	var pref_range: float = controller.preferred_range
-
-	# Random angle offset from current approach direction (new angle each pass)
-	var to_target: Vector3 = target_pos - controller._ship.global_position
-	var base_dir: Vector3 = -to_target.normalized()  # away from target
-
-	# Rotate base_dir by random yaw (±0.5 to ±1.2 rad) and pitch (±0.4 rad)
-	var yaw_offset: float = randf_range(0.5, 1.2) * (1.0 if randf() > 0.5 else -1.0)
-	var pitch_offset: float = randf_range(-0.4, 0.4)
-
-	# Build rotated direction using basis rotation
-	var up := Vector3.UP
-	var right := base_dir.cross(up).normalized()
-	if right.length_squared() < 0.5:
-		right = base_dir.cross(Vector3.RIGHT).normalized()
-	up = right.cross(base_dir).normalized()
-
-	var rotated: Vector3 = base_dir * cos(yaw_offset) + right * sin(yaw_offset)
-	rotated = rotated * cos(pitch_offset) + up * sin(pitch_offset)
-	rotated = rotated.normalized()
-
-	var point: Vector3 = target_pos + rotated * pref_range
-
-	# Guard station constraint: clamp within disengage_range of station
-	if controller.guard_station and is_instance_valid(controller.guard_station):
-		var station_pos: Vector3 = controller.guard_station.global_position
-		var to_point: Vector3 = point - station_pos
-		var max_dist: float = controller.disengage_range * 0.8
-		if to_point.length() > max_dist:
-			point = station_pos + to_point.normalized() * max_dist
-
-	return point
+	_disengage_dir = (away * angle_t + right * lat_sign * (1.0 - angle_t) + vert * 0.3).normalized()
 
 
 # =============================================================================

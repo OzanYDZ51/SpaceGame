@@ -222,39 +222,55 @@ func _read_auth_token_from_cli() -> void:
 
 ## Auto-login with a dev account when running from the Godot editor (F5).
 ## Tries login first, then register if the account doesn't exist yet.
+## Retries up to 15 times (2s apart = ~30s) to wait for Docker backend.
 func _dev_auto_login() -> void:
 	const DEV_USER: String = "dev"
 	const DEV_EMAIL: String = "dev@local.dev"
 	const DEV_PASS: String = "dev123"
+	const MAX_RETRIES: int = 15
+	const RETRY_DELAY_SEC: float = 2.0
 
-	print("GameManager: [DEV] Auto-login attempt against %s ..." % ApiClient.base_url)
+	for attempt in range(MAX_RETRIES):
+		if attempt > 0:
+			print("GameManager: [DEV] Backend not ready, retry %d/%d in %.0fs..." % [attempt, MAX_RETRIES - 1, RETRY_DELAY_SEC])
+			if _splash:
+				_splash.set_step("ATTENTE DU BACKEND... (%d/%d)" % [attempt, MAX_RETRIES - 1], 0.05)
+			await get_tree().create_timer(RETRY_DELAY_SEC).timeout
 
-	# Try login
-	var result =await ApiClient.post_async("/api/v1/auth/login", {
-		"username": DEV_USER, "password": DEV_PASS,
-	}, false)
-	var status: int = result.get("_status_code", 0)
+		print("GameManager: [DEV] Auto-login attempt %d against %s ..." % [attempt + 1, ApiClient.base_url])
 
-	# Account doesn't exist yet — register it
-	if status != 200 and status != 201:
-		print("GameManager: [DEV] Login failed (%d), trying register..." % status)
-		result = await ApiClient.post_async("/api/v1/auth/register", {
-			"username": DEV_USER, "email": DEV_EMAIL, "password": DEV_PASS,
+		# Try login
+		var result = await ApiClient.post_async("/api/v1/auth/login", {
+			"username": DEV_USER, "password": DEV_PASS,
 		}, false)
-		status = result.get("_status_code", 0)
+		var status: int = result.get("_status_code", 0)
 
-	if (status == 200 or status == 201) and result.has("access_token"):
-		var token: String = result.get("access_token", "")
-		AuthManager.set_token_from_launcher(token)
-		# Save refresh token so next editor run restores the session instantly
-		var refresh: String = result.get("refresh_token", "")
-		if refresh != "":
-			AuthManager._refresh_token = refresh
-			AuthManager._save_tokens()
-		NetworkManager.local_player_name = AuthManager.username
-		print("GameManager: [DEV] Logged in as '%s' (id=%s)" % [AuthManager.username, AuthManager.player_id])
-	else:
-		push_warning("GameManager: [DEV] Auto-login failed: %s" % result.get("error", "backend unreachable?"))
+		# Account doesn't exist yet — register it
+		if status != 200 and status != 201:
+			print("GameManager: [DEV] Login failed (%d), trying register..." % status)
+			result = await ApiClient.post_async("/api/v1/auth/register", {
+				"username": DEV_USER, "email": DEV_EMAIL, "password": DEV_PASS,
+			}, false)
+			status = result.get("_status_code", 0)
+
+		if (status == 200 or status == 201) and result.has("access_token"):
+			var token: String = result.get("access_token", "")
+			AuthManager.set_token_from_launcher(token)
+			# Save refresh token so next editor run restores the session instantly
+			var refresh: String = result.get("refresh_token", "")
+			if refresh != "":
+				AuthManager._refresh_token = refresh
+				AuthManager._save_tokens()
+			NetworkManager.local_player_name = AuthManager.username
+			print("GameManager: [DEV] Logged in as '%s' (id=%s)" % [AuthManager.username, AuthManager.player_id])
+			return
+
+		# status == 0 means network error (backend not up yet) — retry
+		# Any other non-success status with a real response means backend is up but auth failed — stop
+		if status > 0 and status != 502 and status != 503:
+			break
+
+	push_warning("GameManager: [DEV] Auto-login failed after %d attempts — backend unreachable or auth error" % MAX_RETRIES)
 
 
 func _setup_ui_managers() -> void:
@@ -771,6 +787,8 @@ func _initialize_game() -> void:
 	_input_router.map_toggled.connect(_handle_map_toggle)
 	_input_router.screen_toggled.connect(func(sn: String):
 		if _screen_manager:
+			if sn == "market" and _market_screen:
+				_market_screen.browse_only = true
 			_screen_manager.toggle_screen(sn)
 	)
 	_input_router.wormhole_jump_requested.connect(func():
@@ -854,6 +872,7 @@ func _initialize_game() -> void:
 	_docking_mgr.admin_screen = _admin_screen
 	_docking_mgr.refinery_screen = _refinery_screen
 	_docking_mgr.storage_screen = _storage_screen
+	_docking_mgr.market_screen = _market_screen
 	_docking_mgr.system_transition = _system_transition
 	_docking_mgr.route_manager = _route_manager
 	_docking_mgr.fleet_deployment_mgr = _fleet_deployment_mgr
@@ -878,6 +897,7 @@ func _initialize_game() -> void:
 	_station_screen.administration_requested.connect(_docking_mgr.handle_administration_requested)
 	_station_screen.refinery_requested.connect(_docking_mgr.handle_refinery_requested)
 	_station_screen.storage_requested.connect(_docking_mgr.handle_storage_requested)
+	_station_screen.market_requested.connect(_docking_mgr.handle_market_requested)
 	_commerce_screen.commerce_closed.connect(_docking_mgr.handle_commerce_closed)
 	_equipment_screen.equipment_closed.connect(_docking_mgr.handle_equipment_closed)
 	_shipyard_screen.shipyard_closed.connect(_docking_mgr.handle_shipyard_closed)
@@ -885,6 +905,7 @@ func _initialize_game() -> void:
 	_admin_screen.station_renamed.connect(_on_station_renamed)
 	_refinery_screen.refinery_closed.connect(_docking_mgr.handle_refinery_closed)
 	_storage_screen.storage_closed.connect(_docking_mgr.handle_storage_closed)
+	_market_screen.closed.connect(_docking_mgr.handle_market_closed)
 	_docking_mgr.docked.connect(func(_sn: String):
 		current_state = GameState.DOCKED
 		if _discord_rpc:

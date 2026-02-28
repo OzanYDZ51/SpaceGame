@@ -7,6 +7,7 @@ extends UIComponent
 
 var _market_manager: MarketManager = null
 var _player_data = null
+var browse_only: bool = false
 
 # Filter widgets
 var _category_dropdown: UIDropdown = null
@@ -224,6 +225,10 @@ func _on_market_error(msg: String) -> void:
 
 
 func _update_buy_button() -> void:
+	if browse_only:
+		_buy_btn.visible = false
+		return
+	_buy_btn.visible = true
 	if _selected_index < 0 or _selected_index >= _listings.size():
 		_buy_btn.text = Locale.t("market.btn.buy")
 		_buy_btn.enabled = false

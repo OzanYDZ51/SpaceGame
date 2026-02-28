@@ -151,5 +151,19 @@ func get_my_listings(status: String = "all") -> void:
 	my_listings_loaded.emit(listings)
 
 
+## Fetches average market prices per item_id. Returns { "item_id": avg_price_int, ... }.
+func get_avg_prices() -> Dictionary:
+	var result: Dictionary = await ApiClient.get_async("/api/v1/market/avg-prices")
+	if result.get("_status_code", 0) != 200:
+		return {}
+	var raw = result.get("prices", {})
+	if raw is Dictionary:
+		var prices: Dictionary = {}
+		for key in raw:
+			prices[key] = int(raw[key])
+		return prices
+	return {}
+
+
 func _invalidate_cache() -> void:
 	_cache.clear()

@@ -151,6 +151,17 @@ func (h *MarketHandler) MyListings(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"listings": listings})
 }
 
+// GET /api/v1/market/avg-prices
+func (h *MarketHandler) AvgPrices(c *fiber.Ctx) error {
+	prices, err := h.marketSvc.GetAvgPrices(c.Context())
+	if err != nil {
+		log.Printf("[MARKET] avg-prices error: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to get average prices"})
+	}
+	return c.JSON(fiber.Map{"prices": prices})
+}
+
+
 func marketError(c *fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, service.ErrListingNotFound):

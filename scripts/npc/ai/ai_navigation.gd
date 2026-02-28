@@ -389,7 +389,7 @@ func apply_attack_throttle(dist_to_target: float, preferred_range: float) -> voi
 	_ship.set_throttle(throttle)
 
 
-func apply_attack_run_throttle(dist_to_target: float, preferred_range: float, is_heavy: bool) -> void:
+func apply_attack_pass_throttle(dist_to_target: float, preferred_range: float, is_heavy: bool, pass_side: float = 0.0) -> void:
 	if _ship == null:
 		return
 
@@ -397,25 +397,21 @@ func apply_attack_run_throttle(dist_to_target: float, preferred_range: float, is
 	if _obstacle_sensor:
 		avoid = _get_avoidance()
 
-	# Full forward with minimal jink — charging toward target
+	# Full forward with lateral offset — attack pass, not a head-on joust
 	var fwd_throttle: float
-	var jink_amount: float = 0.1 if is_heavy else randf_range(0.15, 0.25)
 
 	if dist_to_target > preferred_range * 0.8:
-		# Closing: full speed
 		fwd_throttle = -1.0 if not is_heavy else -0.7
 	elif dist_to_target > preferred_range * 0.4:
-		# Mid-range: sustained approach
 		fwd_throttle = -0.8 if not is_heavy else -0.6
 	else:
-		# Close: maintain speed, commit to the pass
 		fwd_throttle = -0.6 if not is_heavy else -0.5
 
-	var throttle := Vector3(
-		_maneuver_dir.x * jink_amount,
-		_maneuver_dir.y * jink_amount * 0.5,
-		fwd_throttle
-	)
+	# Strong lateral offset to avoid head-on collision (35% strafe in chosen direction)
+	var lateral: float = pass_side * (0.35 if not is_heavy else 0.25)
+	var jink_y: float = _maneuver_dir.y * 0.15
+
+	var throttle := Vector3(lateral, jink_y, fwd_throttle)
 
 	# Obstacle handling
 	if _obstacle_sensor:
@@ -425,6 +421,57 @@ func apply_attack_run_throttle(dist_to_target: float, preferred_range: float, is
 			throttle.z *= brake_factor
 		if _obstacle_sensor.is_emergency:
 			throttle.z = 0.6
+
+	if avoid.length_squared() > 100.0:
+		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()
+		throttle.x = clampf(local_avoid.x, -1.0, 1.0)
+		throttle.y = clampf(local_avoid.y, -0.6, 0.6)
+		throttle.z = maxf(throttle.z, 0.3)
+
+	_ship.set_throttle(throttle)
+
+
+func apply_dogfight_throttle(target: Node3D, ideal_radius: float, orbit_dir: float, orbit_strength: float, vert_offset: float, is_heavy: bool) -> void:
+	if _ship == null or target == null or not is_instance_valid(target):
+		return
+
+	var avoid := Vector3.ZERO
+	if _obstacle_sensor:
+		avoid = _get_avoidance()
+
+	var dist: float = _ship.global_position.distance_to(target.global_position)
+	var dist_error: float = dist - ideal_radius
+
+	# Forward/backward throttle: maintain ideal orbit distance
+	var fwd_throttle: float
+	if dist_error > 100.0:
+		# Too far — close in proportionally
+		fwd_throttle = clampf(-dist_error / 500.0, -0.8, -0.2)
+	elif dist_error < -50.0:
+		# Too close — back off gently
+		fwd_throttle = clampf(-dist_error / 300.0, 0.0, 0.5)
+	else:
+		# Sweet spot — drift slightly forward
+		fwd_throttle = -0.1
+
+	# Lateral strafe: orbit around target
+	var lateral: float = orbit_dir * orbit_strength
+
+	# Vertical weave for 3D combat
+	var vertical: float = vert_offset * (0.2 if is_heavy else 0.25)
+
+	var throttle := Vector3(lateral, vertical, fwd_throttle)
+
+	# Obstacle handling
+	if _obstacle_sensor:
+		var obs_dist = _obstacle_sensor.nearest_obstacle_dist
+		if obs_dist < AVOIDANCE_BRAKE_THRESHOLD:
+			var brake_factor := clampf(obs_dist / AVOIDANCE_BRAKE_THRESHOLD, 0.1, 1.0)
+			throttle.z *= brake_factor
+			throttle.x *= brake_factor
+		if _obstacle_sensor.is_emergency:
+			throttle.z = 0.6
+			throttle.x = 0.0
 
 	if avoid.length_squared() > 100.0:
 		var local_avoid: Vector3 = _ship.global_transform.basis.inverse() * avoid.normalized()

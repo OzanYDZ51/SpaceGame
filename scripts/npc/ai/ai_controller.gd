@@ -64,13 +64,15 @@ var current_state: State:
 			Mode.COMBAT:
 				if _combat_behavior:
 					match _combat_behavior.sub_state:
-						CombatBehavior.SubState.ENGAGE:
+						CombatBehavior.SubState.CLOSE_IN:
 							return State.PURSUE
-						CombatBehavior.SubState.ATTACK_RUN:
+						CombatBehavior.SubState.ATTACK_PASS:
 							return State.ATTACK
-						CombatBehavior.SubState.BREAK_OFF:
+						CombatBehavior.SubState.LEAD_TURN:
 							return State.PURSUE
-						CombatBehavior.SubState.REPOSITION:
+						CombatBehavior.SubState.DOGFIGHT:
+							return State.ATTACK
+						CombatBehavior.SubState.DISENGAGE_TURN:
 							return State.PURSUE
 				return State.PURSUE
 			Mode.BEHAVIOR:
@@ -638,9 +640,6 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Also shift the saved default behavior if it's a different PatrolBehavior
 	if _default_behavior and _default_behavior is PatrolBehavior and _default_behavior != _current_behavior:
 		(_default_behavior as PatrolBehavior).apply_origin_shift(shift)
-	# Shift combat behavior's reposition point
-	if _combat_behavior and _combat_behavior._reposition_point != Vector3.ZERO:
-		_combat_behavior._reposition_point += shift
 	# Shift guard behavior's internal patrol if active behavior is GuardBehavior
 	if _current_behavior and _current_behavior is GuardBehavior:
 		var gb := _current_behavior as GuardBehavior
