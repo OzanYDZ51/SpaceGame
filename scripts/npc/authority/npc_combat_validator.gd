@@ -285,7 +285,7 @@ func _build_npc_display_name(npc_id: StringName) -> String:
 
 
 func _build_npc_display_name_from_data(sd: ShipData, faction_id) -> String:
-	var ship_type: String = sd.ship_name if sd else "NPC"
+	var ship_type: String = String(sd.ship_name) if sd else "NPC"
 
 	var faction_label: String = ""
 	if faction_id != null and faction_id != &"" and faction_id != &"neutral":
