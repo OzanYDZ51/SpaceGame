@@ -23,7 +23,7 @@ var _total_content_h: float = 0.0
 var _grid_area: Rect2 = Rect2()
 
 static var TAB_NAMES: Array[String]:
-	get: return [Locale.t("equip.sell_weapons"), Locale.t("equip.shields"), Locale.t("equip.engines"), Locale.t("equip.modules")]
+	get: return [Locale.t("equip.sell_weapons"), Locale.t("equip.shields"), Locale.t("equip.engines"), Locale.t("equip.modules"), Locale.t("equip.ammo")]
 const DETAIL_W: float = 240.0
 const CARD_W: float = 140.0
 const CARD_H: float = 110.0
@@ -94,6 +94,11 @@ func _refresh_items() -> void:
 		1: _available_items.assign(inv.get_all_shields())
 		2: _available_items.assign(inv.get_all_engines())
 		3: _available_items.assign(inv.get_all_modules())
+		4:
+			var all_ammo: Dictionary = inv.get_all_ammo()
+			for mn in all_ammo:
+				if all_ammo[mn] > 0:
+					_available_items.append(mn)
 	if _selected_index >= _available_items.size():
 		_selected_index = -1
 	_compute_card_grid()
@@ -134,6 +139,7 @@ func _do_sell() -> void:
 		1: success = _commerce_manager.sell_shield(item_name)
 		2: success = _commerce_manager.sell_engine(item_name)
 		3: success = _commerce_manager.sell_module(item_name)
+		4: success = _commerce_manager.sell_ammo(item_name)
 	if success:
 		if GameManager._notif:
 			var sell_price: int = _get_sell_price(item_name)
@@ -156,6 +162,9 @@ func _get_sell_price(item_name: StringName) -> int:
 		3:
 			var mo = ModuleRegistry.get_module(item_name)
 			return PriceCatalog.get_sell_price(mo.price) if mo else 0
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			return PriceCatalog.get_sell_price(mi.price) if mi else 0
 	return 0
 
 
@@ -173,6 +182,9 @@ func _get_base_price(item_name: StringName) -> int:
 		3:
 			var mo = ModuleRegistry.get_module(item_name)
 			return mo.price if mo else 0
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			return mi.price if mi else 0
 	return 0
 
 
@@ -253,7 +265,7 @@ func _draw() -> void:
 				sell_price = PriceCatalog.get_sell_price(w.price)
 				y = _draw_detail_header(font, detail_x, y, item_name)
 				var type_str: String = [Locale.t("weapon.laser"), Locale.t("weapon.plasma"), Locale.t("weapon.missile"), Locale.t("weapon.railgun"), Locale.t("weapon.mine"), Locale.t("weapon.turret"), Locale.t("weapon.mining_laser")][w.weapon_type]
-				y = _draw_detail_rows(font, detail_x, y, [
+				var sell_rows: Array = [
 					[Locale.t("stat.type"), type_str],
 					[Locale.t("stat.size"), ["S", "M", "L"][w.slot_size]],
 					[Locale.t("stat.damage"), "%.0f/tir" % w.damage_per_hit],
@@ -261,7 +273,15 @@ func _draw() -> void:
 					[Locale.t("stat.dps"), "%.0f" % (w.damage_per_hit * w.fire_rate)],
 					[Locale.t("stat.energy_cost"), "%.0f/tir" % w.energy_cost_per_shot],
 					[Locale.t("stat.range"), "%.0fm" % (w.projectile_speed * w.projectile_lifetime)],
-				])
+				]
+				if w.weapon_type == WeaponResource.WeaponType.MISSILE:
+					var cat_str: String = ["Guide", "Dumbfire", "Torpille"][w.missile_category]
+					sell_rows.append(["Categorie", cat_str])
+					if w.lock_time > 0.0:
+						sell_rows.append(["Lock", "%.1fs" % w.lock_time])
+					if w.tracking_strength > 0.0:
+						sell_rows.append(["Tracking", "%.0f°/s" % w.tracking_strength])
+				y = _draw_detail_rows(font, detail_x, y, sell_rows)
 		1:
 			var sh = ShieldRegistry.get_shield(item_name)
 			if sh:
@@ -297,6 +317,25 @@ func _draw() -> void:
 				for bonus in m.get_bonuses_text():
 					rows.append(["Bonus", bonus])
 				y = _draw_detail_rows(font, detail_x, y, rows)
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			if mi:
+				sell_price = PriceCatalog.get_sell_price(mi.price)
+				y = _draw_detail_header(font, detail_x, y, item_name)
+				var cat_str: String = ["Guide", "Dumbfire", "Torpille"][mi.missile_category]
+				var mi_rows: Array = [
+					[Locale.t("stat.size"), ["S", "M", "L"][mi.missile_size]],
+					["Categorie", cat_str],
+					[Locale.t("stat.damage"), "%.0f" % mi.damage_per_hit],
+					[Locale.t("stat.speed"), "%.0f m/s" % mi.projectile_speed],
+				]
+				if mi.tracking_strength > 0.0:
+					mi_rows.append(["Tracking", "%.0f deg/s" % mi.tracking_strength])
+				if mi.lock_time > 0.0:
+					mi_rows.append(["Lock", "%.1fs" % mi.lock_time])
+				if mi.aoe_radius > 0.0:
+					mi_rows.append(["AOE", "%.0fm" % mi.aoe_radius])
+				y = _draw_detail_rows(font, detail_x, y, mi_rows)
 
 	# Sell price box (WARNING colored)
 	if sell_price > 0:
@@ -310,6 +349,7 @@ func _draw() -> void:
 			1: count = _commerce_manager.player_inventory.get_shield_count(item_name)
 			2: count = _commerce_manager.player_inventory.get_engine_count(item_name)
 			3: count = _commerce_manager.player_inventory.get_module_count(item_name)
+			4: count = _commerce_manager.player_inventory.get_ammo_count(item_name)
 		if count > 0:
 			draw_string(font, Vector2(detail_x + 10, y + 14),
 				Locale.t("shop.quantity") + ": %d" % count, HORIZONTAL_ALIGNMENT_LEFT, -1,
@@ -384,6 +424,16 @@ func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
 				sell_price = PriceCatalog.get_sell_price(mo.price)
 				stat_col = UITheme.ACCENT
 			if inv: count = inv.get_module_count(item_name)
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			if mi:
+				size_str = ["S", "M", "L"][mi.missile_size]
+				stat_label = Locale.t("stat.damage")
+				stat_val = "%.0f" % mi.damage_per_hit
+				stat_ratio = clampf(mi.damage_per_hit / 800.0, 0.0, 1.0)
+				sell_price = PriceCatalog.get_sell_price(mi.price)
+				stat_col = UITheme.DANGER
+			if inv: count = inv.get_ammo_count(item_name)
 
 	# Card background
 	var bg: Color
@@ -471,6 +521,14 @@ func _draw_type_icon(c: Vector2, tab: int, col: Color) -> void:
 			draw_line(c + Vector2(-r * 0.5, r * 0.2), c + Vector2(-r * 0.9, r * 0.2), col, 1.0)
 			draw_line(c + Vector2(r * 0.5, -r * 0.2), c + Vector2(r * 0.9, -r * 0.2), col, 1.0)
 			draw_line(c + Vector2(r * 0.5, r * 0.2), c + Vector2(r * 0.9, r * 0.2), col, 1.0)
+		4:  # Missile
+			draw_line(c + Vector2(0, -r), c + Vector2(0, r * 0.6), col, 1.5)
+			draw_line(c + Vector2(0, -r), c + Vector2(-r * 0.3, -r * 0.5), col, 1.0)
+			draw_line(c + Vector2(0, -r), c + Vector2(r * 0.3, -r * 0.5), col, 1.0)
+			draw_line(c + Vector2(-r * 0.4, r * 0.6), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(r * 0.4, r * 0.6), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(-r * 0.4, r * 0.6), c + Vector2(-r * 0.4, r), col, 1.0)
+			draw_line(c + Vector2(r * 0.4, r * 0.6), c + Vector2(r * 0.4, r), col, 1.0)
 
 
 # =========================================================================

@@ -15,8 +15,8 @@ extends Node3D
 signal scan_radius_updated(radius: float)
 signal scan_completed
 
-const MAX_RANGE    : float = 5000.0   # Matches AsteroidScanner.SCAN_RANGE
-const PULSE_SPEED  : float = 350.0    # m/s — ~14.3 s total
+const MAX_RANGE    : float = 2500.0   # Matches AsteroidScanner.SCAN_RANGE (~half radar)
+const PULSE_SPEED  : float = 800.0    # m/s — ~3.1 s total
 
 var is_remote      : bool  = false
 
@@ -47,10 +47,10 @@ func _build_sphere() -> void:
 
 	_mat = ShaderMaterial.new()
 	_mat.shader = load("res://shaders/scanner_pulse.gdshader")
-	_mat.set_shader_parameter("brightness", 5.0)
-	_mat.set_shader_parameter("rim_power",  2.5)
+	_mat.set_shader_parameter("brightness", 1.2)
+	_mat.set_shader_parameter("rim_power",  4.0)
 	_mat.set_shader_parameter("fade",       1.0)
-	_mat.set_shader_parameter("shell_band", 0.4)
+	_mat.set_shader_parameter("shell_band", 0.08)
 	_mat.set_shader_parameter("scan_progress", 0.0)
 	_mesh.material_override = _mat
 	add_child(_mesh)
@@ -59,8 +59,8 @@ func _build_sphere() -> void:
 func _build_flash() -> void:
 	_flash_light              = OmniLight3D.new()
 	_flash_light.light_color  = Color(0.35, 0.85, 1.0)
-	_flash_light.light_energy = 30.0
-	_flash_light.omni_range   = 300.0
+	_flash_light.light_energy = 5.0
+	_flash_light.omni_range   = 150.0
 	add_child(_flash_light)
 
 
@@ -76,9 +76,9 @@ func _process(delta: float) -> void:
 
 	# Light follows wavefront — persistent, fades only near the end
 	if _flash_light != null:
-		var light_fade: float = 1.0 - smoothstep(0.85, 0.99, progress)
-		_flash_light.light_energy = 30.0 * light_fade
-		_flash_light.omni_range = clampf(_current_radius * 0.15, 100.0, 800.0)
+		var light_fade: float = 1.0 - smoothstep(0.5, 0.99, progress)
+		_flash_light.light_energy = 5.0 * light_fade
+		_flash_light.omni_range = clampf(_current_radius * 0.15, 50.0, 400.0)
 		if light_fade <= 0.01:
 			_flash_light.queue_free()
 			_flash_light = null

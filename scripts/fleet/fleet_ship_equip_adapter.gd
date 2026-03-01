@@ -179,6 +179,34 @@ func get_equipped_module(idx: int) -> ModuleResource:
 
 
 # =============================================================================
+# QUERIES — Loaded Missiles
+# =============================================================================
+func get_loaded_missile_name(idx: int) -> StringName:
+	if mode == Mode.LIVE and _weapon_manager:
+		return _weapon_manager.get_loaded_missile(idx)
+	if fleet_ship and idx >= 0 and idx < fleet_ship.loaded_missiles.size():
+		return fleet_ship.loaded_missiles[idx]
+	return &""
+
+
+# =============================================================================
+# MUTATIONS — Missiles
+# =============================================================================
+func load_missile(idx: int, missile_name: StringName) -> void:
+	if mode == Mode.LIVE and _weapon_manager:
+		_weapon_manager.load_missile(idx, missile_name)
+		_sync_fleet_ship_missiles()
+	else:
+		if fleet_ship and idx >= 0 and idx < fleet_ship.loaded_missiles.size():
+			fleet_ship.loaded_missiles[idx] = missile_name
+	loadout_changed.emit()
+
+
+func unload_missile(idx: int) -> void:
+	load_missile(idx, &"")
+
+
+# =============================================================================
 # MUTATIONS — Weapons
 # =============================================================================
 func equip_weapon(idx: int, weapon_name: StringName) -> void:
@@ -411,3 +439,11 @@ func _sync_fleet_ship_modules() -> void:
 		if i < fleet_ship.modules.size():
 			var m: ModuleResource = _equipment_manager.equipped_modules[i]
 			fleet_ship.modules[i] = m.module_name if m else &""
+
+
+func _sync_fleet_ship_missiles() -> void:
+	if fleet_ship == null or _weapon_manager == null:
+		return
+	for i in _weapon_manager.hardpoints.size():
+		if i < fleet_ship.loaded_missiles.size():
+			fleet_ship.loaded_missiles[i] = _weapon_manager.hardpoints[i].loaded_missile

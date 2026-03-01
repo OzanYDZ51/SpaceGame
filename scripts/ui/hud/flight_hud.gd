@@ -156,6 +156,10 @@ func set_targeting_system(t) -> void:
 	_cockpit.targeting_system = t
 
 
+func set_missile_lock_system(mls) -> void:
+	_targeting.missile_lock_system = mls
+
+
 func set_weapon_manager(w) -> void:
 	_damage_feedback.set_weapon_manager(w)
 	_weapon_panel.weapon_manager = w
@@ -216,6 +220,7 @@ func rewire_to_ship(ship) -> void:
 	set_health_system(ship.get_node_or_null("HealthSystem"))
 	set_energy_system(ship.get_node_or_null("EnergySystem"))
 	set_targeting_system(ship.get_node_or_null("TargetingSystem"))
+	set_missile_lock_system(ship.get_node_or_null("MissileLockSystem"))
 	set_weapon_manager(ship.get_node_or_null("WeaponManager"))
 
 

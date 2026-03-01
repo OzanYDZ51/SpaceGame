@@ -438,16 +438,20 @@ func _on_npc_batch_received(batch: Array) -> void:
 		if lod_manager:
 			var lod_data: ShipLODData = lod_manager.get_ship_data(npc_id)
 			if lod_data:
-				lod_data.position = FloatingOrigin.to_local_pos(
-					[state_dict.get("px", 0.0), state_dict.get("py", 0.0), state_dict.get("pz", 0.0)])
-				lod_data.velocity = Vector3(
-					state_dict.get("vx", 0.0), state_dict.get("vy", 0.0), state_dict.get("vz", 0.0))
-				lod_data.hull_ratio = state_dict.get("hull", 1.0)
-				lod_data.shield_ratio = state_dict.get("shd", 1.0)
-				lod_data.ai_state = state_dict.get("ai", 0)
-				if is_instance_valid(lod_data.node_ref):
-					if lod_data.node_ref is RemoteNPCShip:
-						lod_data.node_ref.receive_state(state_dict)
+				# Skip position/state overwrite for locally-controlled fleet ships
+				# (they have a real ShipController node, not a RemoteNPCShip puppet)
+				var is_local_fleet: bool = is_instance_valid(lod_data.node_ref) and not (lod_data.node_ref is RemoteNPCShip)
+				if not is_local_fleet:
+					lod_data.position = FloatingOrigin.to_local_pos(
+						[state_dict.get("px", 0.0), state_dict.get("py", 0.0), state_dict.get("pz", 0.0)])
+					lod_data.velocity = Vector3(
+						state_dict.get("vx", 0.0), state_dict.get("vy", 0.0), state_dict.get("vz", 0.0))
+					lod_data.hull_ratio = state_dict.get("hull", 1.0)
+					lod_data.shield_ratio = state_dict.get("shd", 1.0)
+					lod_data.ai_state = state_dict.get("ai", 0)
+					if is_instance_valid(lod_data.node_ref):
+						if lod_data.node_ref is RemoteNPCShip:
+							lod_data.node_ref.receive_state(state_dict)
 
 		# Update EntityRegistry so stellar map stays current even while docked.
 		# lod_manager._process() is disabled when docked, so positions won't update otherwise.
@@ -665,7 +669,8 @@ func _spawn_visual_projectile(weapon_name: String, spawn_pos: Vector3, fire_dir:
 		bolt.velocity = dir * weapon.projectile_speed
 	var look_target: Vector3 = spawn_pos + dir
 	if dir.length_squared() > 0.001 and not spawn_pos.is_equal_approx(look_target):
-		bolt.look_at(look_target, Vector3.UP)
+		var up := Vector3.FORWARD if absf(dir.normalized().dot(Vector3.UP)) > 0.99 else Vector3.UP
+		bolt.look_at(look_target, up)
 
 	if _remote_weapon_audio:
 		_remote_weapon_audio.play_fire(spawn_pos)

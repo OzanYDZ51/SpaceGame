@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MissileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/missile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+missile_name = &"Tempest L"
+missile_size = 2
+missile_category = 0
+damage_per_hit = 500.0
+damage_type = &"explosive"
+projectile_speed = 300.0
+projectile_lifetime = 10.0
+projectile_scene_path = "res://scenes/weapons/missile_projectile.tscn"
+tracking_strength = 90.0
+aoe_radius = 0.0
+lock_time = 3.0
+lock_cone_degrees = 15.0
+missile_hp = 100.0
+missile_model_scene = "res://scenes/weapons/models/missile_hellfire.tscn"
+model_scale = 3.0
+bolt_color = Color(1, 0.5, 0.15, 1)
+price = 500
+sold_at_station_types = Array[StringName]([&"military"])

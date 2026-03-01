@@ -364,6 +364,7 @@
 	"equip.shields": "BOUCLIERS",
 	"equip.engines": "MOTEURS",
 	"equip.modules": "MODULES",
+	"equip.ammo": "MUNITIONS",
 	"equip.sell_weapons": "ARMES",
 	"equip.arsenal": "ARSENAL",
 	"equip.modules_avail": "MODULES DISPO.",
@@ -798,6 +799,8 @@
 	"equip.btn_equip": "EQUIPER",
 	"equip.btn_remove": "RETIRER",
 	"equip.btn_back": "RETOUR",
+	"equip.btn_load": "CHARGER",
+	"equip.btn_unload": "DECHARGER",
 
 	"mission.status_accepted": "ACCEPTEE",
 	"mission.status_limit": "LIMITE",

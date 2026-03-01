@@ -25,6 +25,7 @@ var _override_system_id: int = -1
 const DEFERRED_SPAWN_WATCHDOG_MS: float = 10000.0  # 10s timeout
 const MAX_GATE_ROUTE_DIST: float = 25000.0  # Clamp gate positions to playable patrol distance
 const STATION_SAFE_RADIUS: float = 3500.0  # Min spawn distance from station centers
+const CONVOY_MIN_CLEARANCE: float = 10000.0  # Convoys spawn at least 10km from any major object
 
 
 func _process(_delta: float) -> void:
@@ -287,8 +288,6 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 		var leader_cfg: Dictionary = configs[c_idx]
 		var st_idx: int = c_idx % station_positions.size()
 		var st_pos: Vector3 = station_positions[st_idx]
-		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-		var base_pos := st_pos + radial_dir * 3000.0
 		var escort_ship: StringName = &""
 		var escort_count: int = 0
 		if escort_idx >= 0:
@@ -299,6 +298,13 @@ func _do_spawn_encounters(danger_level: int, system_data) -> void:
 		var convoy_route: Array[Vector3] = []
 		if key_points.size() >= 2:
 			convoy_route = _build_system_route(st_pos, key_points)
+		# Spawn at a random position in open space (far from stations/planets)
+		var base_pos: Vector3
+		if key_points.size() >= 2:
+			base_pos = _pick_open_space_position(key_points)
+		else:
+			var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+			base_pos = st_pos + radial_dir * 3000.0
 		spawn_formation(leader_cfg["ship"], escort_ship, escort_count, base_pos, leader_cfg["fac"], station_nodes[st_idx] if st_idx < station_nodes.size() else null, convoy_route)
 		used_cfg_indices.append(c_idx)
 
@@ -410,6 +416,49 @@ func _push_spawn_from_obstacles(pos: Vector3) -> Vector3:
 			pos = ent_pos + to_pos * (excl_r + 200.0)
 
 	return pos
+
+
+## Pick a random position in open space within the bounding box of key_points,
+## at least CONVOY_MIN_CLEARANCE from any station, planet or star.
+func _pick_open_space_position(key_points: Array[Vector3]) -> Vector3:
+	# Compute bounding range from key points
+	var min_x: float = INF; var max_x: float = -INF
+	var min_z: float = INF; var max_z: float = -INF
+	for kp in key_points:
+		min_x = minf(min_x, kp.x); max_x = maxf(max_x, kp.x)
+		min_z = minf(min_z, kp.z); max_z = maxf(max_z, kp.z)
+	# Expand bounds by 20% so convoys aren't stuck inside the tight key_point box
+	var pad_x: float = maxf((max_x - min_x) * 0.2, 5000.0)
+	var pad_z: float = maxf((max_z - min_z) * 0.2, 5000.0)
+	min_x -= pad_x; max_x += pad_x
+	min_z -= pad_z; max_z += pad_z
+
+	# Collect obstacle positions + exclusion radii
+	var obstacles: Array[Array] = []  # [[Vector3, float], ...]
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STATION):
+		obstacles.append([FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), CONVOY_MIN_CLEARANCE])
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.PLANET):
+		var r: float = ent.get("radius", 5000.0)
+		obstacles.append([FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), maxf(r * 1.5, CONVOY_MIN_CLEARANCE)])
+	for ent in EntityRegistry.get_by_type(EntityRegistrySystem.EntityType.STAR):
+		var r: float = ent.get("radius", 50000.0)
+		obstacles.append([FloatingOrigin.to_local_pos([ent["pos_x"], ent["pos_y"], ent["pos_z"]]), maxf(r * 1.5, 50000.0)])
+
+	# Try up to 20 random positions, pick the first one that clears all obstacles
+	for _attempt in 20:
+		var candidate := Vector3(randf_range(min_x, max_x), 0.0, randf_range(min_z, max_z))
+		var clear: bool = true
+		for obs in obstacles:
+			if candidate.distance_to(obs[0] as Vector3) < (obs[1] as float):
+				clear = false
+				break
+		if clear:
+			return candidate
+
+	# Fallback: use midpoint of two random key_points pushed away from obstacles
+	var fallback := (key_points[0] + key_points[randi() % key_points.size()]) * 0.5
+	fallback += Vector3(randf_range(-5000, 5000), 0.0, randf_range(-5000, 5000))
+	return _push_spawn_from_obstacles(fallback)
 
 
 func spawn_patrol(count: int, ship_id: StringName, center: Vector3, radius: float, faction: StringName = &"hostile", system_id: int = -1, cfg_idx: int = -1, station_node: Node3D = null) -> void:
@@ -763,8 +812,6 @@ func spawn_for_remote_system(system_id: int) -> void:
 		var leader_cfg: Dictionary = configs[c_idx]
 		var st_idx: int = c_idx % station_positions.size()
 		var st_pos: Vector3 = station_positions[st_idx]
-		var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
-		var base_pos := st_pos + radial_dir * 3000.0
 		var escort_ship: StringName = &""
 		var escort_count: int = 0
 		if escort_idx >= 0:
@@ -774,6 +821,13 @@ func spawn_for_remote_system(system_id: int) -> void:
 		var convoy_route: Array[Vector3] = []
 		if key_points.size() >= 2:
 			convoy_route = _build_system_route(st_pos, key_points)
+		# Spawn at a random position in open space (far from stations/planets)
+		var base_pos: Vector3
+		if key_points.size() >= 2:
+			base_pos = _pick_open_space_position(key_points)
+		else:
+			var radial_dir := st_pos.normalized() if st_pos.length_squared() > 1.0 else Vector3.FORWARD
+			base_pos = st_pos + radial_dir * 3000.0
 		spawn_formation(leader_cfg["ship"], escort_ship, escort_count, base_pos, leader_cfg["fac"], null, convoy_route)
 		used_cfg_indices.append(c_idx)
 

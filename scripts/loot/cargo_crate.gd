@@ -78,14 +78,16 @@ func is_abandoned() -> bool:
 
 
 func can_be_looted_by(peer_id: int) -> bool:
-	return owner_peer_id == -1 or owner_peer_id == peer_id or is_abandoned()
+	return owner_peer_id <= 0 or owner_peer_id == peer_id or is_abandoned()
 
 
 func _process(delta: float) -> void:
 	# Tumble disabled
 
-	# Drift
-	global_position += _drift * delta
+	# Drift (decelerates to zero so crate doesn't float away forever)
+	if _drift.length_squared() > 0.01:
+		global_position += _drift * delta
+		_drift *= (1.0 - delta * 0.5)
 
 	# Update universe position in EntityRegistry (crate drifts)
 	var upos: Array = FloatingOrigin.to_universe_pos(global_position)

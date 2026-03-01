@@ -8,6 +8,7 @@ extends RigidBody3D
 # Stats are data-driven from ShipData when available, falls back to Constants.
 # =============================================================================
 
+signal cruise_enter_triggered    ## Emitted when entering cruise mode (spool-up starts)
 signal cruise_punch_triggered   ## Emitted when cruise enters explosive phase 2
 signal cruise_exit_triggered    ## Emitted when leaving cruise mode (for VFX)
 signal autopilot_disengaged_by_player  ## Emitted when player manually cancels autopilot
@@ -335,6 +336,7 @@ func _read_input() -> void:
 			speed_mode = Constants.SpeedMode.CRUISE
 			cruise_time = 0.0
 			_cruise_punched = false
+			cruise_enter_triggered.emit()
 
 	if Input.is_action_pressed("boost") and speed_mode != Constants.SpeedMode.CRUISE:
 		speed_mode = Constants.SpeedMode.BOOST
@@ -976,6 +978,7 @@ func _run_autopilot() -> void:
 			cruise_time = 0.0
 			_cruise_punched = false
 			_post_cruise_decel_active = false
+			cruise_enter_triggered.emit()
 
 
 ## Steer autopilot direction away from planets/stars that block the flight path.

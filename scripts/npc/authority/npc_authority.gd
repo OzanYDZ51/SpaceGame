@@ -188,9 +188,9 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		_combat.validate_hit_claim(sender_pid, target_npc, weapon_name, claimed_damage, hit_dir)
 
 
-func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "", killer_npc_id: String = "") -> void:
+func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "", killer_npc_id: String = "", cached_death_pos: Array = []) -> void:
 	if _combat:
-		_combat._on_npc_killed(npc_id, killer_pid, weapon_name, killer_npc_id)
+		_combat._on_npc_killed(npc_id, killer_pid, weapon_name, killer_npc_id, cached_death_pos)
 
 
 func broadcast_npc_death(npc_id: StringName, killer_pid: int, death_pos: Array, loot: Array, system_id: int = -1) -> void:

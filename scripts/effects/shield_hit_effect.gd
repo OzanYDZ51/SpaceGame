@@ -9,7 +9,7 @@ extends Node3D
 # Parented to the target ship so it moves with it.
 # =============================================================================
 
-const DURATION: float = 0.8
+const DURATION: float = 1.2
 const SHIELD_PADDING: float = 0.6  # Multiplier: how much larger than AABB
 const FALLBACK_RADIUS: float = 10.0
 
@@ -55,17 +55,24 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 		sphere.rings = 24
 		shield_mesh = sphere
 
-	# Center shield on AABB center
-	position = shield_center
-
-	# Impact point in ship-local space, relative to shield center
-	var impact_world := hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
-	if impact_world.length_squared() < 0.01:
-		impact_world = -target_ship.global_transform.basis.z
-	var impact_local: Vector3 = target_ship.global_transform.basis.inverse() * impact_world
-
-	# For fallback sphere: project onto sphere surface
-	if not use_hull_mesh:
+	# Position the effect node:
+	# Hull mesh: vertices are already in ship-local space, no offset needed
+	# Fallback sphere: centered at (0,0,0), needs offset to AABB center
+	var impact_local: Vector3
+	if use_hull_mesh:
+		position = Vector3.ZERO
+		# Impact in ship-local space (same coordinate space as mesh vertices)
+		var impact_world := hit_world_pos - target_ship.global_position
+		if impact_world.length_squared() < 0.01:
+			impact_world = -target_ship.global_transform.basis.z
+		impact_local = target_ship.global_transform.basis.inverse() * impact_world
+	else:
+		position = shield_center
+		# Impact relative to shield center (sphere is centered at origin)
+		var impact_world := hit_world_pos - (target_ship.global_position + target_ship.global_transform.basis * shield_center)
+		if impact_world.length_squared() < 0.01:
+			impact_world = -target_ship.global_transform.basis.z
+		impact_local = target_ship.global_transform.basis.inverse() * impact_world
 		impact_local = impact_local.normalized() * max_radius
 
 	# === Load shader ===
@@ -94,8 +101,8 @@ func setup(hit_world_pos: Vector3, target_ship: Node3D, shield_ratio: float, int
 	_flash_light.position = impact_local
 	var flash_col := Color(0.12, 0.35, 1.0) if shield_ratio > 0.3 else Color(1.0, 0.3, 0.08)
 	_flash_light.light_color = flash_col
-	_flash_light.light_energy = 3.5 * _intensity
-	_flash_light.omni_range = 20.0 * sqrt(_intensity)
+	_flash_light.light_energy = 5.0 * _intensity
+	_flash_light.omni_range = 30.0 * sqrt(_intensity)
 	_flash_light.omni_attenuation = 1.8
 	_flash_light.shadow_enabled = false
 	add_child(_flash_light)
@@ -114,7 +121,7 @@ func _process(delta: float) -> void:
 		_shield_mat.set_shader_parameter("effect_time", _age)
 
 	if _flash_light:
-		_flash_light.light_energy = 3.5 * _intensity * maxf(0.0, 1.0 - _age * 5.0)
+		_flash_light.light_energy = 5.0 * _intensity * maxf(0.0, 1.0 - _age * 3.0)
 
 
 func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> void:
@@ -122,8 +129,8 @@ func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> v
 	sparks.position = pos
 	sparks.emitting = true
 	sparks.one_shot = true
-	sparks.amount = int(8 * _intensity)
-	sparks.lifetime = 0.25
+	sparks.amount = int(14 * _intensity)
+	sparks.lifetime = 0.4
 	sparks.explosiveness = 0.95
 	sparks.randomness = 0.4
 	sparks.local_coords = true
@@ -131,8 +138,8 @@ func _create_sparks(pos: Vector3, impact_dir: Vector3, shield_ratio: float) -> v
 	var mat =ParticleProcessMaterial.new()
 	mat.direction = impact_dir
 	mat.spread = 80.0
-	mat.initial_velocity_min = 20.0
-	mat.initial_velocity_max = 55.0
+	mat.initial_velocity_min = 25.0
+	mat.initial_velocity_max = 70.0
 	mat.gravity = Vector3.ZERO
 	mat.damping_min = 18.0
 	mat.damping_max = 45.0

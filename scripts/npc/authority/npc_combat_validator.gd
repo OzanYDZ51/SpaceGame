@@ -128,6 +128,11 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 	var attacker_node: Node3D = _resolve_player_node(sender_pid)
 	var shield_absorbed: bool = false
 
+	# Capture death position BEFORE apply_damage — the ship_destroyed signal handler
+	# in ShipFactory unregisters LOD data synchronously, so it's gone by the time
+	# _on_npc_killed tries to read it.
+	var pre_death_pos: Array = FloatingOrigin.to_universe_pos(lod_data.position)
+
 	if is_instance_valid(lod_data.node_ref):
 		# Full node exists (LOD0/1) — apply damage via HealthSystem
 		var health = lod_data.node_ref.get_node_or_null("HealthSystem")
@@ -140,7 +145,7 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 			_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
 			if health.is_dead():
 				lod_data.is_dead = true
-				_on_npc_killed(npc_id, sender_pid, weapon_name)
+				_on_npc_killed(npc_id, sender_pid, weapon_name, "", pre_death_pos)
 			elif _auth._npcs.has(npc_id):
 				_auth._npcs[npc_id].erase("_player_killing")
 	else:
@@ -162,23 +167,23 @@ func validate_hit_claim(sender_pid: int, target_npc: String, weapon_name: String
 		_last_player_hit[npc_id] = { "pid": sender_pid, "time": Time.get_ticks_msec() / 1000.0 }
 		if lod_data.hull_ratio <= 0.0:
 			lod_data.is_dead = true
-			_on_npc_killed(npc_id, sender_pid, weapon_name)
+			_on_npc_killed(npc_id, sender_pid, weapon_name, "", pre_death_pos)
 
 	# Broadcast hit effect
 	_auth._broadcaster.broadcast_hit_effect(target_npc, sender_pid, hit_dir, shield_absorbed, sender_state.system_id)
 
 
-func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "", killer_npc_id: String = "") -> void:
+func _on_npc_killed(npc_id: StringName, killer_pid: int, weapon_name: String = "", killer_npc_id: String = "", cached_death_pos: Array = []) -> void:
 	if not _auth._npcs.has(npc_id):
 		return
 
 	var info: Dictionary = _auth._npcs[npc_id]
 	var system_id: int = info.get("system_id", -1)
 
-	# Get death position
+	# Get death position (use cached if provided — LOD data may already be gone)
 	var lod_mgr = GameManager.get_node_or_null("ShipLODManager")
-	var death_pos: Array = [0.0, 0.0, 0.0]
-	if lod_mgr:
+	var death_pos: Array = cached_death_pos if cached_death_pos.size() >= 3 else [0.0, 0.0, 0.0]
+	if death_pos == [0.0, 0.0, 0.0] and lod_mgr:
 		var lod_data: ShipLODData = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			death_pos = FloatingOrigin.to_universe_pos(lod_data.position)

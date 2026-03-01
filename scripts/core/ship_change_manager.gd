@@ -37,6 +37,7 @@ func rewire_ship_systems() -> void:
 		hud.set_health_system(health)
 		hud.set_energy_system(ship.get_node_or_null("EnergySystem"))
 		hud.set_targeting_system(ship.get_node_or_null("TargetingSystem"))
+		hud.set_missile_lock_system(ship.get_node_or_null("MissileLockSystem"))
 		hud.set_weapon_manager(ship.get_node_or_null("WeaponManager"))
 
 	# --- Mining ---

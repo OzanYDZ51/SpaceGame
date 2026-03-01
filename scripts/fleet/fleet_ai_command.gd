@@ -27,6 +27,7 @@ var _bay_approach_pos: Vector3 = Vector3.ZERO
 var _bay_dock_pos: Vector3 = Vector3.ZERO
 var _bay_target_valid: bool = false
 var _in_bay: bool = false
+var _dock_final_approach: bool = false
 var _bay_station_node: Node3D = null
 var _bay_signal_connected: bool = false
 var _initialized: bool = false
@@ -76,12 +77,13 @@ func apply_command(cmd: StringName, params: Dictionary = {}) -> void:
 	_arrived = false
 	_attack_target_id = ""
 	_idle_timer = 0.0
+	_dock_final_approach = false
 	if _ctrl == null:
 		if _initialized:
 			push_warning("FleetAICommand[%d]: _ctrl is null, command ignored!" % fleet_index)
 		return
 
-	_ctrl.ignore_threats = (cmd in [&"move_to", &"patrol", &"return_to_station", &"construction", &"mine"])
+	_ctrl.ignore_threats = (cmd in [&"move_to", &"return_to_station", &"construction", &"mine"])
 	_ctrl.target = null
 	_ctrl.current_state = AIController.State.IDLE
 	if _nav:
@@ -195,12 +197,15 @@ func _process(_delta: float) -> void:
 		if _ctrl.current_state != AIController.State.IDLE:
 			_ctrl.current_state = AIController.State.IDLE
 
-		# Phase 3: In bay — descend to landing pad (skip obstacle avoidance inside bay)
-		if _in_bay:
+		var dist_to_approach: float = _ship.global_position.distance_to(_bay_approach_pos)
+
+		# Phase 3: In bay or final approach — descend to landing pad
+		if _in_bay or _dock_final_approach:
 			if _nav:
 				_nav.docking_approach = true
+			var dist_to_dock: float = _ship.global_position.distance_to(_bay_dock_pos)
 			var speed: float = _ship.linear_velocity.length()
-			if speed < DockingSystem.BAY_DOCK_MAX_SPEED:
+			if dist_to_dock < 80.0 and speed < DockingSystem.BAY_DOCK_MAX_SPEED:
 				var npc_auth = GameManager.get_node_or_null("NpcAuthority")
 				if npc_auth and npc_auth._active:
 					npc_auth.handle_fleet_npc_self_docked(StringName(_ship.name), fleet_index)
@@ -215,14 +220,15 @@ func _process(_delta: float) -> void:
 		if _nav:
 			_nav.docking_approach = false
 
-		var dist_to_approach: float = _ship.global_position.distance_to(_bay_approach_pos)
-
 		# Phase 2: Near approach (<1200m) — fly to bay entrance, exit cruise
 		if dist_to_approach < DOCK_APPROACH_DIST:
 			if _ship.speed_mode == Constants.SpeedMode.CRUISE:
 				_ship._exit_cruise()
 			if _nav:
 				_nav.fly_toward(_bay_approach_pos, 50.0)
+			# Transition to final approach when close to bay entrance
+			if dist_to_approach < 80.0:
+				_dock_final_approach = true
 			return
 
 		# Phase 1: Long range (>1200m) — fly straight toward bay entrance
@@ -245,7 +251,7 @@ func _process(_delta: float) -> void:
 
 	# Safety net: ignore_threats but combat state
 	if not _arrived and not _returning and _ctrl.ignore_threats:
-		if command in [&"move_to", &"patrol", &"construction", &"mine"]:
+		if command in [&"move_to", &"construction", &"mine"]:
 			if _ctrl.current_state in [AIController.State.PURSUE, AIController.State.ATTACK]:
 				_ctrl.target = null
 				_ctrl.current_state = AIController.State.IDLE
@@ -523,9 +529,10 @@ func _on_origin_shifted(_delta_shift: Vector3) -> void:
 			var tz: float = command_params.get("target_z", 0.0)
 			_ctrl.set_patrol_area(FloatingOrigin.to_local_pos([tx, 0.0, tz]), 0.0)
 		&"mine":
-			var cx: float = command_params.get("center_x", 0.0)
-			var cz: float = command_params.get("center_z", 0.0)
-			_ctrl.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), 0.0)
+			if not _arrived:
+				var cx: float = command_params.get("center_x", 0.0)
+				var cz: float = command_params.get("center_z", 0.0)
+				_ctrl.set_patrol_area(FloatingOrigin.to_local_pos([cx, 0.0, cz]), 0.0)
 		&"patrol":
 			var cx: float = command_params.get("center_x", 0.0)
 			var cz: float = command_params.get("center_z", 0.0)

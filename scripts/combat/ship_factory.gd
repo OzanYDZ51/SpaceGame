@@ -117,6 +117,11 @@ static func setup_player_ship(ship_id: StringName, controller) -> void:
 	targeting.name = "TargetingSystem"
 	controller.add_child(targeting)
 
+	# Missile Lock System
+	var lock_sys =MissileLockSystem.new()
+	lock_sys.name = "MissileLockSystem"
+	controller.add_child(lock_sys)
+
 	# Equipment Manager (shields, engines, modules)
 	var em =EquipmentManager.new()
 	em.name = "EquipmentManager"
@@ -267,6 +272,11 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	targeting.name = "TargetingSystem"
 	ship.add_child(targeting)
 
+	# Missile Lock System
+	var npc_lock_sys =MissileLockSystem.new()
+	npc_lock_sys.name = "MissileLockSystem"
+	ship.add_child(npc_lock_sys)
+
 	# Loot Pickup System (same component as player — NPCs auto-collect nearby crates)
 	var lps =LootPickupSystem.new()
 	lps.name = "LootPickupSystem"
@@ -300,6 +310,9 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 	health.ship_destroyed.connect(func():
 		var npc_name =StringName(ship.name)
 
+		# Capture death position BEFORE unregistering (LOD data will be gone after)
+		var death_pos: Array = FloatingOrigin.to_universe_pos(ship.global_position)
+
 		# Server only: route ALL deaths through NpcAuthority._on_npc_killed for single codepath.
 		# If _player_killing is set, validate_hit_claim already calls _on_npc_killed — skip here.
 		if NetworkManager.is_server():
@@ -311,7 +324,7 @@ static func spawn_npc_ship(ship_id: StringName, behavior_name: StringName, pos: 
 					var killer_npc_name: String = ""
 					if health.last_attacker and is_instance_valid(health.last_attacker):
 						killer_npc_name = health.last_attacker.name
-					npc_auth._on_npc_killed(npc_name, 0, "", killer_npc_name)
+					npc_auth._on_npc_killed(npc_name, 0, "", killer_npc_name, death_pos)
 
 		EntityRegistry.unregister(ship.name)
 		# Unregister from LOD system

@@ -2,10 +2,10 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
 
 uniform vec4  pulse_color : source_color = vec4(0.2, 0.82, 1.0, 1.0);
-uniform float brightness  : hint_range(0.0, 10.0) = 5.0;
-uniform float rim_power   : hint_range(1.0, 10.0) = 2.5;
+uniform float brightness  : hint_range(0.0, 10.0) = 1.2;
+uniform float rim_power   : hint_range(1.0, 10.0) = 4.0;
 uniform float fade        : hint_range(0.0,  1.0) = 1.0;
-uniform float shell_band  : hint_range(0.01, 1.0) = 0.4;
+uniform float shell_band  : hint_range(0.01, 1.0) = 0.08;
 uniform float scan_progress : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
@@ -35,14 +35,11 @@ void fragment() {
 		smoothstep(0.92, 1.0, line_x),
 		smoothstep(0.92, 1.0, line_y)),
 		smoothstep(0.92, 1.0, line_z));
-	grid *= 0.4; // subtle
+	grid *= 0.15; // barely visible scanline texture
 
 	// Combine: band + rings + grid
-	float pattern = band * (0.7 + 0.3 * rings) + grid * band_edge;
+	float pattern = band * (0.85 + 0.15 * rings) + grid * band_edge;
 
-	// Ripple
-	float ripple = 0.92 + sin(TIME * 8.0) * 0.08;
-
-	ALBEDO = pulse_color.rgb * brightness * ripple * fade;
-	ALPHA = clamp((pattern * rim + grid * 0.15) * fade, 0.0, 1.0);
+	ALBEDO = pulse_color.rgb * brightness * fade;
+	ALPHA = clamp((pattern * rim + grid * 0.1) * fade, 0.0, 1.0);
 }

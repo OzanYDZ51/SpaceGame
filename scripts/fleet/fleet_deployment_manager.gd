@@ -235,6 +235,13 @@ func deploy_ship(fleet_index: int, cmd: StringName, params: Dictionary = {}, ove
 			lod_data.owner_pid = NetworkManager.local_peer_id if NetworkManager.local_peer_id > 0 else 0
 
 	_deployed_ships[fleet_index] = npc
+
+	# Register in remote_npcs so _on_npc_batch_received skips _on_npc_spawned
+	# for this NPC — prevents server broadcast from overwriting our LOD0 data.
+	var sync_mgr = GameManager.get_node_or_null("NetworkSyncManager")
+	if sync_mgr:
+		sync_mgr.remote_npcs[npc_id] = true
+
 	_fleet.fleet_changed.emit()
 
 	# Notify squadron manager
@@ -436,13 +443,10 @@ func _on_network_npc_died(npc_id_str: String, _killer_pid: int, _death_pos: Arra
 
 func _clear_fleet_ship_state(fs, fleet_index: int) -> void:
 	var ship_name_copy: String = fs.custom_name
-	fs.ship_id = &""
-	fs.custom_name = ""
-	fs.deployment_state = FleetShip.DeploymentState.DOCKED
+	fs.deployment_state = FleetShip.DeploymentState.DESTROYED
 	fs.deployed_npc_id = &""
 	fs.deployed_command = &""
 	fs.deployed_command_params = {}
-	fs.docked_station_id = ""
 	fs.last_known_pos = []
 	fs.ai_state = {}
 	fs.weapons.clear()
@@ -558,7 +562,13 @@ func request_deploy(fleet_index: int, cmd: StringName, params: Dictionary = {}) 
 	if not NetworkManager.is_connected_to_server():
 		push_warning("FleetDeploy: request_deploy — NOT connected to server!")
 		return
-	# Send to server — NO local state change, wait for _on_deploy_confirmed
+	# Pre-save command info so it's available when _on_deploy_confirmed sets
+	# deployment_state to DEPLOYED.  These values are inert while state == DOCKED
+	# and will be used by _restore_route_for_fleet_selection() on the map.
+	if _fleet and fleet_index >= 0 and fleet_index < _fleet.ships.size():
+		_fleet.ships[fleet_index].deployed_command = cmd
+		_fleet.ships[fleet_index].deployed_command_params = params
+	# Send to server — deployment_state stays DOCKED until _on_deploy_confirmed
 	var params_json: String = JSON.stringify(params) if not params.is_empty() else ""
 	var ship_data_json: String = JSON.stringify(ship_data)
 	print("[FleetDeploy] request_deploy idx=%d cmd=%s connected=%s" % [fleet_index, cmd, str(NetworkManager.is_connected_to_server())])
@@ -613,6 +623,9 @@ func apply_reconnect_fleet_status(alive: Array, deaths: Array) -> void:
 			var cmd_str: String = entry.get("command", "")
 			if cmd_str != "":
 				fs.deployed_command = StringName(cmd_str)
+			var cmd_params: Variant = entry.get("command_params", {})
+			if cmd_params is Dictionary and not cmd_params.is_empty():
+				fs.deployed_command_params = cmd_params
 		elif death_set.has(i):
 			# Server says this ship died while we were offline
 			if fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:

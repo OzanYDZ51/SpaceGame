@@ -99,6 +99,7 @@ func send_fleet_reconnect_status(uuid: String, new_pid: int) -> void:
 					"fleet_index": info.get("fleet_index", -1),
 					"npc_id": String(npc_id),
 					"command": info.get("command", ""),
+					"command_params": info.get("command_params", {}),
 				}
 				if lod_mgr:
 					var lod_data = lod_mgr.get_ship_data(npc_id)
@@ -141,6 +142,7 @@ func handle_fleet_deploy_request(sender_pid: int, fleet_index: int, cmd: StringN
 
 	register_fleet_npc(npc_id, sender_pid, fleet_index)
 	_fleet_npcs[npc_id]["command"] = String(cmd)
+	_fleet_npcs[npc_id]["command_params"] = params
 	var deploy_cargo: Array = ship_data.get("cargo", [])
 	var deploy_res: Dictionary = ship_data.get("ship_resources", {})
 	if not deploy_cargo.is_empty():
@@ -453,5 +455,8 @@ func _spawn_remote_fleet_npc(sender_pid: int, fleet_index: int, cmd: StringName,
 		var lod_data = lod_mgr.get_ship_data(npc_id)
 		if lod_data:
 			lod_data.fleet_index = fleet_index
+
+	# Relay fire events to clients so fleet NPC projectiles are visible
+	_auth._broadcaster.connect_npc_fire_relay(npc_id, npc)
 
 	return {"npc_id": npc_id}

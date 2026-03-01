@@ -137,6 +137,38 @@ func buy_module(module_name: StringName) -> bool:
 	return true
 
 
+func buy_ammo(missile_name: StringName, qty: int = 1) -> bool:
+	var m = MissileRegistry.get_missile(missile_name)
+	if m == null:
+		purchase_failed.emit("Missile inconnu")
+		return false
+	var total_cost: int = m.price * qty
+	if not can_afford(total_cost):
+		purchase_failed.emit("Credits insuffisants")
+		return false
+	player_economy.spend_credits(total_cost)
+	player_inventory.add_ammo(missile_name, qty)
+	purchase_completed.emit("ammo", missile_name)
+	SaveManager.trigger_save("ammo_purchase")
+	return true
+
+
+func sell_ammo(missile_name: StringName, qty: int = 1) -> bool:
+	if not player_inventory.has_ammo(missile_name):
+		return false
+	var m = MissileRegistry.get_missile(missile_name)
+	if m == null: return false
+	var actual_qty: int = mini(qty, player_inventory.get_ammo_count(missile_name))
+	if actual_qty <= 0: return false
+	var price = PriceCatalog.get_sell_price(m.price) * actual_qty
+	if not player_inventory.remove_ammo(missile_name, actual_qty):
+		return false
+	player_economy.add_credits(price)
+	sale_completed.emit("ammo", missile_name, price)
+	SaveManager.mark_dirty()
+	return true
+
+
 func sell_weapon(weapon_name: StringName) -> bool:
 	if not player_inventory.has_weapon(weapon_name):
 		return false

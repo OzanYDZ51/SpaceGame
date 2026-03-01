@@ -25,7 +25,7 @@ var _total_content_h: float = 0.0
 var _grid_area: Rect2 = Rect2()
 
 static var TAB_NAMES: Array[String]:
-	get: return [Locale.t("equip.weapons"), Locale.t("equip.shields"), Locale.t("equip.engines"), Locale.t("equip.modules")]
+	get: return [Locale.t("equip.weapons"), Locale.t("equip.shields"), Locale.t("equip.engines"), Locale.t("equip.modules"), Locale.t("equip.ammo")]
 const DETAIL_W = 240.0
 const CARD_W: float = 140.0
 const CARD_H: float = 110.0
@@ -86,6 +86,8 @@ func _on_tab_changed(idx: int) -> void:
 	_selected_index = -1
 	_scroll_offset = 0.0
 	_refresh_items()
+	if _buy_btn:
+		_buy_btn.text = (Locale.t("hud.buy") + " x10") if _current_tab == 4 else Locale.t("hud.buy")
 	queue_redraw()
 
 
@@ -96,6 +98,7 @@ func _refresh_items() -> void:
 		1: _available_items.assign(StationStock.get_available_shields(_station_type))
 		2: _available_items.assign(StationStock.get_available_engines(_station_type))
 		3: _available_items.assign(StationStock.get_available_modules(_station_type))
+		4: _available_items.assign(StationStock.get_available_missiles(_station_type))
 	_compute_card_grid()
 	queue_redraw()
 
@@ -133,10 +136,12 @@ func _do_buy() -> void:
 		1: success = _commerce_manager.buy_shield(item_name)
 		2: success = _commerce_manager.buy_engine(item_name)
 		3: success = _commerce_manager.buy_module(item_name)
+		4: success = _commerce_manager.buy_ammo(item_name, 10)
 	if success:
 		if GameManager._notif:
 			var price: int = _get_item_price(item_name)
-			GameManager._notif.commerce.bought(String(item_name), price)
+			var qty: int = 10 if _current_tab == 4 else 1
+			GameManager._notif.commerce.bought(String(item_name) + (" x%d" % qty if qty > 1 else ""), price * qty)
 	queue_redraw()
 
 
@@ -154,6 +159,9 @@ func _get_item_price(item_name: StringName) -> int:
 		3:
 			var mo = ModuleRegistry.get_module(item_name)
 			return mo.price if mo else 0
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			return mi.price if mi else 0
 	return 0
 
 
@@ -228,6 +236,7 @@ func _draw() -> void:
 		1: y = _draw_shield_detail(font, detail_x, y, item_name)
 		2: y = _draw_engine_detail(font, detail_x, y, item_name)
 		3: y = _draw_module_detail(font, detail_x, y, item_name)
+		4: y = _draw_missile_detail(font, detail_x, y, item_name)
 
 	# Inventory count
 	if _commerce_manager and _commerce_manager.player_inventory:
@@ -237,6 +246,7 @@ func _draw() -> void:
 			1: count = _commerce_manager.player_inventory.get_shield_count(item_name)
 			2: count = _commerce_manager.player_inventory.get_engine_count(item_name)
 			3: count = _commerce_manager.player_inventory.get_module_count(item_name)
+			4: count = _commerce_manager.player_inventory.get_ammo_count(item_name)
 		if count > 0:
 			draw_string(font, Vector2(detail_x + 10, y + 14),
 				Locale.t("equip.in_stock") % count, HORIZONTAL_ALIGNMENT_LEFT, -1,
@@ -305,6 +315,15 @@ func _draw_equip_card(font: Font, rect: Rect2, idx: int) -> void:
 				stat_ratio = 0.5
 				price = mo.price
 				stat_col = UITheme.ACCENT
+		4:
+			var mi = MissileRegistry.get_missile(item_name)
+			if mi:
+				size_str = ["S", "M", "L"][mi.missile_size]
+				stat_label = Locale.t("stat.damage")
+				stat_val = "%.0f" % mi.damage_per_hit
+				stat_ratio = clampf(mi.damage_per_hit / 800.0, 0.0, 1.0)
+				price = mi.price
+				stat_col = UITheme.DANGER
 
 	# Card background
 	var bg: Color
@@ -388,6 +407,14 @@ func _draw_type_icon(c: Vector2, tab: int, col: Color) -> void:
 			draw_line(c + Vector2(-r * 0.5, r * 0.2), c + Vector2(-r * 0.9, r * 0.2), col, 1.0)
 			draw_line(c + Vector2(r * 0.5, -r * 0.2), c + Vector2(r * 0.9, -r * 0.2), col, 1.0)
 			draw_line(c + Vector2(r * 0.5, r * 0.2), c + Vector2(r * 0.9, r * 0.2), col, 1.0)
+		4:  # Missile
+			draw_line(c + Vector2(0, -r), c + Vector2(0, r * 0.6), col, 1.5)
+			draw_line(c + Vector2(0, -r), c + Vector2(-r * 0.3, -r * 0.5), col, 1.0)
+			draw_line(c + Vector2(0, -r), c + Vector2(r * 0.3, -r * 0.5), col, 1.0)
+			draw_line(c + Vector2(-r * 0.4, r * 0.6), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(r * 0.4, r * 0.6), c + Vector2(0, r * 0.3), col, 1.0)
+			draw_line(c + Vector2(-r * 0.4, r * 0.6), c + Vector2(-r * 0.4, r), col, 1.0)
+			draw_line(c + Vector2(r * 0.4, r * 0.6), c + Vector2(r * 0.4, r), col, 1.0)
 
 
 # =========================================================================
@@ -401,13 +428,26 @@ func _draw_weapon_detail(font: Font, x: float, y: float, wn: StringName) -> floa
 		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
 	y += 24.0
 	var type_str: String = [Locale.t("weapon.laser"), Locale.t("weapon.plasma"), Locale.t("weapon.missile"), Locale.t("weapon.railgun"), Locale.t("weapon.mine"), Locale.t("weapon.turret"), Locale.t("weapon.mining_laser")][w.weapon_type]
-	y = _draw_detail_rows(font, x, y, [
+	var rows: Array = [
 		[Locale.t("stat.type"), type_str], [Locale.t("stat.size"), ["S", "M", "L"][w.slot_size]],
 		[Locale.t("stat.damage"), "%.0f/tir" % w.damage_per_hit], [Locale.t("stat.fire_rate"), "%.1f/s" % w.fire_rate],
 		[Locale.t("stat.dps"), "%.0f" % (w.damage_per_hit * w.fire_rate)],
 		[Locale.t("stat.energy_cost"), "%.0f/tir" % w.energy_cost_per_shot],
 		[Locale.t("stat.range"), "%.0fm" % (w.projectile_speed * w.projectile_lifetime)],
-	])
+	]
+	# Missile-specific stats
+	if w.weapon_type == WeaponResource.WeaponType.MISSILE:
+		var cat_str: String = ["Guide", "Dumbfire", "Torpille"][w.missile_category]
+		rows.append(["Categorie", cat_str])
+		if w.lock_time > 0.0:
+			rows.append(["Lock", "%.1fs" % w.lock_time])
+		if w.tracking_strength > 0.0:
+			rows.append(["Tracking", "%.0f°/s" % w.tracking_strength])
+		if w.missile_hp > 0.0:
+			rows.append(["HP Missile", "%.0f" % w.missile_hp])
+		if w.aoe_radius > 0.0:
+			rows.append(["AOE", "%.0fm" % w.aoe_radius])
+	y = _draw_detail_rows(font, x, y, rows)
 	return _draw_price_box(font, x, y, w.price)
 
 
@@ -453,6 +493,46 @@ func _draw_module_detail(font: Font, x: float, y: float, mn: StringName) -> floa
 		rows.append(["Bonus", bonus])
 	y = _draw_detail_rows(font, x, y, rows)
 	return _draw_price_box(font, x, y, m.price)
+
+
+func _draw_missile_detail(font: Font, x: float, y: float, mn: StringName) -> float:
+	var m = MissileRegistry.get_missile(mn)
+	if m == null: return y
+	draw_string(font, Vector2(x + 10, y + 14), String(mn).to_upper(),
+		HORIZONTAL_ALIGNMENT_LEFT, DETAIL_W - 20, UITheme.FONT_SIZE_HEADER, UITheme.TEXT)
+	y += 24.0
+	var cat_str: String = ["Guide", "Dumbfire", "Torpille"][m.missile_category]
+	var rows: Array = [
+		[Locale.t("stat.size"), ["S", "M", "L"][m.missile_size]],
+		["Categorie", cat_str],
+		[Locale.t("stat.damage"), "%.0f" % m.damage_per_hit],
+		[Locale.t("stat.speed"), "%.0f m/s" % m.projectile_speed],
+	]
+	if m.tracking_strength > 0.0:
+		rows.append(["Tracking", "%.0f deg/s" % m.tracking_strength])
+	if m.lock_time > 0.0:
+		rows.append(["Lock", "%.1fs" % m.lock_time])
+	if m.aoe_radius > 0.0:
+		rows.append(["AOE", "%.0fm" % m.aoe_radius])
+	if m.missile_hp > 0.0:
+		rows.append(["HP", "%.0f" % m.missile_hp])
+	y = _draw_detail_rows(font, x, y, rows)
+	# Show x10 price
+	var total_price: int = m.price * 10
+	y += 4.0
+	draw_rect(Rect2(x + 10, y, DETAIL_W - 20, 28),
+		Color(UITheme.PRIMARY.r, UITheme.PRIMARY.g, UITheme.PRIMARY.b, 0.1))
+	draw_rect(Rect2(x + 10, y, DETAIL_W - 20, 28), UITheme.PRIMARY, false, 1.0)
+	draw_string(font, Vector2(x + 10, y + 19),
+		PriceCatalog.format_price(m.price) + " /unit  |  x10 = " + PriceCatalog.format_price(total_price),
+		HORIZONTAL_ALIGNMENT_CENTER, DETAIL_W - 20, UITheme.FONT_SIZE_SMALL, PlayerEconomy.CREDITS_COLOR)
+	y += 36.0
+	if _commerce_manager and _commerce_manager.player_economy:
+		if _commerce_manager.player_economy.credits < total_price:
+			draw_string(font, Vector2(x + 10, y + 10), Locale.t("shop.insufficient_credits"),
+				HORIZONTAL_ALIGNMENT_CENTER, DETAIL_W - 20, UITheme.FONT_SIZE_TINY, UITheme.DANGER)
+			y += 18.0
+	return y
 
 
 func _draw_detail_rows(font: Font, x: float, y: float, rows: Array) -> float:

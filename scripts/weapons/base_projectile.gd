@@ -20,7 +20,7 @@ var _pool = null  # Set by pool on acquire
 
 func _ready() -> void:
 	collision_layer = Constants.LAYER_PROJECTILES
-	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN
+	collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN | Constants.LAYER_MISSILES
 	monitoring = true
 	monitorable = false
 	body_entered.connect(_on_body_hit)
@@ -162,8 +162,14 @@ func _on_body_hit(body: Node3D) -> void:
 	_return_to_pool()
 
 
-func _on_area_hit(_area: Area3D) -> void:
+func _on_area_hit(area: Area3D) -> void:
 	if not visible:
+		return
+	# Projectile hits a missile in flight — damage the missile
+	if area is MissileProjectile and area.missile_hp > 0.0:
+		area.take_damage(damage)
+		_spawn_hit_effect()
+		_return_to_pool()
 		return
 	_spawn_hit_effect()
 	_return_to_pool()

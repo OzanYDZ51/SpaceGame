@@ -44,7 +44,8 @@ static func _is_available(order_id: StringName, context: Dictionary) -> bool:
 	var is_deployed: bool = context.get("is_deployed", false)
 	match order_id:
 		&"move_to":
-			return true
+			# No point moving a ship to its own position
+			return not context.get("is_self_target", false)
 		&"patrol":
 			return true
 		&"attack":

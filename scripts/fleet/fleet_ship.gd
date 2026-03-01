@@ -10,6 +10,7 @@ enum DeploymentState { DOCKED, DEPLOYED, DESTROYED }
 var ship_id: StringName = &""
 var custom_name: String = ""
 var weapons: Array[StringName] = []     # per hardpoint (empty = &"")
+var loaded_missiles: Array[StringName] = []  # per hardpoint, missile loaded in launcher (empty = &"")
 var shield_name: StringName = &""
 var engine_name: StringName = &""
 var modules: Array[StringName] = []     # per slot (empty = &"")
@@ -42,8 +43,10 @@ static func create_bare(sid: StringName):
 	fs.ship_id = sid
 	fs.custom_name = String(data.ship_name)
 	fs.weapons.resize(data.hardpoints.size())
+	fs.loaded_missiles.resize(data.hardpoints.size())
 	for i in data.hardpoints.size():
 		fs.weapons[i] = &""
+		fs.loaded_missiles[i] = &""
 	fs.shield_name = &""
 	fs.engine_name = &""
 	fs.modules.resize(data.module_slots.size())
@@ -59,11 +62,16 @@ static func from_ship_data(data):
 	fs.custom_name = String(data.ship_name)
 	# Copy default weapon loadout
 	fs.weapons.resize(data.hardpoints.size())
+	fs.loaded_missiles.resize(data.hardpoints.size())
 	for i in data.hardpoints.size():
 		if i < data.default_loadout.size():
 			fs.weapons[i] = data.default_loadout[i]
 		else:
 			fs.weapons[i] = &""
+		if i < data.default_loaded_missiles.size():
+			fs.loaded_missiles[i] = data.default_loaded_missiles[i]
+		else:
+			fs.loaded_missiles[i] = &""
 	# Default equipment from ShipData
 	fs.shield_name = data.default_shield
 	fs.engine_name = data.default_engine
@@ -153,6 +161,7 @@ func serialize() -> Dictionary:
 		"ship_id": String(ship_id),
 		"custom_name": custom_name,
 		"weapons": weapons.map(func(w): return String(w)),
+		"loaded_missiles": loaded_missiles.map(func(m): return String(m)),
 		"shield": String(shield_name),
 		"engine": String(engine_name),
 		"modules": modules.map(func(m): return String(m)),
@@ -196,6 +205,7 @@ static func deserialize(data: Dictionary):
 		fs.custom_name = String(ship_data.ship_name) if ship_data else "Ship"
 		# Reset loadout to defaults since slots likely differ
 		fs.weapons.clear()
+		fs.loaded_missiles.clear()
 		fs.shield_name = &""
 		fs.engine_name = &""
 		fs.modules.clear()
@@ -205,6 +215,10 @@ static func deserialize(data: Dictionary):
 					fs.weapons.append(ship_data.default_loadout[i])
 				else:
 					fs.weapons.append(&"")
+				if i < ship_data.default_loaded_missiles.size():
+					fs.loaded_missiles.append(ship_data.default_loaded_missiles[i])
+				else:
+					fs.loaded_missiles.append(&"")
 			fs.shield_name = ship_data.default_shield
 			fs.engine_name = ship_data.default_engine
 			for i in ship_data.module_slots.size():
@@ -220,6 +234,16 @@ static func deserialize(data: Dictionary):
 				push_warning("FleetShip.deserialize: unknown weapon '%s' on ship '%s', clearing slot" % [wn, fs.ship_id])
 				wn = &""
 			fs.weapons.append(wn)
+		var saved_missiles: Array = data.get("loaded_missiles", []) if data.get("loaded_missiles") is Array else []
+		for m in saved_missiles:
+			var mn := StringName(m)
+			if mn != &"" and not MissileRegistry.has_missile(mn):
+				push_warning("FleetShip.deserialize: unknown missile '%s' on ship '%s', clearing slot" % [mn, fs.ship_id])
+				mn = &""
+			fs.loaded_missiles.append(mn)
+		# Ensure loaded_missiles matches weapons array size
+		while fs.loaded_missiles.size() < fs.weapons.size():
+			fs.loaded_missiles.append(&"")
 		fs.shield_name = StringName(data.get("shield", ""))
 		fs.engine_name = StringName(data.get("engine", ""))
 		var saved_mods: Array = data.get("modules", []) if data.get("modules") is Array else []

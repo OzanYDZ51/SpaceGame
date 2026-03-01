@@ -80,6 +80,7 @@ extends Resource
 @export var default_shield: StringName = &""
 @export var default_engine: StringName = &""
 @export var default_modules: Array[StringName] = []
+@export var default_loaded_missiles: Array[StringName] = []  # per hardpoint, missile to load into launcher
 
 # --- Loot (data-driven drops, replaces LootTable match) ---
 @export_group("Loot")

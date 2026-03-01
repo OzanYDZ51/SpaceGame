@@ -193,6 +193,8 @@ func draw_fleet_strip(parent: Control, font: Font, s: Vector2) -> void:
 		if cx + EC.FLEET_CARD_W < clip_left or cx > clip_right:
 			continue
 		var fs = _fleet.ships[i]
+		if fs.ship_id == &"" or fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+			continue
 		var sd =ShipRegistry.get_ship_data(fs.ship_id)
 		_draw_fleet_card(parent, font, cx, card_y, i, fs, sd)
 
@@ -430,13 +432,22 @@ func _draw_hardpoint_strip(parent: Control, font: Font, s: Vector2) -> void:
 			parent.draw_string(font, Vector2(card_x + 8, card_y + 38), str(mounted.weapon_name),
 				HORIZONTAL_ALIGNMENT_LEFT, card_w - 20, UITheme.FONT_SIZE_BODY, type_col)
 
-			# Type + DPS
+			# Type + DPS / Loaded missile for launchers
 			var stats_y =card_y + 54
-			_draw_weapon_icon(parent, Vector2(card_x + 14, stats_y - 2), 5.0, mounted.weapon_type, type_col)
-			var type_name: String = EC.TYPE_NAMES[mounted.weapon_type] if mounted.weapon_type < EC.TYPE_NAMES.size() else ""
-			var dps =mounted.damage_per_hit * mounted.fire_rate
-			parent.draw_string(font, Vector2(card_x + 24, stats_y), "%s  %.0f DPS" % [type_name, dps],
-				HORIZONTAL_ALIGNMENT_LEFT, card_w - 32, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			if mounted.weapon_type == WeaponResource.WeaponType.MISSILE:
+				var loaded_name: StringName = _adapter.get_loaded_missile_name(i)
+				if loaded_name != &"":
+					parent.draw_string(font, Vector2(card_x + 8, stats_y), str(loaded_name),
+						HORIZONTAL_ALIGNMENT_LEFT, card_w - 16, UITheme.FONT_SIZE_SMALL, UITheme.ACCENT)
+				else:
+					parent.draw_string(font, Vector2(card_x + 8, stats_y), "VIDE",
+						HORIZONTAL_ALIGNMENT_LEFT, card_w - 16, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
+			else:
+				_draw_weapon_icon(parent, Vector2(card_x + 14, stats_y - 2), 5.0, mounted.weapon_type, type_col)
+				var type_name: String = EC.TYPE_NAMES[mounted.weapon_type] if mounted.weapon_type < EC.TYPE_NAMES.size() else ""
+				var dps =mounted.damage_per_hit * mounted.fire_rate
+				parent.draw_string(font, Vector2(card_x + 24, stats_y), "%s  %.0f DPS" % [type_name, dps],
+					HORIZONTAL_ALIGNMENT_LEFT, card_w - 32, UITheme.FONT_SIZE_SMALL, UITheme.TEXT_DIM)
 		else:
 			var empty_label = Locale.t("equip.turret") if is_turret else Locale.t("equip.empty")
 			var empty_col =Color(EC.TYPE_COLORS[5].r, EC.TYPE_COLORS[5].g, EC.TYPE_COLORS[5].b, 0.4) if is_turret else UITheme.TEXT_DIM

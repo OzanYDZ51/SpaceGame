@@ -120,8 +120,13 @@ func release(bolt) -> void:
 
 func _activate(bolt) -> void:
 	bolt.visible = true
-	bolt.collision_layer = Constants.LAYER_PROJECTILES
-	bolt.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN
+	if bolt is MissileProjectile:
+		bolt.collision_layer = Constants.LAYER_MISSILES
+		bolt.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN
+		bolt.set_deferred("monitorable", true)
+	else:
+		bolt.collision_layer = Constants.LAYER_PROJECTILES
+		bolt.collision_mask = Constants.LAYER_SHIPS | Constants.LAYER_STATIONS | Constants.LAYER_ASTEROIDS | Constants.LAYER_TERRAIN | Constants.LAYER_MISSILES
 	bolt.set_process(true)
 	bolt.set_physics_process(true)
 	bolt.set_deferred("monitoring", true)

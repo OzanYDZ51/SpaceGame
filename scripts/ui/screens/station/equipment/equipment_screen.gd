@@ -485,7 +485,11 @@ func _on_equip_pressed() -> void:
 	if _actions == null:
 		return
 	match _current_tab:
-		0: _actions.equip_weapon(_selected_hardpoint, _selected_weapon)
+		0:
+			if _is_launcher_mode():
+				_actions.load_missile(_selected_hardpoint, _selected_weapon)
+			else:
+				_actions.equip_weapon(_selected_hardpoint, _selected_weapon)
 		1: _actions.equip_module(_selected_module_slot, _selected_module)
 		2: _actions.equip_shield(_selected_shield)
 		3: _actions.equip_engine(_selected_engine)
@@ -502,7 +506,11 @@ func _on_remove_pressed() -> void:
 	if _actions == null:
 		return
 	match _current_tab:
-		0: _actions.remove_weapon(_selected_hardpoint)
+		0:
+			if _is_launcher_mode():
+				_actions.unload_missile(_selected_hardpoint)
+			else:
+				_actions.remove_weapon(_selected_hardpoint)
 		1: _actions.remove_module(_selected_module_slot)
 		2: _actions.remove_shield()
 		3: _actions.remove_engine()
@@ -576,9 +584,19 @@ func _update_button_states() -> void:
 		_equip_btn.enabled = false
 		_remove_btn.enabled = false
 		return
+	var launcher_mode: bool = _is_launcher_mode()
+	_equip_btn.text = Locale.t("equip.btn_load") if launcher_mode else Locale.t("equip.btn_equip")
+	_remove_btn.text = Locale.t("equip.btn_unload") if launcher_mode else Locale.t("equip.btn_remove")
 	_equip_btn.enabled = _actions.get_equip_enabled(_current_tab, _selected_weapon, _selected_shield,
 		_selected_engine, _selected_module, _selected_hardpoint, _selected_module_slot)
 	_remove_btn.enabled = _actions.get_remove_enabled(_current_tab, _selected_hardpoint, _selected_module_slot)
+
+
+func _is_launcher_mode() -> bool:
+	if _current_tab != 0 or _selected_hardpoint < 0 or _adapter == null:
+		return false
+	var mounted: WeaponResource = _adapter.get_mounted_weapon(_selected_hardpoint)
+	return mounted != null and mounted.weapon_type == WeaponResource.WeaponType.MISSILE
 
 
 func _auto_select_slot() -> void:

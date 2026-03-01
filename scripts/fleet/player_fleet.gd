@@ -55,14 +55,16 @@ func get_ship_count() -> int:
 
 func serialize() -> Array:
 	var result: Array = []
+	var idx_remap: int = 0
 	for i in ships.size():
 		var ship = ships[i]
-		if ship.ship_id == &"":
-			result.append({"empty": true})
-		else:
-			var d = ship.serialize()
-			d["active"] = (i == active_index)
-			result.append(d)
+		# Skip destroyed and empty ships — they're gone forever
+		if ship.ship_id == &"" or ship.deployment_state == FleetShip.DeploymentState.DESTROYED:
+			continue
+		var d = ship.serialize()
+		d["active"] = (i == active_index)
+		result.append(d)
+		idx_remap += 1
 	return result
 
 
@@ -70,12 +72,16 @@ static func deserialize(data: Array):
 	var fleet = PlayerFleet.new()
 	for i in data.size():
 		if data[i].get("empty", false):
-			fleet.ships.append(FleetShip.new())  # Preserve slot index, ship_id stays ""
-		else:
-			var ship = FleetShip.deserialize(data[i])
-			fleet.ships.append(ship)
-			if data[i].get("active", false):
-				fleet.active_index = i
+			continue  # Purge legacy ghost entries
+		var ship = FleetShip.deserialize(data[i])
+		# Skip destroyed ships on load (shouldn't be saved, but safety net)
+		if ship.deployment_state == FleetShip.DeploymentState.DESTROYED:
+			continue
+		if ship.ship_id == &"":
+			continue
+		fleet.ships.append(ship)
+		if data[i].get("active", false):
+			fleet.active_index = fleet.ships.size() - 1
 	return fleet
 
 

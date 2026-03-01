@@ -368,6 +368,13 @@ func _gather_targetable_ships() -> void:
 	var structures =StructureTargetProvider.gather_targetable(ship.global_position, target_lock_range)
 	_targetable_ships.append_array(structures)
 
+	# Also gather targetable missiles (destructible missiles in flight)
+	var missiles =get_tree().get_nodes_in_group("missiles")
+	for m in missiles:
+		if m is MissileProjectile and m.visible and m.missile_hp > 0.0:
+			if ship.global_position.distance_to(m.global_position) <= target_lock_range:
+				_targetable_ships.append(m)
+
 	# Sort by distance
 	_targetable_ships.sort_custom(func(a: Node3D, b: Node3D) -> bool:
 		return ship.global_position.distance_squared_to(a.global_position) < ship.global_position.distance_squared_to(b.global_position)

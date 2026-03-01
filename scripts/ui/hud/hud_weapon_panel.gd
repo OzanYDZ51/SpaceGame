@@ -397,8 +397,23 @@ func _draw_weapon_list(ctrl: Control, font: Font, x: float, y: float, w: float, 
 			name_col = Color(UITheme.TEXT.r, UITheme.TEXT.g, UITheme.TEXT.b, 0.8)
 		ctrl.draw_string(font, Vector2(x + 12, ly + 10), abbr, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, name_col)
 
-		var short_name =wname.get_slice(" ", 0).left(5)
-		ctrl.draw_string(font, Vector2(x + 42, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.75 if is_on else 0.4))
+		# Launcher: show loaded missile name + ammo count
+		var loaded_missile: StringName = StringName(status.get("loaded_missile", &""))
+		if wtype == 2 and loaded_missile != &"":
+			var short_missile: String = String(loaded_missile).left(6)
+			ctrl.draw_string(font, Vector2(x + 42, ly + 10), short_missile, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.75 if is_on else 0.4))
+			# Ammo count
+			var ammo_count: int = 0
+			if GameManager.player_data and GameManager.player_data.inventory:
+				ammo_count = GameManager.player_data.inventory.get_ammo_count(loaded_missile)
+			var ammo_str: String = "x%d" % ammo_count
+			var ammo_col: Color = UITheme.WARNING if ammo_count <= 5 else Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7)
+			if ammo_count == 0:
+				ammo_col = UITheme.DANGER
+			ctrl.draw_string(font, Vector2(x + w - 40, ly + 10), ammo_str, HORIZONTAL_ALIGNMENT_RIGHT, 26, UITheme.FONT_SIZE_TINY, ammo_col)
+		else:
+			var short_name =wname.get_slice(" ", 0).left(5)
+			ctrl.draw_string(font, Vector2(x + 42, ly + 10), short_name, HORIZONTAL_ALIGNMENT_LEFT, -1, UITheme.FONT_SIZE_TINY, Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.75 if is_on else 0.4))
 
 		if not is_on:
 			var strike_y =ly + 6.0

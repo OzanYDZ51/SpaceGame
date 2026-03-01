@@ -44,6 +44,18 @@ func equip_module(slot: int, module_name: StringName) -> void:
 	_adapter.equip_module(slot, module_name)
 
 
+func load_missile(hardpoint: int, missile_name: StringName) -> void:
+	if hardpoint < 0 or missile_name == &"" or _adapter == null:
+		return
+	_adapter.load_missile(hardpoint, missile_name)
+
+
+func unload_missile(hardpoint: int) -> void:
+	if hardpoint < 0 or _adapter == null:
+		return
+	_adapter.unload_missile(hardpoint)
+
+
 # =============================================================================
 # REMOVE
 # =============================================================================
@@ -82,6 +94,9 @@ func get_equip_enabled(tab: int, selected_weapon: StringName, selected_shield: S
 	match tab:
 		0:
 			if selected_hardpoint >= 0 and selected_weapon != &"":
+				var mounted = _adapter.get_mounted_weapon(selected_hardpoint)
+				if mounted and mounted.weapon_type == WeaponResource.WeaponType.MISSILE:
+					return _inventory.has_ammo(selected_weapon)
 				var hp_sz: String = _adapter.get_hardpoint_slot_size(selected_hardpoint)
 				var hp_turret: bool = _adapter.is_hardpoint_turret(selected_hardpoint)
 				return _inventory.is_compatible(selected_weapon, hp_sz, hp_turret) and _inventory.has_weapon(selected_weapon)
@@ -104,7 +119,10 @@ func get_remove_enabled(tab: int, selected_hardpoint: int, selected_module_slot:
 	match tab:
 		0:
 			if selected_hardpoint >= 0:
-				return _adapter.get_mounted_weapon(selected_hardpoint) != null
+				var mounted = _adapter.get_mounted_weapon(selected_hardpoint)
+				if mounted and mounted.weapon_type == WeaponResource.WeaponType.MISSILE:
+					return _adapter.get_loaded_missile_name(selected_hardpoint) != &""
+				return mounted != null
 		1:
 			if selected_module_slot >= 0:
 				return _adapter.get_equipped_module(selected_module_slot) != null

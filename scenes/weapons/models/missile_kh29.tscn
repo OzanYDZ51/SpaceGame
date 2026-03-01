@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/missile_model_extractor.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/models/missiles/missile_pack.glb" id="2"]
+
+[node name="MissileRoot" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+script = ExtResource("1")
+target_node_name = "Kh-29"
+
+[node name="Pack" parent="." instance=ExtResource("2")]

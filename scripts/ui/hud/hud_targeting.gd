@@ -6,6 +6,7 @@ extends Control
 # =============================================================================
 
 var targeting_system = null
+var missile_lock_system = null
 var ship = null
 var pulse_t: float = 0.0
 var scan_line_y: float = 0.0
@@ -101,21 +102,29 @@ func update(delta: float, is_cockpit: bool, is_free_looking: bool = false) -> vo
 # TARGET OVERLAY
 # =============================================================================
 func _draw_target_overlay(ctrl: Control) -> void:
+	var cam =get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var cf: Vector3 = -cam.global_transform.basis.z
+
+	# Draw incoming missile warnings (always, even without target)
+	_draw_incoming_missiles(ctrl, cam, cf)
+
 	if targeting_system == null:
 		return
 	if targeting_system.current_target == null or not is_instance_valid(targeting_system.current_target):
 		return
-	var cam =get_viewport().get_camera_3d()
-	if cam == null:
-		return
 	var target =targeting_system.current_target
-	var cf: Vector3 = -cam.global_transform.basis.z
 
 	var target_pos: Vector3 = TargetingSystem.get_ship_center(target)
 
 	var to_t: Vector3 = (target_pos - cam.global_position).normalized()
 	if cf.dot(to_t) > 0.1:
-		_draw_target_bracket(ctrl, cam.unproject_position(target_pos))
+		var sp: Vector2 = cam.unproject_position(target_pos)
+		_draw_target_bracket(ctrl, sp)
+		# Draw lock-on arc around target bracket
+		if missile_lock_system and missile_lock_system._has_missile_weapon:
+			_draw_lock_arc(ctrl, sp, missile_lock_system.lock_progress, missile_lock_system.is_locked)
 
 	if ship and ship.current_speed > 0.1:
 		var lp: Vector3 = targeting_system.get_lead_indicator_position()
@@ -137,6 +146,88 @@ func _draw_lead_indicator(ctrl: Control, sp: Vector2) -> void:
 	ctrl.draw_arc(sp, 8.0, 0, TAU, 16, UITheme.LEAD, 1.5, true)
 	ctrl.draw_line(sp + Vector2(-4, 0), sp + Vector2(4, 0), UITheme.LEAD, 1.0)
 	ctrl.draw_line(sp + Vector2(0, -4), sp + Vector2(0, 4), UITheme.LEAD, 1.0)
+
+
+func _draw_lock_arc(ctrl: Control, sp: Vector2, progress: float, locked: bool) -> void:
+	if progress <= 0.001:
+		return
+	var radius: float = 32.0
+	var arc_angle: float = TAU * clampf(progress, 0.0, 1.0)
+	var start_angle: float = -PI / 2.0  # Start from top
+
+	var col: Color
+	if locked:
+		# Red pulsing when locked
+		var pulse: float = sin(pulse_t * 6.0) * 0.3 + 0.7
+		col = Color(1.0, 0.15, 0.1, pulse)
+	else:
+		# Orange while locking
+		col = Color(1.0, 0.6, 0.1, 0.8)
+
+	var segments: int = int(clampf(arc_angle / 0.1, 4, 64))
+	ctrl.draw_arc(sp, radius, start_angle, start_angle + arc_angle, segments, col, 2.5, true)
+
+	# Tick marks at the end of the arc
+	if progress > 0.05 and progress < 1.0:
+		var end_angle: float = start_angle + arc_angle
+		var tick_pos: Vector2 = sp + Vector2(cos(end_angle), sin(end_angle)) * radius
+		var tick_outer: Vector2 = sp + Vector2(cos(end_angle), sin(end_angle)) * (radius + 5.0)
+		ctrl.draw_line(tick_pos, tick_outer, col, 1.5)
+
+	# "LOCK" text when locked
+	if locked:
+		var font: Font = UITheme.get_font()
+		var lock_text: String = "LOCK"
+		var text_pos: Vector2 = sp + Vector2(0, radius + 14.0)
+		ctrl.draw_string(font, text_pos, lock_text, HORIZONTAL_ALIGNMENT_CENTER, 60, 11, col)
+
+
+func _draw_incoming_missiles(ctrl: Control, cam: Camera3D, cam_fwd: Vector3) -> void:
+	if ship == null or not is_instance_valid(ship):
+		return
+	var missiles: Array = get_tree().get_nodes_in_group("missiles") if is_inside_tree() else []
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+
+	for m in missiles:
+		if not (m is MissileProjectile) or not m.visible:
+			continue
+		# Only warn about hostile missiles (not our own)
+		if m.owner_ship == ship:
+			continue
+		# Check if missile is targeting us or close enough to be a threat
+		var dist: float = ship.global_position.distance_to(m.global_position)
+		if dist > 2000.0:
+			continue  # Too far to worry about
+
+		var to_missile: Vector3 = (m.global_position - cam.global_position).normalized()
+		var on_screen: bool = cam_fwd.dot(to_missile) > 0.1
+
+		if on_screen:
+			var sp: Vector2 = cam.unproject_position(m.global_position)
+			_draw_missile_warning_diamond(ctrl, sp, dist)
+		else:
+			# Off-screen: draw at edge of viewport
+			var screen_center: Vector2 = viewport_size / 2.0
+			var sp: Vector2 = cam.unproject_position(m.global_position)
+			var dir: Vector2 = (sp - screen_center).normalized()
+			var edge_pos: Vector2 = screen_center + dir * minf(viewport_size.x, viewport_size.y) * 0.45
+			_draw_missile_warning_diamond(ctrl, edge_pos, dist)
+
+
+func _draw_missile_warning_diamond(ctrl: Control, sp: Vector2, dist: float) -> void:
+	var pulse: float = sin(pulse_t * 8.0) * 0.4 + 0.6
+	var col: Color = Color(1.0, 0.15, 0.05, pulse)
+	var sz: float = lerpf(12.0, 6.0, clampf(dist / 2000.0, 0.0, 1.0))
+
+	# Diamond shape
+	var points: PackedVector2Array = PackedVector2Array([
+		sp + Vector2(0, -sz),   # Top
+		sp + Vector2(sz, 0),    # Right
+		sp + Vector2(0, sz),    # Bottom
+		sp + Vector2(-sz, 0),   # Left
+	])
+	ctrl.draw_colored_polygon(points, Color(col.r, col.g, col.b, col.a * 0.3))
+	ctrl.draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), col, 1.5)
 
 
 # =============================================================================

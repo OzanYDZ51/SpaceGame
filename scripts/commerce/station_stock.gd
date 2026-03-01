@@ -66,6 +66,19 @@ static func get_available_engines(station_type: int) -> Array[StringName]:
 	return result
 
 
+static func get_available_missiles(station_type: int) -> Array[StringName]:
+	var st_name: StringName = STATION_TYPE_NAMES.get(station_type, &"")
+	if st_name == &"":
+		return []
+	var result: Array[StringName] = []
+	for mn in MissileRegistry.get_all_missile_names():
+		var m := MissileRegistry.get_missile(mn)
+		if m and m.sold_at_station_types.has(st_name):
+			result.append(mn)
+	result.sort_custom(func(a, b): return MissileRegistry.get_missile(a).price < MissileRegistry.get_missile(b).price)
+	return result
+
+
 static func get_available_modules(station_type: int) -> Array[StringName]:
 	var st_name: StringName = STATION_TYPE_NAMES.get(station_type, &"")
 	if st_name == &"":

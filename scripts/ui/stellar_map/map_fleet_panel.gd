@@ -115,6 +115,9 @@ func _rebuild() -> void:
 	var sys_map: Dictionary = {}  # int -> Dictionary
 	for i in _fleet.ships.size():
 		var fs = _fleet.ships[i]
+		# Skip destroyed and empty ships
+		if fs.ship_id == &"" or fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
+			continue
 		var sys_id: int = fs.docked_system_id
 		if sys_id < 0:
 			sys_id = -1  # unknown
@@ -127,11 +130,6 @@ func _rebuild() -> void:
 			sys_map[sys_id]["docked"][st_id].append({"fleet_index": i, "ship": fs})
 		elif fs.deployment_state == FleetShip.DeploymentState.DEPLOYED:
 			sys_map[sys_id]["deployed"].append({"fleet_index": i, "ship": fs})
-		elif fs.deployment_state == FleetShip.DeploymentState.DESTROYED:
-			var st_id: String = fs.docked_station_id if fs.docked_station_id != "" else "_none"
-			if not sys_map[sys_id]["docked"].has(st_id):
-				sys_map[sys_id]["docked"][st_id] = []
-			sys_map[sys_id]["docked"][st_id].append({"fleet_index": i, "ship": fs})
 
 	# Move mining-docked DEPLOYED ships to station docked groups
 	for sys_id in sys_map:

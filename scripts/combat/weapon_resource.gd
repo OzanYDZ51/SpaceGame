@@ -8,6 +8,7 @@ extends Resource
 enum WeaponType { LASER, PLASMA, MISSILE, RAILGUN, MINE, TURRET, MINING_LASER }
 enum SlotSize { S, M, L }
 enum AmmoType { ENERGY, AMMO }
+enum MissileCategory { GUIDED, DUMBFIRE, TORPEDO }
 
 # --- Identity ---
 @export var weapon_name: StringName = &""
@@ -30,6 +31,16 @@ enum AmmoType { ENERGY, AMMO }
 @export var charge_time: float = 0.0           # railgun charge-up
 @export var tracking_strength: float = 0.0     # missile tracking (deg/s)
 @export var aoe_radius: float = 0.0            # mine/torpedo explosion radius
+
+# --- Missile Launcher ---
+@export var compatible_missile_size: SlotSize = SlotSize.S  # Which size missiles this launcher accepts
+
+# --- Missile (legacy, kept for backward compat) ---
+@export var missile_category: MissileCategory = MissileCategory.GUIDED
+@export var lock_time: float = 0.0             # 0 = no lock (dumbfire)
+@export var lock_cone_degrees: float = 15.0    # half-angle of the lock cone
+@export var missile_hp: float = 0.0            # 0 = indestructible
+@export var missile_model_scene: String = ""   # Path to missile 3D model scene
 
 # --- Price ---
 @export var price: int = 0

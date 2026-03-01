@@ -12,6 +12,7 @@ signal toggled(hp_id: int, is_enabled: bool)
 var slot_id: int = 0
 var slot_size: String = "S"  # "S", "M", "L"
 var mounted_weapon: WeaponResource = null
+var loaded_missile: StringName = &""  # Missile name loaded in this launcher
 var enabled: bool = true
 
 # --- Turret properties ---
@@ -230,9 +231,30 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 	if is_turret and not _can_fire:
 		return null
 
+	# Resolve missile resource for launchers
+	var missile_res: MissileResource = null
+	var is_launcher: bool = mounted_weapon.weapon_type == WeaponResource.WeaponType.MISSILE
+	if is_launcher:
+		if loaded_missile == &"":
+			return null  # No missile loaded
+		missile_res = MissileRegistry.get_missile(loaded_missile)
+		if missile_res == null:
+			return null
+
+		# Consume ammo for player ships only (NPCs have infinite ammo)
+		var ship_node_for_ammo = _get_ship_node()
+		if ship_node_for_ammo and "is_player_controlled" in ship_node_for_ammo and ship_node_for_ammo.is_player_controlled:
+			var inv = GameManager.player_inventory
+			if inv and not inv.remove_ammo(loaded_missile):
+				return null  # Out of ammo
+
 	# Check energy (apply module multiplier)
 	var energy_sys = _get_energy_system()
 	if energy_sys and mounted_weapon.ammo_type == WeaponResource.AmmoType.ENERGY:
+		if not energy_sys.consume_energy(mounted_weapon.energy_cost_per_shot * energy_cost_mult):
+			return null
+	elif energy_sys and is_launcher:
+		# Launchers still consume energy
 		if not energy_sys.consume_energy(mounted_weapon.energy_cost_per_shot * energy_cost_mult):
 			return null
 
@@ -240,27 +262,40 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 	if not is_turret:
 		set_process(true)
 
+	# Determine projectile scene path (missile overrides launcher)
+	var proj_path: String = mounted_weapon.projectile_scene_path
+	if is_launcher and missile_res:
+		proj_path = missile_res.projectile_scene_path
+
 	# Spawn projectile (prefer pool, fallback to instantiate)
 	var bolt = null
 	var pool = _get_projectile_pool()
-	if pool and mounted_weapon.projectile_scene_path != "":
-		bolt = pool.acquire(mounted_weapon.projectile_scene_path)
+	if pool and proj_path != "":
+		bolt = pool.acquire(proj_path)
 		if bolt:
 			bolt._pool = pool
 	if bolt == null:
-		if _projectile_scene == null:
+		var scene: PackedScene = load(proj_path) as PackedScene if proj_path != "" else _projectile_scene
+		if scene == null:
 			return null
-		bolt = _projectile_scene.instantiate()
+		bolt = scene.instantiate()
 		if bolt == null:
 			return null
 		get_tree().current_scene.add_child(bolt)
 
 	var ship_node =_get_ship_node()
-	bolt.damage = mounted_weapon.damage_per_hit
-	bolt.damage_type = mounted_weapon.damage_type
-	bolt.max_lifetime = mounted_weapon.projectile_lifetime * range_mult
+
+	# Use missile stats if launcher, otherwise weapon stats
+	var dmg: float = missile_res.damage_per_hit if missile_res else mounted_weapon.damage_per_hit
+	var dmg_type: StringName = missile_res.damage_type if missile_res else mounted_weapon.damage_type
+	var proj_speed: float = missile_res.projectile_speed if missile_res else mounted_weapon.projectile_speed
+	var proj_lifetime: float = missile_res.projectile_lifetime if missile_res else mounted_weapon.projectile_lifetime
+
+	bolt.damage = dmg
+	bolt.damage_type = dmg_type
+	bolt.max_lifetime = proj_lifetime * range_mult
 	bolt.owner_ship = ship_node
-	bolt.weapon_name = mounted_weapon.weapon_name
+	bolt.weapon_name = loaded_missile if is_launcher else mounted_weapon.weapon_name
 
 	var spawn_pos: Vector3
 	var fire_dir: Vector3
@@ -287,26 +322,68 @@ func try_fire(target_pos: Vector3, ship_velocity: Vector3):
 		up_hint = ship_node.global_transform.basis.y if ship_node else Vector3.UP
 
 	last_fire_dir = fire_dir  # Store for network relay
-	bolt.velocity = fire_dir * mounted_weapon.projectile_speed + ship_velocity
+	# Compensate fire direction for ship velocity so the projectile hits where aimed
+	var compensated_dir: Vector3 = _compensate_for_ship_vel(fire_dir, ship_velocity, proj_speed)
+	bolt.velocity = compensated_dir * proj_speed + ship_velocity
 	# Prevent backward-flying projectiles when ship velocity exceeds projectile speed
-	if bolt.velocity.dot(fire_dir) < mounted_weapon.projectile_speed * 0.5:
-		bolt.velocity = fire_dir * mounted_weapon.projectile_speed
+	if bolt.velocity.dot(fire_dir) < proj_speed * 0.5:
+		bolt.velocity = fire_dir * proj_speed
 	bolt.global_transform = Transform3D(Basis.looking_at(fire_dir, up_hint), spawn_pos)
 
 	# Apply weapon-specific bolt color
 	if bolt.has_method("apply_visual_config"):
-		bolt.apply_visual_config(mounted_weapon.bolt_color)
+		var color: Color = missile_res.bolt_color if missile_res else mounted_weapon.bolt_color
+		bolt.apply_visual_config(color)
 
-	# For missiles, set tracking target and reset arm timer (needed for pool reuse)
-	if bolt is MissileProjectile and mounted_weapon.weapon_type in [WeaponResource.WeaponType.MISSILE, WeaponResource.WeaponType.TURRET]:
+	# For missiles, set tracking target, model, trail, and lock state
+	if bolt is MissileProjectile and is_launcher and missile_res:
 		bolt._arm_timer = 0.3
 		bolt.target = null
-		var targeting = ship_node.get_node_or_null("TargetingSystem")
-		if targeting and targeting.current_target:
-			bolt.target = targeting.current_target
-			bolt.tracking_strength = mounted_weapon.tracking_strength
+		bolt.missile_category = missile_res.missile_category
+		bolt.missile_hp = missile_res.missile_hp
+		bolt.aoe_radius = missile_res.aoe_radius
+		bolt.tracking_strength = missile_res.tracking_strength
+		bolt.add_to_group("missiles")
+
+		# Load missile model
+		if missile_res.missile_model_scene != "":
+			bolt.setup_missile_model(missile_res.missile_model_scene, missile_res.model_scale)
+
+		# Start trail effect
+		bolt.start_trail(missile_res.bolt_color)
+
+		# Set target based on missile category
+		if missile_res.missile_category == MissileResource.MissileCategory.DUMBFIRE:
+			bolt.target = null  # Dumbfire flies straight
+		else:
+			# Guided/Torpedo: require lock before tracking
+			var lock_sys = ship_node.get_node_or_null("MissileLockSystem")
+			if lock_sys and lock_sys.is_locked:
+				var targeting = ship_node.get_node_or_null("TargetingSystem")
+				if targeting and targeting.current_target:
+					bolt.target = targeting.current_target
+			else:
+				# No lock → fires straight (like dumbfire)
+				bolt.target = null
 
 	return bolt
+
+
+## Adjust fire direction so that (dir * proj_speed + ship_vel) points at the target.
+## Solves: |k * desired_dir - ship_vel| = proj_speed, take positive k.
+static func _compensate_for_ship_vel(desired_dir: Vector3, ship_vel: Vector3, proj_speed: float) -> Vector3:
+	var dv: float = desired_dir.dot(ship_vel)
+	var disc: float = dv * dv - ship_vel.length_squared() + proj_speed * proj_speed
+	if disc < 0.0:
+		return desired_dir
+	var k: float = dv + sqrt(disc)
+	if k <= 0.0:
+		return desired_dir
+	var compensated: Vector3 = (desired_dir * k - ship_vel) / proj_speed
+	var len_sq: float = compensated.length_squared()
+	if len_sq < 0.01:
+		return desired_dir
+	return compensated / sqrt(len_sq)
 
 
 func _load_weapon_mesh(weapon: WeaponResource) -> void:

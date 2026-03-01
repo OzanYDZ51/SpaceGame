@@ -796,7 +796,8 @@ func _on_origin_shifted(shift: Vector3) -> void:
 	# Rebuild spatial grid
 	_grid.apply_origin_shift(shift)
 
-	# Shift simplified meshes (AsteroidNode positions are shifted by Universe parent)
+	# Simplified meshes and AsteroidNodes are children of Universe, so FloatingOrigin
+	# already shifted them. Just confirm simplified mesh positions match updated data.
 	for id in _simplified_meshes:
 		var mesh: MeshInstance3D = _simplified_meshes[id]
 		if is_instance_valid(mesh):
@@ -804,7 +805,11 @@ func _on_origin_shifted(shift: Vector3) -> void:
 			if asteroid:
 				mesh.position = asteroid.position
 
-	# Rebuild multimesh with shifted positions
+	# The MultiMeshInstance3D was shifted by FloatingOrigin as a Universe child,
+	# but instance transforms are LOCAL to the MMI. Reset MMI position to origin
+	# so instance transforms (which use asteroid.position in scene space) stay correct.
+	if _multimesh_instance:
+		_multimesh_instance.position = Vector3.ZERO
 	_rebuild_multimesh()
 
 

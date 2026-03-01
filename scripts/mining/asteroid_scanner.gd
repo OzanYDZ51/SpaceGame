@@ -14,7 +14,7 @@ signal scan_cooldown_changed(remaining: float, total: float)
 signal scan_results(count: int)
 
 const SCAN_COOLDOWN: float = 8.0
-const SCAN_RANGE: float = 5000.0
+const SCAN_RANGE: float = 2500.0
 
 var _asteroid_mgr = null
 var _ship: RigidBody3D = null

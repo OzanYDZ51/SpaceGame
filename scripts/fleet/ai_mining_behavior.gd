@@ -832,6 +832,11 @@ func _stop_beam() -> void:
 
 
 func _spawn_scan_pulse() -> void:
+	# Broadcast scan pulse to other players via server relay
+	if NetworkManager.is_connected_to_server():
+		var scan_upos: Array = FloatingOrigin.to_universe_pos(_ship.global_position)
+		NetworkManager._rpc_scanner_pulse.rpc_id(1, scan_upos)
+
 	# Same visual effect as player AsteroidScanner — expanding sonar bubble
 	# Only spawn if player is nearby (performance)
 	var player =GameManager.player_ship

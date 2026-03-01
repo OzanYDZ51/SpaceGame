@@ -299,6 +299,7 @@ func apply_save_state(state: Dictionary, player_ship, system_transition, _galaxy
 				"shield": inventory.add_shield(item_name, qty)
 				"engine": inventory.add_engine(item_name, qty)
 				"module": inventory.add_module(item_name, qty)
+				"ammo": inventory.add_ammo(item_name, qty)
 
 	GameManager._crash_log("apply_save_state: inventory done")
 	# Equipment

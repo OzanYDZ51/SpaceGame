@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MissileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/missile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+missile_name = &"Stinger S"
+missile_size = 0
+missile_category = 1
+damage_per_hit = 100.0
+damage_type = &"explosive"
+projectile_speed = 600.0
+projectile_lifetime = 5.0
+projectile_scene_path = "res://scenes/weapons/missile_projectile.tscn"
+tracking_strength = 0.0
+aoe_radius = 0.0
+lock_time = 0.0
+lock_cone_degrees = 15.0
+missile_hp = 20.0
+missile_model_scene = "res://scenes/weapons/models/missile_sidewinder.tscn"
+model_scale = 2.0
+bolt_color = Color(1, 0.7, 0.2, 1)
+price = 50
+sold_at_station_types = Array[StringName]([&"military", &"repair"])

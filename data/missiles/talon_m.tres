@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MissileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/missile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+missile_name = &"Talon M"
+missile_size = 1
+missile_category = 0
+damage_per_hit = 300.0
+damage_type = &"explosive"
+projectile_speed = 350.0
+projectile_lifetime = 8.0
+projectile_scene_path = "res://scenes/weapons/missile_projectile.tscn"
+tracking_strength = 100.0
+aoe_radius = 0.0
+lock_time = 2.5
+lock_cone_degrees = 15.0
+missile_hp = 60.0
+missile_model_scene = "res://scenes/weapons/models/missile_r77.tscn"
+model_scale = 2.5
+bolt_color = Color(1, 0.4, 0.1, 1)
+price = 250
+sold_at_station_types = Array[StringName]([&"military", &"repair"])

@@ -362,6 +362,7 @@
 	"equip.shields": "KALKANLAR",
 	"equip.engines": "MOTORLAR",
 	"equip.modules": "MODÜLLER",
+	"equip.ammo": "MÜHİMMAT",
 	"equip.sell_weapons": "SİLAHLAR",
 	"equip.arsenal": "CEPHANE",
 	"equip.modules_avail": "MODÜLLER MEV.",
@@ -796,6 +797,8 @@
 	"equip.btn_equip": "DONAT",
 	"equip.btn_remove": "CIKAR",
 	"equip.btn_back": "GERİ",
+	"equip.btn_load": "YÜKLE",
+	"equip.btn_unload": "BOŞALT",
 
 	"mission.status_accepted": "KABUL EDİLDİ",
 	"mission.status_limit": "LİMİT",

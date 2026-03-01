@@ -12,6 +12,7 @@ var _weapons: Dictionary = {}   # StringName -> int (count)
 var _shields: Dictionary = {}   # StringName -> int (count)
 var _engines: Dictionary = {}   # StringName -> int (count)
 var _modules: Dictionary = {}   # StringName -> int (count)
+var _ammo: Dictionary = {}      # StringName -> int (count) — missile ammo
 
 const _SIZE_ORDER := {"S": 0, "M": 1, "L": 2}
 
@@ -300,6 +301,55 @@ func is_module_compatible(module_name: StringName, slot_size: String) -> bool:
 
 
 # =============================================================================
+# AMMO (missile munitions)
+# =============================================================================
+func add_ammo(missile_name: StringName, count: int = 1) -> void:
+	if count <= 0:
+		return
+	_ammo[missile_name] = _ammo.get(missile_name, 0) + count
+	inventory_changed.emit()
+
+
+func remove_ammo(missile_name: StringName, count: int = 1) -> bool:
+	var current: int = _ammo.get(missile_name, 0)
+	if current < count:
+		return false
+	current -= count
+	if current <= 0:
+		_ammo.erase(missile_name)
+	else:
+		_ammo[missile_name] = current
+	inventory_changed.emit()
+	return true
+
+
+func get_ammo_count(missile_name: StringName) -> int:
+	return _ammo.get(missile_name, 0)
+
+
+func get_all_ammo() -> Array[StringName]:
+	var result: Array[StringName] = []
+	for key in _ammo:
+		result.append(key)
+	result.sort()
+	return result
+
+
+func has_ammo(missile_name: StringName) -> bool:
+	return _ammo.get(missile_name, 0) > 0
+
+
+func get_ammo_for_launcher_size(size: int) -> Array[StringName]:
+	var result: Array[StringName] = []
+	for missile_name in _ammo:
+		var missile := MissileRegistry.get_missile(missile_name)
+		if missile and missile.missile_size == size:
+			result.append(missile_name)
+	result.sort()
+	return result
+
+
+# =============================================================================
 # SERIALIZATION (for backend persistence)
 # =============================================================================
 func serialize() -> Array:
@@ -312,6 +362,8 @@ func serialize() -> Array:
 		items.append({"category": "engine", "item_name": str(name), "quantity": _engines[name]})
 	for name in _modules:
 		items.append({"category": "module", "item_name": str(name), "quantity": _modules[name]})
+	for name in _ammo:
+		items.append({"category": "ammo", "item_name": str(name), "quantity": _ammo[name]})
 	return items
 
 
@@ -320,4 +372,5 @@ func clear_all() -> void:
 	_shields.clear()
 	_engines.clear()
 	_modules.clear()
+	_ammo.clear()
 	inventory_changed.emit()

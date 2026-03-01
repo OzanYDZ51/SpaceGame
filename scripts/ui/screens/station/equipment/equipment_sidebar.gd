@@ -18,6 +18,7 @@ var _arsenal_items: Array[StringName] = []
 var _current_tab: int = 0
 var _selected_hardpoint: int = -1
 var _selected_module_slot: int = -1
+var _showing_missiles: bool = false
 
 
 func _ready() -> void:
@@ -96,12 +97,18 @@ func _refresh_arsenal() -> void:
 		_arsenal_list.queue_redraw()
 		return
 
+	_showing_missiles = false
 	match _current_tab:
 		0:
 			if _selected_hardpoint >= 0 and _adapter:
-				var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
-				var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
-				_arsenal_items = _inventory.get_weapons_for_slot(hp_sz, hp_turret)
+				var mounted: WeaponResource = _adapter.get_mounted_weapon(_selected_hardpoint)
+				if mounted and mounted.weapon_type == WeaponResource.WeaponType.MISSILE:
+					_showing_missiles = true
+					_arsenal_items = _inventory.get_ammo_for_launcher_size(mounted.compatible_missile_size)
+				else:
+					var hp_sz: String = _adapter.get_hardpoint_slot_size(_selected_hardpoint)
+					var hp_turret: bool = _adapter.is_hardpoint_turret(_selected_hardpoint)
+					_arsenal_items = _inventory.get_weapons_for_slot(hp_sz, hp_turret)
 			else:
 				_arsenal_items = _inventory.get_all_weapons()
 		1:
@@ -137,7 +144,11 @@ func _draw_arsenal_row(ctrl: Control, index: int, rect: Rect2, _item: Variant) -
 	if index < 0 or index >= _arsenal_items.size():
 		return
 	match _current_tab:
-		0: _draw_weapon_row(ctrl, index, rect)
+		0:
+			if _showing_missiles:
+				_draw_missile_ammo_row(ctrl, index, rect)
+			else:
+				_draw_weapon_row(ctrl, index, rect)
 		1: _draw_module_row(ctrl, index, rect)
 		2: _draw_shield_row(ctrl, index, rect)
 		3: _draw_engine_row(ctrl, index, rect)
@@ -283,6 +294,48 @@ func _draw_module_row(ctrl: Control, index: int, rect: Rect2) -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
 
 	_draw_qty_and_size_badges(ctrl, font, rect, count, slot_size_str, compatible, alpha_mult)
+
+
+func _draw_missile_ammo_row(ctrl: Control, index: int, rect: Rect2) -> void:
+	var missile_name: StringName = _arsenal_items[index]
+	var missile = MissileRegistry.get_missile(missile_name)
+	if missile == null:
+		return
+	var font: Font = UITheme.get_font()
+	var count: int = _inventory.get_ammo_count(missile_name) if _inventory else 0
+	var size_str: String = ["S", "M", "L"][missile.missile_size]
+	var col: Color = UITheme.DANGER
+
+	# Missile icon
+	var icon_cx: float = rect.position.x + 24.0
+	var icon_cy: float = rect.position.y + rect.size.y * 0.5
+	var icon_r: float = 16.0
+	ctrl.draw_arc(Vector2(icon_cx, icon_cy), icon_r, 0, TAU, 20,
+		Color(col.r, col.g, col.b, 0.15), icon_r * 0.7)
+	ctrl.draw_arc(Vector2(icon_cx, icon_cy), icon_r, 0, TAU, 20,
+		Color(col.r, col.g, col.b, 0.6), 1.5)
+	var r: float = 8.0
+	ctrl.draw_line(Vector2(icon_cx, icon_cy - r), Vector2(icon_cx, icon_cy + r * 0.6), col, 1.5)
+	ctrl.draw_line(Vector2(icon_cx, icon_cy - r), Vector2(icon_cx - r * 0.3, icon_cy - r * 0.5), col, 1.0)
+	ctrl.draw_line(Vector2(icon_cx, icon_cy - r), Vector2(icon_cx + r * 0.3, icon_cy - r * 0.5), col, 1.0)
+	ctrl.draw_line(Vector2(icon_cx - r * 0.4, icon_cy + r * 0.6), Vector2(icon_cx, icon_cy + r * 0.3), col, 1.0)
+	ctrl.draw_line(Vector2(icon_cx + r * 0.4, icon_cy + r * 0.6), Vector2(icon_cx, icon_cy + r * 0.3), col, 1.0)
+
+	# Name
+	var name_x: float = rect.position.x + 48
+	var name_max_w: float = rect.size.x - 48 - 90
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 22), str(missile_name),
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_BODY, UITheme.TEXT)
+
+	# Stats
+	var cat_names: Array = ["Guide", "Dumbfire", "Torpille"]
+	var cat_str: String = cat_names[missile.missile_category] if missile.missile_category < cat_names.size() else ""
+	var dim_col: Color = Color(UITheme.TEXT_DIM.r, UITheme.TEXT_DIM.g, UITheme.TEXT_DIM.b, 0.7)
+	ctrl.draw_string(font, Vector2(name_x, rect.position.y + 38),
+		"%s  %.0f DMG" % [cat_str, missile.damage_per_hit],
+		HORIZONTAL_ALIGNMENT_LEFT, name_max_w, UITheme.FONT_SIZE_SMALL, dim_col)
+
+	_draw_qty_and_size_badges(ctrl, font, rect, count, size_str, true, 1.0)
 
 
 # =============================================================================

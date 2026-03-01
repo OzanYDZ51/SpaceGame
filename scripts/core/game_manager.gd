@@ -18,6 +18,10 @@ var player_ship: RigidBody3D = null
 var universe_node: Node3D = null
 var main_scene: Node3D = null
 var _music_player: AudioStreamPlayer = null
+var _ship_ambient_player: AudioStreamPlayer = null
+var _cruise_player: AudioStreamPlayer = null
+var _cruise_exit_player: AudioStreamPlayer = null
+var _cruise_exit_tween: Tween = null
 var _stellar_map = null
 var _screen_manager = null
 var _tooltip_manager = null
@@ -625,6 +629,7 @@ func _initialize_game() -> void:
 	_lod_manager.add_child(proj_pool)
 	# Pre-warm pools for all projectile types to avoid runtime instantiation
 	proj_pool.warm_pool("res://scenes/weapons/laser_bolt.tscn", 200)
+	proj_pool.warm_pool("res://scenes/weapons/missile_projectile.tscn", 50)
 
 	# Asteroid Field Manager (must exist before system loading)
 	_asteroid_field_mgr = AsteroidFieldManager.new()
@@ -693,12 +698,17 @@ func _initialize_game() -> void:
 	add_child(_death_respawn_mgr)
 	_death_respawn_mgr.player_died.connect(func():
 		current_state = GameState.DEAD
+		if _ship_ambient_player and _ship_ambient_player.playing:
+			_ship_ambient_player.stop()
+		_stop_cruise_audio()
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
 		SaveManager.trigger_save("player_death")
 	)
 	_death_respawn_mgr.player_respawned.connect(func():
 		current_state = GameState.PLAYING
+		if _ship_ambient_player and not _ship_ambient_player.playing:
+			_ship_ambient_player.play()
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
 		SaveManager.trigger_save("respawned")
@@ -819,11 +829,44 @@ func _initialize_game() -> void:
 		_music_player.finished.connect(_music_player.play)
 		_music_player.play()
 
+		# Ship cockpit ambient — plays while flying, stops when docked/dead
+		_ship_ambient_player = AudioStreamPlayer.new()
+		_ship_ambient_player.stream = load("res://assets/audio/ship_ambient.mp3")
+		_ship_ambient_player.volume_db = -20.0
+		_ship_ambient_player.bus = "SFX"
+		_ship_ambient_player.name = "ShipAmbient"
+		add_child(_ship_ambient_player)
+		_ship_ambient_player.finished.connect(_ship_ambient_player.play)
+
+		# Cruise sound — 0-2s = spool-up intro, 2s+ = looping body
+		var cruise_stream: AudioStreamMP3 = load("res://assets/audio/cruise_sound.mp3")
+		if cruise_stream:
+			var cruise_loop_stream: AudioStreamMP3 = cruise_stream.duplicate()
+			cruise_loop_stream.loop = true
+			cruise_loop_stream.loop_offset = 2.0
+			_cruise_player = AudioStreamPlayer.new()
+			_cruise_player.stream = cruise_loop_stream
+			_cruise_player.volume_db = -10.0
+			_cruise_player.bus = "SFX"
+			_cruise_player.name = "CruiseSound"
+			add_child(_cruise_player)
+			# Exit sound — replays the 0-2s intro at lower volume, fades out
+			_cruise_exit_player = AudioStreamPlayer.new()
+			_cruise_exit_player.stream = cruise_stream.duplicate()
+			_cruise_exit_player.volume_db = -18.0
+			_cruise_exit_player.bus = "SFX"
+			_cruise_exit_player.name = "CruiseExitSound"
+			add_child(_cruise_exit_player)
+
 	_crash_log("_init: music_player done")
 
 	# Visual effects
 	_setup_visual_effects()
 	_crash_log("_init: visual_effects done")
+
+	# Cruise audio (connect to player ship signals + reconnect on ship change)
+	_connect_cruise_audio(player_ship)
+	player_ship_rebuilt.connect(_connect_cruise_audio)
 
 	_crash_log("_init: before NetworkSyncManager")
 	# Network Sync Manager (creates ShipNetworkSync, ServerAuthority, NpcAuthority, etc.)
@@ -908,12 +951,17 @@ func _initialize_game() -> void:
 	_market_screen.closed.connect(_docking_mgr.handle_market_closed)
 	_docking_mgr.docked.connect(func(_sn: String):
 		current_state = GameState.DOCKED
+		if _ship_ambient_player and _ship_ambient_player.playing:
+			_ship_ambient_player.stop()
+		_stop_cruise_audio()
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
 		SaveManager.trigger_save("docked")
 	)
 	_docking_mgr.undocked.connect(func():
 		current_state = GameState.PLAYING
+		if _ship_ambient_player and not _ship_ambient_player.playing:
+			_ship_ambient_player.play()
 		if _discord_rpc:
 			_discord_rpc.update_from_game_state(current_state)
 		# Safety: ensure fleet NPCs are visible after undock
@@ -967,6 +1015,8 @@ func _initialize_game() -> void:
 
 	_crash_log("_init: all managers created, setting state PLAYING")
 	current_state = GameState.PLAYING
+	if _ship_ambient_player and not _ship_ambient_player.playing:
+		_ship_ambient_player.play()
 	if _discord_rpc:
 		_discord_rpc.update_from_game_state(current_state)
 
@@ -1184,6 +1234,53 @@ func _setup_visual_effects() -> void:
 	var camera = player_ship.get_node_or_null("ShipCamera")
 	_vfx_manager.initialize(player_ship, camera, universe_node, main_scene)
 	player_ship_rebuilt.connect(_vfx_manager.on_ship_rebuilt)
+
+
+func _connect_cruise_audio(ship: Node3D) -> void:
+	if _cruise_player == null:
+		return
+	if ship.has_signal("cruise_enter_triggered"):
+		if not ship.cruise_enter_triggered.is_connected(_on_cruise_enter_audio):
+			ship.cruise_enter_triggered.connect(_on_cruise_enter_audio)
+	if ship.has_signal("cruise_exit_triggered"):
+		if not ship.cruise_exit_triggered.is_connected(_on_cruise_exit_audio):
+			ship.cruise_exit_triggered.connect(_on_cruise_exit_audio)
+
+
+func _stop_cruise_audio() -> void:
+	if _cruise_player and _cruise_player.playing:
+		_cruise_player.stop()
+	if _cruise_exit_player and _cruise_exit_player.playing:
+		_cruise_exit_player.stop()
+	if _cruise_exit_tween:
+		_cruise_exit_tween.kill()
+		_cruise_exit_tween = null
+
+
+func _on_cruise_enter_audio() -> void:
+	if _cruise_player and not _cruise_player.playing:
+		_cruise_player.play(0.0)
+	if _cruise_exit_player and _cruise_exit_player.playing:
+		_cruise_exit_player.stop()
+	if _cruise_exit_tween:
+		_cruise_exit_tween.kill()
+		_cruise_exit_tween = null
+
+
+func _on_cruise_exit_audio() -> void:
+	# Stop the main cruise loop
+	if _cruise_player and _cruise_player.playing:
+		_cruise_player.stop()
+	# Play the 0-2s intro portion at lower volume as wind-down
+	if _cruise_exit_player:
+		if _cruise_exit_tween:
+			_cruise_exit_tween.kill()
+		_cruise_exit_player.volume_db = -18.0
+		_cruise_exit_player.play(0.0)
+		# Fade out over 2 seconds, then stop
+		_cruise_exit_tween = create_tween()
+		_cruise_exit_tween.tween_property(_cruise_exit_player, "volume_db", -60.0, 2.0)
+		_cruise_exit_tween.tween_callback(_cruise_exit_player.stop)
 
 
 func _on_system_unloading(system_id: int) -> void:
@@ -1604,6 +1701,9 @@ func _on_player_destroyed() -> void:
 	if current_state == GameState.DEAD:
 		return
 	current_state = GameState.DEAD
+	if _ship_ambient_player and _ship_ambient_player.playing:
+		_ship_ambient_player.stop()
+	_stop_cruise_audio()
 	if _death_respawn_mgr:
 		_death_respawn_mgr.handle_player_destroyed()
 

@@ -362,6 +362,7 @@
 	"equip.shields": "SHIELDS",
 	"equip.engines": "ENGINES",
 	"equip.modules": "MODULES",
+	"equip.ammo": "AMMO",
 	"equip.sell_weapons": "WEAPONS",
 	"equip.arsenal": "ARSENAL",
 	"equip.modules_avail": "MODULES AVAIL.",
@@ -796,6 +797,8 @@
 	"equip.btn_equip": "EQUIP",
 	"equip.btn_remove": "REMOVE",
 	"equip.btn_back": "BACK",
+	"equip.btn_load": "LOAD",
+	"equip.btn_unload": "UNLOAD",
 
 	"mission.status_accepted": "ACCEPTED",
 	"mission.status_limit": "LIMIT",

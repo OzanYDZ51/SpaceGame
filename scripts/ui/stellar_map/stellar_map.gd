@@ -1282,10 +1282,27 @@ func _open_fleet_context_menu(screen_pos: Vector2) -> void:
 	# --- Fleet orders (only if a ship is selected) ---
 	var effective_idx =_get_effective_fleet_index()
 	var has_fleet: bool = effective_idx >= 0 and _fleet_panel._fleet != null and effective_idx < _fleet_panel._fleet.ships.size()
+	var target_entity_id: String = _entity_layer.get_entity_at(screen_pos)
+
+	# If right-clicking on a known entity, use its actual position (not screen-to-universe)
+	# so "DEPLACER" sends the fleet ship to the entity, not to an imprecise screen coord.
+	if target_entity_id != "":
+		var target_ent: Dictionary = EntityRegistry.get_entity(target_entity_id)
+		if not target_ent.is_empty():
+			universe_x = target_ent["pos_x"]
+			universe_z = target_ent["pos_z"]
+
+	# Detect if the target entity IS the selected fleet ship (self-target = useless move_to)
+	var is_self_target: bool = false
+	if has_fleet and target_entity_id != "":
+		var sel_eid: String = _get_fleet_entity_id(effective_idx)
+		is_self_target = target_entity_id == sel_eid
+
 	var context: Dictionary = {
 		"universe_x": universe_x,
 		"universe_z": universe_z,
-		"target_entity_id": _entity_layer.get_entity_at(screen_pos),
+		"target_entity_id": target_entity_id,
+		"is_self_target": is_self_target,
 	}
 
 	# Check if a construction marker is near the click position

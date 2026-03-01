@@ -63,6 +63,34 @@ func _create_hardpoints_from_configs(configs: Array[Dictionary], parent: Node3D)
 	_fire_index = {0: 0, 1: 0, 2: 0}
 
 
+func equip_missiles(missile_names: Array[StringName]) -> void:
+	for i in mini(missile_names.size(), hardpoints.size()):
+		hardpoints[i].loaded_missile = missile_names[i]
+	# Notify MissileLockSystem about missile changes
+	var ship_node: Node3D = get_parent()
+	if ship_node:
+		var lock_sys = ship_node.get_node_or_null("MissileLockSystem")
+		if lock_sys:
+			lock_sys.notify_weapons_changed()
+
+
+func load_missile(hardpoint_idx: int, missile_name: StringName) -> void:
+	if hardpoint_idx >= 0 and hardpoint_idx < hardpoints.size():
+		hardpoints[hardpoint_idx].loaded_missile = missile_name
+		var ship_node: Node3D = get_parent()
+		if ship_node:
+			var lock_sys = ship_node.get_node_or_null("MissileLockSystem")
+			if lock_sys:
+				lock_sys.notify_weapons_changed()
+		loadout_changed.emit()
+
+
+func get_loaded_missile(hardpoint_idx: int) -> StringName:
+	if hardpoint_idx >= 0 and hardpoint_idx < hardpoints.size():
+		return hardpoints[hardpoint_idx].loaded_missile
+	return &""
+
+
 func equip_weapons(weapon_names: Array[StringName]) -> void:
 	if hardpoints.is_empty() and not weapon_names.is_empty():
 		push_warning("WeaponManager.equip_weapons: hardpoints is EMPTY but %d weapons requested!" % weapon_names.size())
@@ -110,6 +138,7 @@ func get_hardpoint_status(index: int) -> Dictionary:
 	result["enabled"] = hp.enabled
 	result["cooldown_ratio"] = hp.get_cooldown_ratio()
 	result["fire_group"] = fire_grp
+	result["loaded_missile"] = hp.loaded_missile
 	return result
 
 
@@ -404,6 +433,12 @@ func _recalculate_groups() -> void:
 	if weapon_groups[0].is_empty() and not weapon_groups[1].is_empty():
 		weapon_groups[0] = weapon_groups[1].duplicate()
 	_fire_index = {0: 0, 1: 0, 2: 0}
+	# Notify MissileLockSystem about weapon changes
+	var ship_node: Node3D = get_parent()
+	if ship_node:
+		var lock_sys = ship_node.get_node_or_null("MissileLockSystem")
+		if lock_sys:
+			lock_sys.notify_weapons_changed()
 
 
 func _on_projectile_hit(hit_info: Dictionary, damage_amount: float, killed: bool) -> void:
