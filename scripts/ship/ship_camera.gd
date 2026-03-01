@@ -14,7 +14,7 @@ enum CameraMode { THIRD_PERSON, COCKPIT, CINEMATIC }
 @export var cam_height: float = 8.0            ## Height above ship
 @export var cam_distance_default: float = 25.0 ## Default follow distance
 @export var cam_distance_min: float = 25.0     ## Min physical zoom distance (prevents fillrate FPS drops)
-@export var cam_distance_max: float = 250.0    ## Max zoom distance
+@export var cam_distance_max: float = 500.0    ## Max zoom distance
 @export var cam_follow_speed: float = 18.0     ## Position follow speed
 @export var cam_rotation_speed: float = 10.0   ## Rotation follow speed (low = cinematic lag)
 @export var cam_look_ahead_y: float = 0.0      ## Vertical offset for look target
@@ -110,7 +110,6 @@ const CINEMATIC_SPEEDS: Array[float] = [5.0, 20.0, 50.0, 150.0, 500.0]
 const CINEMATIC_BOOST_MULT: float = 5.0
 
 ## Ship-size camera scaling — base values saved from @export defaults
-const CAMERA_REF_SCALE: float = 2.0  ## Reference model_scale (fighters)
 var _base_distance_default: float
 var _base_distance_min: float
 var _base_distance_max: float
@@ -189,18 +188,15 @@ func _find_combat_systems() -> void:
 
 
 ## Auto-scale camera distance, height, zoom bounds to match ship visual size.
-## Uses model_scale from ShipData — larger ships get proportionally farther camera.
+## Computes actual bounding radius from the convex collision shape (built from mesh
+## vertices at correct model_scale). Falls back to ShipData.model_scale if unavailable.
 ## All values are derived from the saved @export base values × a sub-linear factor.
 func adapt_to_ship_size() -> void:
 	if _ship == null:
 		return
-	var ship_data = _ship.get("ship_data")
-	if ship_data == null:
-		return
-	var model_scale: float = ship_data.model_scale
-	if model_scale <= 0.0:
-		return
-	var ratio: float = model_scale / CAMERA_REF_SCALE
+	var visual_radius: float = _get_ship_visual_radius()
+	# Reference: a small fighter (Chasseur Viper) has ~15m bounding radius
+	var ratio: float = visual_radius / 15.0
 	# Sub-linear curve: pow(ratio, 0.7) prevents absurd distances on huge ships
 	var factor: float = pow(maxf(ratio, 1.0), 0.7)
 	cam_distance_default = _base_distance_default * factor
@@ -211,10 +207,30 @@ func adapt_to_ship_size() -> void:
 	cockpit_offset = _base_cockpit_offset * factor
 
 
+## Compute the ship's visual bounding radius from its convex collision shape.
+## The ConvexPolygonShape3D is built from mesh vertices × model_scale by ShipFactory,
+## so it accurately represents the visual extent regardless of model export size.
+func _get_ship_visual_radius() -> float:
+	var col = _ship.get_node_or_null("CollisionShape3D")
+	if col and col.shape is ConvexPolygonShape3D:
+		var points: PackedVector3Array = col.shape.points
+		var max_r_sq: float = 0.0
+		for p in points:
+			max_r_sq = maxf(max_r_sq, p.length_squared())
+		var r: float = sqrt(max_r_sq)
+		if r > 1.0:
+			return r
+	# Fallback: use model_scale from ShipData
+	var ship_data = _ship.get("ship_data")
+	if ship_data and ship_data.model_scale > 0.0:
+		return ship_data.model_scale * 10.0
+	return 15.0
+
+
 func _on_ship_rebuilt(_ship_ref) -> void:
 	adapt_to_ship_size()
-	# Smoothly transition to new default distance, reset any optical zoom
-	target_distance = cam_distance_default
+	# Start zoomed out so the player sees the ship + surroundings
+	target_distance = cam_distance_max
 	_fov_zoom_offset = 0.0
 	_find_combat_systems()
 
@@ -549,6 +565,16 @@ func _update_cinematic(delta: float) -> void:
 
 	# --- FOV ---
 	fov = lerpf(fov, _cinematic_fov, 5.0 * delta)
+
+
+## Add camera shake from nearby explosion. Attenuates with distance.
+## Full force < 50m, fades to zero at 500m.
+func add_explosion_shake(intensity: float, distance: float) -> void:
+	var attenuation: float = clampf(1.0 - (distance - 50.0) / 450.0, 0.0, 1.0)
+	var final_intensity: float = intensity * attenuation
+	if final_intensity < 0.01:
+		return
+	_shake_layers.append({"intensity": final_intensity, "decay": 5.0, "frequency": 1.0, "time": 0.0})
 
 
 func _on_origin_shifted(shift: Vector3) -> void:

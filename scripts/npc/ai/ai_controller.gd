@@ -426,8 +426,8 @@ func _tick_behavior(dt: float) -> void:
 				_enter_combat(table_threat)
 				return
 
-	# Check for loot during patrol
-	if _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
+	# Check for loot during patrol (route-priority convoy leaders skip loot to stay on route)
+	if not route_priority and _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
 		if _loot_pickup and _loot_pickup.can_pickup and _loot_pickup.nearest_crate:
 			var lb := LootBehavior.new()
 			lb.controller = self
@@ -536,6 +536,12 @@ func alert_to_threat(attacker: Node3D) -> void:
 	if mode == Mode.DEAD or ignore_threats or not weapons_enabled:
 		return
 	perception.alert_to_threat(attacker)
+	# Route-priority leaders: fire defensively but don't abandon patrol
+	if route_priority and mode == Mode.BEHAVIOR and _current_behavior and _current_behavior.get_behavior_name() == AIBehavior.NAME_PATROL:
+		_combat_behavior.set_target(attacker)
+		if _health and _health.get_hull_ratio() < 0.5:
+			_enter_combat(attacker)
+		return
 	if mode in [Mode.IDLE, Mode.BEHAVIOR]:
 		if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_COMBAT:
 			_enter_combat(attacker)

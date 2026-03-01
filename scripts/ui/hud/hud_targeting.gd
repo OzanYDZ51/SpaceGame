@@ -110,6 +110,9 @@ func _draw_target_overlay(ctrl: Control) -> void:
 	# Draw incoming missile warnings (always, even without target)
 	_draw_incoming_missiles(ctrl, cam, cf)
 
+	# Draw outgoing missile markers (our missiles in flight)
+	_draw_outgoing_missiles(ctrl, cam, cf)
+
 	if targeting_system == null:
 		return
 	if targeting_system.current_target == null or not is_instance_valid(targeting_system.current_target):
@@ -228,6 +231,60 @@ func _draw_missile_warning_diamond(ctrl: Control, sp: Vector2, dist: float) -> v
 	])
 	ctrl.draw_colored_polygon(points, Color(col.r, col.g, col.b, col.a * 0.3))
 	ctrl.draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), col, 1.5)
+
+
+func _draw_outgoing_missiles(ctrl: Control, cam: Camera3D, cam_fwd: Vector3) -> void:
+	if ship == null or not is_instance_valid(ship):
+		return
+	var missiles: Array = get_tree().get_nodes_in_group("missiles") if is_inside_tree() else []
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var drawn: int = 0
+
+	for m in missiles:
+		if not (m is MissileProjectile) or not m.visible:
+			continue
+		# Only our missiles
+		if m.owner_ship != ship:
+			continue
+		if drawn >= 8:
+			break
+
+		var dist: float = ship.global_position.distance_to(m.global_position)
+		var to_missile: Vector3 = (m.global_position - cam.global_position).normalized()
+		var on_screen: bool = cam_fwd.dot(to_missile) > 0.1
+		var missile_label: String = str(m.weapon_name).left(6)
+
+		if on_screen:
+			var sp: Vector2 = cam.unproject_position(m.global_position)
+			_draw_outgoing_missile_marker(ctrl, sp, dist, missile_label)
+		else:
+			# Off-screen: marker at edge
+			var screen_center: Vector2 = viewport_size / 2.0
+			var sp: Vector2 = cam.unproject_position(m.global_position)
+			var dir: Vector2 = (sp - screen_center).normalized()
+			var edge_pos: Vector2 = screen_center + dir * minf(viewport_size.x, viewport_size.y) * 0.45
+			_draw_outgoing_missile_marker(ctrl, edge_pos, dist, missile_label)
+		drawn += 1
+
+
+func _draw_outgoing_missile_marker(ctrl: Control, sp: Vector2, dist: float, missile_name: String) -> void:
+	var col: Color = UITheme.ACCENT
+	var sz: float = 7.0
+
+	# Downward-pointing chevron
+	var p1: Vector2 = sp + Vector2(-sz, -sz * 0.5)
+	var p2: Vector2 = sp + Vector2(0, sz * 0.5)
+	var p3: Vector2 = sp + Vector2(sz, -sz * 0.5)
+	ctrl.draw_line(p1, p2, col, 1.5)
+	ctrl.draw_line(p2, p3, col, 1.5)
+
+	# Missile name above
+	var font: Font = UITheme.get_font()
+	ctrl.draw_string(font, sp + Vector2(0, -sz - 2), missile_name, HORIZONTAL_ALIGNMENT_CENTER, 60, 9, col)
+
+	# Distance below
+	var dist_text: String = HudDrawHelpers.format_nav_distance(dist)
+	ctrl.draw_string(font, sp + Vector2(0, sz + 10), dist_text, HORIZONTAL_ALIGNMENT_CENTER, 60, 9, Color(col.r, col.g, col.b, 0.7))
 
 
 # =============================================================================

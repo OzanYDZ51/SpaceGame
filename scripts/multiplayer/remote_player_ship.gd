@@ -34,7 +34,9 @@ var _dr_time: float = 0.0       # Local time when last cruise packet was receive
 
 # Visual
 var _ship_model = null
+var _engine_exhaust: EngineExhaust = null
 var _health_system: HealthSystem = null
+var _current_loadout: Array = []  ## Cached loadout for change detection
 
 
 func _ready() -> void:
@@ -66,6 +68,18 @@ func _setup_model() -> void:
 	_ship_model.color_tint = Color(0.6, 0.85, 1.0)
 	_ship_model.engine_light_color = Color(0.3, 0.7, 1.0)
 	add_child(_ship_model)
+	_setup_engine_exhaust()
+
+
+func _setup_engine_exhaust() -> void:
+	if _ship_model == null:
+		return
+	var vfx_pts: Array[Dictionary] = ShipFactory.get_vfx_points(ship_id)
+	var data: ShipData = ShipRegistry.get_ship_data(ship_id)
+	_engine_exhaust = EngineExhaust.new()
+	_engine_exhaust.name = "EngineExhaust"
+	_ship_model.add_child(_engine_exhaust)
+	_engine_exhaust.setup(_ship_model.model_scale, _ship_model.engine_light_color, vfx_pts, data)
 
 
 func _setup_collision() -> void:
@@ -104,17 +118,36 @@ func _setup_health_proxy() -> void:
 	_health_system.set_process(false)  # No local shield regen
 
 
+## Apply weapon meshes at hardpoint positions on the ship model.
+func _apply_loadout(loadout: Array) -> void:
+	_current_loadout = loadout.duplicate()
+	if _ship_model == null:
+		return
+	var configs: Array[Dictionary] = ShipFactory.get_hardpoint_configs(ship_id)
+	if configs.is_empty():
+		return
+	var weapon_names: Array[StringName] = []
+	for wn in loadout:
+		weapon_names.append(StringName(wn))
+	var root_basis: Basis = ShipFactory.get_root_basis(ship_id)
+	_ship_model.apply_equipment(configs, weapon_names, root_basis)
+
+
 ## Rebuild ship model when the remote player changes ship.
 func change_ship_model(new_ship_id: StringName) -> void:
 	if new_ship_id == ship_id:
 		return
 	ship_id = new_ship_id
-	# Remove old model
+	_current_loadout = []  # Force re-apply on next state
+	# Remove old exhaust + model
+	if _engine_exhaust and is_instance_valid(_engine_exhaust):
+		_engine_exhaust.queue_free()
+		_engine_exhaust = null
 	if _ship_model and is_instance_valid(_ship_model):
 		remove_child(_ship_model)
 		_ship_model.queue_free()
 		_ship_model = null
-	# Build new model
+	# Build new model (includes exhaust)
 	_setup_model()
 
 
@@ -133,6 +166,10 @@ func receive_state(state) -> void:
 	# Detect ship change from state
 	if state.ship_id != &"" and state.ship_id != ship_id:
 		change_ship_model(state.ship_id)
+
+	# Detect weapon loadout change and apply weapon meshes
+	if not state.loadout.is_empty() and state.loadout != _current_loadout:
+		_apply_loadout(state.loadout)
 
 	# Track cruise state for visual effects (engine glow)
 	_is_cruising = state.is_cruising
@@ -365,6 +402,10 @@ func _extrapolate_smooth(render_time: float) -> void:
 func _update_engine_glow(throttle_amount: float) -> void:
 	if _ship_model:
 		_ship_model.update_engine_glow(throttle_amount)
+	if _engine_exhaust and is_instance_valid(_engine_exhaust):
+		var speed_mode: int = Constants.SpeedMode.CRUISE if _is_cruising else Constants.SpeedMode.NORMAL
+		var speed: float = linear_velocity.length()
+		_engine_exhaust.update_intensity(throttle_amount, speed_mode, speed)
 
 
 ## Spawn a death explosion at this puppet's location.

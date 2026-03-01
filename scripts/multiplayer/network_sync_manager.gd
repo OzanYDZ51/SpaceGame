@@ -693,6 +693,20 @@ func _on_remote_player_died(peer_id: int, death_pos: Array, killer_pid: int, loo
 		var remote = remote_players[peer_id]
 		if is_instance_valid(remote):
 			remote.show_death_explosion()
+			# Immediately hide the puppet (don't wait for next state batch)
+			remote.visible = false
+			if remote.is_in_group("ships"):
+				remote.remove_from_group("ships")
+			var hit_body = remote.get_node_or_null("HitBody") as StaticBody3D
+			if hit_body:
+				hit_body.collision_layer = 0
+
+	# Mark LOD data as dead so nav markers hide the name
+	if lod_manager:
+		var rid := StringName("RemotePlayer_%d" % peer_id)
+		var rdata = lod_manager.get_ship_data(rid)
+		if rdata:
+			rdata.is_dead = true
 
 	# Spawn cargo crate for ALL clients so everyone sees it
 	if not loot.is_empty():
@@ -733,7 +747,8 @@ func _spawn_synced_crate(crate_id: String, death_pos: Array, loot: Array, owner_
 		if item is Dictionary:
 			typed_loot.append(item)
 	crate.contents = typed_loot
-	crate.owner_peer_id = owner_pid
+	crate.owner_peer_id = owner_pid if owner_pid > 1 else -1
+	crate._abandon_time = 30.0  # 30s exclusive loot for killer, then free-for-all
 	crate.sync_id = crate_id
 	if universe_node:
 		universe_node.add_child(crate)

@@ -433,7 +433,11 @@ func _rpc_register_player(player_name: String, ship_id_str: String, player_uuid:
 	_rpc_server_config.rpc_id(sender_id, config)
 	_chat_server.send_history_to_peer(sender_id, spawn_sys)
 
-	if is_reconnect and player_uuid != "":
+	# Always sync fleet status for UUID players — not just reconnects.
+	# After a server restart, is_reconnect is false (UUID maps are empty),
+	# but the client may still have stale DEPLOYED fleet state from the backend.
+	# Sending fleet status ensures the client resets orphaned fleet ships.
+	if player_uuid != "":
 		var npc_auth: Node = GameManager.get_node_or_null("NpcAuthority") as Node
 		if npc_auth:
 			npc_auth.on_player_reconnected(player_uuid, sender_id)

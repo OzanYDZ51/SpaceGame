@@ -33,6 +33,7 @@ var is_cruising: bool = false  ## True when cruise warp is active (phase 2 punch
 var corporation_tag: String = ""
 var group_id: int = 0  ## Ephemeral party group (0 = none)
 var role: String = "player"  ## "player" or "admin"
+var loadout: Array = []  ## Weapon StringNames per hardpoint (visual sync for remote ships)
 
 # Timing
 var timestamp: float = 0.0
@@ -62,6 +63,7 @@ func to_dict() -> Dictionary:
 		"ctag": corporation_tag,
 		"gid": group_id,
 		"rl": role,
+		"lo": loadout,
 		"t": timestamp,
 	}
 
@@ -88,6 +90,7 @@ func from_dict(d: Dictionary) -> void:
 	corporation_tag = d.get("ctag", "")
 	group_id = d.get("gid", 0)
 	role = d.get("rl", "player")
+	loadout = d.get("lo", [])
 	timestamp = d.get("t", 0.0)
 
 

@@ -22,6 +22,7 @@ const EXTRAPOLATION_MAX: float = Constants.NPC_EXTRAPOLATION_MAX
 
 # Visual
 var _ship_model = null
+var _engine_exhaust: EngineExhaust = null
 # Health proxy (synced from network state)
 var _health: HealthSystem = null
 
@@ -67,6 +68,18 @@ func _setup_model() -> void:
 		_ship_model.engine_light_color = Color(0.5, 0.4, 1.0)
 
 	add_child(_ship_model)
+	_setup_engine_exhaust()
+
+
+func _setup_engine_exhaust() -> void:
+	if _ship_model == null:
+		return
+	var vfx_pts: Array[Dictionary] = ShipFactory.get_vfx_points(ship_id)
+	var data: ShipData = ShipRegistry.get_ship_data(ship_id)
+	_engine_exhaust = EngineExhaust.new()
+	_engine_exhaust.name = "EngineExhaust"
+	_ship_model.add_child(_engine_exhaust)
+	_engine_exhaust.setup(_ship_model.model_scale, _ship_model.engine_light_color, vfx_pts, data)
 
 
 func _setup_collision() -> void:
@@ -275,6 +288,9 @@ func _extrapolate_smooth(render_time: float) -> void:
 func _update_engine_glow(throttle_amount: float) -> void:
 	if _ship_model:
 		_ship_model.update_engine_glow(throttle_amount)
+	if _engine_exhaust and is_instance_valid(_engine_exhaust):
+		var speed: float = linear_velocity.length()
+		_engine_exhaust.update_intensity(throttle_amount, Constants.SpeedMode.NORMAL, speed)
 
 
 ## Play death animation and clean up.

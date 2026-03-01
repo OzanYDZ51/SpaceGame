@@ -52,6 +52,14 @@ func _process(delta: float) -> void:
 			can_dock = false
 			dock_unavailable.emit()
 
+	# Safety: clear stale bay flag if bay station was freed/unloaded
+	if _in_bay and (_bay_station == null or not is_instance_valid(_bay_station)):
+		_in_bay = false
+		_bay_station = null
+		if can_dock:
+			can_dock = false
+			dock_unavailable.emit()
+
 	# Bay docking: if inside a bay, check speed for dock availability
 	if _in_bay and _bay_station != null and is_instance_valid(_bay_station):
 		var was_available: bool = can_dock
@@ -139,6 +147,10 @@ func _scan_stations() -> void:
 
 	# Stations with docking bays use bay-entry detection instead
 	if best_node and best_node.has_signal("ship_entered_bay"):
+		# Safety: clear stale bay flag if player is far beyond dock range
+		if _in_bay and best_dist > dock_range:
+			_in_bay = false
+			_bay_station = null
 		nearest_station_node = best_node
 		nearest_station_name = best_name
 		is_near_station = best_dist < dock_range
@@ -229,10 +241,12 @@ func request_undock() -> void:
 		return
 	is_docked = false
 	can_dock = false
-	# Keep _in_bay and _bay_station intact — the ship is physically still inside
-	# the bay after undocking. ship_exited_bay will clear them when the ship leaves.
-	# Clearing _in_bay here would break re-docking because body_entered won't fire
-	# for a body already inside the Area3D.
+	# Clear bay state — the ship is always teleported outside the bay before
+	# request_undock() is called (via _reposition_at_station in DockingManager).
+	# Keeping _in_bay=true would cause stale state after respawn because the
+	# frozen Area3D never tracked the body, so body_exited never fires.
+	_in_bay = false
+	_bay_station = null
 	_check_timer = 0.0
 	undocked.emit()
 

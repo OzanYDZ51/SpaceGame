@@ -118,6 +118,14 @@ func _send_state() -> void:
 		_was_dead = false
 		NetworkManager._rpc_player_respawned.rpc_id(1, state.system_id)
 
+	# Weapon loadout (visual sync — remote players see equipped weapon meshes)
+	var wm_sync = _ship.get_node_or_null("WeaponManager")
+	if wm_sync:
+		var lo: Array = []
+		for hp in wm_sync.hardpoints:
+			lo.append(String(hp.mounted_weapon.weapon_name) if hp.mounted_weapon else "")
+		state.loadout = lo
+
 	# Combat state
 	var health = _ship.get_node_or_null("HealthSystem")
 	if health:

@@ -211,7 +211,10 @@ func _explode() -> void:
 	if aoe_radius > 0.0:
 		_apply_aoe_damage()
 
-	# Explosion effect
+	# Missile-specific explosion VFX (big, scaled by size)
+	_spawn_missile_explosion()
+
+	# Standard hit effect
 	_spawn_hit_effect()
 
 	# Detach trail so it persists visually
@@ -308,11 +311,29 @@ func _on_body_hit(body: Node3D) -> void:
 	if aoe_radius > 0.0:
 		_apply_aoe_damage()
 
+	# Missile-specific explosion VFX
+	_spawn_missile_explosion()
+
 	# Detach trail before pool return
 	_detach_trail()
 
 	# Use base class for full hit logic (network claims, damage, effects)
 	super._on_body_hit(body)
+
+
+func _spawn_missile_explosion() -> void:
+	var scene_root := get_tree().current_scene
+	if scene_root == null:
+		return
+	var missile_res: MissileResource = MissileRegistry.get_missile(weapon_name)
+	var size: int = missile_res.missile_size if missile_res else 0
+	var color: Color = missile_res.bolt_color if missile_res else Color(1.0, 0.5, 0.1)
+	var radius: float = aoe_radius if aoe_radius > 0.0 else 5.0
+
+	var effect := MissileExplosionEffect.new()
+	scene_root.add_child(effect)
+	effect.global_position = global_position
+	effect.setup(size, color, radius)
 
 
 func _detach_trail() -> void:
