@@ -33,20 +33,6 @@ func try_fire_forward(target: Node3D, _guard_station: Node3D = null) -> void:
 	if _weapon_manager == null:
 		return
 
-	# Use TargetingSystem lead position (same as player sees — includes accel correction)
-	var target_pos: Vector3
-	if _targeting_system:
-		_targeting_system.current_target = target
-		target_pos = _targeting_system.get_lead_indicator_position()
-	else:
-		target_pos = target.global_position
-
-	# Dot check — front hemisphere only
-	var to_lead: Vector3 = (target_pos - _owner_node.global_position).normalized()
-	var forward: Vector3 = -_owner_node.global_transform.basis.z
-	if forward.dot(to_lead) < 0.0:
-		return
-
 	# LOS check
 	var space = _owner_node.get_world_3d().direct_space_state
 	if space:
@@ -65,6 +51,9 @@ func try_fire_forward(target: Node3D, _guard_station: Node3D = null) -> void:
 		var los_hit = space.intersect_ray(los_query)
 		if not los_hit.is_empty():
 			return
+
+	# Same system as player: per-hardpoint lead convergence on the target.
+	# Combat behavior controls when to call this (alignment, phase, range).
 	_weapon_manager.fire_group_with_lead(0, true, target)
 
 

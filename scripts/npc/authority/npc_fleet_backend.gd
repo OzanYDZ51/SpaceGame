@@ -8,17 +8,19 @@ extends RefCounted
 # =============================================================================
 
 const FLEET_SYNC_INTERVAL: float = 30.0
+const FLEET_SYNC_BACKOFF_MAX: float = 120.0  # Max interval when backend is down
 const MAX_RETRY_COUNT: int = 3
 const RETRY_BASE_DELAY: float = 1.0  # 1s, 2s, 4s
 const MAX_PENDING_RECONNECTS: int = 50
 const PENDING_RECONNECT_TIMEOUT: float = 60.0  # Drop queued reconnects older than 60s
 
 var _fleet_sync_timer: float = FLEET_SYNC_INTERVAL
+var _fleet_sync_interval: float = FLEET_SYNC_INTERVAL  # Current interval (backs off on failure)
 var _fleet_backend_loaded: bool = false
 var _pending_reconnects: Array = []  # [{uuid, pid, time}] queued while backend fleet loads
 var _backend_client: ServerBackendClient = null
 
-# Retry queue for failed sync operations
+# Retry queue for critical operations only (deaths — NOT position syncs)
 var _failed_updates: Array = []  # Array of { "data": Array, "retries": int, "next_retry": float }
 
 var _auth: NpcAuthority = null
@@ -33,7 +35,7 @@ func setup(auth: NpcAuthority, backend_client: ServerBackendClient) -> void:
 func tick(delta: float) -> void:
 	_fleet_sync_timer -= delta
 	if _fleet_sync_timer <= 0.0:
-		_fleet_sync_timer = FLEET_SYNC_INTERVAL
+		_fleet_sync_timer = _fleet_sync_interval
 		_sync_fleet_to_backend()
 
 	# Retry failed updates
@@ -85,9 +87,15 @@ func _sync_fleet_to_backend() -> void:
 		return
 
 	var ok: bool = await _backend_client.sync_fleet_positions(updates)
-	if not ok:
-		push_warning("NpcAuthority: Fleet position sync failed (%d updates) — queuing retry" % updates.size())
-		_failed_updates.append({ "data": updates, "retries": 0, "next_retry": Time.get_ticks_msec() / 1000.0 + RETRY_BASE_DELAY })
+	if ok:
+		# Backend is healthy — reset to normal interval
+		if _fleet_sync_interval > FLEET_SYNC_INTERVAL:
+			print("NpcFleetBackend: Backend recovered, resetting sync interval to %.0fs" % FLEET_SYNC_INTERVAL)
+		_fleet_sync_interval = FLEET_SYNC_INTERVAL
+	else:
+		# Backend unreachable — back off (positions are periodic, next cycle has fresh data)
+		_fleet_sync_interval = minf(_fleet_sync_interval * 2.0, FLEET_SYNC_BACKOFF_MAX)
+		push_warning("NpcFleetBackend: Fleet sync failed (%d updates) — next attempt in %.0fs" % [updates.size(), _fleet_sync_interval])
 
 
 ## Report a fleet NPC death to the backend with retry.

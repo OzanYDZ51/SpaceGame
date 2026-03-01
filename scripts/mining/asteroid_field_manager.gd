@@ -560,18 +560,19 @@ func _evaluate_lod() -> void:
 	var sorted_asteroids: Array = []
 	for id: StringName in _all_asteroids:
 		var asteroid = _all_asteroids[id]
-		asteroid._cached_dist = cam_pos.distance_to(asteroid.position)
+		asteroid.cached_dist = cam_pos.distance_to(asteroid.position)
 		sorted_asteroids.append(asteroid)
-	sorted_asteroids.sort_custom(func(a, b): return a._cached_dist < b._cached_dist)
+	sorted_asteroids.sort_custom(func(a, b): return a.cached_dist < b.cached_dist)
 
 	var promotions: int = 0
 	var new_dot_ids: Array[StringName] = []
 	var full_count: int = 0
 	var simplified_count: int = 0
+	var dots_changed: bool = false
 
 	for asteroid in sorted_asteroids:
 		var id: StringName = asteroid.id
-		var dist: float = asteroid._cached_dist
+		var dist: float = asteroid.cached_dist
 		var current_lod: AsteroidLOD = _lod_levels.get(id, AsteroidLOD.DATA_ONLY)
 		var target_lod: AsteroidLOD
 
@@ -599,6 +600,8 @@ func _evaluate_lod() -> void:
 				elif current_lod == AsteroidLOD.DOT:
 					new_dot_ids.append(id)
 				continue
+			if current_lod == AsteroidLOD.DOT or target_lod == AsteroidLOD.DOT:
+				dots_changed = true
 			_transition_lod(id, asteroid, current_lod, target_lod)
 			_lod_levels[id] = target_lod
 			promotions += 1
@@ -613,7 +616,7 @@ func _evaluate_lod() -> void:
 			new_dot_ids.append(id)
 
 	# Rebuild DOT multimesh if changed
-	if new_dot_ids.size() != _dot_ids.size() or _dots_dirty:
+	if dots_changed or new_dot_ids.size() != _dot_ids.size() or _dots_dirty:
 		_dot_ids = new_dot_ids
 		_rebuild_multimesh()
 		_dots_dirty = false

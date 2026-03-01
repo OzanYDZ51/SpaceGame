@@ -447,7 +447,8 @@ func _update_third_person(delta: float) -> void:
 		right = right.normalized()
 		var desired_basis := Basis(right, right.cross(desired_fwd).normalized(), -desired_fwd)
 		# Slerp toward desired orientation — takes shortest path, never flips
-		global_transform.basis = global_transform.basis.slerp(desired_basis, minf(rot_speed * delta, 1.0))
+		# Orthonormalize to prevent float drift from corrupting the Quaternion conversion
+		global_transform.basis = global_transform.basis.orthonormalized().slerp(desired_basis, minf(rot_speed * delta, 1.0))
 
 	# =========================================================================
 	# DYNAMIC FOV (phase-aware cruise + optical zoom + spike effects)

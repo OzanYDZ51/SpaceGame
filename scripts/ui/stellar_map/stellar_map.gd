@@ -444,6 +444,13 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	# If inline rename is active, let the LineEdit handle keys
+	if _rename_edit and _rename_edit.has_focus():
+		if event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
+			_cancel_rename()
+			get_viewport().set_input_as_handled()
+		return
+
 	# Consume ALL input so the ship doesn't move
 	if event is InputEventKey and event.pressed:
 		if event.physical_keycode == KEY_ESCAPE:
@@ -725,49 +732,15 @@ func _input(event: InputEvent) -> void:
 						_follow_effective_fleet_ship(effective_indices)
 						_entity_layer.route_target_entity_id = target_id
 					elif not target_ent.is_empty() and _fleet_panel._fleet:
-						# Right-click on fleet ship → follow (join/create squadron or re-follow)
-						var target_fi: int = _entity_to_fleet_index(target_id)
-						if target_fi >= 0:
-							var target_sq = _fleet_panel._fleet.get_ship_squadron(target_fi)
-							var new_members: Array[int] = []
-							var refollow_members: Array[int] = []
-							for idx in effective_indices:
-								if idx == target_fi:
-									continue
-								var idx_sq = _fleet_panel._fleet.get_ship_squadron(idx)
-								if idx_sq == null:
-									new_members.append(idx)
-								elif target_sq and idx_sq.squadron_id == target_sq.squadron_id:
-									refollow_members.append(idx)
-							# New members: join existing or create squadron
-							if new_members.size() > 0:
-								if target_sq:
-									for idx in new_members:
-										squadron_action_requested.emit(&"add_member", {"squadron_id": target_sq.squadron_id, "fleet_index": idx})
-								else:
-									squadron_action_requested.emit(&"create", {
-										"leader": target_fi,
-										"members": new_members,
-									})
-							# Re-follow: reset members already in squadron back to formation
-							for idx in refollow_members:
-								squadron_action_requested.emit(&"reset_to_follow", {"fleet_index": idx})
-							# Update route line
-							var all_following: Array[int] = []
-							all_following.append_array(new_members)
-							all_following.append_array(refollow_members)
-							if all_following.size() > 0:
-								_set_follow_route(all_following, target_id)
-						else:
-							# Non-fleet entity: navigate to its exact registered position using entity_id
-							# Same system as enemy lock — entity_id lets autopilot use live node position
-							_select_entity(target_id)
-							var params = {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
-							for idx in effective_indices:
+						# Right-click on any entity (fleet ship or other): move selected ships to it
+						_select_entity(target_id)
+						var params = {"target_x": target_ent["pos_x"], "target_z": target_ent["pos_z"], "entity_id": target_id}
+						for idx in effective_indices:
+							if idx != _entity_to_fleet_index(target_id):
 								fleet_order_requested.emit(idx, &"move_to", params)
-							_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
-							_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
-							_follow_effective_fleet_ship(effective_indices)
+						_show_waypoint(target_ent["pos_x"], target_ent["pos_z"])
+						_set_route_lines(effective_indices, target_ent["pos_x"], target_ent["pos_z"])
+						_follow_effective_fleet_ship(effective_indices)
 					elif not target_ent.is_empty() and target_ent.get("type", -1) == EntityRegistrySystem.EntityType.STATION:
 						# Right-click on a station → dock at that station
 						_select_entity(target_id)
@@ -893,6 +866,10 @@ func _select_entity(id: String) -> void:
 ## Check if an entity is a valid attack target for fleet ships.
 ## NPCs are always attackable. Players and enemy fleet ships are attackable unless grouped.
 func _is_attackable_entity(entity_id: String, ent: Dictionary) -> bool:
+	# Own fleet ships are never attackable (regardless of entity type,
+	# since spawn_npc_ship can temporarily re-register them as SHIP_NPC)
+	if _fleet_panel._fleet and _entity_to_fleet_index(entity_id) >= 0:
+		return false
 	var etype: int = ent.get("type", -1)
 	if etype == EntityRegistrySystem.EntityType.SHIP_NPC:
 		return true
@@ -1514,10 +1491,6 @@ func _build_squadron_context_orders(fleet_index: int, context: Dictionary = {}) 
 		if not any_in_sq:
 			result.append({"id": &"sq_create", "display_name": Locale.t("map.create_squadron")})
 
-	# Single fleet ship (not active): "CREATE SQUADRON" with this ship as leader
-	if fleet_index != fleet.active_index and sq == null and effective.size() <= 1:
-		result.append({"id": &"sq_create_single", "display_name": Locale.t("map.create_squadron")})
-
 	if sq:
 		# Ship is in a squadron
 		result.append({"id": &"sq_rename", "display_name": Locale.t("map.rename_squadron")})
@@ -1546,10 +1519,6 @@ func _handle_squadron_context_order(order_id: StringName, _params: Dictionary) -
 		return
 	elif order_id == &"sq_create_player":
 		squadron_action_requested.emit(&"create_player", {})
-	elif order_id == &"sq_create_single":
-		var idx =_get_effective_fleet_index()
-		if idx >= 0:
-			squadron_action_requested.emit(&"create", {"leader": idx, "members": []})
 	elif order_id == &"sq_create" and effective.size() >= 2:
 		squadron_action_requested.emit(&"create", {
 			"leader": effective[0],

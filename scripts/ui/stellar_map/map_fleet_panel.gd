@@ -854,7 +854,7 @@ func _draw_ship_row(font: Font, y: float, fleet_index: int, fs) -> void:
 	draw_string(font, Vector2(x + role_offset + 30, y + SHIP_H - 4), name_text, HORIZONTAL_ALIGNMENT_LEFT, PANEL_W - x - role_offset - 36, UITheme.FONT_SIZE_LABEL, name_col)
 
 	# Ship class (right-aligned, tiny) — shift left if "+" button will be drawn
-	var ship_data =ShipRegistry.get_ship_data(fs.ship_id)
+	var ship_data = ShipRegistry.get_ship_data(fs.ship_id) if fs.ship_id != &"" else null
 	if ship_data:
 		var cls_text =String(ship_data.ship_class)
 		var cls_right: float = PANEL_W - MARGIN - 2

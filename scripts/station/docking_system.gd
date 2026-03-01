@@ -229,10 +229,11 @@ func request_undock() -> void:
 		return
 	is_docked = false
 	can_dock = false
-	_in_bay = false
-	_bay_station = null
-	_connected_stations.clear()  # Force bay signal reconnection on next scan
-	_check_timer = 0.0  # Scan immediately so bay signals are reconnected
+	# Keep _in_bay and _bay_station intact — the ship is physically still inside
+	# the bay after undocking. ship_exited_bay will clear them when the ship leaves.
+	# Clearing _in_bay here would break re-docking because body_entered won't fire
+	# for a body already inside the Area3D.
+	_check_timer = 0.0
 	undocked.emit()
 
 

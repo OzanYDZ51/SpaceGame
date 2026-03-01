@@ -224,6 +224,11 @@ func _auto_dock_at_station() -> void:
 			docking_system.nearest_station_node = node_ref
 			# Connect bay signals so they persist through the dock/undock cycle
 			docking_system._try_connect_bay_signals(node_ref)
+			# Mark as inside bay so undock→re-dock works (body_entered won't fire
+			# for a body that's already inside the Area3D)
+			if node_ref.has_signal("ship_entered_bay"):
+				docking_system._in_bay = true
+				docking_system._bay_station = node_ref
 		docking_system.nearest_station_name = station_name
 
 	docking_system.is_docked = true

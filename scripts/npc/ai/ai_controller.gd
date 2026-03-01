@@ -37,6 +37,7 @@ var guard_station: Node3D = null
 var route_priority: bool = false
 var idle_after_combat: bool = false
 var can_move: bool = true
+var _mining_mode: bool = false  # True when external AIMiningBehavior controls the ship
 
 # --- Detection (per-ship from ShipData) ---
 var detection_range: float = Constants.AI_DETECTION_RANGE
@@ -77,6 +78,8 @@ var current_state: State:
 				return State.PURSUE
 			Mode.BEHAVIOR:
 				if _current_behavior == null:
+					if _mining_mode:
+						return State.MINING
 					return State.IDLE
 				var bname: StringName = _current_behavior.get_behavior_name()
 				match bname:
@@ -95,17 +98,21 @@ var current_state: State:
 		# Legacy setter for external code that writes current_state directly
 		match value:
 			State.DEAD:
+				_mining_mode = false
 				mode = Mode.DEAD
 			State.IDLE:
+				_mining_mode = false
 				mode = Mode.IDLE
 				if _current_behavior:
 					_current_behavior.exit()
 					_current_behavior = null
 			State.PATROL:
+				_mining_mode = false
 				mode = Mode.BEHAVIOR
 				if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_PATROL:
 					_switch_to_patrol()
 			State.PURSUE, State.ATTACK:
+				_mining_mode = false
 				if mode != Mode.COMBAT:
 					mode = Mode.COMBAT
 					if _combat_behavior == null:
@@ -113,14 +120,19 @@ var current_state: State:
 						_combat_behavior.controller = self
 					_combat_behavior.enter()
 			State.FORMATION:
+				_mining_mode = false
 				mode = Mode.BEHAVIOR
 				if _current_behavior == null or _current_behavior.get_behavior_name() != AIBehavior.NAME_FORMATION:
 					var fb := FormationBehavior.new()
 					fb.controller = self
 					_set_behavior(fb)
 			State.MINING:
+				_mining_mode = true
 				mode = Mode.BEHAVIOR
-				# Mining is external (AIMiningBehavior), just set mode
+				# Mining is external (AIMiningBehavior) — clear internal behavior
+				if _current_behavior:
+					_current_behavior.exit()
+					_current_behavior = null
 			State.LOOT_PICKUP:
 				mode = Mode.BEHAVIOR
 				var lb := LootBehavior.new()
@@ -379,6 +391,8 @@ func _tick_idle() -> void:
 
 func _tick_behavior(dt: float) -> void:
 	if _current_behavior == null:
+		if _mining_mode:
+			return  # Mining handled by external AIMiningBehavior
 		mode = Mode.IDLE
 		return
 
@@ -437,6 +451,7 @@ func _enter_combat(threat: Node3D) -> void:
 	if mode == Mode.COMBAT:
 		_combat_behavior.set_target(threat)
 		return
+	_mining_mode = false
 	# Save current behavior as default to return to (only if not already in combat)
 	if _current_behavior and mode != Mode.COMBAT:
 		_default_behavior = _current_behavior
