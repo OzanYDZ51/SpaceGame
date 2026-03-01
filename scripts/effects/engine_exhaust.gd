@@ -25,6 +25,12 @@ var _model_scale: float = 1.0
 var _exhaust_scale: float = 1.0
 var _max_speed_boost: float = 600.0
 
+# Adaptive VFX budget — keeps total particle count constant regardless of nozzle count
+var _nozzle_count: int = 0
+var _budget_factor: float = 1.0
+var _lights_created: int = 0
+const _MAX_LIGHTS: int = 2
+
 # Smooth state
 var _throttle_smooth: float = 0.0
 var _boost_blend: float = 0.0
@@ -58,11 +64,25 @@ func setup(p_model_scale: float, color: Color, vfx_points: Array[Dictionary] = [
 		positions.append({"position": Vector3(-1.5, 0.0, 5.0) * p_model_scale, "direction": Vector3.BACK})
 		positions.append({"position": Vector3(1.5, 0.0, 5.0) * p_model_scale, "direction": Vector3.BACK})
 
+	# --- Adaptive VFX budget ---
+	_nozzle_count = positions.size()
+	_budget_factor = clampf(2.0 / float(_nozzle_count), 0.4, 1.0)
+	_lights_created = 0
+
+	# Determine primary nozzle threshold (top 2 largest sizes)
 	var default_es: float = _exhaust_scale
+	var sorted_sizes: Array = []
+	for pt in positions:
+		sorted_sizes.append(pt.get("nozzle_size", default_es) if pt.get("nozzle_size", 0.0) > 0.0 else default_es)
+	sorted_sizes.sort()
+	sorted_sizes.reverse()
+	var primary_threshold: float = sorted_sizes[mini(1, sorted_sizes.size() - 1)]
+
 	for pt in positions:
 		var nozzle_es: float = pt.get("nozzle_size", 0.0)
-		_exhaust_scale = nozzle_es if nozzle_es > 0.0 else default_es
-		_create_nozzle(pt["position"], pt.get("direction", Vector3.BACK))
+		_exhaust_scale = _soft_cap_es(nozzle_es) if nozzle_es > 0.0 else default_es
+		var is_primary: bool = (nozzle_es if nozzle_es > 0.0 else default_es) >= primary_threshold
+		_create_nozzle(pt["position"], pt.get("direction", Vector3.BACK), is_primary)
 	_exhaust_scale = default_es
 
 
@@ -98,7 +118,7 @@ func update_intensity(throttle: float, speed_mode: int = 0, ship_speed: float = 
 # NOZZLE CREATION
 # =============================================================================
 
-func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
+func _create_nozzle(pos: Vector3, dir: Vector3, is_primary: bool = true) -> void:
 	var nozzle := {}
 	var nozzle_root := Node3D.new()
 	nozzle_root.position = pos
@@ -115,8 +135,12 @@ func _create_nozzle(pos: Vector3, dir: Vector3) -> void:
 	nozzle["afterburner"] = _create_afterburner_disc(nozzle_root)
 	nozzle["inner"] = _create_inner_flame(nozzle_root)
 	nozzle["outer"] = _create_outer_flame(nozzle_root)
-	nozzle["sparks"] = _create_sparks(nozzle_root)
-	nozzle["light"] = _create_dynamic_light(nozzle_root)
+	nozzle["sparks"] = _create_sparks(nozzle_root) if is_primary else null
+	if _lights_created < _MAX_LIGHTS:
+		nozzle["light"] = _create_dynamic_light(nozzle_root)
+		_lights_created += 1
+	else:
+		nozzle["light"] = null
 	nozzle["root"] = nozzle_root
 	_nozzles.append(nozzle)
 
@@ -138,8 +162,8 @@ func _create_core_cone(parent: Node3D) -> MeshInstance3D:
 	cone.top_radius = base_radius
 	cone.bottom_radius = tip_radius
 	cone.height = length
-	cone.radial_segments = 16
-	cone.rings = 10
+	cone.radial_segments = 12 if es > 3.0 else 16
+	cone.rings = 6 if es > 3.0 else 10
 
 	mesh_inst.mesh = cone
 	mesh_inst.rotation.x = -PI / 2.0
@@ -215,7 +239,7 @@ func _create_volume_fill(parent: Node3D) -> GPUParticles3D:
 	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.7, 0.2, 0.04)
 
 	p.process_material = mat
-	p.amount = 40
+	p.amount = maxi(8, int(40.0 * _budget_factor))
 	p.lifetime = 0.9
 	p.local_coords = false
 	p.emitting = true
@@ -298,7 +322,7 @@ func _create_inner_flame(parent: Node3D) -> GPUParticles3D:
 	mat.scale_curve = _make_scale_curve_4pt(1.0, 0.6, 0.15, 0.02)
 
 	p.process_material = mat
-	p.amount = 40
+	p.amount = maxi(8, int(40.0 * _budget_factor))
 	p.lifetime = 0.4
 	p.local_coords = true
 	p.emitting = true
@@ -346,7 +370,7 @@ func _create_outer_flame(parent: Node3D) -> GPUParticles3D:
 	mat.scale_curve = _make_scale_curve_4pt(0.9, 0.5, 0.12, 0.02)
 
 	p.process_material = mat
-	p.amount = 56
+	p.amount = maxi(8, int(56.0 * _budget_factor))
 	p.lifetime = 1.1
 	p.local_coords = false
 	p.emitting = true
@@ -395,7 +419,7 @@ func _create_sparks(parent: Node3D) -> GPUParticles3D:
 	mat.scale_curve = _make_scale_curve(0.5, 1.0, 0.0)
 
 	p.process_material = mat
-	p.amount = 28
+	p.amount = maxi(8, int(28.0 * _budget_factor))
 	p.lifetime = 0.55
 	p.local_coords = false
 	p.emitting = false
@@ -601,6 +625,17 @@ func _update_light(nozzle: Dictionary, t: float, idle: float) -> void:
 
 	var es: float = nozzle.get("es", _exhaust_scale)
 	light.omni_range = (6.0 + _boost_blend * 4.0 + _cruise_blend * 6.0) * es
+
+
+# =============================================================================
+# BUDGET HELPERS
+# =============================================================================
+
+func _soft_cap_es(es: float) -> float:
+	## Soft-cap nozzle_size above 3.0 to reduce fill rate on large ships.
+	if es <= 3.0:
+		return es
+	return 3.0 + sqrt(es - 3.0)
 
 
 # =============================================================================

@@ -55,7 +55,6 @@ func get_ship_count() -> int:
 
 func serialize() -> Array:
 	var result: Array = []
-	var idx_remap: int = 0
 	for i in ships.size():
 		var ship = ships[i]
 		# Skip destroyed and empty ships — they're gone forever
@@ -64,7 +63,6 @@ func serialize() -> Array:
 		var d = ship.serialize()
 		d["active"] = (i == active_index)
 		result.append(d)
-		idx_remap += 1
 	return result
 
 

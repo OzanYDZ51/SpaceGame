@@ -565,7 +565,8 @@ func _register_system_entities() -> void:
 		})
 		# Register with StructureAuthority for multiplayer sync
 		if struct_auth and node:
-			struct_auth.register_structure("Station_%d" % i, current_system_id, sd.station_type, node)
+			struct_auth.register_structure("Station_%d" % i, current_system_id, sd.station_type, node,
+				cos(st_angle) * st_orbit_r, 0.0, sin(st_angle) * st_orbit_r)
 
 	# Jump gates
 	for i in current_system_data.jump_gates.size():
